@@ -89,16 +89,17 @@ type UpdateFile struct {
 }
 
 type UpdateFilter struct {
-	ID      *int
-	UUID    *uuid.UUID
-	Channel *string `db:"ignore"`
-	Origin  *string
-	Status  *api.UpdateStatus
+	ID              *int
+	UUID            *uuid.UUID
+	Channel         *string `db:"ignore"`
+	UpstreamChannel *string `db:"ignore"`
+	Origin          *string
+	Status          *api.UpdateStatus
 }
 
 func (f UpdateFilter) AppendToURLValues(query url.Values) url.Values {
-	if f.Channel != nil {
-		query.Add("channel", *f.Channel)
+	if f.UpstreamChannel != nil {
+		query.Add("channel", *f.UpstreamChannel)
 	}
 
 	if f.Origin != nil {

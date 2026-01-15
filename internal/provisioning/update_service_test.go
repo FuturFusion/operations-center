@@ -463,10 +463,12 @@ func TestUpdateService_GetAll(t *testing.T) {
 
 func TestUpdateService_GetAllWithFilter(t *testing.T) {
 	tests := []struct {
-		name                    string
-		filter                  provisioning.UpdateFilter
-		repoGetAllWithFilter    provisioning.Updates
-		repoGetAllWithFilterErr error
+		name                                   string
+		filter                                 provisioning.UpdateFilter
+		repoGetAllXXX                          provisioning.Updates
+		repoGetXXXErr                          error
+		repoGetUpdatesByAssignedChannelName    provisioning.Updates
+		repoGetUpdatesByAssignedChannelNameErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
@@ -476,7 +478,7 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 			filter: provisioning.UpdateFilter{
 				Origin: ptr.To("one"),
 			},
-			repoGetAllWithFilter: provisioning.Updates{
+			repoGetAllXXX: provisioning.Updates{
 				provisioning.Update{
 					UUID: uuid.MustParse(`1b6b5509-a9a6-419f-855f-7a8618ce76ad`),
 				},
@@ -489,12 +491,12 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 			count:     2,
 		},
 		{
-			name: "success - with channel",
+			name: "success - with upstream channel",
 			filter: provisioning.UpdateFilter{
-				Origin:  ptr.To("one"),
-				Channel: ptr.To("stable"),
+				Origin:          ptr.To("one"),
+				UpstreamChannel: ptr.To("stable"),
 			},
-			repoGetAllWithFilter: provisioning.Updates{
+			repoGetAllXXX: provisioning.Updates{
 				provisioning.Update{
 					UUID:             uuid.MustParse(`1b6b5509-a9a6-419f-855f-7a8618ce76ad`),
 					UpstreamChannels: []string{"stable", "daily"},
@@ -509,8 +511,28 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 			count:     1,
 		},
 		{
-			name:                    "error - repo",
-			repoGetAllWithFilterErr: boom.Error,
+			name: "success - with channel",
+			filter: provisioning.UpdateFilter{
+				Origin:  ptr.To("one"),
+				Channel: ptr.To("stable"),
+			},
+			repoGetAllXXX: provisioning.Updates{
+				provisioning.Update{
+					UUID:             uuid.MustParse(`1b6b5509-a9a6-419f-855f-7a8618ce76ad`),
+					UpstreamChannels: []string{"stable", "daily"},
+				},
+				provisioning.Update{
+					UUID:             uuid.MustParse(`689396f9-cf05-4776-a567-38014d37f861`),
+					UpstreamChannels: []string{"daily"},
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:          "error - repo",
+			repoGetXXXErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -522,10 +544,13 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
-					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+					return tc.repoGetAllXXX, tc.repoGetXXXErr
 				},
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
-					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+					return tc.repoGetAllXXX, tc.repoGetXXXErr
+				},
+				GetUpdatesByAssignedChannelNameFunc: func(ctx context.Context, name string, filter ...provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return tc.repoGetAllXXX, tc.repoGetXXXErr
 				},
 			}
 
@@ -613,7 +638,7 @@ func TestUpdateService_GetAllUUIDsWithFilter(t *testing.T) {
 		{
 			name: "success - with upstream channel",
 			filter: provisioning.UpdateFilter{
-				Channel: ptr.To("stable"),
+				UpstreamChannel: ptr.To("stable"),
 			},
 			repoGetAll: provisioning.Updates{
 				{
@@ -639,7 +664,7 @@ func TestUpdateService_GetAllUUIDsWithFilter(t *testing.T) {
 		{
 			name: "error - repo",
 			filter: provisioning.UpdateFilter{
-				Channel: ptr.To("stable"),
+				UpstreamChannel: ptr.To("stable"),
 			},
 			repoGetAllErr: boom.Error,
 
@@ -709,7 +734,7 @@ func TestUpdateService_GetUpdatesByAssignedChannelName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
-				GetUpdatesByAssignedChannelNameFunc: func(ctx context.Context, name string) (provisioning.Updates, error) {
+				GetUpdatesByAssignedChannelNameFunc: func(ctx context.Context, name string, filter ...provisioning.UpdateFilter) (provisioning.Updates, error) {
 					return tc.repoGetUpdatesByAssignedChannelName, tc.repoGetUpdatesByAssignedChannelNameErr
 				},
 			}

@@ -105,9 +105,9 @@ func TestUpdate_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: provisioning.UpdateFilter{
-				Channel: ptr.To("channel"),
-				Origin:  ptr.To("origin"),
-				Status:  ptr.To(api.UpdateStatusReady),
+				UpstreamChannel: ptr.To("channel"),
+				Origin:          ptr.To("origin"),
+				Status:          ptr.To(api.UpdateStatusReady),
 			},
 
 			want: `channel=channel&origin=origin&status=ready`,
