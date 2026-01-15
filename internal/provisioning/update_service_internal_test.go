@@ -174,3 +174,54 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateService_validateUpdatesConfig(t *testing.T) {
+	tests := []struct {
+		name                 string
+		filterExpression     string
+		fileFilterExpression string
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:                 "success",
+			filterExpression:     "",
+			fileFilterExpression: "",
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                 "error - invalid filter expression",
+			filterExpression:     `invalid`, // invalid,
+			fileFilterExpression: "",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid config, failed to compile filter expression`)
+			},
+		},
+		{
+			name:                 "error - invalid file filter expression",
+			filterExpression:     "",
+			fileFilterExpression: `invalid`, // invalid,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid config, failed to compile file filter expression`)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			updateSvc := NewUpdateService(nil, nil, nil)
+
+			err := updateSvc.validateUpdatesConfig(t.Context(), api.SystemUpdates{
+				SystemUpdatesPut: api.SystemUpdatesPut{
+					FilterExpression:     tc.filterExpression,
+					FileFilterExpression: tc.fileFilterExpression,
+				},
+			})
+
+			tc.assertErr(t, err)
+		})
+	}
+}
