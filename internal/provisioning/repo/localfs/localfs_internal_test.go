@@ -317,11 +317,11 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 			name:            "success",
 			tarContentFiles: "testdata/success",
 			updateManifest: provisioning.Update{
-				Origin:      "testdata",
-				Version:     "1",
-				PublishedAt: time.Date(2025, 5, 21, 7, 25, 37, 0, time.UTC),
-				Severity:    images.UpdateSeverityNone,
-				Channels:    []string{"daily"},
+				Origin:           "testdata",
+				Version:          "1",
+				PublishedAt:      time.Date(2025, 5, 21, 7, 25, 37, 0, time.UTC),
+				Severity:         images.UpdateSeverityNone,
+				UpstreamChannels: []string{"daily"},
 				Files: provisioning.UpdateFiles{
 					provisioning.UpdateFile{
 						Filename:  "file1.txt",

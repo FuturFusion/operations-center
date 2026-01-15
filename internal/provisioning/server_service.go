@@ -18,6 +18,7 @@ import (
 	"github.com/lxc/incus/v6/shared/revert"
 	"github.com/maniartech/signals"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -30,6 +31,7 @@ type serverService struct {
 	client     ServerClientPort
 	tokenSvc   TokenService
 	clusterSvc ClusterService
+	channelSvc ChannelService
 
 	httpClient *http.Client
 
@@ -80,12 +82,13 @@ func (s *serverService) UpdateServerCertificate(ctx context.Context, serverCerti
 	return s.SelfRegisterOperationsCenter(ctx)
 }
 
-func NewServerService(repo ServerRepo, client ServerClientPort, tokenSvc TokenService, clusterSvc ClusterService, serverConnectionURL string, serverCertificate tls.Certificate, opts ...ServerServiceOption) *serverService {
+func NewServerService(repo ServerRepo, client ServerClientPort, tokenSvc TokenService, clusterSvc ClusterService, channelSvc ChannelService, serverConnectionURL string, serverCertificate tls.Certificate, opts ...ServerServiceOption) *serverService {
 	serverSvc := &serverService{
 		repo:       repo,
 		client:     client,
 		tokenSvc:   tokenSvc,
 		clusterSvc: clusterSvc,
+		channelSvc: channelSvc,
 		httpClient: &http.Client{},
 
 		serverURL:         serverConnectionURL,
@@ -120,6 +123,10 @@ func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer S
 
 		if newServer.Type == "" {
 			newServer.Type = api.ServerTypeUnknown
+		}
+
+		if newServer.Channel == "" {
+			newServer.Channel = config.GetUpdates().ServerDefaultChannel
 		}
 
 		err = newServer.Validate()
@@ -425,6 +432,52 @@ func (s *serverService) UpdateSystemProvider(ctx context.Context, name string, p
 	return nil
 }
 
+func (s *serverService) GetSystemUpdate(ctx context.Context, name string) (ServerSystemUpdate, error) {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return ServerSystemUpdate{}, fmt.Errorf("Failed to get server %q: %w", name, err)
+	}
+
+	updateConfig, err := s.client.GetUpdateConfig(ctx, *server)
+	if err != nil {
+		return ServerSystemUpdate{}, fmt.Errorf("Failed to get update config from %q: %w", server.Name, err)
+	}
+
+	return updateConfig, nil
+}
+
+func (s *serverService) UpdateSystemUpdate(ctx context.Context, name string, updateConfig ServerSystemUpdate) error {
+	_, err := s.channelSvc.GetByName(ctx, updateConfig.Config.Channel)
+	if err != nil {
+		return fmt.Errorf("Failed to get channel %q: %w", name, err)
+	}
+
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q: %w", name, err)
+	}
+
+	currentServerSystemUpdate, err := s.client.GetUpdateConfig(ctx, *server)
+	if err != nil {
+		return fmt.Errorf("Failed to get the current update config from %q: %w", server.Name, err)
+	}
+
+	// For now, the only setting that we allow to be changed by the user is the Update Channel.
+	currentServerSystemUpdate.Config.Channel = updateConfig.Config.Channel
+
+	err = s.client.UpdateUpdateConfig(ctx, *server, currentServerSystemUpdate)
+	if err != nil {
+		return fmt.Errorf("Failed to update the update config for %q: %w", server.Name, err)
+	}
+
+	err = s.pollServer(ctx, *server, true)
+	if err != nil {
+		slog.WarnContext(ctx, "Server poll after changing the update configuration failed (non-critical), fixed by the next successful server poll interval", logger.Err(err), slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
+	}
+
+	return nil
+}
+
 func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUpdate) error {
 	if serverUpdate.Self {
 		return s.SelfRegisterOperationsCenter(ctx)
@@ -511,6 +564,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 				Certificate:   string(serverCert),
 				Status:        api.ServerStatusReady,
 				LastSeen:      s.now(),
+				Channel:       config.GetUpdates().ServerDefaultChannel,
 			}
 
 			upsert = func(ctx context.Context, server Server) error {

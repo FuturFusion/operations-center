@@ -10,8 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/google/uuid"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 var tokenSeedObjects = RegisterStmt(`

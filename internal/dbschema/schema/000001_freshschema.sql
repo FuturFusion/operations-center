@@ -21,9 +21,11 @@ CREATE TABLE clusters (
   certificate TEXT,
   status TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
+  channel_id INTEGER NOT NULL DEFAULT 0,
   UNIQUE (name),
   UNIQUE (certificate),
-  CHECK (name <> '')
+  CHECK (name <> ''),
+  FOREIGN KEY (channel_id) REFERENCES channels(id)
 );
 
 CREATE TABLE servers (
@@ -40,9 +42,11 @@ CREATE TABLE servers (
   last_seen DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00',
   public_connection_url TEXT NOT NULL DEFAULT '',
   version_data TEXT NOT NULL DEFAULT '',
+  channel_id INTEGER NOT NULL DEFAULT 0,
   UNIQUE (name),
   UNIQUE (certificate),
   FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE,
+  FOREIGN KEY (channel_id) REFERENCES channels(id),
   CHECK (name <> '')
 );
 
@@ -53,13 +57,32 @@ CREATE TABLE updates (
   "version" TEXT NOT NULL,
   published_at DATETIME NOT NULL,
   severity TEXT NOT NULL,
-  channels TEXT NOT NULL,
+  upstream_channels TEXT NOT NULL,
   changelog TEXT NOT NULL,
   files TEXT NOT NULL,
   "url" NOT NULL DEFAULT '',
   "status" NOT NULL DEFAULT 'ready',
   last_updated DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00',
   UNIQUE(uuid)
+);
+
+CREATE TABLE channels (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  last_updated DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00',
+  UNIQUE(name),
+  CHECK (name <> '')
+);
+
+INSERT INTO channels (name, description, last_updated) VALUES ('stable', 'Stable updates channel', strftime('%Y-%m-%d %H:%M:%f+00:00'));
+
+CREATE TABLE channels_updates (
+    channel_id INTEGER NOT NULL,
+    update_id INTEGER NOT NULL,
+    FOREIGN KEY (channel_id) REFERENCES channels (id) ON DELETE CASCADE,
+    FOREIGN KEY (update_id) REFERENCES updates (id) ON DELETE CASCADE,
+    UNIQUE (channel_id, update_id)
 );
 
 CREATE TABLE images (
@@ -365,4 +388,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (20, strftime("%s"))
+INSERT INTO schema (version, updated_at) VALUES (22, strftime("%s"))

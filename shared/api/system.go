@@ -189,9 +189,9 @@ type SystemUpdatesPut struct {
 	// To disable filtering, set to "true", which causes the filter to allow all
 	// updates.
 	//
-	// Default: 'stable' in channels
+	// Default: 'stable' in upstream_channels
 	//
-	// Example: 'stable' in channels
+	// Example: 'stable' in upstream_channels
 	FilterExpression string `json:"filter_expression" yaml:"filter_expression"`
 
 	// Filter expression for update files using https://expr-lang.org/ on struct
@@ -213,4 +213,12 @@ type SystemUpdatesPut struct {
 	// Examples:
 	//   architecture == "x86_64"
 	FileFilterExpression string `json:"file_filter_expression" yaml:"file_filter_expression"`
+
+	// UpdatesDefaultChannel is the update channel, which is used by default
+	// new updates fetched from upstream.
+	UpdatesDefaultChannel string `json:"updates_default_channel" yaml:"updates_default_channel"`
+
+	// ServerDefaultChannel is the default channel assigned to new server
+	// and cluster instances.
+	ServerDefaultChannel string `json:"server_default_channel" yaml:"server_default_channel"`
 }

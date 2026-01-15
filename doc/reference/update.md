@@ -31,14 +31,14 @@ in the [Update settings](settings.md#update-settings).
 
 They allow filtering of updates based on their metadata.
 
-| Property       | Description                                  | Example                                     |
-| :---           | :---                                         | :---                                        |
-| `channels`     | Update channels, the update is part of       | `stable`, `testing`, `daily`                |
-| `origin`       | Source the update originates from            | `linuxcontainers.org`                       |
-| `published_at` | Timestamp when the update has been published | `2025-11-21T22:30:02.515408725Z`            |
-| `severity`     | Severity of the update                       | `none`, `low`, `medium`, `high`, `critical` |
-| `uuid`         | Unique identifier of the update              | `123e4567-e89b-12d3-a456-426614174000`      |
-| `version`      | Version of the update                        | `202511201340`                              |
+| Property            | Description                                  | Example                                     |
+| :---                | :---                                         | :---                                        |
+| `upstream_channels` | Upstream channels, the update is part of     | `stable`, `testing`, `daily`                |
+| `origin`            | Source the update originates from            | `linuxcontainers.org`                       |
+| `published_at`      | Timestamp when the update has been published | `2025-11-21T22:30:02.515408725Z`            |
+| `severity`          | Severity of the update                       | `none`, `low`, `medium`, `high`, `critical` |
+| `uuid`              | Unique identifier of the update              | `123e4567-e89b-12d3-a456-426614174000`      |
+| `version`           | Version of the update                        | `202511201340`                              |
 
 The following properties are available during filtering as well, but they are
 not really useful as filter criteria and are only listed here for completeness.

@@ -59,6 +59,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 			ConnectionURL: fmt.Sprintf("https://%s.domain.tdl", clusterName),
 			Certificate:   ptr.To(string(clusterCertPEM)),
 			LastUpdated:   faker.Date(),
+			Channel:       "stable",
 		})
 		if err != nil {
 			return err
@@ -86,6 +87,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				OSData:        api.OSData{},
 				Status:        api.ServerStatusReady,
 				LastUpdated:   faker.Date(),
+				Channel:       "stable",
 			})
 			if err != nil {
 				return err

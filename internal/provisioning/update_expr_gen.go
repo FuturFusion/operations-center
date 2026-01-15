@@ -11,35 +11,35 @@ import (
 )
 
 type ExprUpdate struct {
-	ID          string                `json:"-" expr:"-"`
-	UUID        uuid.UUID             `json:"-" expr:"uuid" db:"primary=yes"`
-	Format      string                `json:"format" db:"ignore" expr:"format"`
-	Origin      string                `json:"origin" expr:"origin"`
-	Version     string                `json:"version" expr:"version"`
-	PublishedAt time.Time             `json:"published_at" expr:"published_at"`
-	Severity    images.UpdateSeverity `json:"severity" expr:"severity"`
-	Channels    UpdateChannels        `json:"channels" expr:"channels"`
-	Changelog   string                `json:"-" expr:"change_log"`
-	Files       UpdateFiles           `json:"files" expr:"files"`
-	URL         string                `json:"url" expr:"url"`
-	Status      api.UpdateStatus      `json:"-" expr:"status"`
-	LastUpdated time.Time             `json:"-" expr:"last_updated" db:"update_timestamp"`
+	ID               string                 `json:"-" expr:"-"`
+	UUID             uuid.UUID              `json:"-" expr:"uuid" db:"primary=yes"`
+	Format           string                 `json:"format" db:"ignore" expr:"format"`
+	Origin           string                 `json:"origin" expr:"origin"`
+	Version          string                 `json:"version" expr:"version"`
+	PublishedAt      time.Time              `json:"published_at" expr:"published_at"`
+	Severity         images.UpdateSeverity  `json:"severity" expr:"severity"`
+	UpstreamChannels UpdateUpstreamChannels `json:"upstream_channels" expr:"upstream_channels"`
+	Changelog        string                 `json:"-" expr:"change_log"`
+	Files            UpdateFiles            `json:"files" expr:"files"`
+	URL              string                 `json:"url" expr:"url"`
+	Status           api.UpdateStatus       `json:"-" expr:"status"`
+	LastUpdated      time.Time              `json:"-" expr:"last_updated" db:"update_timestamp"`
 }
 
 func ToExprUpdate(u Update) ExprUpdate {
 	return ExprUpdate{
-		ID:          u.ID,
-		UUID:        u.UUID,
-		Format:      u.Format,
-		Origin:      u.Origin,
-		Version:     u.Version,
-		PublishedAt: u.PublishedAt,
-		Severity:    u.Severity,
-		Channels:    u.Channels,
-		Changelog:   u.Changelog,
-		Files:       u.Files,
-		URL:         u.URL,
-		Status:      u.Status,
-		LastUpdated: u.LastUpdated,
+		ID:               u.ID,
+		UUID:             u.UUID,
+		Format:           u.Format,
+		Origin:           u.Origin,
+		Version:          u.Version,
+		PublishedAt:      u.PublishedAt,
+		Severity:         u.Severity,
+		UpstreamChannels: u.UpstreamChannels,
+		Changelog:        u.Changelog,
+		Files:            u.Files,
+		URL:              u.URL,
+		Status:           u.Status,
+		LastUpdated:      u.LastUpdated,
 	}
 }

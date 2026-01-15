@@ -27,6 +27,7 @@ type Server struct {
 	HardwareData         api.HardwareData      `json:"hardware_data"`
 	OSData               api.OSData            `json:"os_data"`
 	VersionData          api.ServerVersionData `json:"version_data"`
+	Channel              string                `json:"channel"                db:"join=channels.name"`
 	Status               api.ServerStatus      `json:"status"`
 	LastUpdated          time.Time             `json:"last_updated"           db:"update_timestamp"`
 	LastSeen             time.Time             `json:"last_seen"`
@@ -96,12 +97,17 @@ func (s Server) Validate() error {
 		return domain.NewValidationErrf("Invalid server, validation of status failed: %v", err)
 	}
 
+	if s.Channel == "" {
+		return domain.NewValidationErrf("Invalid server, channel can not be empty")
+	}
+
 	return nil
 }
 
 type Servers []Server
 
 type ServerFilter struct {
+	ID          *int
 	Name        *string
 	Cluster     *string
 	Status      *api.ServerStatus
@@ -153,3 +159,5 @@ type ServerSystemNetwork = api.ServerSystemNetwork
 type ServerSystemStorage = api.ServerSystemStorage
 
 type ServerSystemProvider = api.ServerSystemProvider
+
+type ServerSystemUpdate = api.ServerSystemUpdate

@@ -330,6 +330,10 @@ type ServerPut struct {
 	// connection_url, e.g. because the server is behind a reverse proxy.
 	// Example: https://incus.local:6443
 	PublicConnectionURL string `json:"public_connection_url" yaml:"public_connection_url"`
+
+	// Channel the server is following for updates.
+	// Example: stable
+	Channel string `json:"channel" yaml:"channel"`
 }
 
 // Server defines a server running Hypervisor OS.
@@ -406,3 +410,6 @@ type ServerSystemStorage = incusosapi.SystemStorage
 
 // ServerSystemProvider is a type alias to hold the system provider configuration from IncusOS.
 type ServerSystemProvider = incusosapi.SystemProvider
+
+// ServerSystemUpdate is a type alias to hold the system update configuration from IncusOS.
+type ServerSystemUpdate = incusosapi.SystemUpdate

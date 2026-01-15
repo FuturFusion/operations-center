@@ -30,6 +30,7 @@ type Cluster struct {
 	ServerType            api.ServerType    `json:"server_type"             db:"ignore"`
 	ServicesConfig        map[string]any    `json:"services_config"         db:"ignore"`
 	ApplicationSeedConfig map[string]any    `json:"application_seed_config" db:"ignore"`
+	Channel               string            `json:"channel"                 db:"join=channels.name"`
 	LastUpdated           time.Time         `json:"last_updated"            db:"update_timestamp"`
 }
 
@@ -47,6 +48,10 @@ func (c Cluster) Validate() error {
 	_, err := url.Parse(c.ConnectionURL)
 	if err != nil {
 		return domain.NewValidationErrf("Invalid cluster, connection URL is not valid: %v", err)
+	}
+
+	if c.Channel == "" {
+		return domain.NewValidationErrf("Invalid cluster, channel can not be empty")
 	}
 
 	return nil

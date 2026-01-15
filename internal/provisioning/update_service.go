@@ -255,7 +255,7 @@ func (s updateService) GetAllWithFilter(ctx context.Context, filter UpdateFilter
 
 	n := 0
 	for i := range updates {
-		if !slices.Contains(updates[i].Channels, *filter.Channel) {
+		if !slices.Contains(updates[i].UpstreamChannels, *filter.Channel) {
 			continue
 		}
 
@@ -287,7 +287,7 @@ func (s updateService) GetAllUUIDsWithFilter(ctx context.Context, filter UpdateF
 
 	updateIDs := make([]uuid.UUID, 0, len(updates))
 	for _, update := range updates {
-		if !slices.Contains(update.Channels, *filter.Channel) {
+		if !slices.Contains(update.UpstreamChannels, *filter.Channel) {
 			continue
 		}
 
@@ -295,6 +295,15 @@ func (s updateService) GetAllUUIDsWithFilter(ctx context.Context, filter UpdateF
 	}
 
 	return updateIDs, nil
+}
+
+func (s updateService) GetUpdatesByAssignedChannelName(ctx context.Context, channelName string) (Updates, error) {
+	updates, err := s.repo.GetUpdatesByAssignedChannelName(ctx, channelName)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get updates by channel %q: %w", channelName, err)
+	}
+
+	return updates, err
 }
 
 func (s updateService) GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (UpdateFiles, error) {

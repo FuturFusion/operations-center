@@ -44,13 +44,7 @@ func (c OperationsCenterClient) GetClusterTemplate(ctx context.Context, name str
 }
 
 func (c OperationsCenterClient) CreateClusterTemplate(ctx context.Context, clusterTemplate api.ClusterTemplatePost) error {
-	response, err := c.doRequest(ctx, http.MethodPost, "/provisioning/cluster-templates", nil, clusterTemplate)
-	if err != nil {
-		return err
-	}
-
-	clusterTemplates := []api.ClusterTemplate{}
-	err = json.Unmarshal(response.Metadata, &clusterTemplates)
+	_, err := c.doRequest(ctx, http.MethodPost, "/provisioning/cluster-templates", nil, clusterTemplate)
 	if err != nil {
 		return err
 	}

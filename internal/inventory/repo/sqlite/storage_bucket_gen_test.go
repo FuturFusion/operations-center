@@ -33,6 +33,7 @@ cluster A
 `),
 		ServerNames: []string{"one"},
 		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Channel:     "stable",
 	}
 
 	testClusterB := provisioning.Cluster{
@@ -44,6 +45,7 @@ cluster B
 `),
 		ServerNames: []string{"two"},
 		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Channel:     "stable",
 	}
 
 	testClusters := []provisioning.Cluster{testClusterA, testClusterB}
@@ -59,6 +61,7 @@ server-one
 		Type:        api.ServerTypeIncus,
 		Status:      api.ServerStatusReady,
 		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Channel:     "stable",
 	}
 
 	testServerB := provisioning.Server{
@@ -72,6 +75,7 @@ server-two
 		Type:        api.ServerTypeIncus,
 		Status:      api.ServerStatusReady,
 		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Channel:     "stable",
 	}
 
 	testServers := []provisioning.Server{testServerA, testServerB}

@@ -19,6 +19,7 @@ type ExprCluster struct {
 	ServerType            api.ServerType    `json:"server_type"             db:"ignore" expr:"server_type"`
 	ServicesConfig        map[string]any    `json:"services_config"         db:"ignore" expr:"services_config"`
 	ApplicationSeedConfig map[string]any    `json:"application_seed_config" db:"ignore" expr:"application_seed_config"`
+	Channel               string            `json:"channel"                 db:"join=channels.name" expr:"channel"`
 	LastUpdated           time.Time         `json:"last_updated"            db:"update_timestamp" expr:"last_updated"`
 }
 
@@ -34,6 +35,7 @@ func ToExprCluster(c Cluster) ExprCluster {
 		ServerType:            c.ServerType,
 		ServicesConfig:        c.ServicesConfig,
 		ApplicationSeedConfig: c.ApplicationSeedConfig,
+		Channel:               c.Channel,
 		LastUpdated:           c.LastUpdated,
 	}
 }
