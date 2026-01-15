@@ -31,7 +31,7 @@ func registerProvisioningClusterTemplateHandler(router Router, authorizer *authz
 	router.HandleFunc("POST /{name}", response.With(handler.clusterTemplatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
-// swagger:operation GET /1.0/provisioning/cluster-config-templates cluster-config-templates cluster_config_templates_get
+// swagger:operation GET /1.0/provisioning/cluster-templates cluster-templates cluster_config_templates_get
 //
 //	Get the cluster config templates
 //
@@ -66,15 +66,15 @@ func registerProvisioningClusterTemplateHandler(router Router, authorizer *authz
 //	            type: string
 //	          example: |-
 //	            [
-//	              "/1.0/provisioning/cluster-config-templates/one",
-//	              "/1.0/provisioning/cluster-config-templates/two"
+//	              "/1.0/provisioning/cluster-templates/one",
+//	              "/1.0/provisioning/cluster-templates/two"
 //	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/provisioning/cluster-config-templates?recursion=1 cluster-config-templates cluster_config_templates_get_recursion
+// swagger:operation GET /1.0/provisioning/cluster-templates?recursion=1 cluster-templates cluster_config_templates_get_recursion
 //
 //	Get the cluster config templates
 //
@@ -150,13 +150,13 @@ func (c *clusterConfigTemplateHandler) clusterTemplatesGet(r *http.Request) resp
 
 	result := make([]string, 0, len(clusterConfigTemplateNames))
 	for _, name := range clusterConfigTemplateNames {
-		result = append(result, fmt.Sprintf("/%s/provisioning/cluster-config-templates/%s", api.APIVersion, name))
+		result = append(result, fmt.Sprintf("/%s/provisioning/cluster-templates/%s", api.APIVersion, name))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation POST /1.0/provisioning/cluster-config-templates cluster-config-templates cluster_config_templates_post
+// swagger:operation POST /1.0/provisioning/cluster-templates cluster-templates cluster_config_templates_post
 //
 //	Add a cluster config template
 //
@@ -203,10 +203,10 @@ func (c *clusterConfigTemplateHandler) clusterTemplatesPost(r *http.Request) res
 		return response.SmartError(fmt.Errorf("Failed creating cluster config template: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/cluster-config-templates/"+clusterConfigTemplate.Name)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/cluster-templates/"+clusterConfigTemplate.Name)
 }
 
-// swagger:operation GET /1.0/provisioning/cluster-config-templates/{name} cluster-config-templates cluster_config_template_get
+// swagger:operation GET /1.0/provisioning/cluster-templates/{name} cluster-templates cluster_config_template_get
 //
 //	Get the cluster config template
 //
@@ -266,7 +266,7 @@ func (c *clusterConfigTemplateHandler) clusterTemplateGet(r *http.Request) respo
 	)
 }
 
-// swagger:operation PUT /1.0/provisioning/cluster-config-templates/{name} cluster-config-templates cluster_config_template_put
+// swagger:operation PUT /1.0/provisioning/cluster-templates/{name} cluster-templates cluster_config_template_put
 //
 //	Update the cluster config template
 //
@@ -339,10 +339,10 @@ func (c *clusterConfigTemplateHandler) clusterTemplatePut(r *http.Request) respo
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/cluster-config-templates/"+name)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/cluster-templates/"+name)
 }
 
-// swagger:operation DELETE /1.0/provisioning/cluster-config-templates/{name} cluster-config-templates cluster_config_template_delete
+// swagger:operation DELETE /1.0/provisioning/cluster-templates/{name} cluster-templates cluster_config_template_delete
 //
 //	Delete the cluster config template
 //
@@ -371,7 +371,7 @@ func (c *clusterConfigTemplateHandler) clusterTemplateDelete(r *http.Request) re
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/provisioning/cluster-config-templates/{name} cluster-config-templates cluster_config_template_post
+// swagger:operation POST /1.0/provisioning/cluster-templates/{name} cluster-templates cluster_config_template_post
 //
 //	Rename the cluster config template
 //
@@ -439,5 +439,5 @@ func (c *clusterConfigTemplateHandler) clusterTemplatePost(r *http.Request) resp
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/cluster-config-templates/"+clusterConfigTemplate.Name)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/cluster-templates/"+clusterConfigTemplate.Name)
 }

@@ -3,6 +3,21 @@ definitions:
         title: ACMEChallengeType represents challenge types for ACME configuration.
         type: string
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ApplicationVersionData:
+        properties:
+            name:
+                description: Name of the software component.
+                example: IncusOS
+                type: string
+                x-go-name: Name
+            version:
+                description: Version string.
+                example: "202512250102"
+                type: string
+                x-go-name: Version
+        title: ApplicationVersionData defines a single version information for an application.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     Cluster:
         properties:
             certificate:
@@ -412,6 +427,37 @@ definitions:
                 $ref: '#/definitions/SystemSecurity'
             storage:
                 $ref: '#/definitions/SystemStorage'
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    OSVersionData:
+        properties:
+            name:
+                description: Name of the software component.
+                example: IncusOS
+                type: string
+                x-go-name: Name
+            needs_reboot:
+                description: |-
+                    NeedsReboot is the "needs_reboot" state reported by the server. Currently
+                    this is only expected to be "true", if "version_next" is different than
+                    "version", but in the future, there might be other reasons for a server
+                    to report, that a reboot is required.
+                type: boolean
+                x-go-name: NeedsReboot
+            version:
+                description: Version string.
+                example: "202512250102"
+                type: string
+                x-go-name: Version
+            version_next:
+                description: |-
+                    Next Version string. If this version is different from "version",
+                    an update is available and applied on the system, but the system has
+                    not yet been rebooted, so the new update is not yet active.
+                example: "202512250102"
+                type: string
+                x-go-name: VersionNext
+        title: OSVersionData defines a single version information for the OS.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     Resources:
@@ -1790,10 +1836,7 @@ definitions:
                 x-go-name: Type
                 x-go-type: github.com/FuturFusion/operations-center/shared/api.ServerType
             version_data:
-                description: VersionData contains information about the servers version.
-                example: '...'
-                type: object
-                x-go-name: VersionData
+                $ref: '#/definitions/ServerVersionData'
         title: Server defines a server running Hypervisor OS.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
@@ -1875,6 +1918,25 @@ definitions:
                 readOnly: true
                 type: array
                 x-go-name: AuthMethods
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ServerVersionData:
+        description: |-
+            ServerVersionData defines the version information for a server including
+            the OS and all its applications.
+        properties:
+            applications:
+                description: Applications holds the version information for the installed applications.
+                items:
+                    $ref: '#/definitions/ApplicationVersionData'
+                type: array
+                x-go-name: Applications
+            os:
+                $ref: '#/definitions/OSVersionData'
+            update_channel:
+                description: The channel the system is following for updates.
+                type: string
+                x-go-name: UpdateChannel
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     SystemCertificatePost:
@@ -2612,6 +2674,12 @@ definitions:
                 $ref: '#/definitions/SystemSecurityOIDC'
             openfga:
                 $ref: '#/definitions/SystemSecurityOpenFGA'
+            trusted_https_proxies:
+                description: An array of trusted HTTPS proxy addresses.
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedHTTPSProxies
             trusted_tls_client_cert_fingerprints:
                 description: An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
                 items:
@@ -6124,7 +6192,7 @@ paths:
             summary: Get the storage volumes
             tags:
                 - storage_volumes
-    /1.0/provisioning/cluster-config-templates:
+    /1.0/provisioning/cluster-templates:
         get:
             description: Returns a list of cluster config templates (URLs).
             operationId: cluster_config_templates_get
@@ -6140,8 +6208,8 @@ paths:
                                 description: List of cluster config templates
                                 example: |-
                                     [
-                                      "/1.0/provisioning/cluster-config-templates/one",
-                                      "/1.0/provisioning/cluster-config-templates/two"
+                                      "/1.0/provisioning/cluster-templates/one",
+                                      "/1.0/provisioning/cluster-templates/two"
                                     ]
                                 items:
                                     type: string
@@ -6165,7 +6233,7 @@ paths:
                     $ref: '#/responses/InternalServerError'
             summary: Get the cluster config templates
             tags:
-                - cluster-config-templates
+                - cluster-templates
         post:
             consumes:
                 - application/json
@@ -6191,8 +6259,8 @@ paths:
                     $ref: '#/responses/InternalServerError'
             summary: Add a cluster config template
             tags:
-                - cluster-config-templates
-    /1.0/provisioning/cluster-config-templates/{name}:
+                - cluster-templates
+    /1.0/provisioning/cluster-templates/{name}:
         delete:
             description: Removes the cluster config template.
             operationId: cluster_config_template_delete
@@ -6209,7 +6277,7 @@ paths:
                     $ref: '#/responses/InternalServerError'
             summary: Delete the cluster config template
             tags:
-                - cluster-config-templates
+                - cluster-templates
         get:
             description: Gets a specific cluster config template.
             operationId: cluster_config_template_get
@@ -6242,7 +6310,7 @@ paths:
                     $ref: '#/responses/InternalServerError'
             summary: Get the cluster config template
             tags:
-                - cluster-config-templates
+                - cluster-templates
         post:
             consumes:
                 - application/json
@@ -6270,7 +6338,7 @@ paths:
                     $ref: '#/responses/InternalServerError'
             summary: Rename the cluster config template
             tags:
-                - cluster-config-templates
+                - cluster-templates
         put:
             consumes:
                 - application/json
@@ -6298,8 +6366,8 @@ paths:
                     $ref: '#/responses/InternalServerError'
             summary: Update the cluster config template
             tags:
-                - cluster-config-templates
-    /1.0/provisioning/cluster-config-templates?recursion=1:
+                - cluster-templates
+    /1.0/provisioning/cluster-templates?recursion=1:
         get:
             description: Returns a list of cluster config templates (structs).
             operationId: cluster_config_templates_get_recursion
@@ -6335,7 +6403,7 @@ paths:
                     $ref: '#/responses/InternalServerError'
             summary: Get the cluster config templates
             tags:
-                - cluster-config-templates
+                - cluster-templates
     /1.0/provisioning/clusters:
         get:
             description: Returns a list of clusters (URLs).
@@ -7095,6 +7163,46 @@ paths:
             summary: Sync server state
             tags:
                 - servers
+    /1.0/provisioning/servers/{name}/system/:poweroff:
+        post:
+            description: Triggers a poweroff operation on the server.
+            operationId: server_system_poweroff_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Poweroff server
+            tags:
+                - servers_system_poweroff
+    /1.0/provisioning/servers/{name}/system/:reboot:
+        post:
+            description: Triggers a reboot operation on the server.
+            operationId: server_system_reboot_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Reboot server
+            tags:
+                - servers_system_reboot
     /1.0/provisioning/servers/{name}/system/network:
         get:
             description: Gets the network configuration of a specific server.
@@ -7157,6 +7265,68 @@ paths:
             summary: Update server network configuration
             tags:
                 - servers_system_network
+    /1.0/provisioning/servers/{name}/system/storage:
+        get:
+            description: Gets the storage configuration of a specific server.
+            operationId: server_system_storage_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Server storage
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/ServerSystemStorageConfig'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get server storage configuration
+            tags:
+                - servers_system_storage
+        put:
+            consumes:
+                - application/json
+            description: Updates the storage configuration of a specific server.
+            operationId: server_system_storage_put
+            parameters:
+                - description: Server storage configuration
+                  in: body
+                  name: server storage configuration
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ServerSystemStorageConfig'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update server storage configuration
+            tags:
+                - servers_system_storage
     /1.0/provisioning/servers?recursion=1:
         get:
             description: Returns a list of servers (structs).
