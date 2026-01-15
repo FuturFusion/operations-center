@@ -213,4 +213,12 @@ type SystemUpdatesPut struct {
 	// Examples:
 	//   architecture == "x86_64"
 	FileFilterExpression string `json:"file_filter_expression" yaml:"file_filter_expression"`
+
+	// UpdatesDefaultChannel is the update channel, which is used by default
+	// new updates fetched from upstream.
+	UpdatesDefaultChannel string `json:"updates_default_channel" yaml:"updates_default_channel"`
+
+	// ServerDefaultChannel is the default channel assigned to new server
+	// and cluster instances.
+	ServerDefaultChannel string `json:"server_default_channel" yaml:"server_default_channel"`
 }
