@@ -168,7 +168,7 @@ func (c *cmdServerList) run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Cluster", "Name", "Connection URL", "Public Connection URL", "Certificate Fingerprint", "Type", "Status", "Last Updated", "Last Seen"}
+	header := []string{"Cluster", "Name", "Connection URL", "Public Connection URL", "Certificate Fingerprint", "Type", "Channel", "Status", "Last Updated", "Last Seen"}
 	data := [][]string{}
 
 	for _, server := range servers {
@@ -179,6 +179,7 @@ func (c *cmdServerList) run(cmd *cobra.Command, args []string) error {
 			server.PublicConnectionURL,
 			server.Fingerprint[:min(len(server.Fingerprint), 12)],
 			server.Type.String(),
+			server.Channel,
 			server.Status.String(),
 			server.LastUpdated.Truncate(time.Second).String(),
 			server.LastSeen.Truncate(time.Second).String(),
@@ -487,6 +488,7 @@ func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Certificate:\n%s", indent("  ", strings.TrimSpace(server.Certificate)))
 	fmt.Printf("Certificate Fingerprint: %s\n", server.Fingerprint)
 	fmt.Printf("Type: %s\n", server.Type.String())
+	fmt.Printf("Channel: %s\n", server.Channel)
 	fmt.Printf("Status: %s\n", server.Status.String())
 	fmt.Printf("Last Updated: %s\n", server.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Last Seen: %s\n", server.LastSeen.Truncate(time.Second).String())

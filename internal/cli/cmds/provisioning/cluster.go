@@ -300,7 +300,7 @@ func (c *cmdClusterList) run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Connection URL", "Certificate Fingerprint", "Status", "Last Updated"}
+	header := []string{"Name", "Connection URL", "Certificate Fingerprint", "Channel", "Status", "Last Updated"}
 	data := [][]string{}
 
 	for _, cluster := range clusters {
@@ -308,6 +308,7 @@ func (c *cmdClusterList) run(cmd *cobra.Command, args []string) error {
 			cluster.Name,
 			cluster.ConnectionURL,
 			cluster.Fingerprint[:min(len(cluster.Fingerprint), 12)],
+			cluster.Channel,
 			cluster.Status.String(),
 			cluster.LastUpdated.Truncate(time.Second).String(),
 		})
@@ -444,6 +445,7 @@ type cmdClusterUpdate struct {
 	ocClient *client.OperationsCenterClient
 
 	flagConnectionURL string
+	flagChannel       string
 }
 
 func (c *cmdClusterUpdate) Command() *cobra.Command {
@@ -457,6 +459,7 @@ func (c *cmdClusterUpdate) Command() *cobra.Command {
 `
 
 	cmd.Flags().StringVar(&c.flagConnectionURL, "connection-url", "", "connection URL of the cluster")
+	cmd.Flags().StringVar(&c.flagChannel, "channel", "", "channel of the cluster")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -484,6 +487,7 @@ func (c *cmdClusterUpdate) run(cmd *cobra.Command, args []string) error {
 
 	err := c.ocClient.UpdateCluster(cmd.Context(), name, api.ClusterPut{
 		ConnectionURL: c.flagConnectionURL,
+		Channel:       c.flagChannel,
 	})
 	if err != nil {
 		return err
@@ -592,6 +596,7 @@ func (c *cmdClusterShow) run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Connection URL: %s\n", cluster.ConnectionURL)
 	fmt.Printf("Certificate:\n%s", indent("  ", strings.TrimSpace(cluster.Certificate)))
 	fmt.Printf("Certificate Fingerprint: %s\n", cluster.Fingerprint)
+	fmt.Printf("Channel: %s\n", cluster.Channel)
 	fmt.Printf("Status: %s\n", cluster.Status.String())
 	fmt.Printf("Last Updated: %s\n", cluster.LastUpdated.Truncate(time.Second).String())
 
