@@ -342,6 +342,7 @@ type ExprServer struct {
 	HardwareData         api.HardwareData         `json:"hardware_data" expr:"hardware_data"`
 	OSData               ExprApiOSData            `json:"os_data" expr:"os_data"`
 	VersionData          ExprApiServerVersionData `json:"version_data" expr:"version_data"`
+	Channel              string                   `json:"channel"                db:"join=channels.name" expr:"channel"`
 	Status               api.ServerStatus         `json:"status" expr:"status"`
 	LastUpdated          time.Time                `json:"last_updated"           db:"update_timestamp" expr:"last_updated"`
 	LastSeen             time.Time                `json:"last_seen" expr:"last_seen"`
@@ -759,6 +760,7 @@ func ToExprServer(s Server) ExprServer {
 		HardwareData:         s.HardwareData,
 		OSData:               ToExprApiOSData(s.OSData),
 		VersionData:          ToExprApiServerVersionData(s.VersionData),
+		Channel:              s.Channel,
 		Status:               s.Status,
 		LastUpdated:          s.LastUpdated,
 		LastSeen:             s.LastSeen,

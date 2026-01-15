@@ -15,6 +15,7 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 	"github.com/google/uuid"
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/maniartech/signals"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -294,6 +295,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 	for i := range servers {
 		servers[i].Cluster = &newCluster.Name
 		servers[i].ClusterCertificate = &clusterCertificate
+		servers[i].Channel = newCluster.Channel
 	}
 
 	// 2nd DB transaction.
@@ -331,6 +333,20 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 	})
 	if err != nil {
 		return newCluster, err
+	}
+
+	// Push update channel to all servers.
+	for _, server := range servers {
+		err = s.serverSvc.UpdateSystemUpdate(ctx, server.Name, ServerSystemUpdate{
+			Config: incusosapi.SystemUpdateConfig{
+				AutoReboot:     false,
+				Channel:        server.Channel,
+				CheckFrequency: "never",
+			},
+		})
+		if err != nil {
+			return newCluster, err
+		}
 	}
 
 	// Refresh OS Data, required for the detection of the network interface for
@@ -491,7 +507,40 @@ func (s clusterService) Update(ctx context.Context, newCluster Cluster) error {
 		return err
 	}
 
-	return s.repo.Update(ctx, newCluster)
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		err = s.repo.Update(ctx, newCluster)
+		if err != nil {
+			return err
+		}
+
+		// Get servers of cluster and update "channel" to same value as cluster.
+		servers, err := s.serverSvc.GetAllNamesWithFilter(ctx, ServerFilter{
+			Cluster: &newCluster.Name,
+		})
+		if err != nil {
+			return err
+		}
+
+		for _, server := range servers {
+			err = s.serverSvc.UpdateSystemUpdate(ctx, server, incusosapi.SystemUpdate{
+				Config: incusosapi.SystemUpdateConfig{
+					AutoReboot:     false,
+					Channel:        newCluster.Channel,
+					CheckFrequency: "never",
+				},
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s clusterService) Rename(ctx context.Context, oldName string, newName string) error {

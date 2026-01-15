@@ -457,8 +457,10 @@ func (s *serverService) UpdateSystemUpdate(ctx context.Context, name string, upd
 		return fmt.Errorf("Failed to get the current update config from %q: %w", server.Name, err)
 	}
 
+	currentServerSystemUpdate.Config.AutoReboot = false // forced by Operations Center
 	// For now, the only setting that we allow to be changed by the user is the Update Channel.
 	currentServerSystemUpdate.Config.Channel = updateConfig.Config.Channel
+	currentServerSystemUpdate.Config.CheckFrequency = "never" // forced by Operations Center
 
 	err = s.client.UpdateUpdateConfig(ctx, *server, currentServerSystemUpdate)
 	if err != nil {

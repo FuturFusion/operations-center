@@ -70,6 +70,7 @@ type ClusterClientPort interface {
 	UpdateClusterCertificate(ctx context.Context, endpoint Endpoint, certificatePEM string, keyPEM string) error
 	SystemFactoryReset(ctx context.Context, endpoint Endpoint, allowTPMResetFailure bool, seeds TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error
 	SubscribeLifecycleEvents(ctx context.Context, endpoint Endpoint) (chan domain.LifecycleEvent, chan error, error)
+	UpdateUpdateConfig(ctx context.Context, server Server, updateConfig ServerSystemUpdate) error
 }
 
 type ClusterProvisioningPort interface {

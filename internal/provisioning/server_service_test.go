@@ -1813,8 +1813,8 @@ one
 					return tc.clientGetUpdateConfig, tc.clientGetUpdateConfigErr
 				},
 				UpdateUpdateConfigFunc: func(ctx context.Context, server provisioning.Server, updateConfig provisioning.ServerSystemUpdate) error {
-					require.False(t, updateConfig.Config.AutoReboot)              // The change for autoreboot from the update call needs to be ignored.
-					require.NotEqual(t, "2h", updateConfig.Config.CheckFrequency) // The change for the check frequency from the update call needs to be ignored.
+					require.False(t, updateConfig.Config.AutoReboot)              // AutoReboot is forced to false.
+					require.Equal(t, "never", updateConfig.Config.CheckFrequency) // CheckFrequency is forced to "never".
 					return tc.clientUpdateUpdateConfigErr
 				},
 			}
