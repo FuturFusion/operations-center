@@ -70,7 +70,7 @@ updates:
   # Empty filter expression does fallback to the default value defined below.
   # To disable filtering, set to "true", which causes the filter to allow all
   # updates.
-  filter_expression: '"stable" in channels'
+  filter_expression: '"stable" in upstream_channels'
 
   # Filter expression for update files using https://expr-lang.org/ on struct
   # provisioning.UpdateFile.

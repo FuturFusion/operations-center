@@ -47,6 +47,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			GetSystemProviderFunc: func(ctx context.Context, name string) (provisioning.ServerSystemProvider, error) {
 //				panic("mock out the GetSystemProvider method")
 //			},
+//			GetSystemUpdateFunc: func(ctx context.Context, name string) (provisioning.ServerSystemUpdate, error) {
+//				panic("mock out the GetSystemUpdate method")
+//			},
 //			PollServersFunc: func(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error {
 //				panic("mock out the PollServers method")
 //			},
@@ -83,6 +86,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			UpdateSystemStorageFunc: func(ctx context.Context, name string, networkConfig provisioning.ServerSystemStorage) error {
 //				panic("mock out the UpdateSystemStorage method")
 //			},
+//			UpdateSystemUpdateFunc: func(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) error {
+//				panic("mock out the UpdateSystemUpdate method")
+//			},
 //		}
 //
 //		// use mockedServerService in code that requires provisioning.ServerService
@@ -113,6 +119,9 @@ type ServerServiceMock struct {
 
 	// GetSystemProviderFunc mocks the GetSystemProvider method.
 	GetSystemProviderFunc func(ctx context.Context, name string) (provisioning.ServerSystemProvider, error)
+
+	// GetSystemUpdateFunc mocks the GetSystemUpdate method.
+	GetSystemUpdateFunc func(ctx context.Context, name string) (provisioning.ServerSystemUpdate, error)
 
 	// PollServersFunc mocks the PollServers method.
 	PollServersFunc func(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error
@@ -149,6 +158,9 @@ type ServerServiceMock struct {
 
 	// UpdateSystemStorageFunc mocks the UpdateSystemStorage method.
 	UpdateSystemStorageFunc func(ctx context.Context, name string, networkConfig provisioning.ServerSystemStorage) error
+
+	// UpdateSystemUpdateFunc mocks the UpdateSystemUpdate method.
+	UpdateSystemUpdateFunc func(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -201,6 +213,13 @@ type ServerServiceMock struct {
 		}
 		// GetSystemProvider holds details about calls to the GetSystemProvider method.
 		GetSystemProvider []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
+		// GetSystemUpdate holds details about calls to the GetSystemUpdate method.
+		GetSystemUpdate []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Name is the name argument value.
@@ -296,6 +315,15 @@ type ServerServiceMock struct {
 			// NetworkConfig is the networkConfig argument value.
 			NetworkConfig provisioning.ServerSystemStorage
 		}
+		// UpdateSystemUpdate holds details about calls to the UpdateSystemUpdate method.
+		UpdateSystemUpdate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// UpdateConfig is the updateConfig argument value.
+			UpdateConfig provisioning.ServerSystemUpdate
+		}
 	}
 	lockCreate                       sync.RWMutex
 	lockDeleteByName                 sync.RWMutex
@@ -305,6 +333,7 @@ type ServerServiceMock struct {
 	lockGetAllWithFilter             sync.RWMutex
 	lockGetByName                    sync.RWMutex
 	lockGetSystemProvider            sync.RWMutex
+	lockGetSystemUpdate              sync.RWMutex
 	lockPollServers                  sync.RWMutex
 	lockPoweroffSystemByName         sync.RWMutex
 	lockRebootSystemByName           sync.RWMutex
@@ -317,6 +346,7 @@ type ServerServiceMock struct {
 	lockUpdateSystemNetwork          sync.RWMutex
 	lockUpdateSystemProvider         sync.RWMutex
 	lockUpdateSystemStorage          sync.RWMutex
+	lockUpdateSystemUpdate           sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -600,6 +630,42 @@ func (mock *ServerServiceMock) GetSystemProviderCalls() []struct {
 	mock.lockGetSystemProvider.RLock()
 	calls = mock.calls.GetSystemProvider
 	mock.lockGetSystemProvider.RUnlock()
+	return calls
+}
+
+// GetSystemUpdate calls GetSystemUpdateFunc.
+func (mock *ServerServiceMock) GetSystemUpdate(ctx context.Context, name string) (provisioning.ServerSystemUpdate, error) {
+	if mock.GetSystemUpdateFunc == nil {
+		panic("ServerServiceMock.GetSystemUpdateFunc: method is nil but ServerService.GetSystemUpdate was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockGetSystemUpdate.Lock()
+	mock.calls.GetSystemUpdate = append(mock.calls.GetSystemUpdate, callInfo)
+	mock.lockGetSystemUpdate.Unlock()
+	return mock.GetSystemUpdateFunc(ctx, name)
+}
+
+// GetSystemUpdateCalls gets all the calls that were made to GetSystemUpdate.
+// Check the length with:
+//
+//	len(mockedServerService.GetSystemUpdateCalls())
+func (mock *ServerServiceMock) GetSystemUpdateCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockGetSystemUpdate.RLock()
+	calls = mock.calls.GetSystemUpdate
+	mock.lockGetSystemUpdate.RUnlock()
 	return calls
 }
 
@@ -1044,5 +1110,45 @@ func (mock *ServerServiceMock) UpdateSystemStorageCalls() []struct {
 	mock.lockUpdateSystemStorage.RLock()
 	calls = mock.calls.UpdateSystemStorage
 	mock.lockUpdateSystemStorage.RUnlock()
+	return calls
+}
+
+// UpdateSystemUpdate calls UpdateSystemUpdateFunc.
+func (mock *ServerServiceMock) UpdateSystemUpdate(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) error {
+	if mock.UpdateSystemUpdateFunc == nil {
+		panic("ServerServiceMock.UpdateSystemUpdateFunc: method is nil but ServerService.UpdateSystemUpdate was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		Name         string
+		UpdateConfig provisioning.ServerSystemUpdate
+	}{
+		Ctx:          ctx,
+		Name:         name,
+		UpdateConfig: updateConfig,
+	}
+	mock.lockUpdateSystemUpdate.Lock()
+	mock.calls.UpdateSystemUpdate = append(mock.calls.UpdateSystemUpdate, callInfo)
+	mock.lockUpdateSystemUpdate.Unlock()
+	return mock.UpdateSystemUpdateFunc(ctx, name, updateConfig)
+}
+
+// UpdateSystemUpdateCalls gets all the calls that were made to UpdateSystemUpdate.
+// Check the length with:
+//
+//	len(mockedServerService.UpdateSystemUpdateCalls())
+func (mock *ServerServiceMock) UpdateSystemUpdateCalls() []struct {
+	Ctx          context.Context
+	Name         string
+	UpdateConfig provisioning.ServerSystemUpdate
+} {
+	var calls []struct {
+		Ctx          context.Context
+		Name         string
+		UpdateConfig provisioning.ServerSystemUpdate
+	}
+	mock.lockUpdateSystemUpdate.RLock()
+	calls = mock.calls.UpdateSystemUpdate
+	mock.lockUpdateSystemUpdate.RUnlock()
 	return calls
 }

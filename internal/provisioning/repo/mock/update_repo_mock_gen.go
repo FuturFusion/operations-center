@@ -40,6 +40,9 @@ var _ provisioning.UpdateRepo = &UpdateRepoMock{}
 //			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
 //				panic("mock out the GetByUUID method")
 //			},
+//			GetUpdatesByAssignedChannelNameFunc: func(ctx context.Context, name string) (provisioning.Updates, error) {
+//				panic("mock out the GetUpdatesByAssignedChannelName method")
+//			},
 //			UpsertFunc: func(ctx context.Context, update provisioning.Update) error {
 //				panic("mock out the Upsert method")
 //			},
@@ -67,6 +70,9 @@ type UpdateRepoMock struct {
 
 	// GetByUUIDFunc mocks the GetByUUID method.
 	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error)
+
+	// GetUpdatesByAssignedChannelNameFunc mocks the GetUpdatesByAssignedChannelName method.
+	GetUpdatesByAssignedChannelNameFunc func(ctx context.Context, name string) (provisioning.Updates, error)
 
 	// UpsertFunc mocks the Upsert method.
 	UpsertFunc func(ctx context.Context, update provisioning.Update) error
@@ -111,6 +117,13 @@ type UpdateRepoMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
+		// GetUpdatesByAssignedChannelName holds details about calls to the GetUpdatesByAssignedChannelName method.
+		GetUpdatesByAssignedChannelName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
 		// Upsert holds details about calls to the Upsert method.
 		Upsert []struct {
 			// Ctx is the ctx argument value.
@@ -119,13 +132,14 @@ type UpdateRepoMock struct {
 			Update provisioning.Update
 		}
 	}
-	lockDeleteByUUID          sync.RWMutex
-	lockGetAll                sync.RWMutex
-	lockGetAllUUIDs           sync.RWMutex
-	lockGetAllUUIDsWithFilter sync.RWMutex
-	lockGetAllWithFilter      sync.RWMutex
-	lockGetByUUID             sync.RWMutex
-	lockUpsert                sync.RWMutex
+	lockDeleteByUUID                    sync.RWMutex
+	lockGetAll                          sync.RWMutex
+	lockGetAllUUIDs                     sync.RWMutex
+	lockGetAllUUIDsWithFilter           sync.RWMutex
+	lockGetAllWithFilter                sync.RWMutex
+	lockGetByUUID                       sync.RWMutex
+	lockGetUpdatesByAssignedChannelName sync.RWMutex
+	lockUpsert                          sync.RWMutex
 }
 
 // DeleteByUUID calls DeleteByUUIDFunc.
@@ -333,6 +347,42 @@ func (mock *UpdateRepoMock) GetByUUIDCalls() []struct {
 	mock.lockGetByUUID.RLock()
 	calls = mock.calls.GetByUUID
 	mock.lockGetByUUID.RUnlock()
+	return calls
+}
+
+// GetUpdatesByAssignedChannelName calls GetUpdatesByAssignedChannelNameFunc.
+func (mock *UpdateRepoMock) GetUpdatesByAssignedChannelName(ctx context.Context, name string) (provisioning.Updates, error) {
+	if mock.GetUpdatesByAssignedChannelNameFunc == nil {
+		panic("UpdateRepoMock.GetUpdatesByAssignedChannelNameFunc: method is nil but UpdateRepo.GetUpdatesByAssignedChannelName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockGetUpdatesByAssignedChannelName.Lock()
+	mock.calls.GetUpdatesByAssignedChannelName = append(mock.calls.GetUpdatesByAssignedChannelName, callInfo)
+	mock.lockGetUpdatesByAssignedChannelName.Unlock()
+	return mock.GetUpdatesByAssignedChannelNameFunc(ctx, name)
+}
+
+// GetUpdatesByAssignedChannelNameCalls gets all the calls that were made to GetUpdatesByAssignedChannelName.
+// Check the length with:
+//
+//	len(mockedUpdateRepo.GetUpdatesByAssignedChannelNameCalls())
+func (mock *UpdateRepoMock) GetUpdatesByAssignedChannelNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockGetUpdatesByAssignedChannelName.RLock()
+	calls = mock.calls.GetUpdatesByAssignedChannelName
+	mock.lockGetUpdatesByAssignedChannelName.RUnlock()
 	return calls
 }
 

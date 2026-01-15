@@ -25,6 +25,12 @@ func (c *CmdProvisioning) Command() *cobra.Command {
 	cmd.Args = cobra.NoArgs
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
+	ChannelCmd := provisioning.CmdChannel{
+		OCClient: c.OCClient,
+	}
+
+	cmd.AddCommand(ChannelCmd.Command())
+
 	clusterCmd := provisioning.CmdCluster{
 		OCClient: c.OCClient,
 	}
