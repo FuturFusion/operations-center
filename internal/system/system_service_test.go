@@ -1114,6 +1114,8 @@ MFEwHQYDVR0OBBYEFERR7s37UYWIfjdauwuftLTUULcaMB8GA1UdIwQYMBaAFERR
 SAAwRQIhAId625vznH0/C9E/gLLRz5S95x3mZmqIHOQBFHRf2mLyAiB2kMK4Idcn
 dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 -----END CERTIFICATE-----`,
+					UpdatesDefaultChannel: "stable",
+					ServerDefaultChannel:  "stable",
 				},
 			},
 
