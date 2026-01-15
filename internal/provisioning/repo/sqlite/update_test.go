@@ -22,15 +22,15 @@ import (
 
 func TestUpdateDatabaseActions(t *testing.T) {
 	updateA := provisioning.Update{
-		UUID:        uuid.MustParse(`e399698d-db42-53f6-97d7-1ad04dac34ba`),
-		Version:     "202505110348",
-		PublishedAt: time.Date(2025, 5, 11, 4, 16, 36, 0, time.UTC),
-		Severity:    images.UpdateSeverityNone,
-		Origin:      "linuxcontainers.org",
-		Channels:    []string{"daily"},
-		Status:      api.UpdateStatusReady,
-		Changelog:   "Some changes",
-		URL:         "/217816150",
+		UUID:             uuid.MustParse(`e399698d-db42-53f6-97d7-1ad04dac34ba`),
+		Version:          "202505110348",
+		PublishedAt:      time.Date(2025, 5, 11, 4, 16, 36, 0, time.UTC),
+		Severity:         images.UpdateSeverityNone,
+		Origin:           "linuxcontainers.org",
+		UpstreamChannels: []string{"daily"},
+		Status:           api.UpdateStatusReady,
+		Changelog:        "Some changes",
+		URL:              "/217816150",
 		Files: provisioning.UpdateFiles{
 			{
 				Filename:  "debug.raw.gz",
@@ -46,15 +46,15 @@ func TestUpdateDatabaseActions(t *testing.T) {
 	}
 
 	updateB := provisioning.Update{
-		UUID:        uuid.MustParse(`d3a52570-df97-56bc-a849-0d634c945b8c`),
-		Version:     "202505110031",
-		PublishedAt: time.Date(2025, 5, 11, 0, 56, 27, 0, time.UTC),
-		Severity:    images.UpdateSeverityNone,
-		Origin:      "alternative.org",
-		Channels:    []string{"stable", "daily"},
-		Status:      api.UpdateStatusReady,
-		Changelog:   "Other changes",
-		URL:         "/217808146",
+		UUID:             uuid.MustParse(`d3a52570-df97-56bc-a849-0d634c945b8c`),
+		Version:          "202505110031",
+		PublishedAt:      time.Date(2025, 5, 11, 0, 56, 27, 0, time.UTC),
+		Severity:         images.UpdateSeverityNone,
+		Origin:           "alternative.org",
+		UpstreamChannels: []string{"stable", "daily"},
+		Status:           api.UpdateStatusReady,
+		Changelog:        "Other changes",
+		URL:              "/217808146",
 		Files: provisioning.UpdateFiles{
 			{
 				Filename:  "debug.raw.gz",
