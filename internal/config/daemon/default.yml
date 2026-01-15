@@ -85,3 +85,9 @@ updates:
   #       Returns true if the 'arch' string matches the given 'expected_arch' string
   #       or if 'arch' is not set.
   file_filter_expression: 'applies_to_architecture(architecture, "x86_64")'
+
+  # Default update channel to use for new updates.
+  updates_default_channel: stable
+
+  # Default update channel to use for new server instances and clusters.
+  server_default_channel: stable

@@ -381,6 +381,16 @@ func validate(cfg config) error {
 		return domain.NewValidationErrf(`Invalid config, pem decode for "updates.signature_verification_root_ca" failed`)
 	}
 
+	// FIXME: checking if it is non empty is not enough, we have to query the DB in order to be sure, that the default channel actually exists.
+	if cfg.Updates.UpdatesDefaultChannel == "" {
+		return domain.NewValidationErrf(`Invalid config, "updates.updates_default_channel" can not be empty`)
+	}
+
+	// FIXME: checking if it is non empty is not enough, we have to query the DB in order to be sure, that the default channel actually exists.
+	if cfg.Updates.ServerDefaultChannel == "" {
+		return domain.NewValidationErrf(`Invalid config, "updates.server_default_channel" can not be empty`)
+	}
+
 	// This is not ideal, but we can not have a direct dependency from the config
 	// onto the provisioning package, because we get a dependency cycle otherwise.
 	err = UpdatesValidateSignal.TryEmit(context.Background(), cfg.Updates)
