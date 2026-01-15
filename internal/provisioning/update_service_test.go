@@ -548,12 +548,12 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 			},
 			repoGetAllWithFilter: provisioning.Updates{
 				provisioning.Update{
-					UUID:     uuid.MustParse(`1b6b5509-a9a6-419f-855f-7a8618ce76ad`),
-					Channels: []string{"stable", "daily"},
+					UUID:             uuid.MustParse(`1b6b5509-a9a6-419f-855f-7a8618ce76ad`),
+					UpstreamChannels: []string{"stable", "daily"},
 				},
 				provisioning.Update{
-					UUID:     uuid.MustParse(`689396f9-cf05-4776-a567-38014d37f861`),
-					Channels: []string{"daily"},
+					UUID:             uuid.MustParse(`689396f9-cf05-4776-a567-38014d37f861`),
+					UpstreamChannels: []string{"daily"},
 				},
 			},
 
@@ -669,12 +669,12 @@ func TestUpdateService_GetAllUUIDsWithFilter(t *testing.T) {
 			},
 			repoGetAll: provisioning.Updates{
 				{
-					UUID:     uuid.MustParse(`8926daa1-3a48-4739-9a82-e32ebd22d343`),
-					Channels: []string{"stable", "daily"},
+					UUID:             uuid.MustParse(`8926daa1-3a48-4739-9a82-e32ebd22d343`),
+					UpstreamChannels: []string{"stable", "daily"},
 				},
 				{
-					UUID:     uuid.MustParse(`84156d67-0bcb-4b60-ac23-2c67f552fb8c`),
-					Channels: []string{"daily"},
+					UUID:             uuid.MustParse(`84156d67-0bcb-4b60-ac23-2c67f552fb8c`),
+					UpstreamChannels: []string{"daily"},
 				},
 			},
 
@@ -977,14 +977,14 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "success - one update, filtered",
 			ctx:                  t.Context(),
-			filterExpression:     `"stable" in channels`,
+			filterExpression:     `"stable" in upstream_channels`,
 			fileFilterExpression: `true`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
 					UUID:        updatePresentUUID,
 					PublishedAt: dateTime2,
-					Channels: provisioning.UpdateChannels{
+					UpstreamChannels: provisioning.UpdateUpstreamChannels{
 						"daily",
 					},
 				},
@@ -1022,7 +1022,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			// The file, which is downloaded has a valid sha256 checksum, one file is
 			// filtered.
 			ctx:                  t.Context(),
-			filterExpression:     `"stable" in channels`,
+			filterExpression:     `"stable" in upstream_channels`,
 			fileFilterExpression: `applies_to_architecture(architecture, "x86_64")`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
@@ -1031,7 +1031,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					PublishedAt: dateTime2,
 					Status:      api.UpdateStatusUnknown,
 					Severity:    images.UpdateSeverityNone,
-					Channels: provisioning.UpdateChannels{
+					UpstreamChannels: provisioning.UpdateUpstreamChannels{
 						"stable",
 					},
 					Files: provisioning.UpdateFiles{
@@ -1055,7 +1055,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					PublishedAt: dateTime3,
 					Status:      api.UpdateStatusUnknown,
 					Severity:    images.UpdateSeverityNone,
-					Channels: provisioning.UpdateChannels{
+					UpstreamChannels: provisioning.UpdateUpstreamChannels{
 						"daily", // This update is filtered based on filter expression
 					},
 					Files: provisioning.UpdateFiles{
@@ -1159,7 +1159,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:             "error - filter expression run - invalid",
+			name:             "error - filter expression run",
 			ctx:              t.Context(),
 			filterExpression: `fromBase64("~invalid")`, // invalid, returns runtime error during evauluation of the expression.
 
@@ -1167,7 +1167,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				{
 					UUID:        updatePresentUUID,
 					PublishedAt: dateTime2,
-					Channels: provisioning.UpdateChannels{
+					UpstreamChannels: provisioning.UpdateUpstreamChannels{
 						"daily",
 					},
 				},
@@ -1186,7 +1186,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				{
 					UUID:        updatePresentUUID,
 					PublishedAt: dateTime2,
-					Channels: provisioning.UpdateChannels{
+					UpstreamChannels: provisioning.UpdateUpstreamChannels{
 						"daily",
 					},
 				},

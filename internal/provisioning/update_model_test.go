@@ -403,11 +403,11 @@ func TestUpdateFiles_Scan(t *testing.T) {
 	}
 }
 
-func TestUpdateChannels_Value(t *testing.T) {
+func TestUpdateUpstreamChannels_Value(t *testing.T) {
 	tests := []struct {
 		name string
 
-		updateFiles provisioning.UpdateChannels
+		updateFiles provisioning.UpdateUpstreamChannels
 
 		assertErr require.ErrorAssertionFunc
 		wantValue driver.Value
@@ -415,7 +415,7 @@ func TestUpdateChannels_Value(t *testing.T) {
 		{
 			name: "success",
 
-			updateFiles: provisioning.UpdateChannels{"stable", "daily"},
+			updateFiles: provisioning.UpdateUpstreamChannels{"stable", "daily"},
 
 			assertErr: require.NoError,
 			wantValue: `stable,daily`,
@@ -432,14 +432,14 @@ func TestUpdateChannels_Value(t *testing.T) {
 	}
 }
 
-func TestUpdateChannels_Scan(t *testing.T) {
+func TestUpdateUpstreamChannels_Scan(t *testing.T) {
 	tests := []struct {
 		name string
 
 		value any
 
 		assertErr require.ErrorAssertionFunc
-		want      provisioning.UpdateChannels
+		want      provisioning.UpdateUpstreamChannels
 	}{
 		{
 			name: "success - []byte",
@@ -447,7 +447,7 @@ func TestUpdateChannels_Scan(t *testing.T) {
 			value: []byte(`stable,daily`),
 
 			assertErr: require.NoError,
-			want:      provisioning.UpdateChannels{"stable", "daily"},
+			want:      provisioning.UpdateUpstreamChannels{"stable", "daily"},
 		},
 		{
 			name: "success - string",
@@ -455,13 +455,13 @@ func TestUpdateChannels_Scan(t *testing.T) {
 			value: `stable,daily`,
 
 			assertErr: require.NoError,
-			want:      provisioning.UpdateChannels{"stable", "daily"},
+			want:      provisioning.UpdateUpstreamChannels{"stable", "daily"},
 		},
 		{
 			name: "error - nil",
 
 			assertErr: require.Error,
-			want:      provisioning.UpdateChannels{},
+			want:      provisioning.UpdateUpstreamChannels{},
 		},
 		{
 			name: "error - unsupported type",
@@ -469,18 +469,18 @@ func TestUpdateChannels_Scan(t *testing.T) {
 			value: 1, // not supported for UpdateFiles
 
 			assertErr: require.Error,
-			want:      provisioning.UpdateChannels{},
+			want:      provisioning.UpdateUpstreamChannels{},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			updateChannels := provisioning.UpdateChannels{}
+			updateUpstreamChannels := provisioning.UpdateUpstreamChannels{}
 
-			err := updateChannels.Scan(tc.value)
+			err := updateUpstreamChannels.Scan(tc.value)
 
 			tc.assertErr(t, err)
-			require.Equal(t, tc.want, updateChannels)
+			require.Equal(t, tc.want, updateUpstreamChannels)
 		})
 	}
 }

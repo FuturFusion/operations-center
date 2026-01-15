@@ -236,7 +236,7 @@ func (s updateService) GetAllWithFilter(ctx context.Context, filter UpdateFilter
 
 	n := 0
 	for i := range updates {
-		if !slices.Contains(updates[i].Channels, *filter.Channel) {
+		if !slices.Contains(updates[i].UpstreamChannels, *filter.Channel) {
 			continue
 		}
 
@@ -268,7 +268,7 @@ func (s updateService) GetAllUUIDsWithFilter(ctx context.Context, filter UpdateF
 
 	updateIDs := make([]uuid.UUID, 0, len(updates))
 	for _, update := range updates {
-		if !slices.Contains(update.Channels, *filter.Channel) {
+		if !slices.Contains(update.UpstreamChannels, *filter.Channel) {
 			continue
 		}
 
