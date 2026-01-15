@@ -18,6 +18,7 @@ import (
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/maniartech/signals"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -124,6 +125,10 @@ func (s *clusterService) SetInventorySyncers(inventorySyncers map[domain.Resourc
 //     Update the default profile in the default project to use incusbr0 for networking.
 //     Update the default profile in the internal project to use internal-mesh for networking.
 func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Cluster, err error) {
+	if newCluster.Channel == "" {
+		newCluster.Channel = config.GetUpdates().ServerDefaultChannel
+	}
+
 	err = newCluster.ValidateCreate()
 	if err != nil {
 		return Cluster{}, err
@@ -197,7 +202,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 	// Push pre-clustering configuration to the servers.
 	for _, server := range servers {
 		for service, configAny := range newCluster.ServicesConfig {
-			config, ok := configAny.(map[string]any)
+			cfg, ok := configAny.(map[string]any)
 			if !ok {
 				return newCluster, fmt.Errorf("Failed to enable OS service %q on %q: config is not an object", service, server.Name)
 			}
@@ -206,7 +211,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 			// system_id is required to be between 1 and 2000. Just using the server.ID
 			// will fail, when we hit values > 2000.
 			if service == "lvm" {
-				enabledAny := config["enabled"]
+				enabledAny := cfg["enabled"]
 				enabled, ok := enabledAny.(bool)
 				if !ok {
 					return newCluster, fmt.Errorf(`Failed to enable OS service "lvm" on %q: "enabled" is not a bool`, server.Name)
@@ -217,11 +222,11 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 						return newCluster, fmt.Errorf(`Failed to enable OS service "lvm" on %q: can not enable LVM on servers with internal ID > 2000`, server.Name)
 					}
 
-					config["system_id"] = server.ID
+					cfg["system_id"] = server.ID
 				}
 			}
 
-			err = s.client.EnableOSService(ctx, server, service, config)
+			err = s.client.EnableOSService(ctx, server, service, cfg)
 			if err != nil {
 				return newCluster, fmt.Errorf("Failed to enable OS service %q on %q: %w", service, server.Name, err)
 			}

@@ -2019,8 +2019,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 					Type:  "CERTIFICATE",
 					Bytes: certPEM,
 				})),
-				FilterExpression:     tc.filterExpression,
-				FileFilterExpression: tc.fileFilterExpression,
+				FilterExpression:      tc.filterExpression,
+				FileFilterExpression:  tc.fileFilterExpression,
+				UpdatesDefaultChannel: "stable",
+				ServerDefaultChannel:  "stable",
 			})
 			require.NoError(t, err)
 

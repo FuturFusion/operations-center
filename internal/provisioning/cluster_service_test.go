@@ -15,7 +15,9 @@ import (
 	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
+	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
@@ -29,6 +31,8 @@ import (
 )
 
 func TestClusterService_Create(t *testing.T) {
+	config.InitTest(t, &envMock.EnvironmentMock{}, nil)
+
 	updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
 
 	tests := []struct {
@@ -1536,6 +1540,7 @@ func TestClusterService_Update(t *testing.T) {
 			cluster: provisioning.Cluster{
 				Name:          "one",
 				ConnectionURL: "http://one/",
+				Channel:       "stable",
 			},
 			serverSvcGetAllNamesWithFilter: []string{"one", "two"},
 
@@ -1546,6 +1551,7 @@ func TestClusterService_Update(t *testing.T) {
 			cluster: provisioning.Cluster{
 				Name:          "one",
 				ConnectionURL: ":|\\", // invalid
+				Channel:       "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -1559,6 +1565,7 @@ func TestClusterService_Update(t *testing.T) {
 				Name:          "one",
 				ServerNames:   []string{"server1", "server3"},
 				ConnectionURL: "http://one/",
+				Channel:       "stable",
 			},
 			repoUpdateErr: boom.Error,
 

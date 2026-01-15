@@ -18,6 +18,7 @@ import (
 	"github.com/lxc/incus/v6/shared/revert"
 	"github.com/maniartech/signals"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -122,6 +123,10 @@ func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer S
 
 		if newServer.Type == "" {
 			newServer.Type = api.ServerTypeUnknown
+		}
+
+		if newServer.Channel == "" {
+			newServer.Channel = config.GetUpdates().ServerDefaultChannel
 		}
 
 		err = newServer.Validate()
@@ -561,6 +566,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 				Certificate:   string(serverCert),
 				Status:        api.ServerStatusReady,
 				LastSeen:      s.now(),
+				Channel:       config.GetUpdates().ServerDefaultChannel,
 			}
 
 			upsert = func(ctx context.Context, server Server) error {

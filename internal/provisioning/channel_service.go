@@ -3,9 +3,14 @@ package provisioning
 import (
 	"context"
 	"fmt"
+	"runtime"
 
+	"github.com/google/uuid"
+
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type channelService struct {
@@ -21,6 +26,15 @@ func NewChannelService(repo ChannelRepo, updateSvc UpdateService) *channelServic
 		repo:      repo,
 		updateSvc: updateSvc,
 	}
+
+	// Register for the UpdatesValidateSignal to validate the updates channels.
+	// The way through signals is chosen here to prevent a dependency cycle
+	// between the config and the provisioning package.
+	listenerKey := uuid.New().String()
+	config.UpdatesValidateSignal.AddListenerWithErr(service.validateUpdatesConfig, listenerKey)
+	runtime.AddCleanup(service, func(listenerKey string) {
+		config.UpdatesValidateSignal.RemoveListener(listenerKey)
+	}, listenerKey)
 
 	return service
 }
@@ -101,4 +115,26 @@ func (s *channelService) DeleteByName(ctx context.Context, name string) error {
 
 		return nil
 	})
+}
+
+func (s channelService) validateUpdatesConfig(ctx context.Context, su api.SystemUpdates) error {
+	if su.UpdatesDefaultChannel == "" {
+		return domain.NewValidationErrf(`Invalid config, "updates.updates_default_channel" can not be empty`)
+	}
+
+	_, err := s.repo.GetByName(ctx, su.UpdatesDefaultChannel)
+	if err != nil {
+		return domain.NewValidationErrf(`Invalid config, failed to get "updates.updates_default_channel": %v`, err)
+	}
+
+	if su.ServerDefaultChannel == "" {
+		return domain.NewValidationErrf(`Invalid config, "updates.server_default_channel" can not be empty`)
+	}
+
+	_, err = s.repo.GetByName(ctx, su.ServerDefaultChannel)
+	if err != nil {
+		return domain.NewValidationErrf(`Invalid config, failed to get "updates.server_default_channel": %v`, err)
+	}
+
+	return nil
 }

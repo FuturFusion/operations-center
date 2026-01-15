@@ -104,6 +104,10 @@ func (s Server) Validate() error {
 		return domain.NewValidationErrf("Invalid server, validation of status failed: %v", err)
 	}
 
+	if s.Channel == "" {
+		return domain.NewValidationErrf("Invalid server, channel can not be empty")
+	}
+
 	return nil
 }
 

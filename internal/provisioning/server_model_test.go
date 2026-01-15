@@ -29,7 +29,8 @@ func TestServer_Validate(t *testing.T) {
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 
 			assertErr: require.NoError,
@@ -45,7 +46,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 
 			assertErr: require.NoError,
@@ -61,7 +63,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -80,7 +83,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -99,7 +103,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -118,7 +123,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -137,7 +143,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -156,7 +163,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -193,6 +201,7 @@ one
 				ConnectionURL: "http://one/",
 				Certificate:   ``, // invalid
 				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -211,7 +220,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: "", // empty
+				Status:  "", // empty
+				Channel: "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -230,7 +240,28 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatus("invalid"), // invalid
+				Status:  api.ServerStatus("invalid"), // invalid
+				Channel: "stable",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - channel empty",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status:  api.ServerStatusPending,
+				Channel: "", // empty
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {

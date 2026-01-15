@@ -50,6 +50,10 @@ func (c Cluster) Validate() error {
 		return domain.NewValidationErrf("Invalid cluster, connection URL is not valid: %v", err)
 	}
 
+	if c.Channel == "" {
+		return domain.NewValidationErrf("Invalid cluster, channel can not be empty")
+	}
+
 	return nil
 }
 
