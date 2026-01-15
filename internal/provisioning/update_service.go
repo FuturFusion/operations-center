@@ -223,33 +223,37 @@ func (s updateService) GetAllWithFilter(ctx context.Context, filter UpdateFilter
 	var err error
 	var updates Updates
 
-	if filter.UUID == nil && filter.Origin == nil && filter.Status == nil {
+	if filter.UUID == nil && filter.Origin == nil && filter.Status == nil && filter.Channel == nil {
 		updates, err = s.repo.GetAll(ctx)
 	} else {
-		updates, err = s.repo.GetAllWithFilter(ctx, filter)
+		if filter.Channel != nil {
+			updates, err = s.repo.GetUpdatesByAssignedChannelName(ctx, *filter.Channel, filter)
+		} else {
+			updates, err = s.repo.GetAllWithFilter(ctx, filter)
+		}
 	}
 
 	if err != nil {
 		return nil, err
 	}
 
-	sort.Sort(updates)
+	if filter.UpstreamChannel != nil {
+		n := 0
+		for i := range updates {
+			if !slices.Contains(updates[i].UpstreamChannels, *filter.UpstreamChannel) {
+				continue
+			}
 
-	if filter.Channel == nil {
-		return updates, nil
-	}
-
-	n := 0
-	for i := range updates {
-		if !slices.Contains(updates[i].UpstreamChannels, *filter.Channel) {
-			continue
+			updates[n] = updates[i]
+			n++
 		}
 
-		updates[n] = updates[i]
-		n++
+		updates = updates[:n]
 	}
 
-	return updates[:n], nil
+	sort.Sort(updates)
+
+	return updates, nil
 }
 
 func (s updateService) GetByUUID(ctx context.Context, id uuid.UUID) (*Update, error) {
@@ -257,7 +261,7 @@ func (s updateService) GetByUUID(ctx context.Context, id uuid.UUID) (*Update, er
 }
 
 func (s updateService) GetAllUUIDsWithFilter(ctx context.Context, filter UpdateFilter) ([]uuid.UUID, error) {
-	if filter.Channel == nil {
+	if filter.UpstreamChannel == nil {
 		updateIDs, err := s.repo.GetAllUUIDs(ctx)
 		if err != nil {
 			return nil, err
@@ -273,7 +277,7 @@ func (s updateService) GetAllUUIDsWithFilter(ctx context.Context, filter UpdateF
 
 	updateIDs := make([]uuid.UUID, 0, len(updates))
 	for _, update := range updates {
-		if !slices.Contains(update.UpstreamChannels, *filter.Channel) {
+		if !slices.Contains(update.UpstreamChannels, *filter.UpstreamChannel) {
 			continue
 		}
 
