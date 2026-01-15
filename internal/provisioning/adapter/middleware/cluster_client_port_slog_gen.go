@@ -433,3 +433,38 @@ func (_d ClusterClientPortWithSlog) UpdateClusterCertificate(ctx context.Context
 	}()
 	return _d._base.UpdateClusterCertificate(ctx, endpoint, certificatePEM, keyPEM)
 }
+
+// UpdateUpdateConfig implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) UpdateUpdateConfig(ctx context.Context, server provisioning.Server, updateConfig provisioning.ServerSystemUpdate) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.Any("updateConfig", updateConfig),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateUpdateConfig")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateUpdateConfig returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateUpdateConfig returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateUpdateConfig finished")
+		}
+	}()
+	return _d._base.UpdateUpdateConfig(ctx, server, updateConfig)
+}

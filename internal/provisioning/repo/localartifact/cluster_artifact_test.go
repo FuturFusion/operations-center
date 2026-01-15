@@ -142,7 +142,8 @@ func TestLocalArtifact_updateSignalHandler(t *testing.T) {
 
 func TestLocalArtifactDatabaseActions(t *testing.T) {
 	clusterA := provisioning.Cluster{
-		Name: "clusterOne",
+		Name:    "clusterOne",
+		Channel: "stable",
 	}
 
 	artifactOne := provisioning.ClusterArtifact{
