@@ -98,6 +98,10 @@ type ClusterPut struct {
 	// Operations Center relies on the connection URL of the cluster members.
 	// Example: https://incus.local:6443
 	ConnectionURL string `json:"connection_url" yaml:"connection_url"`
+
+	// Channel the cluster is following for updates.
+	// Example: stable
+	Channel string `json:"channel" yaml:"channel"`
 }
 
 // Cluster defines a cluster of servers running Hypervisor OS.
