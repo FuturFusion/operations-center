@@ -43,6 +43,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		HardwareData:  api.HardwareData{},
 		VersionData:   api.ServerVersionData{},
 		Status:        api.ServerStatusReady,
+		Channel:       "stable",
 	}
 
 	serverB := provisioning.Server{
@@ -54,6 +55,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		HardwareData:  api.HardwareData{},
 		VersionData:   api.ServerVersionData{},
 		Status:        api.ServerStatusReady,
+		Channel:       "stable",
 	}
 
 	localArtifactRepo := &repoMock.ClusterArtifactRepoMock{
@@ -200,6 +202,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		Name:        "one",
 		ServerNames: []string{"two-new"},
 		ServerType:  api.ServerTypeIncus,
+		Channel:     "stable",
 	})
 	require.NoError(t, err)
 

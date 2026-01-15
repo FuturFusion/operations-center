@@ -38,6 +38,7 @@ func TestClusterDatabaseActions(t *testing.T) {
 		Fingerprint:   fingerprintA,
 		Status:        api.ClusterStatusReady,
 		ServerNames:   []string{"server1", "server2"},
+		Channel:       "stable",
 	}
 
 	clusterB := provisioning.Cluster{
@@ -47,6 +48,7 @@ func TestClusterDatabaseActions(t *testing.T) {
 		Fingerprint:   fingerprintB,
 		Status:        api.ClusterStatusReady,
 		ServerNames:   []string{"server10", "server11"},
+		Channel:       "stable",
 	}
 
 	ctx := context.Background()
@@ -147,6 +149,7 @@ func TestClusterNullCert(t *testing.T) {
 		Certificate:   nil,
 		Status:        api.ClusterStatusReady,
 		ServerNames:   []string{"server1", "server2"},
+		Channel:       "stable",
 	}
 
 	clusterCertNull2 := provisioning.Cluster{
@@ -155,6 +158,7 @@ func TestClusterNullCert(t *testing.T) {
 		Certificate:   nil,
 		Status:        api.ClusterStatusReady,
 		ServerNames:   []string{"server10", "server11"},
+		Channel:       "stable",
 	}
 
 	ctx := context.Background()
