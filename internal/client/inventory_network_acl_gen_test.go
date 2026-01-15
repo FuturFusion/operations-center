@@ -48,7 +48,8 @@ func Test_GetWithFilterNetworkACLs(t *testing.T) {
 				t.Helper()
 
 				_, err := provisioningEntities.CreateCluster(t.Context(), db, provisioning.Cluster{
-					Name: "clusterOne",
+					Name:    "clusterOne",
+					Channel: "stable",
 				})
 				require.NoError(t, err)
 
@@ -114,7 +115,8 @@ func Test_GetNetworkACL(t *testing.T) {
 				t.Helper()
 
 				_, err := provisioningEntities.CreateCluster(t.Context(), db, provisioning.Cluster{
-					Name: "clusterOne",
+					Name:    "clusterOne",
+					Channel: "stable",
 				})
 				require.NoError(t, err)
 

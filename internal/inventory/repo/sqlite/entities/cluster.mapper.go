@@ -10,8 +10,9 @@ import (
 )
 
 var clusterObjects = RegisterStmt(`
-SELECT clusters.id, clusters.name, clusters.connection_url, clusters.certificate, clusters.status, clusters.last_updated
+SELECT clusters.id, clusters.name, clusters.connection_url, clusters.certificate, clusters.status, channels.name AS channel, clusters.last_updated
   FROM clusters
+  JOIN channels ON clusters.channel_id = channels.id
   ORDER BY clusters.name
 `)
 
