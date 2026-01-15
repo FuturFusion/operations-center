@@ -330,6 +330,10 @@ type ServerPut struct {
 	// connection_url, e.g. because the server is behind a reverse proxy.
 	// Example: https://incus.local:6443
 	PublicConnectionURL string `json:"public_connection_url" yaml:"public_connection_url"`
+
+	// Channel the server is following for updates.
+	// Example: stable
+	Channel string `json:"channel" yaml:"channel"`
 }
 
 // Server defines a server running Hypervisor OS.
