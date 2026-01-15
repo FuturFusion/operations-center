@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type channelService struct {
@@ -21,6 +23,11 @@ func NewChannelService(repo ChannelRepo, updateSvc UpdateService) *channelServic
 		repo:      repo,
 		updateSvc: updateSvc,
 	}
+
+	// Register for the UpdatesValidateSignal to validate the updates channels.
+	// The way through signals is chosen here to prevent a dependency cycle
+	// between the config and the provisioning package.
+	config.UpdatesValidateSignal.AddListenerWithErr(service.validateUpdatesConfig)
 
 	return service
 }
@@ -101,4 +108,10 @@ func (s *channelService) DeleteByName(ctx context.Context, name string) error {
 
 		return nil
 	})
+}
+
+func (s channelService) validateUpdatesConfig(ctx context.Context, su api.SystemUpdates) error {
+	// FIXME: Add validation logic for su.UpdatesDefaultChannel and su.ServerDefaultChannel by querying the DB."
+
+	return nil
 }

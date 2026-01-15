@@ -26,6 +26,7 @@ func TestCluster_ValidateCreate(t *testing.T) {
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
 				ServerType:    api.ServerTypeIncus,
+				Channel:       "stable",
 			},
 
 			assertErr: require.NoError,
@@ -37,6 +38,7 @@ func TestCluster_ValidateCreate(t *testing.T) {
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
 				ServerType:    api.ServerTypeIncus,
+				Channel:       "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -51,6 +53,7 @@ func TestCluster_ValidateCreate(t *testing.T) {
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
 				ServerType:    api.ServerTypeIncus,
+				Channel:       "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -65,6 +68,7 @@ func TestCluster_ValidateCreate(t *testing.T) {
 				ServerNames:   nil, // invalid
 				ConnectionURL: "http://one/",
 				ServerType:    api.ServerTypeIncus,
+				Channel:       "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -79,6 +83,7 @@ func TestCluster_ValidateCreate(t *testing.T) {
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: ":|\\", // invalid
 				ServerType:    api.ServerTypeIncus,
+				Channel:       "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -93,6 +98,22 @@ func TestCluster_ValidateCreate(t *testing.T) {
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
 				ServerType:    api.ServerTypeUnknown, // invalid
+				Channel:       "stable",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - channel empty",
+			cluster: provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
+				ServerType:    api.ServerTypeIncus,
+				Channel:       "", // empty
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -107,6 +128,7 @@ func TestCluster_ValidateCreate(t *testing.T) {
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
 				ServerType:    api.ServerTypeIncus,
+				Channel:       "stable",
 				ApplicationSeedConfig: map[string]any{
 					"foo": func() {}, // a func can not be marshalled to JSON.
 				},
@@ -121,6 +143,7 @@ func TestCluster_ValidateCreate(t *testing.T) {
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
 				ServerType:    api.ServerTypeIncus,
+				Channel:       "stable",
 				ApplicationSeedConfig: map[string]any{
 					"networks": map[string]any{}, // networks are expected to be a slice.
 				},
