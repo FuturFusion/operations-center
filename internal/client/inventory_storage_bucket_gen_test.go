@@ -49,12 +49,14 @@ func Test_GetWithFilterStorageBuckets(t *testing.T) {
 				t.Helper()
 
 				_, err := provisioningEntities.CreateCluster(t.Context(), db, provisioning.Cluster{
-					Name: "clusterOne",
+					Name:    "clusterOne",
+					Channel: "stable",
 				})
 				require.NoError(t, err)
 
 				_, err = provisioningEntities.CreateServer(t.Context(), db, provisioning.Server{
-					Name: "serverOne",
+					Name:    "serverOne",
+					Channel: "stable",
 				})
 				require.NoError(t, err)
 
@@ -121,12 +123,14 @@ func Test_GetStorageBucket(t *testing.T) {
 				t.Helper()
 
 				_, err := provisioningEntities.CreateCluster(t.Context(), db, provisioning.Cluster{
-					Name: "clusterOne",
+					Name:    "clusterOne",
+					Channel: "stable",
 				})
 				require.NoError(t, err)
 
 				_, err = provisioningEntities.CreateServer(t.Context(), db, provisioning.Server{
-					Name: "serverOne",
+					Name:    "serverOne",
+					Channel: "stable",
 				})
 				require.NoError(t, err)
 
