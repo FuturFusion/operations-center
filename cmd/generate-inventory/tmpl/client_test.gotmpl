@@ -49,13 +49,15 @@ func Test_GetWithFilter{{ .PluralName | pascalcase }}(t *testing.T) {
 				t.Helper()
 
 				_, err := provisioningEntities.CreateCluster(t.Context(), db, provisioning.Cluster{
-					Name: "clusterOne",
+					Name:    "clusterOne",
+					Channel: "stable",
 				})
 				require.NoError(t, err)
 
 {{ if .ServerIDByLocation }}
 				_, err = provisioningEntities.CreateServer(t.Context(), db, provisioning.Server{
-					Name: "serverOne",
+					Name:    "serverOne",
+					Channel: "stable",
 				})
 				require.NoError(t, err)
 {{ end }}
@@ -129,13 +131,15 @@ func Test_Get{{ .Name | pascalcase }}(t *testing.T) {
 				t.Helper()
 
 				_, err := provisioningEntities.CreateCluster(t.Context(), db, provisioning.Cluster{
-					Name: "clusterOne",
+					Name:    "clusterOne",
+					Channel: "stable",
 				})
 				require.NoError(t, err)
 
 {{ if .ServerIDByLocation }}
 				_, err = provisioningEntities.CreateServer(t.Context(), db, provisioning.Server{
-					Name: "serverOne",
+					Name:    "serverOne",
+					Channel: "stable",
 				})
 				require.NoError(t, err)
 {{ end }}
