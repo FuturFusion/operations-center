@@ -212,6 +212,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 					ConnectionURL: server.ConnectionURL,
 					ServerPut: api.ServerPut{
 						PublicConnectionURL: server.PublicConnectionURL,
+						Channel:             server.Channel,
 					},
 				},
 				Certificate:  server.Certificate,
@@ -327,6 +328,7 @@ func (s *serverHandler) serversPost(r *http.Request) response.Response {
 		ConnectionURL:       server.ConnectionURL,
 		PublicConnectionURL: server.PublicConnectionURL,
 		Certificate:         string(certificate),
+		Channel:             server.Channel,
 	})
 	if err != nil {
 		return response.Forbidden(fmt.Errorf("Failed creating server: %w", err))
@@ -389,6 +391,7 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 				ConnectionURL: server.ConnectionURL,
 				ServerPut: api.ServerPut{
 					PublicConnectionURL: server.PublicConnectionURL,
+					Channel:             server.Channel,
 				},
 			},
 			Certificate:  server.Certificate,
@@ -465,6 +468,7 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 	}
 
 	currentServer.PublicConnectionURL = server.PublicConnectionURL
+	currentServer.Channel = server.Channel
 
 	err = s.service.Update(ctx, *currentServer)
 	if err != nil {
