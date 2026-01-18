@@ -231,8 +231,8 @@ const originSuffix = " (local)"
 const idSeparator = ":"
 
 func uuidFromUpdate(u provisioning.Update) uuid.UUID {
-	channels := u.Channels
-	sort.Strings(channels)
+	upstreamChannels := u.UpstreamChannels
+	sort.Strings(upstreamChannels)
 
 	identifier := strings.Join([]string{
 		u.Origin,

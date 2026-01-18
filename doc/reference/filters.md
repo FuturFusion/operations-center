@@ -46,7 +46,7 @@ The empty filter expression does not filter at all, same effect as `true`.
 
 | Expression                                        | Description                                               |
 | :---                                              | :---                                                      |
-| `"stable" in channels`                            | Only download updates that are in the `stable` channel    |
+| `"stable" in upstream_channels`                   | Only download updates that are in the `stable` channel    |
 | `applies_to_architecture(architecture, "x86_64")` | Only download updates that apply to `x86_64` architecture |
 
 ```{note}

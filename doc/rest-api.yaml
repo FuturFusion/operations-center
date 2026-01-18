@@ -3012,7 +3012,7 @@ definitions:
                 type: string
                 x-go-name: FileFilterExpression
             filter_expression:
-                default: '''stable'' in channels'
+                default: '''stable'' in upstream_channels'
                 description: |-
                     Filter expression for updates using https://expr-lang.org/ on struct
                     provisioning.Update.
@@ -3021,7 +3021,7 @@ definitions:
                     Empty filter expression does fallback to the default value defined below.
                     To disable filtering, set to "true", which causes the filter to allow all
                     updates.
-                example: '''stable'' in channels'
+                example: '''stable'' in upstream_channels'
                 type: string
                 x-go-name: FilterExpression
             signature_verification_root_ca:
@@ -3058,7 +3058,7 @@ definitions:
                 type: string
                 x-go-name: FileFilterExpression
             filter_expression:
-                default: '''stable'' in channels'
+                default: '''stable'' in upstream_channels'
                 description: |-
                     Filter expression for updates using https://expr-lang.org/ on struct
                     provisioning.Update.
@@ -3067,7 +3067,7 @@ definitions:
                     Empty filter expression does fallback to the default value defined below.
                     To disable filtering, set to "true", which causes the filter to allow all
                     updates.
-                example: '''stable'' in channels'
+                example: '''stable'' in upstream_channels'
                 type: string
                 x-go-name: FilterExpression
             signature_verification_root_ca:
@@ -3313,13 +3313,6 @@ definitions:
                 description: Changelog of the Update as plain text.
                 type: string
                 x-go-name: Changelog
-            channels:
-                description: Channels the update is part of.
-                example: stable
-                items:
-                    type: string
-                type: array
-                x-go-name: Channels
             origin:
                 description: Origin of the Update.
                 example: linuxcontainers.org
@@ -3341,6 +3334,15 @@ definitions:
                 type: string
                 x-go-name: Status
                 x-go-type: github.com/FuturFusion/operations-center/shared/api.UpdateStatus
+            upstream_channels:
+                description: |-
+                    UpstreamChannels holds the name of the channels from upstream (source)
+                    the update is part of.
+                example: stable
+                items:
+                    type: string
+                type: array
+                x-go-name: UpstreamChannels
             url:
                 description: URL of the File.
                 example: releases/download/202501311418/

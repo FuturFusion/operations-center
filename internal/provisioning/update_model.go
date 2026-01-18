@@ -22,19 +22,19 @@ import (
 //generate-expr: Update
 
 type Update struct {
-	ID          string                `json:"-"`
-	UUID        uuid.UUID             `json:"-" expr:"uuid" db:"primary=yes"`
-	Format      string                `json:"format" db:"ignore"`
-	Origin      string                `json:"origin"`
-	Version     string                `json:"version"`
-	PublishedAt time.Time             `json:"published_at"`
-	Severity    images.UpdateSeverity `json:"severity"`
-	Channels    UpdateChannels        `json:"channels"`
-	Changelog   string                `json:"-" expr:"change_log"`
-	Files       UpdateFiles           `json:"files"`
-	URL         string                `json:"url"`
-	Status      api.UpdateStatus      `json:"-" expr:"status"`
-	LastUpdated time.Time             `json:"-" expr:"last_updated" db:"update_timestamp"`
+	ID               string                 `json:"-"`
+	UUID             uuid.UUID              `json:"-" expr:"uuid" db:"primary=yes"`
+	Format           string                 `json:"format" db:"ignore"`
+	Origin           string                 `json:"origin"`
+	Version          string                 `json:"version"`
+	PublishedAt      time.Time              `json:"published_at"`
+	Severity         images.UpdateSeverity  `json:"severity"`
+	UpstreamChannels UpdateUpstreamChannels `json:"upstream_channels"`
+	Changelog        string                 `json:"-" expr:"change_log"`
+	Files            UpdateFiles            `json:"files"`
+	URL              string                 `json:"url"`
+	Status           api.UpdateStatus       `json:"-" expr:"status"`
+	LastUpdated      time.Time              `json:"-" expr:"last_updated" db:"update_timestamp"`
 }
 
 func (u Update) Validate() error {
@@ -162,17 +162,17 @@ type UsageInformation struct {
 	UsedSpaceBytes      uint64
 }
 
-type UpdateChannels []string
+type UpdateUpstreamChannels []string
 
 // Value implements the sql driver.Valuer interface.
-func (c UpdateChannels) Value() (driver.Value, error) {
+func (c UpdateUpstreamChannels) Value() (driver.Value, error) {
 	return strings.Join(c, ","), nil
 }
 
 // Scan implements the sql.Scanner interface.
-func (c *UpdateChannels) Scan(value any) error {
+func (c *UpdateUpstreamChannels) Scan(value any) error {
 	if value == nil {
-		return fmt.Errorf("null is not a valid update channels")
+		return fmt.Errorf("null is not a valid value for update upstream channels")
 	}
 
 	switch v := value.(type) {
@@ -185,6 +185,6 @@ func (c *UpdateChannels) Scan(value any) error {
 		return nil
 
 	default:
-		return fmt.Errorf("type %T is not supported for update channels", value)
+		return fmt.Errorf("type %T is not supported for update upstream channels", value)
 	}
 }
