@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"encoding/pem"
 	"io"
 	"os"
 	"testing"
@@ -12,10 +13,12 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
+	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
+	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
@@ -42,7 +45,7 @@ func TestUpdateService_validateUpdatesConfig(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:                 "success",
+			name:                 "error - filterExpression invalid",
 			filterExpression:     `invalid`, // invalid,
 			fileFilterExpression: "",
 
@@ -51,7 +54,7 @@ func TestUpdateService_validateUpdatesConfig(t *testing.T) {
 			},
 		},
 		{
-			name:                 "success",
+			name:                 "error - fileFilterExpression invalid",
 			filterExpression:     "",
 			fileFilterExpression: `invalid`, // invalid,
 
@@ -63,6 +66,8 @@ func TestUpdateService_validateUpdatesConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			updateSvc := provisioning.NewUpdateService(nil, nil, nil)
+
 			err := config.UpdatesValidateSignal.TryEmit(t.Context(), api.SystemUpdates{
 				SystemUpdatesPut: api.SystemUpdatesPut{
 					FilterExpression:     tc.filterExpression,
@@ -71,6 +76,7 @@ func TestUpdateService_validateUpdatesConfig(t *testing.T) {
 			})
 
 			tc.assertErr(t, err)
+			require.NotNil(t, updateSvc) // use the update service to ensure the signal handler is registered.
 		})
 	}
 }
@@ -961,15 +967,18 @@ func TestUpdateService_Refresh(t *testing.T) {
 	}{
 		// Success cases
 		{
-			name: "success - no updates, no state in the DB",
-			ctx:  context.Background(),
+			name:                 "success - no updates, no state in the DB",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			assertErr: require.NoError,
 		},
 		{
-			name:             "success - one update, filtered",
-			ctx:              context.Background(),
-			filterExpression: `"stable" in channels`,
+			name:                 "success - one update, filtered",
+			ctx:                  t.Context(),
+			filterExpression:     `"stable" in channels`,
+			fileFilterExpression: `true`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -984,8 +993,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "success - one update, already present in DB",
-			ctx:  context.Background(),
+			name:                 "success - one update, already present in DB",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -1010,7 +1021,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			// one is filtered because of file filter for architecture.
 			// The file, which is downloaded has a valid sha256 checksum, one file is
 			// filtered.
-			ctx:                  context.Background(),
+			ctx:                  t.Context(),
 			filterExpression:     `"stable" in channels`,
 			fileFilterExpression: `applies_to_architecture(architecture, "x86_64")`,
 
@@ -1097,8 +1108,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "success - one update, which gets omitted, cleanup state in DB",
-			ctx:  context.Background(),
+			name:                 "success - one update, which gets omitted, cleanup state in DB",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -1139,34 +1152,15 @@ func TestUpdateService_Refresh(t *testing.T) {
 		// Error cases
 		{
 			name: "error - source.GetLatest",
-			ctx:  context.Background(),
+			ctx:  t.Context(),
 
 			sourceGetLatestErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:             "error - invalid filter expression",
-			ctx:              context.Background(),
-			filterExpression: `%`, // invalid expression.
-
-			sourceGetLatestUpdates: provisioning.Updates{
-				{
-					UUID:        updatePresentUUID,
-					PublishedAt: dateTime2,
-					Channels: provisioning.UpdateChannels{
-						"daily",
-					},
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "Failed to compile filter expression")
-			},
-		},
-		{
-			name:             "error - filter expression run",
-			ctx:              context.Background(),
+			name:             "error - filter expression run - invalid",
+			ctx:              t.Context(),
 			filterExpression: `fromBase64("~invalid")`, // invalid, returns runtime error during evauluation of the expression.
 
 			sourceGetLatestUpdates: provisioning.Updates{
@@ -1184,8 +1178,8 @@ func TestUpdateService_Refresh(t *testing.T) {
 			},
 		},
 		{
-			name:             "error - filter expression run",
-			ctx:              context.Background(),
+			name:             "error - filter expression run - not bool return",
+			ctx:              t.Context(),
 			filterExpression: `"string"`, // invalid, does evaluate to string instead of boolean.
 
 			sourceGetLatestUpdates: provisioning.Updates{
@@ -1203,29 +1197,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 			},
 		},
 		{
-			name:                 "error - invalid file filter expression",
-			ctx:                  context.Background(),
-			fileFilterExpression: `%`, // invalid expression.
-
-			sourceGetLatestUpdates: provisioning.Updates{
-				{
-					UUID:        updatePresentUUID,
-					PublishedAt: dateTime2,
-					Files: provisioning.UpdateFiles{
-						{
-							Architecture: "x86_64",
-						},
-					},
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "Failed to compile file filter expression")
-			},
-		},
-		{
-			name:                 "error - file filter expression run",
-			ctx:                  context.Background(),
+			name:                 "error - file filter expression run - invalid",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
 			fileFilterExpression: `fromBase64("~invalid")`, // invalid, returns runtime error during evauluation of the expression.
 
 			sourceGetLatestUpdates: provisioning.Updates{
@@ -1245,8 +1219,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 			},
 		},
 		{
-			name:                 "error - file filter expression run",
-			ctx:                  context.Background(),
+			name:                 "error - file filter expression run - not bool return",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
 			fileFilterExpression: `"string"`, // invalid, does evaluate to string instead of boolean.
 
 			sourceGetLatestUpdates: provisioning.Updates{
@@ -1266,16 +1241,20 @@ func TestUpdateService_Refresh(t *testing.T) {
 			},
 		},
 		{
-			name: "error - repo.GetAllWithFilter",
-			ctx:  context.Background(),
+			name:                 "error - repo.GetAllWithFilter",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			repoGetAllErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - filesRepo.Delete",
-			ctx:  context.Background(),
+			name:                 "error - filesRepo.Delete",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			repoGetAllUpdates: provisioning.Updates{
 				{
@@ -1298,8 +1277,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - filesRepo.Delete",
-			ctx:  context.Background(),
+			name:                 "error - filesRepo.Delete",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			repoGetAllUpdates: provisioning.Updates{
 				{
@@ -1325,8 +1306,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - filesRepo.UsageInformation",
-			ctx:  context.Background(),
+			name:                 "error - filesRepo.UsageInformation",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -1352,8 +1335,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - filesRepo.UsageInformation - invalid total size",
-			ctx:  context.Background(),
+			name:                 "error - filesRepo.UsageInformation - invalid total size",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -1381,8 +1366,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			},
 		},
 		{
-			name: "error - not enough space available global",
-			ctx:  context.Background(),
+			name:                 "error - not enough space available global",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -1410,8 +1397,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			},
 		},
 		{
-			name: "error - Validate",
-			ctx:  context.Background(),
+			name:                 "error - Validate",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -1440,8 +1429,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			},
 		},
 		{
-			name: "error - repo.Upsert pending",
-			ctx:  context.Background(),
+			name:                 "error - repo.Upsert pending",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -1473,8 +1464,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - not enough space available before download",
-			ctx:  context.Background(),
+			name:                 "error - not enough space available before download",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -1512,10 +1505,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name: "error - context cancelled",
 			ctx: func() context.Context {
-				ctx, cancel := context.WithCancelCause(context.Background())
+				ctx, cancel := context.WithCancelCause(t.Context())
 				cancel(boom.Error)
 				return ctx
 			}(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -1549,8 +1544,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - source.GetUpdateFileByFilename",
-			ctx:  context.Background(),
+			name:                 "error - source.GetUpdateFileByFilename",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -1592,8 +1589,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - filesRepo.Put",
-			ctx:  context.Background(),
+			name:                 "error - filesRepo.Put",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -1652,8 +1651,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - filesRepo.Put - invalid sha256",
-			ctx:  context.Background(),
+			name:                 "error - filesRepo.Put - invalid sha256",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -1711,8 +1712,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			},
 		},
 		{
-			name: "error - filesRepo.Put - commit",
-			ctx:  context.Background(),
+			name:                 "error - filesRepo.Put - commit",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -1773,8 +1776,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - filesRepo.Put - cancel",
-			ctx:  context.Background(),
+			name:                 "error - filesRepo.Put - cancel",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -1835,8 +1840,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - filesRepo.Upsert",
-			ctx:  context.Background(),
+			name:                 "error - filesRepo.Upsert",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -1898,6 +1905,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			config.InitTest(t, &envMock.EnvironmentMock{
+				IsIncusOSFunc: func() bool {
+					return false
+				},
+			}, nil)
+
 			repo := &repoMock.UpdateRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
 					return tc.repoGetAllUpdates, tc.repoGetAllErr
@@ -1944,18 +1957,29 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			}
 
+			certPEM, _, err := incustls.GenerateMemCert(true, false)
+			require.NoError(t, err)
+
+			err = config.UpdateUpdates(t.Context(), api.SystemUpdatesPut{
+				SignatureVerificationRootCA: string(pem.EncodeToMemory(&pem.Block{
+					Type:  "CERTIFICATE",
+					Bytes: certPEM,
+				})),
+				FilterExpression:     tc.filterExpression,
+				FileFilterExpression: tc.fileFilterExpression,
+			})
+			require.NoError(t, err)
+
 			updateSvc := provisioning.NewUpdateService(
 				repo,
 				repoUpdateFiles,
 				source,
 				provisioning.UpdateServiceWithLatestLimit(1),
 				provisioning.UpdateServiceWithPendingGracePeriod(24*time.Hour),
-				provisioning.UpdateServiceWithFilterExpression(tc.filterExpression),
-				provisioning.UpdateServiceWithFileFilterExpression(tc.fileFilterExpression),
 			)
 
 			// Run test
-			err := updateSvc.Refresh(tc.ctx)
+			err = updateSvc.Refresh(tc.ctx)
 
 			// Assert
 			tc.assertErr(t, err)

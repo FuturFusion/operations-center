@@ -1,7 +1,6 @@
 package provisioning
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -172,38 +171,6 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 			// Assert
 			require.ElementsMatch(t, tc.wantToDeleteUpdates, toDeleteUpdates)
 			require.ElementsMatch(t, tc.wantToDownloadUpdates, toDownloadUpdates)
-		})
-	}
-}
-
-func TestUpdateService_UpdateConfig(t *testing.T) {
-	tests := []struct {
-		name              string
-		repoGetAllUpdates Updates
-		repoGetAllErr     error
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name:              "success",
-			repoGetAllUpdates: Updates{},
-
-			assertErr: require.NoError,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			updateSvc := NewUpdateService(nil, nil, nil)
-			updateSvc.updateFilterExpression = "old filter"
-			updateSvc.updateFileFilterExpression = "old file filter"
-
-			// Run test
-			updateSvc.UpdateConfig(context.Background(), "new filter", "new file filter")
-
-			// Assert
-			require.Equal(t, "new filter", updateSvc.updateFilterExpression)
-			require.Equal(t, "new file filter", updateSvc.updateFileFilterExpression)
 		})
 	}
 }
