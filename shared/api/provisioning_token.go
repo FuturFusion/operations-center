@@ -146,6 +146,9 @@ type TokenSeedConfigs struct {
 
 	// OperationsCenter represents the seed configuration for operations center (operations-center.yaml) to be included in the pre-seeded image.
 	OperationsCenter map[string]any `json:"operations_center" yaml:"operations_center"`
+
+	// Update represents the seed configuration for updates (update.yaml) to be included in the pre-seeded image.
+	Update map[string]any `json:"update" yaml:"update"`
 }
 
 // TokenSeedPost defines a named token seed configuration, for which a

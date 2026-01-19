@@ -45,6 +45,7 @@ type TokenImageSeedConfigs struct {
 	MigrationManager map[string]any `json:"migration_manager"`
 	Network          map[string]any `json:"network"`
 	OperationsCenter map[string]any `json:"operations_center"`
+	Update           map[string]any `json:"update"`
 }
 
 // Value implements the sql driver.Valuer interface.

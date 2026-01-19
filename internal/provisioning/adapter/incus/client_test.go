@@ -301,6 +301,9 @@ func TestClient_Endpoint(t *testing.T) {
 						Network: map[string]any{
 							"key": "value",
 						},
+						Update: map[string]any{
+							"key": "value",
+						},
 					},
 					api.TokenProviderConfig{},
 				)
