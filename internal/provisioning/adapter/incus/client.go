@@ -563,18 +563,18 @@ func (c client) SystemFactoryReset(ctx context.Context, endpoint provisioning.En
 		"provider":     providerSeed,
 	}
 
-	if len(seedConfig.Install) > 0 {
-		seedData["install"] = seedConfig.Install
-	}
-
 	if len(seedConfig.Network) > 0 {
 		seedData["network"] = seedConfig.Network
+	}
+
+	if len(seedConfig.Update) > 0 {
+		seedData["update"] = seedConfig.Update
 	}
 
 	resetData := map[string]any{
 		"allow_tpm_reset_failure": allowTPMResetFailure,
 		"seeds":                   seedData,
-		"wipe_existing_seeds":     true,
+		"wipe_existing_seeds":     false,
 	}
 
 	_, _, err = client.RawQuery(http.MethodPost, "/os/1.0/system/:factory-reset", resetData, "")
