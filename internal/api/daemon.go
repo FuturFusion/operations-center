@@ -402,8 +402,6 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 
 	updateServiceOptions := []provisioning.UpdateServiceOption{
 		provisioning.UpdateServiceWithLatestLimit(3),
-		provisioning.UpdateServiceWithFilterExpression(config.GetUpdates().FilterExpression),
-		provisioning.UpdateServiceWithFileFilterExpression(config.GetUpdates().FileFilterExpression),
 	}
 
 	updateServer := updateserver.New(
@@ -439,10 +437,6 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 	if err != nil {
 		slog.WarnContext(ctx, "Failed to prune pending updates", logger.Err(err))
 	}
-
-	config.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemUpdates) {
-		updateSvcBase.UpdateConfig(ctx, cfg.FilterExpression, cfg.FileFilterExpression)
-	})
 
 	return provisioningServiceMiddleware.NewUpdateServiceWithSlog(
 		updateSvcBase,
