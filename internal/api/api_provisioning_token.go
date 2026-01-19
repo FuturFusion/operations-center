@@ -462,6 +462,7 @@ func (t *tokenHandler) tokenImagePost(r *http.Request) response.Response {
 		MigrationManager: tokenImagePost.Seeds.MigrationManager,
 		Network:          tokenImagePost.Seeds.Network,
 		OperationsCenter: tokenImagePost.Seeds.OperationsCenter,
+		Update:           tokenImagePost.Seeds.Update,
 	})
 	if err != nil {
 		return response.SmartError(err)
@@ -620,6 +621,7 @@ func (t *tokenHandler) tokenSeedsPost(r *http.Request) response.Response {
 			MigrationManager: tokenSeedsPost.Seeds.MigrationManager,
 			Network:          tokenSeedsPost.Seeds.Network,
 			OperationsCenter: tokenSeedsPost.Seeds.OperationsCenter,
+			Update:           tokenSeedsPost.Seeds.Update,
 		},
 	})
 	if err != nil {
@@ -746,6 +748,7 @@ func (t *tokenHandler) tokenSeedsGet(r *http.Request) response.Response {
 							MigrationManager: tokenSeed.Seeds.MigrationManager,
 							Network:          tokenSeed.Seeds.Network,
 							OperationsCenter: tokenSeed.Seeds.OperationsCenter,
+							Update:           tokenSeed.Seeds.Update,
 						},
 					},
 				},
@@ -867,6 +870,7 @@ func (t *tokenHandler) tokenSeedGet(r *http.Request) response.Response {
 							MigrationManager: seedConfig.Seeds.MigrationManager,
 							Network:          seedConfig.Seeds.Network,
 							OperationsCenter: seedConfig.Seeds.OperationsCenter,
+							Update:           seedConfig.Seeds.Update,
 						},
 					},
 				},
@@ -973,6 +977,7 @@ func (t *tokenHandler) tokenSeedPut(r *http.Request) response.Response {
 			MigrationManager: tokenSeed.Seeds.MigrationManager,
 			Network:          tokenSeed.Seeds.Network,
 			OperationsCenter: tokenSeed.Seeds.OperationsCenter,
+			Update:           tokenSeed.Seeds.Update,
 		},
 	})
 	if err != nil {
