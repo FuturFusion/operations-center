@@ -89,6 +89,50 @@ func TestUpdate_Validate(t *testing.T) {
 	}
 }
 
+func TestUpdate_Components(t *testing.T) {
+	tests := []struct {
+		name string
+	}{
+		{
+			name: "success",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			update := provisioning.Update{
+				Files: provisioning.UpdateFiles{
+					{
+						Component:    images.UpdateFileComponentIncus,
+						Architecture: images.UpdateFileArchitecture64BitX86,
+					},
+					{
+						Component:    images.UpdateFileComponentIncus,
+						Architecture: images.UpdateFileArchitecture64BitARM,
+					},
+					{
+						Component:    images.UpdateFileComponentOS,
+						Architecture: images.UpdateFileArchitecture64BitX86,
+					},
+					{
+						Component:    images.UpdateFileComponentOS,
+						Architecture: images.UpdateFileArchitecture64BitARM,
+					},
+				},
+			}
+
+			got := update.Components()
+
+			want := []images.UpdateFileComponent{
+				images.UpdateFileComponentOS,
+				images.UpdateFileComponentIncus,
+			}
+
+			require.ElementsMatch(t, want, got)
+		})
+	}
+}
+
 func TestUpdate_Filter(t *testing.T) {
 	tests := []struct {
 		name   string

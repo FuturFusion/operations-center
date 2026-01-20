@@ -52,6 +52,20 @@ func (u Update) Validate() error {
 	return nil
 }
 
+func (u Update) Components() []images.UpdateFileComponent {
+	componentsSet := make(map[images.UpdateFileComponent]struct{}, len(images.UpdateFileComponents))
+	for _, file := range u.Files {
+		componentsSet[file.Component] = struct{}{}
+	}
+
+	components := make([]images.UpdateFileComponent, 0, len(componentsSet))
+	for component := range componentsSet {
+		components = append(components, component)
+	}
+
+	return components
+}
+
 type Updates []Update
 
 var _ sort.Interface = Updates{}
