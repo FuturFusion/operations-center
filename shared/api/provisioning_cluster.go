@@ -87,6 +87,20 @@ func (s ClusterDeleteMode) String() string {
 	return string(s)
 }
 
+// ClusterUpdateStatus contains the update status of each server of the cluster
+// as well as an aggregated cluster update status.
+type ClusterUpdateStatus struct {
+	NeedsUpdate bool `json:"needs_update"`
+
+	// OS holds the lowest state of all the servers of the cluster
+	// for the version information of the operating system.
+	OS OSVersionData `json:"os" yaml:"os"`
+
+	// Applications holds the lowest state of all the servers of the cluster for
+	// the version information of the installed applications.
+	Applications []ApplicationVersionData `json:"applications" yaml:"applications"`
+}
+
 // ClusterPut defines the updateable part of a cluster of servers running
 // Hypervisor OS.
 //
@@ -129,6 +143,10 @@ type Cluster struct {
 	// Possible values for status are: pending, ready
 	// Example: pending
 	Status ClusterStatus `json:"status" yaml:"status"`
+
+	// UpdateStatus contains the aggregated update state for the cluster,
+	// which consists of the lowest state of all the servers of the cluster.
+	UpdateStatus ClusterUpdateStatus `json:"update_status" yaml:"update_status"`
 
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
