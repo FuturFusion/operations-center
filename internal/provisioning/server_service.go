@@ -166,7 +166,7 @@ func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer S
 }
 
 func (s *serverService) GetAll(ctx context.Context) (Servers, error) {
-	return s.repo.GetAll(ctx)
+	return s.GetAllWithFilter(ctx, ServerFilter{})
 }
 
 func (s *serverService) GetAllWithFilter(ctx context.Context, filter ServerFilter) (Servers, error) {
@@ -210,6 +210,13 @@ func (s *serverService) GetAllWithFilter(ctx context.Context, filter ServerFilte
 		}
 
 		return filteredServers, nil
+	}
+
+	for i := range filteredServers {
+		err = s.enrichServerWithVersionDetails(&servers[i])
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return servers, nil
@@ -275,7 +282,21 @@ func (s *serverService) GetByName(ctx context.Context, name string) (*Server, er
 		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	return s.repo.GetByName(ctx, name)
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.enrichServerWithVersionDetails(server)
+	return server, err
+}
+
+func (s *serverService) enrichServerWithVersionDetails(server *Server) error {
+	// FIXME: enrich server with current version information.
+
+	// s.updateSvc
+
+	return nil
 }
 
 func (s *serverService) Update(ctx context.Context, server Server) error {
