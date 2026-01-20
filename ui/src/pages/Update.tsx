@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import { cleanupUpdates, fetchUpdates, refreshUpdates } from "api/update";
 import DataTable from "components/DataTable";
 import ModalWindow from "components/ModalWindow";
+import ImportUpdatesBtn from "components/ImportUpdatesBtn";
 import { useNotification } from "context/notificationContext";
 import { formatDate } from "util/date";
 
@@ -123,6 +124,7 @@ const Update = () => {
               >
                 Refresh
               </Button>
+              <ImportUpdatesBtn />
             </div>
           </div>
         </div>
