@@ -11,7 +11,6 @@ import (
 	"io"
 	"slices"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -31,15 +30,11 @@ const (
 )
 
 type updateService struct {
-	configUpdateMu *sync.Mutex
-
-	repo                       UpdateRepo
-	filesRepo                  UpdateFilesRepo
-	source                     UpdateSourcePort
-	latestLimit                int
-	updateFilterExpression     string
-	updateFileFilterExpression string
-	pendingGracePeriod         time.Duration
+	repo               UpdateRepo
+	filesRepo          UpdateFilesRepo
+	source             UpdateSourcePort
+	latestLimit        int
+	pendingGracePeriod time.Duration
 }
 
 var _ UpdateService = &updateService{}
@@ -58,22 +53,8 @@ func UpdateServiceWithPendingGracePeriod(pendingGracePeriod time.Duration) Updat
 	}
 }
 
-func UpdateServiceWithFilterExpression(filterExpression string) UpdateServiceOption {
-	return func(service *updateService) {
-		service.updateFilterExpression = filterExpression
-	}
-}
-
-func UpdateServiceWithFileFilterExpression(filesFilterExpression string) UpdateServiceOption {
-	return func(service *updateService) {
-		service.updateFileFilterExpression = filesFilterExpression
-	}
-}
-
 func NewUpdateService(repo UpdateRepo, filesRepo UpdateFilesRepo, source UpdateSourcePort, opts ...UpdateServiceOption) *updateService {
 	service := &updateService{
-		configUpdateMu: &sync.Mutex{},
-
 		repo:               repo,
 		filesRepo:          filesRepo,
 		source:             source,
@@ -503,11 +484,12 @@ func (s updateService) validateUpdatesConfig(ctx context.Context, su api.SystemU
 }
 
 func (s updateService) filterUpdatesByFilterExpression(updates Updates) (Updates, error) {
-	if s.updateFilterExpression != "" {
-		filterExpression, err := expr.Compile(s.updateFilterExpression, expr.Env(ToExprUpdate(Update{})))
-		if err != nil {
-			return nil, fmt.Errorf("Failed to compile filter expression: %w", err)
-		}
+	if config.GetUpdates().FilterExpression != "" {
+		// The filter expression is already compiled as part of the validation
+		// of the config so we can assume the filter expression to compile without
+		// error.
+		// If not the case, the Run call will fail with a "program is nil" error.
+		filterExpression, _ := expr.Compile(config.GetUpdates().FilterExpression, expr.Env(ToExprUpdate(Update{})))
 
 		n := 0
 		for i := range updates {
@@ -518,7 +500,7 @@ func (s updateService) filterUpdatesByFilterExpression(updates Updates) (Updates
 
 			result, ok := output.(bool)
 			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", s.updateFilterExpression, output)
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", config.GetUpdates().FilterExpression, output)
 			}
 
 			if !result {
@@ -598,11 +580,12 @@ func UpdateFileExprEnvFrom(u UpdateFile) UpdateFileExprEnv {
 }
 
 func (s updateService) filterUpdateFileByFilterExpression(updates Updates) (Updates, error) {
-	if len(s.updateFileFilterExpression) > 0 {
-		fileFilterExpression, err := expr.Compile(s.updateFileFilterExpression, UpdateFileExprEnvFrom(UpdateFile{}).ExprCompileOptions()...)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to compile file filter expression: %w", err)
-		}
+	if config.GetUpdates().FileFilterExpression != "" {
+		// The file filter expression is already compiled as part of the validation
+		// of the config so we can assume the filter expression to compile without
+		// error.
+		// If not the case, the Run call will fail with a "program is nil" error.
+		fileFilterExpression, _ := expr.Compile(config.GetUpdates().FileFilterExpression, UpdateFileExprEnvFrom(UpdateFile{}).ExprCompileOptions()...)
 
 		for i := range updates {
 			n := 0
@@ -614,7 +597,7 @@ func (s updateService) filterUpdateFileByFilterExpression(updates Updates) (Upda
 
 				result, ok := output.(bool)
 				if !ok {
-					return nil, fmt.Errorf("File filter expression %q does not evaluate to boolean result: %v", s.updateFilterExpression, output)
+					return nil, fmt.Errorf("File filter expression %q does not evaluate to boolean result: %v", config.GetUpdates().FilterExpression, output)
 				}
 
 				if !result {
@@ -728,12 +711,4 @@ func (s updateService) isSpaceAvailable(ctx context.Context, downloadUpdates []U
 	}
 
 	return nil
-}
-
-func (s *updateService) UpdateConfig(ctx context.Context, updateFilterExpression string, updateFileFilterExpression string) {
-	s.configUpdateMu.Lock()
-	defer s.configUpdateMu.Unlock()
-
-	s.updateFilterExpression = updateFilterExpression
-	s.updateFileFilterExpression = updateFileFilterExpression
 }
