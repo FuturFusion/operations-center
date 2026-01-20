@@ -4,12 +4,12 @@ terraform {
   required_providers {
     incus = {
       source  = "lxc/incus"
-      version = "~>1.0.0"
+      version = "~>1.0.2"
     }
 
     random = {
       source  = "hashicorp/random"
-      version = "~>3.7.2"
+      version = "~>3.8.0"
     }
 
     null = {
