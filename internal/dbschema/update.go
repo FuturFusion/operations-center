@@ -48,6 +48,31 @@ var updates = map[int]update{
 	18: updateFromV17,
 	19: updateFromV18,
 	20: updateFromV19,
+	21: updateFromV20,
+	22: updateFromV21,
+}
+
+func updateFromV21(ctx context.Context, tx *sql.Tx) error {
+	// v21..v22 add table to keep track on the applied patches
+	stmt := `
+CREATE TABLE patches (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  applied_at DATETIME NOT NULL,
+  UNIQUE (name)
+);
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
+}
+
+func updateFromV20(ctx context.Context, tx *sql.Tx) error {
+	// v20..v21 rename channels to upstream_channels
+	stmt := `
+ALTER TABLE updates RENAME COLUMN channels TO upstream_channels;
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV19(ctx context.Context, tx *sql.Tx) error {

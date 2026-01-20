@@ -99,9 +99,10 @@ type Update struct {
 	// // Example: releases/download/202501311418/
 	URL string `json:"url" yaml:"url"`
 
-	// Channels the update is part of.
+	// UpstreamChannels holds the name of the channels from upstream (source)
+	// the update is part of.
 	// Example: stable
-	Channels []string `json:"channels" yaml:"channels"`
+	UpstreamChannels []string `json:"upstream_channels" yaml:"upstream_channels"`
 
 	// Changelog of the Update as plain text.
 	Changelog string `json:"changelog" yaml:"changelog"`

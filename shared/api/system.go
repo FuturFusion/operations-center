@@ -189,9 +189,9 @@ type SystemUpdatesPut struct {
 	// To disable filtering, set to "true", which causes the filter to allow all
 	// updates.
 	//
-	// Default: 'stable' in channels
+	// Default: 'stable' in upstream_channels
 	//
-	// Example: 'stable' in channels
+	// Example: 'stable' in upstream_channels
 	FilterExpression string `json:"filter_expression" yaml:"filter_expression"`
 
 	// Filter expression for update files using https://expr-lang.org/ on struct

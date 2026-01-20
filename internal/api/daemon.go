@@ -136,6 +136,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
+	// Apply all patches that need to be run before daemon security infrastructure
+	// like certificates, authenticators and authorizers are initialized.
+	err = patchesApply(ctx, dbWithTransaction, patchPreSecurityInfrastructure)
+	if err != nil {
+		return err
+	}
+
 	err = d.initAndLoadServerCert()
 	if err != nil {
 		return err
@@ -262,14 +269,14 @@ func (d *Daemon) Start(ctx context.Context) error {
 	return nil
 }
 
-func (d *Daemon) initDB(_ context.Context) (dbdriver.DBTX, error) {
+func (d *Daemon) initDB(ctx context.Context) (dbdriver.DBTX, error) {
 	db, err := dbdriver.Open(d.env.VarDir())
 	if err != nil {
 		return nil, fmt.Errorf("Failed to open sqlite database: %w", err)
 	}
 
 	// TODO: should Ensure take the provided context? If not, document the reason.
-	_, err = dbschema.Ensure(context.TODO(), db, d.env.VarDir())
+	current, err := dbschema.Ensure(context.TODO(), db, d.env.VarDir())
 	if err != nil {
 		return nil, err
 	}
@@ -278,6 +285,16 @@ func (d *Daemon) initDB(_ context.Context) (dbdriver.DBTX, error) {
 	provisioningEntities.PreparedStmts, err = provisioningEntities.PrepareStmts(dbWithTransaction, false)
 	if err != nil {
 		return nil, err
+	}
+
+	// If we start from scratch, mark all patches as applied.
+	if current == 0 {
+		for _, patchName := range patchesGetNames() {
+			err := markPatchAsApplied(ctx, db, patchName)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	inventoryEntities.PreparedStmts, err = inventoryEntities.PrepareStmts(dbWithTransaction, false)

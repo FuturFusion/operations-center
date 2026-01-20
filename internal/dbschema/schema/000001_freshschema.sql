@@ -5,6 +5,13 @@ CREATE TABLE IF NOT EXISTS schema (
   UNIQUE (version)
 );
 
+CREATE TABLE patches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    applied_at DATETIME NOT NULL,
+    UNIQUE (name)
+);
+
 CREATE TABLE tokens (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
@@ -53,7 +60,7 @@ CREATE TABLE updates (
   "version" TEXT NOT NULL,
   published_at DATETIME NOT NULL,
   severity TEXT NOT NULL,
-  channels TEXT NOT NULL,
+  upstream_channels TEXT NOT NULL,
   changelog TEXT NOT NULL,
   files TEXT NOT NULL,
   "url" NOT NULL DEFAULT '',
@@ -365,4 +372,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (20, strftime("%s"))
+INSERT INTO schema (version, updated_at) VALUES (22, strftime("%s"))
