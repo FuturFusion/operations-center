@@ -22,13 +22,14 @@ import (
 //generate-expr: Update
 
 type Update struct {
-	ID               string                 `json:"-"`
+	ID               int                    `json:"-"`
 	UUID             uuid.UUID              `json:"-" expr:"uuid" db:"primary=yes"`
 	Format           string                 `json:"format" db:"ignore"`
 	Origin           string                 `json:"origin"`
 	Version          string                 `json:"version"`
 	PublishedAt      time.Time              `json:"published_at"`
 	Severity         images.UpdateSeverity  `json:"severity"`
+	Channels         []string               `json:"channels" db:"ignore"`
 	UpstreamChannels UpdateUpstreamChannels `json:"upstream_channels"`
 	Changelog        string                 `json:"-" expr:"change_log"`
 	Files            UpdateFiles            `json:"files"`
