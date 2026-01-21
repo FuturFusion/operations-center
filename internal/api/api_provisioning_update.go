@@ -243,7 +243,7 @@ func (u *updateHandler) updatesPost(r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/updates"+id.String())
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/updates/"+id.String())
 }
 
 // swagger:operation DELETE /1.0/provisioning/updates updates updates_delete
