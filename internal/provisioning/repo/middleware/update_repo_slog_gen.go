@@ -42,6 +42,41 @@ func NewUpdateRepoWithSlog(base provisioning.UpdateRepo, log *slog.Logger, opts 
 	return this
 }
 
+// AssignChannels implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithSlog) AssignChannels(ctx context.Context, id uuid.UUID, channelNames []string) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.Any("channelNames", channelNames),
+		)
+	}
+	log.DebugContext(ctx, "=> calling AssignChannels")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method AssignChannels returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method AssignChannels returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method AssignChannels finished")
+		}
+	}()
+	return _d._base.AssignChannels(ctx, id, channelNames)
+}
+
 // DeleteByUUID implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	log := _d._log.With()

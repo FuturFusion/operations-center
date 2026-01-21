@@ -22,6 +22,9 @@ var _ provisioning.UpdateRepo = &UpdateRepoMock{}
 //
 //		// make and configure a mocked provisioning.UpdateRepo
 //		mockedUpdateRepo := &UpdateRepoMock{
+//			AssignChannelsFunc: func(ctx context.Context, id uuid.UUID, channelNames []string) error {
+//				panic("mock out the AssignChannels method")
+//			},
 //			DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
 //				panic("mock out the DeleteByUUID method")
 //			},
@@ -53,6 +56,9 @@ var _ provisioning.UpdateRepo = &UpdateRepoMock{}
 //
 //	}
 type UpdateRepoMock struct {
+	// AssignChannelsFunc mocks the AssignChannels method.
+	AssignChannelsFunc func(ctx context.Context, id uuid.UUID, channelNames []string) error
+
 	// DeleteByUUIDFunc mocks the DeleteByUUID method.
 	DeleteByUUIDFunc func(ctx context.Context, id uuid.UUID) error
 
@@ -79,6 +85,15 @@ type UpdateRepoMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// AssignChannels holds details about calls to the AssignChannels method.
+		AssignChannels []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+			// ChannelNames is the channelNames argument value.
+			ChannelNames []string
+		}
 		// DeleteByUUID holds details about calls to the DeleteByUUID method.
 		DeleteByUUID []struct {
 			// Ctx is the ctx argument value.
@@ -134,6 +149,7 @@ type UpdateRepoMock struct {
 			Update provisioning.Update
 		}
 	}
+	lockAssignChannels                  sync.RWMutex
 	lockDeleteByUUID                    sync.RWMutex
 	lockGetAll                          sync.RWMutex
 	lockGetAllUUIDs                     sync.RWMutex
@@ -142,6 +158,46 @@ type UpdateRepoMock struct {
 	lockGetByUUID                       sync.RWMutex
 	lockGetUpdatesByAssignedChannelName sync.RWMutex
 	lockUpsert                          sync.RWMutex
+}
+
+// AssignChannels calls AssignChannelsFunc.
+func (mock *UpdateRepoMock) AssignChannels(ctx context.Context, id uuid.UUID, channelNames []string) error {
+	if mock.AssignChannelsFunc == nil {
+		panic("UpdateRepoMock.AssignChannelsFunc: method is nil but UpdateRepo.AssignChannels was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		ID           uuid.UUID
+		ChannelNames []string
+	}{
+		Ctx:          ctx,
+		ID:           id,
+		ChannelNames: channelNames,
+	}
+	mock.lockAssignChannels.Lock()
+	mock.calls.AssignChannels = append(mock.calls.AssignChannels, callInfo)
+	mock.lockAssignChannels.Unlock()
+	return mock.AssignChannelsFunc(ctx, id, channelNames)
+}
+
+// AssignChannelsCalls gets all the calls that were made to AssignChannels.
+// Check the length with:
+//
+//	len(mockedUpdateRepo.AssignChannelsCalls())
+func (mock *UpdateRepoMock) AssignChannelsCalls() []struct {
+	Ctx          context.Context
+	ID           uuid.UUID
+	ChannelNames []string
+} {
+	var calls []struct {
+		Ctx          context.Context
+		ID           uuid.UUID
+		ChannelNames []string
+	}
+	mock.lockAssignChannels.RLock()
+	calls = mock.calls.AssignChannels
+	mock.lockAssignChannels.RUnlock()
+	return calls
 }
 
 // DeleteByUUID calls DeleteByUUIDFunc.
