@@ -38,6 +38,20 @@ func NewUpdateRepoWithPrometheus(base provisioning.UpdateRepo, instanceName stri
 	}
 }
 
+// AssignChannels implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithPrometheus) AssignChannels(ctx context.Context, id uuid.UUID, channelNames []string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "AssignChannels", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.AssignChannels(ctx, id, channelNames)
+}
+
 // DeleteByUUID implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
