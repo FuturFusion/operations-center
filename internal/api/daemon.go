@@ -190,7 +190,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	channelSvc := d.setupChannelService(dbWithTransaction, updateSvc)
 
 	tokenSvc := d.setupTokenService(dbWithTransaction, updateSvc, channelSvc)
-	serverSvc := d.setupServerService(dbWithTransaction, tokenSvc, nil, channelSvc)
+	serverSvc := d.setupServerService(dbWithTransaction, tokenSvc, nil, channelSvc, updateSvc)
 	clusterSvc, err := d.setupClusterService(dbWithTransaction, serverSvc, tokenSvc)
 	if err != nil {
 		return err
@@ -493,7 +493,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 	)
 }
 
-func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.TokenService, clusterSvc provisioning.ClusterService, channelSvc provisioning.ChannelService) provisioning.ServerService {
+func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.TokenService, clusterSvc provisioning.ClusterService, channelSvc provisioning.ChannelService, updateSvc provisioning.UpdateService) provisioning.ServerService {
 	serverSvc := provisioning.NewServerService(
 		provisioningRepoMiddleware.NewServerRepoWithSlog(
 			provisioningSqlite.NewServer(db),
@@ -517,6 +517,7 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 		tokenSvc,
 		clusterSvc,
 		channelSvc,
+		updateSvc,
 		config.GetNetwork().OperationsCenterAddress,
 		d.serverCertificate,
 	)

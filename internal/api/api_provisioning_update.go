@@ -151,7 +151,7 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 	var filter provisioning.UpdateFilter
 
 	if r.URL.Query().Get("channel") != "" {
-		filter.Channel = ptr.To(r.URL.Query().Get("channel"))
+		filter.UpstreamChannel = ptr.To(r.URL.Query().Get("channel"))
 	}
 
 	if r.URL.Query().Get("origin") != "" {
