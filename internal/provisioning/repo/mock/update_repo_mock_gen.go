@@ -40,7 +40,7 @@ var _ provisioning.UpdateRepo = &UpdateRepoMock{}
 //			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
 //				panic("mock out the GetByUUID method")
 //			},
-//			GetUpdatesByAssignedChannelNameFunc: func(ctx context.Context, name string) (provisioning.Updates, error) {
+//			GetUpdatesByAssignedChannelNameFunc: func(ctx context.Context, name string, filter ...provisioning.UpdateFilter) (provisioning.Updates, error) {
 //				panic("mock out the GetUpdatesByAssignedChannelName method")
 //			},
 //			UpsertFunc: func(ctx context.Context, update provisioning.Update) error {
@@ -72,7 +72,7 @@ type UpdateRepoMock struct {
 	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error)
 
 	// GetUpdatesByAssignedChannelNameFunc mocks the GetUpdatesByAssignedChannelName method.
-	GetUpdatesByAssignedChannelNameFunc func(ctx context.Context, name string) (provisioning.Updates, error)
+	GetUpdatesByAssignedChannelNameFunc func(ctx context.Context, name string, filter ...provisioning.UpdateFilter) (provisioning.Updates, error)
 
 	// UpsertFunc mocks the Upsert method.
 	UpsertFunc func(ctx context.Context, update provisioning.Update) error
@@ -123,6 +123,8 @@ type UpdateRepoMock struct {
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+			// Filter is the filter argument value.
+			Filter []provisioning.UpdateFilter
 		}
 		// Upsert holds details about calls to the Upsert method.
 		Upsert []struct {
@@ -351,21 +353,23 @@ func (mock *UpdateRepoMock) GetByUUIDCalls() []struct {
 }
 
 // GetUpdatesByAssignedChannelName calls GetUpdatesByAssignedChannelNameFunc.
-func (mock *UpdateRepoMock) GetUpdatesByAssignedChannelName(ctx context.Context, name string) (provisioning.Updates, error) {
+func (mock *UpdateRepoMock) GetUpdatesByAssignedChannelName(ctx context.Context, name string, filter ...provisioning.UpdateFilter) (provisioning.Updates, error) {
 	if mock.GetUpdatesByAssignedChannelNameFunc == nil {
 		panic("UpdateRepoMock.GetUpdatesByAssignedChannelNameFunc: method is nil but UpdateRepo.GetUpdatesByAssignedChannelName was just called")
 	}
 	callInfo := struct {
-		Ctx  context.Context
-		Name string
+		Ctx    context.Context
+		Name   string
+		Filter []provisioning.UpdateFilter
 	}{
-		Ctx:  ctx,
-		Name: name,
+		Ctx:    ctx,
+		Name:   name,
+		Filter: filter,
 	}
 	mock.lockGetUpdatesByAssignedChannelName.Lock()
 	mock.calls.GetUpdatesByAssignedChannelName = append(mock.calls.GetUpdatesByAssignedChannelName, callInfo)
 	mock.lockGetUpdatesByAssignedChannelName.Unlock()
-	return mock.GetUpdatesByAssignedChannelNameFunc(ctx, name)
+	return mock.GetUpdatesByAssignedChannelNameFunc(ctx, name, filter...)
 }
 
 // GetUpdatesByAssignedChannelNameCalls gets all the calls that were made to GetUpdatesByAssignedChannelName.
@@ -373,12 +377,14 @@ func (mock *UpdateRepoMock) GetUpdatesByAssignedChannelName(ctx context.Context,
 //
 //	len(mockedUpdateRepo.GetUpdatesByAssignedChannelNameCalls())
 func (mock *UpdateRepoMock) GetUpdatesByAssignedChannelNameCalls() []struct {
-	Ctx  context.Context
-	Name string
+	Ctx    context.Context
+	Name   string
+	Filter []provisioning.UpdateFilter
 } {
 	var calls []struct {
-		Ctx  context.Context
-		Name string
+		Ctx    context.Context
+		Name   string
+		Filter []provisioning.UpdateFilter
 	}
 	mock.lockGetUpdatesByAssignedChannelName.RLock()
 	calls = mock.calls.GetUpdatesByAssignedChannelName

@@ -123,7 +123,7 @@ func (_d UpdateRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) 
 }
 
 // GetUpdatesByAssignedChannelName implements provisioning.UpdateRepo.
-func (_d UpdateRepoWithPrometheus) GetUpdatesByAssignedChannelName(ctx context.Context, name string) (updates provisioning.Updates, err error) {
+func (_d UpdateRepoWithPrometheus) GetUpdatesByAssignedChannelName(ctx context.Context, name string, filter ...provisioning.UpdateFilter) (updates provisioning.Updates, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -133,7 +133,7 @@ func (_d UpdateRepoWithPrometheus) GetUpdatesByAssignedChannelName(ctx context.C
 
 		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetUpdatesByAssignedChannelName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetUpdatesByAssignedChannelName(ctx, name)
+	return _d.base.GetUpdatesByAssignedChannelName(ctx, name, filter...)
 }
 
 // Upsert implements provisioning.UpdateRepo.
