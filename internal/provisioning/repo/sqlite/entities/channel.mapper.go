@@ -19,6 +19,13 @@ SELECT channels.id, channels.name, channels.description, channels.last_updated
   ORDER BY channels.name
 `)
 
+var channelObjectsByID = RegisterStmt(`
+SELECT channels.id, channels.name, channels.description, channels.last_updated
+  FROM channels
+  WHERE ( channels.id = ? )
+  ORDER BY channels.name
+`)
+
 var channelObjectsByName = RegisterStmt(`
 SELECT channels.id, channels.name, channels.description, channels.last_updated
   FROM channels
@@ -220,6 +227,30 @@ func GetChannels(ctx context.Context, db dbtx, filters ...provisioning.ChannelFi
 			}
 
 			query, err := StmtString(channelObjectsByName)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get \"channelObjects\" prepared statement: %w", err)
+			}
+
+			parts := strings.SplitN(query, "ORDER BY", 2)
+			if i == 0 {
+				copy(queryParts[:], parts)
+				continue
+			}
+
+			_, where, _ := strings.Cut(parts[0], "WHERE")
+			queryParts[0] += "OR" + where
+		} else if filter.ID != nil && filter.Name == nil {
+			args = append(args, []any{filter.ID}...)
+			if len(filters) == 1 {
+				sqlStmt, err = Stmt(db, channelObjectsByID)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get \"channelObjectsByID\" prepared statement: %w", err)
+				}
+
+				break
+			}
+
+			query, err := StmtString(channelObjectsByID)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to get \"channelObjects\" prepared statement: %w", err)
 			}
