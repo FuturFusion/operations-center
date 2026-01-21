@@ -176,29 +176,29 @@ func TestUpdatesSort(t *testing.T) {
 			name: "pre-sorted",
 			in: provisioning.Updates{
 				provisioning.Update{
-					ID:      "3",
+					ID:      3,
 					Version: "3",
 				},
 				provisioning.Update{
-					ID:      "2",
+					ID:      2,
 					Version: "2",
 				},
 				provisioning.Update{
-					ID:      "1",
+					ID:      1,
 					Version: "1",
 				},
 			},
 			want: provisioning.Updates{
 				provisioning.Update{
-					ID:      "3",
+					ID:      3,
 					Version: "3",
 				},
 				provisioning.Update{
-					ID:      "2",
+					ID:      2,
 					Version: "2",
 				},
 				provisioning.Update{
-					ID:      "1",
+					ID:      1,
 					Version: "1",
 				},
 			},
@@ -207,29 +207,29 @@ func TestUpdatesSort(t *testing.T) {
 			name: "sort",
 			in: provisioning.Updates{
 				provisioning.Update{
-					ID:      "2",
+					ID:      2,
 					Version: "2",
 				},
 				provisioning.Update{
-					ID:      "1",
+					ID:      1,
 					Version: "1",
 				},
 				provisioning.Update{
-					ID:      "3",
+					ID:      3,
 					Version: "3",
 				},
 			},
 			want: provisioning.Updates{
 				provisioning.Update{
-					ID:      "3",
+					ID:      3,
 					Version: "3",
 				},
 				provisioning.Update{
-					ID:      "2",
+					ID:      2,
 					Version: "2",
 				},
 				provisioning.Update{
-					ID:      "1",
+					ID:      1,
 					Version: "1",
 				},
 			},
@@ -238,29 +238,29 @@ func TestUpdatesSort(t *testing.T) {
 			name: "sort dns serial",
 			in: provisioning.Updates{
 				provisioning.Update{
-					ID:      "2",
+					ID:      2,
 					Version: "202503010000",
 				},
 				provisioning.Update{
-					ID:      "1",
+					ID:      1,
 					Version: "202501010000",
 				},
 				provisioning.Update{
-					ID:      "3",
+					ID:      3,
 					Version: "202506010000",
 				},
 			},
 			want: provisioning.Updates{
 				provisioning.Update{
-					ID:      "3",
+					ID:      3,
 					Version: "202506010000",
 				},
 				provisioning.Update{
-					ID:      "2",
+					ID:      2,
 					Version: "202503010000",
 				},
 				provisioning.Update{
-					ID:      "1",
+					ID:      1,
 					Version: "202501010000",
 				},
 			},
@@ -269,29 +269,29 @@ func TestUpdatesSort(t *testing.T) {
 			name: "not numeric version",
 			in: provisioning.Updates{
 				provisioning.Update{
-					ID:      "2",
+					ID:      2,
 					Version: "not numberic",
 				},
 				provisioning.Update{
-					ID:      "1",
+					ID:      1,
 					Version: "1",
 				},
 				provisioning.Update{
-					ID:      "3",
+					ID:      3,
 					Version: "3",
 				},
 			},
 			want: provisioning.Updates{
 				provisioning.Update{
-					ID:      "3",
+					ID:      3,
 					Version: "3",
 				},
 				provisioning.Update{
-					ID:      "1",
+					ID:      1,
 					Version: "1",
 				},
 				provisioning.Update{
-					ID:      "2",
+					ID:      2,
 					Version: "not numberic",
 				},
 			},

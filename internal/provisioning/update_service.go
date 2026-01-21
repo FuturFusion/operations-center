@@ -476,7 +476,12 @@ func (s updateService) Refresh(ctx context.Context) error {
 
 		err = s.repo.Upsert(ctx, update)
 		if err != nil {
-			return fmt.Errorf("Failed to persist the update in the repository: %w", err)
+			return fmt.Errorf("Failed to persist the update %q in the repository: %w", update.UUID.String(), err)
+		}
+
+		err = s.repo.AssignChannels(ctx, update.UUID, []string{config.GetUpdates().UpdatesDefaultChannel})
+		if err != nil {
+			return fmt.Errorf("Failed to assign default channel to new update %q: %w", update.UUID.String(), err)
 		}
 	}
 
