@@ -35,13 +35,36 @@ import (
 //generate-database:mapper method -e update Update
 //generate-database:mapper method -e update DeleteOne-by-UUID
 
-func GetUpdatesByAssignedChannelName(ctx context.Context, tx dbtx, name string) (provisioning.Updates, error) {
+func GetUpdatesByAssignedChannelName(ctx context.Context, tx dbtx, name string, filters ...provisioning.UpdateFilter) (provisioning.Updates, error) {
 	stmt := fmt.Sprintf(`SELECT %s
-	FROM channels
-	JOIN channels_updates ON channels.id = channels_updates.channel_id
-	JOIN updates ON channels_updates.update_id = updates.id
-	ORDER BY updates.uuid
-	`, updateColumns())
+  FROM channels
+  JOIN channels_updates ON channels.id = channels_updates.channel_id
+  JOIN updates ON channels_updates.update_id = updates.id
+  WHERE channels.name = ?
+`, updateColumns())
 
-	return getUpdatesRaw(ctx, tx, stmt)
+	args := []any{name}
+
+	if len(filters) > 0 {
+		filter := filters[0]
+
+		if filter.UUID != nil {
+			stmt += ` AND updates.uuid = ?`
+			args = append(args, filter.UUID)
+		}
+
+		if filter.Origin != nil {
+			stmt += ` AND updates.origin = ?`
+			args = append(args, filter.Origin)
+		}
+
+		if filter.Status != nil {
+			stmt += ` AND updates.status = ?`
+			args = append(args, filter.Status)
+		}
+	}
+
+	stmt += " ORDER BY updates.uuid"
+
+	return getUpdatesRaw(ctx, tx, stmt, args...)
 }
