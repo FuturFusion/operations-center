@@ -128,7 +128,7 @@ func (c *cmdUpdateList) run(cmd *cobra.Command, args []string) error {
 	var filter provisioning.UpdateFilter
 
 	if c.flagFilterChannel != "" {
-		filter.Channel = ptr.To(c.flagFilterChannel)
+		filter.UpstreamChannel = ptr.To(c.flagFilterChannel)
 	}
 
 	if c.flagFilterOrigin != "" {
