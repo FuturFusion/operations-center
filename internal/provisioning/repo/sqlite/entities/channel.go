@@ -6,6 +6,7 @@ package entities
 //generate-database:mapper reset
 //
 //generate-database:mapper stmt -e channel objects table=channels
+//generate-database:mapper stmt -e channel objects-by-ID table=channels
 //generate-database:mapper stmt -e channel objects-by-Name table=channels
 //generate-database:mapper stmt -e channel names table=channels
 //generate-database:mapper stmt -e channel id table=channels
