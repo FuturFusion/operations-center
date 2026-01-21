@@ -11,13 +11,14 @@ import (
 )
 
 type ExprUpdate struct {
-	ID               string                 `json:"-" expr:"-"`
+	ID               int                    `json:"-" expr:"-"`
 	UUID             uuid.UUID              `json:"-" expr:"uuid" db:"primary=yes"`
 	Format           string                 `json:"format" db:"ignore" expr:"format"`
 	Origin           string                 `json:"origin" expr:"origin"`
 	Version          string                 `json:"version" expr:"version"`
 	PublishedAt      time.Time              `json:"published_at" expr:"published_at"`
 	Severity         images.UpdateSeverity  `json:"severity" expr:"severity"`
+	Channels         []string               `json:"channels" db:"ignore" expr:"channels"`
 	UpstreamChannels UpdateUpstreamChannels `json:"upstream_channels" expr:"upstream_channels"`
 	Changelog        string                 `json:"-" expr:"change_log"`
 	Files            UpdateFiles            `json:"files" expr:"files"`
@@ -35,6 +36,7 @@ func ToExprUpdate(u Update) ExprUpdate {
 		Version:          u.Version,
 		PublishedAt:      u.PublishedAt,
 		Severity:         u.Severity,
+		Channels:         u.Channels,
 		UpstreamChannels: u.UpstreamChannels,
 		Changelog:        u.Changelog,
 		Files:            u.Files,
