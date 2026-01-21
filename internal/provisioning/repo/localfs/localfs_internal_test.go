@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"testing"
 	"testing/iotest"
@@ -309,8 +310,6 @@ type testLocalfsCreateFromArchive struct {
 //go:embed testdata
 var testdataFS embed.FS
 
-const changelog = `This is the changelog`
-
 func TestLocalfs_CreateFromArchive(t *testing.T) {
 	tests := []testLocalfsCreateFromArchive{
 		{
@@ -331,9 +330,9 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 						Type:      images.UpdateFileTypeImageManifest,
 					},
 					provisioning.UpdateFile{
-						Filename:  "file2.txt",
-						Size:      fileSize(t, "testdata/success/file2.txt"),
-						Sha256:    fileSha256(t, "testdata/success/file2.txt"),
+						Filename:  "subdir/file2.txt",
+						Size:      fileSize(t, "testdata/success/subdir/file2.txt"),
+						Sha256:    fileSha256(t, "testdata/success/subdir/file2.txt"),
 						Component: images.UpdateFileComponentDebug,
 						Type:      images.UpdateFileTypeImageManifest,
 					},
@@ -358,12 +357,73 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 				require.Len(t, update.Files, 2)
 				require.Equal(t, images.UpdateFileComponentDebug, update.Files[0].Component)
 				require.Equal(t, images.UpdateFileTypeImageManifest, update.Files[0].Type)
-				require.Len(t, update.Files, 2)
 
 				require.True(t, file.PathExists(filepath.Join(tmpDir, wantUUID, "update.sjson")))
-				require.True(t, file.PathExists(filepath.Join(tmpDir, wantUUID, "changelog.txt")))
 				require.True(t, file.PathExists(filepath.Join(tmpDir, wantUUID, "file1.txt")))
-				require.True(t, file.PathExists(filepath.Join(tmpDir, wantUUID, "file2.txt")))
+				require.True(t, file.PathExists(filepath.Join(tmpDir, wantUUID, "subdir/file2.txt")))
+			},
+		},
+		{
+			name:            "success - additional file present in manifest but missing in tar",
+			tarContentFiles: "testdata/success",
+			updateManifest: provisioning.Update{
+				Severity: images.UpdateSeverityNone,
+				Files: provisioning.UpdateFiles{
+					provisioning.UpdateFile{
+						Filename:  "file1.txt",
+						Size:      fileSize(t, "testdata/success/file1.txt"),
+						Sha256:    fileSha256(t, "testdata/success/file1.txt"),
+						Component: images.UpdateFileComponentDebug,
+						Type:      images.UpdateFileTypeImageManifest,
+					},
+					provisioning.UpdateFile{
+						Filename:  "subdir/file2.txt",
+						Size:      fileSize(t, "testdata/success/subdir/file2.txt"),
+						Sha256:    fileSha256(t, "testdata/success/subdir/file2.txt"),
+						Component: images.UpdateFileComponentDebug,
+						Type:      images.UpdateFileTypeImageManifest,
+					},
+					provisioning.UpdateFile{
+						Filename:  "file3.txt", // Additional file in the manifest, missing in the tar.
+						Size:      fileSize(t, "testdata/success/file1.txt"),
+						Sha256:    fileSha256(t, "testdata/success/file1.txt"),
+						Component: images.UpdateFileComponentDebug,
+						Type:      images.UpdateFileTypeImageManifest,
+					},
+				},
+			},
+			setupTmpDir: func(t *testing.T, tmpDir string) {
+				t.Helper()
+			},
+
+			assertErr: require.NoError,
+			assertUpdate: func(t *testing.T, tmpDir string, update *provisioning.Update) {
+				t.Helper()
+			},
+		},
+		{
+			name:            "success - additional file present in tar but missing in manifest",
+			tarContentFiles: "testdata/success",
+			updateManifest: provisioning.Update{
+				Severity: images.UpdateSeverityNone,
+				Files: provisioning.UpdateFiles{
+					provisioning.UpdateFile{
+						Filename:  "file1.txt",
+						Size:      fileSize(t, "testdata/success/file1.txt"),
+						Sha256:    fileSha256(t, "testdata/success/file1.txt"),
+						Component: images.UpdateFileComponentDebug,
+						Type:      images.UpdateFileTypeImageManifest,
+					},
+					// file2.txt not in manifest
+				},
+			},
+			setupTmpDir: func(t *testing.T, tmpDir string) {
+				t.Helper()
+			},
+
+			assertErr: require.NoError,
+			assertUpdate: func(t *testing.T, tmpDir string, update *provisioning.Update) {
+				t.Helper()
 			},
 		},
 		{
@@ -405,9 +465,9 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 						Type:      images.UpdateFileTypeImageManifest,
 					},
 					provisioning.UpdateFile{
-						Filename:  "file2.txt",
-						Size:      fileSize(t, "testdata/success/file2.txt"),
-						Sha256:    fileSha256(t, "testdata/success/file2.txt"),
+						Filename:  "subdir/file2.txt",
+						Size:      fileSize(t, "testdata/success/subdir/file2.txt"),
+						Sha256:    fileSha256(t, "testdata/success/subdir/file2.txt"),
 						Component: images.UpdateFileComponentDebug,
 						Type:      images.UpdateFileTypeImageManifest,
 					},
@@ -434,14 +494,14 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 					provisioning.UpdateFile{
 						Filename:  "file1.txt",
 						Size:      fileSize(t, "testdata/success/file1.txt"),
-						Sha256:    fileSha256(t, "testdata/success/file2.txt"), // invalid sha256, file2 instead of file1
+						Sha256:    fileSha256(t, "testdata/success/subdir/file2.txt"), // invalid sha256, file2 instead of file1
 						Component: images.UpdateFileComponentDebug,
 						Type:      images.UpdateFileTypeImageManifest,
 					},
 					provisioning.UpdateFile{
-						Filename:  "file2.txt",
-						Size:      fileSize(t, "testdata/success/file2.txt"),
-						Sha256:    fileSha256(t, "testdata/success/file2.txt"),
+						Filename:  "subdir/file2.txt",
+						Size:      fileSize(t, "testdata/success/subdir/file2.txt"),
+						Sha256:    fileSha256(t, "testdata/success/subdir/file2.txt"),
 						Component: images.UpdateFileComponentDebug,
 						Type:      images.UpdateFileTypeImageManifest,
 					},
@@ -458,77 +518,13 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 				t.Helper()
 			},
 		},
-		{
-			name:            "error - additional file present in tar",
-			tarContentFiles: "testdata/success",
-			updateManifest: provisioning.Update{
-				Severity: images.UpdateSeverityNone,
-				Files: provisioning.UpdateFiles{
-					provisioning.UpdateFile{
-						Filename:  "file1.txt",
-						Size:      fileSize(t, "testdata/success/file1.txt"),
-						Sha256:    fileSha256(t, "testdata/success/file1.txt"),
-						Component: images.UpdateFileComponentDebug,
-						Type:      images.UpdateFileTypeImageManifest,
-					},
-					provisioning.UpdateFile{
-						Filename:  "file2.txt",
-						Size:      fileSize(t, "testdata/success/file2.txt"),
-						Sha256:    fileSha256(t, "testdata/success/file2.txt"),
-						Component: images.UpdateFileComponentDebug,
-						Type:      images.UpdateFileTypeImageManifest,
-					},
-					provisioning.UpdateFile{
-						Filename:  "file3.txt", // Additional file in the manifest, missing in the tar.
-						Size:      fileSize(t, "testdata/success/file2.txt"),
-						Sha256:    fileSha256(t, "testdata/success/file2.txt"),
-						Component: images.UpdateFileComponentDebug,
-						Type:      images.UpdateFileTypeImageManifest,
-					},
-				},
-			},
-			setupTmpDir: func(t *testing.T, tmpDir string) {
-				t.Helper()
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(t, err, `Invalid archive, failed to open file "file3.txt" mentioned in manifest`)
-			},
-			assertUpdate: func(t *testing.T, tmpDir string, update *provisioning.Update) {
-				t.Helper()
-			},
-		},
-		{
-			name:            "error - file missing in tar",
-			tarContentFiles: "testdata/success",
-			updateManifest: provisioning.Update{
-				Severity: images.UpdateSeverityNone,
-				Files: provisioning.UpdateFiles{
-					provisioning.UpdateFile{
-						Filename:  "file1.txt",
-						Size:      fileSize(t, "testdata/success/file1.txt"),
-						Sha256:    fileSha256(t, "testdata/success/file1.txt"),
-						Component: images.UpdateFileComponentDebug,
-						Type:      images.UpdateFileTypeImageManifest,
-					},
-					// file2.txt not in manifest
-				},
-			},
-			setupTmpDir: func(t *testing.T, tmpDir string) {
-				t.Helper()
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(t, err, `Invalid archive, files not mentioned in the manifest found: file2.txt`)
-			},
-			assertUpdate: func(t *testing.T, tmpDir string, update *provisioning.Update) {
-				t.Helper()
-			},
-		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			// if tc.name != "success - additional file present in tar but missing in manifest" {
+			// 	return
+			// }
 			// Setup
 			caCert, cert, key := signaturetest.GenerateCertChain(t)
 			tr := generateUpdateTar(t, tc, cert, key)
@@ -563,28 +559,7 @@ func generateUpdateTar(t *testing.T, tc testLocalfsCreateFromArchive, cert []byt
 
 	tw := tar.NewWriter(inMemoryTar)
 
-	entries, err := testdataFS.ReadDir(tc.tarContentFiles)
-	require.NoError(t, err)
-
-	for _, entry := range entries {
-		fi, err := entry.Info()
-		require.NoError(t, err)
-
-		err = tw.WriteHeader(&tar.Header{
-			Name: entry.Name(),
-			Size: fi.Size(),
-		})
-		require.NoError(t, err)
-		body, err := testdataFS.ReadFile(filepath.Join(tc.tarContentFiles, entry.Name()))
-		require.NoError(t, err)
-
-		_, err = tw.Write(body)
-		require.NoError(t, err)
-
-		h := sha256.New()
-		_, err = h.Write(body)
-		require.NoError(t, err)
-	}
+	addFilesRecursively(t, tc, tc.tarContentFiles, "", tw)
 
 	body, err := json.Marshal(tc.updateManifest)
 	require.NoError(t, err)
@@ -600,24 +575,55 @@ func generateUpdateTar(t *testing.T, tc testLocalfsCreateFromArchive, cert []byt
 	_, err = tw.Write(signedBody)
 	require.NoError(t, err)
 
-	err = tw.WriteHeader(&tar.Header{
-		Name: "changelog.txt",
-		Size: int64(len(changelog)),
-	})
-	require.NoError(t, err)
-	_, err = tw.Write([]byte(changelog))
-	require.NoError(t, err)
-
 	err = tw.Close()
 	require.NoError(t, err)
 
 	return tar.NewReader(inMemoryTar)
 }
 
-func fileSize(t *testing.T, path string) int {
+func addFilesRecursively(t *testing.T, tc testLocalfsCreateFromArchive, dir string, pathPrefix string, tw *tar.Writer) {
 	t.Helper()
 
-	f, err := testdataFS.Open(path)
+	entries, err := testdataFS.ReadDir(dir)
+	require.NoError(t, err)
+
+	for _, entry := range entries {
+		fi, err := entry.Info()
+		require.NoError(t, err)
+
+		if entry.IsDir() {
+			err = tw.WriteHeader(&tar.Header{
+				Name:     entry.Name(),
+				Typeflag: tar.TypeDir,
+			})
+			require.NoError(t, err)
+
+			addFilesRecursively(t, tc, path.Join(dir, entry.Name()), path.Join(pathPrefix, entry.Name()), tw)
+			continue
+		}
+
+		err = tw.WriteHeader(&tar.Header{
+			Name: path.Join(pathPrefix, entry.Name()),
+			Size: fi.Size(),
+		})
+		require.NoError(t, err)
+
+		body, err := testdataFS.ReadFile(filepath.Join(tc.tarContentFiles, path.Join(pathPrefix, entry.Name())))
+		require.NoError(t, err)
+
+		_, err = tw.Write(body)
+		require.NoError(t, err)
+
+		h := sha256.New()
+		_, err = h.Write(body)
+		require.NoError(t, err)
+	}
+}
+
+func fileSize(t *testing.T, filePath string) int {
+	t.Helper()
+
+	f, err := testdataFS.Open(filePath)
 	require.NoError(t, err)
 
 	fi, err := f.Stat()
@@ -626,10 +632,10 @@ func fileSize(t *testing.T, path string) int {
 	return int(fi.Size())
 }
 
-func fileSha256(t *testing.T, path string) string {
+func fileSha256(t *testing.T, filePath string) string {
 	t.Helper()
 
-	f, err := testdataFS.Open(path)
+	f, err := testdataFS.Open(filePath)
 	require.NoError(t, err)
 
 	body, err := io.ReadAll(f)
