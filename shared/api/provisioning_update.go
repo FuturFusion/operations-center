@@ -99,6 +99,10 @@ type Update struct {
 	// // Example: releases/download/202501311418/
 	URL string `json:"url" yaml:"url"`
 
+	// Channels holds the name of the channels the update is assigned to.
+	// Example: stable
+	Channels []string `json:"channels" yaml:"channels"`
+
 	// UpstreamChannels holds the name of the channels from upstream (source)
 	// the update is part of.
 	// Example: stable
