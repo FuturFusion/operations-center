@@ -80,6 +80,13 @@ func (s Server) Validate() error {
 		return domain.NewValidationErrf("Invalid server, connection URL is not valid: %v", err)
 	}
 
+	if s.PublicConnectionURL != "" {
+		_, err := url.Parse(s.PublicConnectionURL)
+		if err != nil {
+			return domain.NewValidationErrf("Invalid server, public connection URL is not valid: %v", err)
+		}
+	}
+
 	if s.Certificate == "" {
 		return domain.NewValidationErrf("Invalid server, certificate can not be empty")
 	}

@@ -165,6 +165,26 @@ one
 			},
 		},
 		{
+			name: "error - public connection URL invalid",
+			server: provisioning.Server{
+				Name:                "one",
+				Type:                api.ServerTypeIncus,
+				Cluster:             ptr.To("one"),
+				ConnectionURL:       "http://one/",
+				PublicConnectionURL: ":|\\", // invalid
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
 			name: "error - certificate empty",
 			server: provisioning.Server{
 				Name:          "one",
