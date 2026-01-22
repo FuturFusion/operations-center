@@ -296,6 +296,27 @@ func (s updateService) GetUpdatesByAssignedChannelName(ctx context.Context, chan
 	return updates, err
 }
 
+func (s updateService) Update(ctx context.Context, update Update) error {
+	err := update.Validate()
+	if err != nil {
+		return fmt.Errorf("Failed to validate update: %w", err)
+	}
+
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		err = s.repo.AssignChannels(ctx, update.UUID, update.Channels)
+		if err != nil {
+			return fmt.Errorf("Failed to assign channels %v to update %q: %w", update.Channels, update.UUID.String(), err)
+		}
+
+		err = s.repo.Upsert(ctx, update)
+		if err != nil {
+			return fmt.Errorf("Failed to update the update %q: %w", update.UUID.String(), err)
+		}
+
+		return nil
+	})
+}
+
 func (s updateService) GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (UpdateFiles, error) {
 	update, err := s.repo.GetByUUID(ctx, id)
 	if err != nil {

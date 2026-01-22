@@ -15,6 +15,7 @@ type UpdateService interface {
 	GetAllUUIDsWithFilter(ctx context.Context, filter UpdateFilter) ([]uuid.UUID, error)
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Update, error)
 	GetUpdatesByAssignedChannelName(ctx context.Context, channelName string) (Updates, error)
+	Update(ctx context.Context, update Update) error
 
 	// Files
 	GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (UpdateFiles, error)
