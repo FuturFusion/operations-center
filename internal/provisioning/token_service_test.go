@@ -92,7 +92,7 @@ func TestTokenService_Create(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo, nil, nil,
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil, nil,
 				provisioning.WithRandomUUID(func() (uuid.UUID, error) { return tc.randomUUIDValue, tc.randomUUIDErr }),
 			)
 
@@ -152,7 +152,7 @@ func TestTokenService_GetAll(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil, nil)
 
 			// Run test
 			tokens, err := tokenSvc.GetAll(context.Background())
@@ -201,7 +201,7 @@ func TestTokenService_GetAllUUIDs(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil, nil)
 
 			// Run test
 			tokenIDs, err := tokenSvc.GetAllUUIDs(context.Background())
@@ -252,7 +252,7 @@ func TestTokenService_GetByID(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil, nil)
 
 			// Run test
 			token, err := tokenSvc.GetByUUID(context.Background(), tc.idArg)
@@ -320,7 +320,7 @@ func TestTokenService_Update(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil, nil)
 
 			// Run test
 			err := tokenSvc.Update(context.Background(), tc.token)
@@ -363,7 +363,7 @@ func TestTokenService_DeleteByUUID(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil, nil)
 
 			// Run test
 			err := tokenSvc.DeleteByUUID(context.Background(), tc.idArg)
@@ -473,7 +473,7 @@ func TestTokenService_Consume(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil, nil)
 
 			// Run test
 			err := tokenSvc.Consume(context.Background(), tc.tokenArg)
@@ -580,7 +580,7 @@ func TestTokenService_PreparePreSeededImage(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil, nil)
 			for _, image := range tc.existingImages {
 				tokenSvc.AddImage(image.imageUUID, image.tokenID, image.imageType, image.architecture, image.seedConfig, image.createdAt)
 			}
@@ -1074,7 +1074,7 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo, updateSvc, flasherAdapter)
+			tokenSvc := provisioning.NewTokenService(repo, updateSvc, nil, flasherAdapter)
 			for _, image := range tc.existingImages {
 				tokenSvc.AddImage(image.imageUUID, image.tokenID, image.imageType, image.architecture, image.seedConfig, image.createdAt)
 			}
@@ -1138,7 +1138,7 @@ func TestTokenService_GetTokenProviderConfig(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(nil, nil, flasher)
+			tokenSvc := provisioning.NewTokenService(nil, nil, nil, flasher)
 
 			// Run test
 			got, err := tokenSvc.GetTokenProviderConfig(t.Context(), uuidgen.FromPattern(t, "1"))
@@ -1197,7 +1197,7 @@ func TestTokenService_CreateTokenSeed(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil, nil)
 
 			// Run test
 			_, err := tokenSvc.CreateTokenSeed(t.Context(), tc.tokenSeed)
@@ -1253,7 +1253,7 @@ func TestTokenService_GetTokenSeedsAll(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil, nil)
 
 			// Run test
 			tokens, err := tokenSvc.GetTokenSeedAll(context.Background(), uuidgen.FromPattern(t, "1"))
@@ -1305,7 +1305,7 @@ func TestTokenService_GetTokenSeedAllNames(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil, nil)
 
 			// Run test
 			tokenIDs, err := tokenSvc.GetTokenSeedAllNames(context.Background(), tc.idArg)
@@ -1358,7 +1358,7 @@ func TestTokenService_GetTokenSeedByName(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil, nil)
 
 			// Run test
 			tokenSeed, err := tokenSvc.GetTokenSeedByName(t.Context(), tc.idArg, tc.nameArg)
@@ -1423,7 +1423,7 @@ func TestTokenService_UpdateTokenSeed(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil, nil)
 
 			// Run test
 			err := tokenSvc.UpdateTokenSeed(context.Background(), tc.token)
@@ -1469,7 +1469,7 @@ func TestTokenService_DeleteTokenSeedByUUID(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil, nil)
 
 			// Run test
 			err := tokenSvc.DeleteTokenSeedByName(context.Background(), tc.idArg, tc.nameArg)
@@ -1499,6 +1499,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 		imageTypeArg                          api.ImageType
 		architectureArg                       images.UpdateFileArchitecture
 		repoGetByUUIDErr                      error
+		repoGetTokenSeedByName                *provisioning.TokenSeed
 		repoGetTokenSeedByNameErr             error
 		updateSvcGetAllWithFilterUpdates      provisioning.Updates
 		updateSvcGetAllWithFilterErr          error
@@ -1506,14 +1507,48 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 		updateSvcGetUpdateAllFilesErr         error
 		updateSvcGetFileByFilenameReadCloser  io.ReadCloser
 		updateSvcGetFileByFilenameErr         error
+		channelSvcGetByNameErr                error
 		flasherAdapterGenerateSeededImageErr  error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name:            "success",
+			name:                   "success",
+			imageTypeArg:           api.ImageTypeISO,
+			architectureArg:        images.UpdateFileArchitecture64BitX86,
+			repoGetTokenSeedByName: &provisioning.TokenSeed{},
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID: updateUUID,
+				},
+			},
+			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
+				{
+					Filename:     isoGzFilename,
+					Type:         images.UpdateFileTypeImageISO,
+					Architecture: images.UpdateFileArchitecture64BitX86,
+				},
+			},
+			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
+				f, err := os.Open(isoGzFilename)
+				require.NoError(t, err)
+
+				return f
+			}(),
+
+			assertErr: require.NoError,
+		},
+		{
+			name:            "success - with update channel from seed",
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetTokenSeedByName: &provisioning.TokenSeed{
+				Seeds: provisioning.TokenImageSeedConfigs{
+					Update: map[string]any{
+						"channel": "production",
+					},
+				},
+			},
 			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -1565,7 +1600,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:                      "error - repo.GetByUUID",
+			name:                      "error - repo.GetTokenSeedByName",
 			imageTypeArg:              api.ImageTypeISO,
 			architectureArg:           images.UpdateFileArchitecture64BitX86,
 			repoGetTokenSeedByNameErr: boom.Error,
@@ -1576,6 +1611,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			name:                         "error - updateSvc.GetAll",
 			imageTypeArg:                 api.ImageTypeISO,
 			architectureArg:              images.UpdateFileArchitecture64BitX86,
+			repoGetTokenSeedByName:       &provisioning.TokenSeed{},
 			updateSvcGetAllWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -1584,6 +1620,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			name:                             "error - updateSvc.GetAll - no updates",
 			imageTypeArg:                     api.ImageTypeISO,
 			architectureArg:                  images.UpdateFileArchitecture64BitX86,
+			repoGetTokenSeedByName:           &provisioning.TokenSeed{},
 			updateSvcGetAllWithFilterUpdates: provisioning.Updates{},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -1591,9 +1628,10 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			},
 		},
 		{
-			name:            "error - updateSvc.GetUpdateAllFiles",
-			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: images.UpdateFileArchitecture64BitX86,
+			name:                   "error - updateSvc.GetUpdateAllFiles",
+			imageTypeArg:           api.ImageTypeISO,
+			architectureArg:        images.UpdateFileArchitecture64BitX86,
+			repoGetTokenSeedByName: &provisioning.TokenSeed{},
 			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -1604,9 +1642,10 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:            "error - updateSvc.GetUpdateAllFiles - no files",
-			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: images.UpdateFileArchitecture64BitX86,
+			name:                   "error - updateSvc.GetUpdateAllFiles - no files",
+			imageTypeArg:           api.ImageTypeISO,
+			architectureArg:        images.UpdateFileArchitecture64BitX86,
+			repoGetTokenSeedByName: &provisioning.TokenSeed{},
 			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -1619,9 +1658,10 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			},
 		},
 		{
-			name:            "error - updateSvc.GetUpdateByFilename",
-			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: images.UpdateFileArchitecture64BitX86,
+			name:                   "error - updateSvc.GetUpdateByFilename",
+			imageTypeArg:           api.ImageTypeISO,
+			architectureArg:        images.UpdateFileArchitecture64BitX86,
+			repoGetTokenSeedByName: &provisioning.TokenSeed{},
 			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -1639,9 +1679,10 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:            "error - updateSvc.GetUpdateByFilename not *os.File",
-			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: images.UpdateFileArchitecture64BitX86,
+			name:                   "error - updateSvc.GetUpdateByFilename not *os.File",
+			imageTypeArg:           api.ImageTypeISO,
+			architectureArg:        images.UpdateFileArchitecture64BitX86,
+			repoGetTokenSeedByName: &provisioning.TokenSeed{},
 			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -1663,9 +1704,78 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			},
 		},
 		{
-			name:            "error - flasher.GenerateSeededImage",
+			name:            "error - update channel invalid",
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetTokenSeedByName: &provisioning.TokenSeed{
+				Seeds: provisioning.TokenImageSeedConfigs{
+					Update: map[string]any{
+						"channel": 0, // invalid, not a string
+					},
+				},
+			},
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID: updateUUID,
+				},
+			},
+			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
+				{
+					Filename:     isoGzFilename,
+					Type:         images.UpdateFileTypeImageISO,
+					Architecture: images.UpdateFileArchitecture64BitX86,
+				},
+			},
+			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
+				f, err := os.Open(isoGzFilename)
+				require.NoError(t, err)
+
+				return f
+			}(),
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name:            "error - update channel not found",
+			imageTypeArg:    api.ImageTypeISO,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetTokenSeedByName: &provisioning.TokenSeed{
+				Seeds: provisioning.TokenImageSeedConfigs{
+					Update: map[string]any{
+						"channel": "not found",
+					},
+				},
+			},
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID: updateUUID,
+				},
+			},
+			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
+				{
+					Filename:     isoGzFilename,
+					Type:         images.UpdateFileTypeImageISO,
+					Architecture: images.UpdateFileArchitecture64BitX86,
+				},
+			},
+			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
+				f, err := os.Open(isoGzFilename)
+				require.NoError(t, err)
+
+				return f
+			}(),
+			channelSvcGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                   "error - flasher.GenerateSeededImage",
+			imageTypeArg:           api.ImageTypeISO,
+			architectureArg:        images.UpdateFileArchitecture64BitX86,
+			repoGetTokenSeedByName: &provisioning.TokenSeed{},
 			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -1698,7 +1808,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 					return nil, tc.repoGetByUUIDErr
 				},
 				GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
-					return &provisioning.TokenSeed{}, tc.repoGetTokenSeedByNameErr
+					return tc.repoGetTokenSeedByName, tc.repoGetTokenSeedByNameErr
 				},
 			}
 
@@ -1714,13 +1824,19 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 				},
 			}
 
+			channelSvc := &svcMock.ChannelServiceMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
+					return nil, tc.channelSvcGetByNameErr
+				},
+			}
+
 			flasherAdapter := &adapterMock.FlasherPortMock{
 				GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
 					return rc, tc.flasherAdapterGenerateSeededImageErr
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo, updateSvc, flasherAdapter)
+			tokenSvc := provisioning.NewTokenService(repo, updateSvc, channelSvc, flasherAdapter)
 
 			// Run test
 			rc, err := tokenSvc.GetTokenImageFromTokenSeed(context.Background(), uuidgen.FromPattern(t, "1"), "config", tc.imageTypeArg, tc.architectureArg)

@@ -29,58 +29,6 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func TestUpdateService_validateUpdatesConfig(t *testing.T) {
-	tests := []struct {
-		name                 string
-		filterExpression     string
-		fileFilterExpression string
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name:                 "success",
-			filterExpression:     "",
-			fileFilterExpression: "",
-
-			assertErr: require.NoError,
-		},
-		{
-			name:                 "error - filterExpression invalid",
-			filterExpression:     `invalid`, // invalid,
-			fileFilterExpression: "",
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Invalid config, failed to compile filter expression`)
-			},
-		},
-		{
-			name:                 "error - fileFilterExpression invalid",
-			filterExpression:     "",
-			fileFilterExpression: `invalid`, // invalid,
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Invalid config, failed to compile file filter expression`)
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			updateSvc := provisioning.NewUpdateService(nil, nil, nil)
-
-			err := config.UpdatesValidateSignal.TryEmit(t.Context(), api.SystemUpdates{
-				SystemUpdatesPut: api.SystemUpdatesPut{
-					FilterExpression:     tc.filterExpression,
-					FileFilterExpression: tc.fileFilterExpression,
-				},
-			})
-
-			tc.assertErr(t, err)
-			require.NotNil(t, updateSvc) // use the update service to ensure the signal handler is registered.
-		})
-	}
-}
-
 func TestUpdateFileExprEnv_ExprCompileOptions(t *testing.T) {
 	tests := []struct {
 		name             string

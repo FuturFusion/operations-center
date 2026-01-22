@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -17,9 +18,10 @@ import (
 )
 
 type tokenService struct {
-	repo      TokenRepo
-	updateSvc UpdateService
-	flasher   FlasherPort
+	repo       TokenRepo
+	updateSvc  UpdateService
+	channelSvc ChannelService
+	flasher    FlasherPort
 
 	randomUUID func() (uuid.UUID, error)
 
@@ -30,10 +32,11 @@ var _ TokenService = &tokenService{}
 
 type TokenServiceOption func(s *tokenService)
 
-func NewTokenService(repo TokenRepo, updateSvc UpdateService, flasher FlasherPort, opts ...TokenServiceOption) *tokenService {
+func NewTokenService(repo TokenRepo, updateSvc UpdateService, channelSvc ChannelService, flasher FlasherPort, opts ...TokenServiceOption) *tokenService {
 	tokenSvc := &tokenService{
 		repo:       repo,
 		updateSvc:  updateSvc,
+		channelSvc: channelSvc,
 		flasher:    flasher,
 		randomUUID: uuid.NewRandom,
 		images:     map[uuid.UUID]imageRecord{},
@@ -346,10 +349,42 @@ func (s tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageTy
 	seeds.Incus["apply_defaults"] = false
 	seeds.Incus["version"] = "1"
 
+	// Enforce update control through Operations Center.
+	if seeds.Update == nil {
+		seeds.Update = map[string]any{}
+	}
+
+	seeds.Update["version"] = "1"
+	seeds.Update["auto_reboot"] = false
+	seeds.Update["check_frequency"] = "never"
+	seeds.Update["channel"], err = s.ensureChannelName(ctx, seeds.Update)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to validate update channel from seed config: %w", err)
+	}
+
 	rc, err := s.flasher.GenerateSeededImage(ctx, id, seeds, file)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to generate seeded image: %w", err)
 	}
 
 	return rc, nil
+}
+
+func (s tokenService) ensureChannelName(ctx context.Context, update map[string]any) (string, error) {
+	anyChannel, ok := update["channel"]
+	if !ok {
+		return config.GetUpdates().ServerDefaultChannel, nil
+	}
+
+	channel, ok := anyChannel.(string)
+	if !ok {
+		return "", domain.NewValidationErrf(`Invalid type for update channel, "string" expected`)
+	}
+
+	_, err := s.channelSvc.GetByName(ctx, channel)
+	if err != nil {
+		return "", err
+	}
+
+	return channel, nil
 }

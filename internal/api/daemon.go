@@ -189,7 +189,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	channelSvc := d.setupChannelService(dbWithTransaction, updateSvc)
 
-	tokenSvc := d.setupTokenService(dbWithTransaction, updateSvc)
+	tokenSvc := d.setupTokenService(dbWithTransaction, updateSvc, channelSvc)
 	serverSvc := d.setupServerService(dbWithTransaction, tokenSvc, nil, channelSvc)
 	clusterSvc, err := d.setupClusterService(dbWithTransaction, serverSvc, tokenSvc)
 	if err != nil {
@@ -465,7 +465,7 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 	), nil
 }
 
-func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.UpdateService) provisioning.TokenService {
+func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.UpdateService, channelSvc provisioning.ChannelService) provisioning.TokenService {
 	imageFlasher := flasher.New(
 		config.GetNetwork().OperationsCenterAddress,
 		d.serverCertificate,
@@ -486,6 +486,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 				slog.Default(),
 			),
 			updateSvc,
+			channelSvc,
 			imageFlasher,
 		),
 		slog.Default(),
