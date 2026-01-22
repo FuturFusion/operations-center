@@ -17,6 +17,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
+	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -40,6 +41,7 @@ func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service 
 	router.HandleFunc("POST /{$}", response.With(handler.updatesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
 	router.HandleFunc("DELETE /{$}", response.With(handler.updatesDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /:refresh", response.With(handler.updatesRefreshPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
+	router.HandleFunc("PUT /{uuid}", response.With(handler.updatePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/provisioning/updates updates updates_get
@@ -177,14 +179,15 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 		result := make([]api.Update, 0, len(updates))
 		for _, update := range updates {
 			result = append(result, api.Update{
-				UUID:        update.UUID,
-				Version:     update.Version,
-				PublishedAt: update.PublishedAt,
-				Severity:    update.Severity,
-				Origin:      update.Origin,
-				URL:         update.URL,
-				// Return UpstreamChannels until the updated channel functionality is completed.
-				Channels:         update.UpstreamChannels,
+				UpdatePut: api.UpdatePut{
+					Channels: update.Channels,
+				},
+				UUID:             update.UUID,
+				Version:          update.Version,
+				PublishedAt:      update.PublishedAt,
+				Severity:         update.Severity,
+				Origin:           update.Origin,
+				URL:              update.URL,
 				UpstreamChannels: update.UpstreamChannels,
 				Changelog:        update.Changelog,
 				Status:           update.Status,
@@ -394,20 +397,99 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 	return response.SyncResponseETag(
 		true,
 		api.Update{
-			UUID:        update.UUID,
-			Version:     update.Version,
-			PublishedAt: update.PublishedAt,
-			Severity:    update.Severity,
-			Origin:      update.Origin,
-			URL:         update.URL,
-			// Return UpstreamChannels until the updated channel functionality is completed.
-			Channels:         update.UpstreamChannels,
+			UpdatePut: api.UpdatePut{
+				Channels: update.Channels,
+			},
+			UUID:             update.UUID,
+			Version:          update.Version,
+			PublishedAt:      update.PublishedAt,
+			Severity:         update.Severity,
+			Origin:           update.Origin,
+			URL:              update.URL,
 			UpstreamChannels: update.UpstreamChannels,
 			Changelog:        update.Changelog,
 			Status:           update.Status,
 		},
 		update,
 	)
+}
+
+// swagger:operation PUT /1.0/provisioning/updates/{uuid} updates update_put
+//
+//	Update an update
+//
+//	Updates the definition of an update.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: update
+//	    description: Update definition
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/UpdatePut"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (u *updateHandler) updatePut(r *http.Request) response.Response {
+	UUIDString := r.PathValue("uuid")
+
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	var update api.UpdatePut
+
+	err = json.NewDecoder(r.Body).Decode(&update)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	ctx, trans := transaction.Begin(r.Context())
+	defer func() {
+		rollbackErr := trans.Rollback()
+		if rollbackErr != nil {
+			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+		}
+	}()
+
+	currentUpdate, err := u.service.GetByUUID(ctx, UUID)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to get update %q: %w", UUID.String(), err))
+	}
+
+	// Validate ETag
+	err = response.EtagCheck(r, currentUpdate)
+	if err != nil {
+		return response.PreconditionFailed(err)
+	}
+
+	currentUpdate.Channels = update.Channels
+
+	err = u.service.Update(ctx, *currentUpdate)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed updating update %q: %w", UUID.String(), err))
+	}
+
+	err = trans.Commit()
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
+	}
+
+	return response.EmptySyncResponse
 }
 
 // swagger:operation GET /1.0/provisioning/updates/{uuid}/changelog updates update_changelog_get
