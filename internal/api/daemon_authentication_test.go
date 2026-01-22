@@ -738,7 +738,7 @@ func TestAuthentication(t *testing.T) {
 			require.NoError(t, err)
 			defer resp.Body.Close()
 
-			require.Equal(t, tc.wantStatusCode, resp.StatusCode)
+			require.Equal(t, tc.wantStatusCode, resp.StatusCode, readBody(t, resp.Body))
 		})
 	}
 }
@@ -876,4 +876,13 @@ func setupTokenAndSeeds(t *testing.T, varDir string) string {
 	require.NoError(t, err)
 
 	return tokenID
+}
+
+func readBody(t *testing.T, r io.Reader) string {
+	t.Helper()
+
+	body, err := io.ReadAll(r)
+	require.NoError(t, err)
+
+	return string(body)
 }

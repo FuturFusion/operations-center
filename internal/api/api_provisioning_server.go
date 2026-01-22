@@ -469,9 +469,18 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 	}
 
 	currentServer.PublicConnectionURL = server.PublicConnectionURL
-	currentServer.Channel = server.Channel
 
-	err = s.service.Update(ctx, *currentServer)
+	// Only allow changing of Channel, if server is not clustered. Otherwise
+	// the change of the channel needs to happen through the cluster.
+	var updateServer bool
+	if currentServer.Cluster != nil {
+		currentServer.Channel = server.Channel
+		// Only trigger update of server, when the channel, the server is following,
+		// has changed.
+		updateServer = currentServer.Channel != server.Channel
+	}
+
+	err = s.service.Update(ctx, *currentServer, updateServer)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating server %q: %w", name, err))
 	}
