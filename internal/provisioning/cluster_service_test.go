@@ -56,7 +56,6 @@ func TestClusterService_Create(t *testing.T) {
 		clientGetOSDataErr                                error
 		serverSvcGetByName                                []queue.Item[*provisioning.Server]
 		serverSvcUpdateErr                                error
-		serverSvcUpdateSystemUpdateErr                    error
 		provisionerApplyErr                               error
 		provisionerInitErr                                error
 		inventorySyncerSyncClusterErr                     error
@@ -712,49 +711,6 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - serverSvc.UpdateSystemUpdate",
-			cluster: provisioning.Cluster{
-				Name:        "one",
-				ServerType:  api.ServerTypeIncus,
-				ServerNames: []string{"server1", "server2"},
-			},
-			serverSvcGetByName: []queue.Item[*provisioning.Server]{
-				{
-					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
-					},
-				},
-			},
-			clientSetServerConfig: []queue.Item[struct{}]{
-				{}, // Server 1
-				{}, // Server 2
-			},
-			clientEnableClusterCertificate: "certificate",
-			serverSvcUpdateSystemUpdateErr: boom.Error,
-
-			assertErr:     boom.ErrorIs,
-			signalHandler: requireNoCallSignalHandler,
-		},
-		{
 			name: "error - client.GetOSData",
 			cluster: provisioning.Cluster{
 				Name:        "one",
@@ -1025,11 +981,8 @@ func TestClusterService_Create(t *testing.T) {
 					server, err := queue.Pop(t, &tc.serverSvcGetByName)
 					return server, err
 				},
-				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+				UpdateFunc: func(ctx context.Context, server provisioning.Server, updateSystem bool) error {
 					return tc.serverSvcUpdateErr
-				},
-				UpdateSystemUpdateFunc: func(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) error {
-					return tc.serverSvcUpdateSystemUpdateErr
 				},
 			}
 
