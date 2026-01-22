@@ -337,7 +337,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 
 		// Update Server records in the repo.
 		for _, server := range servers {
-			err = s.serverSvc.Update(ctx, server)
+			err = s.serverSvc.Update(ctx, server, true)
 			if err != nil {
 				return err
 			}
@@ -347,20 +347,6 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 	})
 	if err != nil {
 		return newCluster, err
-	}
-
-	// Push update channel to all servers.
-	for _, server := range servers {
-		err = s.serverSvc.UpdateSystemUpdate(ctx, server.Name, ServerSystemUpdate{
-			Config: incusosapi.SystemUpdateConfig{
-				AutoReboot:     false,
-				Channel:        server.Channel,
-				CheckFrequency: "never",
-			},
-		})
-		if err != nil {
-			return newCluster, err
-		}
 	}
 
 	// Refresh OS Data, required for the detection of the network interface for
