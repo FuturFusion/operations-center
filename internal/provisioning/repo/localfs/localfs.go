@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -198,7 +199,7 @@ func (l localfs) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (
 	}
 
 	// Read Changelog.
-	updateManifest, err := readUpdateJSONAndChangelog(verifiedUpdateJSONBody, tmpDir, extractedFiles)
+	updateManifest, err := readUpdateJSONAndChangelog(verifiedUpdateJSONBody, extractedFiles)
 	if err != nil {
 		return nil, err
 	}
@@ -258,6 +259,20 @@ func extractTar(tarReader *tar.Reader, destDir string) (extractedFiles map[strin
 
 		err = func() error {
 			targetFile := filepath.Join(destDir, hdr.Name)
+
+			if !slices.Contains([]byte{tar.TypeReg, tar.TypeDir}, hdr.Typeflag) {
+				return fmt.Errorf("Unsupported type for file %q", targetFile)
+			}
+
+			if hdr.Typeflag == tar.TypeDir {
+				err = os.Mkdir(targetFile, 0o755)
+				if err != nil {
+					return fmt.Errorf("Failed to create target directory %q: %w", targetFile, err)
+				}
+
+				return nil
+			}
+
 			f, err := os.Create(targetFile)
 			if err != nil {
 				return fmt.Errorf("Failed to create target file %q: %w", targetFile, err)
@@ -274,19 +289,19 @@ func extractTar(tarReader *tar.Reader, destDir string) (extractedFiles map[strin
 				return fmt.Errorf("Size missmatch for %q, wrote %d, expected %d bytes", hdr.Name, n, hdr.Size)
 			}
 
+			extractedFiles[hdr.Name] = struct{}{}
+
 			return nil
 		}()
 		if err != nil {
 			return nil, err
 		}
-
-		extractedFiles[hdr.Name] = struct{}{}
 	}
 
 	return extractedFiles, nil
 }
 
-func readUpdateJSONAndChangelog(updateJSONBody []byte, destDir string, extractedFiles map[string]struct{}) (*provisioning.Update, error) {
+func readUpdateJSONAndChangelog(updateJSONBody []byte, extractedFiles map[string]struct{}) (*provisioning.Update, error) {
 	updateManifest := &provisioning.Update{
 		Status: api.UpdateStatusUnknown,
 	}
@@ -309,6 +324,12 @@ func readUpdateJSONAndChangelog(updateJSONBody []byte, destDir string, extracted
 			continue
 		}
 
+		// Handle partial uploads.
+		_, ok = extractedFiles[fileEntry.Filename]
+		if !ok {
+			continue
+		}
+
 		files = append(files, fileEntry)
 	}
 
@@ -316,14 +337,6 @@ func readUpdateJSONAndChangelog(updateJSONBody []byte, destDir string, extracted
 
 	delete(extractedFiles, "update.sjson")
 	delete(extractedFiles, "update.json")
-
-	body, err := os.ReadFile(filepath.Join(destDir, "changelog.txt"))
-	if err != nil {
-		return nil, fmt.Errorf(`Invalid archive, unable to read "changelog.txt": %w`, err)
-	}
-
-	updateManifest.Changelog = string(body)
-	delete(extractedFiles, "changelog.txt")
 
 	return updateManifest, nil
 }
@@ -335,6 +348,10 @@ func verifyUpdateFiles(ctx context.Context, destDir string, updateManifest *prov
 		err = func() error {
 			f, err := os.Open(filepath.Join(destDir, updateFile.Filename))
 			if err != nil {
+				if errors.Is(err, os.ErrNotExist) {
+					return nil
+				}
+
 				return fmt.Errorf("Invalid archive, failed to open file %q mentioned in manifest: %w", updateFile.Filename, err)
 			}
 
@@ -369,13 +386,12 @@ func verifyUpdateFiles(ctx context.Context, destDir string, updateManifest *prov
 		delete(extractedFiles, updateFile.Filename)
 	}
 
-	if len(extractedFiles) > 0 {
-		files := make([]string, 0, len(extractedFiles))
-		for extractedFile := range extractedFiles {
-			files = append(files, extractedFile)
+	// Delete any extra file.
+	for entry := range extractedFiles {
+		err = os.Remove(filepath.Join(destDir, entry))
+		if err != nil {
+			return fmt.Errorf("Failed to delete extra file %q: %w", entry, err)
 		}
-
-		return fmt.Errorf("Invalid archive, files not mentioned in the manifest found: %s", strings.Join(files, ", "))
 	}
 
 	return nil
