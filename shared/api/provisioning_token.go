@@ -114,6 +114,10 @@ type TokenImagePost struct {
 	// for.
 	Architecture images.UpdateFileArchitecture `json:"architecture" yaml:"architecture"`
 
+	// Channel where the most recent software update is taken from to generate the
+	// installation image.
+	Channel string `json:"channel" yaml:"channel"`
+
 	// Seeds represents the seed configuration for e.g. applications.yaml,
 	// install.yaml and network.yaml.
 	Seeds TokenSeedConfigs `json:"seeds" yaml:"seeds"`
