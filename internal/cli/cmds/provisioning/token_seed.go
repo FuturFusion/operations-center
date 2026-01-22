@@ -439,6 +439,7 @@ type cmdTokenSeedGetImage struct {
 
 	flagImageType    string
 	flagArchitecture string
+	flagChannel      string
 }
 
 func (c *cmdTokenSeedGetImage) Command() *cobra.Command {
@@ -451,6 +452,7 @@ func (c *cmdTokenSeedGetImage) Command() *cobra.Command {
 
 	cmd.Flags().StringVar(&c.flagImageType, "type", "iso", "type of image (iso|raw)")
 	cmd.Flags().StringVar(&c.flagArchitecture, "architecture", "x86_64", "CPU architecture for the image (x86_64|aarch64)")
+	cmd.Flags().StringVar(&c.flagChannel, "channel", "", "Channel, the most recent update should be taken from to generate the image")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -517,7 +519,7 @@ func (c *cmdTokenSeedGetImage) run(cmd *cobra.Command, args []string) (err error
 		err = errors.Join(err, closeErr, removeErr)
 	}()
 
-	imageReader, err := c.ocClient.GetTokenImageFromSeed(cmd.Context(), id, name, imageType, architecture)
+	imageReader, err := c.ocClient.GetTokenImageFromSeed(cmd.Context(), id, name, imageType, architecture, c.flagChannel)
 	if err != nil {
 		return err
 	}
