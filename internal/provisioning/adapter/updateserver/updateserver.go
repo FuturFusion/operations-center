@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
@@ -43,8 +44,19 @@ func New(baseURL string, signatureVerificationRootCA string) *updateServer {
 }
 
 type UpdatesIndex struct {
-	Format  string                `json:"format"`
-	Updates []provisioning.Update `json:"updates"`
+	Format  string   `json:"format"`
+	Updates []Update `json:"updates"`
+}
+
+type Update struct {
+	Format      string                              `json:"format"`
+	Channels    provisioning.UpdateUpstreamChannels `json:"channels"`
+	Files       provisioning.UpdateFiles            `json:"files"`
+	Origin      string                              `json:"origin"`
+	PublishedAt time.Time                           `json:"published_at"`
+	Severity    images.UpdateSeverity               `json:"severity"`
+	Version     string                              `json:"version"`
+	URL         string                              `json:"url"`
 }
 
 func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Updates, error) {
@@ -90,13 +102,23 @@ func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Up
 	}
 
 	updatesList := make([]provisioning.Update, 0, len(updates.Updates))
-	for _, update := range updates.Updates {
-		update.Status = api.UpdateStatusUnknown
-		update.UUID = uuidFromUpdateServer(update)
+	for _, indexUpdate := range updates.Updates {
+		update := provisioning.Update{
+			Format:      indexUpdate.Format,
+			Origin:      indexUpdate.Origin,
+			PublishedAt: indexUpdate.PublishedAt,
+			Severity:    indexUpdate.Severity,
+			Version:     indexUpdate.Version,
+			URL:         indexUpdate.URL,
+
+			UpstreamChannels: indexUpdate.Channels,
+			Status:           api.UpdateStatusUnknown,
+			UUID:             uuidFromUpdateServer(indexUpdate),
+		}
 
 		// Process files from update, same logic as in localfs.readUpdateJSONAndChangelog.
-		files := make(provisioning.UpdateFiles, 0, len(update.Files))
-		for _, file := range update.Files {
+		files := make(provisioning.UpdateFiles, 0, len(indexUpdate.Files))
+		for _, file := range indexUpdate.Files {
 			_, ok := images.UpdateFileComponents[file.Component]
 			if !ok {
 				// Skip unknown file components.
@@ -121,8 +143,8 @@ func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Up
 
 const idSeparator = ":"
 
-func uuidFromUpdateServer(update provisioning.Update) uuid.UUID {
-	upstreamChannels := update.UpstreamChannels
+func uuidFromUpdateServer(update Update) uuid.UUID {
+	upstreamChannels := update.Channels
 	sort.Strings(upstreamChannels)
 
 	identifier := strings.Join([]string{
