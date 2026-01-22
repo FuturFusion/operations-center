@@ -60,6 +60,15 @@ func (c OperationsCenterClient) CreateUpdate(ctx context.Context, updateStream i
 	return nil
 }
 
+func (c OperationsCenterClient) UpdateUpdate(ctx context.Context, id string, update api.UpdatePut) error {
+	_, err := c.doRequest(ctx, http.MethodPut, path.Join("/provisioning/updates", id), nil, update)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) GetUpdateFiles(ctx context.Context, id string) ([]api.UpdateFile, error) {
 	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/updates", id, "files"), nil, nil)
 	if err != nil {
