@@ -357,6 +357,41 @@ func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, id 
 	return _d._base.GetUpdateFileByFilename(ctx, id, filename)
 }
 
+// GetUpdatesByAssignedChannelName implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) GetUpdatesByAssignedChannelName(ctx context.Context, channelName string) (updates provisioning.Updates, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("channelName", channelName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetUpdatesByAssignedChannelName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("updates", updates),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetUpdatesByAssignedChannelName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetUpdatesByAssignedChannelName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetUpdatesByAssignedChannelName finished")
+		}
+	}()
+	return _d._base.GetUpdatesByAssignedChannelName(ctx, channelName)
+}
+
 // Prune implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) Prune(ctx context.Context) (err error) {
 	log := _d._log.With()

@@ -14,6 +14,7 @@ type UpdateService interface {
 	GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error)
 	GetAllUUIDsWithFilter(ctx context.Context, filter UpdateFilter) ([]uuid.UUID, error)
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Update, error)
+	GetUpdatesByAssignedChannelName(ctx context.Context, channelName string) (Updates, error)
 
 	// Files
 	GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (UpdateFiles, error)
@@ -33,6 +34,7 @@ type UpdateRepo interface {
 	GetAllUUIDsWithFilter(ctx context.Context, filter UpdateFilter) ([]uuid.UUID, error)
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Update, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
+	GetUpdatesByAssignedChannelName(ctx context.Context, name string) (Updates, error)
 }
 
 type (

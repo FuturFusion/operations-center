@@ -249,6 +249,41 @@ func (_d UpdateRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (updat
 	return _d._base.GetByUUID(ctx, id)
 }
 
+// GetUpdatesByAssignedChannelName implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithSlog) GetUpdatesByAssignedChannelName(ctx context.Context, name string) (updates provisioning.Updates, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetUpdatesByAssignedChannelName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("updates", updates),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetUpdatesByAssignedChannelName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetUpdatesByAssignedChannelName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetUpdatesByAssignedChannelName finished")
+		}
+	}()
+	return _d._base.GetUpdatesByAssignedChannelName(ctx, name)
+}
+
 // Upsert implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithSlog) Upsert(ctx context.Context, update provisioning.Update) (err error) {
 	log := _d._log.With()

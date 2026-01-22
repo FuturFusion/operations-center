@@ -18,6 +18,52 @@ definitions:
         title: ApplicationVersionData defines a single version information for an application.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    Channel:
+        properties:
+            description:
+                description: Description of the channel.
+                example: stable channel, used for production.
+                type: string
+                x-go-name: Description
+            last_updated:
+                description: LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
+                example: "2024-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: LastUpdated
+            name:
+                description: Name of the channel.
+                example: stable
+                type: string
+                x-go-name: Name
+        title: Channel defines a channel.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ChannelPost:
+        properties:
+            description:
+                description: Description of the channel.
+                example: stable channel, used for production.
+                type: string
+                x-go-name: Description
+            name:
+                description: Name of the channel.
+                example: stable
+                type: string
+                x-go-name: Name
+        title: ChannelPost represents the fields available when creating a channel.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ChannelPut:
+        properties:
+            description:
+                description: Description of the channel.
+                example: stable channel, used for production.
+                type: string
+                x-go-name: Description
+        title: ChannelPut represents the fields available for update for a channel.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     Cluster:
         properties:
             certificate:
@@ -6194,6 +6240,190 @@ paths:
             summary: Get the storage volumes
             tags:
                 - storage_volumes
+    /1.0/provisioning/channels:
+        get:
+            description: Returns a list of channels for updates (URLs).
+            operationId: channels_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API channels
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of channels
+                                example: |-
+                                    [
+                                      "/1.0/provisioning/channels/one",
+                                      "/1.0/provisioning/channels/two"
+                                    ]
+                                items:
+                                    type: string
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the channels
+            tags:
+                - channels
+        post:
+            consumes:
+                - application/json
+            description: Creates a new channel for updates.
+            operationId: channels_post
+            parameters:
+                - description: Channel configuration
+                  in: body
+                  name: channel
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ChannelPost'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Add an channel
+            tags:
+                - channels
+    /1.0/provisioning/channels/{name}:
+        delete:
+            description: Removes the channel.
+            operationId: channel_delete
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Delete the channel
+            tags:
+                - channels
+        get:
+            description: Gets a specific channel for updates.
+            operationId: channel_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Channel
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/Channel'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the channel
+            tags:
+                - channels
+        put:
+            consumes:
+                - application/json
+            description: Updates the channel definition.
+            operationId: channel_put
+            parameters:
+                - description: Channel definition
+                  in: body
+                  name: channel
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ChannelPut'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update the channel
+            tags:
+                - channels
+    /1.0/provisioning/channels?recursion=1:
+        get:
+            description: Returns a list of channels for updates (structs).
+            operationId: channels_get_recursion
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API channels
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of channels
+                                items:
+                                    $ref: '#/definitions/Channel'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the channels
+            tags:
+                - channels
     /1.0/provisioning/cluster-templates:
         get:
             description: Returns a list of cluster config templates (URLs).
@@ -7329,6 +7559,68 @@ paths:
             summary: Update server storage configuration
             tags:
                 - servers_system_storage
+    /1.0/provisioning/servers/{name}/system/update:
+        get:
+            description: Gets the update configuration of a specific server.
+            operationId: server_system_update_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Server update
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/ServerSystemUpdateConfig'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get server update configuration
+            tags:
+                - servers_system_update
+        put:
+            consumes:
+                - application/json
+            description: Updates the update configuration of a specific server.
+            operationId: server_system_update_put
+            parameters:
+                - description: Server update configuration
+                  in: body
+                  name: server update configuration
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ServerSystemUpdateConfig'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update server update configuration
+            tags:
+                - servers_system_update
     /1.0/provisioning/servers?recursion=1:
         get:
             description: Returns a list of servers (structs).

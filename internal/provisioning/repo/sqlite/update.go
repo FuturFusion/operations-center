@@ -71,3 +71,7 @@ func (u update) GetByUUID(ctx context.Context, id uuid.UUID) (*provisioning.Upda
 func (u update) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return entities.DeleteUpdate(ctx, transaction.GetDBTX(ctx, u.db), id)
 }
+
+func (u update) GetUpdatesByAssignedChannelName(ctx context.Context, name string) (provisioning.Updates, error) {
+	return entities.GetUpdatesByAssignedChannelName(ctx, transaction.GetDBTX(ctx, u.db), name)
+}

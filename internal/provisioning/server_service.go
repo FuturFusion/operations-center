@@ -30,6 +30,7 @@ type serverService struct {
 	client     ServerClientPort
 	tokenSvc   TokenService
 	clusterSvc ClusterService
+	channelSvc ChannelService
 
 	httpClient *http.Client
 
@@ -80,12 +81,13 @@ func (s *serverService) UpdateServerCertificate(ctx context.Context, serverCerti
 	return s.SelfRegisterOperationsCenter(ctx)
 }
 
-func NewServerService(repo ServerRepo, client ServerClientPort, tokenSvc TokenService, clusterSvc ClusterService, serverConnectionURL string, serverCertificate tls.Certificate, opts ...ServerServiceOption) *serverService {
+func NewServerService(repo ServerRepo, client ServerClientPort, tokenSvc TokenService, clusterSvc ClusterService, channelSvc ChannelService, serverConnectionURL string, serverCertificate tls.Certificate, opts ...ServerServiceOption) *serverService {
 	serverSvc := &serverService{
 		repo:       repo,
 		client:     client,
 		tokenSvc:   tokenSvc,
 		clusterSvc: clusterSvc,
+		channelSvc: channelSvc,
 		httpClient: &http.Client{},
 
 		serverURL:         serverConnectionURL,
@@ -420,6 +422,52 @@ func (s *serverService) UpdateSystemProvider(ctx context.Context, name string, p
 	err = s.client.UpdateProviderConfig(ctx, *server, providerConfig)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (s *serverService) GetSystemUpdate(ctx context.Context, name string) (ServerSystemUpdate, error) {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return ServerSystemUpdate{}, fmt.Errorf("Failed to get server %q: %w", name, err)
+	}
+
+	updateConfig, err := s.client.GetUpdateConfig(ctx, *server)
+	if err != nil {
+		return ServerSystemUpdate{}, fmt.Errorf("Failed to get update config from %q: %w", server.Name, err)
+	}
+
+	return updateConfig, nil
+}
+
+func (s *serverService) UpdateSystemUpdate(ctx context.Context, name string, updateConfig ServerSystemUpdate) error {
+	_, err := s.channelSvc.GetByName(ctx, updateConfig.Config.Channel)
+	if err != nil {
+		return fmt.Errorf("Failed to get channel %q: %w", name, err)
+	}
+
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q: %w", name, err)
+	}
+
+	currentServerSystemUpdate, err := s.client.GetUpdateConfig(ctx, *server)
+	if err != nil {
+		return fmt.Errorf("Failed to get the current update config from %q: %w", server.Name, err)
+	}
+
+	// For now, the only setting that we allow to be changed by the user is the Update Channel.
+	currentServerSystemUpdate.Config.Channel = updateConfig.Config.Channel
+
+	err = s.client.UpdateUpdateConfig(ctx, *server, currentServerSystemUpdate)
+	if err != nil {
+		return fmt.Errorf("Failed to update the update config for %q: %w", server.Name, err)
+	}
+
+	err = s.pollServer(ctx, *server, true)
+	if err != nil {
+		slog.WarnContext(ctx, "Server poll after changing the update configuration failed (non-critical), fixed by the next successful server poll interval", logger.Err(err), slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 	}
 
 	return nil
