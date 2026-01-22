@@ -60,6 +60,9 @@ var _ provisioning.UpdateService = &UpdateServiceMock{}
 //			RefreshFunc: func(ctx context.Context) error {
 //				panic("mock out the Refresh method")
 //			},
+//			UpdateFunc: func(ctx context.Context, update provisioning.Update) error {
+//				panic("mock out the Update method")
+//			},
 //		}
 //
 //		// use mockedUpdateService in code that requires provisioning.UpdateService
@@ -102,6 +105,9 @@ type UpdateServiceMock struct {
 
 	// RefreshFunc mocks the Refresh method.
 	RefreshFunc func(ctx context.Context) error
+
+	// UpdateFunc mocks the Update method.
+	UpdateFunc func(ctx context.Context, update provisioning.Update) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -181,6 +187,13 @@ type UpdateServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// Update holds details about calls to the Update method.
+		Update []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Update is the update argument value.
+			Update provisioning.Update
+		}
 	}
 	lockCleanupAll                      sync.RWMutex
 	lockCreateFromArchive               sync.RWMutex
@@ -194,6 +207,7 @@ type UpdateServiceMock struct {
 	lockGetUpdatesByAssignedChannelName sync.RWMutex
 	lockPrune                           sync.RWMutex
 	lockRefresh                         sync.RWMutex
+	lockUpdate                          sync.RWMutex
 }
 
 // CleanupAll calls CleanupAllFunc.
@@ -609,5 +623,41 @@ func (mock *UpdateServiceMock) RefreshCalls() []struct {
 	mock.lockRefresh.RLock()
 	calls = mock.calls.Refresh
 	mock.lockRefresh.RUnlock()
+	return calls
+}
+
+// Update calls UpdateFunc.
+func (mock *UpdateServiceMock) Update(ctx context.Context, update provisioning.Update) error {
+	if mock.UpdateFunc == nil {
+		panic("UpdateServiceMock.UpdateFunc: method is nil but UpdateService.Update was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Update provisioning.Update
+	}{
+		Ctx:    ctx,
+		Update: update,
+	}
+	mock.lockUpdate.Lock()
+	mock.calls.Update = append(mock.calls.Update, callInfo)
+	mock.lockUpdate.Unlock()
+	return mock.UpdateFunc(ctx, update)
+}
+
+// UpdateCalls gets all the calls that were made to Update.
+// Check the length with:
+//
+//	len(mockedUpdateService.UpdateCalls())
+func (mock *UpdateServiceMock) UpdateCalls() []struct {
+	Ctx    context.Context
+	Update provisioning.Update
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Update provisioning.Update
+	}
+	mock.lockUpdate.RLock()
+	calls = mock.calls.Update
+	mock.lockUpdate.RUnlock()
 	return calls
 }
