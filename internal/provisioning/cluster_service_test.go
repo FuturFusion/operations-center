@@ -15,7 +15,9 @@ import (
 	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
+	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
@@ -29,6 +31,8 @@ import (
 )
 
 func TestClusterService_Create(t *testing.T) {
+	config.InitTest(t, &envMock.EnvironmentMock{}, nil)
+
 	updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
 
 	tests := []struct {
@@ -52,6 +56,7 @@ func TestClusterService_Create(t *testing.T) {
 		clientGetOSDataErr                                error
 		serverSvcGetByName                                []queue.Item[*provisioning.Server]
 		serverSvcUpdateErr                                error
+		serverSvcUpdateSystemUpdateErr                    error
 		provisionerApplyErr                               error
 		provisionerInitErr                                error
 		inventorySyncerSyncClusterErr                     error
@@ -707,6 +712,49 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
+			name: "error - serverSvc.UpdateSystemUpdate",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+						Type: api.ServerTypeIncus,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+						Type: api.ServerTypeIncus,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+						Type: api.ServerTypeIncus,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+						Type: api.ServerTypeIncus,
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			serverSvcUpdateSystemUpdateErr: boom.Error,
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
 			name: "error - client.GetOSData",
 			cluster: provisioning.Cluster{
 				Name:        "one",
@@ -979,6 +1027,9 @@ func TestClusterService_Create(t *testing.T) {
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
 					return tc.serverSvcUpdateErr
+				},
+				UpdateSystemUpdateFunc: func(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) error {
+					return tc.serverSvcUpdateSystemUpdateErr
 				},
 			}
 
@@ -1475,9 +1526,12 @@ func TestClusterService_GetByName(t *testing.T) {
 
 func TestClusterService_Update(t *testing.T) {
 	tests := []struct {
-		name          string
-		cluster       provisioning.Cluster
-		repoUpdateErr error
+		name                              string
+		cluster                           provisioning.Cluster
+		repoUpdateErr                     error
+		serverSvcGetAllNamesWithFilter    []string
+		serverSvcGetAllNamesWithFilterErr error
+		serverSvcUpdateSystemUpdateErr    error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -1486,7 +1540,9 @@ func TestClusterService_Update(t *testing.T) {
 			cluster: provisioning.Cluster{
 				Name:          "one",
 				ConnectionURL: "http://one/",
+				Channel:       "stable",
 			},
+			serverSvcGetAllNamesWithFilter: []string{"one", "two"},
 
 			assertErr: require.NoError,
 		},
@@ -1495,6 +1551,7 @@ func TestClusterService_Update(t *testing.T) {
 			cluster: provisioning.Cluster{
 				Name:          "one",
 				ConnectionURL: ":|\\", // invalid
+				Channel:       "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -1508,8 +1565,34 @@ func TestClusterService_Update(t *testing.T) {
 				Name:          "one",
 				ServerNames:   []string{"server1", "server3"},
 				ConnectionURL: "http://one/",
+				Channel:       "stable",
 			},
 			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - serverSvc.GetAllNamesWithFilter",
+			cluster: provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server3"},
+				ConnectionURL: "http://one/",
+				Channel:       "stable",
+			},
+			serverSvcGetAllNamesWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - serverSvc.GetAllNamesWithFilter",
+			cluster: provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server3"},
+				ConnectionURL: "http://one/",
+				Channel:       "stable",
+			},
+			serverSvcGetAllNamesWithFilter: []string{"one", "two"},
+			serverSvcUpdateSystemUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -1524,7 +1607,16 @@ func TestClusterService_Update(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil)
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetAllNamesWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) ([]string, error) {
+					return tc.serverSvcGetAllNamesWithFilter, tc.serverSvcGetAllNamesWithFilterErr
+				},
+				UpdateSystemUpdateFunc: func(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) error {
+					return tc.serverSvcUpdateSystemUpdateErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
 
 			// Run test
 			err := clusterSvc.Update(context.Background(), tc.cluster)

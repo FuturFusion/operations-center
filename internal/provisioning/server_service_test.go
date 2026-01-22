@@ -20,7 +20,9 @@ import (
 	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
+	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
@@ -33,6 +35,8 @@ import (
 )
 
 func TestServerService_UpdateServerURL(t *testing.T) {
+	config.InitTest(t, &envMock.EnvironmentMock{}, nil)
+
 	serverCertPEM, serverKeyPEM, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
 
@@ -62,6 +66,7 @@ func TestServerService_UpdateServerURL(t *testing.T) {
 					Certificate:   string(serverCertPEM),
 					Type:          api.ServerTypeOperationsCenter,
 					Status:        api.ServerStatusReady,
+					Channel:       "stable",
 				},
 			},
 
@@ -111,6 +116,7 @@ func TestServerService_UpdateServerURL(t *testing.T) {
 					Certificate:   string(serverCertPEM),
 					Type:          api.ServerTypeOperationsCenter,
 					Status:        api.ServerStatusReady,
+					Channel:       "stable",
 				},
 			},
 
@@ -129,6 +135,7 @@ func TestServerService_UpdateServerURL(t *testing.T) {
 					Certificate:   string(serverCertPEM),
 					Type:          api.ServerTypeOperationsCenter,
 					Status:        api.ServerStatusReady,
+					Channel:       "stable",
 				},
 			},
 			repoUpdateErr: boom.Error,
@@ -188,6 +195,8 @@ func TestServerService_UpdateServerURL(t *testing.T) {
 }
 
 func TestServerService_UpdateCertificate(t *testing.T) {
+	config.InitTest(t, &envMock.EnvironmentMock{}, nil)
+
 	serverCertPEM, serverKeyPEM, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
 
@@ -217,6 +226,7 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 					Certificate:   string(serverCertPEM),
 					Type:          api.ServerTypeOperationsCenter,
 					Status:        api.ServerStatusReady,
+					Channel:       "stable",
 				},
 			},
 
@@ -267,6 +277,7 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 					Certificate:   string(serverCertPEM),
 					Type:          api.ServerTypeOperationsCenter,
 					Status:        api.ServerStatusReady,
+					Channel:       "stable",
 				},
 			},
 			repoUpdateErr: boom.Error,
@@ -326,6 +337,8 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 }
 
 func TestServerService_Create(t *testing.T) {
+	config.InitTest(t, &envMock.EnvironmentMock{}, nil)
+
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
@@ -368,7 +381,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -386,8 +400,9 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Type:   api.ServerTypeOperationsCenter,
-				Status: api.ServerStatusReady,
+				Type:    api.ServerTypeOperationsCenter,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -405,7 +420,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 			repoCreateErr: boom.Error,
 
@@ -421,7 +437,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 			repoUpdateErr: boom.Error,
 
@@ -915,7 +932,8 @@ func TestServerService_Update(t *testing.T) {
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 
 			assertErr: require.NoError,
@@ -931,7 +949,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -950,7 +969,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 			repoUpdateErr: boom.Error,
 
@@ -1010,7 +1030,8 @@ func TestServerService_UpdateSystemNetwork(t *testing.T) {
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -1042,7 +1063,8 @@ one
 		one
 		-----END CERTIFICATE-----
 		`,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -1072,7 +1094,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -1104,7 +1127,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -1135,7 +1159,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -1229,7 +1254,8 @@ func TestServerService_UpdateSystemStorage(t *testing.T) {
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -1261,7 +1287,8 @@ one
 		one
 		-----END CERTIFICATE-----
 		`,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -1291,7 +1318,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -1323,7 +1351,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -1354,7 +1383,8 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -1813,8 +1843,8 @@ one
 					return tc.clientGetUpdateConfig, tc.clientGetUpdateConfigErr
 				},
 				UpdateUpdateConfigFunc: func(ctx context.Context, server provisioning.Server, updateConfig provisioning.ServerSystemUpdate) error {
-					require.False(t, updateConfig.Config.AutoReboot)              // The change for autoreboot from the update call needs to be ignored.
-					require.NotEqual(t, "2h", updateConfig.Config.CheckFrequency) // The change for the check frequency from the update call needs to be ignored.
+					require.False(t, updateConfig.Config.AutoReboot)              // AutoReboot is forced to false.
+					require.Equal(t, "never", updateConfig.Config.CheckFrequency) // CheckFrequency is forced to "never".
 					return tc.clientUpdateUpdateConfigErr
 				},
 			}
@@ -1871,7 +1901,8 @@ func TestServerService_UpdateSystemNetworkWithSelfUpdateSignal(t *testing.T) {
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
@@ -1984,6 +2015,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				Certificate:   string(serverCertPEM),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 
 			assertErr: require.NoError,
@@ -2000,6 +2032,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 					Certificate:   string(serverCertPEM),
 					Type:          api.ServerTypeOperationsCenter,
 					Status:        api.ServerStatusReady,
+					Channel:       "stable",
 				},
 			},
 
@@ -2039,6 +2072,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				Certificate:   string(serverCertPEM),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -2058,6 +2092,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				Certificate:   string(serverCertPEM),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
+				Channel:       "stable",
 			},
 			repoUpdateErr: boom.Error,
 

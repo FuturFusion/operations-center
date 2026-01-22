@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"runtime"
 	"slices"
 	"sort"
 	"time"
@@ -70,7 +71,11 @@ func NewUpdateService(repo UpdateRepo, filesRepo UpdateFilesRepo, source UpdateS
 	// expression and the updates file filter expression.
 	// The way through signals is chosen here to prevent a dependency cycle
 	// between the config and the provisioning package.
-	config.UpdatesValidateSignal.AddListenerWithErr(service.validateUpdatesConfig)
+	listenerKey := uuid.New().String()
+	config.UpdatesValidateSignal.AddListenerWithErr(service.validateUpdatesConfig, listenerKey)
+	runtime.AddCleanup(service, func(listenerKey string) {
+		config.UpdatesValidateSignal.RemoveListener(listenerKey)
+	}, listenerKey)
 
 	return service
 }

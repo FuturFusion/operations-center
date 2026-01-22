@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"testing"
 
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
 
@@ -43,6 +44,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		HardwareData:  api.HardwareData{},
 		VersionData:   api.ServerVersionData{},
 		Status:        api.ServerStatusReady,
+		Channel:       "stable",
 	}
 
 	serverB := provisioning.Server{
@@ -54,6 +56,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		HardwareData:  api.HardwareData{},
 		VersionData:   api.ServerVersionData{},
 		Status:        api.ServerStatusReady,
+		Channel:       "stable",
 	}
 
 	localArtifactRepo := &repoMock.ClusterArtifactRepoMock{
@@ -62,7 +65,37 @@ func TestServerDatabaseActions(t *testing.T) {
 		},
 	}
 
-	client := &adapterMock.ClusterClientPortMock{
+	serverClient := &adapterMock.ServerClientPortMock{
+		GetUpdateConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemUpdate, error) {
+			return provisioning.ServerSystemUpdate{
+				Config: incusosapi.SystemUpdateConfig{
+					AutoReboot:     false,
+					Channel:        "stable",
+					CheckFrequency: "never",
+				},
+			}, nil
+		},
+		UpdateUpdateConfigFunc: func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemUpdate) error {
+			return nil
+		},
+		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+			return nil
+		},
+		GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
+			return api.HardwareData{}, nil
+		},
+		GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
+			return api.OSData{}, nil
+		},
+		GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+			return api.ServerVersionData{}, nil
+		},
+		GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
+			return api.ServerTypeIncus, nil
+		},
+	}
+
+	clusterClient := &adapterMock.ClusterClientPortMock{
 		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 			return nil
 		},
@@ -117,10 +150,12 @@ func TestServerDatabaseActions(t *testing.T) {
 	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
 
-	server := sqlite.NewServer(tx)
-	serverSvc := provisioning.NewServerService(server, nil, nil, nil, nil, "", tls.Certificate{})
+	cannelSvc := provisioning.NewChannelService(sqlite.NewChannel(db), nil)
 
-	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), localArtifactRepo, client, serverSvc, nil, nil, terraformProvisioner)
+	server := sqlite.NewServer(tx)
+	serverSvc := provisioning.NewServerService(server, serverClient, nil, nil, cannelSvc, "", tls.Certificate{})
+
+	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), localArtifactRepo, clusterClient, serverSvc, nil, nil, terraformProvisioner)
 
 	// Add server
 	_, err = server.Create(ctx, serverA)
@@ -200,6 +235,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		Name:        "one",
 		ServerNames: []string{"two-new"},
 		ServerType:  api.ServerTypeIncus,
+		Channel:     "stable",
 	})
 	require.NoError(t, err)
 

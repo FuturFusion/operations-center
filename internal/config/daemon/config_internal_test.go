@@ -229,6 +229,8 @@ func Test_validate(t *testing.T) {
 					SystemUpdatesPut: api.SystemUpdatesPut{
 						SignatureVerificationRootCA: signatureVerificationRootCA,
 						FilterExpression:            `invalid`, // invalid
+						UpdatesDefaultChannel:       "stable",
+						ServerDefaultChannel:        "stable",
 					},
 				},
 			},
@@ -398,6 +400,8 @@ func Test_validate(t *testing.T) {
 var defaultUpdates = api.SystemUpdates{
 	SystemUpdatesPut: api.SystemUpdatesPut{
 		SignatureVerificationRootCA: signatureVerificationRootCA,
+		UpdatesDefaultChannel:       "stable",
+		ServerDefaultChannel:        "stable",
 	},
 }
 

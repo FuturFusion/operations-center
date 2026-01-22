@@ -339,7 +339,7 @@ func TestAuthentication(t *testing.T) {
 			body: bytes.NewBufferString(`{
   "name": "serverA",
   "connection_url": "https://127.0.0.1:12345/",
-  "server_type": "incus"
+  "channel": "stable"
 }`),
 
 			wantStatusCode: http.StatusCreated,
@@ -361,7 +361,7 @@ func TestAuthentication(t *testing.T) {
 			body: bytes.NewBufferString(`{
   "name": "serverA",
   "connection_url": "https://127.0.0.1:12345/",
-  "server_type": "incus"
+  "channel": "stable"
 }`),
 
 			wantStatusCode: http.StatusBadRequest,
@@ -383,7 +383,7 @@ func TestAuthentication(t *testing.T) {
 			body: bytes.NewBufferString(`{
   "name": "serverA",
   "connection_url": "https://127.0.0.1:12345/",
-  "server_type": "incus"
+  "channel": "stable"
 }`),
 
 			wantStatusCode: http.StatusBadRequest,
@@ -405,7 +405,7 @@ func TestAuthentication(t *testing.T) {
 			body: bytes.NewBufferString(`{
   "name": "serverA",
   "connection_url": "https://127.0.0.1:12345/",
-  "server_type": "incus"
+  "channel": "stable"
 }`),
 
 			wantStatusCode: http.StatusForbidden,
@@ -430,8 +430,7 @@ func TestAuthentication(t *testing.T) {
 			body: bytes.NewBufferString(`{
   "name": "serverA",
   "connection_url": "https://viewer:12346/",
-  "server_type": "incus",
-  "server_status": "ready"
+  "channel": "stable"
 }`),
 
 			wantStatusCode: http.StatusForbidden,
@@ -455,8 +454,7 @@ func TestAuthentication(t *testing.T) {
 			body: bytes.NewBufferString(`{
   "name": "serverA",
   "connection_url": "https://operator:12346/",
-  "server_type": "incus",
-  "server_status": "ready"
+  "channel": "stable"
 }`),
 
 			wantStatusCode: http.StatusOK,
@@ -480,8 +478,7 @@ func TestAuthentication(t *testing.T) {
 			body: bytes.NewBufferString(`{
   "name": "serverA",
   "connection_url": "https://admin:12346/",
-  "server_type": "incus",
-  "server_status": "ready"
+  "channel": "stable"
 }`),
 
 			wantStatusCode: http.StatusOK,
