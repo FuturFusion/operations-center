@@ -34,12 +34,12 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 			statusCode: http.StatusOK,
 			updates: updateserver.UpdatesIndex{
 				Format: "1.0",
-				Updates: []provisioning.Update{
+				Updates: []updateserver.Update{
 					{
-						Version:          "1",
-						UpstreamChannels: []string{"stable", "daily"},
-						Severity:         images.UpdateSeverityNone,
-						PublishedAt:      time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
+						Version:     "1",
+						Channels:    []string{"stable", "daily"},
+						Severity:    images.UpdateSeverityNone,
+						PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
 					},
 				},
 			},
@@ -62,7 +62,7 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 			statusCode: http.StatusOK,
 			updates: updateserver.UpdatesIndex{
 				Format: "1.0",
-				Updates: []provisioning.Update{
+				Updates: []updateserver.Update{
 					{
 						Version:     "1",
 						Severity:    images.UpdateSeverityNone,
