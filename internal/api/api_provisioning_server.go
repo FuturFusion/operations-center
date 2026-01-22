@@ -427,7 +427,7 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 //	    description: Server definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/Server"
+//	      $ref: "#/definitions/ServerPut"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
