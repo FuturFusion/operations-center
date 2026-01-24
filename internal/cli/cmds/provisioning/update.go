@@ -59,6 +59,13 @@ func (c *CmdUpdate) Command() *cobra.Command {
 
 	cmd.AddCommand(updateAddCmd.Command())
 
+	// Assign Channels
+	updateAssignChannelsCmd := cmdUpdateAssignChannels{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updateAssignChannelsCmd.Command())
+
 	// Files
 	updateFilesCmd := cmdUpdateFiles{
 		ocClient: c.OCClient,
@@ -87,9 +94,10 @@ func (c *CmdUpdate) Command() *cobra.Command {
 type cmdUpdateList struct {
 	ocClient *client.OperationsCenterClient
 
-	flagFilterChannel string
-	flagFilterOrigin  string
-	flagFilterStatus  string
+	flagFilterUpstreamChannel string
+	flagFilterChannel         string
+	flagFilterOrigin          string
+	flagFilterStatus          string
 
 	flagFormat string
 }
@@ -102,6 +110,7 @@ func (c *cmdUpdateList) Command() *cobra.Command {
   List the available updates
 `
 
+	cmd.Flags().StringVar(&c.flagFilterUpstreamChannel, "upstream-channel", "", "upstream channel name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterChannel, "channel", "", "channel name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterOrigin, "origin", "", "origin to filter for")
 	cmd.Flags().StringVar(&c.flagFilterStatus, "status", "", "status to filter for, valid values: pending, ready")
@@ -127,6 +136,10 @@ func (c *cmdUpdateList) validateArgsAndFlags(cmd *cobra.Command, args []string) 
 func (c *cmdUpdateList) run(cmd *cobra.Command, args []string) error {
 	var filter provisioning.UpdateFilter
 
+	if c.flagFilterUpstreamChannel != "" {
+		filter.UpstreamChannel = ptr.To(c.flagFilterUpstreamChannel)
+	}
+
 	if c.flagFilterChannel != "" {
 		filter.Channel = ptr.To(c.flagFilterChannel)
 	}
@@ -151,11 +164,11 @@ func (c *cmdUpdateList) run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"UUID", "Origin", "Upstream Channels", "Version", "Published At", "Severity", "Status"}
+	header := []string{"UUID", "Origin", "Channels", "Upstream Channels", "Version", "Published At", "Severity", "Status"}
 	data := [][]string{}
 
 	for _, update := range updates {
-		data = append(data, []string{update.UUID.String(), update.Origin, strings.Join(update.UpstreamChannels, ", "), update.Version, update.PublishedAt.Truncate(time.Second).String(), update.Severity.String(), update.Status.String()})
+		data = append(data, []string{update.UUID.String(), update.Origin, strings.Join(update.Channels, ", "), strings.Join(update.UpstreamChannels, ", "), update.Version, update.PublishedAt.Truncate(time.Second).String(), update.Severity.String(), update.Status.String()})
 	}
 
 	sort.ColumnsSort(data, []sort.ColumnSorter{
@@ -221,7 +234,8 @@ func (c *cmdUpdateShow) run(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("UUID: %s\n", update.UUID.String())
 	fmt.Printf("Origin: %s\n", update.Origin)
-	fmt.Printf("Channel: %s\n", strings.Join(update.UpstreamChannels, ", "))
+	fmt.Printf("Channels: %s\n", strings.Join(update.Channels, ", "))
+	fmt.Printf("Upstream Channels: %s\n", strings.Join(update.UpstreamChannels, ", "))
 	fmt.Printf("Version: %s\n", update.Version)
 	fmt.Printf("Published At: %s\n", update.PublishedAt.Truncate(time.Second).String())
 	fmt.Printf("Severity: %s\n", update.Severity.String())
@@ -276,6 +290,51 @@ func (c *cmdUpdateAdd) run(cmd *cobra.Command, args []string) error {
 	err = c.ocClient.CreateUpdate(cmd.Context(), f)
 	if err != nil {
 		return fmt.Errorf("Failed to create update from %q: %w", filename, err)
+	}
+
+	return nil
+}
+
+// Assign Channels to update.
+type cmdUpdateAssignChannels struct {
+	ocClient *client.OperationsCenterClient
+
+	flagChannels []string
+}
+
+func (c *cmdUpdateAssignChannels) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "assign-channels <uuid>"
+	cmd.Short = "Assign channels to an update"
+	cmd.Long = `Description:
+  Assign channels to an update.
+`
+	cmd.Flags().StringSliceVar(&c.flagChannels, "channel", []string{}, "channel the update should be assigned to")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdUpdateAssignChannels) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdUpdateAssignChannels) run(cmd *cobra.Command, args []string) error {
+	id := args[0]
+
+	err := c.ocClient.UpdateUpdate(cmd.Context(), id, api.UpdatePut{
+		Channels: c.flagChannels,
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to assign channels to update: %w", err)
 	}
 
 	return nil

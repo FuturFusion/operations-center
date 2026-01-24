@@ -22,13 +22,14 @@ import (
 //generate-expr: Update
 
 type Update struct {
-	ID               string                 `json:"-"`
+	ID               int                    `json:"-"`
 	UUID             uuid.UUID              `json:"-" expr:"uuid" db:"primary=yes"`
 	Format           string                 `json:"format" db:"ignore"`
 	Origin           string                 `json:"origin"`
 	Version          string                 `json:"version"`
 	PublishedAt      time.Time              `json:"published_at"`
 	Severity         images.UpdateSeverity  `json:"severity"`
+	Channels         []string               `json:"channels" db:"ignore"`
 	UpstreamChannels UpdateUpstreamChannels `json:"upstream_channels"`
 	Changelog        string                 `json:"-" expr:"change_log"`
 	Files            UpdateFiles            `json:"files"`
@@ -50,6 +51,20 @@ func (u Update) Validate() error {
 	}
 
 	return nil
+}
+
+func (u Update) Components() []images.UpdateFileComponent {
+	componentsSet := make(map[images.UpdateFileComponent]struct{}, len(images.UpdateFileComponents))
+	for _, file := range u.Files {
+		componentsSet[file.Component] = struct{}{}
+	}
+
+	components := make([]images.UpdateFileComponent, 0, len(componentsSet))
+	for component := range componentsSet {
+		components = append(components, component)
+	}
+
+	return components
 }
 
 type Updates []Update
@@ -89,16 +104,17 @@ type UpdateFile struct {
 }
 
 type UpdateFilter struct {
-	ID      *int
-	UUID    *uuid.UUID
-	Channel *string `db:"ignore"`
-	Origin  *string
-	Status  *api.UpdateStatus
+	ID              *int
+	UUID            *uuid.UUID
+	Channel         *string `db:"ignore"`
+	UpstreamChannel *string `db:"ignore"`
+	Origin          *string
+	Status          *api.UpdateStatus
 }
 
 func (f UpdateFilter) AppendToURLValues(query url.Values) url.Values {
-	if f.Channel != nil {
-		query.Add("channel", *f.Channel)
+	if f.UpstreamChannel != nil {
+		query.Add("channel", *f.UpstreamChannel)
 	}
 
 	if f.Origin != nil {

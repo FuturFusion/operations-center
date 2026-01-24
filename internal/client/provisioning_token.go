@@ -165,10 +165,11 @@ func (c OperationsCenterClient) DeleteTokenSeed(ctx context.Context, id string, 
 	return nil
 }
 
-func (c OperationsCenterClient) GetTokenImageFromSeed(ctx context.Context, id string, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture) (io.ReadCloser, error) {
+func (c OperationsCenterClient) GetTokenImageFromSeed(ctx context.Context, id string, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, error) {
 	query := url.Values{}
 	query.Add("type", imageType.String())
 	query.Add("architecture", architecture.String())
+	query.Add("channel", channel)
 
 	resp, err := c.doRequestRawResponse(ctx, http.MethodGet, path.Join("/provisioning/tokens", id, "seeds", name), query, nil)
 	if err != nil {

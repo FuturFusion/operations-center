@@ -150,12 +150,13 @@ func TestServerDatabaseActions(t *testing.T) {
 	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
 
-	cannelSvc := provisioning.NewChannelService(sqlite.NewChannel(db), nil)
+	cannelSvc := provisioning.NewChannelService(sqlite.NewChannel(tx), nil)
+	updateSvc := provisioning.NewUpdateService(sqlite.NewUpdate(tx), nil, nil)
 
 	server := sqlite.NewServer(tx)
-	serverSvc := provisioning.NewServerService(server, serverClient, nil, nil, cannelSvc, "", tls.Certificate{})
+	serverSvc := provisioning.NewServerService(server, serverClient, nil, nil, cannelSvc, updateSvc, "", tls.Certificate{})
 
-	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), localArtifactRepo, clusterClient, serverSvc, nil, nil, terraformProvisioner)
+	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(tx), localArtifactRepo, clusterClient, serverSvc, nil, nil, terraformProvisioner)
 
 	// Add server
 	_, err = server.Create(ctx, serverA)

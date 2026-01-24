@@ -72,10 +72,21 @@ func (s *UpdateStatus) Scan(value any) error {
 	}
 }
 
-// Update defines an update for a given server type.
+// UpdatePut defines the updateable part of an update.
+//
+// swagger:model
+type UpdatePut struct {
+	// Channels holds the name of the channels the update is assigned to.
+	// Example: stable
+	Channels []string `json:"channels" yaml:"channels"`
+}
+
+// Update defines an update.
 //
 // swagger:model
 type Update struct {
+	UpdatePut `yaml:",inline"`
+
 	// UUID of the update.
 	UUID uuid.UUID `json:"uuid" yaml:"uuid"`
 
