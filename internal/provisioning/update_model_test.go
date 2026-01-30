@@ -89,6 +89,50 @@ func TestUpdate_Validate(t *testing.T) {
 	}
 }
 
+func TestUpdate_Components(t *testing.T) {
+	tests := []struct {
+		name string
+	}{
+		{
+			name: "success",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			update := provisioning.Update{
+				Files: provisioning.UpdateFiles{
+					{
+						Component:    images.UpdateFileComponentIncus,
+						Architecture: images.UpdateFileArchitecture64BitX86,
+					},
+					{
+						Component:    images.UpdateFileComponentIncus,
+						Architecture: images.UpdateFileArchitecture64BitARM,
+					},
+					{
+						Component:    images.UpdateFileComponentOS,
+						Architecture: images.UpdateFileArchitecture64BitX86,
+					},
+					{
+						Component:    images.UpdateFileComponentOS,
+						Architecture: images.UpdateFileArchitecture64BitARM,
+					},
+				},
+			}
+
+			got := update.Components()
+
+			want := []images.UpdateFileComponent{
+				images.UpdateFileComponentOS,
+				images.UpdateFileComponentIncus,
+			}
+
+			require.ElementsMatch(t, want, got)
+		})
+	}
+}
+
 func TestUpdate_Filter(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -105,9 +149,9 @@ func TestUpdate_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: provisioning.UpdateFilter{
-				Channel: ptr.To("channel"),
-				Origin:  ptr.To("origin"),
-				Status:  ptr.To(api.UpdateStatusReady),
+				UpstreamChannel: ptr.To("channel"),
+				Origin:          ptr.To("origin"),
+				Status:          ptr.To(api.UpdateStatusReady),
 			},
 
 			want: `channel=channel&origin=origin&status=ready`,
@@ -132,29 +176,29 @@ func TestUpdatesSort(t *testing.T) {
 			name: "pre-sorted",
 			in: provisioning.Updates{
 				provisioning.Update{
-					ID:      "3",
+					ID:      3,
 					Version: "3",
 				},
 				provisioning.Update{
-					ID:      "2",
+					ID:      2,
 					Version: "2",
 				},
 				provisioning.Update{
-					ID:      "1",
+					ID:      1,
 					Version: "1",
 				},
 			},
 			want: provisioning.Updates{
 				provisioning.Update{
-					ID:      "3",
+					ID:      3,
 					Version: "3",
 				},
 				provisioning.Update{
-					ID:      "2",
+					ID:      2,
 					Version: "2",
 				},
 				provisioning.Update{
-					ID:      "1",
+					ID:      1,
 					Version: "1",
 				},
 			},
@@ -163,29 +207,29 @@ func TestUpdatesSort(t *testing.T) {
 			name: "sort",
 			in: provisioning.Updates{
 				provisioning.Update{
-					ID:      "2",
+					ID:      2,
 					Version: "2",
 				},
 				provisioning.Update{
-					ID:      "1",
+					ID:      1,
 					Version: "1",
 				},
 				provisioning.Update{
-					ID:      "3",
+					ID:      3,
 					Version: "3",
 				},
 			},
 			want: provisioning.Updates{
 				provisioning.Update{
-					ID:      "3",
+					ID:      3,
 					Version: "3",
 				},
 				provisioning.Update{
-					ID:      "2",
+					ID:      2,
 					Version: "2",
 				},
 				provisioning.Update{
-					ID:      "1",
+					ID:      1,
 					Version: "1",
 				},
 			},
@@ -194,29 +238,29 @@ func TestUpdatesSort(t *testing.T) {
 			name: "sort dns serial",
 			in: provisioning.Updates{
 				provisioning.Update{
-					ID:      "2",
+					ID:      2,
 					Version: "202503010000",
 				},
 				provisioning.Update{
-					ID:      "1",
+					ID:      1,
 					Version: "202501010000",
 				},
 				provisioning.Update{
-					ID:      "3",
+					ID:      3,
 					Version: "202506010000",
 				},
 			},
 			want: provisioning.Updates{
 				provisioning.Update{
-					ID:      "3",
+					ID:      3,
 					Version: "202506010000",
 				},
 				provisioning.Update{
-					ID:      "2",
+					ID:      2,
 					Version: "202503010000",
 				},
 				provisioning.Update{
-					ID:      "1",
+					ID:      1,
 					Version: "202501010000",
 				},
 			},
@@ -225,29 +269,29 @@ func TestUpdatesSort(t *testing.T) {
 			name: "not numeric version",
 			in: provisioning.Updates{
 				provisioning.Update{
-					ID:      "2",
+					ID:      2,
 					Version: "not numberic",
 				},
 				provisioning.Update{
-					ID:      "1",
+					ID:      1,
 					Version: "1",
 				},
 				provisioning.Update{
-					ID:      "3",
+					ID:      3,
 					Version: "3",
 				},
 			},
 			want: provisioning.Updates{
 				provisioning.Update{
-					ID:      "3",
+					ID:      3,
 					Version: "3",
 				},
 				provisioning.Update{
-					ID:      "1",
+					ID:      1,
 					Version: "1",
 				},
 				provisioning.Update{
-					ID:      "2",
+					ID:      2,
 					Version: "not numberic",
 				},
 			},

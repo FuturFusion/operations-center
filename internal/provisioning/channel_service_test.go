@@ -317,7 +317,7 @@ func TestChannelService_DeleteByName(t *testing.T) {
 			nameArg: "A",
 			updateSvcGetUpdatesByAssignedChannelName: provisioning.Updates{
 				{
-					ID: "update",
+					ID: 1,
 				},
 			},
 

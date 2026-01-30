@@ -124,11 +124,12 @@ type imageRecord struct {
 	TokenID      uuid.UUID
 	ImageType    api.ImageType
 	Architecture images.UpdateFileArchitecture
+	Channel      string
 	SeedConfig   TokenImageSeedConfigs
 	CreatedAt    time.Time
 }
 
-func (s *tokenService) PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig TokenImageSeedConfigs) (uuid.UUID, error) {
+func (s *tokenService) PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, seedConfig TokenImageSeedConfigs) (uuid.UUID, error) {
 	// Remove image records older than 5 minutes.
 	for imageUUID, image := range s.images {
 		if time.Since(image.CreatedAt) > 5*time.Minute {
@@ -156,6 +157,7 @@ func (s *tokenService) PreparePreSeededImage(ctx context.Context, id uuid.UUID, 
 		TokenID:      id,
 		ImageType:    imageType,
 		Architecture: architecture,
+		Channel:      channel,
 		SeedConfig:   seedConfig,
 		CreatedAt:    time.Now(),
 	}
@@ -185,7 +187,7 @@ func (s *tokenService) GetPreSeededImage(ctx context.Context, id uuid.UUID, imag
 		return nil, "", fmt.Errorf("Unable to get token %s: %w", image.TokenID.String(), err)
 	}
 
-	rc, err := s.getPreSeedImage(ctx, image.TokenID, image.ImageType, image.Architecture, image.SeedConfig)
+	rc, err := s.getPreSeedImage(ctx, image.TokenID, image.ImageType, image.Architecture, image.Channel, image.SeedConfig)
 	if err != nil {
 		return nil, "", fmt.Errorf("Failed to get pre seed image stream: %w", err)
 	}
@@ -263,7 +265,7 @@ func (s tokenService) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, n
 	return nil
 }
 
-func (s tokenService) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture) (io.ReadCloser, error) {
+func (s tokenService) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, error) {
 	if !imageType.IsValid() {
 		return nil, domain.NewValidationErrf("Invalid image type")
 	}
@@ -283,13 +285,17 @@ func (s tokenService) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UU
 		return nil, fmt.Errorf("Failed to get token seed %q for token %q: %w", name, id.String(), err)
 	}
 
-	return s.getPreSeedImage(ctx, id, imageType, architecture, tokenSeed.Seeds)
+	return s.getPreSeedImage(ctx, id, imageType, architecture, channel, tokenSeed.Seeds)
 }
 
-func (s tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seeds TokenImageSeedConfigs) (_ io.ReadCloser, err error) {
-	// TODO: Allow filters?
+func (s tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, seeds TokenImageSeedConfigs) (_ io.ReadCloser, err error) {
+	if channel == "" {
+		channel = config.GetUpdates().UpdatesDefaultChannel
+	}
+
 	updates, err := s.updateSvc.GetAllWithFilter(ctx, UpdateFilter{
-		Status: ptr.To(api.UpdateStatusReady),
+		Status:  ptr.To(api.UpdateStatusReady),
+		Channel: ptr.To(channel),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get updates: %w", err)
