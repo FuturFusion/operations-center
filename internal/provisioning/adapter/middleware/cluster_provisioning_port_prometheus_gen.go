@@ -64,3 +64,17 @@ func (_d ClusterProvisioningPortWithPrometheus) Init(ctx context.Context, cluste
 	}()
 	return _d.base.Init(ctx, clusterName, config)
 }
+
+// SeedCertificate implements provisioning.ClusterProvisioningPort.
+func (_d ClusterProvisioningPortWithPrometheus) SeedCertificate(ctx context.Context, clusterName string, certificate string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterProvisioningPortDurationSummaryVec.WithLabelValues(_d.instanceName, "SeedCertificate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.SeedCertificate(ctx, clusterName, certificate)
+}

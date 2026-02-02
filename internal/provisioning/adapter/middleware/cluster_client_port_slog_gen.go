@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"context"
+	"crypto/x509"
 	"log/slog"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -218,6 +219,41 @@ func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, endpoint prov
 		}
 	}()
 	return _d._base.GetOSData(ctx, endpoint)
+}
+
+// GetRemoteCertificate implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) GetRemoteCertificate(ctx context.Context, endpoint provisioning.Endpoint) (certificate *x509.Certificate, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("endpoint", endpoint),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetRemoteCertificate")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("certificate", certificate),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetRemoteCertificate returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetRemoteCertificate returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetRemoteCertificate finished")
+		}
+	}()
+	return _d._base.GetRemoteCertificate(ctx, endpoint)
 }
 
 // JoinCluster implements provisioning.ClusterClientPort.

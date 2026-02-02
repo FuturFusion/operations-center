@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"context"
+	"crypto/x509"
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -107,6 +108,20 @@ func (_d ClusterClientPortWithPrometheus) GetOSData(ctx context.Context, endpoin
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSData", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetOSData(ctx, endpoint)
+}
+
+// GetRemoteCertificate implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) GetRemoteCertificate(ctx context.Context, endpoint provisioning.Endpoint) (certificate *x509.Certificate, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetRemoteCertificate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetRemoteCertificate(ctx, endpoint)
 }
 
 // JoinCluster implements provisioning.ClusterClientPort.
