@@ -22,17 +22,23 @@ import (
 
 var UpdateSourceSpaceUUID = uuid.MustParse(`00000000-0000-0000-0000-000000000002`)
 
+type tokenProvider interface {
+	GetToken(ctx context.Context) (string, error)
+}
+
 type updateServer struct {
 	configUpdateMu *sync.Mutex
 
 	baseURL  string
 	client   *http.Client
 	verifier signature.Verifier
+
+	tokenProvider tokenProvider
 }
 
 var _ provisioning.UpdateSourcePort = &updateServer{}
 
-func New(baseURL string, signatureVerificationRootCA string) *updateServer {
+func New(baseURL string, signatureVerificationRootCA string, tokenProvider tokenProvider) *updateServer {
 	return &updateServer{
 		configUpdateMu: &sync.Mutex{},
 
@@ -40,6 +46,8 @@ func New(baseURL string, signatureVerificationRootCA string) *updateServer {
 		baseURL:  strings.TrimSuffix(baseURL, "/"),
 		client:   http.DefaultClient,
 		verifier: signature.NewVerifier([]byte(signatureVerificationRootCA)),
+
+		tokenProvider: tokenProvider,
 	}
 }
 
@@ -68,6 +76,11 @@ func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Up
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, indexURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("GetLatest: %w", err)
+	}
+
+	token, err := u.tokenProvider.GetToken(ctx)
+	if err == nil {
+		req.Header.Add("X-IncusOS-Authentication", token)
 	}
 
 	resp, err := u.client.Do(req)
@@ -165,6 +178,11 @@ func (u updateServer) GetUpdateFileByFilenameUnverified(ctx context.Context, inU
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, updateURL, http.NoBody)
 	if err != nil {
 		return nil, 0, fmt.Errorf("GetUpdateFileByFilename: %w", err)
+	}
+
+	token, err := u.tokenProvider.GetToken(ctx)
+	if err == nil {
+		req.Header.Add("X-IncusOS-Authentication", token)
 	}
 
 	resp, err := u.client.Do(req)

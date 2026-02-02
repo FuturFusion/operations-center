@@ -43,7 +43,10 @@ func TestSystemCertificatePut(t *testing.T) {
 		},
 	}
 
-	config.InitTest(t, env, nil)
+	config.InitTest(t, env, nil, config.InternalConfig{
+		IsBackgroundTasksDisabled: true,
+		SourcePollSkipFirst:       true,
+	})
 	err := config.UpdateNetwork(ctx, shared.SystemNetworkPut{
 		OperationsCenterAddress: "https://127.0.0.1:17443",
 		RestServerAddress:       "[::1]:17443",

@@ -5,6 +5,7 @@
 package mock
 
 import (
+	"context"
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/environment"
@@ -22,6 +23,9 @@ var _ environment.Environment = &EnvironmentMock{}
 //		mockedEnvironment := &EnvironmentMock{
 //			CacheDirFunc: func() string {
 //				panic("mock out the CacheDir method")
+//			},
+//			GetTokenFunc: func(ctx context.Context) (string, error) {
+//				panic("mock out the GetToken method")
 //			},
 //			GetUnixSocketFunc: func() string {
 //				panic("mock out the GetUnixSocket method")
@@ -54,6 +58,9 @@ type EnvironmentMock struct {
 	// CacheDirFunc mocks the CacheDir method.
 	CacheDirFunc func() string
 
+	// GetTokenFunc mocks the GetToken method.
+	GetTokenFunc func(ctx context.Context) (string, error)
+
 	// GetUnixSocketFunc mocks the GetUnixSocket method.
 	GetUnixSocketFunc func() string
 
@@ -80,6 +87,11 @@ type EnvironmentMock struct {
 		// CacheDir holds details about calls to the CacheDir method.
 		CacheDir []struct {
 		}
+		// GetToken holds details about calls to the GetToken method.
+		GetToken []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// GetUnixSocket holds details about calls to the GetUnixSocket method.
 		GetUnixSocket []struct {
 		}
@@ -103,6 +115,7 @@ type EnvironmentMock struct {
 		}
 	}
 	lockCacheDir      sync.RWMutex
+	lockGetToken      sync.RWMutex
 	lockGetUnixSocket sync.RWMutex
 	lockIsIncusOS     sync.RWMutex
 	lockLogDir        sync.RWMutex
@@ -136,6 +149,38 @@ func (mock *EnvironmentMock) CacheDirCalls() []struct {
 	mock.lockCacheDir.RLock()
 	calls = mock.calls.CacheDir
 	mock.lockCacheDir.RUnlock()
+	return calls
+}
+
+// GetToken calls GetTokenFunc.
+func (mock *EnvironmentMock) GetToken(ctx context.Context) (string, error) {
+	if mock.GetTokenFunc == nil {
+		panic("EnvironmentMock.GetTokenFunc: method is nil but Environment.GetToken was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetToken.Lock()
+	mock.calls.GetToken = append(mock.calls.GetToken, callInfo)
+	mock.lockGetToken.Unlock()
+	return mock.GetTokenFunc(ctx)
+}
+
+// GetTokenCalls gets all the calls that were made to GetToken.
+// Check the length with:
+//
+//	len(mockedEnvironment.GetTokenCalls())
+func (mock *EnvironmentMock) GetTokenCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetToken.RLock()
+	calls = mock.calls.GetToken
+	mock.lockGetToken.RUnlock()
 	return calls
 }
 

@@ -1,12 +1,18 @@
 package environment
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
 
 	"github.com/FuturFusion/operations-center/internal/file"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 const (
@@ -31,12 +37,19 @@ type Environment interface {
 	GetUnixSocket() string
 	UserConfigDir() (string, error)
 	IsIncusOS() bool
+	GetToken(ctx context.Context) (string, error)
+}
+
+type httpClient interface {
+	Do(*http.Request) (*http.Response, error)
 }
 
 // environment is a high-level facade for accessing operating-system level functionalities.
 type environment struct {
 	applicationName      string
 	applicationEnvPrefix string
+
+	httpClient httpClient
 }
 
 var _ Environment = environment{}
@@ -51,6 +64,21 @@ func New(applicationName, applicationEnvPrefix string) Environment {
 	return environment{
 		applicationName:      applicationName,
 		applicationEnvPrefix: applicationEnvPrefix,
+
+		httpClient: &http.Client{
+			Transport: &http.Transport{
+				DialContext: func(_ context.Context, _ string, _ string) (net.Conn, error) {
+					raddr, err := net.ResolveUnixAddr("unix", IncusOSSocket)
+					if err != nil {
+						return nil, err
+					}
+
+					return net.DialUnix("unix", nil, raddr)
+				},
+
+				DisableKeepAlives: true,
+			},
+		},
 	}
 }
 
@@ -138,4 +166,43 @@ const IncusOSSocket = "/run/incus-os/unix.socket"
 // IsIncusOS checks if the host system is running IncusOS.
 func (e environment) IsIncusOS() bool {
 	return file.PathExists("/var/lib/incus-os/")
+}
+
+func (e environment) GetToken(ctx context.Context) (string, error) {
+	if !e.IsIncusOS() {
+		return "", fmt.Errorf("Not an IncusOS system")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://unix/internal/auth/:generate-token", http.NoBody)
+	if err != nil {
+		return "", fmt.Errorf("Failed to create request to get IncusOS token: %w", err)
+	}
+
+	resp, err := e.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("Failed to get IncusOS token: %w", err)
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("Failed to read request body of IncusOS token response: %w", err)
+	}
+
+	response := api.Response{}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return "", fmt.Errorf("Failed to fetch IncusOS token: %s: %s", resp.Status, string(body))
+		}
+
+		return "", fmt.Errorf("Invalid response for IncusOS token: %w", err)
+	}
+
+	if response.Type == api.ErrorResponse {
+		return "", api.StatusErrorf(resp.StatusCode, "%v", response.Error)
+	}
+
+	return string(response.Metadata), nil
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/api"
 	"github.com/FuturFusion/operations-center/internal/client"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	shared "github.com/FuturFusion/operations-center/shared/api"
 )
@@ -50,9 +51,19 @@ func daemonSetup(t *testing.T) (socketClient client.OperationsCenterClient, unau
 
 	port := getFreeTCPPort(t)
 
-	env := mockEnv{
-		UnixSocket:   filepath.Join(tmpDir, "unix.socket"),
-		VarDirectory: tmpDir,
+	env := &mock.EnvironmentMock{
+		GetUnixSocketFunc: func() string {
+			return filepath.Join(tmpDir, "unix.socket")
+		},
+		VarDirFunc: func() string {
+			return tmpDir
+		},
+		UsrShareDirFunc: func() string {
+			return ""
+		},
+		IsIncusOSFunc: func() bool {
+			return false
+		},
 	}
 
 	config.InitTest(t, env, nil, config.InternalConfig{
@@ -118,18 +129,3 @@ func getFreeTCPPort(t *testing.T) string {
 func noop(t *testing.T) {
 	t.Helper()
 }
-
-type mockEnv struct {
-	LogDirectory      string
-	VarDirectory      string
-	CacheDirectory    string
-	UsrShareDirectory string
-	UnixSocket        string
-}
-
-func (e mockEnv) CacheDir() string      { return e.CacheDirectory }
-func (e mockEnv) LogDir() string        { return e.LogDirectory }
-func (e mockEnv) VarDir() string        { return e.VarDirectory }
-func (e mockEnv) UsrShareDir() string   { return e.UsrShareDirectory }
-func (e mockEnv) GetUnixSocket() string { return e.UnixSocket }
-func (e mockEnv) IsIncusOS() bool       { return false }
