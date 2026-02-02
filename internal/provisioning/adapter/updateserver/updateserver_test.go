@@ -14,6 +14,7 @@ import (
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
 	"github.com/FuturFusion/operations-center/internal/signature/signaturetest"
@@ -144,7 +145,13 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 			)
 			defer svr.Close()
 
-			s := updateserver.New(svr.URL, string(caCert))
+			envMock := &mock.EnvironmentMock{
+				GetTokenFunc: func(ctx context.Context) (string, error) {
+					return "", nil
+				},
+			}
+
+			s := updateserver.New(svr.URL, string(caCert), envMock)
 			updates, err := s.GetLatest(context.Background(), 1)
 			tc.assertErr(t, err)
 
@@ -198,7 +205,13 @@ func TestUpdateServer_GetUpdateFileByFilename(t *testing.T) {
 			)
 			defer svr.Close()
 
-			s := updateserver.New(svr.URL, "")
+			envMock := &mock.EnvironmentMock{
+				GetTokenFunc: func(ctx context.Context) (string, error) {
+					return "", nil
+				},
+			}
+
+			s := updateserver.New(svr.URL, "", envMock)
 			stream, n, err := s.GetUpdateFileByFilenameUnverified(context.Background(), provisioning.Update{
 				URL: "/1",
 			}, "one.txt")
