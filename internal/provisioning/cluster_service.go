@@ -3,6 +3,7 @@ package provisioning
 import (
 	"context"
 	"crypto/tls"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -307,6 +308,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 	for i := range servers {
 		servers[i].Cluster = &newCluster.Name
 		servers[i].ClusterCertificate = &clusterCertificate
+		servers[i].ClusterConnectionURL = &newCluster.ConnectionURL
 		servers[i].Channel = newCluster.Channel
 	}
 
@@ -386,9 +388,79 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 		err = errors.Join(err, cleanup())
 	}()
 
-	err = s.provisioner.Apply(ctx, newCluster)
-	if err != nil {
-		return newCluster, err
+	var retryCount int
+	for {
+		err = s.provisioner.Apply(ctx, newCluster)
+		if err != nil {
+			var retryableErr domain.ErrRetryable
+			if errors.As(err, &retryableErr) {
+				retryCount++
+				if retryCount > 2 {
+					return newCluster, fmt.Errorf("Failed to apply Terraform configuration, retried for %d times: %w", retryCount, err)
+				}
+
+				slog.WarnContext(ctx, "Terraform apply failed with a retryable error, will retry", logger.Err(err))
+
+				// Terraform apply fails, when terraform configuration does update the certificate
+				// e.g. due to ACME configuration. In this case, the cluster certificate is updated
+				// half way through the terraform apply, which causes the client connection in the
+				// provider to fail.
+				// Therefore we poll the first server, which will cause the cluster certificate to get
+				// updated in DB in the case it is now a publicly valid certificate (e.g. ACME).
+				// The updated cluster certificate is then fetched from the DB and passed to the
+				// terraform provider and terraform apply is retried.
+				err := s.serverSvc.PollServer(ctx, servers[0], false)
+				if err != nil {
+					return newCluster, fmt.Errorf("Failed to poll server %q: %w", servers[0].Name, err)
+				}
+
+				updatedServers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+					Cluster: &newCluster.Name,
+					Name:    &bootstrapServer.Name,
+				})
+				if err != nil || len(updatedServers) != 1 {
+					return newCluster, fmt.Errorf("Failed to get servers for cluster %q: %w", newCluster.Name, err)
+				}
+
+				// After polling the server, we expect the cluster certificate to be empty.
+				// If this is not the case, we hit an other issue and we fail.
+				if ptr.From(updatedServers[0].ClusterCertificate) != "" {
+					return newCluster, fmt.Errorf("Cluster certificate is not nil after polling the server, but we expected a publicly valid certificate")
+				}
+
+				newCluster.Certificate = updatedServers[0].ClusterCertificate
+
+				clusterEndpoint = ClusterEndpoint{
+					Server{
+						ConnectionURL:        updatedServers[0].ConnectionURL,
+						Cluster:              &newCluster.Name,
+						ClusterCertificate:   updatedServers[0].ClusterCertificate,
+						ClusterConnectionURL: &updatedServers[0].ConnectionURL,
+					},
+				}
+
+				cert, err := s.client.GetRemoteCertificate(ctx, clusterEndpoint)
+				if err != nil {
+					return newCluster, fmt.Errorf("Failed to get remote certificate for %q: %w", clusterEndpoint.GetConnectionURL(), err)
+				}
+
+				certificate := string(pem.EncodeToMemory(&pem.Block{
+					Type:  "CERTIFICATE",
+					Bytes: cert.Raw,
+				}))
+
+				err = s.provisioner.SeedCertificate(ctx, newCluster.Name, certificate)
+				if err != nil {
+					return newCluster, fmt.Errorf("Failed to update cluster certificate: %w", err)
+				}
+
+				continue
+			}
+
+			return newCluster, fmt.Errorf("Failed to apply Terraform configuration: %w", err)
+		}
+
+		break
 	}
 
 	_, err = s.localartifact.CreateClusterArtifactFromPath(ctx, ClusterArtifact{

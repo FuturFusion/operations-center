@@ -3,6 +3,7 @@ package provisioning_test
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
 	"io"
 	"strings"
 	"sync"
@@ -54,11 +55,16 @@ func TestClusterService_Create(t *testing.T) {
 		clientJoinClusterErr                              error
 		clientGetOSData                                   api.OSData
 		clientGetOSDataErr                                error
+		clientGetRemoteCertificateErr                     error
 		serverSvcGetByName                                []queue.Item[*provisioning.Server]
 		serverSvcUpdateErr                                error
 		serverSvcUpdateSystemUpdateErr                    error
-		provisionerApplyErr                               error
+		serverSvcPollServerErr                            error
+		serverSvcGetAllWithFilter                         provisioning.Servers
+		serverSvcGetAllWithFilterErr                      error
+		provisionerApply                                  []queue.Item[struct{}]
 		provisionerInitErr                                error
+		provisionerSeedCertificateErr                     error
 		inventorySyncerSyncClusterErr                     error
 
 		assertErr     require.ErrorAssertionFunc
@@ -112,6 +118,9 @@ func TestClusterService_Create(t *testing.T) {
 			},
 			clientEnableClusterCertificate: "certificate",
 			clientGetOSData:                api.OSData{},
+			provisionerApply: []queue.Item[struct{}]{
+				{}, // success
+			},
 
 			assertErr:     require.NoError,
 			signalHandler: requireCallSignalHandler,
@@ -958,13 +967,17 @@ func TestClusterService_Create(t *testing.T) {
 				{}, // Server 2
 			},
 			clientEnableClusterCertificate: "certificate",
-			provisionerApplyErr:            boom.Error,
+			provisionerApply: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr:     boom.ErrorIs,
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - provisioner.Apply",
+			name: "error - provisioner.Apply - retry three times",
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -1004,7 +1017,342 @@ func TestClusterService_Create(t *testing.T) {
 				{}, // Server 1
 				{}, // Server 2
 			},
-			clientEnableClusterCertificate:                    "certificate",
+			clientEnableClusterCertificate: "certificate",
+			provisionerApply: []queue.Item[struct{}]{
+				{
+					Err: domain.NewRetryableErr(boom.Error), // retryable error
+				},
+				{
+					Err: domain.NewRetryableErr(boom.Error), // retryable error
+				},
+				{
+					Err: domain.NewRetryableErr(boom.Error), // retryable error
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+			},
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name: "error - provisioner.Apply - retry - serverSvc.PollServer",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			provisionerApply: []queue.Item[struct{}]{
+				{
+					Err: domain.NewRetryableErr(boom.Error), // retryable error
+				},
+			},
+			serverSvcPollServerErr: boom.Error,
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name: "error - provisioner.Apply - retry - serverSvc.GetAllWithFilter",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			provisionerApply: []queue.Item[struct{}]{
+				{
+					Err: domain.NewRetryableErr(boom.Error), // retryable error
+				},
+			},
+			serverSvcGetAllWithFilterErr: boom.Error,
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name: "error - provisioner.Apply - retry - serverSvc.GetAllWithFilter - none nill certificate",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			provisionerApply: []queue.Item[struct{}]{
+				{
+					Err: domain.NewRetryableErr(boom.Error), // retryable error
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					ClusterCertificate: ptr.To("none nil"), // none nil certificate
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Cluster certificate is not nil after polling the server, but we expected a publicly valid certificate")
+			},
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name: "error - provisioner.Apply - retry - client.GetRemoteCertificate",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			provisionerApply: []queue.Item[struct{}]{
+				{
+					Err: domain.NewRetryableErr(boom.Error), // retryable error
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+			},
+			clientGetRemoteCertificateErr: boom.Error,
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name: "error - provisioner.Apply - retry - serverSvc.SeedCertificate",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			provisionerApply: []queue.Item[struct{}]{
+				{
+					Err: domain.NewRetryableErr(boom.Error), // retryable error
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+			},
+			provisionerSeedCertificateErr: boom.Error,
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name: "error - localArtifactRepo.CreateClusterArtifactFromPath",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			provisionerApply: []queue.Item[struct{}]{
+				{}, // success
+			},
 			localArtifactRepoCreateClusterArtifactFromPathErr: boom.Error,
 
 			assertErr:     boom.ErrorIs,
@@ -1052,7 +1400,10 @@ func TestClusterService_Create(t *testing.T) {
 				{}, // Server 2
 			},
 			clientEnableClusterCertificate: "certificate",
-			inventorySyncerSyncClusterErr:  boom.Error,
+			provisionerApply: []queue.Item[struct{}]{
+				{}, // success
+			},
+			inventorySyncerSyncClusterErr: boom.Error,
 
 			assertErr:     require.NoError, // inventory syncer error is just logged and does not fail cluster creation.
 			signalHandler: requireCallSignalHandler,
@@ -1106,6 +1457,9 @@ func TestClusterService_Create(t *testing.T) {
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return tc.clientGetOSData, tc.clientGetOSDataErr
 				},
+				GetRemoteCertificateFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (*x509.Certificate, error) {
+					return &x509.Certificate{}, tc.clientGetRemoteCertificateErr
+				},
 			}
 
 			serverSvc := &serviceMock.ServerServiceMock{
@@ -1119,6 +1473,12 @@ func TestClusterService_Create(t *testing.T) {
 				UpdateSystemUpdateFunc: func(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) error {
 					return tc.serverSvcUpdateSystemUpdateErr
 				},
+				PollServerFunc: func(ctx context.Context, server provisioning.Server, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServerErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.serverSvcGetAllWithFilter, tc.serverSvcGetAllWithFilterErr
+				},
 			}
 
 			provisioner := &adapterMock.ClusterProvisioningPortMock{
@@ -1126,7 +1486,11 @@ func TestClusterService_Create(t *testing.T) {
 					return "", func() error { return nil }, tc.provisionerInitErr
 				},
 				ApplyFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
-					return tc.provisionerApplyErr
+					_, err := queue.Pop(t, &tc.provisionerApply)
+					return err
+				},
+				SeedCertificateFunc: func(ctx context.Context, clusterName string, certificate string) error {
+					return tc.provisionerSeedCertificateErr
 				},
 			}
 
@@ -1158,6 +1522,7 @@ func TestClusterService_Create(t *testing.T) {
 			tc.assertErr(t, err)
 			require.Empty(t, tc.clientSetServerConfig)
 			require.Empty(t, tc.serverSvcGetByName)
+			require.Empty(t, tc.provisionerApply)
 			require.True(t, signalHandlerCalled, "expected signal handler to called, but it was not OR no call was expected, but it got called")
 		})
 	}
