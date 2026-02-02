@@ -26,3 +26,21 @@ func NewValidationErrf(format string, a ...any) error {
 func (e ErrValidation) Error() string {
 	return string(e)
 }
+
+type ErrRetryable struct {
+	innerErr error
+}
+
+func NewRetryableErr(err error) error {
+	return ErrRetryable{
+		innerErr: err,
+	}
+}
+
+func (e ErrRetryable) Error() string {
+	return fmt.Sprintf("Retryable: %v", e.innerErr.Error())
+}
+
+func (e ErrRetryable) Unwrap() error {
+	return e.innerErr
+}
