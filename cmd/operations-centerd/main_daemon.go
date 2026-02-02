@@ -27,6 +27,7 @@ type env interface {
 	UsrShareDir() string
 	GetUnixSocket() string
 	IsIncusOS() bool
+	GetToken(ctx context.Context) (string, error)
 }
 
 type cmdDaemon struct {
