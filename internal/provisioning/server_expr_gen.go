@@ -10,8 +10,10 @@ import (
 )
 
 type ExprApiApplicationVersionData struct {
-	Name    string `json:"name" yaml:"name" expr:"name"`
-	Version string `json:"version" yaml:"version" expr:"version"`
+	Name             string  `json:"name" yaml:"name" expr:"name"`
+	Version          string  `json:"version" yaml:"version" expr:"version"`
+	AvailableVersion *string `json:"available_version,omitempty" yaml:"available_version,omitempty" expr:"available_version"`
+	NeedsUpdate      *bool   `json:"needs_update,omitempty" yaml:"needs_update,omitempty" expr:"needs_update"`
 }
 
 type ExprApiOSData struct {
@@ -21,10 +23,12 @@ type ExprApiOSData struct {
 }
 
 type ExprApiOSVersionData struct {
-	Name        string `json:"name" yaml:"name" expr:"name"`
-	Version     string `json:"version" yaml:"version" expr:"version"`
-	VersionNext string `json:"version_next" expr:"version_next"`
-	NeedsReboot bool   `json:"needs_reboot" expr:"needs_reboot"`
+	Name             string  `json:"name" yaml:"name" expr:"name"`
+	Version          string  `json:"version" yaml:"version" expr:"version"`
+	VersionNext      string  `json:"version_next" yaml:"version_next" expr:"version_next"`
+	AvailableVersion *string `json:"available_version,omitempty" yaml:"available_version,omitempty" expr:"available_version"`
+	NeedsReboot      bool    `json:"needs_reboot" yaml:"needs_reboot" expr:"needs_reboot"`
+	NeedsUpdate      *bool   `json:"needs_update,omitempty" yaml:"needs_update,omitempty" expr:"needs_update"`
 }
 
 type ExprApiServerVersionData struct {
@@ -350,8 +354,10 @@ type ExprServer struct {
 
 func ToExprApiApplicationVersionData(a api.ApplicationVersionData) ExprApiApplicationVersionData {
 	return ExprApiApplicationVersionData{
-		Name:    a.Name,
-		Version: a.Version,
+		Name:             a.Name,
+		Version:          a.Version,
+		AvailableVersion: a.AvailableVersion,
+		NeedsUpdate:      a.NeedsUpdate,
 	}
 }
 
@@ -365,10 +371,12 @@ func ToExprApiOSData(o api.OSData) ExprApiOSData {
 
 func ToExprApiOSVersionData(o api.OSVersionData) ExprApiOSVersionData {
 	return ExprApiOSVersionData{
-		Name:        o.Name,
-		Version:     o.Version,
-		VersionNext: o.VersionNext,
-		NeedsReboot: o.NeedsReboot,
+		Name:             o.Name,
+		Version:          o.Version,
+		VersionNext:      o.VersionNext,
+		AvailableVersion: o.AvailableVersion,
+		NeedsReboot:      o.NeedsReboot,
+		NeedsUpdate:      o.NeedsUpdate,
 	}
 }
 

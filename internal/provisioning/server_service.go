@@ -7,8 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/url"
+	"slices"
+	"strconv"
 	"sync"
 	"time"
 
@@ -32,6 +35,7 @@ type serverService struct {
 	tokenSvc   TokenService
 	clusterSvc ClusterService
 	channelSvc ChannelService
+	updateSvc  UpdateService
 
 	httpClient *http.Client
 
@@ -82,13 +86,14 @@ func (s *serverService) UpdateServerCertificate(ctx context.Context, serverCerti
 	return s.SelfRegisterOperationsCenter(ctx)
 }
 
-func NewServerService(repo ServerRepo, client ServerClientPort, tokenSvc TokenService, clusterSvc ClusterService, channelSvc ChannelService, serverConnectionURL string, serverCertificate tls.Certificate, opts ...ServerServiceOption) *serverService {
+func NewServerService(repo ServerRepo, client ServerClientPort, tokenSvc TokenService, clusterSvc ClusterService, channelSvc ChannelService, updateSvc UpdateService, serverConnectionURL string, serverCertificate tls.Certificate, opts ...ServerServiceOption) *serverService {
 	serverSvc := &serverService{
 		repo:       repo,
 		client:     client,
 		tokenSvc:   tokenSvc,
 		clusterSvc: clusterSvc,
 		channelSvc: channelSvc,
+		updateSvc:  updateSvc,
 		httpClient: &http.Client{},
 
 		serverURL:         serverConnectionURL,
@@ -166,7 +171,7 @@ func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer S
 }
 
 func (s *serverService) GetAll(ctx context.Context) (Servers, error) {
-	return s.repo.GetAll(ctx)
+	return s.GetAllWithFilter(ctx, ServerFilter{})
 }
 
 func (s *serverService) GetAllWithFilter(ctx context.Context, filter ServerFilter) (Servers, error) {
@@ -191,10 +196,10 @@ func (s *serverService) GetAllWithFilter(ctx context.Context, filter ServerFilte
 		return nil, err
 	}
 
-	var filteredServers Servers
 	if filter.Expression != nil {
-		for _, server := range servers {
-			output, err := expr.Run(filterExpression, ToExprServer(server))
+		n := 0
+		for i := range servers {
+			output, err := expr.Run(filterExpression, ToExprServer(servers[i]))
 			if err != nil {
 				return nil, domain.NewValidationErrf("Failed to execute filter expression: %v", err)
 			}
@@ -204,12 +209,22 @@ func (s *serverService) GetAllWithFilter(ctx context.Context, filter ServerFilte
 				return nil, domain.NewValidationErrf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
 			}
 
-			if result {
-				filteredServers = append(filteredServers, server)
+			if !result {
+				continue
 			}
+
+			servers[n] = servers[i]
+			n++
 		}
 
-		return filteredServers, nil
+		servers = servers[:n]
+	}
+
+	for i := range servers {
+		err = s.enrichServerWithVersionDetails(ctx, &servers[i])
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return servers, nil
@@ -275,7 +290,99 @@ func (s *serverService) GetByName(ctx context.Context, name string) (*Server, er
 		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	return s.repo.GetByName(ctx, name)
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	err = s.enrichServerWithVersionDetails(ctx, server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to enrich server %q with update version details: %w", name, err)
+	}
+
+	return server, nil
+}
+
+func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, server *Server) error {
+	updates, err := s.updateSvc.GetAllWithFilter(ctx, UpdateFilter{
+		Channel: &server.Channel,
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to get channel for server %q: %w", server.Name, err)
+	}
+
+	if len(updates) == 0 {
+		// No updates found, nothing to enrich.
+		return nil
+	}
+
+	serverComponents := make([]string, 0, len(server.VersionData.Applications)+1) // All applications + OS
+	serverComponents = append(serverComponents, server.VersionData.OS.Name)
+	for _, app := range server.VersionData.Applications {
+		serverComponents = append(serverComponents, app.Name)
+	}
+
+	// For each component installed on the server (OS, applications), we need to
+	// find the most recent update. Since updates are not necessarily covering
+	// all components (OS, applications), we need to iterate over the updates
+	// in decending order (the updates are already returned sorted correctly).
+	//
+	// For each component, where we found a corresponding update, we update the
+	// server and remove the component from `serverComponents`. We
+	// are done with the work, if `serverComponents` is empty.
+	for _, update := range updates {
+		if len(serverComponents) == 0 {
+			break
+		}
+
+		for _, updateComponent := range update.Components() {
+			serverComponents = slices.DeleteFunc(serverComponents, func(serverComponent string) bool {
+				if serverComponent == updateComponent.String() {
+					if updateComponent.String() == server.VersionData.OS.Name {
+						server.VersionData.OS.AvailableVersion = &update.Version
+						server.VersionData.OS.NeedsUpdate = ptr.To(availableVersionGreaterThan(server.VersionData.OS.Version, update.Version) && availableVersionGreaterThan(server.VersionData.OS.VersionNext, update.Version))
+
+						return true
+					}
+
+					for i := range server.VersionData.Applications {
+						if updateComponent.String() == server.VersionData.Applications[i].Name {
+							server.VersionData.Applications[i].AvailableVersion = &update.Version
+							server.VersionData.Applications[i].NeedsUpdate = ptr.To(availableVersionGreaterThan(server.VersionData.Applications[i].Version, update.Version))
+
+							return true
+						}
+					}
+				}
+
+				return false
+			})
+		}
+	}
+
+	if len(serverComponents) != 0 {
+		// This indicates, that for some components, we have not found any update.
+		// This is a possible case, e.g. if someone clears and refreshes all the
+		// updates and then queries servers, registered in Operations Center, before
+		// Operations Center has refreshed the Updates from upstream.
+		slog.WarnContext(ctx, "Failed to find updates for some components while enriching server record with update version information", slog.Any("remaining_server_components", serverComponents))
+	}
+
+	return nil
+}
+
+func availableVersionGreaterThan(currentVersion string, availableVersion string) bool {
+	current, err := strconv.ParseInt(currentVersion, 16, 64)
+	if err != nil {
+		current = math.MinInt // invalid versions are moved to the end.
+	}
+
+	available, err := strconv.ParseInt(availableVersion, 16, 64)
+	if err != nil {
+		available = math.MinInt // invalid versions are moved to the end.
+	}
+
+	return available > current
 }
 
 func (s *serverService) Update(ctx context.Context, server Server) error {

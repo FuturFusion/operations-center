@@ -250,13 +250,21 @@ type OSVersionData struct {
 	// an update is available and applied on the system, but the system has
 	// not yet been rebooted, so the new update is not yet active.
 	// Example: 202512250102
-	VersionNext string `json:"version_next"`
+	VersionNext string `json:"version_next" yaml:"version_next"`
+
+	// AvailableVersion is the most recent version available for the OS in the
+	// update channel assigned to the respective system.
+	AvailableVersion *string `json:"available_version,omitempty" yaml:"available_version,omitempty"`
 
 	// NeedsReboot is the "needs_reboot" state reported by the server. Currently
 	// this is only expected to be "true", if "version_next" is different than
 	// "version", but in the future, there might be other reasons for a server
 	// to report, that a reboot is required.
-	NeedsReboot bool `json:"needs_reboot"`
+	NeedsReboot bool `json:"needs_reboot" yaml:"needs_reboot"`
+
+	// NeedsUpdate is true, if the OS needs to be updated
+	// (available_version > version).
+	NeedsUpdate *bool `json:"needs_update,omitempty" yaml:"needs_update,omitempty"`
 }
 
 // ApplicationVersionData defines a single version information for an application.
@@ -270,10 +278,26 @@ type ApplicationVersionData struct {
 	// Version string.
 	// Example: 202512250102
 	Version string `json:"version" yaml:"version"`
+
+	// AvailableVersion is the most recent version available for this application
+	// in the update channel assigned to the respective system.
+	AvailableVersion *string `json:"available_version,omitempty" yaml:"available_version,omitempty"`
+
+	// NeedsUpdate is true, if this application needs to be updated
+	// (available_version > version).
+	NeedsUpdate *bool `json:"needs_update,omitempty" yaml:"needs_update,omitempty"`
 }
 
 // Value implements the sql driver.Valuer interface.
 func (s ServerVersionData) Value() (driver.Value, error) {
+	// Don't persist AvailableVersion and NeedsUpdate in the DB.
+	s.OS.AvailableVersion = nil
+	s.OS.NeedsUpdate = nil
+	for i := range s.Applications {
+		s.Applications[i].AvailableVersion = nil
+		s.Applications[i].NeedsUpdate = nil
+	}
+
 	return json.Marshal(s)
 }
 

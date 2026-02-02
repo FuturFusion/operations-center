@@ -151,7 +151,7 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 	var filter provisioning.UpdateFilter
 
 	if r.URL.Query().Get("channel") != "" {
-		filter.Channel = ptr.To(r.URL.Query().Get("channel"))
+		filter.UpstreamChannel = ptr.To(r.URL.Query().Get("channel"))
 	}
 
 	if r.URL.Query().Get("origin") != "" {
@@ -183,6 +183,7 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 				Severity:         update.Severity,
 				Origin:           update.Origin,
 				URL:              update.URL,
+				Channels:         update.Channels,
 				UpstreamChannels: update.UpstreamChannels,
 				Changelog:        update.Changelog,
 				Status:           update.Status,
@@ -398,6 +399,7 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 			Severity:         update.Severity,
 			Origin:           update.Origin,
 			URL:              update.URL,
+			Channels:         update.Channels,
 			UpstreamChannels: update.UpstreamChannels,
 			Changelog:        update.Changelog,
 			Status:           update.Status,

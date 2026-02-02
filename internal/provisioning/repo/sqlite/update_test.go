@@ -27,6 +27,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		PublishedAt:      time.Date(2025, 5, 11, 4, 16, 36, 0, time.UTC),
 		Severity:         images.UpdateSeverityNone,
 		Origin:           "linuxcontainers.org",
+		Channels:         []string{},
 		UpstreamChannels: []string{"daily"},
 		Status:           api.UpdateStatusReady,
 		Changelog:        "Some changes",
@@ -51,6 +52,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		PublishedAt:      time.Date(2025, 5, 11, 0, 56, 27, 0, time.UTC),
 		Severity:         images.UpdateSeverityNone,
 		Origin:           "alternative.org",
+		Channels:         []string{},
 		UpstreamChannels: []string{"stable", "daily"},
 		Status:           api.UpdateStatusReady,
 		Changelog:        "Other changes",
@@ -88,6 +90,8 @@ func TestUpdateDatabaseActions(t *testing.T) {
 	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
 
+	cannelSvc := provisioning.NewChannelService(sqlite.NewChannel(tx), nil)
+
 	update := sqlite.NewUpdate(tx)
 
 	// Add update
@@ -120,7 +124,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 	require.Len(t, updateIDs, 1)
 	require.ElementsMatch(t, []uuid.UUID{uuid.MustParse("d3a52570-df97-56bc-a849-0d634c945b8c")}, updateIDs)
 
-	// Should get back updateA unchanged.
+	// Should get back updateA and updateB unchanged.
 	dbUpdateA, err := update.GetByUUID(ctx, updateA.UUID)
 	require.NoError(t, err)
 	updateA.ID = dbUpdateA.ID
@@ -152,4 +156,33 @@ func TestUpdateDatabaseActions(t *testing.T) {
 	// Can't delete a update that doesn't exist.
 	err = update.DeleteByUUID(ctx, uuid.MustParse(`66307d51-c379-4fb3-be5d-5c4c24ba7b21`))
 	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	channel, err := cannelSvc.Create(ctx, provisioning.Channel{
+		Name: "test-channel",
+	})
+	require.NoError(t, err)
+
+	err = update.AssignChannels(ctx, updateB.UUID, []string{channel.Name})
+	require.NoError(t, err)
+
+	dbUpdateB, err := update.GetByUUID(ctx, updateB.UUID)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"test-channel"}, dbUpdateB.Channels)
+
+	updates, err = update.GetUpdatesByAssignedChannelName(ctx, "test-channel")
+	require.NoError(t, err)
+	require.Len(t, updates, 1)
+	require.ElementsMatch(t, []string{"test-channel"}, updates[0].Channels)
+
+	updates, err = update.GetAll(ctx)
+	require.NoError(t, err)
+	require.Len(t, updates, 1)
+	require.ElementsMatch(t, []string{"test-channel"}, updates[0].Channels)
+
+	updates, err = update.GetAllWithFilter(ctx, provisioning.UpdateFilter{
+		Origin: ptr.To("alternative.org"),
+	})
+	require.NoError(t, err)
+	require.Len(t, updates, 1)
+	require.ElementsMatch(t, []string{"test-channel"}, updates[0].Channels)
 }

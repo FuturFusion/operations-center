@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
@@ -181,7 +182,7 @@ func TestServerService_UpdateServerURL(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, "https://one:8443", serverCertificate,
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, nil, "https://one:8443", serverCertificate,
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 			)
 
@@ -323,7 +324,7 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, "https://one:8443", serverCertificate,
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, nil, "https://one:8443", serverCertificate,
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 			)
 
@@ -488,13 +489,13 @@ one
 
 			token := uuid.MustParse("686d2a12-20f9-11f0-82c6-7fff26bab0c4")
 
-			serverSvc := provisioning.NewServerService(repo, client, tokenSvc, nil, nil, "", tls.Certificate{},
+			serverSvc := provisioning.NewServerService(repo, client, tokenSvc, nil, nil, nil, "", tls.Certificate{},
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 				provisioning.ServerServiceWithInitialConnectionDelay(0), // Disable delay for initial connection test
 			)
 
 			// Run test
-			_, err := serverSvc.Create(context.Background(), token, tc.server)
+			_, err := serverSvc.Create(t.Context(), token, tc.server)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -547,10 +548,16 @@ func TestServerService_GetAll(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, "", tls.Certificate{})
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, updateSvc, "", tls.Certificate{})
 
 			// Run test
-			servers, err := serverSvc.GetAll(context.Background())
+			servers, err := serverSvc.GetAll(t.Context())
 
 			// Assert
 			tc.assertErr(t, err)
@@ -561,10 +568,11 @@ func TestServerService_GetAll(t *testing.T) {
 
 func TestServerService_GetAllWithFilter(t *testing.T) {
 	tests := []struct {
-		name                    string
-		filter                  provisioning.ServerFilter
-		repoGetAllWithFilter    provisioning.Servers
-		repoGetAllWithFilterErr error
+		name                         string
+		filter                       provisioning.ServerFilter
+		repoGetAllWithFilter         provisioning.Servers
+		repoGetAllWithFilterErr      error
+		updateSvcGetAllWithFilterErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
@@ -602,6 +610,13 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 
 			assertErr: require.NoError,
 			count:     1,
+		},
+		{
+			name:                    "error - repo",
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
 		},
 		{
 			name: "error - invalid filter expression",
@@ -658,11 +673,21 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 			count: 0,
 		},
 		{
-			name:                    "error - repo",
-			repoGetAllWithFilterErr: boom.Error,
+			name: "error - upodateSvc.GetAllWithFilter",
+			filter: provisioning.ServerFilter{
+				Cluster: ptr.To("one"),
+			},
+			repoGetAllWithFilter: provisioning.Servers{
+				provisioning.Server{
+					Name: "one",
+				},
+				provisioning.Server{
+					Name: "two",
+				},
+			},
+			updateSvcGetAllWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
-			count:     0,
 		},
 	}
 
@@ -678,10 +703,16 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, "", tls.Certificate{})
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, tc.updateSvcGetAllWithFilterErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, updateSvc, "", tls.Certificate{})
 
 			// Run test
-			server, err := serverSvc.GetAllWithFilter(context.Background(), tc.filter)
+			server, err := serverSvc.GetAllWithFilter(t.Context(), tc.filter)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -726,10 +757,10 @@ func TestServerService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, "", tls.Certificate{})
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, nil, "", tls.Certificate{})
 
 			// Run test
-			serverNames, err := serverSvc.GetAllNames(context.Background())
+			serverNames, err := serverSvc.GetAllNames(t.Context())
 
 			// Assert
 			tc.assertErr(t, err)
@@ -738,7 +769,7 @@ func TestServerService_GetAllNames(t *testing.T) {
 	}
 }
 
-func TestServerService_GetAllIDsWithFilter(t *testing.T) {
+func TestServerService_GetAllNamesWithFilter(t *testing.T) {
 	tests := []struct {
 		name                         string
 		filter                       provisioning.ServerFilter
@@ -841,10 +872,10 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, "", tls.Certificate{})
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, nil, "", tls.Certificate{})
 
 			// Run test
-			serverIDs, err := serverSvc.GetAllNamesWithFilter(context.Background(), tc.filter)
+			serverIDs, err := serverSvc.GetAllNamesWithFilter(t.Context(), tc.filter)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -855,15 +886,18 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 
 func TestServerService_GetByName(t *testing.T) {
 	tests := []struct {
-		name                string
-		nameArg             string
-		repoGetByNameServer *provisioning.Server
-		repoGetByNameErr    error
+		name                         string
+		nameArg                      string
+		repoGetByNameServer          *provisioning.Server
+		repoGetByNameErr             error
+		updateSvcGetAllWithFilter    provisioning.Updates
+		updateSvcGetAllWithFilterErr error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr  require.ErrorAssertionFunc
+		wantServer *provisioning.Server
 	}{
 		{
-			name:    "success",
+			name:    "success - no updates",
 			nameArg: "one",
 			repoGetByNameServer: &provisioning.Server{
 				Name:          "one",
@@ -872,6 +906,271 @@ func TestServerService_GetByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			wantServer: &provisioning.Server{
+				Name:          "one",
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+			},
+		},
+		{
+			name:    "success - with version data and updates - everything up to date",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name:          "one",
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				VersionData: api.ServerVersionData{
+					OS: api.OSVersionData{
+						Name:    "os",
+						Version: "2",
+					},
+					Applications: []api.ApplicationVersionData{
+						{
+							Name:    "incus",
+							Version: "2",
+						},
+						{
+							Name:    "incus-ceph",
+							Version: "2",
+						},
+					},
+				},
+			},
+			updateSvcGetAllWithFilter: provisioning.Updates{
+				{
+					Version: "2",
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+						},
+						{
+							Component: images.UpdateFileComponentIncus,
+						},
+						{
+							Component: images.UpdateFileComponentIncusCeph,
+						},
+					},
+				},
+				{
+					Version: "1",
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+						},
+						{
+							Component: images.UpdateFileComponentIncus,
+						},
+						{
+							Component: images.UpdateFileComponentIncusCeph,
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantServer: &provisioning.Server{
+				Name:          "one",
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				VersionData: api.ServerVersionData{
+					OS: api.OSVersionData{
+						Name:             "os",
+						Version:          "2",
+						AvailableVersion: ptr.To("2"),
+						NeedsUpdate:      ptr.To(false),
+					},
+					Applications: []api.ApplicationVersionData{
+						{
+							Name:             "incus",
+							Version:          "2",
+							AvailableVersion: ptr.To("2"),
+							NeedsUpdate:      ptr.To(false),
+						},
+						{
+							Name:             "incus-ceph",
+							Version:          "2",
+							AvailableVersion: ptr.To("2"),
+							NeedsUpdate:      ptr.To(false),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:    "success - with version data and updates - update available",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name:          "one",
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				VersionData: api.ServerVersionData{
+					OS: api.OSVersionData{
+						Name:    "os",
+						Version: "2",
+					},
+					Applications: []api.ApplicationVersionData{
+						{
+							Name:    "incus",
+							Version: "2",
+						},
+						{
+							Name:    "incus-ceph",
+							Version: "2",
+						},
+					},
+				},
+			},
+			updateSvcGetAllWithFilter: provisioning.Updates{
+				{
+					Version: "3",
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+						},
+						{
+							Component: images.UpdateFileComponentIncus,
+						},
+						{
+							Component: images.UpdateFileComponentIncusCeph,
+						},
+					},
+				},
+				{
+					Version: "2",
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+						},
+						{
+							Component: images.UpdateFileComponentIncus,
+						},
+						{
+							Component: images.UpdateFileComponentIncusCeph,
+						},
+					},
+				},
+				{
+					Version: "1",
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+						},
+						{
+							Component: images.UpdateFileComponentIncus,
+						},
+						{
+							Component: images.UpdateFileComponentIncusCeph,
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantServer: &provisioning.Server{
+				Name:          "one",
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				VersionData: api.ServerVersionData{
+					OS: api.OSVersionData{
+						Name:             "os",
+						Version:          "2",
+						AvailableVersion: ptr.To("3"),
+						NeedsUpdate:      ptr.To(true),
+					},
+					Applications: []api.ApplicationVersionData{
+						{
+							Name:             "incus",
+							Version:          "2",
+							AvailableVersion: ptr.To("3"),
+							NeedsUpdate:      ptr.To(true),
+						},
+						{
+							Name:             "incus-ceph",
+							Version:          "2",
+							AvailableVersion: ptr.To("3"),
+							NeedsUpdate:      ptr.To(true),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:    "success - with version data and updates - no update information for incus-ceph",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name:          "one",
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				VersionData: api.ServerVersionData{
+					OS: api.OSVersionData{
+						Name:    "os",
+						Version: "2",
+					},
+					Applications: []api.ApplicationVersionData{
+						{
+							Name:    "incus",
+							Version: "2",
+						},
+						{
+							Name:    "incus-ceph",
+							Version: "2",
+						},
+					},
+				},
+			},
+			updateSvcGetAllWithFilter: provisioning.Updates{
+				{
+					Version: "2",
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+						},
+						{
+							Component: images.UpdateFileComponentIncus,
+						},
+						// incus-ceph missing here
+					},
+				},
+				{
+					Version: "1",
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+						},
+						{
+							Component: images.UpdateFileComponentIncus,
+						},
+						// incus-ceph missing here
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantServer: &provisioning.Server{
+				Name:          "one",
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				VersionData: api.ServerVersionData{
+					OS: api.OSVersionData{
+						Name:             "os",
+						Version:          "2",
+						AvailableVersion: ptr.To("2"),
+						NeedsUpdate:      ptr.To(false),
+					},
+					Applications: []api.ApplicationVersionData{
+						{
+							Name:             "incus",
+							Version:          "2",
+							AvailableVersion: ptr.To("2"),
+							NeedsUpdate:      ptr.To(false),
+						},
+						{
+							Name:    "incus-ceph",
+							Version: "2",
+						},
+					},
+				},
+			},
 		},
 		{
 			name:    "error - name empty",
@@ -888,6 +1187,18 @@ func TestServerService_GetByName(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 		},
+		{
+			name:    "error - updateSvc.GetAllWithFilter",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name:          "one",
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+			},
+			updateSvcGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
 	}
 
 	for _, tc := range tests {
@@ -899,14 +1210,20 @@ func TestServerService_GetByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, "", tls.Certificate{})
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return tc.updateSvcGetAllWithFilter, tc.updateSvcGetAllWithFilterErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, updateSvc, "", tls.Certificate{})
 
 			// Run test
-			server, err := serverSvc.GetByName(context.Background(), tc.nameArg)
+			server, err := serverSvc.GetByName(t.Context(), tc.nameArg)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByNameServer, server)
+			require.Equal(t, tc.wantServer, server)
 		})
 	}
 }
@@ -987,12 +1304,12 @@ one
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, "", tls.Certificate{},
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, nil, "", tls.Certificate{},
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 			)
 
 			// Run test
-			err := serverSvc.Update(context.Background(), tc.server)
+			err := serverSvc.Update(t.Context(), tc.server)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1020,7 +1337,7 @@ func TestServerService_UpdateSystemNetwork(t *testing.T) {
 	}{
 		{
 			name: "success",
-			ctx:  context.Background(),
+			ctx:  t.Context(),
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
@@ -1046,14 +1363,14 @@ one
 		},
 		{
 			name:             "error - repo.GetByName",
-			ctx:              context.Background(),
+			ctx:              t.Context(),
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - repo.UpdateByID",
-			ctx:  context.Background(),
+			ctx:  t.Context(),
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
@@ -1081,7 +1398,7 @@ one
 		{
 			name: "error - client.UpdateNetworkConfig with cancelled context with cause",
 			ctx: func() context.Context {
-				ctx, cancel := context.WithCancelCause(context.Background())
+				ctx, cancel := context.WithCancelCause(t.Context())
 				cancel(nil)
 				return ctx
 			}(),
@@ -1117,7 +1434,7 @@ one
 		},
 		{
 			name: "error - client.UpdateNetworkConfig",
-			ctx:  context.Background(),
+			ctx:  t.Context(),
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
@@ -1149,7 +1466,7 @@ one
 		},
 		{
 			name: "error - client.UpdateNetworkConfig - reverter error",
-			ctx:  context.Background(),
+			ctx:  t.Context(),
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
@@ -1204,11 +1521,17 @@ one
 				},
 			}
 
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
 			// Register our own self update signal, such that we can ensure, that all the listeners
 			// have been removed after successful processing.
 			selfUpdateSignal := signals.New[provisioning.Server]()
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, "", tls.Certificate{},
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, "", tls.Certificate{},
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 				provisioning.ServerServiceWithSelfUpdateSignal(selfUpdateSignal),
 			)
@@ -1244,7 +1567,7 @@ func TestServerService_UpdateSystemStorage(t *testing.T) {
 	}{
 		{
 			name: "success",
-			ctx:  context.Background(),
+			ctx:  t.Context(),
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
@@ -1270,14 +1593,14 @@ one
 		},
 		{
 			name:             "error - repo.GetByName",
-			ctx:              context.Background(),
+			ctx:              t.Context(),
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - repo.UpdateByID",
-			ctx:  context.Background(),
+			ctx:  t.Context(),
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
@@ -1305,7 +1628,7 @@ one
 		{
 			name: "error - client.UpdateStorageConfig with cancelled context with cause",
 			ctx: func() context.Context {
-				ctx, cancel := context.WithCancelCause(context.Background())
+				ctx, cancel := context.WithCancelCause(t.Context())
 				cancel(nil)
 				return ctx
 			}(),
@@ -1341,7 +1664,7 @@ one
 		},
 		{
 			name: "error - client.UpdateStorageConfig",
-			ctx:  context.Background(),
+			ctx:  t.Context(),
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
@@ -1373,7 +1696,7 @@ one
 		},
 		{
 			name: "error - client.UpdateStorageConfig - reverter error",
-			ctx:  context.Background(),
+			ctx:  t.Context(),
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
@@ -1428,7 +1751,13 @@ one
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, "", tls.Certificate{},
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, "", tls.Certificate{},
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 			)
 
@@ -1525,7 +1854,13 @@ one
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, "", tls.Certificate{})
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, "", tls.Certificate{})
 
 			// Run test
 			got, err := serverSvc.GetSystemProvider(t.Context(), "one")
@@ -1603,7 +1938,13 @@ one
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, "", tls.Certificate{})
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, "", tls.Certificate{})
 
 			// Run test
 			err := serverSvc.UpdateSystemProvider(t.Context(), "one", incusosapi.SystemProvider{
@@ -1710,7 +2051,13 @@ one
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, "", tls.Certificate{})
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, "", tls.Certificate{})
 
 			// Run test
 			got, err := serverSvc.GetSystemUpdate(t.Context(), "one")
@@ -1855,7 +2202,13 @@ one
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, channelSvc, "", tls.Certificate{})
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, channelSvc, updateSvc, "", tls.Certificate{})
 
 			// Run test
 			err := serverSvc.UpdateSystemUpdate(t.Context(), "one", incusosapi.SystemUpdate{
@@ -1941,9 +2294,15 @@ one
 				},
 			}
 
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
 			selfUpdateSignal := signals.New[provisioning.Server]()
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, "", tls.Certificate{},
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, "", tls.Certificate{},
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 				provisioning.ServerServiceWithSelfUpdateSignal(selfUpdateSignal),
 			)
@@ -1956,7 +2315,7 @@ one
 			go func() {
 				defer wg.Done()
 
-				err = serverSvc.UpdateSystemNetwork(context.Background(), "one", provisioning.ServerSystemNetwork{})
+				err = serverSvc.UpdateSystemNetwork(t.Context(), "one", provisioning.ServerSystemNetwork{})
 			}()
 
 			// Wait for subscriber.
@@ -1965,11 +2324,11 @@ one
 			}
 
 			// Simulate update from a different node, which is ignored.
-			selfUpdateSignal.Emit(context.Background(), provisioning.Server{
+			selfUpdateSignal.Emit(t.Context(), provisioning.Server{
 				Name: "another",
 			})
 
-			selfUpdateSignal.Emit(context.Background(), provisioning.Server{
+			selfUpdateSignal.Emit(t.Context(), provisioning.Server{
 				Name: "one",
 			})
 
@@ -2116,12 +2475,12 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, "https://one:8443", serverCertificate,
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, nil, "https://one:8443", serverCertificate,
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 			)
 
 			// Run test
-			err := serverSvc.SelfUpdate(context.Background(), tc.serverSelfUpdate)
+			err := serverSvc.SelfUpdate(t.Context(), tc.serverSelfUpdate)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -2156,8 +2515,9 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 			repoGetAllWithFilter: provisioning.Servers{},
 			repoCreateID:         1,
 			repoGetByName: provisioning.Server{
-				Name:   "operations-center",
-				Status: api.ServerStatusReady,
+				Name:    "operations-center",
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 
 			assertErr: require.NoError,
@@ -2201,13 +2561,14 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:                 "success - Operations Center initial self update (registration)",
+			name:                 "error - client.GetResources",
 			argServerURL:         "https://192.168.1.200:8443",
 			repoGetAllWithFilter: provisioning.Servers{},
 			repoCreateID:         1,
 			repoGetByName: provisioning.Server{
-				Name:   "operations-center",
-				Status: api.ServerStatusReady,
+				Name:    "operations-center",
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
 			},
 			clientGetResourcesErr: boom.Error,
 
@@ -2217,6 +2578,8 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			config.InitTest(t, &envMock.EnvironmentMock{}, nil)
+
 			// Setup
 			repo := &repoMock.ServerRepoMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
@@ -2253,12 +2616,18 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, tc.argServerURL, serverCertificate,
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, tc.argServerURL, serverCertificate,
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 			)
 
 			// Run test
-			err := serverSvc.SelfRegisterOperationsCenter(context.Background())
+			err := serverSvc.SelfRegisterOperationsCenter(t.Context())
 
 			// Assert
 			tc.assertErr(t, err)
@@ -2333,12 +2702,12 @@ func TestServerService_Rename(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, "", tls.Certificate{},
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, nil, "", tls.Certificate{},
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 			)
 
 			// Run test
-			err := serverSvc.Rename(context.Background(), tc.oldName, tc.newName)
+			err := serverSvc.Rename(t.Context(), tc.oldName, tc.newName)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -2415,10 +2784,10 @@ func TestServerService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, "", tls.Certificate{})
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, nil, "", tls.Certificate{})
 
 			// Run test
-			err := serverSvc.DeleteByName(context.Background(), tc.nameArg)
+			err := serverSvc.DeleteByName(t.Context(), tc.nameArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -2909,14 +3278,14 @@ foobar
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, "", tls.Certificate{},
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, nil, "", tls.Certificate{},
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 				provisioning.ServerServiceWithHTTPClient(httpsServer.Client()),
 			)
 			serverSvc.SetClusterService(clusterSvc)
 
 			// Run test
-			err = serverSvc.PollServers(context.Background(), api.ServerStatusPending, true)
+			err = serverSvc.PollServers(t.Context(), api.ServerStatusPending, true)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -2997,7 +3366,13 @@ func TestServerService_ResyncByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, "https://one:8443", serverCertificate,
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, "https://one:8443", serverCertificate,
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 			)
 
@@ -3057,7 +3432,13 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, "https://one:8443", tls.Certificate{})
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, "https://one:8443", tls.Certificate{})
 
 			// Run test
 			err := serverSvc.PoweroffSystemByName(t.Context(), "one")
@@ -3115,7 +3496,13 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, "https://one:8443", tls.Certificate{})
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, "https://one:8443", tls.Certificate{})
 
 			// Run test
 			err := serverSvc.RebootSystemByName(t.Context(), "one")
