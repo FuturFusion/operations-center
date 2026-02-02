@@ -71,6 +71,7 @@ type environment interface {
 	CacheDir() string
 	UsrShareDir() string
 	IsIncusOS() bool
+	GetToken(ctx context.Context) (string, error)
 }
 
 type Daemon struct {
@@ -428,6 +429,7 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 	updateServer := updateserver.New(
 		config.GetUpdates().Source,
 		config.GetUpdates().SignatureVerificationRootCA,
+		d.env,
 	)
 	config.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemUpdates) {
 		updateServer.UpdateConfig(ctx, cfg.Source, cfg.SignatureVerificationRootCA)

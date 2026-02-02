@@ -68,8 +68,10 @@ func TestSystemConfigUpdate(t *testing.T) {
 	}
 
 	// Setup daemon with empty (default) configuration for actual tests.
-	config.InitTest(t, env, nil)
-	require.NoError(t, err)
+	config.InitTest(t, env, nil, config.InternalConfig{
+		IsBackgroundTasksDisabled: true,
+		SourcePollSkipFirst:       true,
+	})
 
 	d := restapi.NewDaemon(
 		ctx,
