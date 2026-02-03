@@ -282,16 +282,17 @@ type ExprOsapiSystemStorageDrive struct {
 }
 
 type ExprOsapiSystemStorageDriveSMART struct {
-	Enabled            bool `json:"enabled" yaml:"enabled" expr:"enabled"`
-	Passed             bool `json:"passed"  yaml:"passed" expr:"passed"`
-	PowerOnHours       int  `json:"power_on_hours,omitempty"      yaml:"power_on_hours,omitempty" expr:"power_on_hours"`
-	DataUnitsRead      int  `json:"data_units_read,omitempty"     yaml:"data_units_read,omitempty" expr:"data_units_read"`
-	DataUnitsWritten   int  `json:"data_units_written,omitempty"  yaml:"data_units_written,omitempty" expr:"data_units_written"`
-	AvailableSpare     int  `json:"available_spare,omitempty"     yaml:"available_spare,omitempty" expr:"available_spare"`
-	PercentageUsed     int  `json:"percentage_used,omitempty"     yaml:"percentage_used,omitempty" expr:"percentage_used"`
-	RawReadErrorRate   int  `json:"raw_read_error_rate,omitempty" yaml:"raw_read_error_rate,omitempty" expr:"raw_read_error_rate"`
-	SeekErrorRate      int  `json:"seek_error_rate,omitempty"     yaml:"seek_error_rate,omitempty" expr:"seek_error_rate"`
-	ReallocatedSectors int  `json:"reallocated_sectors,omitempty" yaml:"reallocated_sectors,omitempty" expr:"reallocated_sectors"`
+	Enabled            bool   `json:"enabled"         yaml:"enabled" expr:"enabled"`
+	Passed             bool   `json:"passed"          yaml:"passed" expr:"passed"`
+	Error              string `json:"error,omitempty" yaml:"error,omitempty" expr:"error"`
+	PowerOnHours       int    `json:"power_on_hours,omitempty"      yaml:"power_on_hours,omitempty" expr:"power_on_hours"`
+	DataUnitsRead      int    `json:"data_units_read,omitempty"     yaml:"data_units_read,omitempty" expr:"data_units_read"`
+	DataUnitsWritten   int    `json:"data_units_written,omitempty"  yaml:"data_units_written,omitempty" expr:"data_units_written"`
+	AvailableSpare     int    `json:"available_spare,omitempty"     yaml:"available_spare,omitempty" expr:"available_spare"`
+	PercentageUsed     int    `json:"percentage_used,omitempty"     yaml:"percentage_used,omitempty" expr:"percentage_used"`
+	RawReadErrorRate   int    `json:"raw_read_error_rate,omitempty" yaml:"raw_read_error_rate,omitempty" expr:"raw_read_error_rate"`
+	SeekErrorRate      int    `json:"seek_error_rate,omitempty"     yaml:"seek_error_rate,omitempty" expr:"seek_error_rate"`
+	ReallocatedSectors int    `json:"reallocated_sectors,omitempty" yaml:"reallocated_sectors,omitempty" expr:"reallocated_sectors"`
 }
 
 type ExprOsapiSystemStoragePool struct {
@@ -696,6 +697,7 @@ func ToExprOsapiSystemStorageDriveSMART(s osapi.SystemStorageDriveSMART) ExprOsa
 	return ExprOsapiSystemStorageDriveSMART{
 		Enabled:            s.Enabled,
 		Passed:             s.Passed,
+		Error:              s.Error,
 		PowerOnHours:       s.PowerOnHours,
 		DataUnitsRead:      s.DataUnitsRead,
 		DataUnitsWritten:   s.DataUnitsWritten,
