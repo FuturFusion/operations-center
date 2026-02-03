@@ -79,26 +79,30 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -182,6 +186,7 @@ func TestClusterService_Create(t *testing.T) {
 						Cluster: ptr.To("cluster-foo"), // already part of cluster.
 						Name:    "server1",
 						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
 					},
 				},
 			},
@@ -189,6 +194,29 @@ func TestClusterService_Create(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, `Server "server1" is already part of cluster "cluster-foo"`)
+			},
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name: "error - server not in ready state",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusPending, // server not in ready state
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Server "server1" is not in ready state and can therefore not be used for clustering`)
 			},
 			signalHandler: requireNoCallSignalHandler,
 		},
@@ -202,14 +230,16 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -229,14 +259,16 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeMigrationManager, // wrong type, incus expected.
+						Name:   "server1",
+						Type:   api.ServerTypeMigrationManager, // wrong type, incus expected.
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -257,14 +289,16 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -287,14 +321,16 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -319,14 +355,16 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -351,15 +389,17 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						ID:   2001, // invalid, server ID must not be > 2000 for LVM system_id.
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						ID:     2001, // invalid, server ID must not be > 2000 for LVM system_id.
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -384,14 +424,16 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -410,14 +452,16 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -441,14 +485,16 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -471,14 +517,16 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -502,14 +550,16 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -533,14 +583,16 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -564,14 +616,16 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
@@ -596,14 +650,16 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
@@ -635,26 +691,30 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -678,26 +738,30 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -721,26 +785,30 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -764,26 +832,30 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -807,26 +879,30 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -850,26 +926,30 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -893,26 +973,30 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
@@ -936,26 +1020,30 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server1",
-						Type: api.ServerTypeIncus,
+						Name:   "server1",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 				{
 					Value: &provisioning.Server{
-						Name: "server2",
-						Type: api.ServerTypeIncus,
+						Name:   "server2",
+						Type:   api.ServerTypeIncus,
+						Status: api.ServerStatusReady,
 					},
 				},
 			},
