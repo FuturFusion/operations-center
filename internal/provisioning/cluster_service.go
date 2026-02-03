@@ -8,6 +8,7 @@ import (
 	"io"
 	"iter"
 	"log/slog"
+	"net"
 	"net/url"
 	"sync"
 	"time"
@@ -249,14 +250,16 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 		return newCluster, fmt.Errorf("Failed to enable clustering on bootstrap server %q: %w", bootstrapServer.Name, err)
 	}
 
+	clusterConnectionURL := determineClusterConnectionURL(bootstrapServer)
+
 	// From now on, use the cluster certificate to connect to the cluster instead
 	// of the certificate of the bootstrap server.
 	clusterEndpoint := ClusterEndpoint{
 		Server{
-			ConnectionURL:        bootstrapServer.ConnectionURL,
+			ConnectionURL:        clusterConnectionURL,
 			Cluster:              &newCluster.Name,
 			ClusterCertificate:   &clusterCertificate,
-			ClusterConnectionURL: &bootstrapServer.ConnectionURL,
+			ClusterConnectionURL: &clusterConnectionURL,
 		},
 	}
 
@@ -404,6 +407,15 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 	})
 
 	return newCluster, nil
+}
+
+func determineClusterConnectionURL(server Server) string {
+	ip := server.OSData.Network.State.GetInterfaceAddressByRole(incusosapi.SystemNetworkInterfaceRoleCluster)
+	if ip == nil {
+		return server.ConnectionURL
+	}
+
+	return "https://" + net.JoinHostPort(ip.String(), "8443")
 }
 
 func (s clusterService) GetAll(ctx context.Context) (Clusters, error) {
