@@ -8,6 +8,7 @@ package entities
 //generate-database:mapper stmt -e server objects
 //generate-database:mapper stmt -e server objects-by-Name
 //generate-database:mapper stmt -e server objects-by-Cluster
+//generate-database:mapper stmt -e server objects-by-Cluster-and-Name
 //generate-database:mapper stmt -e server objects-by-Cluster-and-Status
 //generate-database:mapper stmt -e server objects-by-Status
 //generate-database:mapper stmt -e server objects-by-Certificate
