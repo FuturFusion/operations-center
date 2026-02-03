@@ -177,13 +177,14 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 		result := make([]api.Update, 0, len(updates))
 		for _, update := range updates {
 			result = append(result, api.Update{
-				UUID:             update.UUID,
-				Version:          update.Version,
-				PublishedAt:      update.PublishedAt,
-				Severity:         update.Severity,
-				Origin:           update.Origin,
-				URL:              update.URL,
-				Channels:         update.Channels,
+				UUID:        update.UUID,
+				Version:     update.Version,
+				PublishedAt: update.PublishedAt,
+				Severity:    update.Severity,
+				Origin:      update.Origin,
+				URL:         update.URL,
+				// Return UpstreamChannels until the updated channel functionality is completed.
+				Channels:         update.UpstreamChannels,
 				UpstreamChannels: update.UpstreamChannels,
 				Changelog:        update.Changelog,
 				Status:           update.Status,
@@ -393,13 +394,14 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 	return response.SyncResponseETag(
 		true,
 		api.Update{
-			UUID:             update.UUID,
-			Version:          update.Version,
-			PublishedAt:      update.PublishedAt,
-			Severity:         update.Severity,
-			Origin:           update.Origin,
-			URL:              update.URL,
-			Channels:         update.Channels,
+			UUID:        update.UUID,
+			Version:     update.Version,
+			PublishedAt: update.PublishedAt,
+			Severity:    update.Severity,
+			Origin:      update.Origin,
+			URL:         update.URL,
+			// Return UpstreamChannels until the updated channel functionality is completed.
+			Channels:         update.UpstreamChannels,
 			UpstreamChannels: update.UpstreamChannels,
 			Changelog:        update.Changelog,
 			Status:           update.Status,
