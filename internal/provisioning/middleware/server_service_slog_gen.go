@@ -646,6 +646,41 @@ func (_d ServerServiceWithSlog) Update(ctx context.Context, server provisioning.
 	return _d._base.Update(ctx, server)
 }
 
+// UpdateSystemByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Any("updateRequest", updateRequest),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateSystemByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateSystemByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateSystemByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateSystemByName finished")
+		}
+	}()
+	return _d._base.UpdateSystemByName(ctx, name, updateRequest)
+}
+
 // UpdateSystemNetwork implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) UpdateSystemNetwork(ctx context.Context, name string, networkConfig provisioning.ServerSystemNetwork) (err error) {
 	log := _d._log.With()

@@ -77,6 +77,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the Update method")
 //			},
+//			UpdateSystemByNameFunc: func(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error {
+//				panic("mock out the UpdateSystemByName method")
+//			},
 //			UpdateSystemNetworkFunc: func(ctx context.Context, name string, networkConfig provisioning.ServerSystemNetwork) error {
 //				panic("mock out the UpdateSystemNetwork method")
 //			},
@@ -149,6 +152,9 @@ type ServerServiceMock struct {
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, server provisioning.Server) error
+
+	// UpdateSystemByNameFunc mocks the UpdateSystemByName method.
+	UpdateSystemByNameFunc func(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error
 
 	// UpdateSystemNetworkFunc mocks the UpdateSystemNetwork method.
 	UpdateSystemNetworkFunc func(ctx context.Context, name string, networkConfig provisioning.ServerSystemNetwork) error
@@ -288,6 +294,15 @@ type ServerServiceMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
+		// UpdateSystemByName holds details about calls to the UpdateSystemByName method.
+		UpdateSystemByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// UpdateRequest is the updateRequest argument value.
+			UpdateRequest api.ServerUpdatePost
+		}
 		// UpdateSystemNetwork holds details about calls to the UpdateSystemNetwork method.
 		UpdateSystemNetwork []struct {
 			// Ctx is the ctx argument value.
@@ -343,6 +358,7 @@ type ServerServiceMock struct {
 	lockSelfUpdate                   sync.RWMutex
 	lockSetClusterService            sync.RWMutex
 	lockUpdate                       sync.RWMutex
+	lockUpdateSystemByName           sync.RWMutex
 	lockUpdateSystemNetwork          sync.RWMutex
 	lockUpdateSystemProvider         sync.RWMutex
 	lockUpdateSystemStorage          sync.RWMutex
@@ -990,6 +1006,46 @@ func (mock *ServerServiceMock) UpdateCalls() []struct {
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update
 	mock.lockUpdate.RUnlock()
+	return calls
+}
+
+// UpdateSystemByName calls UpdateSystemByNameFunc.
+func (mock *ServerServiceMock) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error {
+	if mock.UpdateSystemByNameFunc == nil {
+		panic("ServerServiceMock.UpdateSystemByNameFunc: method is nil but ServerService.UpdateSystemByName was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		Name          string
+		UpdateRequest api.ServerUpdatePost
+	}{
+		Ctx:           ctx,
+		Name:          name,
+		UpdateRequest: updateRequest,
+	}
+	mock.lockUpdateSystemByName.Lock()
+	mock.calls.UpdateSystemByName = append(mock.calls.UpdateSystemByName, callInfo)
+	mock.lockUpdateSystemByName.Unlock()
+	return mock.UpdateSystemByNameFunc(ctx, name, updateRequest)
+}
+
+// UpdateSystemByNameCalls gets all the calls that were made to UpdateSystemByName.
+// Check the length with:
+//
+//	len(mockedServerService.UpdateSystemByNameCalls())
+func (mock *ServerServiceMock) UpdateSystemByNameCalls() []struct {
+	Ctx           context.Context
+	Name          string
+	UpdateRequest api.ServerUpdatePost
+} {
+	var calls []struct {
+		Ctx           context.Context
+		Name          string
+		UpdateRequest api.ServerUpdatePost
+	}
+	mock.lockUpdateSystemByName.RLock()
+	calls = mock.calls.UpdateSystemByName
+	mock.lockUpdateSystemByName.RUnlock()
 	return calls
 }
 

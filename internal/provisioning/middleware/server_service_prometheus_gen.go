@@ -287,6 +287,20 @@ func (_d ServerServiceWithPrometheus) Update(ctx context.Context, server provisi
 	return _d.base.Update(ctx, server)
 }
 
+// UpdateSystemByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSystemByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateSystemByName(ctx, name, updateRequest)
+}
+
 // UpdateSystemNetwork implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) UpdateSystemNetwork(ctx context.Context, name string, networkConfig provisioning.ServerSystemNetwork) (err error) {
 	_since := time.Now()

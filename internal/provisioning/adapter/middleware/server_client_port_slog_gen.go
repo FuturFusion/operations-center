@@ -388,6 +388,40 @@ func (_d ServerClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, serv
 	return _d._base.UpdateNetworkConfig(ctx, server)
 }
 
+// UpdateOS implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) UpdateOS(ctx context.Context, server provisioning.Server) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateOS")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateOS returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateOS returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateOS finished")
+		}
+	}()
+	return _d._base.UpdateOS(ctx, server)
+}
+
 // UpdateProviderConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) UpdateProviderConfig(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) (err error) {
 	log := _d._log.With()

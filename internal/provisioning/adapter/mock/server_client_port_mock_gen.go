@@ -52,6 +52,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the UpdateNetworkConfig method")
 //			},
+//			UpdateOSFunc: func(ctx context.Context, server provisioning.Server) error {
+//				panic("mock out the UpdateOS method")
+//			},
 //			UpdateProviderConfigFunc: func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) error {
 //				panic("mock out the UpdateProviderConfig method")
 //			},
@@ -97,6 +100,9 @@ type ServerClientPortMock struct {
 
 	// UpdateNetworkConfigFunc mocks the UpdateNetworkConfig method.
 	UpdateNetworkConfigFunc func(ctx context.Context, server provisioning.Server) error
+
+	// UpdateOSFunc mocks the UpdateOS method.
+	UpdateOSFunc func(ctx context.Context, server provisioning.Server) error
 
 	// UpdateProviderConfigFunc mocks the UpdateProviderConfig method.
 	UpdateProviderConfigFunc func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) error
@@ -179,6 +185,13 @@ type ServerClientPortMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
+		// UpdateOS holds details about calls to the UpdateOS method.
+		UpdateOS []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// UpdateProviderConfig holds details about calls to the UpdateProviderConfig method.
 		UpdateProviderConfig []struct {
 			// Ctx is the ctx argument value.
@@ -215,6 +228,7 @@ type ServerClientPortMock struct {
 	lockPoweroff             sync.RWMutex
 	lockReboot               sync.RWMutex
 	lockUpdateNetworkConfig  sync.RWMutex
+	lockUpdateOS             sync.RWMutex
 	lockUpdateProviderConfig sync.RWMutex
 	lockUpdateStorageConfig  sync.RWMutex
 	lockUpdateUpdateConfig   sync.RWMutex
@@ -577,6 +591,42 @@ func (mock *ServerClientPortMock) UpdateNetworkConfigCalls() []struct {
 	mock.lockUpdateNetworkConfig.RLock()
 	calls = mock.calls.UpdateNetworkConfig
 	mock.lockUpdateNetworkConfig.RUnlock()
+	return calls
+}
+
+// UpdateOS calls UpdateOSFunc.
+func (mock *ServerClientPortMock) UpdateOS(ctx context.Context, server provisioning.Server) error {
+	if mock.UpdateOSFunc == nil {
+		panic("ServerClientPortMock.UpdateOSFunc: method is nil but ServerClientPort.UpdateOS was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockUpdateOS.Lock()
+	mock.calls.UpdateOS = append(mock.calls.UpdateOS, callInfo)
+	mock.lockUpdateOS.Unlock()
+	return mock.UpdateOSFunc(ctx, server)
+}
+
+// UpdateOSCalls gets all the calls that were made to UpdateOS.
+// Check the length with:
+//
+//	len(mockedServerClientPort.UpdateOSCalls())
+func (mock *ServerClientPortMock) UpdateOSCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockUpdateOS.RLock()
+	calls = mock.calls.UpdateOS
+	mock.lockUpdateOS.RUnlock()
 	return calls
 }
 
