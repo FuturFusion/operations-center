@@ -56,6 +56,7 @@ func registerProvisioningServerHandler(router Router, authorizer *authz.Authoriz
 	router.HandleFunc("POST /{name}/:resync", response.With(handler.serverResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/system/:poweroff", response.With(handler.serverSystemPoweroffPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/system/:reboot", response.With(handler.serverSystemRebootPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/system/:update", response.With(handler.serverSystemUpdatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}/system/network", response.With(handler.serverSystemNetworkGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /{name}/system/network", response.With(handler.serverSystemNetworkPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}/system/storage", response.With(handler.serverSystemStorageGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -787,6 +788,44 @@ func (s *serverHandler) serverSystemRebootPost(r *http.Request) response.Respons
 	err := s.service.RebootSystemByName(r.Context(), name)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to reboot server %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/servers/{name}/system/:update servers_system_update server_system_update_post
+//
+//	Update server
+//
+//	Triggers an update operation on the server.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverSystemUpdatePost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	var updateRequest api.ServerUpdatePost
+
+	err := json.NewDecoder(r.Body).Decode(&updateRequest)
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Request decoding: %v", err))
+	}
+
+	err = s.service.UpdateSystemByName(r.Context(), name, updateRequest)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to update server %q: %w", name, err))
 	}
 
 	return response.EmptySyncResponse
