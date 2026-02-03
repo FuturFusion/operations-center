@@ -668,7 +668,7 @@ func (c client) SubscribeLifecycleEvents(ctx context.Context, endpoint provision
 			_ = listener.RemoveHandler(target)
 		}
 
-		// Block potential senders, the will be "released" when the context is cancelled.
+		// Block potential senders, these will be "released" when the context is cancelled.
 		// We can not close the channel here, since already inflight handlers might still
 		// try to send on the channel, if these have been spawned before the handler
 		// has been removed.

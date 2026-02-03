@@ -2191,7 +2191,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 		name              string
 		getCtx            func() (context.Context, func())
 		blockEventChannel bool
-		handler           func(done chan struct{}) func(http.ResponseWriter, *http.Request)
+		handler           func(ready, done chan struct{}) func(http.ResponseWriter, *http.Request)
 		clientCertPEM     string
 		clientKeyPEM      string
 
@@ -2203,7 +2203,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 		{
 			name:   "success one event",
 			getCtx: readyContext,
-			handler: func(done chan struct{}) func(w http.ResponseWriter, r *http.Request) {
+			handler: func(ready, done chan struct{}) func(w http.ResponseWriter, r *http.Request) {
 				return func(w http.ResponseWriter, r *http.Request) {
 					conn, err := upgrader.Upgrade(w, r, nil)
 					if err != nil {
@@ -2212,6 +2212,8 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 					}
 
 					defer conn.Close()
+
+					<-ready
 
 					err = conn.WriteJSON(createLifecycleEvent(t, incusapi.EventLifecycleImageCreated))
 					if err != nil {
@@ -2240,7 +2242,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 		{
 			name:   "error - getClient",
 			getCtx: readyContext,
-			handler: func(done chan struct{}) func(w http.ResponseWriter, r *http.Request) {
+			handler: func(ready, done chan struct{}) func(w http.ResponseWriter, r *http.Request) {
 				return func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
 				}
@@ -2253,7 +2255,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 		{
 			name:   "error - GetEventsAllProjects",
 			getCtx: readyContext,
-			handler: func(done chan struct{}) func(w http.ResponseWriter, r *http.Request) {
+			handler: func(ready, done chan struct{}) func(w http.ResponseWriter, r *http.Request) {
 				return func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusInternalServerError)
 				}
@@ -2266,7 +2268,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 		{
 			name:   "error - invalid lifecycle event",
 			getCtx: readyContext,
-			handler: func(done chan struct{}) func(w http.ResponseWriter, r *http.Request) {
+			handler: func(ready, done chan struct{}) func(w http.ResponseWriter, r *http.Request) {
 				return func(w http.ResponseWriter, r *http.Request) {
 					conn, err := upgrader.Upgrade(w, r, nil)
 					if err != nil {
@@ -2275,6 +2277,8 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 					}
 
 					defer conn.Close()
+
+					<-ready
 
 					err = conn.WriteJSON(incusapi.Event{
 						Type:      incusapi.EventTypeLifecycle,
@@ -2315,7 +2319,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 		{
 			name:   "error - unsupported lifecycle event resource type",
 			getCtx: readyContext,
-			handler: func(done chan struct{}) func(w http.ResponseWriter, r *http.Request) {
+			handler: func(ready, done chan struct{}) func(w http.ResponseWriter, r *http.Request) {
 				return func(w http.ResponseWriter, r *http.Request) {
 					conn, err := upgrader.Upgrade(w, r, nil)
 					if err != nil {
@@ -2324,6 +2328,8 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 					}
 
 					defer conn.Close()
+
+					<-ready
 
 					err = conn.WriteJSON(createLifecycleEvent(t, "unsupported-action")) // unsupported action
 					if err != nil {
@@ -2359,7 +2365,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 			name:              "handle event - cancelled context",
 			getCtx:            cancelledContext,
 			blockEventChannel: true,
-			handler: func(done chan struct{}) func(w http.ResponseWriter, r *http.Request) {
+			handler: func(ready, done chan struct{}) func(w http.ResponseWriter, r *http.Request) {
 				return func(w http.ResponseWriter, r *http.Request) {
 					conn, err := upgrader.Upgrade(w, r, nil)
 					if err != nil {
@@ -2369,8 +2375,11 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 
 					defer conn.Close()
 
+					<-ready
+
 					// Since channel read operations in select pick a random case, we might
 					// need multiple attempts until hitting the ctx.Done() case.
+				loop:
 					for {
 						err = conn.WriteJSON(createLifecycleEvent(t, incusapi.EventLifecycleImageCreated))
 						if err != nil {
@@ -2380,6 +2389,8 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 
 						select {
 						case <-done:
+							break loop
+
 						default:
 						}
 					}
@@ -2395,7 +2406,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 		{
 			name:   "error - webserver disconnect websocket immediately",
 			getCtx: readyContext,
-			handler: func(done chan struct{}) func(w http.ResponseWriter, r *http.Request) {
+			handler: func(ready, done chan struct{}) func(w http.ResponseWriter, r *http.Request) {
 				return func(w http.ResponseWriter, r *http.Request) {
 					conn, err := upgrader.Upgrade(w, r, nil)
 					if err != nil {
@@ -2417,39 +2428,48 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 		},
 	}
 
+	var httpHandler http.HandlerFunc
+
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		httpHandler(w, r)
+	}))
+	server.TLS = &tls.Config{
+		NextProtos: []string{"h2", "http/1.1"},
+		ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientCAs:  caPool,
+	}
+
+	server.StartTLS()
+	defer server.Close()
+
+	serverCert := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: server.Certificate().Raw,
+	})
+
+	target := provisioning.Server{
+		ConnectionURL: server.URL,
+		Certificate:   string(serverCert),
+	}
+
+	logBuf := &bytes.Buffer{}
+	err := logger.InitLogger(logBuf, "", false, false)
+	require.NoError(t, err)
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			ready := make(chan struct{})
 			done := make(chan struct{})
 
 			ctx, cancel := tc.getCtx()
 			defer cancel()
 
-			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false)
-			require.NoError(t, err)
+			logBuf.Reset()
 
-			server := httptest.NewUnstartedServer(http.HandlerFunc(tc.handler(done)))
-			server.TLS = &tls.Config{
-				NextProtos: []string{"h2", "http/1.1"},
-				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  caPool,
-			}
-
-			server.StartTLS()
-			defer server.Close()
+			httpHandler = tc.handler(ready, done)
 
 			client := incus.New(tc.clientCertPEM, tc.clientKeyPEM)
-
-			serverCert := pem.EncodeToMemory(&pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: server.Certificate().Raw,
-			})
-
-			target := provisioning.Server{
-				ConnectionURL: server.URL,
-				Certificate:   string(serverCert),
-			}
 
 			// Run test
 			events, errChan, err := client.SubscribeLifecycleEvents(ctx, target)
@@ -2466,6 +2486,11 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 			var event domain.LifecycleEvent
 			var errChanErr error
 
+			close(ready)
+
+			tick := time.NewTicker(100 * time.Millisecond)
+			defer tick.Stop()
+
 			select {
 			case event = <-events:
 			case errChanErr = <-errChan:
@@ -2473,7 +2498,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 			case <-t.Context().Done():
 				t.Fatal("Test context cancelled before test ended")
 
-			case <-time.After(5000 * time.Millisecond):
+			case <-tick.C:
 				t.Error("Test timeout reached before test ended")
 			}
 
