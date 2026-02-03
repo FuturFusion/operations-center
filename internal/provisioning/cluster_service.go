@@ -160,6 +160,10 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 				return fmt.Errorf("Server %q is already part of cluster %q: %w", serverName, *server.Cluster, domain.ErrOperationNotPermitted)
 			}
 
+			if server.Status != api.ServerStatusReady {
+				return fmt.Errorf("Server %q is not in ready state and can therefore not be used for clustering: %w", serverName, domain.ErrOperationNotPermitted)
+			}
+
 			servers = append(servers, *server)
 		}
 
