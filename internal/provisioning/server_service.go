@@ -820,6 +820,25 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string) err
 	return nil
 }
 
+func (s *serverService) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	if updateRequest.OS.TriggerUpdate {
+		err = s.client.UpdateOS(ctx, *server)
+		if err != nil {
+			return fmt.Errorf("Failed to update the OS of server %q by name: %w", name, err)
+		}
+	}
+
+	// FIXME: iterate over the applications and trigger the update for the applications
+	// as well, if the TriggerUpdate flag is set to true for the particular application.
+
+	return nil
+}
+
 func (s *serverService) ResyncByName(ctx context.Context, name string) error {
 	server, err := s.GetByName(ctx, name)
 	if err != nil {

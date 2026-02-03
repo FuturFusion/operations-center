@@ -33,6 +33,7 @@ type ServerService interface {
 
 	PoweroffSystemByName(ctx context.Context, name string) error
 	RebootSystemByName(ctx context.Context, name string) error
+	UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error
 }
 
 type ServerRepo interface {
@@ -62,4 +63,5 @@ type ServerClientPort interface {
 	UpdateUpdateConfig(ctx context.Context, server Server, providerConfig ServerSystemUpdate) error
 	Poweroff(ctx context.Context, server Server) error
 	Reboot(ctx context.Context, server Server) error
+	UpdateOS(ctx context.Context, server Server) error
 }
