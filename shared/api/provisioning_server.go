@@ -12,6 +12,8 @@ import (
 
 type ServerType string
 
+const ServerNameOperationsCenter = "operations-center"
+
 const (
 	ServerTypeUnknown          ServerType = "unknown"
 	ServerTypeIncus            ServerType = "incus"
