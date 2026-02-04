@@ -2359,6 +2359,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		repoGetByCertificateServer *provisioning.Server
 		repoGetByCertificateErr    error
 		repoUpdateErr              error
+		repoGetByNameErr           error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -2457,12 +2458,33 @@ func TestServerService_SelfUpdate(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 		},
+		{
+			name: "error - repo.UpdateByID",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one/",
+				AuthenticationCertificate: serverCertificate.Leaf,
+			},
+			repoGetByCertificateServer: &provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate:   string(serverCertPEM),
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
+			},
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &provisioning.Server{}, tc.repoGetByNameErr
+				},
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
 					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
 				},
@@ -2475,7 +2497,25 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, nil, "https://one:8443", serverCertificate,
+			client := &adapterMock.ServerClientPortMock{
+				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return nil
+				},
+				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
+					return api.HardwareData{}, nil
+				},
+				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
+					return api.OSData{}, nil
+				},
+				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+					return api.ServerVersionData{}, nil
+				},
+				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
+					return api.ServerTypeIncus, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, nil, "https://one:8443", serverCertificate,
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 			)
 

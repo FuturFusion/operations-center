@@ -631,6 +631,11 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfU
 		return err
 	}
 
+	err = s.pollServer(ctx, *server, true)
+	if err != nil {
+		return fmt.Errorf("Failed to update server configuration after self update: %w", err)
+	}
+
 	s.selfUpdateSignal.Emit(ctx, *server)
 
 	return nil
