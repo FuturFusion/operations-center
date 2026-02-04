@@ -356,6 +356,41 @@ func (_d ServerServiceWithSlog) GetSystemUpdate(ctx context.Context, name string
 	return _d._base.GetSystemUpdate(ctx, name)
 }
 
+// PollServer implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) PollServer(ctx context.Context, server provisioning.Server, updateServerConfiguration bool) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.Bool("updateServerConfiguration", updateServerConfiguration),
+		)
+	}
+	log.DebugContext(ctx, "=> calling PollServer")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method PollServer returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method PollServer returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method PollServer finished")
+		}
+	}()
+	return _d._base.PollServer(ctx, server, updateServerConfiguration)
+}
+
 // PollServers implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) (err error) {
 	log := _d._log.With()
