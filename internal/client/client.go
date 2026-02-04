@@ -214,7 +214,7 @@ func processResponse(resp *http.Response) (*api.Response, error) {
 
 	if response.Code != 0 {
 		if response.Code == http.StatusNotFound {
-			return &response, domain.ErrNotFound
+			return &response, fmt.Errorf("%w (%s)", domain.ErrNotFound, strings.ReplaceAll(response.Error, ": "+domain.ErrNotFound.Error(), ""))
 		}
 
 		if response.Code == http.StatusUnauthorized {
