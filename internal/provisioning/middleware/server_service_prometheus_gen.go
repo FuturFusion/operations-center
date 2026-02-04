@@ -165,6 +165,20 @@ func (_d ServerServiceWithPrometheus) GetSystemUpdate(ctx context.Context, name 
 	return _d.base.GetSystemUpdate(ctx, name)
 }
 
+// PollServer implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) PollServer(ctx context.Context, server provisioning.Server, updateServerConfiguration bool) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PollServer", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.PollServer(ctx, server, updateServerConfiguration)
+}
+
 // PollServers implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) (err error) {
 	_since := time.Now()

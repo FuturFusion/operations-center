@@ -50,6 +50,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			GetSystemUpdateFunc: func(ctx context.Context, name string) (provisioning.ServerSystemUpdate, error) {
 //				panic("mock out the GetSystemUpdate method")
 //			},
+//			PollServerFunc: func(ctx context.Context, server provisioning.Server, updateServerConfiguration bool) error {
+//				panic("mock out the PollServer method")
+//			},
 //			PollServersFunc: func(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error {
 //				panic("mock out the PollServers method")
 //			},
@@ -125,6 +128,9 @@ type ServerServiceMock struct {
 
 	// GetSystemUpdateFunc mocks the GetSystemUpdate method.
 	GetSystemUpdateFunc func(ctx context.Context, name string) (provisioning.ServerSystemUpdate, error)
+
+	// PollServerFunc mocks the PollServer method.
+	PollServerFunc func(ctx context.Context, server provisioning.Server, updateServerConfiguration bool) error
 
 	// PollServersFunc mocks the PollServers method.
 	PollServersFunc func(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error
@@ -230,6 +236,15 @@ type ServerServiceMock struct {
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+		}
+		// PollServer holds details about calls to the PollServer method.
+		PollServer []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// UpdateServerConfiguration is the updateServerConfiguration argument value.
+			UpdateServerConfiguration bool
 		}
 		// PollServers holds details about calls to the PollServers method.
 		PollServers []struct {
@@ -349,6 +364,7 @@ type ServerServiceMock struct {
 	lockGetByName                    sync.RWMutex
 	lockGetSystemProvider            sync.RWMutex
 	lockGetSystemUpdate              sync.RWMutex
+	lockPollServer                   sync.RWMutex
 	lockPollServers                  sync.RWMutex
 	lockPoweroffSystemByName         sync.RWMutex
 	lockRebootSystemByName           sync.RWMutex
@@ -682,6 +698,46 @@ func (mock *ServerServiceMock) GetSystemUpdateCalls() []struct {
 	mock.lockGetSystemUpdate.RLock()
 	calls = mock.calls.GetSystemUpdate
 	mock.lockGetSystemUpdate.RUnlock()
+	return calls
+}
+
+// PollServer calls PollServerFunc.
+func (mock *ServerServiceMock) PollServer(ctx context.Context, server provisioning.Server, updateServerConfiguration bool) error {
+	if mock.PollServerFunc == nil {
+		panic("ServerServiceMock.PollServerFunc: method is nil but ServerService.PollServer was just called")
+	}
+	callInfo := struct {
+		Ctx                       context.Context
+		Server                    provisioning.Server
+		UpdateServerConfiguration bool
+	}{
+		Ctx:                       ctx,
+		Server:                    server,
+		UpdateServerConfiguration: updateServerConfiguration,
+	}
+	mock.lockPollServer.Lock()
+	mock.calls.PollServer = append(mock.calls.PollServer, callInfo)
+	mock.lockPollServer.Unlock()
+	return mock.PollServerFunc(ctx, server, updateServerConfiguration)
+}
+
+// PollServerCalls gets all the calls that were made to PollServer.
+// Check the length with:
+//
+//	len(mockedServerService.PollServerCalls())
+func (mock *ServerServiceMock) PollServerCalls() []struct {
+	Ctx                       context.Context
+	Server                    provisioning.Server
+	UpdateServerConfiguration bool
+} {
+	var calls []struct {
+		Ctx                       context.Context
+		Server                    provisioning.Server
+		UpdateServerConfiguration bool
+	}
+	mock.lockPollServer.RLock()
+	calls = mock.calls.PollServer
+	mock.lockPollServer.RUnlock()
 	return calls
 }
 

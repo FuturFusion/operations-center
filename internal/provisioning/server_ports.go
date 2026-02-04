@@ -30,6 +30,7 @@ type ServerService interface {
 	ResyncByName(ctx context.Context, name string) error
 
 	PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error
+	PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error
 
 	PoweroffSystemByName(ctx context.Context, name string) error
 	RebootSystemByName(ctx context.Context, name string) error
