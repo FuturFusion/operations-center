@@ -161,7 +161,7 @@ func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer S
 		time.Sleep(s.initialConnectionDelay)
 
 		ctx := context.Background()
-		err = s.pollServer(ctx, newServer, true)
+		err = s.PollServer(ctx, newServer, true)
 		if err != nil {
 			slog.WarnContext(ctx, "Initial server connection test failed", logger.Err(err), slog.String("name", newServer.Name), slog.String("url", newServer.ConnectionURL))
 		}
@@ -579,7 +579,7 @@ func (s *serverService) UpdateSystemUpdate(ctx context.Context, name string, upd
 		return fmt.Errorf("Failed to update the update config for %q: %w", server.Name, err)
 	}
 
-	err = s.pollServer(ctx, *server, true)
+	err = s.PollServer(ctx, *server, true)
 	if err != nil {
 		slog.WarnContext(ctx, "Server poll after changing the update configuration failed (non-critical), fixed by the next successful server poll interval", logger.Err(err), slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 	}
@@ -631,7 +631,7 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfU
 		return err
 	}
 
-	err = s.pollServer(ctx, *server, true)
+	err = s.PollServer(ctx, *server, true)
 	if err != nil {
 		return fmt.Errorf("Failed to update server configuration after self update: %w", err)
 	}
@@ -672,7 +672,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 			// Create server entry
 
 			server = Server{
-				Name:          "operations-center",
+				Name:          api.ServerNameOperationsCenter,
 				Type:          api.ServerTypeOperationsCenter,
 				ConnectionURL: serverURL,
 				Certificate:   string(serverCert),
@@ -718,7 +718,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 	}
 
 	if pollAfterCreate {
-		err = s.pollServer(ctx, server, true)
+		err = s.PollServer(ctx, server, true)
 		if err != nil {
 			return fmt.Errorf("Failed to update server configuration after self registration: %w", err)
 		}
@@ -787,7 +787,7 @@ func (s *serverService) PollServers(ctx context.Context, serverStatus api.Server
 
 	var errs []error
 	for _, server := range servers {
-		err = s.pollServer(ctx, server, updateServerConfiguration)
+		err = s.PollServer(ctx, server, updateServerConfiguration)
 		if err != nil && !errors.Is(err, api.NotIncusOSError) {
 			errs = append(errs, err)
 			continue
@@ -850,7 +850,7 @@ func (s *serverService) ResyncByName(ctx context.Context, name string) error {
 		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 	}
 
-	err = s.pollServer(ctx, *server, true)
+	err = s.PollServer(ctx, *server, true)
 	if err != nil {
 		return fmt.Errorf("Failed to resync server %q by name: %w", name, err)
 	}
@@ -858,7 +858,7 @@ func (s *serverService) ResyncByName(ctx context.Context, name string) error {
 	return nil
 }
 
-func (s *serverService) pollServer(ctx context.Context, server Server, updateServerConfiguration bool) error {
+func (s *serverService) PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error {
 	log := slog.With(slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 
 	// Since we re-try frequently, we only grant a short timeout for the
