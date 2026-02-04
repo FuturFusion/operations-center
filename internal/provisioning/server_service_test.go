@@ -3512,3 +3512,89 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 		})
 	}
 }
+
+func TestServerService_UpdateSystemByName(t *testing.T) {
+	tests := []struct {
+		name              string
+		updateRequestArg  api.ServerUpdatePost
+		repoGetByName     provisioning.Server
+		repoGetByNameErr  error
+		clientUpdateOSErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - no update triggered",
+			repoGetByName: provisioning.Server{
+				Name:   "operations-center",
+				Status: api.ServerStatusReady,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - trigger OS update",
+			updateRequestArg: api.ServerUpdatePost{
+				OS: api.ServerUpdateApplication{
+					Name:          "os",
+					TriggerUpdate: true,
+				},
+			},
+			repoGetByName: provisioning.Server{
+				Name:   "operations-center",
+				Status: api.ServerStatusReady,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.UpdateOS",
+			updateRequestArg: api.ServerUpdatePost{
+				OS: api.ServerUpdateApplication{
+					Name:          "os",
+					TriggerUpdate: true,
+				},
+			},
+			clientUpdateOSErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				UpdateOSFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.clientUpdateOSErr
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, "https://one:8443", tls.Certificate{})
+
+			// Run test
+			err := serverSvc.UpdateSystemByName(t.Context(), "one", tc.updateRequestArg)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}

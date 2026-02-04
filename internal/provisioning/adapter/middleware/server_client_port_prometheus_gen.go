@@ -178,6 +178,20 @@ func (_d ServerClientPortWithPrometheus) UpdateNetworkConfig(ctx context.Context
 	return _d.base.UpdateNetworkConfig(ctx, server)
 }
 
+// UpdateOS implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) UpdateOS(ctx context.Context, server provisioning.Server) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateOS", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateOS(ctx, server)
+}
+
 // UpdateProviderConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithPrometheus) UpdateProviderConfig(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) (err error) {
 	_since := time.Now()

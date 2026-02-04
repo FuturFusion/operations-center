@@ -5,6 +5,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // Configure server system.
@@ -46,6 +47,13 @@ func (c *cmdServerSystem) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(serverRebootCmd.Command())
+
+	// System Update
+	serverUpdateCmd := cmdServerUpdate{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverUpdateCmd.Command())
 
 	// System Storage
 	serverSystemStorageCmd := cmdServerSystemStorage{
@@ -134,6 +142,59 @@ func (c *cmdServerReboot) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	err := c.ocClient.RebootServerSystem(cmd.Context(), name)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Update server.
+type cmdServerUpdate struct {
+	ocClient *client.OperationsCenterClient
+
+	flagUpdateOS bool
+}
+
+func (c *cmdServerUpdate) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "update <name>"
+	cmd.Short = "Update a server"
+	cmd.Long = `Description:
+  Update a server
+
+  Triggers an update on a server.
+`
+
+	cmd.Flags().BoolVar(&c.flagUpdateOS, "os", false, "trigger OS update")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerUpdate) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdServerUpdate) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	updateRequest := api.ServerUpdatePost{
+		OS: api.ServerUpdateApplication{
+			Name:          "os",
+			TriggerUpdate: c.flagUpdateOS,
+		},
+	}
+
+	err := c.ocClient.UpdateServerSystem(cmd.Context(), name, updateRequest)
 	if err != nil {
 		return err
 	}

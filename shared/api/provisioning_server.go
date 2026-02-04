@@ -437,3 +437,30 @@ type ServerSystemProvider = incusosapi.SystemProvider
 
 // ServerSystemUpdate is a type alias to hold the system update configuration from IncusOS.
 type ServerSystemUpdate = incusosapi.SystemUpdate
+
+// ServerUpdatePost defines the update trigger information for an update
+// request for a server including the OS and/or its applications.
+//
+// swagger:model
+type ServerUpdatePost struct {
+	// Applications holds the update trigger information for the installed applications.
+	Applications []ServerUpdateApplication `json:"applications" yaml:"applications"`
+
+	// OS holds the update trigger information for the operating system.
+	OS ServerUpdateApplication `json:"os" yaml:"os"`
+}
+
+// ServerUpdateApplication defines the update trigger information for a single
+// application in an update request. This is used for both, applications as well
+// as the operations system.
+//
+// swagger:model
+type ServerUpdateApplication struct {
+	// Name of the software component.
+	// Example: IncusOS
+	Name string `json:"name" yaml:"name"`
+
+	// TriggerUpdate triggers an update for the given application, if the provided
+	// value is set to true.
+	TriggerUpdate bool `json:"trigger_update" yaml:"trigger_update"`
+}
