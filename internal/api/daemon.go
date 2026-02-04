@@ -258,6 +258,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return fmt.Errorf("IncusOS self registration: %w", err)
 	}
 
+	err = d.incusOSSelfPoll(ctx, serverSvc)
+	if err != nil {
+		slog.WarnContext(ctx, "IncusOS startup self poll", logger.Err(err))
+	}
+
 	// Finalize daemon start
 	// Wait for immediate errors during startup.
 	select {
@@ -1020,6 +1025,26 @@ func (d *Daemon) incusOSSelfRegister(ctx context.Context) error {
 
 	if response.Type == api.ErrorResponse {
 		return api.StatusErrorf(resp.StatusCode, "%v", response.Error)
+	}
+
+	return nil
+}
+
+func (d *Daemon) incusOSSelfPoll(ctx context.Context, serverSvc provisioning.ServerService) error {
+	if !d.env.IsIncusOS() {
+		return nil
+	}
+
+	slog.DebugContext(ctx, "Self poll server status on IncusOS to update own inventory record")
+
+	serverSelf, err := serverSvc.GetByName(ctx, api.ServerNameOperationsCenter)
+	if err != nil {
+		return fmt.Errorf("Failed to get self server instance: %w", err)
+	}
+
+	err = serverSvc.PollServer(ctx, *serverSelf, true)
+	if err != nil {
+		return fmt.Errorf("Failed to self poll server instalce: %w", err)
 	}
 
 	return nil
