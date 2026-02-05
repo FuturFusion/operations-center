@@ -3577,11 +3577,12 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 
 func TestServerService_UpdateSystemByName(t *testing.T) {
 	tests := []struct {
-		name              string
-		updateRequestArg  api.ServerUpdatePost
-		repoGetByName     provisioning.Server
-		repoGetByNameErr  error
-		clientUpdateOSErr error
+		name                   string
+		updateRequestArg       api.ServerUpdatePost
+		repoGetByName          provisioning.Server
+		repoGetByNameErr       error
+		clientUpdateOSErr      error
+		channelSvcGetByNameErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -3616,6 +3617,18 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - UpdateSystemUpdate - channelSvc.GetByName",
+			updateRequestArg: api.ServerUpdatePost{
+				OS: api.ServerUpdateApplication{
+					Name:          "os",
+					TriggerUpdate: true,
+				},
+			},
+			channelSvcGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - client.UpdateOS",
 			updateRequestArg: api.ServerUpdatePost{
 				OS: api.ServerUpdateApplication{
@@ -3642,6 +3655,18 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				UpdateOSFunc: func(ctx context.Context, server provisioning.Server) error {
 					return tc.clientUpdateOSErr
 				},
+				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return errors.New("") // short cirquite pollServer, since we don't care about this part in this test.
+				},
+				UpdateUpdateConfigFunc: func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemUpdate) error {
+					return nil
+				},
+			}
+
+			channelSvc := &svcMock.ChannelServiceMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
+					return &provisioning.Channel{}, tc.channelSvcGetByNameErr
+				},
 			}
 
 			updateSvc := &svcMock.UpdateServiceMock{
@@ -3650,7 +3675,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, "https://one:8443", tls.Certificate{})
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, channelSvc, updateSvc, "https://one:8443", tls.Certificate{})
 
 			// Run test
 			err := serverSvc.UpdateSystemByName(t.Context(), "one", tc.updateRequestArg)
