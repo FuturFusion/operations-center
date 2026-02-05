@@ -1907,6 +1907,57 @@ func TestClientServer(t *testing.T) {
 			},
 		},
 		{
+			name: "Evacuate",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.Evacuate(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members/server01/state
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata":{}}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0/events", "POST /1.0/cluster/members/server01/state"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members/server01/state
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/events", "POST /1.0/cluster/members/server01/state"},
+				},
+			},
+		},
+		{
 			name: "Poweroff",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
 				return nil, client.Poweroff(ctx, target)
