@@ -113,6 +113,40 @@ func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (
 	return _d._base.DeleteByName(ctx, name)
 }
 
+// EvacuateSystemByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) EvacuateSystemByName(ctx context.Context, name string) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling EvacuateSystemByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method EvacuateSystemByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method EvacuateSystemByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method EvacuateSystemByName finished")
+		}
+	}()
+	return _d._base.EvacuateSystemByName(ctx, name)
+}
+
 // GetAll implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetAll(ctx context.Context) (servers provisioning.Servers, err error) {
 	log := _d._log.With()

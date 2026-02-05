@@ -38,6 +38,20 @@ func NewServerClientPortWithPrometheus(base provisioning.ServerClientPort, insta
 	}
 }
 
+// Evacuate implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) Evacuate(ctx context.Context, server provisioning.Server) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Evacuate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Evacuate(ctx, server)
+}
+
 // GetOSData implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithPrometheus) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (oSData api.OSData, err error) {
 	_since := time.Now()

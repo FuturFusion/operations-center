@@ -22,6 +22,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //
 //		// make and configure a mocked provisioning.ServerClientPort
 //		mockedServerClientPort := &ServerClientPortMock{
+//			EvacuateFunc: func(ctx context.Context, server provisioning.Server) error {
+//				panic("mock out the Evacuate method")
+//			},
 //			GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 //				panic("mock out the GetOSData method")
 //			},
@@ -71,6 +74,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //
 //	}
 type ServerClientPortMock struct {
+	// EvacuateFunc mocks the Evacuate method.
+	EvacuateFunc func(ctx context.Context, server provisioning.Server) error
+
 	// GetOSDataFunc mocks the GetOSData method.
 	GetOSDataFunc func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error)
 
@@ -115,6 +121,13 @@ type ServerClientPortMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// Evacuate holds details about calls to the Evacuate method.
+		Evacuate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// GetOSData holds details about calls to the GetOSData method.
 		GetOSData []struct {
 			// Ctx is the ctx argument value.
@@ -218,6 +231,7 @@ type ServerClientPortMock struct {
 			ProviderConfig provisioning.ServerSystemUpdate
 		}
 	}
+	lockEvacuate             sync.RWMutex
 	lockGetOSData            sync.RWMutex
 	lockGetProviderConfig    sync.RWMutex
 	lockGetResources         sync.RWMutex
@@ -232,6 +246,42 @@ type ServerClientPortMock struct {
 	lockUpdateProviderConfig sync.RWMutex
 	lockUpdateStorageConfig  sync.RWMutex
 	lockUpdateUpdateConfig   sync.RWMutex
+}
+
+// Evacuate calls EvacuateFunc.
+func (mock *ServerClientPortMock) Evacuate(ctx context.Context, server provisioning.Server) error {
+	if mock.EvacuateFunc == nil {
+		panic("ServerClientPortMock.EvacuateFunc: method is nil but ServerClientPort.Evacuate was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockEvacuate.Lock()
+	mock.calls.Evacuate = append(mock.calls.Evacuate, callInfo)
+	mock.lockEvacuate.Unlock()
+	return mock.EvacuateFunc(ctx, server)
+}
+
+// EvacuateCalls gets all the calls that were made to Evacuate.
+// Check the length with:
+//
+//	len(mockedServerClientPort.EvacuateCalls())
+func (mock *ServerClientPortMock) EvacuateCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockEvacuate.RLock()
+	calls = mock.calls.Evacuate
+	mock.lockEvacuate.RUnlock()
+	return calls
 }
 
 // GetOSData calls GetOSDataFunc.
