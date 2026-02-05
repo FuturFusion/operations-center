@@ -104,6 +104,8 @@ ogp_image = "https://futurfusion.io/images/logo.png"
 
 # Links to ignore when checking links
 
-linkcheck_ignore = []
+linkcheck_ignore = [
+  r'https://developer.hashicorp.com/.*',
+]
 
 linkcheck_anchors_ignore_for_url = [r"https://github\.com/.*", r"https://linuxcontainers.org/incus-os/docs/main/reference/api/.*"]
