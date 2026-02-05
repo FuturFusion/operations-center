@@ -457,3 +457,37 @@ func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) (err error) {
 	}()
 	return _d._base.Refresh(ctx)
 }
+
+// Update implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) Update(ctx context.Context, update provisioning.Update) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("update", update),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Update")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method Update returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method Update returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method Update finished")
+		}
+	}()
+	return _d._base.Update(ctx, update)
+}

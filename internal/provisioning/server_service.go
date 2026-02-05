@@ -18,6 +18,8 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 	"github.com/google/uuid"
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/lxc/incus/v6/shared/revert"
 	"github.com/maniartech/signals"
 
@@ -317,7 +319,7 @@ func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, serv
 	}
 
 	serverComponents := make([]string, 0, len(server.VersionData.Applications)+1) // All applications + OS
-	serverComponents = append(serverComponents, server.VersionData.OS.Name)
+	serverComponents = append(serverComponents, string(images.UpdateFileComponentOS))
 	for _, app := range server.VersionData.Applications {
 		serverComponents = append(serverComponents, app.Name)
 	}
@@ -338,7 +340,7 @@ func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, serv
 		for _, updateComponent := range update.Components() {
 			serverComponents = slices.DeleteFunc(serverComponents, func(serverComponent string) bool {
 				if serverComponent == updateComponent.String() {
-					if updateComponent.String() == server.VersionData.OS.Name {
+					if updateComponent == images.UpdateFileComponentOS {
 						server.VersionData.OS.AvailableVersion = &update.Version
 						server.VersionData.OS.NeedsUpdate = ptr.To(availableVersionGreaterThan(server.VersionData.OS.Version, update.Version) && availableVersionGreaterThan(server.VersionData.OS.VersionNext, update.Version))
 
@@ -385,13 +387,33 @@ func availableVersionGreaterThan(currentVersion string, availableVersion string)
 	return available > current
 }
 
-func (s *serverService) Update(ctx context.Context, server Server) error {
+// Update writes the new server state to the DB and pushes the changed
+// settings to the system as well, if updateSystem argument is set to true.
+func (s *serverService) Update(ctx context.Context, server Server, updateSystem bool) error {
 	err := server.Validate()
 	if err != nil {
 		return fmt.Errorf("Failed to validate server for update: %w", err)
 	}
 
-	return s.repo.Update(ctx, server)
+	err = s.repo.Update(ctx, server)
+	if err != nil {
+		return fmt.Errorf("Failed to update server %q: %w", server.Name, err)
+	}
+
+	if !updateSystem {
+		return nil
+	}
+
+	err = s.UpdateSystemUpdate(ctx, server.Name, incusosapi.SystemUpdate{
+		Config: incusosapi.SystemUpdateConfig{
+			Channel: server.Channel,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to update system update configuration for server %q: %w", server.Name, err)
+	}
+
+	return nil
 }
 
 func (s *serverService) UpdateSystemNetwork(ctx context.Context, name string, systemNetwork ServerSystemNetwork) (err error) {
@@ -416,7 +438,7 @@ func (s *serverService) UpdateSystemNetwork(ctx context.Context, name string, sy
 
 		updatedServer.LastSeen = s.now()
 
-		err = s.Update(ctx, *updatedServer)
+		err = s.Update(ctx, *updatedServer, false)
 		if err != nil {
 			return fmt.Errorf("Failed to update system network: %w", err)
 		}
@@ -483,7 +505,7 @@ func (s *serverService) UpdateSystemStorage(ctx context.Context, name string, sy
 
 		updatedServer.LastSeen = s.now()
 
-		err = s.Update(ctx, *updatedServer)
+		err = s.Update(ctx, *updatedServer, false)
 		if err != nil {
 			return fmt.Errorf("Failed to update system network: %w", err)
 		}
@@ -564,17 +586,16 @@ func (s *serverService) UpdateSystemUpdate(ctx context.Context, name string, upd
 		return fmt.Errorf("Failed to get server %q: %w", name, err)
 	}
 
-	currentServerSystemUpdate, err := s.client.GetUpdateConfig(ctx, *server)
-	if err != nil {
-		return fmt.Errorf("Failed to get the current update config from %q: %w", server.Name, err)
+	serverSystemUpdate := ServerSystemUpdate{
+		Config: incusosapi.SystemUpdateConfig{
+			AutoReboot: false, // forced by Operations Center
+			// For now, the only setting that we allow to be changed by the user is the Update Channel.
+			Channel:        updateConfig.Config.Channel,
+			CheckFrequency: "never", // forced by Operations Center
+		},
 	}
 
-	currentServerSystemUpdate.Config.AutoReboot = false // forced by Operations Center
-	// For now, the only setting that we allow to be changed by the user is the Update Channel.
-	currentServerSystemUpdate.Config.Channel = updateConfig.Config.Channel
-	currentServerSystemUpdate.Config.CheckFrequency = "never" // forced by Operations Center
-
-	err = s.client.UpdateUpdateConfig(ctx, *server, currentServerSystemUpdate)
+	err = s.client.UpdateUpdateConfig(ctx, *server, serverSystemUpdate)
 	if err != nil {
 		return fmt.Errorf("Failed to update the update config for %q: %w", server.Name, err)
 	}
@@ -831,6 +852,16 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 	}
 
+	// Forcefully set channel and update frequency on server before triggering update.
+	err = s.UpdateSystemUpdate(ctx, name, incusosapi.SystemUpdate{
+		Config: incusosapi.SystemUpdateConfig{
+			Channel: server.Channel,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to enforce update channel for server %q: %w", server.Name, err)
+	}
+
 	if updateRequest.OS.TriggerUpdate {
 		err = s.client.UpdateOS(ctx, *server)
 		if err != nil {
@@ -840,6 +871,7 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 
 	// FIXME: iterate over the applications and trigger the update for the applications
 	// as well, if the TriggerUpdate flag is set to true for the particular application.
+	// https://github.com/FuturFusion/operations-center/issues/616
 
 	return nil
 }

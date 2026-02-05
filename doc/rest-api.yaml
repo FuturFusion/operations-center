@@ -5,11 +5,23 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ApplicationVersionData:
         properties:
+            available_version:
+                description: |-
+                    AvailableVersion is the most recent version available for this application
+                    in the update channel assigned to the respective system.
+                type: string
+                x-go-name: AvailableVersion
             name:
                 description: Name of the software component.
                 example: IncusOS
                 type: string
                 x-go-name: Name
+            needs_update:
+                description: |-
+                    NeedsUpdate is true, if this application needs to be updated
+                    (available_version > version).
+                type: boolean
+                x-go-name: NeedsUpdate
             version:
                 description: Version string.
                 example: "202512250102"
@@ -70,6 +82,11 @@ definitions:
                 description: Certificate of the cluster endpoint in PEM encoded format.
                 type: string
                 x-go-name: Certificate
+            channel:
+                description: Channel the cluster is following for updates.
+                example: stable
+                type: string
+                x-go-name: Channel
             connection_url:
                 description: |-
                     URL, hostname or IP address of the cluster endpoint.
@@ -103,6 +120,8 @@ definitions:
                 type: string
                 x-go-name: Status
                 x-go-type: github.com/FuturFusion/operations-center/shared/api.ClusterStatus
+            update_status:
+                $ref: '#/definitions/ClusterUpdateStatus'
         title: Cluster defines a cluster of servers running Hypervisor OS.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
@@ -200,6 +219,11 @@ definitions:
                 description: Certificate of the cluster endpoint in PEM encoded format.
                 type: string
                 x-go-name: Certificate
+            channel:
+                description: Channel the cluster is following for updates.
+                example: stable
+                type: string
+                x-go-name: Channel
             cluster_template:
                 description: |-
                     ClusterTemplate contains the name of a cluster template, which should be
@@ -273,6 +297,8 @@ definitions:
                 type: string
                 x-go-name: Status
                 x-go-type: github.com/FuturFusion/operations-center/shared/api.ClusterStatus
+            update_status:
+                $ref: '#/definitions/ClusterUpdateStatus'
         title: ClusterPost represents the fields available for a new cluster of servers running Hypervisor OS.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
@@ -281,6 +307,11 @@ definitions:
             ClusterPut defines the updateable part of a cluster of servers running
             Hypervisor OS.
         properties:
+            channel:
+                description: Channel the cluster is following for updates.
+                example: stable
+                type: string
+                x-go-name: Channel
             connection_url:
                 description: |-
                     URL, hostname or IP address of the cluster endpoint.
@@ -432,6 +463,26 @@ definitions:
             cluster config template.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ClusterUpdateStatus:
+        description: |-
+            ClusterUpdateStatus contains the update status of each server of the cluster
+            as well as an aggregated cluster update status.
+        properties:
+            applications:
+                description: |-
+                    Applications holds the lowest state of all the servers of the cluster for
+                    the version information of the installed applications.
+                items:
+                    $ref: '#/definitions/ApplicationVersionData'
+                type: array
+                x-go-name: Applications
+            needs_update:
+                type: boolean
+                x-go-name: NeedsUpdate
+            os:
+                $ref: '#/definitions/OSVersionData'
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     ConfigMap:
         additionalProperties:
             type: string
@@ -477,6 +528,12 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     OSVersionData:
         properties:
+            available_version:
+                description: |-
+                    AvailableVersion is the most recent version available for the OS in the
+                    update channel assigned to the respective system.
+                type: string
+                x-go-name: AvailableVersion
             name:
                 description: Name of the software component.
                 example: IncusOS
@@ -490,6 +547,12 @@ definitions:
                     to report, that a reboot is required.
                 type: boolean
                 x-go-name: NeedsReboot
+            needs_update:
+                description: |-
+                    NeedsUpdate is true, if the OS needs to be updated
+                    (available_version > version).
+                type: boolean
+                x-go-name: NeedsUpdate
             version:
                 description: Version string.
                 example: "202512250102"
@@ -1818,6 +1881,11 @@ definitions:
                 description: Certificate of the server endpoint in PEM encoded format.
                 type: string
                 x-go-name: Certificate
+            channel:
+                description: Channel the server is following for updates.
+                example: stable
+                type: string
+                x-go-name: Channel
             cluster:
                 description: The cluster the server is part of.
                 example: one
@@ -1888,6 +1956,11 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerPost:
         properties:
+            channel:
+                description: Channel the server is following for updates.
+                example: stable
+                type: string
+                x-go-name: Channel
             connection_url:
                 description: |-
                     URL, hostname or IP address of the server endpoint used by Operations
@@ -1913,6 +1986,11 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerPut:
         properties:
+            channel:
+                description: Channel the server is following for updates.
+                example: stable
+                type: string
+                x-go-name: Channel
             public_connection_url:
                 description: |-
                     Public URL, hostname or IP address of the server endpoint for user facing
@@ -1964,6 +2042,40 @@ definitions:
                 readOnly: true
                 type: array
                 x-go-name: AuthMethods
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ServerUpdateApplication:
+        description: |-
+            ServerUpdateApplication defines the update trigger information for a single
+            application in an update request. This is used for both, applications as well
+            as the operations system.
+        properties:
+            name:
+                description: Name of the software component.
+                example: IncusOS
+                type: string
+                x-go-name: Name
+            trigger_update:
+                description: |-
+                    TriggerUpdate triggers an update for the given application, if the provided
+                    value is set to true.
+                type: boolean
+                x-go-name: TriggerUpdate
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ServerUpdatePost:
+        description: |-
+            ServerUpdatePost defines the update trigger information for an update
+            request for a server including the OS and/or its applications.
+        properties:
+            applications:
+                description: Applications holds the update trigger information for the installed applications.
+                items:
+                    $ref: '#/definitions/ServerUpdateApplication'
+                type: array
+                x-go-name: Applications
+            os:
+                $ref: '#/definitions/ServerUpdateApplication'
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerVersionData:
@@ -2883,6 +2995,9 @@ definitions:
             enabled:
                 type: boolean
                 x-go-name: Enabled
+            error:
+                type: string
+                x-go-name: Error
             passed:
                 type: boolean
                 x-go-name: Passed
@@ -3070,6 +3185,12 @@ definitions:
                 example: '''stable'' in upstream_channels'
                 type: string
                 x-go-name: FilterExpression
+            server_default_channel:
+                description: |-
+                    ServerDefaultChannel is the default channel assigned to new server
+                    and cluster instances.
+                type: string
+                x-go-name: ServerDefaultChannel
             signature_verification_root_ca:
                 description: Root CA certificate used to verify the signature of index.sjson.
                 example: '-----BEGIN CERTIFICATE-----\nMII...\n-----END CERTIFICATE-----'
@@ -3079,6 +3200,12 @@ definitions:
                 description: Source is the URL of the origin, the updates should be fetched from.
                 type: string
                 x-go-name: Source
+            updates_default_channel:
+                description: |-
+                    UpdatesDefaultChannel is the update channel, which is used by default
+                    new updates fetched from upstream.
+                type: string
+                x-go-name: UpdatesDefaultChannel
         title: SystemUpdates represents the system's updates configuration.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
@@ -3116,6 +3243,12 @@ definitions:
                 example: '''stable'' in upstream_channels'
                 type: string
                 x-go-name: FilterExpression
+            server_default_channel:
+                description: |-
+                    ServerDefaultChannel is the default channel assigned to new server
+                    and cluster instances.
+                type: string
+                x-go-name: ServerDefaultChannel
             signature_verification_root_ca:
                 description: Root CA certificate used to verify the signature of index.sjson.
                 example: '-----BEGIN CERTIFICATE-----\nMII...\n-----END CERTIFICATE-----'
@@ -3125,6 +3258,12 @@ definitions:
                 description: Source is the URL of the origin, the updates should be fetched from.
                 type: string
                 x-go-name: Source
+            updates_default_channel:
+                description: |-
+                    UpdatesDefaultChannel is the update channel, which is used by default
+                    new updates fetched from upstream.
+                type: string
+                x-go-name: UpdatesDefaultChannel
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     Token:
@@ -3163,6 +3302,12 @@ definitions:
         properties:
             architecture:
                 $ref: '#/definitions/UpdateFileArchitecture'
+            channel:
+                description: |-
+                    Channel where the most recent software update is taken from to generate the
+                    installation image.
+                type: string
+                x-go-name: Channel
             seeds:
                 $ref: '#/definitions/TokenSeedConfigs'
             type:
@@ -3292,6 +3437,11 @@ definitions:
                 description: OperationsCenter represents the seed configuration for operations center (operations-center.yaml) to be included in the pre-seeded image.
                 type: object
                 x-go-name: OperationsCenter
+            update:
+                additionalProperties: {}
+                description: Update represents the seed configuration for updates (update.yaml) to be included in the pre-seeded image.
+                type: object
+                x-go-name: Update
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     TokenSeedPost:
@@ -3359,6 +3509,13 @@ definitions:
                 description: Changelog of the Update as plain text.
                 type: string
                 x-go-name: Changelog
+            channels:
+                description: Channels holds the name of the channels the update is assigned to.
+                example: stable
+                items:
+                    type: string
+                type: array
+                x-go-name: Channels
             origin:
                 description: Origin of the Update.
                 example: linuxcontainers.org
@@ -3404,7 +3561,7 @@ definitions:
                 example: "202501311418"
                 type: string
                 x-go-name: Version
-        title: Update defines an update for a given server type.
+        title: Update defines an update.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     UpdateFile:
@@ -3446,6 +3603,18 @@ definitions:
         title: UpdateFileType represents the type in an update file.
         type: string
         x-go-package: github.com/lxc/incus-os/incus-osd/api/images
+    UpdatePut:
+        properties:
+            channels:
+                description: Channels holds the name of the channels the update is assigned to.
+                example: stable
+                items:
+                    type: string
+                type: array
+                x-go-name: Channels
+        title: UpdatePut defines the updateable part of an update.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     UpdateSeverity:
         title: UpdateSeverity represents the severity field in an update.
         type: string
@@ -7358,7 +7527,7 @@ paths:
                   name: server
                   required: true
                   schema:
-                    $ref: '#/definitions/Server'
+                    $ref: '#/definitions/ServerPut'
             produces:
                 - application/json
             responses:
@@ -7435,6 +7604,26 @@ paths:
             summary: Reboot server
             tags:
                 - servers_system_reboot
+    /1.0/provisioning/servers/{name}/system/:update:
+        post:
+            description: Triggers an update operation on the server.
+            operationId: server_system_update_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update server
+            tags:
+                - servers_system_update
     /1.0/provisioning/servers/{name}/system/network:
         get:
             description: Gets the network configuration of a specific server.
@@ -8021,6 +8210,15 @@ paths:
                 query parameter is provided.
             operationId: token_seed_get
             parameters:
+                - description: Architecture of the generated file, "x86_64", "aarch64".
+                  in: query
+                  name: architecture
+                - description: |-
+                    Name of the channel, the most recent update should be taken from
+                    for the generated image.
+                    If omitted, the default update channel is used.
+                  in: query
+                  name: channel
                 - description: |-
                     Type of the generated file, "iso" or "raw".
                     If omitted, the token seed configuration is returned as JSON.
@@ -8280,6 +8478,34 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Get the update
+            tags:
+                - updates
+        put:
+            consumes:
+                - application/json
+            description: Updates the definition of an update.
+            operationId: update_put
+            parameters:
+                - description: Update definition
+                  in: body
+                  name: update
+                  required: true
+                  schema:
+                    $ref: '#/definitions/UpdatePut'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update an update
             tags:
                 - updates
     /1.0/provisioning/updates/{uuid}/changelog:

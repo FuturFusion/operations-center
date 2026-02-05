@@ -797,6 +797,81 @@ func TestUpdateService_GetByUUID(t *testing.T) {
 	}
 }
 
+func TestUpdateService_Update(t *testing.T) {
+	tests := []struct {
+		name                  string
+		updateArg             provisioning.Update
+		repoAssignChannelsErr error
+		repoUpsertErr         error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			updateArg: provisioning.Update{
+				Severity: images.UpdateSeverityLow,
+				Status:   api.UpdateStatusReady,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - validation - invalid severity",
+			updateArg: provisioning.Update{
+				Severity: images.UpdateSeverity("invalid"), // invalid
+				Status:   api.UpdateStatusReady,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - repo.AssignChannels",
+			updateArg: provisioning.Update{
+				Severity: images.UpdateSeverityLow,
+				Status:   api.UpdateStatusReady,
+			},
+			repoAssignChannelsErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.Upsert",
+			updateArg: provisioning.Update{
+				Severity: images.UpdateSeverityLow,
+				Status:   api.UpdateStatusReady,
+			},
+			repoUpsertErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.UpdateRepoMock{
+				AssignChannelsFunc: func(ctx context.Context, id uuid.UUID, channelNames []string) error {
+					return tc.repoAssignChannelsErr
+				},
+				UpsertFunc: func(ctx context.Context, update provisioning.Update) error {
+					return tc.repoUpsertErr
+				},
+			}
+
+			updateSvc := provisioning.NewUpdateService(repo, nil, nil)
+
+			// Run test
+			err := updateSvc.Update(t.Context(), tc.updateArg)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestUpdateService_GetUpdateAllFiles(t *testing.T) {
 	tests := []struct {
 		name                string
@@ -1149,6 +1224,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 					UUID:        updateNewUUID,
 					Status:      api.UpdateStatusUnknown,
 					PublishedAt: dateTime3, // most recent update, but we always keep the most recent update from the DB and the test is configurued to only keep 1 update, so this gets omitted.
+					Channels:    []string{"stable"},
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+						},
+					},
 				},
 			},
 			repoGetAllUpdates: provisioning.Updates{
@@ -1156,16 +1237,34 @@ func TestUpdateService_Refresh(t *testing.T) {
 					UUID:        uuidgen.FromPattern(t, "03"),
 					Status:      api.UpdateStatusReady,
 					PublishedAt: dateTime1, // delete, since it is the older one.
+					Channels:    []string{"stable"},
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+						},
+					},
 				},
 				{
 					UUID:        uuidgen.FromPattern(t, "04"),
 					Status:      api.UpdateStatusReady,
 					PublishedAt: dateTime3,
+					Channels:    []string{"stable"},
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+						},
+					},
 				},
 				{
 					UUID:        uuidgen.FromPattern(t, "05"),
 					Status:      api.UpdateStatusPending,
 					PublishedAt: dateTime3, // delete, since it is in pending for longer than grace period.
+					Channels:    []string{"stable"},
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+						},
+					},
 				},
 			},
 			repoUpdateFilesDelete: []queue.Item[struct{}]{
