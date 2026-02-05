@@ -111,3 +111,38 @@ func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, clusterName 
 	}()
 	return _d._base.Init(ctx, clusterName, config)
 }
+
+// SeedCertificate implements provisioning.ClusterProvisioningPort.
+func (_d ClusterProvisioningPortWithSlog) SeedCertificate(ctx context.Context, clusterName string, certificate string) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.String("certificate", certificate),
+		)
+	}
+	log.DebugContext(ctx, "=> calling SeedCertificate")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method SeedCertificate returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method SeedCertificate returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method SeedCertificate finished")
+		}
+	}()
+	return _d._base.SeedCertificate(ctx, clusterName, certificate)
+}

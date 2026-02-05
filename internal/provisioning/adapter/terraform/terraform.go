@@ -65,19 +65,9 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 		return "", nil, fmt.Errorf("Application seed config is not valid: %w", err)
 	}
 
-	// Since we override the INCUS_CONF directory with the operations center var dir,
-	// we need to store the server certificates in the "servercerts" folder
-	// as expected by Incus.
-	servercertsDir := filepath.Join(t.clientCertDir, "servercerts")
-	err = os.MkdirAll(servercertsDir, 0o700)
+	err = t.SeedCertificate(ctx, name, config.ClusterEndpoint.GetCertificate())
 	if err != nil {
-		return "", nil, fmt.Errorf("Failed to create directory %q: %w", servercertsDir, err)
-	}
-
-	servercertsFilename := filepath.Join(servercertsDir, name+".crt")
-	err = os.WriteFile(servercertsFilename, []byte(config.ClusterEndpoint.GetCertificate()), 0o600)
-	if err != nil {
-		return "", nil, fmt.Errorf("Failed to write servercert for %q (%s): %w", name, servercertsFilename, err)
+		return "", nil, fmt.Errorf("Failed to seed server certificates: %w", err)
 	}
 
 	configDir := filepath.Join(t.storageDir, name)
@@ -158,6 +148,25 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 	}
 
 	return configDir, cleanup(configDir), nil
+}
+
+func (t terraform) SeedCertificate(ctx context.Context, clusterName string, certificatePEM string) error {
+	// Since we override the INCUS_CONF directory with the operations center var dir,
+	// we need to store the server certificates in the "servercerts" folder
+	// as expected by Incus.
+	servercertsDir := filepath.Join(t.clientCertDir, "servercerts")
+	err := os.MkdirAll(servercertsDir, 0o700)
+	if err != nil {
+		return fmt.Errorf("Failed to create directory %q: %w", servercertsDir, err)
+	}
+
+	servercertsFilename := filepath.Join(servercertsDir, clusterName+".crt")
+	err = os.WriteFile(servercertsFilename, []byte(certificatePEM), 0o600)
+	if err != nil {
+		return fmt.Errorf("Failed to write servercert for %q (%s): %w", clusterName, servercertsFilename, err)
+	}
+
+	return err
 }
 
 func cleanup(path string) func() error {

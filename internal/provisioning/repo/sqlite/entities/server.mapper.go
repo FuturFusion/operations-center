@@ -39,6 +39,15 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
   ORDER BY servers.name
 `)
 
+var serverObjectsByClusterAndName = RegisterStmt(`
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.last_updated, servers.last_seen
+  FROM servers
+  LEFT JOIN clusters ON servers.cluster_id = clusters.id
+  JOIN channels ON servers.channel_id = channels.id
+  WHERE ( cluster = ? AND servers.name = ? )
+  ORDER BY servers.name
+`)
+
 var serverObjectsByClusterAndStatus = RegisterStmt(`
 SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.last_updated, servers.last_seen
   FROM servers
@@ -281,6 +290,30 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 			}
 
 			query, err := StmtString(serverObjectsByClusterAndStatus)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get \"serverObjects\" prepared statement: %w", err)
+			}
+
+			parts := strings.SplitN(query, "ORDER BY", 2)
+			if i == 0 {
+				copy(queryParts[:], parts)
+				continue
+			}
+
+			_, where, _ := strings.Cut(parts[0], "WHERE")
+			queryParts[0] += "OR" + where
+		} else if filter.Cluster != nil && filter.Name != nil && filter.ID == nil && filter.Status == nil && filter.Certificate == nil && filter.Type == nil {
+			args = append(args, []any{filter.Cluster, filter.Name}...)
+			if len(filters) == 1 {
+				sqlStmt, err = Stmt(db, serverObjectsByClusterAndName)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get \"serverObjectsByClusterAndName\" prepared statement: %w", err)
+				}
+
+				break
+			}
+
+			query, err := StmtString(serverObjectsByClusterAndName)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to get \"serverObjects\" prepared statement: %w", err)
 			}

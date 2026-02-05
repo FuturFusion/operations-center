@@ -6,6 +6,7 @@ package mock
 
 import (
 	"context"
+	"crypto/x509"
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -37,6 +38,9 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			},
 //			GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 //				panic("mock out the GetOSData method")
+//			},
+//			GetRemoteCertificateFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (*x509.Certificate, error) {
+//				panic("mock out the GetRemoteCertificate method")
 //			},
 //			JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) error {
 //				panic("mock out the JoinCluster method")
@@ -80,6 +84,9 @@ type ClusterClientPortMock struct {
 
 	// GetOSDataFunc mocks the GetOSData method.
 	GetOSDataFunc func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error)
+
+	// GetRemoteCertificateFunc mocks the GetRemoteCertificate method.
+	GetRemoteCertificateFunc func(ctx context.Context, endpoint provisioning.Endpoint) (*x509.Certificate, error)
 
 	// JoinClusterFunc mocks the JoinCluster method.
 	JoinClusterFunc func(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) error
@@ -140,6 +147,13 @@ type ClusterClientPortMock struct {
 		}
 		// GetOSData holds details about calls to the GetOSData method.
 		GetOSData []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
+		}
+		// GetRemoteCertificate holds details about calls to the GetRemoteCertificate method.
+		GetRemoteCertificate []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Endpoint is the endpoint argument value.
@@ -218,6 +232,7 @@ type ClusterClientPortMock struct {
 	lockGetClusterJoinToken      sync.RWMutex
 	lockGetClusterNodeNames      sync.RWMutex
 	lockGetOSData                sync.RWMutex
+	lockGetRemoteCertificate     sync.RWMutex
 	lockJoinCluster              sync.RWMutex
 	lockPing                     sync.RWMutex
 	lockSetServerConfig          sync.RWMutex
@@ -416,6 +431,42 @@ func (mock *ClusterClientPortMock) GetOSDataCalls() []struct {
 	mock.lockGetOSData.RLock()
 	calls = mock.calls.GetOSData
 	mock.lockGetOSData.RUnlock()
+	return calls
+}
+
+// GetRemoteCertificate calls GetRemoteCertificateFunc.
+func (mock *ClusterClientPortMock) GetRemoteCertificate(ctx context.Context, endpoint provisioning.Endpoint) (*x509.Certificate, error) {
+	if mock.GetRemoteCertificateFunc == nil {
+		panic("ClusterClientPortMock.GetRemoteCertificateFunc: method is nil but ClusterClientPort.GetRemoteCertificate was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
+	}{
+		Ctx:      ctx,
+		Endpoint: endpoint,
+	}
+	mock.lockGetRemoteCertificate.Lock()
+	mock.calls.GetRemoteCertificate = append(mock.calls.GetRemoteCertificate, callInfo)
+	mock.lockGetRemoteCertificate.Unlock()
+	return mock.GetRemoteCertificateFunc(ctx, endpoint)
+}
+
+// GetRemoteCertificateCalls gets all the calls that were made to GetRemoteCertificate.
+// Check the length with:
+//
+//	len(mockedClusterClientPort.GetRemoteCertificateCalls())
+func (mock *ClusterClientPortMock) GetRemoteCertificateCalls() []struct {
+	Ctx      context.Context
+	Endpoint provisioning.Endpoint
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
+	}
+	mock.lockGetRemoteCertificate.RLock()
+	calls = mock.calls.GetRemoteCertificate
+	mock.lockGetRemoteCertificate.RUnlock()
 	return calls
 }
 

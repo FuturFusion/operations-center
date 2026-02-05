@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/lxc/incus/v6/shared/subprocess"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 func (t terraform) terraformInit(ctx context.Context, configDir string) error {
@@ -23,14 +26,20 @@ func (t terraform) terraformInit(ctx context.Context, configDir string) error {
 	return nil
 }
 
+var certificateValidationErrRegexp = regexp.MustCompile("(?s)tls: failed.*to verify certificate: x509: cannot validate certificate for.*because it doesn't contain any IP SANs")
+
 func (t terraform) terraformApply(ctx context.Context, configDir string) error {
 	env := cleanEnvVars(os.Environ())
 
 	// Make sure, terraform provider uses the client certificate of Operations Center.
 	env = append(env, "INCUS_CONF="+t.clientCertDir)
 
-	_, _, err := subprocess.RunCommandSplit(ctx, env, nil, "tofu", "-chdir="+configDir, "apply", "-auto-approve")
+	_, stderr, err := subprocess.RunCommandSplit(ctx, env, nil, "tofu", "-chdir="+configDir, "apply", "-auto-approve")
 	if err != nil {
+		if certificateValidationErrRegexp.MatchString(stderr) {
+			return fmt.Errorf(`Failed to run "tofu appy": %w`, domain.NewRetryableErr(err))
+		}
+
 		return fmt.Errorf(`Failed to run "tofu appy": %w`, err)
 	}
 

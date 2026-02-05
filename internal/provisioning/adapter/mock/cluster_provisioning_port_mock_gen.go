@@ -27,6 +27,9 @@ var _ provisioning.ClusterProvisioningPort = &ClusterProvisioningPortMock{}
 //			InitFunc: func(ctx context.Context, clusterName string, config provisioning.ClusterProvisioningConfig) (string, func() error, error) {
 //				panic("mock out the Init method")
 //			},
+//			SeedCertificateFunc: func(ctx context.Context, clusterName string, certificate string) error {
+//				panic("mock out the SeedCertificate method")
+//			},
 //		}
 //
 //		// use mockedClusterProvisioningPort in code that requires provisioning.ClusterProvisioningPort
@@ -39,6 +42,9 @@ type ClusterProvisioningPortMock struct {
 
 	// InitFunc mocks the Init method.
 	InitFunc func(ctx context.Context, clusterName string, config provisioning.ClusterProvisioningConfig) (string, func() error, error)
+
+	// SeedCertificateFunc mocks the SeedCertificate method.
+	SeedCertificateFunc func(ctx context.Context, clusterName string, certificate string) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -58,9 +64,19 @@ type ClusterProvisioningPortMock struct {
 			// Config is the config argument value.
 			Config provisioning.ClusterProvisioningConfig
 		}
+		// SeedCertificate holds details about calls to the SeedCertificate method.
+		SeedCertificate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// Certificate is the certificate argument value.
+			Certificate string
+		}
 	}
-	lockApply sync.RWMutex
-	lockInit  sync.RWMutex
+	lockApply           sync.RWMutex
+	lockInit            sync.RWMutex
+	lockSeedCertificate sync.RWMutex
 }
 
 // Apply calls ApplyFunc.
@@ -136,5 +152,45 @@ func (mock *ClusterProvisioningPortMock) InitCalls() []struct {
 	mock.lockInit.RLock()
 	calls = mock.calls.Init
 	mock.lockInit.RUnlock()
+	return calls
+}
+
+// SeedCertificate calls SeedCertificateFunc.
+func (mock *ClusterProvisioningPortMock) SeedCertificate(ctx context.Context, clusterName string, certificate string) error {
+	if mock.SeedCertificateFunc == nil {
+		panic("ClusterProvisioningPortMock.SeedCertificateFunc: method is nil but ClusterProvisioningPort.SeedCertificate was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ClusterName string
+		Certificate string
+	}{
+		Ctx:         ctx,
+		ClusterName: clusterName,
+		Certificate: certificate,
+	}
+	mock.lockSeedCertificate.Lock()
+	mock.calls.SeedCertificate = append(mock.calls.SeedCertificate, callInfo)
+	mock.lockSeedCertificate.Unlock()
+	return mock.SeedCertificateFunc(ctx, clusterName, certificate)
+}
+
+// SeedCertificateCalls gets all the calls that were made to SeedCertificate.
+// Check the length with:
+//
+//	len(mockedClusterProvisioningPort.SeedCertificateCalls())
+func (mock *ClusterProvisioningPortMock) SeedCertificateCalls() []struct {
+	Ctx         context.Context
+	ClusterName string
+	Certificate string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ClusterName string
+		Certificate string
+	}
+	mock.lockSeedCertificate.RLock()
+	calls = mock.calls.SeedCertificate
+	mock.lockSeedCertificate.RUnlock()
 	return calls
 }

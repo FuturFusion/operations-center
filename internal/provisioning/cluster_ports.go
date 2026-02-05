@@ -2,6 +2,7 @@ package provisioning
 
 import (
 	"context"
+	"crypto/x509"
 	"io"
 
 	"github.com/google/uuid"
@@ -71,9 +72,12 @@ type ClusterClientPort interface {
 	SystemFactoryReset(ctx context.Context, endpoint Endpoint, allowTPMResetFailure bool, seeds TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error
 	SubscribeLifecycleEvents(ctx context.Context, endpoint Endpoint) (chan domain.LifecycleEvent, chan error, error)
 	UpdateUpdateConfig(ctx context.Context, server Server, updateConfig ServerSystemUpdate) error
+
+	GetRemoteCertificate(ctx context.Context, endpoint Endpoint) (*x509.Certificate, error)
 }
 
 type ClusterProvisioningPort interface {
 	Init(ctx context.Context, clusterName string, config ClusterProvisioningConfig) (temporaryPath string, cleanup func() error, _ error)
+	SeedCertificate(ctx context.Context, clusterName string, certificate string) error
 	Apply(ctx context.Context, cluster Cluster) error
 }
