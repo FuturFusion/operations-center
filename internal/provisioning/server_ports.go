@@ -32,6 +32,7 @@ type ServerService interface {
 	PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error
 	PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error
 
+	EvacuateSystemByName(ctx context.Context, name string) error
 	PoweroffSystemByName(ctx context.Context, name string) error
 	RebootSystemByName(ctx context.Context, name string) error
 	UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error
@@ -62,6 +63,7 @@ type ServerClientPort interface {
 	UpdateProviderConfig(ctx context.Context, server Server, providerConfig ServerSystemProvider) error
 	GetUpdateConfig(ctx context.Context, server Server) (ServerSystemUpdate, error)
 	UpdateUpdateConfig(ctx context.Context, server Server, providerConfig ServerSystemUpdate) error
+	Evacuate(ctx context.Context, server Server) error
 	Poweroff(ctx context.Context, server Server) error
 	Reboot(ctx context.Context, server Server) error
 	UpdateOS(ctx context.Context, server Server) error

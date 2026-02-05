@@ -3425,6 +3425,88 @@ func TestServerService_ResyncByName(t *testing.T) {
 	}
 }
 
+func TestServerService_EvacuateSystemByName(t *testing.T) {
+	tests := []struct {
+		name              string
+		repoGetByName     provisioning.Server
+		repoGetByNameErr  error
+		clientEvacuateErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - not type incus",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeOperationsCenter,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+			},
+		},
+		{
+			name: "error - client.Evacuate",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+			},
+			clientEvacuateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				EvacuateFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.clientEvacuateErr
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, "https://one:8443", tls.Certificate{})
+
+			// Run test
+			err := serverSvc.EvacuateSystemByName(t.Context(), "one")
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestServerService_PoweroffSystemByName(t *testing.T) {
 	tests := []struct {
 		name              string
