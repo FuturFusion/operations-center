@@ -16,6 +16,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -357,14 +358,16 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 // This operations is performed in the following steps:
 //
 //   - Get latest updates (up to the defined limit) from the origin.
-//   - Get all existing updates for the respective origin from the DB.
+//   - Get all existing updates from the DB.
 //   - Merge the two sets such that updates already present in the DB take precedence over same updates from origin.
 //   - Determine the resulting state using the following logic:
-//     Sort the merged list of updates by published at date in descending order.
+//     Sort the merged list of updates by "published at" date in descending order.
 //     Pending updates are not considered. If pending updates are in pending state for more than `pendingGraceTime`, these updates are removed.
-//     At least the most recent update currently available in the DB is kept.
-//     Select the n most recent updates from the merged list, where n is defined by the parameter `latestLimit`.
-//     The remainder of the updates are omitted (ignored, if not yet downloaded, deleted if already present in the DB).
+//     At least the most recent update for the default channel currently available in the DB is kept.
+//     Select the n most recent updates for each channel from the merged list, such that for each component and channel
+//     at least n updates are kept in the DB. n is defined by the parameter `latestLimit`.
+//     Supernumerary updates from origin are ignored (not downloaded). Supernumerary updates from the DB are marked
+//     for removal.
 //   - Remove the updates, which are marked for removal.
 //   - Download the updates, that are part of the resulting state and not yet present on the system.
 func (s updateService) Refresh(ctx context.Context) error {
@@ -383,6 +386,11 @@ func (s updateService) Refresh(ctx context.Context) error {
 	originUpdates, err = s.filterUpdateFileByFilterExpression(originUpdates)
 	if err != nil {
 		return err
+	}
+
+	// Assign all updates from origin to the default channel.
+	for i := range originUpdates {
+		originUpdates[i].Channels = []string{config.GetUpdates().UpdatesDefaultChannel}
 	}
 
 	toDownloadUpdates := make([]Update, 0, len(originUpdates))
@@ -500,7 +508,7 @@ func (s updateService) Refresh(ctx context.Context) error {
 			return fmt.Errorf("Failed to persist the update %q in the repository: %w", update.UUID.String(), err)
 		}
 
-		err = s.repo.AssignChannels(ctx, update.UUID, []string{config.GetUpdates().UpdatesDefaultChannel})
+		err = s.repo.AssignChannels(ctx, update.UUID, update.Channels)
 		if err != nil {
 			return fmt.Errorf("Failed to assign default channel to new update %q: %w", update.UUID.String(), err)
 		}
@@ -659,6 +667,10 @@ func (s updateService) filterUpdateFileByFilterExpression(updates Updates) (Upda
 	return updates, nil
 }
 
+// determineToDeleteAndToDownloadUpdates calculates the lists of updates, which are downloaded from
+// upstream as well as the list of updates, that are to be removed from the DB.
+//
+// This implements the logic described in the function description of the Refresh method.
 func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []Update, originUpdates []Update) (toDeleteUpdates []Update, toDownloadUpdates []Update) {
 	// Merge dbUpdates and originUpdates to the desired end state.
 	mergedUpdates := make([]Update, 0, len(dbUpdates)+len(originUpdates))
@@ -683,6 +695,23 @@ func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []Update,
 		return mergedUpdates[i].PublishedAt.After(mergedUpdates[j].PublishedAt)
 	})
 
+	// Initialize requiredComponents for each channel and component with
+	// latestLimit, which is the number of updates for each channel/component
+	// combination, that should be kept available in the DB.
+	requiredComponents := make(map[string]map[images.UpdateFileComponent]int, 10) // Assume a max of 10 channels as baseline.
+	for _, update := range mergedUpdates {
+		for _, channel := range update.Channels {
+			for component := range images.UpdateFileComponents {
+				_, ok := requiredComponents[channel]
+				if !ok {
+					requiredComponents[channel] = make(map[images.UpdateFileComponent]int, len(images.UpdateFileComponents))
+				}
+
+				requiredComponents[channel][component] = s.latestLimit
+			}
+		}
+	}
+
 	// If there are currently no updates in the DB, we don't need to reserve
 	// a slot for the most recent update from the DB.
 	mostRecentInDBFound := len(dbUpdates) == 0
@@ -700,14 +729,23 @@ func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []Update,
 		switch update.Status {
 		case api.UpdateStatusReady:
 			// Update from the DB, already downloaded.
-			if updateCount >= s.latestLimit {
-				// Already enough updates, mark the remaining ones for removal.
+			if !providesMissingComponentsForChannels(requiredComponents, update) {
+				// For all the channels and components, that is provided by this update
+				// the latestLimit (minimum expected number of updates) is already met.
+				// Therefore, this update is marked for removal.
 				toDeleteUpdates = append(toDeleteUpdates, update)
 				continue
 			}
 
-			mostRecentInDBFound = true
-			updateCount++
+			updateRequiredComponents(requiredComponents, update)
+
+			// Only update mostRecentInDBFound and updateCount, if the update is assigned to the default channel
+			// and it is a full update containing all components.
+			if slices.Contains(update.Channels, config.GetUpdates().UpdatesDefaultChannel) &&
+				len(update.Components()) == len(images.UpdateFileComponents) {
+				mostRecentInDBFound = true
+				updateCount++
+			}
 
 		case api.UpdateStatusUnknown:
 			mostRecentInDBHeadroom := 0
@@ -722,7 +760,13 @@ func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []Update,
 			}
 
 			toDownloadUpdates = append(toDownloadUpdates, update)
-			updateCount++
+
+			updateRequiredComponents(requiredComponents, update)
+
+			// Only update updateCount, if the update is a full update containing all components.
+			if len(update.Components()) == len(images.UpdateFileComponents) {
+				updateCount++
+			}
 
 		default:
 			// Unlikely to happen, this would be an update in state pending, younger than grace time
@@ -731,6 +775,38 @@ func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []Update,
 	}
 
 	return toDeleteUpdates, toDownloadUpdates
+}
+
+// providesMissingComponentsForChannels checks for all required components in all channels, if the given update
+// does provide anything currently missing. If this is the case, true is returned, otherwise the return value is false.
+func providesMissingComponentsForChannels(requiredComponents map[string]map[images.UpdateFileComponent]int, update Update) bool {
+	for _, file := range update.Files {
+		for _, channel := range update.Channels {
+			count, ok := requiredComponents[channel][file.Component]
+			if ok && count > 0 {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// updateRequiredComponents updates the requiredComponents for all components and for all channels, a given update
+// covers.
+func updateRequiredComponents(requiredComponents map[string]map[images.UpdateFileComponent]int, update Update) {
+	seenComponents := make(map[images.UpdateFileComponent]bool, len(images.UpdateFileComponents))
+	for _, file := range update.Files {
+		if seenComponents[file.Component] {
+			continue
+		}
+
+		seenComponents[file.Component] = true
+
+		for _, channel := range update.Channels {
+			requiredComponents[channel][file.Component]--
+		}
+	}
 }
 
 func (s updateService) isSpaceAvailable(ctx context.Context, downloadUpdates []Update) error {
