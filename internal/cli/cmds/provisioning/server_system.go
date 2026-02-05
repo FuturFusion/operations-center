@@ -34,6 +34,13 @@ func (c *cmdServerSystem) Command() *cobra.Command {
 
 	cmd.AddCommand(serverSystemNetworkCmd.Command())
 
+	// Evacuate
+	serverEvacuateCmd := cmdServerEvacuate{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverEvacuateCmd.Command())
+
 	// Poweroff
 	serverPoweroffCmd := cmdServerPoweroff{
 		ocClient: c.ocClient,
@@ -63,6 +70,48 @@ func (c *cmdServerSystem) Command() *cobra.Command {
 	cmd.AddCommand(serverSystemStorageCmd.Command())
 
 	return cmd
+}
+
+// Evacuate server.
+type cmdServerEvacuate struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdServerEvacuate) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "evacuate <name>"
+	cmd.Short = "Evacuate a server"
+	cmd.Long = `Description:
+  Evacuate a server
+
+  Evacuates a server.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerEvacuate) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdServerEvacuate) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.EvacuateServerSystem(cmd.Context(), name)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Poweroff server.
