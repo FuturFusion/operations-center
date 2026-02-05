@@ -852,6 +852,16 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 	}
 
+	// Forcefully set channel and update frequency on server before triggering update.
+	err = s.UpdateSystemUpdate(ctx, name, incusosapi.SystemUpdate{
+		Config: incusosapi.SystemUpdateConfig{
+			Channel: server.Channel,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to enforce update channel for server %q: %w", server.Name, err)
+	}
+
 	if updateRequest.OS.TriggerUpdate {
 		err = s.client.UpdateOS(ctx, *server)
 		if err != nil {
@@ -861,6 +871,7 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 
 	// FIXME: iterate over the applications and trigger the update for the applications
 	// as well, if the TriggerUpdate flag is set to true for the particular application.
+	// https://github.com/FuturFusion/operations-center/issues/616
 
 	return nil
 }
