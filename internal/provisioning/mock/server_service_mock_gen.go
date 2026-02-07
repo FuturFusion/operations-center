@@ -29,6 +29,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the DeleteByName method")
 //			},
+//			EvacuateSystemByNameFunc: func(ctx context.Context, name string) error {
+//				panic("mock out the EvacuateSystemByName method")
+//			},
 //			GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
 //				panic("mock out the GetAll method")
 //			},
@@ -107,6 +110,9 @@ type ServerServiceMock struct {
 
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
+
+	// EvacuateSystemByNameFunc mocks the EvacuateSystemByName method.
+	EvacuateSystemByNameFunc func(ctx context.Context, name string) error
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Servers, error)
@@ -187,6 +193,13 @@ type ServerServiceMock struct {
 		}
 		// DeleteByName holds details about calls to the DeleteByName method.
 		DeleteByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
+		// EvacuateSystemByName holds details about calls to the EvacuateSystemByName method.
+		EvacuateSystemByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Name is the name argument value.
@@ -359,6 +372,7 @@ type ServerServiceMock struct {
 	}
 	lockCreate                       sync.RWMutex
 	lockDeleteByName                 sync.RWMutex
+	lockEvacuateSystemByName         sync.RWMutex
 	lockGetAll                       sync.RWMutex
 	lockGetAllNames                  sync.RWMutex
 	lockGetAllNamesWithFilter        sync.RWMutex
@@ -456,6 +470,42 @@ func (mock *ServerServiceMock) DeleteByNameCalls() []struct {
 	mock.lockDeleteByName.RLock()
 	calls = mock.calls.DeleteByName
 	mock.lockDeleteByName.RUnlock()
+	return calls
+}
+
+// EvacuateSystemByName calls EvacuateSystemByNameFunc.
+func (mock *ServerServiceMock) EvacuateSystemByName(ctx context.Context, name string) error {
+	if mock.EvacuateSystemByNameFunc == nil {
+		panic("ServerServiceMock.EvacuateSystemByNameFunc: method is nil but ServerService.EvacuateSystemByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockEvacuateSystemByName.Lock()
+	mock.calls.EvacuateSystemByName = append(mock.calls.EvacuateSystemByName, callInfo)
+	mock.lockEvacuateSystemByName.Unlock()
+	return mock.EvacuateSystemByNameFunc(ctx, name)
+}
+
+// EvacuateSystemByNameCalls gets all the calls that were made to EvacuateSystemByName.
+// Check the length with:
+//
+//	len(mockedServerService.EvacuateSystemByNameCalls())
+func (mock *ServerServiceMock) EvacuateSystemByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockEvacuateSystemByName.RLock()
+	calls = mock.calls.EvacuateSystemByName
+	mock.lockEvacuateSystemByName.RUnlock()
 	return calls
 }
 

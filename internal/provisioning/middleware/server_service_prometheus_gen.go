@@ -67,6 +67,20 @@ func (_d ServerServiceWithPrometheus) DeleteByName(ctx context.Context, name str
 	return _d.base.DeleteByName(ctx, name)
 }
 
+// EvacuateSystemByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) EvacuateSystemByName(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "EvacuateSystemByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.EvacuateSystemByName(ctx, name)
+}
+
 // GetAll implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) GetAll(ctx context.Context) (servers provisioning.Servers, err error) {
 	_since := time.Now()

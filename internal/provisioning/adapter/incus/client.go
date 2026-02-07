@@ -387,6 +387,23 @@ func (c client) UpdateUpdateConfig(ctx context.Context, server provisioning.Serv
 	return nil
 }
 
+func (c client) Evacuate(ctx context.Context, server provisioning.Server) error {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return err
+	}
+
+	_, err = client.UpdateClusterMemberState(server.Name, incusapi.ClusterMemberStatePost{
+		Action: "evacuate",
+		Mode:   "auto",
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to update cluster member state to evacuated: %w", err)
+	}
+
+	return nil
+}
+
 func (c client) Poweroff(ctx context.Context, server provisioning.Server) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {

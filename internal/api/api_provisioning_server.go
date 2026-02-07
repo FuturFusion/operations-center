@@ -54,6 +54,7 @@ func registerProvisioningServerHandler(router Router, authorizer *authz.Authoriz
 	router.HandleFunc("DELETE /{name}", response.With(handler.serverDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{name}", response.With(handler.serverPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/:resync", response.With(handler.serverResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/system/:evacuate", response.With(handler.serverSystemEvacuatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/system/:poweroff", response.With(handler.serverSystemPoweroffPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/system/:reboot", response.With(handler.serverSystemRebootPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/system/:update", response.With(handler.serverSystemUpdatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
@@ -735,6 +736,37 @@ func (s *serverHandler) serverResyncPost(r *http.Request) response.Response {
 	err := s.service.ResyncByName(r.Context(), name)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync server %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/servers/{name}/system/:evacuate servers_system_evacuate server_system_evacuate_post
+//
+//	Evacuate server
+//
+//	Triggers an evacuate operation on the server.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverSystemEvacuatePost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	err := s.service.EvacuateSystemByName(r.Context(), name)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to evacuate server %q: %w", name, err))
 	}
 
 	return response.EmptySyncResponse
