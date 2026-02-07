@@ -59,6 +59,13 @@ func (c *CmdUpdate) Command() *cobra.Command {
 
 	cmd.AddCommand(updateAddCmd.Command())
 
+	// Assign Channels
+	updateAssignChannelsCmd := cmdUpdateAssignChannels{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updateAssignChannelsCmd.Command())
+
 	// Files
 	updateFilesCmd := cmdUpdateFiles{
 		ocClient: c.OCClient,
@@ -283,6 +290,51 @@ func (c *cmdUpdateAdd) run(cmd *cobra.Command, args []string) error {
 	err = c.ocClient.CreateUpdate(cmd.Context(), f)
 	if err != nil {
 		return fmt.Errorf("Failed to create update from %q: %w", filename, err)
+	}
+
+	return nil
+}
+
+// Assign Channels to update.
+type cmdUpdateAssignChannels struct {
+	ocClient *client.OperationsCenterClient
+
+	flagChannels []string
+}
+
+func (c *cmdUpdateAssignChannels) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "assign-channels <uuid>"
+	cmd.Short = "Assign channels to an update"
+	cmd.Long = `Description:
+  Assign channels to an update.
+`
+	cmd.Flags().StringSliceVar(&c.flagChannels, "channel", []string{}, "channel the update should be assigned to")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdUpdateAssignChannels) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdUpdateAssignChannels) run(cmd *cobra.Command, args []string) error {
+	id := args[0]
+
+	err := c.ocClient.UpdateUpdate(cmd.Context(), id, api.UpdatePut{
+		Channels: c.flagChannels,
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to assign channels to update: %w", err)
 	}
 
 	return nil

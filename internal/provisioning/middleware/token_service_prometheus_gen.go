@@ -168,7 +168,7 @@ func (_d TokenServiceWithPrometheus) GetPreSeededImage(ctx context.Context, id u
 }
 
 // GetTokenImageFromTokenSeed implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture) (readCloser io.ReadCloser, err error) {
+func (_d TokenServiceWithPrometheus) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (readCloser io.ReadCloser, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -178,7 +178,7 @@ func (_d TokenServiceWithPrometheus) GetTokenImageFromTokenSeed(ctx context.Cont
 
 		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetTokenImageFromTokenSeed", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetTokenImageFromTokenSeed(ctx, id, name, imageType, architecture)
+	return _d.base.GetTokenImageFromTokenSeed(ctx, id, name, imageType, architecture, channel)
 }
 
 // GetTokenProviderConfig implements provisioning.TokenService.
@@ -238,7 +238,7 @@ func (_d TokenServiceWithPrometheus) GetTokenSeedByName(ctx context.Context, id 
 }
 
 // PreparePreSeededImage implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig provisioning.TokenImageSeedConfigs) (uUID uuid.UUID, err error) {
+func (_d TokenServiceWithPrometheus) PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, seedConfig provisioning.TokenImageSeedConfigs) (uUID uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -248,7 +248,7 @@ func (_d TokenServiceWithPrometheus) PreparePreSeededImage(ctx context.Context, 
 
 		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PreparePreSeededImage", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.PreparePreSeededImage(ctx, id, imageType, architecture, seedConfig)
+	return _d.base.PreparePreSeededImage(ctx, id, imageType, architecture, channel, seedConfig)
 }
 
 // Update implements provisioning.TokenService.

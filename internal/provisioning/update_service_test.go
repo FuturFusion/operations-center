@@ -797,6 +797,81 @@ func TestUpdateService_GetByUUID(t *testing.T) {
 	}
 }
 
+func TestUpdateService_Update(t *testing.T) {
+	tests := []struct {
+		name                  string
+		updateArg             provisioning.Update
+		repoAssignChannelsErr error
+		repoUpsertErr         error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			updateArg: provisioning.Update{
+				Severity: images.UpdateSeverityLow,
+				Status:   api.UpdateStatusReady,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - validation - invalid severity",
+			updateArg: provisioning.Update{
+				Severity: images.UpdateSeverity("invalid"), // invalid
+				Status:   api.UpdateStatusReady,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - repo.AssignChannels",
+			updateArg: provisioning.Update{
+				Severity: images.UpdateSeverityLow,
+				Status:   api.UpdateStatusReady,
+			},
+			repoAssignChannelsErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.Upsert",
+			updateArg: provisioning.Update{
+				Severity: images.UpdateSeverityLow,
+				Status:   api.UpdateStatusReady,
+			},
+			repoUpsertErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.UpdateRepoMock{
+				AssignChannelsFunc: func(ctx context.Context, id uuid.UUID, channelNames []string) error {
+					return tc.repoAssignChannelsErr
+				},
+				UpsertFunc: func(ctx context.Context, update provisioning.Update) error {
+					return tc.repoUpsertErr
+				},
+			}
+
+			updateSvc := provisioning.NewUpdateService(repo, nil, nil)
+
+			// Run test
+			err := updateSvc.Update(t.Context(), tc.updateArg)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestUpdateService_GetUpdateAllFiles(t *testing.T) {
 	tests := []struct {
 		name                string

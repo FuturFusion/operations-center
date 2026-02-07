@@ -455,7 +455,7 @@ func (t *tokenHandler) tokenImagePost(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	imageUUID, err := t.service.PreparePreSeededImage(r.Context(), UUID, tokenImagePost.Type, tokenImagePost.Architecture, provisioning.TokenImageSeedConfigs{
+	imageUUID, err := t.service.PreparePreSeededImage(r.Context(), UUID, tokenImagePost.Type, tokenImagePost.Architecture, tokenImagePost.Channel, provisioning.TokenImageSeedConfigs{
 		Applications:     tokenImagePost.Seeds.Applications,
 		Incus:            tokenImagePost.Seeds.Incus,
 		Install:          tokenImagePost.Seeds.Install,
@@ -788,6 +788,16 @@ func (t *tokenHandler) tokenSeedsGet(r *http.Request) response.Response {
 //	  - application/gzip
 //	parameters:
 //	  - in: query
+//	    name: architecture
+//	    description: |-
+//	      Architecture of the generated file, "x86_64", "aarch64".
+//	  - in: query
+//	    name: channel
+//	    description: |-
+//	      Name of the channel, the most recent update should be taken from
+//	      for the generated image.
+//	      If omitted, the default update channel is used.
+//	  - in: query
 //	    name: type
 //	    description: |-
 //	      Type of the generated file, "iso" or "raw".
@@ -838,6 +848,7 @@ func (t *tokenHandler) tokenSeedGet(r *http.Request) response.Response {
 
 	typeArg := r.URL.Query().Get("type")
 	architectureArg := r.URL.Query().Get("architecture")
+	channelArg := r.URL.Query().Get("channel")
 
 	seedConfig, err := t.service.GetTokenSeedByName(r.Context(), UUID, name)
 	if err != nil {
@@ -891,7 +902,7 @@ func (t *tokenHandler) tokenSeedGet(r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("architecture %q is not valid", architectureArg))
 	}
 
-	rc, err := t.service.GetTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture)
+	rc, err := t.service.GetTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture, channelArg)
 	if err != nil {
 		return response.SmartError(err)
 	}

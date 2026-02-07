@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,7 +26,8 @@ type tokenService struct {
 
 	randomUUID func() (uuid.UUID, error)
 
-	images map[uuid.UUID]imageRecord
+	imagesMu sync.Mutex
+	images   map[uuid.UUID]imageRecord
 }
 
 var _ TokenService = &tokenService{}
@@ -39,6 +41,7 @@ func NewTokenService(repo TokenRepo, updateSvc UpdateService, channelSvc Channel
 		channelSvc: channelSvc,
 		flasher:    flasher,
 		randomUUID: uuid.NewRandom,
+		imagesMu:   sync.Mutex{},
 		images:     map[uuid.UUID]imageRecord{},
 	}
 
@@ -49,7 +52,7 @@ func NewTokenService(repo TokenRepo, updateSvc UpdateService, channelSvc Channel
 	return tokenSvc
 }
 
-func (s tokenService) Create(ctx context.Context, newToken Token) (Token, error) {
+func (s *tokenService) Create(ctx context.Context, newToken Token) (Token, error) {
 	var err error
 	newToken.UUID, err = s.randomUUID()
 	if err != nil {
@@ -69,19 +72,19 @@ func (s tokenService) Create(ctx context.Context, newToken Token) (Token, error)
 	return newToken, nil
 }
 
-func (s tokenService) GetAll(ctx context.Context) (Tokens, error) {
+func (s *tokenService) GetAll(ctx context.Context) (Tokens, error) {
 	return s.repo.GetAll(ctx)
 }
 
-func (s tokenService) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
+func (s *tokenService) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
 	return s.repo.GetAllUUIDs(ctx)
 }
 
-func (s tokenService) GetByUUID(ctx context.Context, id uuid.UUID) (*Token, error) {
+func (s *tokenService) GetByUUID(ctx context.Context, id uuid.UUID) (*Token, error) {
 	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s tokenService) Update(ctx context.Context, newToken Token) error {
+func (s *tokenService) Update(ctx context.Context, newToken Token) error {
 	err := newToken.Validate()
 	if err != nil {
 		return fmt.Errorf("Validation failed for token update: %w", err)
@@ -90,11 +93,11 @@ func (s tokenService) Update(ctx context.Context, newToken Token) error {
 	return s.repo.Update(ctx, newToken)
 }
 
-func (s tokenService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+func (s *tokenService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return s.repo.DeleteByUUID(ctx, id)
 }
 
-func (s tokenService) Consume(ctx context.Context, id uuid.UUID) error {
+func (s *tokenService) Consume(ctx context.Context, id uuid.UUID) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		token, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
@@ -124,11 +127,15 @@ type imageRecord struct {
 	TokenID      uuid.UUID
 	ImageType    api.ImageType
 	Architecture images.UpdateFileArchitecture
+	Channel      string
 	SeedConfig   TokenImageSeedConfigs
 	CreatedAt    time.Time
 }
 
-func (s *tokenService) PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig TokenImageSeedConfigs) (uuid.UUID, error) {
+func (s *tokenService) PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, seedConfig TokenImageSeedConfigs) (uuid.UUID, error) {
+	s.imagesMu.Lock()
+	defer s.imagesMu.Unlock()
+
 	// Remove image records older than 5 minutes.
 	for imageUUID, image := range s.images {
 		if time.Since(image.CreatedAt) > 5*time.Minute {
@@ -145,7 +152,16 @@ func (s *tokenService) PreparePreSeededImage(ctx context.Context, id uuid.UUID, 
 		return uuid.Nil, domain.NewValidationErrf("Invalid architecture")
 	}
 
-	_, err := s.repo.GetByUUID(ctx, id)
+	if channel == "" {
+		channel = config.GetUpdates().ServerDefaultChannel
+	}
+
+	_, err := s.channelSvc.GetByName(ctx, channel)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("Unable to get channel %q: %w", channel, err)
+	}
+
+	_, err = s.repo.GetByUUID(ctx, id)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("Unable to get token %s: %w", id.String(), err)
 	}
@@ -156,6 +172,7 @@ func (s *tokenService) PreparePreSeededImage(ctx context.Context, id uuid.UUID, 
 		TokenID:      id,
 		ImageType:    imageType,
 		Architecture: architecture,
+		Channel:      channel,
 		SeedConfig:   seedConfig,
 		CreatedAt:    time.Now(),
 	}
@@ -164,6 +181,7 @@ func (s *tokenService) PreparePreSeededImage(ctx context.Context, id uuid.UUID, 
 }
 
 func (s *tokenService) GetPreSeededImage(ctx context.Context, id uuid.UUID, imageUUID uuid.UUID) (_ io.ReadCloser, filename string, _ error) {
+	s.imagesMu.Lock()
 	// Remove image records older than 5 minutes.
 	for imageUUID, image := range s.images {
 		if time.Since(image.CreatedAt) > 5*time.Minute {
@@ -172,6 +190,7 @@ func (s *tokenService) GetPreSeededImage(ctx context.Context, id uuid.UUID, imag
 	}
 
 	image, ok := s.images[imageUUID]
+	s.imagesMu.Unlock()
 	if !ok {
 		return nil, "", fmt.Errorf("Failed to find image configuration for uuid %q: %w", imageUUID.String(), domain.ErrNotFound)
 	}
@@ -185,17 +204,19 @@ func (s *tokenService) GetPreSeededImage(ctx context.Context, id uuid.UUID, imag
 		return nil, "", fmt.Errorf("Unable to get token %s: %w", image.TokenID.String(), err)
 	}
 
-	rc, err := s.getPreSeedImage(ctx, image.TokenID, image.ImageType, image.Architecture, image.SeedConfig)
+	rc, err := s.getPreSeedImage(ctx, image.TokenID, image.ImageType, image.Architecture, image.Channel, image.SeedConfig)
 	if err != nil {
 		return nil, "", fmt.Errorf("Failed to get pre seed image stream: %w", err)
 	}
 
+	s.imagesMu.Lock()
 	delete(s.images, imageUUID)
+	s.imagesMu.Unlock()
 
 	return rc, fmt.Sprintf("pre-seed-%s%s", image.TokenID.String(), image.ImageType.FileExt()), nil
 }
 
-func (s tokenService) GetTokenProviderConfig(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error) {
+func (s *tokenService) GetTokenProviderConfig(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error) {
 	seedProvider, err := s.flasher.GetProviderConfig(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get provider config for token %q: %w", id.String(), err)
@@ -204,7 +225,7 @@ func (s tokenService) GetTokenProviderConfig(ctx context.Context, id uuid.UUID) 
 	return seedProvider, nil
 }
 
-func (s tokenService) CreateTokenSeed(ctx context.Context, tokenSeed TokenSeed) (TokenSeed, error) {
+func (s *tokenService) CreateTokenSeed(ctx context.Context, tokenSeed TokenSeed) (TokenSeed, error) {
 	err := tokenSeed.Validate()
 	if err != nil {
 		return TokenSeed{}, fmt.Errorf("Validate token seed: %w", err)
@@ -218,7 +239,7 @@ func (s tokenService) CreateTokenSeed(ctx context.Context, tokenSeed TokenSeed) 
 	return tokenSeed, nil
 }
 
-func (s tokenService) GetTokenSeedAll(ctx context.Context, id uuid.UUID) (TokenSeeds, error) {
+func (s *tokenService) GetTokenSeedAll(ctx context.Context, id uuid.UUID) (TokenSeeds, error) {
 	tokenSeeds, err := s.repo.GetTokenSeedAll(ctx, id)
 	if err != nil {
 		return nil, err
@@ -227,11 +248,11 @@ func (s tokenService) GetTokenSeedAll(ctx context.Context, id uuid.UUID) (TokenS
 	return tokenSeeds, nil
 }
 
-func (s tokenService) GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) ([]string, error) {
+func (s *tokenService) GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) ([]string, error) {
 	return s.repo.GetTokenSeedAllNames(ctx, id)
 }
 
-func (s tokenService) GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (*TokenSeed, error) {
+func (s *tokenService) GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (*TokenSeed, error) {
 	tokenSeedConfig, err := s.repo.GetTokenSeedByName(ctx, id, name)
 	if err != nil {
 		return nil, err
@@ -240,7 +261,7 @@ func (s tokenService) GetTokenSeedByName(ctx context.Context, id uuid.UUID, name
 	return tokenSeedConfig, nil
 }
 
-func (s tokenService) UpdateTokenSeed(ctx context.Context, tokenSeed TokenSeed) error {
+func (s *tokenService) UpdateTokenSeed(ctx context.Context, tokenSeed TokenSeed) error {
 	err := tokenSeed.Validate()
 	if err != nil {
 		return fmt.Errorf("Validate token seed: %w", err)
@@ -254,7 +275,7 @@ func (s tokenService) UpdateTokenSeed(ctx context.Context, tokenSeed TokenSeed) 
 	return nil
 }
 
-func (s tokenService) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) error {
+func (s *tokenService) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) error {
 	err := s.repo.DeleteTokenSeedByName(ctx, id, name)
 	if err != nil {
 		return err
@@ -263,7 +284,7 @@ func (s tokenService) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, n
 	return nil
 }
 
-func (s tokenService) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture) (io.ReadCloser, error) {
+func (s *tokenService) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, error) {
 	if !imageType.IsValid() {
 		return nil, domain.NewValidationErrf("Invalid image type")
 	}
@@ -283,20 +304,24 @@ func (s tokenService) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UU
 		return nil, fmt.Errorf("Failed to get token seed %q for token %q: %w", name, id.String(), err)
 	}
 
-	return s.getPreSeedImage(ctx, id, imageType, architecture, tokenSeed.Seeds)
+	return s.getPreSeedImage(ctx, id, imageType, architecture, channel, tokenSeed.Seeds)
 }
 
-func (s tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seeds TokenImageSeedConfigs) (_ io.ReadCloser, err error) {
-	// TODO: Allow filters?
+func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, seeds TokenImageSeedConfigs) (_ io.ReadCloser, err error) {
+	if channel == "" {
+		channel = config.GetUpdates().UpdatesDefaultChannel
+	}
+
 	updates, err := s.updateSvc.GetAllWithFilter(ctx, UpdateFilter{
-		Status: ptr.To(api.UpdateStatusReady),
+		Status:  ptr.To(api.UpdateStatusReady),
+		Channel: ptr.To(channel),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get updates: %w", err)
 	}
 
 	if len(updates) == 0 {
-		return nil, fmt.Errorf("Failed to get updates: No updates found")
+		return nil, fmt.Errorf("Failed to get updates: No ready updates found in channel %q: %w", channel, domain.ErrNotFound)
 	}
 
 	// Update service does return the updates ordered by version in descending order.
@@ -357,7 +382,7 @@ func (s tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageTy
 	seeds.Update["version"] = "1"
 	seeds.Update["auto_reboot"] = false
 	seeds.Update["check_frequency"] = "never"
-	seeds.Update["channel"], err = s.ensureChannelName(ctx, seeds.Update)
+	seeds.Update["channel"], err = s.ensureChannelName(ctx, seeds.Update, channel)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to validate update channel from seed config: %w", err)
 	}
@@ -370,13 +395,13 @@ func (s tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageTy
 	return rc, nil
 }
 
-func (s tokenService) ensureChannelName(ctx context.Context, update map[string]any) (string, error) {
+func (s *tokenService) ensureChannelName(ctx context.Context, update map[string]any, channel string) (string, error) {
 	anyChannel, ok := update["channel"]
 	if !ok {
-		return config.GetUpdates().ServerDefaultChannel, nil
+		anyChannel = channel
 	}
 
-	channel, ok := anyChannel.(string)
+	channel, ok = anyChannel.(string)
 	if !ok {
 		return "", domain.NewValidationErrf(`Invalid type for update channel, "string" expected`)
 	}

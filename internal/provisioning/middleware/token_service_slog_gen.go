@@ -359,7 +359,7 @@ func (_d TokenServiceWithSlog) GetPreSeededImage(ctx context.Context, id uuid.UU
 }
 
 // GetTokenImageFromTokenSeed implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture) (readCloser io.ReadCloser, err error) {
+func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (readCloser io.ReadCloser, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -368,6 +368,7 @@ func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, i
 			slog.String("name", name),
 			slog.Any("imageType", imageType),
 			slog.Any("architecture", architecture),
+			slog.String("channel", channel),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetTokenImageFromTokenSeed")
@@ -393,7 +394,7 @@ func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, i
 			log.DebugContext(ctx, "<= method GetTokenImageFromTokenSeed finished")
 		}
 	}()
-	return _d._base.GetTokenImageFromTokenSeed(ctx, id, name, imageType, architecture)
+	return _d._base.GetTokenImageFromTokenSeed(ctx, id, name, imageType, architecture, channel)
 }
 
 // GetTokenProviderConfig implements provisioning.TokenService.
@@ -538,7 +539,7 @@ func (_d TokenServiceWithSlog) GetTokenSeedByName(ctx context.Context, id uuid.U
 }
 
 // PreparePreSeededImage implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig provisioning.TokenImageSeedConfigs) (uUID uuid.UUID, err error) {
+func (_d TokenServiceWithSlog) PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, seedConfig provisioning.TokenImageSeedConfigs) (uUID uuid.UUID, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -546,6 +547,7 @@ func (_d TokenServiceWithSlog) PreparePreSeededImage(ctx context.Context, id uui
 			slog.Any("id", id),
 			slog.Any("imageType", imageType),
 			slog.Any("architecture", architecture),
+			slog.String("channel", channel),
 			slog.Any("seedConfig", seedConfig),
 		)
 	}
@@ -572,7 +574,7 @@ func (_d TokenServiceWithSlog) PreparePreSeededImage(ctx context.Context, id uui
 			log.DebugContext(ctx, "<= method PreparePreSeededImage finished")
 		}
 	}()
-	return _d._base.PreparePreSeededImage(ctx, id, imageType, architecture, seedConfig)
+	return _d._base.PreparePreSeededImage(ctx, id, imageType, architecture, channel, seedConfig)
 }
 
 // Update implements provisioning.TokenService.
