@@ -1,6 +1,8 @@
 import { FC } from "react";
 import { Button, Form } from "react-bootstrap";
 import { useFormik } from "formik";
+import LoadingButton from "components/LoadingButton";
+import { APIResponse } from "types/response";
 import { Server, ServerFormValues } from "types/server";
 import YAML from "yaml";
 
@@ -9,7 +11,7 @@ interface Props {
   systemNetwork?: object;
   systemStorage?: object;
   onRename: (newName: string) => void;
-  onSubmit: (values: ServerFormValues) => void;
+  onSubmit: (values: ServerFormValues) => Promise<APIResponse<null> | void>;
 }
 
 const ServerForm: FC<Props> = ({
@@ -30,7 +32,7 @@ const ServerForm: FC<Props> = ({
     initialValues: formikInitialValues,
     enableReinitialize: true,
     onSubmit: (values: ServerFormValues) => {
-      onSubmit(values);
+      return onSubmit(values);
     },
   });
 
@@ -48,6 +50,7 @@ const ServerForm: FC<Props> = ({
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 isInvalid={!!formik.errors.name && formik.touched.name}
+                disabled={formik.isSubmitting}
               />
               <Form.Control.Feedback type="invalid">
                 {formik.errors.name}
@@ -69,6 +72,7 @@ const ServerForm: FC<Props> = ({
               value={formik.values.public_connection_url}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
+              disabled={formik.isSubmitting}
             />
           </Form.Group>
           <Form.Group className="mb-3" controlId="network_configuration">
@@ -81,6 +85,7 @@ const ServerForm: FC<Props> = ({
               value={formik.values.network_configuration}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
+              disabled={formik.isSubmitting}
               className="editor"
             />
           </Form.Group>
@@ -94,19 +99,21 @@ const ServerForm: FC<Props> = ({
               value={formik.values.storage_configuration}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
+              disabled={formik.isSubmitting}
               className="editor"
             />
           </Form.Group>
         </Form>
       </div>
       <div className="fixed-footer p-3">
-        <Button
+        <LoadingButton
+          isLoading={formik.isSubmitting}
           className="float-end"
           variant="success"
           onClick={() => formik.handleSubmit()}
         >
           Submit
-        </Button>
+        </LoadingButton>
       </div>
     </div>
   );

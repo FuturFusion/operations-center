@@ -11,6 +11,7 @@ import {
 } from "api/server";
 import ServerForm from "components/ServerForm";
 import { useNotification } from "context/notificationContext";
+import { APIResponse } from "types/response";
 import { ServerFormValues } from "types/server";
 import YAML from "yaml";
 
@@ -19,7 +20,9 @@ const ServerConfiguration = () => {
   const { notify } = useNotification();
   const navigate = useNavigate();
 
-  const onSubmit = async (values: ServerFormValues) => {
+  const onSubmit = async (
+    values: ServerFormValues,
+  ): Promise<APIResponse<null> | void> => {
     let networkConfig = {};
     try {
       networkConfig = YAML.parse(values.network_configuration);
@@ -82,7 +85,7 @@ const ServerConfiguration = () => {
       return;
     }
 
-    updateServer(
+    return updateServer(
       values.name,
       JSON.stringify(
         { public_connection_url: values.public_connection_url },
