@@ -473,11 +473,11 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 	// Only allow changing of Channel, if server is not clustered. Otherwise
 	// the change of the channel needs to happen through the cluster.
 	var updateServer bool
-	if currentServer.Cluster != nil {
-		currentServer.Channel = server.Channel
+	if currentServer.Cluster == nil {
 		// Only trigger update of server, when the channel, the server is following,
 		// has changed.
 		updateServer = currentServer.Channel != server.Channel
+		currentServer.Channel = server.Channel
 	}
 
 	err = s.service.Update(ctx, *currentServer, updateServer)
