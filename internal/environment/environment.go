@@ -165,6 +165,10 @@ const IncusOSSocket = "/run/incus-os/unix.socket"
 
 // IsIncusOS checks if the host system is running IncusOS.
 func (e environment) IsIncusOS() bool {
+	return IsIncusOS()
+}
+
+func IsIncusOS() bool {
 	return file.PathExists("/var/lib/incus-os/")
 }
 

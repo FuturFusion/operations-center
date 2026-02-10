@@ -4,17 +4,17 @@ terraform {
   required_providers {
     incus = {
       source  = "lxc/incus"
-      version = "~>1.0.2"
+      version = "~>{{ .IncusProviderVersion }}"
     }
 
     random = {
       source  = "hashicorp/random"
-      version = "~>3.8.0"
+      version = "~>{{ .RandomProviderVersion }}"
     }
 
     null = {
       source  = "hashicorp/null"
-      version = "~>3.2.4"
+      version = "~>{{ .NullProviderVersion }}"
     }
   }
 }

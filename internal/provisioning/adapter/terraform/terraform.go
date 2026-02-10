@@ -19,9 +19,28 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/zclconf/go-cty/cty"
 
+	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/file"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
+
+var terraformProviders = map[string]struct {
+	pluginDirectory string
+	minVersion      string
+}{
+	"incus": {
+		pluginDirectory: "/usr/share/terraform/plugins/registry.opentofu.org/lxc/incus",
+		minVersion:      "1.0.2",
+	},
+	"random": {
+		pluginDirectory: "/usr/share/terraform/plugins/registry.opentofu.org/hashicorp/random",
+		minVersion:      "3.8.0",
+	},
+	"null": {
+		pluginDirectory: "/usr/share/terraform/plugins/registry.opentofu.org/hashicorp/null",
+		minVersion:      "3.2.4",
+	},
+}
 
 //go:embed templates
 var templatesFS embed.FS
@@ -32,6 +51,30 @@ type terraform struct {
 
 	terraformInitFunc  func(ctx context.Context, configDir string) error
 	terraformApplyFunc func(ctx context.Context, configDir string) error
+
+	incusProviderVersion  string
+	randomProviderVersion string
+	nullProviderVersion   string
+}
+
+func init() {
+	if !environment.IsIncusOS() {
+		return
+	}
+
+	for name, provider := range terraformProviders {
+		files, err := filepath.Glob(filepath.Join(provider.pluginDirectory, "*"))
+		if err != nil {
+			continue
+		}
+
+		if len(files) == 0 {
+			continue
+		}
+
+		provider.minVersion = filepath.Base(files[0])
+		terraformProviders[name] = provider
+	}
 }
 
 var _ provisioning.ClusterProvisioningPort = &terraform{}
@@ -47,6 +90,10 @@ func New(storageDir string, clientCertDir string, opts ...Option) (terraform, er
 	t := terraform{
 		storageDir:    storageDir,
 		clientCertDir: clientCertDir,
+
+		incusProviderVersion:  terraformProviders["incus"].minVersion,
+		randomProviderVersion: terraformProviders["random"].minVersion,
+		nullProviderVersion:   terraformProviders["null"].minVersion,
 	}
 
 	t.terraformInitFunc = t.terraformInit
@@ -116,6 +163,10 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 					"ClusterAddress":       config.ClusterEndpoint.GetConnectionURL(),
 					"MeshTunnelInterfaces": meshTunnelInterfaces,
 					"IncusPreseed":         incusPreseed,
+
+					"IncusProviderVersion":  t.incusProviderVersion,
+					"RandomProviderVersion": t.randomProviderVersion,
+					"NullProviderVersion":   t.nullProviderVersion,
 				},
 				)
 				if err != nil {
