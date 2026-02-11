@@ -314,14 +314,16 @@ func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, serv
 	}
 
 	if len(updates) == 0 {
-		// No updates found, nothing to enrich.
+		// No updates found, enrich without update version information.
+		server.VersionData.Compute(nil)
 		return nil
 	}
 
 	serverComponents := make([]string, 0, len(server.VersionData.Applications)+1) // All applications + OS
 	serverComponents = append(serverComponents, string(images.UpdateFileComponentOS))
-	for _, app := range server.VersionData.Applications {
+	for i, app := range server.VersionData.Applications {
 		serverComponents = append(serverComponents, app.Name)
+		server.VersionData.Applications[i].NeedsUpdate = ptr.To(false)
 	}
 
 	// For each component installed on the server (OS, applications), we need to
@@ -330,8 +332,10 @@ func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, serv
 	// in decending order (the updates are already returned sorted correctly).
 	//
 	// For each component, where we found a corresponding update, we update the
-	// server and remove the component from `serverComponents`. We
-	// are done with the work, if `serverComponents` is empty.
+	// latestAvailableVersions map and remove the component from
+	// `serverComponents`. We are done with the work, if `serverComponents` is
+	// empty.
+	latestAvailableVersions := make(map[images.UpdateFileComponent]string, len(updates))
 	for _, update := range updates {
 		if len(serverComponents) == 0 {
 			break
@@ -340,21 +344,8 @@ func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, serv
 		for _, updateComponent := range update.Components() {
 			serverComponents = slices.DeleteFunc(serverComponents, func(serverComponent string) bool {
 				if serverComponent == updateComponent.String() {
-					if updateComponent == images.UpdateFileComponentOS {
-						server.VersionData.OS.AvailableVersion = &update.Version
-						server.VersionData.OS.NeedsUpdate = ptr.To(availableVersionGreaterThan(server.VersionData.OS.Version, update.Version) && availableVersionGreaterThan(server.VersionData.OS.VersionNext, update.Version))
-
-						return true
-					}
-
-					for i := range server.VersionData.Applications {
-						if updateComponent.String() == server.VersionData.Applications[i].Name {
-							server.VersionData.Applications[i].AvailableVersion = &update.Version
-							server.VersionData.Applications[i].NeedsUpdate = ptr.To(availableVersionGreaterThan(server.VersionData.Applications[i].Version, update.Version))
-
-							return true
-						}
-					}
+					latestAvailableVersions[updateComponent] = update.Version
+					return true
 				}
 
 				return false
@@ -369,6 +360,8 @@ func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, serv
 		// Operations Center has refreshed the Updates from upstream.
 		slog.WarnContext(ctx, "Failed to find updates for some components while enriching server record with update version information", slog.Any("remaining_server_components", serverComponents))
 	}
+
+	server.VersionData.Compute(latestAvailableVersions)
 
 	return nil
 }

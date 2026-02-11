@@ -910,6 +910,14 @@ func TestServerService_GetByName(t *testing.T) {
 				Name:          "one",
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
+				VersionData: api.ServerVersionData{
+					NeedsUpdate:   ptr.To(false),
+					NeedsReboot:   ptr.To(false),
+					InMaintenance: ptr.To(false),
+					OS: api.OSVersionData{
+						NeedsUpdate: ptr.To(false),
+					},
+				},
 			},
 		},
 		{
@@ -921,8 +929,9 @@ func TestServerService_GetByName(t *testing.T) {
 				ConnectionURL: "http://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
-						Name:    "os",
-						Version: "2",
+						Name:        "os",
+						Version:     "2",
+						VersionNext: "2",
 					},
 					Applications: []api.ApplicationVersionData{
 						{
@@ -976,6 +985,7 @@ func TestServerService_GetByName(t *testing.T) {
 					OS: api.OSVersionData{
 						Name:             "os",
 						Version:          "2",
+						VersionNext:      "2",
 						AvailableVersion: ptr.To("2"),
 						NeedsUpdate:      ptr.To(false),
 					},
@@ -993,6 +1003,9 @@ func TestServerService_GetByName(t *testing.T) {
 							NeedsUpdate:      ptr.To(false),
 						},
 					},
+					NeedsUpdate:   ptr.To(false),
+					NeedsReboot:   ptr.To(false),
+					InMaintenance: ptr.To(false),
 				},
 			},
 		},
@@ -1005,8 +1018,9 @@ func TestServerService_GetByName(t *testing.T) {
 				ConnectionURL: "http://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
-						Name:    "os",
-						Version: "2",
+						Name:        "os",
+						Version:     "2",
+						VersionNext: "2",
 					},
 					Applications: []api.ApplicationVersionData{
 						{
@@ -1074,6 +1088,7 @@ func TestServerService_GetByName(t *testing.T) {
 					OS: api.OSVersionData{
 						Name:             "os",
 						Version:          "2",
+						VersionNext:      "2",
 						AvailableVersion: ptr.To("3"),
 						NeedsUpdate:      ptr.To(true),
 					},
@@ -1091,6 +1106,9 @@ func TestServerService_GetByName(t *testing.T) {
 							NeedsUpdate:      ptr.To(true),
 						},
 					},
+					NeedsUpdate:   ptr.To(true),
+					NeedsReboot:   ptr.To(false),
+					InMaintenance: ptr.To(false),
 				},
 			},
 		},
@@ -1103,8 +1121,9 @@ func TestServerService_GetByName(t *testing.T) {
 				ConnectionURL: "http://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
-						Name:    "os",
-						Version: "2",
+						Name:        "os",
+						Version:     "2",
+						VersionNext: "2",
 					},
 					Applications: []api.ApplicationVersionData{
 						{
@@ -1154,6 +1173,7 @@ func TestServerService_GetByName(t *testing.T) {
 					OS: api.OSVersionData{
 						Name:             "os",
 						Version:          "2",
+						VersionNext:      "2",
 						AvailableVersion: ptr.To("2"),
 						NeedsUpdate:      ptr.To(false),
 					},
@@ -1165,10 +1185,14 @@ func TestServerService_GetByName(t *testing.T) {
 							NeedsUpdate:      ptr.To(false),
 						},
 						{
-							Name:    "incus-ceph",
-							Version: "2",
+							Name:        "incus-ceph",
+							Version:     "2",
+							NeedsUpdate: ptr.To(false),
 						},
 					},
+					NeedsUpdate:   ptr.To(false),
+					NeedsReboot:   ptr.To(false),
+					InMaintenance: ptr.To(false),
 				},
 			},
 		},
