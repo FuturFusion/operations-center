@@ -182,6 +182,13 @@ linters:
         text: comment-spacing
       - linters:
           - revive
+        paths:
+          - internal/authn/tls
+          - internal/maps
+          - internal/version
+        text: "var-naming: avoid package names that conflict with Go standard library package names"
+      - linters:
+          - revive
         # It's useful to have a sort and API package but revive disagrees.
         source: '^package (sort|api)$'
         text: var-naming
