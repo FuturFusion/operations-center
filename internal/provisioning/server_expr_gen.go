@@ -14,6 +14,7 @@ type ExprApiApplicationVersionData struct {
 	Version          string  `json:"version" yaml:"version" expr:"version"`
 	AvailableVersion *string `json:"available_version,omitempty" yaml:"available_version,omitempty" expr:"available_version"`
 	NeedsUpdate      *bool   `json:"needs_update,omitempty" yaml:"needs_update,omitempty" expr:"needs_update"`
+	InMaintenance    bool    `json:"in_maintenance" yaml:"in_maintenance" expr:"in_maintenance"`
 }
 
 type ExprApiOSData struct {
@@ -35,6 +36,9 @@ type ExprApiServerVersionData struct {
 	OS            ExprApiOSVersionData            `json:"os" yaml:"os" expr:"os"`
 	Applications  []ExprApiApplicationVersionData `json:"applications" yaml:"applications" expr:"applications"`
 	UpdateChannel string                          `json:"update_channel" yaml:"update_channel" expr:"update_channel"`
+	NeedsUpdate   *bool                           `json:"needs_update,omitempty" yaml:"needs_update" expr:"needs_update"`
+	NeedsReboot   *bool                           `json:"needs_reboot,omitempty" yaml:"needs_reboot" expr:"needs_reboot"`
+	InMaintenance *bool                           `json:"in_maintenance,omitempty" yaml:"in_maintenance" expr:"in_maintenance"`
 }
 
 type ExprOsapiSystemNetwork struct {
@@ -359,6 +363,7 @@ func ToExprApiApplicationVersionData(a api.ApplicationVersionData) ExprApiApplic
 		Version:          a.Version,
 		AvailableVersion: a.AvailableVersion,
 		NeedsUpdate:      a.NeedsUpdate,
+		InMaintenance:    a.InMaintenance,
 	}
 }
 
@@ -386,6 +391,9 @@ func ToExprApiServerVersionData(s api.ServerVersionData) ExprApiServerVersionDat
 		OS:            ToExprApiOSVersionData(s.OS),
 		Applications:  sliceConvert(s.Applications, ToExprApiApplicationVersionData),
 		UpdateChannel: s.UpdateChannel,
+		NeedsUpdate:   s.NeedsUpdate,
+		NeedsReboot:   s.NeedsReboot,
+		InMaintenance: s.InMaintenance,
 	}
 }
 

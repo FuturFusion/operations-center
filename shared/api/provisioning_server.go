@@ -315,17 +315,19 @@ type ApplicationVersionData struct {
 // Value implements the sql driver.Valuer interface.
 func (s ServerVersionData) Value() (driver.Value, error) {
 	// Don't persist calculated fields in the DB.
-	s.NeedsUpdate = nil
-	s.NeedsReboot = nil
-	s.InMaintenance = nil
-	s.OS.AvailableVersion = nil
-	s.OS.NeedsUpdate = nil
-	for i := range s.Applications {
-		s.Applications[i].AvailableVersion = nil
-		s.Applications[i].NeedsUpdate = nil
+	serverVersion := s
+
+	serverVersion.NeedsUpdate = nil
+	serverVersion.NeedsReboot = nil
+	serverVersion.InMaintenance = nil
+	serverVersion.OS.AvailableVersion = nil
+	serverVersion.OS.NeedsUpdate = nil
+	for i := range serverVersion.Applications {
+		serverVersion.Applications[i].AvailableVersion = nil
+		serverVersion.Applications[i].NeedsUpdate = nil
 	}
 
-	return json.Marshal(s)
+	return json.Marshal(serverVersion)
 }
 
 // Scan implements the sql.Scanner interface.
