@@ -4,10 +4,15 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"math"
+	"strconv"
 	"time"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/ptr"
 )
 
 type ServerType string
@@ -234,6 +239,18 @@ type ServerVersionData struct {
 
 	// The channel the system is following for updates.
 	UpdateChannel string `json:"update_channel" yaml:"update_channel"`
+
+	// NeedsUpdate is the aggregated state over OS and all applications indicating
+	// if there is any component, where an update is available.
+	NeedsUpdate *bool `json:"needs_update,omitempty" yaml:"needs_update"`
+
+	// NeedsReboot is the aggregated state over OS and all applications indicating
+	// if there is any component, where a reboot is required.
+	NeedsReboot *bool `json:"needs_reboot,omitempty" yaml:"needs_reboot"`
+
+	// InMaintenance is the aggreaged state over OS and all applications indicating
+	// if there is any component currently in maintenance state.
+	InMaintenance *bool `json:"in_maintenance,omitempty" yaml:"in_maintenance"`
 }
 
 // OSVersionData defines a single version information for the OS.
@@ -265,7 +282,7 @@ type OSVersionData struct {
 	NeedsReboot bool `json:"needs_reboot" yaml:"needs_reboot"`
 
 	// NeedsUpdate is true, if the OS needs to be updated
-	// (available_version > version).
+	// (available_version > version_next).
 	NeedsUpdate *bool `json:"needs_update,omitempty" yaml:"needs_update,omitempty"`
 }
 
@@ -288,11 +305,19 @@ type ApplicationVersionData struct {
 	// NeedsUpdate is true, if this application needs to be updated
 	// (available_version > version).
 	NeedsUpdate *bool `json:"needs_update,omitempty" yaml:"needs_update,omitempty"`
+
+	// InMaintenance is true, if the application is in maintenance mode (e.g. for
+	// Incus, if it has been evacuated). If false, the system is in normal
+	// operation (also the case, if an Incus restore operation has been executed).
+	InMaintenance bool `json:"in_maintenance" yaml:"in_maintenance"`
 }
 
 // Value implements the sql driver.Valuer interface.
 func (s ServerVersionData) Value() (driver.Value, error) {
-	// Don't persist AvailableVersion and NeedsUpdate in the DB.
+	// Don't persist calculated fields in the DB.
+	s.NeedsUpdate = nil
+	s.NeedsReboot = nil
+	s.InMaintenance = nil
 	s.OS.AvailableVersion = nil
 	s.OS.NeedsUpdate = nil
 	for i := range s.Applications {
@@ -329,6 +354,71 @@ func (s *ServerVersionData) Scan(value any) error {
 	default:
 		return fmt.Errorf("type %T is not supported for server version data", value)
 	}
+}
+
+// Compute the calculated fields of the ServerVersionData. The argument is
+// expected to be a lookup map for the most recent available version
+// for each component.
+func (s *ServerVersionData) Compute(latestAvailableVersions map[images.UpdateFileComponent]string) {
+	// Init calculated fields with default values, if no value is currently set.
+	s.NeedsReboot = ptr.To(false)
+	s.InMaintenance = ptr.To(false)
+	s.NeedsUpdate = ptr.To(false)
+	s.OS.NeedsUpdate = ptr.To(false)
+	for i := range s.Applications {
+		s.Applications[i].NeedsUpdate = ptr.To(false)
+	}
+
+	// NeedsReboot is true, if OS.NeedsReboot is true.
+	s.NeedsReboot = &s.OS.NeedsReboot
+
+	// InMaintenance is true, if the server type is incus and the state of Incus is evacuated.
+	for _, application := range s.Applications {
+		if application.Name == "incus" {
+			s.InMaintenance = &application.InMaintenance
+			break
+		}
+	}
+
+	// Set OS AvailableVersion and NeedUpdate.
+	osLatestAvailableVersion, ok := latestAvailableVersions[images.UpdateFileComponentOS]
+	if ok {
+		s.OS.AvailableVersion = &osLatestAvailableVersion
+		s.OS.NeedsUpdate = ptr.To(availableVersionGreaterThan(s.OS.VersionNext, osLatestAvailableVersion))
+	}
+
+	// Set per application AvailableVersion and NeedsUpdate.
+	for i := range s.Applications {
+		appLatestAvailableVersion, ok := latestAvailableVersions[images.UpdateFileComponent(s.Applications[i].Name)]
+		if ok {
+			s.Applications[i].AvailableVersion = &appLatestAvailableVersion
+			s.Applications[i].NeedsUpdate = ptr.To(availableVersionGreaterThan(s.Applications[i].Version, appLatestAvailableVersion))
+		}
+	}
+
+	// NeedsUpdate is true, if OS.VersionNext != OS.AvailableVersion or for any application Version != AvailableVersion.
+	s.NeedsUpdate = s.OS.NeedsUpdate
+	for _, app := range s.Applications {
+		if *app.NeedsUpdate {
+			break
+		}
+
+		s.NeedsUpdate = app.NeedsUpdate
+	}
+}
+
+func availableVersionGreaterThan(currentVersion string, availableVersion string) bool {
+	current, err := strconv.ParseInt(currentVersion, 16, 64)
+	if err != nil {
+		current = math.MinInt // invalid versions are moved to the end.
+	}
+
+	available, err := strconv.ParseInt(availableVersion, 16, 64)
+	if err != nil {
+		available = math.MinInt // invalid versions are moved to the end.
+	}
+
+	return available > current
 }
 
 // ServerPost defines a new server running Hypervisor OS.

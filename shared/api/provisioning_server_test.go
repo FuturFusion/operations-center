@@ -33,7 +33,7 @@ func TestServerVersionData_Value(t *testing.T) {
 	val, err := svd.Value()
 	require.NoError(t, err)
 
-	require.JSONEq(t, `{"applications":[{"name":"app","version":"123"}],"os":{"name":"os","version":"123","version_next":"234","needs_reboot":true},"update_channel":"stable"}`, string(val.([]byte)))
+	require.JSONEq(t, `{"applications":[{"in_maintenance":false,"name":"app","version":"123"}],"os":{"name":"os","version":"123","version_next":"234","needs_reboot":true},"update_channel":"stable"}`, string(val.([]byte)))
 
 	var svdNew api.ServerVersionData
 	err = svdNew.Scan(val.([]byte))
