@@ -409,6 +409,44 @@ func (s *ServerVersionData) Compute(latestAvailableVersions map[images.UpdateFil
 	}
 }
 
+type ServerAction string
+
+const (
+	ServerActionNone     = ""
+	ServerActionUpdate   = "update"
+	ServerActionEvacuate = "evacuate"
+	ServerActionReboot   = "reboot"
+	ServerActionRestore  = "restore"
+)
+
+func (s *ServerVersionData) RecommendedAction() ServerAction {
+	if ptr.From(s.NeedsUpdate) {
+		return ServerActionUpdate
+	}
+
+	if ptr.From(s.NeedsReboot) {
+		isIncus := false
+		for _, app := range s.Applications {
+			if app.Name == "incus" {
+				isIncus = true
+				break
+			}
+		}
+
+		if !ptr.From(s.InMaintenance) && isIncus {
+			return ServerActionEvacuate
+		}
+
+		return ServerActionReboot
+	}
+
+	if ptr.From(s.InMaintenance) {
+		return ServerActionRestore
+	}
+
+	return ServerActionNone
+}
+
 func availableVersionGreaterThan(currentVersion string, availableVersion string) bool {
 	current, err := strconv.ParseInt(currentVersion, 16, 64)
 	if err != nil {

@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -54,4 +55,108 @@ func TestServerVersionData_Value(t *testing.T) {
 		},
 		UpdateChannel: "stable",
 	}, svdNew)
+}
+
+func TestServerVersionData_RecommendedAction(t *testing.T) {
+	tests := []struct {
+		needsUpdate   bool
+		needsReboot   bool
+		inMaintenance bool
+		isTypeIncus   bool
+
+		wantServerAction api.ServerAction
+	}{
+		{
+			needsUpdate:   false,
+			needsReboot:   false,
+			inMaintenance: false,
+			isTypeIncus:   false,
+
+			wantServerAction: api.ServerActionNone,
+		},
+		{
+			needsUpdate:   true,
+			needsReboot:   false,
+			inMaintenance: false,
+			isTypeIncus:   false,
+
+			wantServerAction: api.ServerActionUpdate,
+		},
+		{
+			needsUpdate:   false,
+			needsReboot:   true,
+			inMaintenance: false,
+			isTypeIncus:   false,
+
+			wantServerAction: api.ServerActionReboot,
+		},
+		{
+			needsUpdate:   false,
+			needsReboot:   true,
+			inMaintenance: false,
+			isTypeIncus:   true,
+
+			wantServerAction: api.ServerActionEvacuate,
+		},
+		{
+			needsUpdate:   false,
+			needsReboot:   true,
+			inMaintenance: true,
+			isTypeIncus:   true,
+
+			wantServerAction: api.ServerActionReboot,
+		},
+		{
+			needsUpdate:   false,
+			needsReboot:   false,
+			inMaintenance: true,
+			isTypeIncus:   false,
+
+			wantServerAction: api.ServerActionRestore,
+		},
+		{
+			needsUpdate:   true,
+			needsReboot:   true,
+			inMaintenance: false,
+			isTypeIncus:   false,
+
+			wantServerAction: api.ServerActionUpdate,
+		},
+		{
+			needsUpdate:   true,
+			needsReboot:   false,
+			inMaintenance: true,
+			isTypeIncus:   false,
+
+			wantServerAction: api.ServerActionUpdate,
+		},
+		{
+			needsUpdate:   true,
+			needsReboot:   true,
+			inMaintenance: true,
+			isTypeIncus:   false,
+
+			wantServerAction: api.ServerActionUpdate,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(fmt.Sprintf("needsUpdate: %t, needsReboot: %t, inMaintenance: %t, isTypeIncus: %t", tc.needsUpdate, tc.needsReboot, tc.inMaintenance, tc.isTypeIncus), func(t *testing.T) {
+			serverVersionData := api.ServerVersionData{
+				NeedsUpdate:   &tc.needsUpdate,
+				NeedsReboot:   &tc.needsReboot,
+				InMaintenance: &tc.inMaintenance,
+			}
+
+			if tc.isTypeIncus {
+				serverVersionData.Applications = append(serverVersionData.Applications, api.ApplicationVersionData{
+					Name: "incus",
+				})
+			}
+
+			got := serverVersionData.RecommendedAction()
+
+			require.Equal(t, tc.wantServerAction, got)
+		})
+	}
 }
