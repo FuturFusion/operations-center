@@ -123,6 +123,15 @@ func (c OperationsCenterClient) RebootServerSystem(ctx context.Context, name str
 	return nil
 }
 
+func (c OperationsCenterClient) RestoreServerSystem(ctx context.Context, name string) error {
+	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:restore"), nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) UpdateServerSystem(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error {
 	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:update"), nil, updateRequest)
 	if err != nil {
