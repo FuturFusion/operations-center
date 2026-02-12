@@ -6131,7 +6131,6 @@ func TestServerService_PostRestoreSystemDoneByName(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return &tc.repoGetByName, tc.repoGetByNameErr

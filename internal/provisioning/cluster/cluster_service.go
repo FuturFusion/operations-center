@@ -1823,7 +1823,6 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 			api.ServerUpdateStateInMaintenancePostRestore,
 			api.ServerUpdateStateRebootPending,
 			api.ServerUpdateStateRebooting:
-
 			return fmt.Errorf("Rolling update blocked, out of order update for server %q (%s) is ongoing, state %v", server.Name, server.ConnectionURL, server.UpdateState())
 		}
 	}
