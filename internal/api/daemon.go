@@ -207,6 +207,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Setup API routes
 	serveMux, inventorySyncers := d.setupAPIRoutes(updateSvc, tokenSvc, serverSvc, clusterSvc, clusterTemplateSvc, channelSvc, dbWithTransaction)
+	inventorySyncers[domain.ResourceTypeServer] = serverSvc
 
 	clusterSvc.SetInventorySyncers(inventorySyncers)
 

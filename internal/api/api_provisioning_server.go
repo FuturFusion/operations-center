@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/authz"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -733,7 +734,13 @@ func (s *serverHandler) serverPost(r *http.Request) response.Response {
 func (s *serverHandler) serverResyncPost(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	err := s.service.ResyncByName(r.Context(), name)
+	err := s.service.ResyncByName(r.Context(), "", domain.LifecycleEvent{
+		ResourceType: domain.ResourceTypeServer,
+		Operation:    domain.LifecycleOperationUpdate,
+		Source: domain.LifecycleSource{
+			Name: name,
+		},
+	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync server %q: %w", name, err))
 	}
