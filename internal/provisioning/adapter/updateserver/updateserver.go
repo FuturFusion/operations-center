@@ -29,9 +29,10 @@ type tokenProvider interface {
 type updateServer struct {
 	configUpdateMu *sync.Mutex
 
-	baseURL  string
-	client   *http.Client
-	verifier signature.Verifier
+	baseURL                     string
+	signatureVerificationRootCA string
+	client                      *http.Client
+	verifier                    signature.Verifier
 
 	tokenProvider tokenProvider
 }
@@ -43,9 +44,10 @@ func New(baseURL string, signatureVerificationRootCA string, tokenProvider token
 		configUpdateMu: &sync.Mutex{},
 
 		// Normalize URL, remove trailing slash.
-		baseURL:  strings.TrimSuffix(baseURL, "/"),
-		client:   http.DefaultClient,
-		verifier: signature.NewVerifier([]byte(signatureVerificationRootCA)),
+		baseURL:                     strings.TrimSuffix(baseURL, "/"),
+		signatureVerificationRootCA: signatureVerificationRootCA,
+		client:                      http.DefaultClient,
+		verifier:                    signature.NewVerifier([]byte(signatureVerificationRootCA)),
 
 		tokenProvider: tokenProvider,
 	}
@@ -72,36 +74,9 @@ func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Up
 		return nil, nil
 	}
 
-	indexURL := u.baseURL + "/index.sjson"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, indexURL, http.NoBody)
+	contentVerified, err := u.fetchAndVerifyIndexSJSON(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("GetLatest: %w", err)
-	}
-
-	token, err := u.tokenProvider.GetToken(ctx)
-	if err == nil {
-		req.Header.Add("X-IncusOS-Authentication", token)
-	}
-
-	resp, err := u.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to query latest updates: %w", err)
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Unexpected status code received: %d", resp.StatusCode)
-	}
-
-	contentSig, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("GetLatest: %w", err)
-	}
-
-	contentVerified, err := u.verifier.Verify(contentSig)
-	if err != nil {
-		return nil, fmt.Errorf(`Failed to verify signature of "index.sjson": %w`, err)
+		return nil, fmt.Errorf(`Failed to fetch index.sjson: %w`, err)
 	}
 
 	updates := UpdatesIndex{}
@@ -154,6 +129,42 @@ func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Up
 	return provisioning.Updates(updatesList[:limit]), nil
 }
 
+func (u *updateServer) fetchAndVerifyIndexSJSON(ctx context.Context) ([]byte, error) {
+	indexURL := u.baseURL + "/index.sjson"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, indexURL, http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("GetLatest: %w", err)
+	}
+
+	token, err := u.tokenProvider.GetToken(ctx)
+	if err == nil {
+		req.Header.Add("X-IncusOS-Authentication", token)
+	}
+
+	resp, err := u.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to query latest updates: %w", err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Unexpected status code received: %d", resp.StatusCode)
+	}
+
+	contentSig, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("GetLatest: %w", err)
+	}
+
+	contentVerified, err := u.verifier.Verify(contentSig)
+	if err != nil {
+		return nil, fmt.Errorf(`Failed to verify signature of "index.sjson": %w`, err)
+	}
+
+	return contentVerified, err
+}
+
 const idSeparator = ":"
 
 func uuidFromUpdateServer(update Update) uuid.UUID {
@@ -201,6 +212,23 @@ func (u *updateServer) UpdateConfig(_ context.Context, baseURL string, signature
 	u.configUpdateMu.Lock()
 	defer u.configUpdateMu.Unlock()
 
-	u.baseURL = baseURL
+	u.baseURL = strings.TrimSuffix(baseURL, "/")
+	u.signatureVerificationRootCA = signatureVerificationRootCA
 	u.verifier = signature.NewVerifier([]byte(signatureVerificationRootCA))
+}
+
+func (u *updateServer) SourceConnectionTest(ctx context.Context, baseURL string, signatureVerificationRootCA string) error {
+	if strings.TrimSuffix(u.baseURL, "/") == strings.TrimSuffix(baseURL, "/") && u.signatureVerificationRootCA == signatureVerificationRootCA {
+		return nil
+	}
+
+	// New instance of updateServer with provided baseURL and signatureVerificationCA
+	// used temporarily for the verification only.
+	updateSvr := New(baseURL, signatureVerificationRootCA, u.tokenProvider)
+	_, err := updateSvr.fetchAndVerifyIndexSJSON(ctx)
+	if err != nil {
+		return fmt.Errorf(`Failed to fetch index.sjson: %w`, err)
+	}
+
+	return nil
 }
