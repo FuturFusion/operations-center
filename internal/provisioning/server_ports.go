@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -27,7 +28,8 @@ type ServerService interface {
 	SelfRegisterOperationsCenter(ctx context.Context) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
-	ResyncByName(ctx context.Context, name string) error
+	ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error
+	SyncCluster(ctx context.Context, clusterName string) error
 
 	PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error
 	PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error

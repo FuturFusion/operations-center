@@ -906,18 +906,55 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 	return nil
 }
 
-func (s *serverService) ResyncByName(ctx context.Context, name string) error {
+// ResyncByName implements the InventorySyncer interface. Since we sync a server
+// resource, the cluster name (2nd argument) is not relevant and we purely
+// rely on the Source.Name attribute from the LifecycleEvent to determine
+// the target server.
+func (s *serverService) ResyncByName(ctx context.Context, _ string, event domain.LifecycleEvent) error {
+	if event.ResourceType != domain.ResourceTypeServer {
+		return nil
+	}
+
+	name := event.Source.Name
+
 	server, err := s.GetByName(ctx, name)
 	if err != nil {
 		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 	}
 
-	err = s.PollServer(ctx, *server, true)
+	switch event.Operation {
+	case domain.LifecycleOperationEvacuate:
+		err = s.handleMaintenanceUpdate(ctx, server, true)
+
+	case domain.LifecycleOperationRestore:
+		err = s.handleMaintenanceUpdate(ctx, server, false)
+
+	case domain.LifecycleOperationUpdate:
+		err = s.PollServer(ctx, *server, true)
+
+	default:
+	}
+
 	if err != nil {
 		return fmt.Errorf("Failed to resync server %q by name: %w", name, err)
 	}
 
 	return nil
+}
+
+func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *Server, inMaintenance bool) error {
+	if server.Type != api.ServerTypeIncus {
+		return nil
+	}
+
+	for i := range server.VersionData.Applications {
+		if server.VersionData.Applications[i].Name == string(images.UpdateFileComponentIncus) {
+			server.VersionData.Applications[i].InMaintenance = inMaintenance
+			break
+		}
+	}
+
+	return s.repo.Update(ctx, *server)
 }
 
 func (s *serverService) PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error {
@@ -1116,4 +1153,8 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 
 		return s.repo.Update(ctx, *server)
 	})
+}
+
+func (s *serverService) SyncCluster(ctx context.Context, clusterName string) error {
+	return nil
 }
