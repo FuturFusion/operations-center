@@ -376,7 +376,7 @@ func (s *ServerVersionData) Compute(latestAvailableVersions map[images.UpdateFil
 
 	// InMaintenance is true, if the server type is incus and the state of Incus is evacuated.
 	for _, application := range s.Applications {
-		if application.Name == "incus" {
+		if application.Name == string(images.UpdateFileComponentIncus) {
 			s.InMaintenance = &application.InMaintenance
 			break
 		}
@@ -427,7 +427,7 @@ func (s *ServerVersionData) RecommendedAction() ServerAction {
 	if ptr.From(s.NeedsReboot) {
 		isIncus := false
 		for _, app := range s.Applications {
-			if app.Name == "incus" {
+			if app.Name == string(images.UpdateFileComponentIncus) {
 				isIncus = true
 				break
 			}

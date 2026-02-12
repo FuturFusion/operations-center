@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -150,7 +151,7 @@ func TestServerVersionData_RecommendedAction(t *testing.T) {
 
 			if tc.isTypeIncus {
 				serverVersionData.Applications = append(serverVersionData.Applications, api.ApplicationVersionData{
-					Name: "incus",
+					Name: string(images.UpdateFileComponentIncus),
 				})
 			}
 
