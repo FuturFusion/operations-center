@@ -23,7 +23,6 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.9.2 // indirect
-	github.com/breml/newline-after-block v0.0.0-20251225141726-84337171eef7 // indirect
 	github.com/brunoga/deep v1.2.5 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
@@ -232,5 +231,3 @@ require (
 	golang.org/x/tools v0.41.0
 	gopkg.in/yaml.v3 v3.0.1
 )
-
-tool github.com/breml/newline-after-block

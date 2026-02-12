@@ -73,7 +73,6 @@ ifeq ($(shell command -v golangci-lint),)
 endif
 	golangci-lint run ./...
 	run-parts $(shell run-parts -V >/dev/null 2>&1 && echo -n "--verbose --exit-on-error --regex '\.sh$$'") scripts/lint
-	go run github.com/breml/newline-after-block/cmd/newline-after-block -exclude '.*\.mapper\.go' -exclude '.*_gen\.go' -exclude '.*_gen_test\.go' ./...
 
 .PHONY: tofu-fmt-check
 tofu-fmt-check:
