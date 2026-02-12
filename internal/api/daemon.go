@@ -14,10 +14,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"github.com/maniartech/signals"
@@ -436,9 +438,17 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 		config.GetUpdates().SignatureVerificationRootCA,
 		d.env,
 	)
+	listenerKey := uuid.New().String()
+	config.UpdatesValidateSignal.AddListenerWithErr(func(ctx context.Context, su api.SystemUpdates) error {
+		return updateServer.SourceConnectionTest(ctx, su.Source, su.SignatureVerificationRootCA)
+	}, listenerKey)
 	config.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemUpdates) {
 		updateServer.UpdateConfig(ctx, cfg.Source, cfg.SignatureVerificationRootCA)
-	})
+	}, listenerKey)
+	runtime.AddCleanup(d, func(listenerKey string) {
+		// config.UpdatesValidateSignal.RemoveListener(listenerKey)
+		config.UpdatesUpdateSignal.RemoveListener(listenerKey)
+	}, listenerKey)
 
 	updateSvcBase := provisioning.NewUpdateService(
 		provisioningRepoMiddleware.NewUpdateRepoWithSlog(

@@ -41,6 +41,9 @@ func TestSystemCertificatePut(t *testing.T) {
 		UsrShareDirFunc: func() string {
 			return tmpDir
 		},
+		GetTokenFunc: func(ctx context.Context) (string, error) {
+			return "", nil
+		},
 	}
 
 	config.InitTest(t, env, nil, config.InternalConfig{

@@ -65,6 +65,9 @@ func TestSystemConfigUpdate(t *testing.T) {
 		UsrShareDirFunc: func() string {
 			return tmpDir
 		},
+		GetTokenFunc: func(ctx context.Context) (string, error) {
+			return "", nil
+		},
 	}
 
 	// Setup daemon with empty (default) configuration for actual tests.
