@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/lxc/incus-os/incus-osd/api/seed"
 	incus "github.com/lxc/incus/v6/client"
 	incusapi "github.com/lxc/incus/v6/shared/api"
@@ -167,8 +168,8 @@ func (c client) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (
 	}, nil
 }
 
-func (c client) GetVersionData(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
-	client, err := c.getClient(ctx, endpoint)
+func (c client) GetVersionData(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
+	client, err := c.getClient(ctx, server)
 	if err != nil {
 		return api.ServerVersionData{}, err
 	}
@@ -177,11 +178,12 @@ func (c client) GetVersionData(ctx context.Context, endpoint provisioning.Endpoi
 	if err != nil {
 		err = api.AsNotIncusOSError(err)
 
-		return api.ServerVersionData{}, fmt.Errorf("Get OS version data from %q failed: %w", endpoint.GetConnectionURL(), err)
+		return api.ServerVersionData{}, fmt.Errorf("Get OS version data from %q failed: %w", server.GetConnectionURL(), err)
 	}
 
 	var osVersionData struct {
 		Environment struct {
+			Hostname      string `json:"hostname"`
 			OSName        string `json:"os_name"`
 			OSVersion     string `json:"os_version"`
 			OSVersionNext string `json:"os_version_next"`
@@ -189,20 +191,20 @@ func (c client) GetVersionData(ctx context.Context, endpoint provisioning.Endpoi
 	}
 	err = json.Unmarshal(resp.Metadata, &osVersionData)
 	if err != nil {
-		return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching OS version information from %q: %w", endpoint.GetConnectionURL(), err)
+		return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching OS version information from %q: %w", server.GetConnectionURL(), err)
 	}
 
 	resp, _, err = client.RawQuery(http.MethodGet, "/os/1.0/applications", http.NoBody, "")
 	if err != nil {
 		err = api.AsNotIncusOSError(err)
 
-		return api.ServerVersionData{}, fmt.Errorf("Get applications from %q failed: %w", endpoint.GetConnectionURL(), err)
+		return api.ServerVersionData{}, fmt.Errorf("Get applications from %q failed: %w", server.GetConnectionURL(), err)
 	}
 
 	var applications []string
 	err = json.Unmarshal(resp.Metadata, &applications)
 	if err != nil {
-		return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching applications from %q: %w", endpoint.GetConnectionURL(), err)
+		return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching applications from %q: %w", server.GetConnectionURL(), err)
 	}
 
 	applicationVersions := make([]api.ApplicationVersionData, 0, len(applications))
@@ -213,18 +215,31 @@ func (c client) GetVersionData(ctx context.Context, endpoint provisioning.Endpoi
 		if err != nil {
 			err = api.AsNotIncusOSError(err)
 
-			return api.ServerVersionData{}, fmt.Errorf("Get application version data for %q from %q failed: %w", applicationName, endpoint.GetConnectionURL(), err)
+			return api.ServerVersionData{}, fmt.Errorf("Get application version data for %q from %q failed: %w", applicationName, server.GetConnectionURL(), err)
 		}
 
 		var application incusosapi.Application
 		err = json.Unmarshal(resp.Metadata, &application)
 		if err != nil {
-			return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching application %q from %q: %w", applicationName, endpoint.GetConnectionURL(), err)
+			return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching application %q from %q: %w", applicationName, server.GetConnectionURL(), err)
+		}
+
+		inMaintenance := false
+		if applicationName == string(images.UpdateFileComponentIncus) {
+			member, _, err := client.GetClusterMember(server.Name)
+			if err != nil {
+				return api.ServerVersionData{}, fmt.Errorf("Failed to get Incus cluster member details for %q: %w", server.Name, err)
+			}
+
+			if member.Status == "Evacuated" {
+				inMaintenance = true
+			}
 		}
 
 		applicationVersions = append(applicationVersions, api.ApplicationVersionData{
-			Name:    applicationName,
-			Version: application.State.Version,
+			Name:          applicationName,
+			Version:       application.State.Version,
+			InMaintenance: inMaintenance,
 		})
 	}
 
@@ -232,13 +247,13 @@ func (c client) GetVersionData(ctx context.Context, endpoint provisioning.Endpoi
 	if err != nil {
 		err = api.AsNotIncusOSError(err)
 
-		return api.ServerVersionData{}, fmt.Errorf("Get OS version data from %q failed: %w", endpoint.GetConnectionURL(), err)
+		return api.ServerVersionData{}, fmt.Errorf("Get OS version data from %q failed: %w", server.GetConnectionURL(), err)
 	}
 
 	var systemUpdate incusosapi.SystemUpdate
 	err = json.Unmarshal(resp.Metadata, &systemUpdate)
 	if err != nil {
-		return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching system update information from %q: %w", endpoint.GetConnectionURL(), err)
+		return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching system update information from %q: %w", server.GetConnectionURL(), err)
 	}
 
 	return api.ServerVersionData{

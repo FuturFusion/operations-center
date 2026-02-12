@@ -174,7 +174,7 @@ func TestServerService_UpdateServerURL(t *testing.T) {
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
 				},
-				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
@@ -316,7 +316,7 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
 				},
-				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
@@ -473,7 +473,7 @@ one
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
 				},
-				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
@@ -2553,7 +2553,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
 				},
-				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
@@ -2694,7 +2694,7 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
 				},
-				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
@@ -3347,7 +3347,7 @@ foobar
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, tc.clientGetOSDataErr
 				},
-				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, tc.clientGetVersionDataErr
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
@@ -3523,7 +3523,7 @@ func TestServerService_ResyncByName(t *testing.T) {
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
 				},
-				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
