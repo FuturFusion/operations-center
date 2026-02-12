@@ -196,7 +196,7 @@ func (s instanceService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s instanceService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	if event.ResourceType != "instance" {
+	if event.ResourceType != domain.ResourceTypeInstance {
 		return nil
 	}
 

@@ -212,7 +212,7 @@ func (s storageVolumeService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 }
 
 func (s storageVolumeService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	if event.ResourceType != "storage-volume" {
+	if event.ResourceType != domain.ResourceTypeStorageVolume {
 		return nil
 	}
 

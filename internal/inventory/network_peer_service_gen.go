@@ -208,7 +208,7 @@ func (s networkPeerService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 }
 
 func (s networkPeerService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	if event.ResourceType != "network-peer" {
+	if event.ResourceType != domain.ResourceTypeNetworkPeer {
 		return nil
 	}
 

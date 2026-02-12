@@ -194,7 +194,7 @@ func (s projectService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s projectService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	if event.ResourceType != "project" {
+	if event.ResourceType != domain.ResourceTypeProject {
 		return nil
 	}
 
