@@ -55,6 +55,13 @@ func (c *cmdServerSystem) Command() *cobra.Command {
 
 	cmd.AddCommand(serverRebootCmd.Command())
 
+	// Restore
+	serverRestoreCmd := cmdServerRestore{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverRestoreCmd.Command())
+
 	// System Update
 	serverUpdateCmd := cmdServerUpdate{
 		ocClient: c.ocClient,
@@ -191,6 +198,48 @@ func (c *cmdServerReboot) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	err := c.ocClient.RebootServerSystem(cmd.Context(), name)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Restore server.
+type cmdServerRestore struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdServerRestore) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "restore <name>"
+	cmd.Short = "Restore a server"
+	cmd.Long = `Description:
+  Restore a server
+
+  Restores a server.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerRestore) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdServerRestore) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.RestoreServerSystem(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
