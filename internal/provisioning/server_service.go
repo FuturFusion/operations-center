@@ -734,7 +734,6 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 
 		if len(servers) == 0 {
 			// Create server entry
-
 			server = Server{
 				Name:                api.ServerNameOperationsCenter,
 				Type:                api.ServerTypeOperationsCenter,
@@ -755,7 +754,6 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 			pollAfterCreate = true
 		} else {
 			// Update existing server entry
-
 			server = servers[0]
 			server.ConnectionURL = connectionURL
 			server.PublicConnectionURL = config.GetNetwork().OperationsCenterAddress
