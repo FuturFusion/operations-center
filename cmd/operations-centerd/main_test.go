@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"io"
 	"net/http"
@@ -85,6 +86,9 @@ network:
 		},
 		VarDirFunc: func() string {
 			return tmpDir
+		},
+		GetTokenFunc: func(ctx context.Context) (string, error) {
+			return "", nil
 		},
 	}
 
@@ -216,6 +220,9 @@ func TestMain0RunDaemonStartError(t *testing.T) {
 				},
 				VarDirFunc: func() string {
 					return tc.varDir
+				},
+				GetTokenFunc: func(ctx context.Context) (string, error) {
+					return "", nil
 				},
 			}
 

@@ -64,6 +64,9 @@ func daemonSetup(t *testing.T) (socketClient client.OperationsCenterClient, unau
 		IsIncusOSFunc: func() bool {
 			return false
 		},
+		GetTokenFunc: func(ctx context.Context) (string, error) {
+			return "", nil
+		},
 	}
 
 	config.InitTest(t, env, nil, config.InternalConfig{
