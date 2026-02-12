@@ -252,12 +252,12 @@ func (_d ServerClientPortWithSlog) GetUpdateConfig(ctx context.Context, server p
 }
 
 // GetVersionData implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) GetVersionData(ctx context.Context, endpoint provisioning.Endpoint) (serverVersionData api.ServerVersionData, err error) {
+func (_d ServerClientPortWithSlog) GetVersionData(ctx context.Context, server provisioning.Server) (serverVersionData api.ServerVersionData, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("endpoint", endpoint),
+			slog.Any("server", server),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetVersionData")
@@ -283,7 +283,7 @@ func (_d ServerClientPortWithSlog) GetVersionData(ctx context.Context, endpoint 
 			log.DebugContext(ctx, "<= method GetVersionData finished")
 		}
 	}()
-	return _d._base.GetVersionData(ctx, endpoint)
+	return _d._base.GetVersionData(ctx, server)
 }
 
 // Ping implements provisioning.ServerClientPort.

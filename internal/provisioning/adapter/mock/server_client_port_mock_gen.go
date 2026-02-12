@@ -40,7 +40,7 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			GetUpdateConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemUpdate, error) {
 //				panic("mock out the GetUpdateConfig method")
 //			},
-//			GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+//			GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 //				panic("mock out the GetVersionData method")
 //			},
 //			PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
@@ -96,7 +96,7 @@ type ServerClientPortMock struct {
 	GetUpdateConfigFunc func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemUpdate, error)
 
 	// GetVersionDataFunc mocks the GetVersionData method.
-	GetVersionDataFunc func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error)
+	GetVersionDataFunc func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error)
 
 	// PingFunc mocks the Ping method.
 	PingFunc func(ctx context.Context, endpoint provisioning.Endpoint) error
@@ -173,8 +173,8 @@ type ServerClientPortMock struct {
 		GetVersionData []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Endpoint is the endpoint argument value.
-			Endpoint provisioning.Endpoint
+			// Server is the server argument value.
+			Server provisioning.Server
 		}
 		// Ping holds details about calls to the Ping method.
 		Ping []struct {
@@ -479,21 +479,21 @@ func (mock *ServerClientPortMock) GetUpdateConfigCalls() []struct {
 }
 
 // GetVersionData calls GetVersionDataFunc.
-func (mock *ServerClientPortMock) GetVersionData(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+func (mock *ServerClientPortMock) GetVersionData(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 	if mock.GetVersionDataFunc == nil {
 		panic("ServerClientPortMock.GetVersionDataFunc: method is nil but ServerClientPort.GetVersionData was just called")
 	}
 	callInfo := struct {
-		Ctx      context.Context
-		Endpoint provisioning.Endpoint
+		Ctx    context.Context
+		Server provisioning.Server
 	}{
-		Ctx:      ctx,
-		Endpoint: endpoint,
+		Ctx:    ctx,
+		Server: server,
 	}
 	mock.lockGetVersionData.Lock()
 	mock.calls.GetVersionData = append(mock.calls.GetVersionData, callInfo)
 	mock.lockGetVersionData.Unlock()
-	return mock.GetVersionDataFunc(ctx, endpoint)
+	return mock.GetVersionDataFunc(ctx, server)
 }
 
 // GetVersionDataCalls gets all the calls that were made to GetVersionData.
@@ -501,12 +501,12 @@ func (mock *ServerClientPortMock) GetVersionData(ctx context.Context, endpoint p
 //
 //	len(mockedServerClientPort.GetVersionDataCalls())
 func (mock *ServerClientPortMock) GetVersionDataCalls() []struct {
-	Ctx      context.Context
-	Endpoint provisioning.Endpoint
+	Ctx    context.Context
+	Server provisioning.Server
 } {
 	var calls []struct {
-		Ctx      context.Context
-		Endpoint provisioning.Endpoint
+		Ctx    context.Context
+		Server provisioning.Server
 	}
 	mock.lockGetVersionData.RLock()
 	calls = mock.calls.GetVersionData
