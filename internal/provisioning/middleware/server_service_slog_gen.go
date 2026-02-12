@@ -7,6 +7,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -564,12 +565,13 @@ func (_d ServerServiceWithSlog) Rename(ctx context.Context, oldName string, newN
 }
 
 // ResyncByName implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) ResyncByName(ctx context.Context, name string) (err error) {
+func (_d ServerServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("name", name),
+			slog.String("clusterName", clusterName),
+			slog.Any("event", event),
 		)
 	}
 	log.DebugContext(ctx, "=> calling ResyncByName")
@@ -594,7 +596,7 @@ func (_d ServerServiceWithSlog) ResyncByName(ctx context.Context, name string) (
 			log.DebugContext(ctx, "<= method ResyncByName finished")
 		}
 	}()
-	return _d._base.ResyncByName(ctx, name)
+	return _d._base.ResyncByName(ctx, clusterName, event)
 }
 
 // SelfRegisterOperationsCenter implements provisioning.ServerService.
@@ -679,6 +681,40 @@ func (_d ServerServiceWithSlog) SetClusterService(clusterSvc provisioning.Cluste
 		log.DebugContext(ctx, "<= method SetClusterService finished")
 	}()
 	_d._base.SetClusterService(clusterSvc)
+}
+
+// SyncCluster implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) SyncCluster(ctx context.Context, clusterName string) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling SyncCluster")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method SyncCluster returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method SyncCluster returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method SyncCluster finished")
+		}
+	}()
+	return _d._base.SyncCluster(ctx, clusterName)
 }
 
 // Update implements provisioning.ServerService.

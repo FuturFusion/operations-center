@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
@@ -250,7 +251,7 @@ func (_d ServerServiceWithPrometheus) Rename(ctx context.Context, oldName string
 }
 
 // ResyncByName implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) ResyncByName(ctx context.Context, name string) (err error) {
+func (_d ServerServiceWithPrometheus) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -260,7 +261,7 @@ func (_d ServerServiceWithPrometheus) ResyncByName(ctx context.Context, name str
 
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.ResyncByName(ctx, name)
+	return _d.base.ResyncByName(ctx, clusterName, event)
 }
 
 // SelfRegisterOperationsCenter implements provisioning.ServerService.
@@ -299,6 +300,20 @@ func (_d ServerServiceWithPrometheus) SetClusterService(clusterSvc provisioning.
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SetClusterService", result).Observe(time.Since(_since).Seconds())
 	}()
 	_d.base.SetClusterService(clusterSvc)
+}
+
+// SyncCluster implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) SyncCluster(ctx context.Context, clusterName string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SyncCluster", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.SyncCluster(ctx, clusterName)
 }
 
 // Update implements provisioning.ServerService.

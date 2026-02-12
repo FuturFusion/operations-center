@@ -8,6 +8,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
@@ -68,7 +69,7 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
-//			ResyncByNameFunc: func(ctx context.Context, name string) error {
+//			ResyncByNameFunc: func(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 //				panic("mock out the ResyncByName method")
 //			},
 //			SelfRegisterOperationsCenterFunc: func(ctx context.Context) error {
@@ -79,6 +80,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			},
 //			SetClusterServiceFunc: func(clusterSvc provisioning.ClusterService)  {
 //				panic("mock out the SetClusterService method")
+//			},
+//			SyncClusterFunc: func(ctx context.Context, clusterName string) error {
+//				panic("mock out the SyncCluster method")
 //			},
 //			UpdateFunc: func(ctx context.Context, server provisioning.Server, updateSystem bool) error {
 //				panic("mock out the Update method")
@@ -151,7 +155,7 @@ type ServerServiceMock struct {
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
 
 	// ResyncByNameFunc mocks the ResyncByName method.
-	ResyncByNameFunc func(ctx context.Context, name string) error
+	ResyncByNameFunc func(ctx context.Context, clusterName string, event domain.LifecycleEvent) error
 
 	// SelfRegisterOperationsCenterFunc mocks the SelfRegisterOperationsCenter method.
 	SelfRegisterOperationsCenterFunc func(ctx context.Context) error
@@ -161,6 +165,9 @@ type ServerServiceMock struct {
 
 	// SetClusterServiceFunc mocks the SetClusterService method.
 	SetClusterServiceFunc func(clusterSvc provisioning.ClusterService)
+
+	// SyncClusterFunc mocks the SyncCluster method.
+	SyncClusterFunc func(ctx context.Context, clusterName string) error
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, server provisioning.Server, updateSystem bool) error
@@ -295,8 +302,10 @@ type ServerServiceMock struct {
 		ResyncByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Name is the name argument value.
-			Name string
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// Event is the event argument value.
+			Event domain.LifecycleEvent
 		}
 		// SelfRegisterOperationsCenter holds details about calls to the SelfRegisterOperationsCenter method.
 		SelfRegisterOperationsCenter []struct {
@@ -314,6 +323,13 @@ type ServerServiceMock struct {
 		SetClusterService []struct {
 			// ClusterSvc is the clusterSvc argument value.
 			ClusterSvc provisioning.ClusterService
+		}
+		// SyncCluster holds details about calls to the SyncCluster method.
+		SyncCluster []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
 		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
@@ -389,6 +405,7 @@ type ServerServiceMock struct {
 	lockSelfRegisterOperationsCenter sync.RWMutex
 	lockSelfUpdate                   sync.RWMutex
 	lockSetClusterService            sync.RWMutex
+	lockSyncCluster                  sync.RWMutex
 	lockUpdate                       sync.RWMutex
 	lockUpdateSystemByName           sync.RWMutex
 	lockUpdateSystemNetwork          sync.RWMutex
@@ -946,21 +963,23 @@ func (mock *ServerServiceMock) RenameCalls() []struct {
 }
 
 // ResyncByName calls ResyncByNameFunc.
-func (mock *ServerServiceMock) ResyncByName(ctx context.Context, name string) error {
+func (mock *ServerServiceMock) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	if mock.ResyncByNameFunc == nil {
 		panic("ServerServiceMock.ResyncByNameFunc: method is nil but ServerService.ResyncByName was just called")
 	}
 	callInfo := struct {
-		Ctx  context.Context
-		Name string
+		Ctx         context.Context
+		ClusterName string
+		Event       domain.LifecycleEvent
 	}{
-		Ctx:  ctx,
-		Name: name,
+		Ctx:         ctx,
+		ClusterName: clusterName,
+		Event:       event,
 	}
 	mock.lockResyncByName.Lock()
 	mock.calls.ResyncByName = append(mock.calls.ResyncByName, callInfo)
 	mock.lockResyncByName.Unlock()
-	return mock.ResyncByNameFunc(ctx, name)
+	return mock.ResyncByNameFunc(ctx, clusterName, event)
 }
 
 // ResyncByNameCalls gets all the calls that were made to ResyncByName.
@@ -968,12 +987,14 @@ func (mock *ServerServiceMock) ResyncByName(ctx context.Context, name string) er
 //
 //	len(mockedServerService.ResyncByNameCalls())
 func (mock *ServerServiceMock) ResyncByNameCalls() []struct {
-	Ctx  context.Context
-	Name string
+	Ctx         context.Context
+	ClusterName string
+	Event       domain.LifecycleEvent
 } {
 	var calls []struct {
-		Ctx  context.Context
-		Name string
+		Ctx         context.Context
+		ClusterName string
+		Event       domain.LifecycleEvent
 	}
 	mock.lockResyncByName.RLock()
 	calls = mock.calls.ResyncByName
@@ -1078,6 +1099,42 @@ func (mock *ServerServiceMock) SetClusterServiceCalls() []struct {
 	mock.lockSetClusterService.RLock()
 	calls = mock.calls.SetClusterService
 	mock.lockSetClusterService.RUnlock()
+	return calls
+}
+
+// SyncCluster calls SyncClusterFunc.
+func (mock *ServerServiceMock) SyncCluster(ctx context.Context, clusterName string) error {
+	if mock.SyncClusterFunc == nil {
+		panic("ServerServiceMock.SyncClusterFunc: method is nil but ServerService.SyncCluster was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ClusterName string
+	}{
+		Ctx:         ctx,
+		ClusterName: clusterName,
+	}
+	mock.lockSyncCluster.Lock()
+	mock.calls.SyncCluster = append(mock.calls.SyncCluster, callInfo)
+	mock.lockSyncCluster.Unlock()
+	return mock.SyncClusterFunc(ctx, clusterName)
+}
+
+// SyncClusterCalls gets all the calls that were made to SyncCluster.
+// Check the length with:
+//
+//	len(mockedServerService.SyncClusterCalls())
+func (mock *ServerServiceMock) SyncClusterCalls() []struct {
+	Ctx         context.Context
+	ClusterName string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ClusterName string
+	}
+	mock.lockSyncCluster.RLock()
+	calls = mock.calls.SyncCluster
+	mock.lockSyncCluster.RUnlock()
 	return calls
 }
 
