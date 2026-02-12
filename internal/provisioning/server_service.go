@@ -811,6 +811,43 @@ func (s *serverService) PollServers(ctx context.Context, serverStatus api.Server
 	return errors.Join(errs...)
 }
 
+func (s *serverService) EvacuateSystemByName(ctx context.Context, name string) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		server, err := s.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+		}
+
+		if server.Type != api.ServerTypeIncus {
+			return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
+		}
+
+		for i := range server.VersionData.Applications {
+			if server.VersionData.Applications[i].Name == string(images.UpdateFileComponentIncus) {
+				server.VersionData.Applications[i].InMaintenance = true
+				break
+			}
+		}
+
+		err = s.repo.Update(ctx, *server)
+		if err != nil {
+			return fmt.Errorf("Failed put server %q in maintenance: %w", name, err)
+		}
+
+		err = s.client.Evacuate(ctx, *server)
+		if err != nil {
+			return fmt.Errorf("Failed to evacuate server %q by name: %w", name, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *serverService) PoweroffSystemByName(ctx context.Context, name string) error {
 	server, err := s.GetByName(ctx, name)
 	if err != nil {
