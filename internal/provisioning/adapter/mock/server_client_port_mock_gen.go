@@ -52,6 +52,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			RebootFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the Reboot method")
 //			},
+//			RestoreFunc: func(ctx context.Context, server provisioning.Server) error {
+//				panic("mock out the Restore method")
+//			},
 //			UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the UpdateNetworkConfig method")
 //			},
@@ -103,6 +106,9 @@ type ServerClientPortMock struct {
 
 	// RebootFunc mocks the Reboot method.
 	RebootFunc func(ctx context.Context, server provisioning.Server) error
+
+	// RestoreFunc mocks the Restore method.
+	RestoreFunc func(ctx context.Context, server provisioning.Server) error
 
 	// UpdateNetworkConfigFunc mocks the UpdateNetworkConfig method.
 	UpdateNetworkConfigFunc func(ctx context.Context, server provisioning.Server) error
@@ -191,6 +197,13 @@ type ServerClientPortMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
+		// Restore holds details about calls to the Restore method.
+		Restore []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// UpdateNetworkConfig holds details about calls to the UpdateNetworkConfig method.
 		UpdateNetworkConfig []struct {
 			// Ctx is the ctx argument value.
@@ -241,6 +254,7 @@ type ServerClientPortMock struct {
 	lockPing                 sync.RWMutex
 	lockPoweroff             sync.RWMutex
 	lockReboot               sync.RWMutex
+	lockRestore              sync.RWMutex
 	lockUpdateNetworkConfig  sync.RWMutex
 	lockUpdateOS             sync.RWMutex
 	lockUpdateProviderConfig sync.RWMutex
@@ -605,6 +619,42 @@ func (mock *ServerClientPortMock) RebootCalls() []struct {
 	mock.lockReboot.RLock()
 	calls = mock.calls.Reboot
 	mock.lockReboot.RUnlock()
+	return calls
+}
+
+// Restore calls RestoreFunc.
+func (mock *ServerClientPortMock) Restore(ctx context.Context, server provisioning.Server) error {
+	if mock.RestoreFunc == nil {
+		panic("ServerClientPortMock.RestoreFunc: method is nil but ServerClientPort.Restore was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockRestore.Lock()
+	mock.calls.Restore = append(mock.calls.Restore, callInfo)
+	mock.lockRestore.Unlock()
+	return mock.RestoreFunc(ctx, server)
+}
+
+// RestoreCalls gets all the calls that were made to Restore.
+// Check the length with:
+//
+//	len(mockedServerClientPort.RestoreCalls())
+func (mock *ServerClientPortMock) RestoreCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockRestore.RLock()
+	calls = mock.calls.Restore
+	mock.lockRestore.RUnlock()
 	return calls
 }
 

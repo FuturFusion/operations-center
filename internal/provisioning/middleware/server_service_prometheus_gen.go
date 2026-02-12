@@ -250,6 +250,20 @@ func (_d ServerServiceWithPrometheus) Rename(ctx context.Context, oldName string
 	return _d.base.Rename(ctx, oldName, newName)
 }
 
+// RestoreSystemByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) RestoreSystemByName(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RestoreSystemByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RestoreSystemByName(ctx, name)
+}
+
 // ResyncByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
 	_since := time.Now()

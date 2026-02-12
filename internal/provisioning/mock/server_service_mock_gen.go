@@ -69,6 +69,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
+//			RestoreSystemByNameFunc: func(ctx context.Context, name string) error {
+//				panic("mock out the RestoreSystemByName method")
+//			},
 //			ResyncByNameFunc: func(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 //				panic("mock out the ResyncByName method")
 //			},
@@ -153,6 +156,9 @@ type ServerServiceMock struct {
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
+
+	// RestoreSystemByNameFunc mocks the RestoreSystemByName method.
+	RestoreSystemByNameFunc func(ctx context.Context, name string) error
 
 	// ResyncByNameFunc mocks the ResyncByName method.
 	ResyncByNameFunc func(ctx context.Context, clusterName string, event domain.LifecycleEvent) error
@@ -298,6 +304,13 @@ type ServerServiceMock struct {
 			// NewName is the newName argument value.
 			NewName string
 		}
+		// RestoreSystemByName holds details about calls to the RestoreSystemByName method.
+		RestoreSystemByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
 		// ResyncByName holds details about calls to the ResyncByName method.
 		ResyncByName []struct {
 			// Ctx is the ctx argument value.
@@ -401,6 +414,7 @@ type ServerServiceMock struct {
 	lockPoweroffSystemByName         sync.RWMutex
 	lockRebootSystemByName           sync.RWMutex
 	lockRename                       sync.RWMutex
+	lockRestoreSystemByName          sync.RWMutex
 	lockResyncByName                 sync.RWMutex
 	lockSelfRegisterOperationsCenter sync.RWMutex
 	lockSelfUpdate                   sync.RWMutex
@@ -959,6 +973,42 @@ func (mock *ServerServiceMock) RenameCalls() []struct {
 	mock.lockRename.RLock()
 	calls = mock.calls.Rename
 	mock.lockRename.RUnlock()
+	return calls
+}
+
+// RestoreSystemByName calls RestoreSystemByNameFunc.
+func (mock *ServerServiceMock) RestoreSystemByName(ctx context.Context, name string) error {
+	if mock.RestoreSystemByNameFunc == nil {
+		panic("ServerServiceMock.RestoreSystemByNameFunc: method is nil but ServerService.RestoreSystemByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockRestoreSystemByName.Lock()
+	mock.calls.RestoreSystemByName = append(mock.calls.RestoreSystemByName, callInfo)
+	mock.lockRestoreSystemByName.Unlock()
+	return mock.RestoreSystemByNameFunc(ctx, name)
+}
+
+// RestoreSystemByNameCalls gets all the calls that were made to RestoreSystemByName.
+// Check the length with:
+//
+//	len(mockedServerService.RestoreSystemByNameCalls())
+func (mock *ServerServiceMock) RestoreSystemByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockRestoreSystemByName.RLock()
+	calls = mock.calls.RestoreSystemByName
+	mock.lockRestoreSystemByName.RUnlock()
 	return calls
 }
 
