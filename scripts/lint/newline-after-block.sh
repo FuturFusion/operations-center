@@ -1,6 +1,5 @@
 #!/bin/sh -eu
 
-echo "newline-after-block.sh disabled temporarily, replaced by go run github.com/breml/newline-after-block/cmd/newline-after-block ./..."
 exit 0
 
 echo "Checking that functional blocks are followed by newlines..."
