@@ -37,6 +37,7 @@ type ServerService interface {
 	EvacuateSystemByName(ctx context.Context, name string) error
 	PoweroffSystemByName(ctx context.Context, name string) error
 	RebootSystemByName(ctx context.Context, name string) error
+	RestoreSystemByName(ctx context.Context, name string) error
 	UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error
 }
 
@@ -68,5 +69,6 @@ type ServerClientPort interface {
 	Evacuate(ctx context.Context, server Server) error
 	Poweroff(ctx context.Context, server Server) error
 	Reboot(ctx context.Context, server Server) error
+	Restore(ctx context.Context, server Server) error
 	UpdateOS(ctx context.Context, server Server) error
 }

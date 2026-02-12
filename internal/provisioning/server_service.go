@@ -876,6 +876,24 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string) err
 	return nil
 }
 
+func (s *serverService) RestoreSystemByName(ctx context.Context, name string) error {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	if server.Type != api.ServerTypeIncus {
+		return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
+	}
+
+	err = s.client.Restore(ctx, *server)
+	if err != nil {
+		return fmt.Errorf("Failed to evacuate server %q by name: %w", name, err)
+	}
+
+	return nil
+}
+
 func (s *serverService) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error {
 	server, err := s.GetByName(ctx, name)
 	if err != nil {
