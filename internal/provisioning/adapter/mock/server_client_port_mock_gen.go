@@ -22,6 +22,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //
 //		// make and configure a mocked provisioning.ServerClientPort
 //		mockedServerClientPort := &ServerClientPortMock{
+//			EvacuateFunc: func(ctx context.Context, server provisioning.Server) error {
+//				panic("mock out the Evacuate method")
+//			},
 //			GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 //				panic("mock out the GetOSData method")
 //			},
@@ -37,7 +40,7 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			GetUpdateConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemUpdate, error) {
 //				panic("mock out the GetUpdateConfig method")
 //			},
-//			GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+//			GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 //				panic("mock out the GetVersionData method")
 //			},
 //			PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
@@ -48,6 +51,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			},
 //			RebootFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the Reboot method")
+//			},
+//			RestoreFunc: func(ctx context.Context, server provisioning.Server) error {
+//				panic("mock out the Restore method")
 //			},
 //			UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the UpdateNetworkConfig method")
@@ -71,6 +77,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //
 //	}
 type ServerClientPortMock struct {
+	// EvacuateFunc mocks the Evacuate method.
+	EvacuateFunc func(ctx context.Context, server provisioning.Server) error
+
 	// GetOSDataFunc mocks the GetOSData method.
 	GetOSDataFunc func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error)
 
@@ -87,7 +96,7 @@ type ServerClientPortMock struct {
 	GetUpdateConfigFunc func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemUpdate, error)
 
 	// GetVersionDataFunc mocks the GetVersionData method.
-	GetVersionDataFunc func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error)
+	GetVersionDataFunc func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error)
 
 	// PingFunc mocks the Ping method.
 	PingFunc func(ctx context.Context, endpoint provisioning.Endpoint) error
@@ -97,6 +106,9 @@ type ServerClientPortMock struct {
 
 	// RebootFunc mocks the Reboot method.
 	RebootFunc func(ctx context.Context, server provisioning.Server) error
+
+	// RestoreFunc mocks the Restore method.
+	RestoreFunc func(ctx context.Context, server provisioning.Server) error
 
 	// UpdateNetworkConfigFunc mocks the UpdateNetworkConfig method.
 	UpdateNetworkConfigFunc func(ctx context.Context, server provisioning.Server) error
@@ -115,6 +127,13 @@ type ServerClientPortMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// Evacuate holds details about calls to the Evacuate method.
+		Evacuate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// GetOSData holds details about calls to the GetOSData method.
 		GetOSData []struct {
 			// Ctx is the ctx argument value.
@@ -154,8 +173,8 @@ type ServerClientPortMock struct {
 		GetVersionData []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Endpoint is the endpoint argument value.
-			Endpoint provisioning.Endpoint
+			// Server is the server argument value.
+			Server provisioning.Server
 		}
 		// Ping holds details about calls to the Ping method.
 		Ping []struct {
@@ -173,6 +192,13 @@ type ServerClientPortMock struct {
 		}
 		// Reboot holds details about calls to the Reboot method.
 		Reboot []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
+		// Restore holds details about calls to the Restore method.
+		Restore []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Server is the server argument value.
@@ -218,6 +244,7 @@ type ServerClientPortMock struct {
 			ProviderConfig provisioning.ServerSystemUpdate
 		}
 	}
+	lockEvacuate             sync.RWMutex
 	lockGetOSData            sync.RWMutex
 	lockGetProviderConfig    sync.RWMutex
 	lockGetResources         sync.RWMutex
@@ -227,11 +254,48 @@ type ServerClientPortMock struct {
 	lockPing                 sync.RWMutex
 	lockPoweroff             sync.RWMutex
 	lockReboot               sync.RWMutex
+	lockRestore              sync.RWMutex
 	lockUpdateNetworkConfig  sync.RWMutex
 	lockUpdateOS             sync.RWMutex
 	lockUpdateProviderConfig sync.RWMutex
 	lockUpdateStorageConfig  sync.RWMutex
 	lockUpdateUpdateConfig   sync.RWMutex
+}
+
+// Evacuate calls EvacuateFunc.
+func (mock *ServerClientPortMock) Evacuate(ctx context.Context, server provisioning.Server) error {
+	if mock.EvacuateFunc == nil {
+		panic("ServerClientPortMock.EvacuateFunc: method is nil but ServerClientPort.Evacuate was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockEvacuate.Lock()
+	mock.calls.Evacuate = append(mock.calls.Evacuate, callInfo)
+	mock.lockEvacuate.Unlock()
+	return mock.EvacuateFunc(ctx, server)
+}
+
+// EvacuateCalls gets all the calls that were made to Evacuate.
+// Check the length with:
+//
+//	len(mockedServerClientPort.EvacuateCalls())
+func (mock *ServerClientPortMock) EvacuateCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockEvacuate.RLock()
+	calls = mock.calls.Evacuate
+	mock.lockEvacuate.RUnlock()
+	return calls
 }
 
 // GetOSData calls GetOSDataFunc.
@@ -415,21 +479,21 @@ func (mock *ServerClientPortMock) GetUpdateConfigCalls() []struct {
 }
 
 // GetVersionData calls GetVersionDataFunc.
-func (mock *ServerClientPortMock) GetVersionData(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+func (mock *ServerClientPortMock) GetVersionData(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 	if mock.GetVersionDataFunc == nil {
 		panic("ServerClientPortMock.GetVersionDataFunc: method is nil but ServerClientPort.GetVersionData was just called")
 	}
 	callInfo := struct {
-		Ctx      context.Context
-		Endpoint provisioning.Endpoint
+		Ctx    context.Context
+		Server provisioning.Server
 	}{
-		Ctx:      ctx,
-		Endpoint: endpoint,
+		Ctx:    ctx,
+		Server: server,
 	}
 	mock.lockGetVersionData.Lock()
 	mock.calls.GetVersionData = append(mock.calls.GetVersionData, callInfo)
 	mock.lockGetVersionData.Unlock()
-	return mock.GetVersionDataFunc(ctx, endpoint)
+	return mock.GetVersionDataFunc(ctx, server)
 }
 
 // GetVersionDataCalls gets all the calls that were made to GetVersionData.
@@ -437,12 +501,12 @@ func (mock *ServerClientPortMock) GetVersionData(ctx context.Context, endpoint p
 //
 //	len(mockedServerClientPort.GetVersionDataCalls())
 func (mock *ServerClientPortMock) GetVersionDataCalls() []struct {
-	Ctx      context.Context
-	Endpoint provisioning.Endpoint
+	Ctx    context.Context
+	Server provisioning.Server
 } {
 	var calls []struct {
-		Ctx      context.Context
-		Endpoint provisioning.Endpoint
+		Ctx    context.Context
+		Server provisioning.Server
 	}
 	mock.lockGetVersionData.RLock()
 	calls = mock.calls.GetVersionData
@@ -555,6 +619,42 @@ func (mock *ServerClientPortMock) RebootCalls() []struct {
 	mock.lockReboot.RLock()
 	calls = mock.calls.Reboot
 	mock.lockReboot.RUnlock()
+	return calls
+}
+
+// Restore calls RestoreFunc.
+func (mock *ServerClientPortMock) Restore(ctx context.Context, server provisioning.Server) error {
+	if mock.RestoreFunc == nil {
+		panic("ServerClientPortMock.RestoreFunc: method is nil but ServerClientPort.Restore was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockRestore.Lock()
+	mock.calls.Restore = append(mock.calls.Restore, callInfo)
+	mock.lockRestore.Unlock()
+	return mock.RestoreFunc(ctx, server)
+}
+
+// RestoreCalls gets all the calls that were made to Restore.
+// Check the length with:
+//
+//	len(mockedServerClientPort.RestoreCalls())
+func (mock *ServerClientPortMock) RestoreCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockRestore.RLock()
+	calls = mock.calls.Restore
+	mock.lockRestore.RUnlock()
 	return calls
 }
 

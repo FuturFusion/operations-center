@@ -27,6 +27,7 @@ const (
 	ResourceTypeNetworkZone         ResourceType = "network-zone"
 	ResourceTypeProfile             ResourceType = "profile"
 	ResourceTypeProject             ResourceType = "project"
+	ResourceTypeServer              ResourceType = "server"
 	ResourceTypeStorageBucket       ResourceType = "storage-bucket"
 	ResourceTypeStoragePool         ResourceType = "storage-pool"
 	ResourceTypeStorageVolume       ResourceType = "storage-volume"
@@ -35,10 +36,12 @@ const (
 type LifecycleOperation string
 
 const (
-	LifecycleOperationCreate LifecycleOperation = "create"
-	LifecycleOperationUpdate LifecycleOperation = "update"
-	LifecycleOperationDelete LifecycleOperation = "delete"
-	LifecycleOperationRename LifecycleOperation = "rename"
+	LifecycleOperationCreate   LifecycleOperation = "create"
+	LifecycleOperationUpdate   LifecycleOperation = "update"
+	LifecycleOperationDelete   LifecycleOperation = "delete"
+	LifecycleOperationRename   LifecycleOperation = "rename"
+	LifecycleOperationEvacuate LifecycleOperation = "evacuate"
+	LifecycleOperationRestore  LifecycleOperation = "restore"
 )
 
 type LifecycleSource struct {
@@ -84,11 +87,17 @@ var MapLifecycleAction = map[string]LifecycleEvent{
 	// incusapi.EventLifecycleClusterGroupRenamed: {},
 	// incusapi.EventLifecycleClusterGroupUpdated: {},
 	// incusapi.EventLifecycleClusterMemberAdded: {},
-	// incusapi.EventLifecycleClusterMemberEvacuated: {},
+	incusapi.EventLifecycleClusterMemberEvacuated: {
+		ResourceType: ResourceTypeServer,
+		Operation:    LifecycleOperationEvacuate,
+	},
 	// incusapi.EventLifecycleClusterMemberHealed: {},
 	// incusapi.EventLifecycleClusterMemberRemoved: {},
 	// incusapi.EventLifecycleClusterMemberRenamed: {},
-	// incusapi.EventLifecycleClusterMemberRestored: {},
+	incusapi.EventLifecycleClusterMemberRestored: {
+		ResourceType: ResourceTypeServer,
+		Operation:    LifecycleOperationRestore,
+	},
 	// incusapi.EventLifecycleClusterMemberUpdated: {},
 	// incusapi.EventLifecycleClusterTokenCreated: {},
 	// incusapi.EventLifecycleConfigUpdated: {},

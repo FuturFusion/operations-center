@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -27,13 +28,16 @@ type ServerService interface {
 	SelfRegisterOperationsCenter(ctx context.Context) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
-	ResyncByName(ctx context.Context, name string) error
+	ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error
+	SyncCluster(ctx context.Context, clusterName string) error
 
 	PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error
 	PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error
 
+	EvacuateSystemByName(ctx context.Context, name string) error
 	PoweroffSystemByName(ctx context.Context, name string) error
 	RebootSystemByName(ctx context.Context, name string) error
+	RestoreSystemByName(ctx context.Context, name string) error
 	UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error
 }
 
@@ -54,7 +58,7 @@ type ServerClientPort interface {
 	Ping(ctx context.Context, endpoint Endpoint) error
 	GetResources(ctx context.Context, endpoint Endpoint) (api.HardwareData, error)
 	GetOSData(ctx context.Context, endpoint Endpoint) (api.OSData, error)
-	GetVersionData(ctx context.Context, endpoint Endpoint) (api.ServerVersionData, error)
+	GetVersionData(ctx context.Context, server Server) (api.ServerVersionData, error)
 	GetServerType(ctx context.Context, endpoint Endpoint) (api.ServerType, error)
 	UpdateNetworkConfig(ctx context.Context, server Server) error
 	UpdateStorageConfig(ctx context.Context, server Server) error
@@ -62,7 +66,9 @@ type ServerClientPort interface {
 	UpdateProviderConfig(ctx context.Context, server Server, providerConfig ServerSystemProvider) error
 	GetUpdateConfig(ctx context.Context, server Server) (ServerSystemUpdate, error)
 	UpdateUpdateConfig(ctx context.Context, server Server, providerConfig ServerSystemUpdate) error
+	Evacuate(ctx context.Context, server Server) error
 	Poweroff(ctx context.Context, server Server) error
 	Reboot(ctx context.Context, server Server) error
+	Restore(ctx context.Context, server Server) error
 	UpdateOS(ctx context.Context, server Server) error
 }

@@ -174,7 +174,7 @@ func TestServerService_UpdateServerURL(t *testing.T) {
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
 				},
-				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
@@ -316,7 +316,7 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
 				},
-				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
@@ -473,7 +473,7 @@ one
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
 				},
-				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
@@ -2553,7 +2553,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
 				},
-				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
@@ -2694,7 +2694,7 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
 				},
-				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
@@ -3347,7 +3347,7 @@ foobar
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, tc.clientGetOSDataErr
 				},
-				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, tc.clientGetVersionDataErr
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
@@ -3391,33 +3391,112 @@ func TestServerService_ResyncByName(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
-		name             string
-		repoGetByName    provisioning.Server
-		repoGetByNameErr error
-		repoUpdateErr    error
+		name                  string
+		resourceTypeArg       domain.ResourceType
+		lifecycleOperationArg domain.LifecycleOperation
+		repoGetByName         provisioning.Server
+		repoGetByNameErr      error
+		repoUpdateErr         error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr    require.ErrorAssertionFunc
+		wantLastSeen time.Time
 	}{
 		{
-			name: "success",
+			name:            "success - not resource type server",
+			resourceTypeArg: domain.ResourceType(""), // empty resource type
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                  "success - update operation",
+			resourceTypeArg:       domain.ResourceTypeServer,
+			lifecycleOperationArg: domain.LifecycleOperationUpdate,
 			repoGetByName: provisioning.Server{
 				Name:   "operations-center",
+				Status: api.ServerStatusReady,
+			},
+
+			assertErr:    require.NoError,
+			wantLastSeen: fixedDate,
+		},
+		{
+			name:                  "success - evacuate operation",
+			resourceTypeArg:       domain.ResourceTypeServer,
+			lifecycleOperationArg: domain.LifecycleOperationEvacuate,
+			repoGetByName: provisioning.Server{
+				Name:   "incus",
+				Type:   api.ServerTypeIncus,
+				Status: api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: string(images.UpdateFileComponentIncus),
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                  "success - restore operation",
+			resourceTypeArg:       domain.ResourceTypeServer,
+			lifecycleOperationArg: domain.LifecycleOperationRestore,
+			repoGetByName: provisioning.Server{
+				Name:   "incus",
+				Type:   api.ServerTypeIncus,
+				Status: api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: string(images.UpdateFileComponentIncus),
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                  "success - evacuate operation - non incus",
+			resourceTypeArg:       domain.ResourceTypeServer,
+			lifecycleOperationArg: domain.LifecycleOperationEvacuate,
+			repoGetByName: provisioning.Server{
+				Name:   "operations-center",
+				Type:   api.ServerTypeOperationsCenter, // type != incus
 				Status: api.ServerStatusReady,
 			},
 
 			assertErr: require.NoError,
 		},
 		{
-			name:             "error - repo.GetByName",
-			repoGetByNameErr: boom.Error,
+			name:                  "success - not supported operation",
+			resourceTypeArg:       domain.ResourceTypeServer,
+			lifecycleOperationArg: domain.LifecycleOperation(""), // empty operation
+			repoGetByName: provisioning.Server{
+				Name:   "operations-center",
+				Type:   api.ServerTypeOperationsCenter,
+				Status: api.ServerStatusReady,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                  "error - repo.GetByName",
+			resourceTypeArg:       domain.ResourceTypeServer,
+			lifecycleOperationArg: domain.LifecycleOperationUpdate,
+			repoGetByNameErr:      boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:          "error - pollServer",
-			repoUpdateErr: boom.Error,
+			name:                  "error - pollServer",
+			resourceTypeArg:       domain.ResourceTypeServer,
+			lifecycleOperationArg: domain.LifecycleOperationUpdate,
+			repoUpdateErr:         boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:    boom.ErrorIs,
+			wantLastSeen: fixedDate,
 		},
 	}
 
@@ -3429,7 +3508,7 @@ func TestServerService_ResyncByName(t *testing.T) {
 					return &tc.repoGetByName, tc.repoGetByNameErr
 				},
 				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
-					require.Equal(t, fixedDate, in.LastSeen)
+					require.Equal(t, tc.wantLastSeen, in.LastSeen)
 					return tc.repoUpdateErr
 				},
 			}
@@ -3444,7 +3523,7 @@ func TestServerService_ResyncByName(t *testing.T) {
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
 				},
-				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
@@ -3463,7 +3542,133 @@ func TestServerService_ResyncByName(t *testing.T) {
 			)
 
 			// Run test
-			err := serverSvc.ResyncByName(t.Context(), "one")
+			err := serverSvc.ResyncByName(t.Context(), "", domain.LifecycleEvent{
+				ResourceType: tc.resourceTypeArg,
+				Operation:    tc.lifecycleOperationArg,
+				Source: domain.LifecycleSource{
+					Name: "one",
+				},
+			})
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestServerService_EvacuateSystemByName(t *testing.T) {
+	tests := []struct {
+		name              string
+		repoGetByName     provisioning.Server
+		repoGetByNameErr  error
+		repoUpdateErr     error
+		clientEvacuateErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - not type incus",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeOperationsCenter,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+			},
+		},
+		{
+			name: "error - repo.Update",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.Evacuate",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			clientEvacuateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &tc.repoGetByName, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+					server.VersionData.Compute(nil)
+					require.True(t, *server.VersionData.InMaintenance)
+					return tc.repoUpdateErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				EvacuateFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.clientEvacuateErr
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, "https://one:8443", tls.Certificate{})
+
+			// Run test
+			err := serverSvc.EvacuateSystemByName(t.Context(), "one")
 
 			// Assert
 			tc.assertErr(t, err)
@@ -3599,6 +3804,102 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 	}
 }
 
+func TestServerService_RestoreSystemByName(t *testing.T) {
+	tests := []struct {
+		name             string
+		repoGetByName    provisioning.Server
+		repoGetByNameErr error
+		clientRestoreErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - not type incus",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeOperationsCenter,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+			},
+		},
+		{
+			name: "error - client.Restore",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			clientRestoreErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				RestoreFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.clientRestoreErr
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, "https://one:8443", tls.Certificate{})
+
+			// Run test
+			err := serverSvc.RestoreSystemByName(t.Context(), "one")
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestServerService_UpdateSystemByName(t *testing.T) {
 	tests := []struct {
 		name                   string
@@ -3708,4 +4009,10 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			tc.assertErr(t, err)
 		})
 	}
+}
+
+func TestServerService_SyncCluster(t *testing.T) {
+	s := provisioning.NewServerService(nil, nil, nil, nil, nil, nil, "", tls.Certificate{})
+	err := s.SyncCluster(t.Context(), "")
+	require.NoError(t, err)
 }

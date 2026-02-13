@@ -38,6 +38,20 @@ func NewServerClientPortWithPrometheus(base provisioning.ServerClientPort, insta
 	}
 }
 
+// Evacuate implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) Evacuate(ctx context.Context, server provisioning.Server) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Evacuate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Evacuate(ctx, server)
+}
+
 // GetOSData implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithPrometheus) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (oSData api.OSData, err error) {
 	_since := time.Now()
@@ -109,7 +123,7 @@ func (_d ServerClientPortWithPrometheus) GetUpdateConfig(ctx context.Context, se
 }
 
 // GetVersionData implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithPrometheus) GetVersionData(ctx context.Context, endpoint provisioning.Endpoint) (serverVersionData api.ServerVersionData, err error) {
+func (_d ServerClientPortWithPrometheus) GetVersionData(ctx context.Context, server provisioning.Server) (serverVersionData api.ServerVersionData, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -119,7 +133,7 @@ func (_d ServerClientPortWithPrometheus) GetVersionData(ctx context.Context, end
 
 		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetVersionData", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetVersionData(ctx, endpoint)
+	return _d.base.GetVersionData(ctx, server)
 }
 
 // Ping implements provisioning.ServerClientPort.
@@ -162,6 +176,20 @@ func (_d ServerClientPortWithPrometheus) Reboot(ctx context.Context, server prov
 		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Reboot", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.Reboot(ctx, server)
+}
+
+// Restore implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) Restore(ctx context.Context, server provisioning.Server) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Restore", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Restore(ctx, server)
 }
 
 // UpdateNetworkConfig implements provisioning.ServerClientPort.

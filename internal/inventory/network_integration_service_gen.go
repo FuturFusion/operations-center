@@ -194,7 +194,7 @@ func (s networkIntegrationService) ResyncByUUID(ctx context.Context, id uuid.UUI
 }
 
 func (s networkIntegrationService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	if event.ResourceType != "network-integration" {
+	if event.ResourceType != domain.ResourceTypeNetworkIntegration {
 		return nil
 	}
 

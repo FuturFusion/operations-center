@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -55,6 +56,110 @@ func TestServerVersionData_Value(t *testing.T) {
 		},
 		UpdateChannel: "stable",
 	}, svdNew)
+}
+
+func TestServerVersionData_State(t *testing.T) {
+	tests := []struct {
+		needsUpdate   bool
+		needsReboot   bool
+		inMaintenance bool
+		isTypeIncus   bool
+
+		wantServerUpdateState api.ServerUpdateState
+	}{
+		{
+			needsUpdate:   false,
+			needsReboot:   false,
+			inMaintenance: false,
+			isTypeIncus:   false,
+
+			wantServerUpdateState: api.ServerUpdateStateReady,
+		},
+		{
+			needsUpdate:   true,
+			needsReboot:   false,
+			inMaintenance: false,
+			isTypeIncus:   false,
+
+			wantServerUpdateState: api.ServerUpdateStateUpdatePending,
+		},
+		{
+			needsUpdate:   false,
+			needsReboot:   true,
+			inMaintenance: false,
+			isTypeIncus:   false,
+
+			wantServerUpdateState: api.ServerUpdateStateRebootPending,
+		},
+		{
+			needsUpdate:   false,
+			needsReboot:   true,
+			inMaintenance: false,
+			isTypeIncus:   true,
+
+			wantServerUpdateState: api.ServerUpdateStateEvacuationPending,
+		},
+		{
+			needsUpdate:   false,
+			needsReboot:   true,
+			inMaintenance: true,
+			isTypeIncus:   true,
+
+			wantServerUpdateState: api.ServerUpdateStateInMaintenanceRebootPending,
+		},
+		{
+			needsUpdate:   false,
+			needsReboot:   false,
+			inMaintenance: true,
+			isTypeIncus:   false,
+
+			wantServerUpdateState: api.ServerUpdateStateInMaintenanceRestorePending,
+		},
+		{
+			needsUpdate:   true,
+			needsReboot:   true,
+			inMaintenance: false,
+			isTypeIncus:   false,
+
+			wantServerUpdateState: api.ServerUpdateStateUpdatePending,
+		},
+		{
+			needsUpdate:   true,
+			needsReboot:   false,
+			inMaintenance: true,
+			isTypeIncus:   false,
+
+			wantServerUpdateState: api.ServerUpdateStateUpdatePending,
+		},
+		{
+			needsUpdate:   true,
+			needsReboot:   true,
+			inMaintenance: true,
+			isTypeIncus:   false,
+
+			wantServerUpdateState: api.ServerUpdateStateUpdatePending,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(fmt.Sprintf("needsUpdate: %t, needsReboot: %t, inMaintenance: %t, isTypeIncus: %t", tc.needsUpdate, tc.needsReboot, tc.inMaintenance, tc.isTypeIncus), func(t *testing.T) {
+			serverVersionData := api.ServerVersionData{
+				NeedsUpdate:   &tc.needsUpdate,
+				NeedsReboot:   &tc.needsReboot,
+				InMaintenance: &tc.inMaintenance,
+			}
+
+			if tc.isTypeIncus {
+				serverVersionData.Applications = append(serverVersionData.Applications, api.ApplicationVersionData{
+					Name: string(images.UpdateFileComponentIncus),
+				})
+			}
+
+			got := serverVersionData.State()
+
+			require.Equal(t, tc.wantServerUpdateState, got)
+		})
+	}
 }
 
 func TestServerVersionData_RecommendedAction(t *testing.T) {
@@ -150,7 +255,7 @@ func TestServerVersionData_RecommendedAction(t *testing.T) {
 
 			if tc.isTypeIncus {
 				serverVersionData.Applications = append(serverVersionData.Applications, api.ApplicationVersionData{
-					Name: "incus",
+					Name: string(images.UpdateFileComponentIncus),
 				})
 			}
 

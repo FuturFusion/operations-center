@@ -376,7 +376,7 @@ func (s *ServerVersionData) Compute(latestAvailableVersions map[images.UpdateFil
 
 	// InMaintenance is true, if the server type is incus and the state of Incus is evacuated.
 	for _, application := range s.Applications {
-		if application.Name == "incus" {
+		if application.Name == string(images.UpdateFileComponentIncus) {
 			s.InMaintenance = &application.InMaintenance
 			break
 		}
@@ -409,14 +409,61 @@ func (s *ServerVersionData) Compute(latestAvailableVersions map[images.UpdateFil
 	}
 }
 
+type ServerUpdateState string
+
+const (
+	ServerUpdateStateReady                       ServerUpdateState = "up to date"
+	ServerUpdateStateUpdatePending               ServerUpdateState = "update pending"
+	ServerUpdateStateEvacuationPending           ServerUpdateState = "evacuation pending"
+	ServerUpdateStateInMaintenanceRebootPending  ServerUpdateState = "in maintenance, reboot pending"
+	ServerUpdateStateInMaintenanceRestorePending ServerUpdateState = "restore pending"
+	ServerUpdateStateRebootPending               ServerUpdateState = "reboot pending"
+)
+
+func (s ServerUpdateState) String() string {
+	return string(s)
+}
+
+func (s *ServerVersionData) State() ServerUpdateState {
+	if ptr.From(s.NeedsUpdate) {
+		return ServerUpdateStateUpdatePending
+	}
+
+	if ptr.From(s.NeedsReboot) {
+		isIncus := false
+		for _, app := range s.Applications {
+			if app.Name == string(images.UpdateFileComponentIncus) {
+				isIncus = true
+				break
+			}
+		}
+
+		if ptr.From(s.InMaintenance) {
+			return ServerUpdateStateInMaintenanceRebootPending
+		}
+
+		if !ptr.From(s.InMaintenance) && isIncus {
+			return ServerUpdateStateEvacuationPending
+		}
+
+		return ServerUpdateStateRebootPending
+	}
+
+	if ptr.From(s.InMaintenance) {
+		return ServerUpdateStateInMaintenanceRestorePending
+	}
+
+	return ServerUpdateStateReady
+}
+
 type ServerAction string
 
 const (
-	ServerActionNone     = ""
-	ServerActionUpdate   = "update"
-	ServerActionEvacuate = "evacuate"
-	ServerActionReboot   = "reboot"
-	ServerActionRestore  = "restore"
+	ServerActionNone     ServerAction = ""
+	ServerActionUpdate   ServerAction = "update"
+	ServerActionEvacuate ServerAction = "evacuate"
+	ServerActionReboot   ServerAction = "reboot"
+	ServerActionRestore  ServerAction = "restore"
 )
 
 func (s *ServerVersionData) RecommendedAction() ServerAction {
@@ -427,7 +474,7 @@ func (s *ServerVersionData) RecommendedAction() ServerAction {
 	if ptr.From(s.NeedsReboot) {
 		isIncus := false
 		for _, app := range s.Applications {
-			if app.Name == "incus" {
+			if app.Name == string(images.UpdateFileComponentIncus) {
 				isIncus = true
 				break
 			}

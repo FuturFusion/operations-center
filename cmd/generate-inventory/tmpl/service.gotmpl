@@ -236,7 +236,7 @@ func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uui
 }
 
 func (s {{ .Name | camelcase }}Service) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	if event.ResourceType != "{{ .Name | kebabcase }}" {
+	if event.ResourceType != domain.ResourceType{{ .Name | pascalcase }} {
 		return nil
 	}
 

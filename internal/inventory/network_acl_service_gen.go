@@ -195,7 +195,7 @@ func (s networkACLService) ResyncByUUID(ctx context.Context, id uuid.UUID) error
 }
 
 func (s networkACLService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	if event.ResourceType != "network-acl" {
+	if event.ResourceType != domain.ResourceTypeNetworkACL {
 		return nil
 	}
 

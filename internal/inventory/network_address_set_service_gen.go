@@ -195,7 +195,7 @@ func (s networkAddressSetService) ResyncByUUID(ctx context.Context, id uuid.UUID
 }
 
 func (s networkAddressSetService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	if event.ResourceType != "network-address-set" {
+	if event.ResourceType != domain.ResourceTypeNetworkAddressSet {
 		return nil
 	}
 

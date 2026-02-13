@@ -195,7 +195,7 @@ func (s profileService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s profileService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	if event.ResourceType != "profile" {
+	if event.ResourceType != domain.ResourceTypeProfile {
 		return nil
 	}
 

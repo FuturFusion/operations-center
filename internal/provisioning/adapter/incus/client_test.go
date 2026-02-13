@@ -845,6 +845,17 @@ func TestClientServer(t *testing.T) {
 }`),
 							},
 						},
+						// GET /1.0/cluster/members/server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "status": "Evacuated"
+  }
+}`),
+							},
+						},
 						// GET /os/1.0/system/update
 						{
 							Value: response{
@@ -864,7 +875,7 @@ func TestClientServer(t *testing.T) {
 					},
 
 					assertErr: require.NoError,
-					wantPaths: []string{"GET /os/1.0", "GET /os/1.0/applications", "GET /os/1.0/applications/incus", "GET /os/1.0/system/update"},
+					wantPaths: []string{"GET /os/1.0", "GET /os/1.0/applications", "GET /os/1.0/applications/incus", "GET /1.0/cluster/members/server01", "GET /os/1.0/system/update"},
 					assertResult: func(t *testing.T, res any) {
 						t.Helper()
 						wantResources := api.ServerVersionData{
@@ -876,8 +887,9 @@ func TestClientServer(t *testing.T) {
 							},
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    "incus",
-									Version: "202511041601",
+									Name:          "incus",
+									Version:       "202511041601",
+									InMaintenance: true,
 								},
 							},
 							UpdateChannel: "stable",
@@ -1112,6 +1124,74 @@ func TestClientServer(t *testing.T) {
 }`),
 							},
 						},
+						// GET /1.0/cluster/members/server01
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0", "GET /os/1.0/applications", "GET /os/1.0/applications/incus", "GET /1.0/cluster/members/server01"},
+					assertResult: noResult,
+				},
+				{
+					name: "error - update unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /os/1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "environment": {
+      "hostname": "af94e64e-1993-41b6-8f10-a8eebb828fce",
+      "os_name": "IncusOS",
+      "os_version": "202511041601",
+      "os_version_next": "202512210545"
+    }
+  }
+}`),
+							},
+						},
+						// GET /os/1.0/applications
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": [
+    "/1.0/applications/incus"
+  ]
+}`),
+							},
+						},
+						// GET /os/1.0/applications/incus
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {},
+    "state": {
+      "initialized": true,
+      "version": "202511041601"
+    }
+  }
+}`),
+							},
+						},
+						// GET /1.0/cluster/members/server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "status": "Online"
+  }
+}`),
+							},
+						},
 						// GET /os/1.0/system/update
 						{
 							Value: response{
@@ -1121,7 +1201,7 @@ func TestClientServer(t *testing.T) {
 					},
 
 					assertErr:    require.Error,
-					wantPaths:    []string{"GET /os/1.0", "GET /os/1.0/applications", "GET /os/1.0/applications/incus", "GET /os/1.0/system/update"},
+					wantPaths:    []string{"GET /os/1.0", "GET /os/1.0/applications", "GET /os/1.0/applications/incus", "GET /1.0/cluster/members/server01", "GET /os/1.0/system/update"},
 					assertResult: noResult,
 				},
 				{
@@ -1169,6 +1249,17 @@ func TestClientServer(t *testing.T) {
 }`),
 							},
 						},
+						// GET /1.0/cluster/members/server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "status": "Online"
+  }
+}`),
+							},
+						},
 						// GET /os/1.0/system/update
 						{
 							Value: response{
@@ -1181,7 +1272,7 @@ func TestClientServer(t *testing.T) {
 					},
 
 					assertErr:    require.Error,
-					wantPaths:    []string{"GET /os/1.0", "GET /os/1.0/applications", "GET /os/1.0/applications/incus", "GET /os/1.0/system/update"},
+					wantPaths:    []string{"GET /os/1.0", "GET /os/1.0/applications", "GET /os/1.0/applications/incus", "GET /1.0/cluster/members/server01", "GET /os/1.0/system/update"},
 					assertResult: noResult,
 				},
 			},
@@ -1907,6 +1998,57 @@ func TestClientServer(t *testing.T) {
 			},
 		},
 		{
+			name: "Evacuate",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.Evacuate(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members/server01/state
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata":{}}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0/events", "POST /1.0/cluster/members/server01/state"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members/server01/state
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/events", "POST /1.0/cluster/members/server01/state"},
+				},
+			},
+		},
+		{
 			name: "Poweroff",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
 				return nil, client.Poweroff(ctx, target)
@@ -1973,6 +2115,57 @@ func TestClientServer(t *testing.T) {
 
 					assertErr: require.Error,
 					wantPaths: []string{"POST /os/1.0/system/:reboot"},
+				},
+			},
+		},
+		{
+			name: "Restore",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.Restore(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members/server01/state
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata":{}}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0/events", "POST /1.0/cluster/members/server01/state"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members/server01/state
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/events", "POST /1.0/cluster/members/server01/state"},
 				},
 			},
 		},

@@ -208,7 +208,7 @@ func (s networkLoadBalancerService) ResyncByUUID(ctx context.Context, id uuid.UU
 }
 
 func (s networkLoadBalancerService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	if event.ResourceType != "network-load-balancer" {
+	if event.ResourceType != domain.ResourceTypeNetworkLoadBalancer {
 		return nil
 	}
 

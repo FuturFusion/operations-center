@@ -195,7 +195,7 @@ func (s imageService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s imageService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	if event.ResourceType != "image" {
+	if event.ResourceType != domain.ResourceTypeImage {
 		return nil
 	}
 

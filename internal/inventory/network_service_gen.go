@@ -195,7 +195,7 @@ func (s networkService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s networkService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	if event.ResourceType != "network" {
+	if event.ResourceType != domain.ResourceTypeNetwork {
 		return nil
 	}
 

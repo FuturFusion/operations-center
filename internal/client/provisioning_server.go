@@ -96,6 +96,15 @@ func (c OperationsCenterClient) ResyncServer(ctx context.Context, name string) e
 	return nil
 }
 
+func (c OperationsCenterClient) EvacuateServerSystem(ctx context.Context, name string) error {
+	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:evacuate"), nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) PoweroffServerSystem(ctx context.Context, name string) error {
 	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:poweroff"), nil, nil)
 	if err != nil {
@@ -107,6 +116,15 @@ func (c OperationsCenterClient) PoweroffServerSystem(ctx context.Context, name s
 
 func (c OperationsCenterClient) RebootServerSystem(ctx context.Context, name string) error {
 	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:reboot"), nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c OperationsCenterClient) RestoreServerSystem(ctx context.Context, name string) error {
+	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:restore"), nil, nil)
 	if err != nil {
 		return err
 	}

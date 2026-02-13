@@ -208,7 +208,7 @@ func (s networkForwardService) ResyncByUUID(ctx context.Context, id uuid.UUID) e
 }
 
 func (s networkForwardService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	if event.ResourceType != "network-forward" {
+	if event.ResourceType != domain.ResourceTypeNetworkForward {
 		return nil
 	}
 

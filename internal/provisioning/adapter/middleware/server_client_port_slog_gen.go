@@ -42,6 +42,40 @@ func NewServerClientPortWithSlog(base provisioning.ServerClientPort, log *slog.L
 	return this
 }
 
+// Evacuate implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) Evacuate(ctx context.Context, server provisioning.Server) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Evacuate")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method Evacuate returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method Evacuate returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method Evacuate finished")
+		}
+	}()
+	return _d._base.Evacuate(ctx, server)
+}
+
 // GetOSData implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (oSData api.OSData, err error) {
 	log := _d._log.With()
@@ -218,12 +252,12 @@ func (_d ServerClientPortWithSlog) GetUpdateConfig(ctx context.Context, server p
 }
 
 // GetVersionData implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) GetVersionData(ctx context.Context, endpoint provisioning.Endpoint) (serverVersionData api.ServerVersionData, err error) {
+func (_d ServerClientPortWithSlog) GetVersionData(ctx context.Context, server provisioning.Server) (serverVersionData api.ServerVersionData, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("endpoint", endpoint),
+			slog.Any("server", server),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetVersionData")
@@ -249,7 +283,7 @@ func (_d ServerClientPortWithSlog) GetVersionData(ctx context.Context, endpoint 
 			log.DebugContext(ctx, "<= method GetVersionData finished")
 		}
 	}()
-	return _d._base.GetVersionData(ctx, endpoint)
+	return _d._base.GetVersionData(ctx, server)
 }
 
 // Ping implements provisioning.ServerClientPort.
@@ -352,6 +386,40 @@ func (_d ServerClientPortWithSlog) Reboot(ctx context.Context, server provisioni
 		}
 	}()
 	return _d._base.Reboot(ctx, server)
+}
+
+// Restore implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) Restore(ctx context.Context, server provisioning.Server) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Restore")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method Restore returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method Restore returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method Restore finished")
+		}
+	}()
+	return _d._base.Restore(ctx, server)
 }
 
 // UpdateNetworkConfig implements provisioning.ServerClientPort.

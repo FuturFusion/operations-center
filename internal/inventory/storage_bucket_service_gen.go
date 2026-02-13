@@ -211,7 +211,7 @@ func (s storageBucketService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 }
 
 func (s storageBucketService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	if event.ResourceType != "storage-bucket" {
+	if event.ResourceType != domain.ResourceTypeStorageBucket {
 		return nil
 	}
 

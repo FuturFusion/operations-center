@@ -11,6 +11,13 @@ definitions:
                     in the update channel assigned to the respective system.
                 type: string
                 x-go-name: AvailableVersion
+            in_maintenance:
+                description: |-
+                    InMaintenance is true, if the application is in maintenance mode (e.g. for
+                    Incus, if it has been evacuated). If false, the system is in normal
+                    operation (also the case, if an Incus restore operation has been executed).
+                type: boolean
+                x-go-name: InMaintenance
             name:
                 description: Name of the software component.
                 example: IncusOS
@@ -550,7 +557,7 @@ definitions:
             needs_update:
                 description: |-
                     NeedsUpdate is true, if the OS needs to be updated
-                    (available_version > version).
+                    (available_version > version_next).
                 type: boolean
                 x-go-name: NeedsUpdate
             version:
@@ -2089,6 +2096,24 @@ definitions:
                     $ref: '#/definitions/ApplicationVersionData'
                 type: array
                 x-go-name: Applications
+            in_maintenance:
+                description: |-
+                    InMaintenance is the aggreaged state over OS and all applications indicating
+                    if there is any component currently in maintenance state.
+                type: boolean
+                x-go-name: InMaintenance
+            needs_reboot:
+                description: |-
+                    NeedsReboot is the aggregated state over OS and all applications indicating
+                    if there is any component, where a reboot is required.
+                type: boolean
+                x-go-name: NeedsReboot
+            needs_update:
+                description: |-
+                    NeedsUpdate is the aggregated state over OS and all applications indicating
+                    if there is any component, where an update is available.
+                type: boolean
+                x-go-name: NeedsUpdate
             os:
                 $ref: '#/definitions/OSVersionData'
             update_channel:
@@ -7564,6 +7589,26 @@ paths:
             summary: Sync server state
             tags:
                 - servers
+    /1.0/provisioning/servers/{name}/system/:evacuate:
+        post:
+            description: Triggers an evacuate operation on the server.
+            operationId: server_system_evacuate_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Evacuate server
+            tags:
+                - servers_system_evacuate
     /1.0/provisioning/servers/{name}/system/:poweroff:
         post:
             description: Triggers a poweroff operation on the server.
@@ -7604,6 +7649,26 @@ paths:
             summary: Reboot server
             tags:
                 - servers_system_reboot
+    /1.0/provisioning/servers/{name}/system/:restore:
+        post:
+            description: Triggers an restore operation on the server.
+            operationId: server_system_restore_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Restore server
+            tags:
+                - servers_system_restore
     /1.0/provisioning/servers/{name}/system/:update:
         post:
             description: Triggers an update operation on the server.
