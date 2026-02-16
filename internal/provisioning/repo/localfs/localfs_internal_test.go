@@ -348,7 +348,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 			assertErr: require.NoError,
 			assertUpdate: func(t *testing.T, tmpDir string, update *provisioning.Update) {
 				t.Helper()
-				wantUUID := uuidFromUpdate(provisioning.Update{
+				wantUUID := uuidFromUpdate(Update{
 					Origin:  "testdata (local)",
 					Version: "1",
 				}).String()
@@ -435,7 +435,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 			},
 			setupTmpDir: func(t *testing.T, tmpDir string) {
 				t.Helper()
-				wantUUID := uuidFromUpdate(provisioning.Update{
+				wantUUID := uuidFromUpdate(Update{
 					Origin:  "testdata (local)",
 					Version: "1",
 				}).String()
@@ -522,9 +522,6 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// if tc.name != "success - additional file present in tar but missing in manifest" {
-			// 	return
-			// }
 			// Setup
 			caCert, cert, key := signaturetest.GenerateCertChain(t)
 			tr := generateUpdateTar(t, tc, cert, key)

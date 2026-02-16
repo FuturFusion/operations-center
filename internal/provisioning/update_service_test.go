@@ -96,6 +96,7 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 		repoUpdateFilesCreateFromArchiveErr    error
 		repoUpdateFilesCreateFromArchiveUpdate *provisioning.Update
 		repoUpsertErr                          error
+		repoAssignChannelsErr                  error
 
 		assertErr require.ErrorAssertionFunc
 		wantID    uuid.UUID
@@ -131,13 +132,24 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 			},
 		},
 		{
-			name: "error - Upsert",
+			name: "error - repo.Upsert",
 
 			repoUpdateFilesCreateFromArchiveUpdate: &provisioning.Update{
 				UUID:     uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
 				Severity: images.UpdateSeverityLow,
 			},
 			repoUpsertErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.AssignChannels",
+
+			repoUpdateFilesCreateFromArchiveUpdate: &provisioning.Update{
+				UUID:     uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
+				Severity: images.UpdateSeverityLow,
+			},
+			repoAssignChannelsErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -149,6 +161,9 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 			repo := &repoMock.UpdateRepoMock{
 				UpsertFunc: func(ctx context.Context, update provisioning.Update) error {
 					return tc.repoUpsertErr
+				},
+				AssignChannelsFunc: func(ctx context.Context, id uuid.UUID, channelNames []string) error {
+					return tc.repoAssignChannelsErr
 				},
 			}
 

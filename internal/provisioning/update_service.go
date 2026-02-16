@@ -94,9 +94,21 @@ func (s updateService) CreateFromArchive(ctx context.Context, tarReader *tar.Rea
 		return uuid.UUID{}, fmt.Errorf("Validate update: %w", err)
 	}
 
-	err = s.repo.Upsert(ctx, *update)
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		err = s.repo.Upsert(ctx, *update)
+		if err != nil {
+			return fmt.Errorf("Failed to persist the update from archive in the repository: %w", err)
+		}
+
+		err = s.repo.AssignChannels(ctx, update.UUID, update.Channels)
+		if err != nil {
+			return fmt.Errorf("Failed to assign default channel to update from archive in repository: %w", err)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return uuid.UUID{}, fmt.Errorf("Failed to persist the update from archive in the repository: %w", err)
+		return uuid.UUID{}, err
 	}
 
 	return update.UUID, nil
@@ -503,14 +515,21 @@ func (s updateService) Refresh(ctx context.Context) error {
 
 		update.Status = api.UpdateStatusReady
 
-		err = s.repo.Upsert(ctx, update)
-		if err != nil {
-			return fmt.Errorf("Failed to persist the update %q in the repository: %w", update.UUID.String(), err)
-		}
+		err = transaction.Do(ctx, func(ctx context.Context) error {
+			err = s.repo.Upsert(ctx, update)
+			if err != nil {
+				return fmt.Errorf("Failed to persist the update %q in the repository: %w", update.UUID.String(), err)
+			}
 
-		err = s.repo.AssignChannels(ctx, update.UUID, update.Channels)
+			err = s.repo.AssignChannels(ctx, update.UUID, update.Channels)
+			if err != nil {
+				return fmt.Errorf("Failed to assign default channel to new update %q: %w", update.UUID.String(), err)
+			}
+
+			return nil
+		})
 		if err != nil {
-			return fmt.Errorf("Failed to assign default channel to new update %q: %w", update.UUID.String(), err)
+			return err
 		}
 	}
 
