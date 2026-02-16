@@ -143,9 +143,8 @@ update-openfga:
 
 .PHONY: update-gomod
 update-gomod:
-	# Remove gofakeit version pin once we update to Go 1.25+.
-	$(GO) get -t -v -u ./... github.com/brianvoe/gofakeit/v7@v7.9.0 github.com/olekukonko/tablewriter@v1.1.0
-	$(GO) mod tidy --go=1.24.7
+	$(GO) get -t -v -u ./...
+	$(GO) mod tidy --go=1.25.0
 	$(GO) get toolchain@none
 
 .PHONY: update-api

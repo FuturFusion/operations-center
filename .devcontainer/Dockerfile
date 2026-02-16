@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.24
+ARG GO_VERSION=1.25
 ARG DEBIAN_VERSION=trixie
 
 # Go development container
