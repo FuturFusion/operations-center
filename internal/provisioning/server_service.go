@@ -754,7 +754,25 @@ func (s *serverService) Rename(ctx context.Context, oldName string, newName stri
 		return domain.NewValidationErrf("Old and new Server name are equal")
 	}
 
-	return s.repo.Rename(ctx, oldName, newName)
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		server, err := s.repo.GetByName(ctx, oldName)
+		if err != nil {
+			return fmt.Errorf("Failed to fetch server %q for rename: %w", oldName, err)
+		}
+
+		if server.Cluster != nil {
+			return fmt.Errorf("Server %q is clustered: %w", oldName, domain.ErrOperationNotPermitted)
+		}
+
+		err = s.repo.Rename(ctx, oldName, newName)
+		if err != nil {
+			return fmt.Errorf("Failed to rename server: %w", err)
+		}
+
+		return nil
+	})
+
+	return err
 }
 
 func (s *serverService) DeleteByName(ctx context.Context, name string) error {
