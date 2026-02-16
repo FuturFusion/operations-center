@@ -253,6 +253,7 @@ type ExprOsapiSystemSecuritySecureBootCertificate struct {
 type ExprOsapiSystemSecurityState struct {
 	EncryptedVolumes                []ExprOsapiSystemSecurityEncryptedVolume       `incusos:"-"                               json:"encrypted_volumes"                  yaml:"encrypted_volumes" expr:"encrypted_volumes"`
 	EncryptionRecoveryKeysRetrieved bool                                           `json:"encryption_recovery_keys_retrieved" yaml:"encryption_recovery_keys_retrieved" expr:"encryption_recovery_keys_retrieved"`
+	DriveRecoveryKeys               map[string]string                              `incusos:"-"                               json:"drive_recovery_keys"                yaml:"drive_recovery_keys" expr:"drive_recovery_keys"`
 	PoolRecoveryKeys                map[string]string                              `incusos:"-"                               json:"pool_recovery_keys"                 yaml:"pool_recovery_keys" expr:"pool_recovery_keys"`
 	SecureBootCertificates          []ExprOsapiSystemSecuritySecureBootCertificate `incusos:"-"                               json:"secure_boot_certificates"           yaml:"secure_boot_certificates" expr:"secure_boot_certificates"`
 	SecureBootEnabled               bool                                           `incusos:"-"                               json:"secure_boot_enabled"                yaml:"secure_boot_enabled" expr:"secure_boot_enabled"`
@@ -271,18 +272,20 @@ type ExprOsapiSystemStorageConfig struct {
 }
 
 type ExprOsapiSystemStorageDrive struct {
-	ID              string                            `json:"id"                    yaml:"id" expr:"id"`
-	ModelFamily     string                            `json:"model_family"          yaml:"model_family" expr:"model_family"`
-	ModelName       string                            `json:"model_name"            yaml:"model_name" expr:"model_name"`
-	SerialNumber    string                            `json:"serial_number"         yaml:"serial_number" expr:"serial_number"`
-	Bus             string                            `json:"bus"                   yaml:"bus" expr:"bus"`
-	CapacityInBytes int                               `json:"capacity_in_bytes"     yaml:"capacity_in_bytes" expr:"capacity_in_bytes"`
-	Boot            bool                              `json:"boot"                  yaml:"boot" expr:"boot"`
-	Removable       bool                              `json:"removable"             yaml:"removable" expr:"removable"`
-	Remote          bool                              `json:"remote"                yaml:"remote" expr:"remote"`
-	WWN             string                            `json:"wwn,omitempty"         yaml:"wwn,omitempty" expr:"wwn"`
-	SMART           *ExprOsapiSystemStorageDriveSMART `json:"smart,omitempty"       yaml:"smart,omitempty" expr:"smart"`
-	MemberPool      string                            `json:"member_pool,omitempty" yaml:"member_pool,omitempty" expr:"member_pool"`
+	ID              string                            `json:"id"                     yaml:"id" expr:"id"`
+	ModelFamily     string                            `json:"model_family"           yaml:"model_family" expr:"model_family"`
+	ModelName       string                            `json:"model_name"             yaml:"model_name" expr:"model_name"`
+	SerialNumber    string                            `json:"serial_number"          yaml:"serial_number" expr:"serial_number"`
+	Bus             string                            `json:"bus"                    yaml:"bus" expr:"bus"`
+	CapacityInBytes int                               `json:"capacity_in_bytes"      yaml:"capacity_in_bytes" expr:"capacity_in_bytes"`
+	Boot            bool                              `json:"boot"                   yaml:"boot" expr:"boot"`
+	Removable       bool                              `json:"removable"              yaml:"removable" expr:"removable"`
+	Remote          bool                              `json:"remote"                 yaml:"remote" expr:"remote"`
+	WWN             string                            `json:"wwn,omitempty"          yaml:"wwn,omitempty" expr:"wwn"`
+	SMART           *ExprOsapiSystemStorageDriveSMART `json:"smart,omitempty"        yaml:"smart,omitempty" expr:"smart"`
+	MemberPool      string                            `json:"member_pool,omitempty"  yaml:"member_pool,omitempty" expr:"member_pool"`
+	Encrypted       bool                              `json:"encrypted,omitempty"    yaml:"encrypted,omitempty" expr:"encrypted"`
+	EncryptedID     string                            `json:"encrypted_id,omitempty" yaml:"encrypted_id,omitempty" expr:"encrypted_id"`
 }
 
 type ExprOsapiSystemStorageDriveSMART struct {
@@ -662,6 +665,7 @@ func ToExprOsapiSystemSecurityState(s osapi.SystemSecurityState) ExprOsapiSystem
 	return ExprOsapiSystemSecurityState{
 		EncryptedVolumes:                sliceConvert(s.EncryptedVolumes, ToExprOsapiSystemSecurityEncryptedVolume),
 		EncryptionRecoveryKeysRetrieved: s.EncryptionRecoveryKeysRetrieved,
+		DriveRecoveryKeys:               s.DriveRecoveryKeys,
 		PoolRecoveryKeys:                s.PoolRecoveryKeys,
 		SecureBootCertificates:          sliceConvert(s.SecureBootCertificates, ToExprOsapiSystemSecuritySecureBootCertificate),
 		SecureBootEnabled:               s.SecureBootEnabled,
@@ -698,6 +702,8 @@ func ToExprOsapiSystemStorageDrive(s osapi.SystemStorageDrive) ExprOsapiSystemSt
 		WWN:             s.WWN,
 		SMART:           toPtr(ToExprOsapiSystemStorageDriveSMART(fromPtr(s.SMART))),
 		MemberPool:      s.MemberPool,
+		Encrypted:       s.Encrypted,
+		EncryptedID:     s.EncryptedID,
 	}
 }
 
