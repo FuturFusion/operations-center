@@ -143,7 +143,7 @@ update-openfga:
 
 .PHONY: update-gomod
 update-gomod:
-	$(GO) get -t -v -u ./... github.com/olekukonko/tablewriter@v1.1.0
+	$(GO) get -t -v -u ./...
 	$(GO) mod tidy --go=1.25.0
 	$(GO) get toolchain@none
 
