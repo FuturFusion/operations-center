@@ -151,7 +151,8 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 			return fmt.Errorf("Cluster with name %q already exists: %w", newCluster.Name, domain.ErrOperationNotPermitted)
 		}
 
-		// Validate all listed servers are already known.
+		// Validate all listed servers are already known and do have configuration
+		// valid for clustering.
 		for _, serverName := range newCluster.ServerNames {
 			server, err := s.serverSvc.GetByName(ctx, serverName)
 			if err != nil {
@@ -164,6 +165,10 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 
 			if server.Status != api.ServerStatusReady {
 				return fmt.Errorf("Server %q is not in ready state and can therefore not be used for clustering: %w", serverName, domain.ErrOperationNotPermitted)
+			}
+
+			if newCluster.Channel != server.Channel {
+				return fmt.Errorf("Server %q update channel %q does not match channel requested for cluster %q: %w", server.Name, server.Channel, newCluster.Channel, domain.ErrOperationNotPermitted)
 			}
 
 			servers = append(servers, *server)
