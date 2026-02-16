@@ -2913,7 +2913,7 @@ func TestServerService_DeleteByName(t *testing.T) {
 	}
 }
 
-func TestServerService_PollPendingServers(t *testing.T) {
+func TestServerService_PollServers(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	logEmpty := func(t *testing.T, logBuf *bytes.Buffer) {

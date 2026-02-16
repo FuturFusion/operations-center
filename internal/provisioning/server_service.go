@@ -996,13 +996,77 @@ func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *Ser
 func (s *serverService) PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error {
 	log := slog.With(slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 
+	updatedServerCertificate, err := s.connectionTestWithCertificateUpdate(ctx, server, log)
+	if err != nil {
+		var retryableErr domain.ErrRetryable
+		if errors.As(err, &retryableErr) {
+			// Errors are expected if a system is not (yet) available. Therefore
+			// we ignore the errors.
+			log.WarnContext(ctx, "Server connection test failed", logger.Err(err))
+			return nil
+		}
+
+		return err
+	}
+
+	var hardwareData api.HardwareData
+	var osData api.OSData
+	var versionData api.ServerVersionData
+	var serverType api.ServerType
+	if updateServerConfiguration {
+		hardwareData, err = s.client.GetResources(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get resources from server %q: %w", server.Name, err)
+		}
+
+		osData, err = s.client.GetOSData(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get os data from server %q: %w", server.Name, err)
+		}
+
+		versionData, err = s.client.GetVersionData(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get version data from server %q: %w", server.Name, err)
+		}
+
+		// For now, we ignore the error and we are fine to persist type "unknown",
+		// if we are not able to determine the server type.
+		serverType, _ = s.client.GetServerType(ctx, server)
+	}
+
+	// Perform the update of the server in a transaction in order to respect
+	// potential updates, that happened since we queried for the list of servers
+	// in pending state.
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		server, err := s.repo.GetByName(ctx, server.Name)
+		if err != nil {
+			return err
+		}
+
+		server.LastSeen = s.now()
+
+		if updatedServerCertificate != "" {
+			server.Certificate = updatedServerCertificate
+		}
+
+		if updateServerConfiguration {
+			server.Status = api.ServerStatusReady
+			server.HardwareData = hardwareData
+			server.OSData = osData
+			server.VersionData = versionData
+			server.Type = serverType
+		}
+
+		return s.repo.Update(ctx, *server)
+	})
+}
+
+func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context, server Server, log *slog.Logger) (updatedServerCertificate string, _ error) {
 	// Since we re-try frequently, we only grant a short timeout for the
 	// connection attept.
 	ctxWithTimeout, cancelFunc := context.WithTimeout(ctx, 1*time.Second)
 	err := s.client.Ping(ctxWithTimeout, server)
 	cancelFunc()
-
-	var updatedServerCertificate string
 
 	var urlErr *url.Error
 	if errors.As(err, &urlErr) {
@@ -1078,7 +1142,7 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 				if retryErr != nil {
 					// The clusters certificate has passed validation against system root
 					// certificates but we failed to update the cluster record in the DB.
-					return retryErr
+					return "", retryErr
 				}
 
 			case isStandaloneNonIncusServerWithPublicConnectionURL: // case 2, standalone non Incus server
@@ -1132,63 +1196,7 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 		}
 	}
 
-	if err != nil {
-		// Errors are expected if a system is not (yet) available. Therefore
-		// we ignore the errors.
-		log.WarnContext(ctx, "Server connection test failed", logger.Err(err))
-		return nil
-	}
-
-	var hardwareData api.HardwareData
-	var osData api.OSData
-	var versionData api.ServerVersionData
-	var serverType api.ServerType
-	if updateServerConfiguration {
-		hardwareData, err = s.client.GetResources(ctx, server)
-		if err != nil {
-			return fmt.Errorf("Failed to get resources from server %q: %w", server.Name, err)
-		}
-
-		osData, err = s.client.GetOSData(ctx, server)
-		if err != nil {
-			return fmt.Errorf("Failed to get os data from server %q: %w", server.Name, err)
-		}
-
-		versionData, err = s.client.GetVersionData(ctx, server)
-		if err != nil {
-			return fmt.Errorf("Failed to get version data from server %q: %w", server.Name, err)
-		}
-
-		// For now, we ignore the error and we are fine to persist type "unknown",
-		// if we are not able to determine the server type.
-		serverType, _ = s.client.GetServerType(ctx, server)
-	}
-
-	// Perform the update of the server in a transaction in order to respect
-	// potential updates, that happened since we queried for the list of servers
-	// in pending state.
-	return transaction.Do(ctx, func(ctx context.Context) error {
-		server, err := s.repo.GetByName(ctx, server.Name)
-		if err != nil {
-			return err
-		}
-
-		server.LastSeen = s.now()
-
-		if updatedServerCertificate != "" {
-			server.Certificate = updatedServerCertificate
-		}
-
-		if updateServerConfiguration {
-			server.Status = api.ServerStatusReady
-			server.HardwareData = hardwareData
-			server.OSData = osData
-			server.VersionData = versionData
-			server.Type = serverType
-		}
-
-		return s.repo.Update(ctx, *server)
-	})
+	return updatedServerCertificate, domain.NewRetryableErr(err)
 }
 
 func (s *serverService) SyncCluster(ctx context.Context, clusterName string) error {
