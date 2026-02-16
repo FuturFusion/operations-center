@@ -8,6 +8,8 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/render"
 	"github.com/FuturFusion/operations-center/internal/sort"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -89,7 +91,7 @@ func (c *cmdChannelList) validateArgsAndFlags(cmd *cobra.Command, args []string)
 }
 
 func (c *cmdChannelList) run(cmd *cobra.Command, args []string) error {
-	channels, err := c.ocClient.GetUpdateExposechannels(cmd.Context())
+	channels, err := c.ocClient.GetChannels(cmd.Context())
 	if err != nil {
 		return err
 	}
@@ -149,9 +151,45 @@ func (c *cmdChannelShow) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	clusters, err := c.ocClient.GetWithFilterClusters(cmd.Context(), provisioning.ClusterFilter{
+		Expression: ptr.To(fmt.Sprintf(`channel == %q`, name)),
+	})
+	if err != nil {
+		return err
+	}
+
+	servers, err := c.ocClient.GetWithFilterServers(cmd.Context(), provisioning.ServerFilter{
+		Expression: ptr.To(fmt.Sprintf(`version_data.update_channel == %q`, name)),
+	})
+	if err != nil {
+		return err
+	}
+
+	updates, err := c.ocClient.GetWithFilterUpdates(cmd.Context(), provisioning.UpdateFilter{
+		Channel: ptr.To(name),
+	})
+	if err != nil {
+		return err
+	}
+
 	fmt.Printf("Name: %s\n", channel.Name)
 	fmt.Printf("Description: %s\n", channel.Description)
 	fmt.Printf("Last Updated: %s\n", channel.LastUpdated.Truncate(time.Second).String())
+
+	fmt.Printf("Assigned Clusters\n")
+	for _, cluster := range clusters {
+		fmt.Printf("- %s (%s)\n", cluster.Name, cluster.ConnectionURL)
+	}
+
+	fmt.Printf("Assigned Servers:\n")
+	for _, server := range servers {
+		fmt.Printf("- %s (%s)\n", server.Name, server.ConnectionURL)
+	}
+
+	fmt.Printf("Linked Updates:\n")
+	for _, update := range updates {
+		fmt.Printf("- %s, %s, %s\n", update.UUID.String(), update.Origin, update.Version)
+	}
 
 	return nil
 }

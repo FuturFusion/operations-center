@@ -10,7 +10,7 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetUpdateExposechannels(ctx context.Context) ([]api.Channel, error) {
+func (c OperationsCenterClient) GetChannels(ctx context.Context) ([]api.Channel, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 
