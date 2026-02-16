@@ -16,10 +16,12 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/file"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -186,7 +188,7 @@ func (l localfs) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (
 	}()
 
 	// Extract content from tar archive.
-	extractedFiles, err := extractTar(tarReader, tmpDir)
+	extractedFiles, err := extractTar(ctx, tarReader, tmpDir)
 	if err != nil {
 		return nil, err
 	}
@@ -225,14 +227,25 @@ func (l localfs) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (
 	return updateManifest, nil
 }
 
+type Update struct {
+	Format      string                              `json:"format"`
+	Channels    provisioning.UpdateUpstreamChannels `json:"channels"`
+	Files       provisioning.UpdateFiles            `json:"files"`
+	Origin      string                              `json:"origin"`
+	PublishedAt time.Time                           `json:"published_at"`
+	Severity    images.UpdateSeverity               `json:"severity"`
+	Version     string                              `json:"version"`
+	URL         string                              `json:"url"`
+}
+
 var UpdateSourceSpaceUUID = uuid.MustParse(`00000000-0000-0000-0000-000000000001`)
 
 const originSuffix = " (local)"
 
 const idSeparator = ":"
 
-func uuidFromUpdate(u provisioning.Update) uuid.UUID {
-	upstreamChannels := u.UpstreamChannels
+func uuidFromUpdate(u Update) uuid.UUID {
+	upstreamChannels := u.Channels
 	sort.Strings(upstreamChannels)
 
 	identifier := strings.Join([]string{
@@ -243,7 +256,7 @@ func uuidFromUpdate(u provisioning.Update) uuid.UUID {
 	return uuid.NewSHA1(UpdateSourceSpaceUUID, []byte(identifier))
 }
 
-func extractTar(tarReader *tar.Reader, destDir string) (extractedFiles map[string]struct{}, err error) {
+func extractTar(ctx context.Context, tarReader *tar.Reader, destDir string) (extractedFiles map[string]struct{}, err error) {
 	extractedFiles = make(map[string]struct{}, 20)
 	for {
 		var hdr *tar.Header
@@ -258,14 +271,17 @@ func extractTar(tarReader *tar.Reader, destDir string) (extractedFiles map[strin
 		}
 
 		err = func() error {
-			targetFile := filepath.Join(destDir, hdr.Name)
+			sourceFile := filepath.Clean(hdr.Name)
+			targetFile := filepath.Join(destDir, sourceFile)
+
+			slog.DebugContext(ctx, "extract tar", slog.String("target_file", targetFile), slog.String("source_file", sourceFile))
 
 			if !slices.Contains([]byte{tar.TypeReg, tar.TypeDir}, hdr.Typeflag) {
 				return fmt.Errorf("Unsupported type for file %q", targetFile)
 			}
 
 			if hdr.Typeflag == tar.TypeDir {
-				err = os.Mkdir(targetFile, 0o755)
+				err = os.MkdirAll(targetFile, 0o755)
 				if err != nil {
 					return fmt.Errorf("Failed to create target directory %q: %w", targetFile, err)
 				}
@@ -286,10 +302,10 @@ func extractTar(tarReader *tar.Reader, destDir string) (extractedFiles map[strin
 			}
 
 			if n != hdr.Size {
-				return fmt.Errorf("Size missmatch for %q, wrote %d, expected %d bytes", hdr.Name, n, hdr.Size)
+				return fmt.Errorf("Size missmatch for %q, wrote %d, expected %d bytes", sourceFile, n, hdr.Size)
 			}
 
-			extractedFiles[hdr.Name] = struct{}{}
+			extractedFiles[sourceFile] = struct{}{}
 
 			return nil
 		}()
@@ -302,17 +318,28 @@ func extractTar(tarReader *tar.Reader, destDir string) (extractedFiles map[strin
 }
 
 func readUpdateJSONAndChangelog(updateJSONBody []byte, extractedFiles map[string]struct{}) (*provisioning.Update, error) {
-	updateManifest := &provisioning.Update{
-		Status: api.UpdateStatusUnknown,
-	}
+	updateManifest := Update{}
 
-	err := json.Unmarshal(updateJSONBody, updateManifest)
+	err := json.Unmarshal(updateJSONBody, &updateManifest)
 	if err != nil {
 		return nil, fmt.Errorf(`Invalid archive, failed to read "update.sjson": %w`, err)
 	}
 
 	updateManifest.Origin += originSuffix
-	updateManifest.UUID = uuidFromUpdate(*updateManifest)
+
+	update := &provisioning.Update{
+		Format:      updateManifest.Format,
+		Origin:      updateManifest.Origin,
+		PublishedAt: updateManifest.PublishedAt,
+		Severity:    updateManifest.Severity,
+		Channels:    []string{config.GetUpdates().UpdatesDefaultChannel},
+		Version:     updateManifest.Version,
+		URL:         updateManifest.URL,
+
+		UpstreamChannels: updateManifest.Channels,
+		Status:           api.UpdateStatusUnknown,
+		UUID:             uuidFromUpdate(updateManifest),
+	}
 
 	// Process files from manifest, same logic as in updateserver.GetLatest.
 	files := make(provisioning.UpdateFiles, 0, len(updateManifest.Files))
@@ -333,12 +360,12 @@ func readUpdateJSONAndChangelog(updateJSONBody []byte, extractedFiles map[string
 		files = append(files, fileEntry)
 	}
 
-	updateManifest.Files = files
+	update.Files = files
 
 	delete(extractedFiles, "update.sjson")
 	delete(extractedFiles, "update.json")
 
-	return updateManifest, nil
+	return update, nil
 }
 
 func verifyUpdateFiles(ctx context.Context, destDir string, updateManifest *provisioning.Update, extractedFiles map[string]struct{}) error {
