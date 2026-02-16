@@ -14,5 +14,6 @@ Server </reference/server>
 Settings </reference/settings>
 Token </reference/token>
 Update </reference/update>
+Update channel </reference/channel>
 Filtering </reference/filters>
 ```
