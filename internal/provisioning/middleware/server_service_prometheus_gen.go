@@ -331,7 +331,7 @@ func (_d ServerServiceWithPrometheus) SyncCluster(ctx context.Context, clusterNa
 }
 
 // Update implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) Update(ctx context.Context, server provisioning.Server, updateSystem bool) (err error) {
+func (_d ServerServiceWithPrometheus) Update(ctx context.Context, server provisioning.Server, force bool, updateSystem bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -341,7 +341,7 @@ func (_d ServerServiceWithPrometheus) Update(ctx context.Context, server provisi
 
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Update", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.Update(ctx, server, updateSystem)
+	return _d.base.Update(ctx, server, force, updateSystem)
 }
 
 // UpdateSystemByName implements provisioning.ServerService.
