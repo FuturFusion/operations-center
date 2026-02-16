@@ -1558,7 +1558,7 @@ func TestClusterService_Create(t *testing.T) {
 					server, err := queue.Pop(t, &tc.serverSvcGetByName)
 					return server, err
 				},
-				UpdateFunc: func(ctx context.Context, server provisioning.Server, updateSystem bool) error {
+				UpdateFunc: func(ctx context.Context, server provisioning.Server, force bool, updateSystem bool) error {
 					return tc.serverSvcUpdateErr
 				},
 				UpdateSystemUpdateFunc: func(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) error {
@@ -2070,12 +2070,12 @@ func TestClusterService_GetByName(t *testing.T) {
 
 func TestClusterService_Update(t *testing.T) {
 	tests := []struct {
-		name                              string
-		cluster                           provisioning.Cluster
-		repoUpdateErr                     error
-		serverSvcGetAllNamesWithFilter    []string
-		serverSvcGetAllNamesWithFilterErr error
-		serverSvcUpdateSystemUpdateErr    error
+		name                         string
+		cluster                      provisioning.Cluster
+		repoUpdateErr                error
+		serverSvcGetAllWithFilter    []provisioning.Server
+		serverSvcGetAllWithFilterErr error
+		serverSvcUpdateErr           error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -2086,7 +2086,14 @@ func TestClusterService_Update(t *testing.T) {
 				ConnectionURL: "http://one/",
 				Channel:       "stable",
 			},
-			serverSvcGetAllNamesWithFilter: []string{"one", "two"},
+			serverSvcGetAllWithFilter: []provisioning.Server{
+				{
+					Name: "one",
+				},
+				{
+					Name: "two",
+				},
+			},
 
 			assertErr: require.NoError,
 		},
@@ -2123,7 +2130,7 @@ func TestClusterService_Update(t *testing.T) {
 				ConnectionURL: "http://one/",
 				Channel:       "stable",
 			},
-			serverSvcGetAllNamesWithFilterErr: boom.Error,
+			serverSvcGetAllWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -2135,8 +2142,15 @@ func TestClusterService_Update(t *testing.T) {
 				ConnectionURL: "http://one/",
 				Channel:       "stable",
 			},
-			serverSvcGetAllNamesWithFilter: []string{"one", "two"},
-			serverSvcUpdateSystemUpdateErr: boom.Error,
+			serverSvcGetAllWithFilter: []provisioning.Server{
+				{
+					Name: "one",
+				},
+				{
+					Name: "two",
+				},
+			},
+			serverSvcUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -2152,11 +2166,11 @@ func TestClusterService_Update(t *testing.T) {
 			}
 
 			serverSvc := &serviceMock.ServerServiceMock{
-				GetAllNamesWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) ([]string, error) {
-					return tc.serverSvcGetAllNamesWithFilter, tc.serverSvcGetAllNamesWithFilterErr
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.serverSvcGetAllWithFilter, tc.serverSvcGetAllWithFilterErr
 				},
-				UpdateSystemUpdateFunc: func(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) error {
-					return tc.serverSvcUpdateSystemUpdateErr
+				UpdateFunc: func(ctx context.Context, server provisioning.Server, force, updateSystem bool) error {
+					return tc.serverSvcUpdateErr
 				},
 			}
 

@@ -1256,10 +1256,12 @@ func TestServerService_Update(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
-		name             string
-		server           provisioning.Server
-		repoUpdateErr    error
-		repoGetByNameErr error
+		name                string
+		argForce            bool
+		server              provisioning.Server
+		repoUpdateErr       error
+		repoGetByNameServer *provisioning.Server
+		repoGetByNameErr    error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -1275,6 +1277,10 @@ one
 -----END CERTIFICATE-----
 `,
 				Status:  api.ServerStatusReady,
+				Channel: "stable",
+			},
+			repoGetByNameServer: &provisioning.Server{
+				Name:    "one",
 				Channel: "stable",
 			},
 
@@ -1301,6 +1307,51 @@ one
 			},
 		},
 		{
+			name:     "error - repo.GetByName - without force",
+			argForce: false,
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+			},
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:     "error - channel update for clustered server",
+			argForce: false,
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+			},
+			repoGetByNameServer: &provisioning.Server{
+				Name:    "one",
+				Cluster: ptr.To("one"),
+				Channel: "testing",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Update of channel not allowed for clustered server "one"`)
+			},
+		},
+		{
 			name: "error - repo.UpdateByID",
 			server: provisioning.Server{
 				Name:          "one",
@@ -1314,12 +1365,17 @@ one
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
+			repoGetByNameServer: &provisioning.Server{
+				Name:    "one",
+				Channel: "stable",
+			},
 			repoUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - repo.GetByName", // UpdateSystemUpdate
+			name:     "error - repo.GetByName - force", // UpdateSystemUpdate
+			argForce: true,
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
@@ -1346,7 +1402,7 @@ one
 					return tc.repoUpdateErr
 				},
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
-					return &tc.server, tc.repoGetByNameErr
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
 				},
 			}
 
@@ -1376,7 +1432,7 @@ one
 			)
 
 			// Run test
-			err := serverSvc.Update(t.Context(), tc.server, true)
+			err := serverSvc.Update(t.Context(), tc.server, tc.argForce, true)
 
 			// Assert
 			tc.assertErr(t, err)

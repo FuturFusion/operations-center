@@ -346,7 +346,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 
 		// Update Server records in the repo.
 		for _, server := range servers {
-			err = s.serverSvc.Update(ctx, server, true)
+			err = s.serverSvc.Update(ctx, server, true, true)
 			if err != nil {
 				return err
 			}
@@ -602,7 +602,7 @@ func (s clusterService) Update(ctx context.Context, newCluster Cluster) error {
 		}
 
 		// Get servers of cluster and update "channel" to same value as cluster.
-		servers, err := s.serverSvc.GetAllNamesWithFilter(ctx, ServerFilter{
+		servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
 			Cluster: &newCluster.Name,
 		})
 		if err != nil {
@@ -610,15 +610,10 @@ func (s clusterService) Update(ctx context.Context, newCluster Cluster) error {
 		}
 
 		for _, server := range servers {
-			err = s.serverSvc.UpdateSystemUpdate(ctx, server, incusosapi.SystemUpdate{
-				Config: incusosapi.SystemUpdateConfig{
-					AutoReboot:     false,
-					Channel:        newCluster.Channel,
-					CheckFrequency: "never",
-				},
-			})
+			server.Channel = newCluster.Channel
+			err = s.serverSvc.Update(ctx, server, true, true)
 			if err != nil {
-				return err
+				return fmt.Errorf("Failed to update member %q of cluster %q: %w", server.Name, newCluster.Name, err)
 			}
 		}
 

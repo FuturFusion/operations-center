@@ -382,31 +382,46 @@ func availableVersionGreaterThan(currentVersion string, availableVersion string)
 
 // Update writes the new server state to the DB and pushes the changed
 // settings to the system as well, if updateSystem argument is set to true.
-func (s *serverService) Update(ctx context.Context, server Server, updateSystem bool) error {
+func (s *serverService) Update(ctx context.Context, server Server, force bool, updateSystem bool) error {
 	err := server.Validate()
 	if err != nil {
 		return fmt.Errorf("Failed to validate server for update: %w", err)
 	}
 
-	err = s.repo.Update(ctx, server)
-	if err != nil {
-		return fmt.Errorf("Failed to update server %q: %w", server.Name, err)
-	}
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		if !force {
+			currentServer, err := s.repo.GetByName(ctx, server.Name)
+			if err != nil {
+				return fmt.Errorf("Failed to get server %q for update: %w", server.Name, err)
+			}
 
-	if !updateSystem {
+			if currentServer.Cluster != nil && currentServer.Channel != server.Channel {
+				return fmt.Errorf("Update of channel not allowed for clustered server %q: %w", server.Name, domain.ErrOperationNotPermitted)
+			}
+		}
+
+		err = s.repo.Update(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to update server %q: %w", server.Name, err)
+		}
+
+		if !updateSystem {
+			return nil
+		}
+
+		err = s.UpdateSystemUpdate(ctx, server.Name, incusosapi.SystemUpdate{
+			Config: incusosapi.SystemUpdateConfig{
+				AutoReboot:     false,
+				Channel:        server.Channel,
+				CheckFrequency: "never",
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("Failed to update system update configuration for server %q: %w", server.Name, err)
+		}
+
 		return nil
-	}
-
-	err = s.UpdateSystemUpdate(ctx, server.Name, incusosapi.SystemUpdate{
-		Config: incusosapi.SystemUpdateConfig{
-			Channel: server.Channel,
-		},
 	})
-	if err != nil {
-		return fmt.Errorf("Failed to update system update configuration for server %q: %w", server.Name, err)
-	}
-
-	return nil
 }
 
 func (s *serverService) UpdateSystemNetwork(ctx context.Context, name string, systemNetwork ServerSystemNetwork) (err error) {
@@ -431,7 +446,7 @@ func (s *serverService) UpdateSystemNetwork(ctx context.Context, name string, sy
 
 		updatedServer.LastSeen = s.now()
 
-		err = s.Update(ctx, *updatedServer, false)
+		err = s.Update(ctx, *updatedServer, true, false)
 		if err != nil {
 			return fmt.Errorf("Failed to update system network: %w", err)
 		}
@@ -498,7 +513,7 @@ func (s *serverService) UpdateSystemStorage(ctx context.Context, name string, sy
 
 		updatedServer.LastSeen = s.now()
 
-		err = s.Update(ctx, *updatedServer, false)
+		err = s.Update(ctx, *updatedServer, true, false)
 		if err != nil {
 			return fmt.Errorf("Failed to update system network: %w", err)
 		}
