@@ -31,7 +31,14 @@ type ErrRetryable struct {
 	innerErr error
 }
 
+// NewRetryableErr wraps the provided error as a ErrRetryable, if the
+// passed err is none nil. If the passed err is nil, this function does
+// not wrap and returns nil.
 func NewRetryableErr(err error) error {
+	if err == nil {
+		return nil
+	}
+
 	return ErrRetryable{
 		innerErr: err,
 	}
