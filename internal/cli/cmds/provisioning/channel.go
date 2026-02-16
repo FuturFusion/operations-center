@@ -89,7 +89,7 @@ func (c *cmdChannelList) validateArgsAndFlags(cmd *cobra.Command, args []string)
 }
 
 func (c *cmdChannelList) run(cmd *cobra.Command, args []string) error {
-	channels, err := c.ocClient.GetUpdateExposechannels(cmd.Context())
+	channels, err := c.ocClient.GetChannels(cmd.Context())
 	if err != nil {
 		return err
 	}
