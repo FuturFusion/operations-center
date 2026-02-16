@@ -66,3 +66,5 @@ certificates are available.
 | `signature_verification_root_ca` | Certificate used to verify the signature of updates provided by `source` | string   | root certificate used to sign updates from default `source` |
 | `filter_expression`              | Filter expression to filter updates, see [update] for details            | string   | `"stable" in upstream_channels`                             |
 | `file_filter_expression`         | Filter expression to filter update files, see [update] for details       | string   | `applies_to_architecture(architecture, "x86_64")`           |
+| `updates_default_channel`        | Default channel for updates, see [channel] for details                   | string   | `stable`                                                    |
+| `server_default_channel`         | Default channel for servers/clusters, see [channel] for details          | string   | `stable`                                                    |

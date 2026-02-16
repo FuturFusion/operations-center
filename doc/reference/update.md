@@ -43,6 +43,9 @@ They allow filtering of updates based on their metadata.
 The following properties are available during filtering as well, but they are
 not really useful as filter criteria and are only listed here for completeness.
 
+* `uuid`: Unique identifier of the update
+* `format`: Version of the update index file format, currently `1.0`
+* `channels`: Channels the update is part of, during retrieval of the update this is always the default channel
 * `changelog`: Content of the changelog
 * `update_status`: state from Operations Center point of view, if the update is `ready` or `pending`; when the filtering is applied, the updates are never `ready`
 * `url`: Source URL of the update
