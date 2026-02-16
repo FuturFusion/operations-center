@@ -2725,10 +2725,12 @@ func TestServerService_Rename(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
-		name          string
-		oldName       string
-		newName       string
-		repoRenameErr error
+		name                string
+		oldName             string
+		newName             string
+		repoGetByNameServer *provisioning.Server
+		repoGetByNameErr    error
+		repoRenameErr       error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -2736,6 +2738,9 @@ func TestServerService_Rename(t *testing.T) {
 			name:    "success",
 			oldName: "one",
 			newName: "one-new",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+			},
 
 			assertErr: require.NoError,
 		},
@@ -2768,9 +2773,33 @@ func TestServerService_Rename(t *testing.T) {
 			},
 		},
 		{
-			name:          "error - repo.GetByName",
-			oldName:       "one",
-			newName:       "one-new",
+			name:             "error - repo.GetByName",
+			oldName:          "one",
+			newName:          "two",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - server is clustered",
+			oldName: "one",
+			newName: "two",
+			repoGetByNameServer: &provisioning.Server{
+				Name:    "one",
+				Cluster: ptr.To("one"), // server already clustered
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+			},
+		},
+		{
+			name:    "error - repo.Rename",
+			oldName: "one",
+			newName: "one-new",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+			},
 			repoRenameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -2781,6 +2810,9 @@ func TestServerService_Rename(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
 				RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 					require.Equal(t, tc.oldName, oldName)
 					require.Equal(t, tc.newName, newName)
