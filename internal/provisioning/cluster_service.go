@@ -151,7 +151,8 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 			return fmt.Errorf("Cluster with name %q already exists: %w", newCluster.Name, domain.ErrOperationNotPermitted)
 		}
 
-		// Validate all listed servers are already known.
+		// Validate all listed servers are already known and do have configuration
+		// valid for clustering.
 		for _, serverName := range newCluster.ServerNames {
 			server, err := s.serverSvc.GetByName(ctx, serverName)
 			if err != nil {
@@ -164,6 +165,14 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 
 			if server.Status != api.ServerStatusReady {
 				return fmt.Errorf("Server %q is not in ready state and can therefore not be used for clustering: %w", serverName, domain.ErrOperationNotPermitted)
+			}
+
+			if newCluster.Channel != server.Channel {
+				return fmt.Errorf("Server %q update channel %q does not match channel requested for cluster %q: %w", server.Name, server.Channel, newCluster.Channel, domain.ErrOperationNotPermitted)
+			}
+
+			if ptr.From(server.VersionData.NeedsUpdate) || ptr.From(server.VersionData.NeedsReboot) || ptr.From(server.VersionData.InMaintenance) {
+				return fmt.Errorf("Server %q not ready to be clustered (needs update: %t, needs reboot: %t, in maintenance: %t): %w", server.Name, ptr.From(server.VersionData.NeedsUpdate), ptr.From(server.VersionData.NeedsReboot), ptr.From(server.VersionData.InMaintenance), domain.ErrOperationNotPermitted)
 			}
 
 			servers = append(servers, *server)
@@ -337,7 +346,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 
 		// Update Server records in the repo.
 		for _, server := range servers {
-			err = s.serverSvc.Update(ctx, server, true)
+			err = s.serverSvc.Update(ctx, server, true, true)
 			if err != nil {
 				return err
 			}
@@ -593,7 +602,7 @@ func (s clusterService) Update(ctx context.Context, newCluster Cluster) error {
 		}
 
 		// Get servers of cluster and update "channel" to same value as cluster.
-		servers, err := s.serverSvc.GetAllNamesWithFilter(ctx, ServerFilter{
+		servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
 			Cluster: &newCluster.Name,
 		})
 		if err != nil {
@@ -601,15 +610,10 @@ func (s clusterService) Update(ctx context.Context, newCluster Cluster) error {
 		}
 
 		for _, server := range servers {
-			err = s.serverSvc.UpdateSystemUpdate(ctx, server, incusosapi.SystemUpdate{
-				Config: incusosapi.SystemUpdateConfig{
-					AutoReboot:     false,
-					Channel:        newCluster.Channel,
-					CheckFrequency: "never",
-				},
-			})
+			server.Channel = newCluster.Channel
+			err = s.serverSvc.Update(ctx, server, true, true)
 			if err != nil {
-				return err
+				return fmt.Errorf("Failed to update member %q of cluster %q: %w", server.Name, newCluster.Name, err)
 			}
 		}
 

@@ -17,7 +17,7 @@ type ServerService interface {
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetAllNamesWithFilter(ctx context.Context, filter ServerFilter) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Server, error)
-	Update(ctx context.Context, server Server, updateSystem bool) error
+	Update(ctx context.Context, server Server, force bool, updateSystem bool) error
 	UpdateSystemNetwork(ctx context.Context, name string, networkConfig ServerSystemNetwork) error
 	UpdateSystemStorage(ctx context.Context, name string, networkConfig ServerSystemStorage) error
 	GetSystemProvider(ctx context.Context, name string) (ServerSystemProvider, error)
