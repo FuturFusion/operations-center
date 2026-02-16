@@ -171,6 +171,10 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 				return fmt.Errorf("Server %q update channel %q does not match channel requested for cluster %q: %w", server.Name, server.Channel, newCluster.Channel, domain.ErrOperationNotPermitted)
 			}
 
+			if ptr.From(server.VersionData.NeedsUpdate) || ptr.From(server.VersionData.NeedsReboot) || ptr.From(server.VersionData.InMaintenance) {
+				return fmt.Errorf("Server %q not ready to be clustered (needs update: %t, needs reboot: %t, in maintenance: %t): %w", server.Name, ptr.From(server.VersionData.NeedsUpdate), ptr.From(server.VersionData.NeedsReboot), ptr.From(server.VersionData.InMaintenance), domain.ErrOperationNotPermitted)
+			}
+
 			servers = append(servers, *server)
 		}
 

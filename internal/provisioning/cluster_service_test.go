@@ -260,6 +260,33 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
+			name: "error - server requires update",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate: ptr.To(true), // server requires update
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Server "server1" not ready to be clustered (needs update: true, needs reboot: false, in maintenance: false)`)
+			},
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
 			name: "error - repo.Create",
 			cluster: provisioning.Cluster{
 				Name:        "one",
