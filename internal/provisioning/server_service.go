@@ -1029,6 +1029,13 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 			return fmt.Errorf("Failed to get version data from server %q: %w", server.Name, err)
 		}
 
+		if server.VersionData.UpdateChannel != versionData.UpdateChannel {
+			log.WarnContext(ctx, "update channel reported by server does not match expected update channel",
+				slog.String("reported_channel", versionData.UpdateChannel),
+				slog.String("expected_channel", server.VersionData.UpdateChannel),
+			)
+		}
+
 		// For now, we ignore the error and we are fine to persist type "unknown",
 		// if we are not able to determine the server type.
 		serverType, _ = s.client.GetServerType(ctx, server)

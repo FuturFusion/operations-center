@@ -2960,6 +2960,7 @@ func TestServerService_PollServers(t *testing.T) {
 		clientPing                  []queue.Item[struct{}]
 		clientGetResourcesErr       error
 		clientGetOSDataErr          error
+		clientGetVersionData        api.ServerVersionData
 		clientGetVersionDataErr     error
 		repoGetByNameServer         provisioning.Server
 		repoGetByNameErr            error
@@ -3313,7 +3314,7 @@ foobar
 			assertLog: logEmpty,
 		},
 		{
-			name: "error - client GetOSData",
+			name: "error - client GetVersionData",
 			repoGetAllWithFilterServers: provisioning.Servers{
 				provisioning.Server{
 					Name:   "pending",
@@ -3327,6 +3328,25 @@ foobar
 
 			assertErr: boom.ErrorIs,
 			assertLog: logEmpty,
+		},
+		{
+			name: "error - update channel mismatch",
+			repoGetAllWithFilterServers: provisioning.Servers{
+				provisioning.Server{
+					Name:    "pending",
+					Status:  api.ServerStatusPending,
+					Channel: "stable",
+				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				{},
+			},
+			clientGetVersionData: api.ServerVersionData{
+				UpdateChannel: "testing", // does not match expected channel
+			},
+
+			assertErr: require.NoError,
+			assertLog: logMatch("update channel reported by server does not match expected update channel"),
 		},
 		{
 			name: "error - GetByName",
@@ -3380,7 +3400,7 @@ foobar
 					return api.OSData{}, tc.clientGetOSDataErr
 				},
 				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
-					return api.ServerVersionData{}, tc.clientGetVersionDataErr
+					return tc.clientGetVersionData, tc.clientGetVersionDataErr
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
 					return api.ServerTypeIncus, nil
