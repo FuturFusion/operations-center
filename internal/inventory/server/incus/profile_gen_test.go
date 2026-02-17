@@ -50,6 +50,25 @@ func profileClientTestCases(t *testing.T) []methodTestSet {
 					wantPaths: []string{"GET /1.0/profiles?all-projects=true"},
 				},
 				{
+					name: "error - not found",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusNotFound,
+								responseBody: mustJSONMarshal(t, api.ResponseRaw{
+									Type:       api.ErrorResponse,
+									StatusCode: http.StatusNotFound,
+								},
+								),
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/profiles?all-projects=true"},
+				},
+				{
 					name: "error - unexpected http status code",
 					response: []queue.Item[response]{
 						{

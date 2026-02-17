@@ -17,6 +17,10 @@ func (s serverClient) Get{{ .PluralName | pascalcase }}(ctx context.Context, end
 	}
 
 	server{{ .PluralName | pascalcase }}, err := client.{{ .IncusGetAllMethod }}({{ if eq .IncusGetAllMethod "GetInstancesFullAllProjects" }}incusapi.{{ .Name | pascalcase }}TypeAny{{ end }}{{ if .HasParent }}{{ .Name | camelcase }}Name{{ end }})
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return nil, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return nil, err
 	}

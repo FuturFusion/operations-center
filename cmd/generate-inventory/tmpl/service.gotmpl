@@ -444,7 +444,7 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 {{- end }}
 
 		retrieved{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, endpoint, {{ .ParentName | camelcase }}.Name)
-		if err != nil {
+		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
