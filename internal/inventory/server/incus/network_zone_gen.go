@@ -19,6 +19,10 @@ func (s serverClient) GetNetworkZones(ctx context.Context, endpoint provisioning
 	}
 
 	serverNetworkZones, err := client.GetNetworkZonesAllProjects()
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return nil, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return nil, err
 	}

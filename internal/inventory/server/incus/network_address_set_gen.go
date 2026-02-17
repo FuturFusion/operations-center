@@ -19,6 +19,10 @@ func (s serverClient) GetNetworkAddressSets(ctx context.Context, endpoint provis
 	}
 
 	serverNetworkAddressSets, err := client.GetNetworkAddressSetsAllProjects()
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return nil, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return nil, err
 	}

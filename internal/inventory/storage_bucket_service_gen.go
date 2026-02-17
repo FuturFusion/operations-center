@@ -389,7 +389,7 @@ func (s storageBucketService) SyncCluster(ctx context.Context, name string) erro
 		}
 
 		retrievedStorageBuckets, err := s.storageBucketClient.GetStorageBuckets(ctx, endpoint, storagePool.Name)
-		if err != nil {
+		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 

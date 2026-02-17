@@ -19,6 +19,10 @@ func (s serverClient) GetStoragePools(ctx context.Context, endpoint provisioning
 	}
 
 	serverStoragePools, err := client.GetStoragePools()
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return nil, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return nil, err
 	}

@@ -19,6 +19,10 @@ func (s serverClient) GetInstances(ctx context.Context, endpoint provisioning.En
 	}
 
 	serverInstances, err := client.GetInstancesFullAllProjects(incusapi.InstanceTypeAny)
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return nil, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return nil, err
 	}

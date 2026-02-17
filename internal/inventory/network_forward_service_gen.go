@@ -384,7 +384,7 @@ func (s networkForwardService) SyncCluster(ctx context.Context, name string) err
 		}
 
 		retrievedNetworkForwards, err := s.networkForwardClient.GetNetworkForwards(ctx, endpoint, network.Name)
-		if err != nil {
+		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 

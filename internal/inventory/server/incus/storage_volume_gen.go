@@ -19,6 +19,10 @@ func (s serverClient) GetStorageVolumes(ctx context.Context, endpoint provisioni
 	}
 
 	serverStorageVolumes, err := client.GetStoragePoolVolumesFullAllProjects(storageVolumeName)
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return nil, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return nil, err
 	}

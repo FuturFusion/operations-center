@@ -19,6 +19,10 @@ func (s serverClient) GetImages(ctx context.Context, endpoint provisioning.Endpo
 	}
 
 	serverImages, err := client.GetImagesAllProjects()
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return nil, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return nil, err
 	}

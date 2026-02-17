@@ -391,7 +391,7 @@ func (s storageVolumeService) SyncCluster(ctx context.Context, name string) erro
 		}
 
 		retrievedStorageVolumes, err := s.storageVolumeClient.GetStorageVolumes(ctx, endpoint, storagePool.Name)
-		if err != nil {
+		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 

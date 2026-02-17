@@ -384,7 +384,7 @@ func (s networkPeerService) SyncCluster(ctx context.Context, name string) error 
 		}
 
 		retrievedNetworkPeers, err := s.networkPeerClient.GetNetworkPeers(ctx, endpoint, network.Name)
-		if err != nil {
+		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 

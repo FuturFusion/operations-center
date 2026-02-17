@@ -19,6 +19,10 @@ func (s serverClient) GetNetworkPeers(ctx context.Context, endpoint provisioning
 	}
 
 	serverNetworkPeers, err := client.GetNetworkPeers(networkPeerName)
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return nil, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return nil, err
 	}
