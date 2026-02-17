@@ -51,7 +51,7 @@ func TestTerraform_Init(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 
-			tf, err := terraform.New(tmpDir, tmpDir, terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
+			tf, err := terraform.New(tmpDir, terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
 				return tc.terraformInitErr
 			}))
 			require.NoError(t, err)
@@ -150,17 +150,18 @@ cluster_groups:
 
 			fileContains(t, filepath.Join(tmpDir, "servercerts", tc.clusterName+".crt"), "cluster certificate")
 
-			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "data_cluster.tf"))
+			clusterConfigsDir := filepath.Join(tmpDir, "cluster-configs")
+			require.FileExists(t, filepath.Join(clusterConfigsDir, tc.clusterName, "data_cluster.tf"))
 
-			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "providers.tf")
-			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_certificates.tf")
-			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_cluster_groups.tf")
-			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_networks.tf")
-			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_profiles.tf")
-			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_projects.tf")
-			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_server.tf")
-			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_storage_pools.tf")
-			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_storage_volumes.tf")
+			fileMatch(t, filepath.Join(clusterConfigsDir, tc.clusterName), "providers.tf")
+			fileMatch(t, filepath.Join(clusterConfigsDir, tc.clusterName), "resources_certificates.tf")
+			fileMatch(t, filepath.Join(clusterConfigsDir, tc.clusterName), "resources_cluster_groups.tf")
+			fileMatch(t, filepath.Join(clusterConfigsDir, tc.clusterName), "resources_networks.tf")
+			fileMatch(t, filepath.Join(clusterConfigsDir, tc.clusterName), "resources_profiles.tf")
+			fileMatch(t, filepath.Join(clusterConfigsDir, tc.clusterName), "resources_projects.tf")
+			fileMatch(t, filepath.Join(clusterConfigsDir, tc.clusterName), "resources_server.tf")
+			fileMatch(t, filepath.Join(clusterConfigsDir, tc.clusterName), "resources_storage_pools.tf")
+			fileMatch(t, filepath.Join(clusterConfigsDir, tc.clusterName), "resources_storage_volumes.tf")
 		})
 	}
 }
@@ -234,7 +235,7 @@ func TestTerraform_Apply(t *testing.T) {
 			assertPostProcessedFiles: func(t *testing.T, dir, clusterName string) {
 				t.Helper()
 
-				fileContains(t, filepath.Join(dir, clusterName, "providers.tf"),
+				fileContains(t, filepath.Join(dir, "cluster-configs", clusterName, "providers.tf"),
 					`"https://localhost:8443"`,
 				)
 			},
@@ -299,9 +300,9 @@ func TestTerraform_Apply(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			clusterName := "foobar"
-			tc.setup(t, filepath.Join(tmpDir, clusterName))
+			tc.setup(t, filepath.Join(tmpDir, "cluster-configs", clusterName))
 
-			tf, err := terraform.New(tmpDir, tmpDir, terraform.WithTerraformApplyFunc(func(ctx context.Context, configDir string) error {
+			tf, err := terraform.New(tmpDir, terraform.WithTerraformApplyFunc(func(ctx context.Context, configDir string) error {
 				return tc.terraformApplyErr
 			}))
 			require.NoError(t, err)
