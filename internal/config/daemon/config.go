@@ -268,22 +268,21 @@ func GetSettings() api.SystemSettings {
 }
 
 func UpdateSettings(ctx context.Context, cfg api.SystemSettingsPut) error {
+	globalConfigInstanceMu.Lock()
+	defer globalConfigInstanceMu.Unlock()
+
 	newCfg := globalConfigInstance
 	newCfg.Settings.SystemSettingsPut = cfg
 
-	currentCfg := GetSettings()
+	isLogLevelChanged := globalConfigInstance.Settings.LogLevel != newCfg.Settings.LogLevel
 
-	isLogLevelChanged := currentCfg.LogLevel != newCfg.Settings.LogLevel
-
-	globalConfigInstanceMu.Lock()
 	err := validateAndSave(newCfg)
-	globalConfigInstanceMu.Unlock()
 	if err != nil {
 		return err
 	}
 
 	if isLogLevelChanged {
-		err = logger.SetLogLevel(logger.ParseLevel(newCfg.Settings.LogLevel))
+		err = logger.SetLogLevel(logger.ParseLevel(globalConfigInstance.Settings.LogLevel))
 		if err != nil {
 			return err
 		}
