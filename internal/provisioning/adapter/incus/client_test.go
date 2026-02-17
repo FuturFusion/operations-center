@@ -2336,6 +2336,7 @@ func TestClientServer(t *testing.T) {
 						Name:               "server01",
 						ConnectionURL:      server.URL,
 						Certificate:        string(serverCert),
+						Cluster:            ptr.To("cluster"),
 						ClusterCertificate: ptr.To(string(serverCert)),
 						OSData: api.OSData{
 							Network: incusosapi.SystemNetwork{

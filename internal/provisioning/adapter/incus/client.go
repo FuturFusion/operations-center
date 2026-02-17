@@ -225,7 +225,7 @@ func (c client) GetVersionData(ctx context.Context, server provisioning.Server) 
 		}
 
 		inMaintenance := false
-		if applicationName == string(images.UpdateFileComponentIncus) {
+		if applicationName == string(images.UpdateFileComponentIncus) && server.Cluster != nil {
 			member, _, err := client.GetClusterMember(server.Name)
 			if err != nil {
 				return api.ServerVersionData{}, fmt.Errorf("Failed to get Incus cluster member details for %q: %w", server.Name, err)
