@@ -13,9 +13,10 @@ import (
 )
 
 type serverClient struct {
-	clientCert string
-	clientKey  string
-	clientCA   string
+	clientCert    string
+	clientKey     string
+	clientCA      string
+	skipGetServer bool
 }
 
 type transportWrapper struct {
@@ -30,11 +31,25 @@ func (t *transportWrapper) RoundTrip(req *http.Request) (*http.Response, error) 
 	return t.transport.RoundTrip(req)
 }
 
-func New(clientCert string, clientKey string) inventory.ServerClient {
-	return serverClient{
+type Option func(c *serverClient)
+
+func WithSkipGetServer(skipGetServer bool) Option {
+	return func(s *serverClient) {
+		s.skipGetServer = skipGetServer
+	}
+}
+
+func New(clientCert string, clientKey string, opts ...Option) inventory.ServerClient {
+	c := serverClient{
 		clientCert: clientCert,
 		clientKey:  clientKey,
 	}
+
+	for _, opt := range opts {
+		opt(&c)
+	}
+
+	return c
 }
 
 func (s serverClient) getClient(ctx context.Context, endpoint provisioning.Endpoint) (incus.InstanceServer, error) {
@@ -48,7 +63,7 @@ func (s serverClient) getClient(ctx context.Context, endpoint provisioning.Endpo
 		TLSClientKey:  s.clientKey,
 		TLSServerCert: endpoint.GetCertificate(),
 		TLSCA:         s.clientCA,
-		SkipGetServer: true,
+		SkipGetServer: s.skipGetServer,
 		TransportWrapper: func(t *http.Transport) incus.HTTPTransporter {
 			if endpoint.GetCertificate() == "" {
 				t.TLSClientConfig.ServerName = serverName
