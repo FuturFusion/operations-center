@@ -71,7 +71,7 @@ func WithOIDCTokensFile(oidcTokensFilename string) Option {
 
 func New(addr string, opts ...Option) (OperationsCenterClient, error) {
 	c := OperationsCenterClient{
-		baseURL: addr,
+		baseURL: strings.TrimSuffix(addr, "/"),
 	}
 
 	for _, opt := range opts {
