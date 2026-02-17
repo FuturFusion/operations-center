@@ -11,12 +11,17 @@ func networkWithSyncFilter(network inventory.Network) bool {
 }
 
 func networkForwardWithParentFilter(network incusapi.Network) bool {
-	switch network.Type {
-	case "macvlan", "physical":
+	if !network.Managed {
 		return true
 	}
 
-	return !network.Managed
+	switch network.Type {
+	case "ovn", "bridge":
+		return false
+
+	default:
+		return true
+	}
 }
 
 func networkLoadBalancerWithParentFilter(network incusapi.Network) bool {
@@ -24,8 +29,7 @@ func networkLoadBalancerWithParentFilter(network incusapi.Network) bool {
 		return true
 	}
 
-	switch network.Type {
-	case "macvlan", "physical", "bridge":
+	if network.Type != "ovn" {
 		return true
 	}
 
