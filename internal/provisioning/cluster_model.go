@@ -150,7 +150,7 @@ type ClusterProvisioningConfig struct {
 	ClusterEndpoint ClusterEndpoint
 	Servers         []Server
 
-	ApplicationSeedConfig map[string]any
+	Cluster Cluster
 }
 
 type ClusterUpdateMessage struct {

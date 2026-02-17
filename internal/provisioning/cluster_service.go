@@ -371,9 +371,9 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 
 	// Perform post-clustering initialization using provisioner (Terraform).
 	temporaryPath, cleanup, err := s.provisioner.Init(ctx, newCluster.Name, ClusterProvisioningConfig{
-		ClusterEndpoint:       clusterEndpoint,
-		Servers:               servers,
-		ApplicationSeedConfig: newCluster.ApplicationSeedConfig,
+		ClusterEndpoint: clusterEndpoint,
+		Servers:         servers,
+		Cluster:         newCluster,
 	})
 	if err != nil {
 		return newCluster, err
