@@ -5,6 +5,10 @@ body {
   font-family: 'Inter', sans-serif !important;
 }
 
+h5 {
+  font-family: 'Inter', sans-serif !important;
+}
+
 .detail-table-header {
   color: #00000090;
   padding: 8px 0px;

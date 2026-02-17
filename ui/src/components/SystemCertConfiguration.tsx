@@ -22,11 +22,13 @@ const SystemCertConfiguration = () => {
 
   return (
     <>
-      <h5>
-        By default Operations Center uses an automatically generated self-signed
-        TLS certificate. To replace it with a valid certificate, please provide
-        a replacement PEM-encoded X509 certificate and key.
-      </h5>
+      <div className="form-container">
+        <h6>
+          By default Operations Center uses an automatically generated
+          self-signed TLS certificate. To replace it with a valid certificate,
+          please provide a replacement PEM-encoded X509 certificate and key.
+        </h6>
+      </div>
       <SystemCertForm onSubmit={onSubmit} />
     </>
   );
