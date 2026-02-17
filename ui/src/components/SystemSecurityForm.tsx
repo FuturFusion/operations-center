@@ -28,11 +28,13 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
     },
     acme: {
       agree_tos: security?.acme.agree_tos ?? false,
-      ca_url: security?.acme.ca_url ?? "",
-      challenge: security?.acme.challenge ?? "HTTP-01",
+      ca_url:
+        security?.acme.ca_url ||
+        "https://acme-v02.api.letsencrypt.org/directory",
+      challenge: security?.acme.challenge || "HTTP-01",
       email: security?.acme.email ?? "",
       domain: security?.acme.domain ?? "",
-      http_challenge_address: security?.acme.http_challenge_address ?? "",
+      http_challenge_address: security?.acme.http_challenge_address || ":8080",
       provider: security?.acme.provider ?? "",
       provider_environment: security?.acme.provider_environment ?? [],
       provider_resolvers: security?.acme.provider_resolvers ?? [],
@@ -191,8 +193,18 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
           </fieldset>
           <fieldset className="border p-3 mb-3 rounded">
             <legend className="fs-5">Let's Encrypt / ACME</legend>
-            <Form.Group className="mb-3" controlId="agree_tos">
-              <Form.Label>
+            <Form.Group
+              className="mb-3 d-flex align-items-center gap-2"
+              controlId="agree_tos"
+            >
+              <Form.Check
+                type="checkbox"
+                name="acme.agree_tos"
+                checked={formik.values.acme.agree_tos}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+              />
+              <Form.Label className="me-2 mb-0">
                 Agree to ACME{" "}
                 <a
                   href="https://letsencrypt.org/repository/"
@@ -203,13 +215,6 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
                   terms of service
                 </a>
               </Form.Label>
-              <Form.Check
-                type="checkbox"
-                name="acme.agree_tos"
-                checked={formik.values.acme.agree_tos}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-              />
             </Form.Group>
             <Form.Group className="mb-3" controlId="ca_url">
               <Form.Label>CA URL</Form.Label>
