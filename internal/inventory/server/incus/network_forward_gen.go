@@ -19,6 +19,10 @@ func (s serverClient) GetNetworkForwards(ctx context.Context, endpoint provision
 	}
 
 	serverNetworkForwards, err := client.GetNetworkForwards(networkForwardName)
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return nil, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return nil, err
 	}

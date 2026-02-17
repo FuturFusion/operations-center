@@ -19,6 +19,10 @@ func (s serverClient) GetNetworkLoadBalancers(ctx context.Context, endpoint prov
 	}
 
 	serverNetworkLoadBalancers, err := client.GetNetworkLoadBalancers(networkLoadBalancerName)
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return nil, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return nil, err
 	}

@@ -179,3 +179,12 @@ func generateCertChain(t *testing.T, domainName string) (caCert []byte, cert []b
 
 	return caCert, cert, key
 }
+
+func Test_transportWrapper_Transport(t *testing.T) {
+	tr := &http.Transport{}
+	tw := transportWrapper{
+		transport: tr,
+	}
+
+	require.Equal(t, tr, tw.Transport())
+}

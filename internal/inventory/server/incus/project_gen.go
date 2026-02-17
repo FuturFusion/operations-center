@@ -19,6 +19,10 @@ func (s serverClient) GetProjects(ctx context.Context, endpoint provisioning.End
 	}
 
 	serverProjects, err := client.GetProjects()
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return nil, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return nil, err
 	}

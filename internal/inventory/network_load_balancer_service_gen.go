@@ -384,7 +384,7 @@ func (s networkLoadBalancerService) SyncCluster(ctx context.Context, name string
 		}
 
 		retrievedNetworkLoadBalancers, err := s.networkLoadBalancerClient.GetNetworkLoadBalancers(ctx, endpoint, network.Name)
-		if err != nil {
+		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 

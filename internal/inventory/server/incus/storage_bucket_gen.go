@@ -19,6 +19,10 @@ func (s serverClient) GetStorageBuckets(ctx context.Context, endpoint provisioni
 	}
 
 	serverStorageBuckets, err := client.GetStoragePoolBucketsFullAllProjects(storageBucketName)
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return nil, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return nil, err
 	}

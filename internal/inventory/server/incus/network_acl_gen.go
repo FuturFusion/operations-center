@@ -19,6 +19,10 @@ func (s serverClient) GetNetworkACLs(ctx context.Context, endpoint provisioning.
 	}
 
 	serverNetworkACLs, err := client.GetNetworkACLsAllProjects()
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return nil, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return nil, err
 	}

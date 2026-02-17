@@ -74,8 +74,8 @@ func TestClient(t *testing.T) {
 							Value: response{
 								statusCode: http.StatusOK,
 								responseBody: []byte(`{
-  "metadata": {}
-}`),
+		  "metadata": {}
+		}`),
 							},
 						},
 					},
@@ -134,7 +134,7 @@ func TestClient(t *testing.T) {
 					server.StartTLS()
 					defer server.Close()
 
-					client := incus.New(certPEM, keyPEM)
+					client := incus.New(certPEM, keyPEM, incus.WithSkipGetServer(true))
 
 					serverCert := pem.EncodeToMemory(&pem.Block{
 						Type:  "CERTIFICATE",
@@ -167,6 +167,90 @@ func TestClient(t *testing.T) {
 					require.Empty(t, tc.response)
 				})
 			}
+		})
+	}
+}
+
+func TestClient_HasExtension(t *testing.T) {
+	caPool, certPEM, keyPEM := setupCerts(t)
+
+	tests := []struct {
+		name         string
+		argExtension string
+		response     response
+		want         bool
+	}{
+		{
+			name:         "success",
+			argExtension: "foobar",
+			response: response{
+				statusCode: http.StatusOK,
+				responseBody: []byte(`{
+  "metadata": {
+    "api_extensions": [
+      "foobar"
+    ]
+  }
+}`),
+			},
+			want: true,
+		},
+		{
+			name:         "extension not found",
+			argExtension: "foobar",
+			response: response{
+				statusCode: http.StatusOK,
+				responseBody: []byte(`{
+  "metadata": {
+    "api_extensions": []
+  }
+}`),
+			},
+			want: false,
+		},
+		{
+			name:         "error",
+			argExtension: "foobar",
+			response: response{
+				statusCode: http.StatusInternalServerError,
+			},
+			want: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tc.response.statusCode)
+				_, _ = w.Write(tc.response.responseBody)
+			}))
+			server.TLS = &tls.Config{
+				NextProtos: []string{"h2", "http/1.1"},
+				ClientAuth: tls.RequireAndVerifyClientCert,
+				ClientCAs:  caPool,
+			}
+
+			server.StartTLS()
+			defer server.Close()
+
+			client := incus.New(certPEM, keyPEM)
+
+			serverCert := pem.EncodeToMemory(&pem.Block{
+				Type:  "CERTIFICATE",
+				Bytes: server.Certificate().Raw,
+			})
+
+			target := provisioning.Server{
+				ConnectionURL: server.URL,
+				Certificate:   string(serverCert),
+			}
+
+			// Run test
+			got := client.HasExtension(t.Context(), target, tc.argExtension)
+
+			// Assert
+			require.Equal(t, tc.want, got)
 		})
 	}
 }

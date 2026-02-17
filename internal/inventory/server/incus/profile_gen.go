@@ -19,6 +19,10 @@ func (s serverClient) GetProfiles(ctx context.Context, endpoint provisioning.End
 	}
 
 	serverProfiles, err := client.GetProfilesAllProjects()
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return nil, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return nil, err
 	}

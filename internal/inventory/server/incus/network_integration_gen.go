@@ -19,6 +19,10 @@ func (s serverClient) GetNetworkIntegrations(ctx context.Context, endpoint provi
 	}
 
 	serverNetworkIntegrations, err := client.GetNetworkIntegrations()
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return nil, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return nil, err
 	}
