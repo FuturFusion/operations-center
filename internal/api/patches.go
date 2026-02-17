@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"slices"
 	"strings"
 
@@ -35,6 +36,7 @@ Only append to the patches list, never remove entries and never re-order them.
 */
 var patches = []patch{
 	{name: "rename_channels_to_upstream_channels", stage: patchPreSecurityInfrastructure, run: patchRenameChannelsToUpstreamChannels},
+	{name: "remove_var_lib_operations_center_terraform_dirs", stage: patchPreSecurityInfrastructure, run: patchRemoveVarLibOperationCenterTerraformDirs},
 }
 
 type patchRun func(ctx context.Context, name string) error
@@ -138,4 +140,13 @@ func patchRenameChannelsToUpstreamChannels(ctx context.Context, name string) err
 
 	updatesCfg.FilterExpression = strings.ReplaceAll(updatesCfg.FilterExpression, "channels", "upstream_channels")
 	return config.UpdateUpdates(ctx, updatesCfg.SystemUpdatesPut)
+}
+
+func patchRemoveVarLibOperationCenterTerraformDirs(ctx context.Context, name string) error {
+	err := os.RemoveAll("/var/lib/operations-center/servercerts")
+	if err != nil {
+		return err
+	}
+
+	return os.RemoveAll("/var/lib/operations-center/terraform")
 }

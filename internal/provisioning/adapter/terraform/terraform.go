@@ -46,8 +46,8 @@ var terraformProviders = map[string]struct {
 var templatesFS embed.FS
 
 type terraform struct {
-	storageDir    string
-	clientCertDir string
+	storageDir string
+	tmpDir     string
 
 	terraformInitFunc  func(ctx context.Context, configDir string) error
 	terraformApplyFunc func(ctx context.Context, configDir string) error
@@ -81,15 +81,16 @@ var _ provisioning.ClusterProvisioningPort = &terraform{}
 
 type Option func(*terraform)
 
-func New(storageDir string, clientCertDir string, opts ...Option) (terraform, error) {
+func New(tmpDir string, opts ...Option) (terraform, error) {
+	storageDir := filepath.Join(tmpDir, "cluster-configs")
 	err := os.MkdirAll(storageDir, 0o700)
 	if err != nil {
 		return terraform{}, fmt.Errorf("Failed to create directory for terraform provisioner: %w", err)
 	}
 
 	t := terraform{
-		storageDir:    storageDir,
-		clientCertDir: clientCertDir,
+		storageDir: storageDir,
+		tmpDir:     tmpDir,
 
 		incusProviderVersion:  terraformProviders["incus"].minVersion,
 		randomProviderVersion: terraformProviders["random"].minVersion,
@@ -206,7 +207,7 @@ func (t terraform) SeedCertificate(ctx context.Context, clusterName string, cert
 	// Since we override the INCUS_CONF directory with the operations center var dir,
 	// we need to store the server certificates in the "servercerts" folder
 	// as expected by Incus.
-	servercertsDir := filepath.Join(t.clientCertDir, "servercerts")
+	servercertsDir := filepath.Join(t.tmpDir, "servercerts")
 	err := os.MkdirAll(servercertsDir, 0o700)
 	if err != nil {
 		return fmt.Errorf("Failed to create directory %q: %w", servercertsDir, err)

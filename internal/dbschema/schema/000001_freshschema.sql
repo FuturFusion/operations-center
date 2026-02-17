@@ -395,4 +395,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (24, strftime("%s"))
+INSERT INTO schema (version, updated_at) VALUES (24, strftime("%s"));

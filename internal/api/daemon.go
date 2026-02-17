@@ -571,10 +571,22 @@ func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.Se
 		return nil, err
 	}
 
-	terraformProvisioner, err := terraform.New(
-		filepath.Join(d.env.VarDir(), "terraform"),
-		d.env.VarDir(),
-	)
+	tmpTerraformDir, err := os.MkdirTemp("", "operations-center-terraform-*")
+	if err != nil {
+		tmpTerraformDir = os.TempDir()
+	}
+
+	err = os.WriteFile(filepath.Join(tmpTerraformDir, "client.key"), []byte(d.clientKey), 0o600)
+	if err != nil {
+		return nil, err
+	}
+
+	err = os.WriteFile(filepath.Join(tmpTerraformDir, "client.crt"), []byte(d.clientCertificate), 0o600)
+	if err != nil {
+		return nil, err
+	}
+
+	terraformProvisioner, err := terraform.New(tmpTerraformDir)
 	if err != nil {
 		return nil, err
 	}
