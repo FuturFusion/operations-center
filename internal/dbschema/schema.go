@@ -3,6 +3,7 @@ package dbschema
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/file"
+	"github.com/FuturFusion/operations-center/internal/maps"
 )
 
 // Ensure applies all relevant schema updates to the local database.
@@ -276,9 +278,24 @@ func ensureUpdatesAreApplied(ctx context.Context, tx *sql.Tx, current int, updat
 			}
 		}
 
-		err := update(ctx, tx)
+		preUpdateCounts, err := getTableRowCounts(ctx, tx)
+		if err != nil {
+			return fmt.Errorf("failed to get pre update table row counts: %w", err)
+		}
+
+		err = update(ctx, tx)
 		if err != nil {
 			return fmt.Errorf("failed to apply update %d: %w", current, err)
+		}
+
+		postUpdateCounts, err := getTableRowCounts(ctx, tx)
+		if err != nil {
+			return fmt.Errorf("failed to get post update table row counts: %w", err)
+		}
+
+		err = ensureDBRows(preUpdateCounts, postUpdateCounts)
+		if err != nil {
+			return fmt.Errorf("DB update caused unexpected row decrease: %w", err)
 		}
 
 		current++
@@ -299,6 +316,84 @@ func checkSchemaVersionsHaveNoHoles(versions []int) error {
 	for i := range versions[:len(versions)-1] {
 		if versions[i+1] != versions[i]+1 {
 			return fmt.Errorf("Missing updates: %d to %d", versions[i], versions[i+1])
+		}
+	}
+
+	return nil
+}
+
+var rowCountIgnoredTables = map[string]struct{}{
+	"images":                 {},
+	"instances":              {},
+	"networks":               {},
+	"network_acls":           {},
+	"network_address_sets":   {},
+	"network_forwards":       {},
+	"network_integrations":   {},
+	"network_load_balancers": {},
+	"network_peers":          {},
+	"network_zones":          {},
+	"profiles":               {},
+	"projects":               {},
+	"storage_buckets":        {},
+	"storage_pools":          {},
+	"storage_volumes":        {},
+}
+
+func getTableRowCounts(ctx context.Context, tx *sql.Tx) (tableCounts map[string]int, err error) {
+	tableCounts = make(map[string]int, 20)
+
+	rows, err := tx.QueryContext(ctx, `SELECT name from sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%';`)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to query tables: %w", err)
+	}
+
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
+
+	for rows.Next() {
+		var tableName string
+		err = rows.Scan(&tableName)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to scan table name: %w", err)
+		}
+
+		_, ok := rowCountIgnoredTables[tableName]
+		if ok {
+			continue
+		}
+
+		row := tx.QueryRowContext(ctx, `SELECT count(1) FROM `+tableName)
+		if row.Err() != nil {
+			return nil, fmt.Errorf("Failed to query row counts for %q: %w", tableName, row.Err())
+		}
+
+		var count int
+		err = row.Scan(&count)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to scan count: %w", err)
+		}
+
+		tableCounts[tableName] = count
+	}
+
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("Failed to read table names rows: %w", rows.Err())
+	}
+
+	return tableCounts, nil
+}
+
+func ensureDBRows(before map[string]int, after map[string]int) error {
+	for tableName, beforeCount := range maps.OrderedByKey(before) {
+		afterCount, ok := after[tableName]
+		if !ok {
+			return fmt.Errorf("no after counts for table %q, before count is %d", tableName, beforeCount)
+		}
+
+		if beforeCount > afterCount {
+			return fmt.Errorf("number of rows for table %q decreased from %d to %d", tableName, beforeCount, afterCount)
 		}
 	}
 
