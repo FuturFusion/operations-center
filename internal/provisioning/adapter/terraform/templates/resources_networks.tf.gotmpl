@@ -97,7 +97,7 @@ resource "incus_network" "meshbr0" {
     "ipv4.address"         = "none"
     "ipv6.address"         = format("fd42:%x:%x:%x::/64", random_integer.meshbr0-subnet-segment-2.result, random_integer.meshbr0-subnet-segment-3.result, random_integer.meshbr0-subnet-segment-4.result)
     "ipv6.nat"             = "true"
-    "tunnel.mesh.id"       = "1000"
+    "tunnel.mesh.id"       = "{{ add 999 .ClusterID }}"
     "tunnel.mesh.protocol" = "vxlan"
   }
 

@@ -107,7 +107,7 @@ func New(storageDir string, clientCertDir string, opts ...Option) (terraform, er
 }
 
 func (t terraform) Init(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) (string, func() error, error) {
-	incusPreseed, err := incusPreseedWithDefaults(config.ApplicationSeedConfig)
+	incusPreseed, err := incusPreseedWithDefaults(config.Cluster.ApplicationSeedConfig)
 	if err != nil {
 		return "", nil, fmt.Errorf("Application seed config is not valid: %w", err)
 	}
@@ -159,6 +159,7 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 				}
 
 				err = tmpl.ExecuteTemplate(targetFile, templateFile.Name(), map[string]any{
+					"ClusterID":            config.Cluster.ID,
 					"ClusterName":          name,
 					"ClusterAddress":       config.ClusterEndpoint.GetConnectionURL(),
 					"MeshTunnelInterfaces": meshTunnelInterfaces,
