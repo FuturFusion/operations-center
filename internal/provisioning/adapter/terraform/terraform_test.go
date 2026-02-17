@@ -130,7 +130,10 @@ cluster_groups:
 					},
 				},
 
-				ApplicationSeedConfig: applicationSeedConfig,
+				Cluster: provisioning.Cluster{
+					ID:                    1,
+					ApplicationSeedConfig: applicationSeedConfig,
+				},
 			})
 
 			// Assert
