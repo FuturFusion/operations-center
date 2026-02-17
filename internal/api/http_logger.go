@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"time"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/logger"
 )
 
@@ -29,6 +30,14 @@ func (httpErrorLogger) Write(p []byte) (n int, err error) {
 	if badCertificateRe.Match(p) {
 		slog.DebugContext(context.Background(), "expected daemon http server error", logger.Err(errors.New(string(bytes.TrimSpace(p)))))
 		return len(p), nil
+	}
+
+	// Ignore TLS handshake errors from heartbeat / monitoring connection attempts by trusted https proxies.
+	for _, proxyIP := range config.GetSecurity().TrustedHTTPSProxies {
+		if bytes.Contains(p, []byte(proxyIP)) && bytes.Contains(p, []byte("http: TLS handshake error from")) {
+			slog.DebugContext(context.Background(), "expected daemon http server error", logger.Err(errors.New(string(bytes.TrimSpace(p)))))
+			return len(p), nil
+		}
 	}
 
 	slog.ErrorContext(context.Background(), "daemon http server error logger", logger.Err(errors.New(string(bytes.TrimSpace(p)))))

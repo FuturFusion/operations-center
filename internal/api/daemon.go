@@ -937,6 +937,7 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg api.SystemNetwork) er
 			d.configReloadMu.Lock()
 			defer d.configReloadMu.Unlock()
 
+			err = d.listener.TrustedProxy(trustedHTTPSProxies)
 			if err != nil {
 				slog.WarnContext(ctx, "Failed to set trusted HTTPS proxies", logger.Err(err))
 			}
