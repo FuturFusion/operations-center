@@ -13,6 +13,7 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
   const formikInitialValues: SystemSecurity = {
     trusted_tls_client_cert_fingerprints:
       security?.trusted_tls_client_cert_fingerprints ?? [],
+    trusted_https_proxies: security?.trusted_https_proxies ?? [],
     oidc: {
       issuer: security?.oidc.issuer ?? "",
       client_id: security?.oidc.client_id ?? "",
@@ -43,6 +44,9 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
     onSubmit: (values: SystemSecurity) => {
       onSubmit({
         ...values,
+        trusted_https_proxies: values.trusted_https_proxies.filter(
+          (s) => s.trim() !== "",
+        ),
         trusted_tls_client_cert_fingerprints:
           values.trusted_tls_client_cert_fingerprints.filter(
             (s) => s.trim() !== "",
@@ -79,6 +83,21 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
                     "trusted_tls_client_cert_fingerprints",
                     lines,
                   );
+                }}
+                onBlur={formik.handleBlur}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="trusted_https_proxies">
+              <Form.Label>Trusted HTTPS proxies</Form.Label>
+              <Form.Control
+                type="text"
+                as="textarea"
+                rows={4}
+                name="trusted_https_proxies"
+                value={formik.values.trusted_https_proxies.join("\n")}
+                onChange={(e) => {
+                  const lines = e.target.value.split("\n");
+                  formik.setFieldValue("trusted_https_proxies", lines);
                 }}
                 onBlur={formik.handleBlur}
               />
