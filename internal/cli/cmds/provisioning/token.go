@@ -90,6 +90,7 @@ type cmdTokenAdd struct {
 	uses          int
 	validDuration time.Duration
 	description   string
+	channel       string
 }
 
 func (c *cmdTokenAdd) Command() *cobra.Command {
@@ -105,6 +106,7 @@ func (c *cmdTokenAdd) Command() *cobra.Command {
 	cmd.Flags().IntVar(&c.uses, "uses", 1, "Allowed count of uses for the token")
 	cmd.Flags().DurationVar(&c.validDuration, "lifetime", 24*30*time.Hour, "Lifetime of the token as duration")
 	cmd.Flags().StringVar(&c.description, "description", "", "Description of the token")
+	cmd.Flags().StringVar(&c.channel, "channel", "", "Update channel, servers provisioned using this token should be assigned to")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -135,6 +137,7 @@ func (c *cmdTokenAdd) run(cmd *cobra.Command, args []string) error {
 		UsesRemaining: c.uses,
 		ExpireAt:      time.Now().Add(c.validDuration),
 		Description:   c.description,
+		Channel:       c.channel,
 	})
 	if err != nil {
 		return err
@@ -183,11 +186,11 @@ func (c *cmdTokenList) run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"UUID", "Uses Remaining", "Expire At", "Description"}
+	header := []string{"UUID", "Uses Remaining", "Expire At", "Channel", "Description"}
 	data := [][]string{}
 
 	for _, token := range tokens {
-		data = append(data, []string{token.UUID.String(), strconv.FormatInt(int64(token.UsesRemaining), 10), token.ExpireAt.Truncate(time.Second).String(), token.Description})
+		data = append(data, []string{token.UUID.String(), strconv.FormatInt(int64(token.UsesRemaining), 10), token.ExpireAt.Truncate(time.Second).String(), token.Channel, token.Description})
 	}
 
 	sort.ColumnsSort(data, []sort.ColumnSorter{
@@ -282,6 +285,7 @@ func (c *cmdTokenShow) run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("UUID: %s\n", token.UUID.String())
 	fmt.Printf("Uses Remaining: %s\n", strconv.FormatInt(int64(token.UsesRemaining), 10))
 	fmt.Printf("Expire At: %s\n", token.ExpireAt.Truncate(time.Second).String())
+	fmt.Printf("Channel: %s\n", token.Channel)
 	fmt.Printf("Description: %s\n", token.Description)
 
 	return nil
@@ -293,7 +297,6 @@ type cmdTokenGetImage struct {
 
 	flagImageType    string
 	flagArchitecture string
-	flagChannel      string
 	flagApplications []string
 }
 
@@ -307,7 +310,6 @@ func (c *cmdTokenGetImage) Command() *cobra.Command {
 
 	cmd.Flags().StringVar(&c.flagImageType, "type", "iso", "type of image (iso|raw)")
 	cmd.Flags().StringVar(&c.flagArchitecture, "architecture", "x86_64", "CPU architecture for the image (x86_64|aarch64)")
-	cmd.Flags().StringVar(&c.flagChannel, "channel", "", "Channel the most recent update should be taken from to generate the image")
 	cmd.Flags().StringSliceVar(&c.flagApplications, "application", []string{}, "Applications to be seeded in the image, e.g. incus, migration-manager, non-primary applications")
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -382,7 +384,6 @@ func (c *cmdTokenGetImage) run(cmd *cobra.Command, args []string) (err error) {
 	preseed := api.TokenImagePost{
 		Type:         imageType,
 		Architecture: architecture,
-		Channel:      c.flagChannel,
 	}
 
 	if len(c.flagApplications) > 0 {
