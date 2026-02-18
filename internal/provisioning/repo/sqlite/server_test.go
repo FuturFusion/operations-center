@@ -154,7 +154,7 @@ func TestServerDatabaseActions(t *testing.T) {
 	updateSvc := provisioning.NewUpdateService(sqlite.NewUpdate(tx), nil, nil)
 
 	server := sqlite.NewServer(tx)
-	serverSvc := provisioning.NewServerService(server, serverClient, nil, nil, cannelSvc, updateSvc, "", tls.Certificate{})
+	serverSvc := provisioning.NewServerService(server, serverClient, nil, nil, cannelSvc, updateSvc, tls.Certificate{})
 
 	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(tx), localArtifactRepo, clusterClient, serverSvc, nil, nil, terraformProvisioner)
 

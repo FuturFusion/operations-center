@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"net"
 	"net/http"
 	"net/url"
 	"slices"
@@ -42,7 +43,6 @@ type serverService struct {
 	httpClient *http.Client
 
 	mu                sync.Mutex
-	serverURL         string
 	serverCertificate tls.Certificate
 
 	now                    func() time.Time
@@ -72,14 +72,6 @@ func ServerServiceWithInitialConnectionDelay(delay time.Duration) ServerServiceO
 	}
 }
 
-func (s *serverService) UpdateServerURL(ctx context.Context, serverURL string) error {
-	s.mu.Lock()
-	s.serverURL = serverURL
-	s.mu.Unlock()
-
-	return s.SelfRegisterOperationsCenter(ctx)
-}
-
 func (s *serverService) UpdateServerCertificate(ctx context.Context, serverCertificate tls.Certificate) error {
 	s.mu.Lock()
 	s.serverCertificate = serverCertificate
@@ -88,7 +80,16 @@ func (s *serverService) UpdateServerCertificate(ctx context.Context, serverCerti
 	return s.SelfRegisterOperationsCenter(ctx)
 }
 
-func NewServerService(repo ServerRepo, client ServerClientPort, tokenSvc TokenService, clusterSvc ClusterService, channelSvc ChannelService, updateSvc UpdateService, serverConnectionURL string, serverCertificate tls.Certificate, opts ...ServerServiceOption) *serverService {
+func NewServerService(
+	repo ServerRepo,
+	client ServerClientPort,
+	tokenSvc TokenService,
+	clusterSvc ClusterService,
+	channelSvc ChannelService,
+	updateSvc UpdateService,
+	serverCertificate tls.Certificate,
+	opts ...ServerServiceOption,
+) *serverService {
 	serverSvc := &serverService{
 		repo:       repo,
 		client:     client,
@@ -98,7 +99,6 @@ func NewServerService(repo ServerRepo, client ServerClientPort, tokenSvc TokenSe
 		updateSvc:  updateSvc,
 		httpClient: &http.Client{},
 
-		serverURL:         serverConnectionURL,
 		serverCertificate: serverCertificate,
 
 		now:                    time.Now,
@@ -691,9 +691,18 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 			Type:  "CERTIFICATE",
 			Bytes: s.serverCertificate.Leaf.Raw,
 		})
-
-		serverURL := s.serverURL
 		s.mu.Unlock()
+
+		// Ignore the error, since operationsCenterRESTAddress has been validated before.
+		operationsCenterRESTAddressHost, operationsCenterRESTAddressPort, _ := net.SplitHostPort(config.GetNetwork().RestServerAddress)
+		if operationsCenterRESTAddressHost == "::" {
+			operationsCenterRESTAddressHost = "::1"
+		}
+
+		connectionURL := (&url.URL{
+			Scheme: "https",
+			Host:   net.JoinHostPort(operationsCenterRESTAddressHost, operationsCenterRESTAddressPort),
+		}).String()
 
 		var upsert func(context.Context, Server) error
 
@@ -701,13 +710,14 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 			// Create server entry
 
 			server = Server{
-				Name:          api.ServerNameOperationsCenter,
-				Type:          api.ServerTypeOperationsCenter,
-				ConnectionURL: serverURL,
-				Certificate:   string(serverCert),
-				Status:        api.ServerStatusReady,
-				LastSeen:      s.now(),
-				Channel:       config.GetUpdates().ServerDefaultChannel,
+				Name:                api.ServerNameOperationsCenter,
+				Type:                api.ServerTypeOperationsCenter,
+				ConnectionURL:       connectionURL,
+				PublicConnectionURL: config.GetNetwork().OperationsCenterAddress,
+				Certificate:         string(serverCert),
+				Status:              api.ServerStatusReady,
+				LastSeen:            s.now(),
+				Channel:             config.GetUpdates().ServerDefaultChannel,
 			}
 
 			upsert = func(ctx context.Context, server Server) error {
@@ -720,7 +730,8 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 			// Update existing server entry
 
 			server = servers[0]
-			server.ConnectionURL = serverURL
+			server.ConnectionURL = connectionURL
+			server.PublicConnectionURL = config.GetNetwork().OperationsCenterAddress
 			server.Certificate = string(serverCert)
 			server.Status = api.ServerStatusReady
 			server.LastSeen = s.now()

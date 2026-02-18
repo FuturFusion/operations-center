@@ -536,14 +536,14 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 		clusterSvc,
 		channelSvc,
 		updateSvc,
-		config.GetNetwork().OperationsCenterAddress,
 		d.serverCertificate,
 	)
 
 	// Server service needs to learn about updates of the public Operations Center
 	// address.
 	config.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemNetwork) {
-		err := serverSvc.UpdateServerURL(ctx, cfg.OperationsCenterAddress)
+		// Update operations center server record with updated network config.
+		err := serverSvc.SelfRegisterOperationsCenter(ctx)
 		if err != nil {
 			slog.WarnContext(ctx, "failed to update server URL", logger.Err(err))
 		}
