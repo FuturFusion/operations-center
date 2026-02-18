@@ -19,7 +19,7 @@ func {{ .Name | camelcase }}ClientTestCases(t *testing.T) []methodTestSet {
 		{
 			name: "Get{{ .PluralName | pascalcase }}",
 			clientCall: func(ctx context.Context, client inventory.ServerClient, endpoint provisioning.Endpoint) (any, error) {
-				return client.Get{{ .PluralName | pascalcase }}(ctx, endpoint{{ if .HasParent }}, "{{ .ParentName }}"{{ end }})
+				return client.Get{{ .PluralName | pascalcase }}(ctx, endpoint{{ if .HasProjectFromParent }}, "project"{{ end }}{{ if .HasParent }}, "{{ .ParentName }}"{{ end }})
 			},
 			testCases: []methodTestCase{
 				{
@@ -103,7 +103,7 @@ func {{ .Name | camelcase }}ClientTestCases(t *testing.T) []methodTestSet {
 		{
 			name: "Get{{ .Name | pascalcase }}ByName",
 			clientCall: func(ctx context.Context, client inventory.ServerClient, endpoint provisioning.Endpoint) (any, error) {
-				return client.Get{{ .Name | pascalcase }}ByName(ctx, endpoint, {{ if .HasProjectDirect }}"project", {{ end }}{{ if .HasParent }}"{{ .ParentName }}", {{ end }}"name"{{- range .ExtraAttributes }}, {{ .TestDummyValue }} {{- end}})
+				return client.Get{{ .Name | pascalcase }}ByName(ctx, endpoint, {{ if .HasProject }}"project", {{ end }}{{ if .HasParent }}"{{ .ParentName }}", {{ end }}"name"{{- range .ExtraAttributes }}, {{ .TestDummyValue }} {{- end}})
 			},
 			testCases: []methodTestCase{
 				{
