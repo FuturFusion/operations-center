@@ -482,8 +482,8 @@ one
 			}
 
 			tokenSvc := &svcMock.TokenServiceMock{
-				ConsumeFunc: func(ctx context.Context, id uuid.UUID) error {
-					return tc.tokenSvcConsumeErr
+				ConsumeFunc: func(ctx context.Context, id uuid.UUID) (string, error) {
+					return "stable", tc.tokenSvcConsumeErr
 				},
 			}
 

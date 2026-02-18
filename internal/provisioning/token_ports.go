@@ -17,8 +17,8 @@ type TokenService interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Token, error)
 	Update(ctx context.Context, token Token) error
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
-	Consume(ctx context.Context, id uuid.UUID) error
-	PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, seedConfig TokenImageSeedConfigs) (uuid.UUID, error)
+	Consume(ctx context.Context, id uuid.UUID) (channel string, _ error)
+	PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig TokenImageSeedConfigs) (uuid.UUID, error)
 	GetPreSeededImage(ctx context.Context, id uuid.UUID, imageUUID uuid.UUID) (_ io.ReadCloser, filename string, _ error)
 	GetTokenProviderConfig(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error)
 	CreateTokenSeed(ctx context.Context, tokenSeedConfig TokenSeed) (TokenSeed, error)

@@ -120,20 +120,17 @@ func (s *serverService) SetClusterService(clusterSvc ClusterService) {
 
 func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer Server) (Server, error) {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		err := s.tokenSvc.Consume(ctx, token)
+		channel, err := s.tokenSvc.Consume(ctx, token)
 		if err != nil {
 			return fmt.Errorf("Consume token for server creation: %w", err)
 		}
 
 		newServer.Status = api.ServerStatusPending
 		newServer.LastSeen = s.now()
+		newServer.Channel = channel
 
 		if newServer.Type == "" {
 			newServer.Type = api.ServerTypeUnknown
-		}
-
-		if newServer.Channel == "" {
-			newServer.Channel = config.GetUpdates().ServerDefaultChannel
 		}
 
 		err = newServer.Validate()

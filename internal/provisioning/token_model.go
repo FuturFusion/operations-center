@@ -22,6 +22,7 @@ type Token struct {
 	UsesRemaining int
 	ExpireAt      time.Time
 	Description   string
+	Channel       string `db:"join=channels.name"`
 }
 
 func (t Token) Validate() error {
@@ -31,6 +32,10 @@ func (t Token) Validate() error {
 
 	if t.ExpireAt.Before(time.Now()) {
 		return domain.NewValidationErrf(`Value for "expire at" can not be in the past`)
+	}
+
+	if t.Channel == "" {
+		return domain.NewValidationErrf(`Channel can not be empty`)
 	}
 
 	return nil

@@ -23,6 +23,7 @@ func TestToken_Validate(t *testing.T) {
 			token: provisioning.Token{
 				UsesRemaining: 1,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
+				Channel:       "stable",
 			},
 
 			assertErr: require.NoError,
@@ -32,6 +33,7 @@ func TestToken_Validate(t *testing.T) {
 			token: provisioning.Token{
 				UsesRemaining: -1,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
+				Channel:       "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -44,6 +46,20 @@ func TestToken_Validate(t *testing.T) {
 			token: provisioning.Token{
 				UsesRemaining: 1,
 				ExpireAt:      time.Now().Add(-1 * time.Minute),
+				Channel:       "stable",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - channel",
+			token: provisioning.Token{
+				UsesRemaining: 1,
+				ExpireAt:      time.Now().Add(1 * time.Minute),
+				Channel:       "",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {

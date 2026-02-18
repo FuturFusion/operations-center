@@ -36,17 +36,32 @@ func TestTokenService_Create(t *testing.T) {
 		randomUUIDErr   error
 		repoCreateErr   error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr   require.ErrorAssertionFunc
+		wantChannel string
 	}{
 		{
 			name: "success",
 			token: provisioning.Token{
 				UsesRemaining: 1,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
+				Channel:       "testing",
 			},
 			randomUUIDValue: uuidA,
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantChannel: "testing",
+		},
+		{
+			name: "success - default channel",
+			token: provisioning.Token{
+				UsesRemaining: 1,
+				ExpireAt:      time.Now().Add(1 * time.Minute),
+				Channel:       "", // no channel provided
+			},
+			randomUUIDValue: uuidA,
+
+			assertErr:   require.NoError,
+			wantChannel: "stable",
 		},
 		{
 			name: "error - random uuid",
@@ -79,7 +94,8 @@ func TestTokenService_Create(t *testing.T) {
 			randomUUIDValue: uuidA,
 			repoCreateErr:   boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantChannel: "stable",
 		},
 	}
 
@@ -88,6 +104,7 @@ func TestTokenService_Create(t *testing.T) {
 			// Setup
 			repo := &mock.TokenRepoMock{
 				CreateFunc: func(ctx context.Context, in provisioning.Token) (int64, error) {
+					require.Equal(t, tc.wantChannel, in.Channel)
 					return 1, tc.repoCreateErr
 				},
 			}
@@ -279,6 +296,7 @@ func TestTokenService_Update(t *testing.T) {
 				UsesRemaining: 1,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
 				Description:   "A",
+				Channel:       "stable",
 			},
 
 			assertErr: require.NoError,
@@ -290,6 +308,7 @@ func TestTokenService_Update(t *testing.T) {
 				UsesRemaining: -1,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
 				Description:   "A",
+				Channel:       "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -304,6 +323,7 @@ func TestTokenService_Update(t *testing.T) {
 				UsesRemaining: 1,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
 				Description:   "A",
+				Channel:       "stable",
 			},
 			repoUpdateErr: boom.Error,
 
@@ -387,6 +407,7 @@ func TestTokenService_Consume(t *testing.T) {
 
 		assertErr       require.ErrorAssertionFunc
 		wantUsesRemaing int
+		wantChannel     string
 	}{
 		{
 			name:     "success",
@@ -397,10 +418,12 @@ func TestTokenService_Consume(t *testing.T) {
 				UUID:          token,
 				UsesRemaining: 10,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
+				Channel:       "testing",
 			},
 
 			assertErr:       require.NoError,
 			wantUsesRemaing: 9,
+			wantChannel:     "testing",
 		},
 		{
 			name:     "error - GetByUUID",
@@ -419,6 +442,7 @@ func TestTokenService_Consume(t *testing.T) {
 				UUID:          token,
 				UsesRemaining: 0, // no uses remaining
 				ExpireAt:      time.Now().Add(1 * time.Minute),
+				Channel:       "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -435,6 +459,7 @@ func TestTokenService_Consume(t *testing.T) {
 				UUID:          token,
 				UsesRemaining: 10,
 				ExpireAt:      time.Now().Add(-1 * time.Minute), // Token expired
+				Channel:       "stable",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -443,7 +468,7 @@ func TestTokenService_Consume(t *testing.T) {
 			},
 		},
 		{
-			name:     "success",
+			name:     "error - repo.Update",
 			tokenArg: token,
 
 			repoGetByUUIDToken: &provisioning.Token{
@@ -451,6 +476,7 @@ func TestTokenService_Consume(t *testing.T) {
 				UUID:          token,
 				UsesRemaining: 10,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
+				Channel:       "stable",
 			},
 			repoUpdateErr: boom.Error,
 
@@ -476,10 +502,11 @@ func TestTokenService_Consume(t *testing.T) {
 			tokenSvc := provisioning.NewTokenService(repo, nil, nil, nil)
 
 			// Run test
-			err := tokenSvc.Consume(context.Background(), tc.tokenArg)
+			channel, err := tokenSvc.Consume(context.Background(), tc.tokenArg)
 
 			// Assert
 			tc.assertErr(t, err)
+			require.Equal(t, tc.wantChannel, channel)
 		})
 	}
 }
@@ -496,15 +523,14 @@ func TestTokenService_PreparePreSeededImage(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                   string
-		tokenArg               uuid.UUID
-		imageTypeArg           api.ImageType
-		architectureArg        images.UpdateFileArchitecture
-		channelArg             string
-		seedConfigArg          provisioning.TokenImageSeedConfigs
-		repoGetByUUIDErr       error
-		channelSvcGetByNameErr error
-		existingImages         []image
+		name             string
+		tokenArg         uuid.UUID
+		imageTypeArg     api.ImageType
+		architectureArg  images.UpdateFileArchitecture
+		seedConfigArg    provisioning.TokenImageSeedConfigs
+		repoGetByUUID    *provisioning.Token
+		repoGetByUUIDErr error
+		existingImages   []image
 
 		assertErr      require.ErrorAssertionFunc
 		wantImageCount int
@@ -515,6 +541,9 @@ func TestTokenService_PreparePreSeededImage(t *testing.T) {
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:   provisioning.TokenImageSeedConfigs{},
+			repoGetByUUID: &provisioning.Token{
+				Channel: "testing",
+			},
 
 			assertErr:      require.NoError,
 			wantImageCount: 1,
@@ -525,6 +554,9 @@ func TestTokenService_PreparePreSeededImage(t *testing.T) {
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:   provisioning.TokenImageSeedConfigs{},
+			repoGetByUUID: &provisioning.Token{
+				Channel: "testing",
+			},
 			existingImages: []image{
 				{
 					imageUUID:    uuidgen.FromPattern(t, "1"),
@@ -563,16 +595,6 @@ func TestTokenService_PreparePreSeededImage(t *testing.T) {
 			},
 		},
 		{
-			name:                   "error - channelSvc.GetByName",
-			tokenArg:               uuidA,
-			imageTypeArg:           api.ImageTypeISO,
-			architectureArg:        images.UpdateFileArchitecture64BitX86,
-			seedConfigArg:          provisioning.TokenImageSeedConfigs{},
-			channelSvcGetByNameErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
 			name:             "error - repo.GetByUUID",
 			tokenArg:         uuidA,
 			imageTypeArg:     api.ImageTypeISO,
@@ -589,23 +611,17 @@ func TestTokenService_PreparePreSeededImage(t *testing.T) {
 			// Setup
 			repo := &mock.TokenRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
-					return nil, tc.repoGetByUUIDErr
+					return tc.repoGetByUUID, tc.repoGetByUUIDErr
 				},
 			}
 
-			channelSvc := &svcMock.ChannelServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
-					return nil, tc.channelSvcGetByNameErr
-				},
-			}
-
-			tokenSvc := provisioning.NewTokenService(repo, nil, channelSvc, nil)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil, nil)
 			for _, image := range tc.existingImages {
 				tokenSvc.AddImage(image.imageUUID, image.tokenID, image.imageType, image.architecture, image.channel, image.seedConfig, image.createdAt)
 			}
 
 			// Run test
-			_, err := tokenSvc.PreparePreSeededImage(context.Background(), tc.tokenArg, tc.imageTypeArg, tc.architectureArg, tc.channelArg, tc.seedConfigArg)
+			_, err := tokenSvc.PreparePreSeededImage(context.Background(), tc.tokenArg, tc.imageTypeArg, tc.architectureArg, tc.seedConfigArg)
 
 			// Assert
 			tc.assertErr(t, err)
