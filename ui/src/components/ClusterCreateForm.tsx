@@ -1,12 +1,14 @@
 import { FC, KeyboardEvent, useMemo } from "react";
 import { Form } from "react-bootstrap";
 import { FormikErrors, useFormik } from "formik";
+import ChannelSelect from "components/ChannelSelect";
+import LoadingButton from "components/LoadingButton";
 import { useNotification } from "context/notificationContext";
 import { useServers } from "context/useServers";
 import { useClusterTemplates } from "context/useClusterTemplates";
-import LoadingButton from "components/LoadingButton";
 import { ClusterPost } from "types/cluster";
 import { ServerType } from "util/server";
+import { handleCtrlA } from "util/util";
 import YAML from "yaml";
 
 enum CreateType {
@@ -50,6 +52,7 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
   const formikInitialValues: ClusterPost = {
     name: "",
     connection_url: "",
+    channel: "",
     server_names: [],
     server_type: Object.values(ServerType)[0],
     services_config: "",
@@ -89,6 +92,7 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
       return onSubmit({
         name: values.name,
         connection_url: values.connection_url,
+        channel: values.channel,
         server_names: values.server_names,
         server_type: values.server_type,
         services_config: servicesConfig,
@@ -99,15 +103,12 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
     },
   });
 
-  // Explicit handler for Ctrl+A, since Firefox does not handle this shortcut properly.
   const handleServersKeyDown = (e: KeyboardEvent<HTMLSelectElement>) => {
-    if (e.ctrlKey && e.key === "a") {
-      e.preventDefault();
-      formik.setFieldValue(
-        "server_names",
-        filteredServers?.map((s) => s.name) ?? [],
-      );
-    }
+    e.preventDefault();
+    formik.setFieldValue(
+      "server_names",
+      filteredServers?.map((s) => s.name) ?? [],
+    );
   };
 
   return (
@@ -146,6 +147,12 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
               {formik.errors.connection_url}
             </Form.Control.Feedback>
           </Form.Group>
+          <ChannelSelect
+            formClasses="mb-4"
+            value={formik.values.channel}
+            onChange={(val) => formik.setFieldValue("channel", val)}
+            disabled={formik.isSubmitting}
+          />
           <Form.Group className="mb-4" controlId="serverNames">
             <Form.Label>Servers</Form.Label>
             <Form.Select
@@ -158,7 +165,7 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
                 );
                 formik.setFieldValue("server_names", selected);
               }}
-              onKeyDown={handleServersKeyDown}
+              onKeyDown={handleCtrlA(handleServersKeyDown)}
               isInvalid={
                 !!formik.errors.server_names && formik.touched.server_names
               }

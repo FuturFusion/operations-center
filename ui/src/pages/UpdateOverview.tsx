@@ -52,6 +52,12 @@ const UpdateOverview = () => {
         <div className="col-10 detail-table-cell">{update?.origin}</div>
       </div>
       <div className="row">
+        <div className="col-2 detail-table-header">Channels</div>
+        <div className="col-10 detail-table-cell">
+          {(update?.channels ?? []).join(", ")}
+        </div>
+      </div>
+      <div className="row">
         <div className="col-2 detail-table-header">Upstream Channels</div>
         <div className="col-10 detail-table-cell">
           {(update?.upstream_channels ?? []).join(", ")}

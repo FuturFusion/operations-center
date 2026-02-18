@@ -1,6 +1,7 @@
 import { FC } from "react";
 import { Button, Form } from "react-bootstrap";
 import { useFormik } from "formik";
+import ChannelSelect from "components/ChannelSelect";
 import LoadingButton from "components/LoadingButton";
 import { APIResponse } from "types/response";
 import { Server, ServerFormValues } from "types/server";
@@ -24,6 +25,7 @@ const ServerForm: FC<Props> = ({
   const formikInitialValues = {
     name: server?.name || "",
     public_connection_url: server?.public_connection_url || "",
+    channel: server?.channel || "",
     network_configuration: YAML.stringify(systemNetwork, null, 2),
     storage_configuration: YAML.stringify(systemStorage, null, 2),
   };
@@ -75,6 +77,12 @@ const ServerForm: FC<Props> = ({
               disabled={formik.isSubmitting}
             />
           </Form.Group>
+          <ChannelSelect
+            formClasses="mb-3"
+            value={formik.values.channel}
+            onChange={(val) => formik.setFieldValue("channel", val)}
+            disabled={formik.isSubmitting}
+          />
           <Form.Group className="mb-3" controlId="network_configuration">
             <Form.Label>Network configuration</Form.Label>
             <Form.Control
