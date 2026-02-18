@@ -12,13 +12,13 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkLoadBalancers(ctx context.Context, endpoint provisioning.Endpoint, networkLoadBalancerName string) ([]incusapi.NetworkLoadBalancer, error) {
+func (s serverClient) GetNetworkLoadBalancers(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]incusapi.NetworkLoadBalancer, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	serverNetworkLoadBalancers, err := client.GetNetworkLoadBalancers(networkLoadBalancerName)
+	serverNetworkLoadBalancers, err := client.GetNetworkLoadBalancers(networkName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
 		return nil, domain.ErrNotFound
 	}

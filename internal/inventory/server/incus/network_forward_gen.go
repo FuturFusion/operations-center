@@ -12,13 +12,13 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, networkForwardName string) ([]incusapi.NetworkForward, error) {
+func (s serverClient) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]incusapi.NetworkForward, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	serverNetworkForwards, err := client.GetNetworkForwards(networkForwardName)
+	serverNetworkForwards, err := client.GetNetworkForwards(networkName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
 		return nil, domain.ErrNotFound
 	}

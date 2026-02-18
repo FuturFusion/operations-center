@@ -12,13 +12,13 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, networkPeerName string) ([]incusapi.NetworkPeer, error) {
+func (s serverClient) GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]incusapi.NetworkPeer, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	serverNetworkPeers, err := client.GetNetworkPeers(networkPeerName)
+	serverNetworkPeers, err := client.GetNetworkPeers(networkName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
 		return nil, domain.ErrNotFound
 	}

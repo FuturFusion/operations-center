@@ -12,13 +12,13 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storageVolumeName string) ([]incusapi.StorageVolumeFull, error) {
+func (s serverClient) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]incusapi.StorageVolumeFull, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	serverStorageVolumes, err := client.GetStoragePoolVolumesFullAllProjects(storageVolumeName)
+	serverStorageVolumes, err := client.GetStoragePoolVolumesFullAllProjects(storagePoolName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
 		return nil, domain.ErrNotFound
 	}
