@@ -24,6 +24,7 @@ func TestTokenDatabaseActions(t *testing.T) {
 		UsesRemaining: 1,
 		ExpireAt:      time.Now().Add(1 * time.Minute).UTC().Truncate(0), // Truncate to remove the monotonic clock.
 		Description:   "token A",
+		Channel:       "stable",
 	}
 
 	tokenB := provisioning.Token{
@@ -31,6 +32,7 @@ func TestTokenDatabaseActions(t *testing.T) {
 		UsesRemaining: 10,
 		ExpireAt:      time.Now().Add(10 * time.Minute).UTC().Truncate(0), // Truncate to remove the monotonic clock.
 		Description:   "token B",
+		Channel:       "stable",
 	}
 
 	tokenBSeed1 := provisioning.TokenSeed{

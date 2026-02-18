@@ -46,7 +46,7 @@ func NewTokenServiceWithSlog(base provisioning.TokenService, log *slog.Logger, o
 }
 
 // Consume implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) Consume(ctx context.Context, id uuid.UUID) (err error) {
+func (_d TokenServiceWithSlog) Consume(ctx context.Context, id uuid.UUID) (channel string, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -59,6 +59,7 @@ func (_d TokenServiceWithSlog) Consume(ctx context.Context, id uuid.UUID) (err e
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
+				slog.String("channel", channel),
 				slog.Any("err", err),
 			)
 		} else {
@@ -539,7 +540,7 @@ func (_d TokenServiceWithSlog) GetTokenSeedByName(ctx context.Context, id uuid.U
 }
 
 // PreparePreSeededImage implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, seedConfig provisioning.TokenImageSeedConfigs) (uUID uuid.UUID, err error) {
+func (_d TokenServiceWithSlog) PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig provisioning.TokenImageSeedConfigs) (uUID uuid.UUID, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -547,7 +548,6 @@ func (_d TokenServiceWithSlog) PreparePreSeededImage(ctx context.Context, id uui
 			slog.Any("id", id),
 			slog.Any("imageType", imageType),
 			slog.Any("architecture", architecture),
-			slog.String("channel", channel),
 			slog.Any("seedConfig", seedConfig),
 		)
 	}
@@ -574,7 +574,7 @@ func (_d TokenServiceWithSlog) PreparePreSeededImage(ctx context.Context, id uui
 			log.DebugContext(ctx, "<= method PreparePreSeededImage finished")
 		}
 	}()
-	return _d._base.PreparePreSeededImage(ctx, id, imageType, architecture, channel, seedConfig)
+	return _d._base.PreparePreSeededImage(ctx, id, imageType, architecture, seedConfig)
 }
 
 // Update implements provisioning.TokenService.

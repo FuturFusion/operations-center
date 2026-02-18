@@ -18,7 +18,9 @@ CREATE TABLE tokens (
   uses_remaining INTEGER NOT NULL,
   expire_at DATETIME NOT NULL,
   description TEXT NOT NULL,
-  UNIQUE(uuid)
+  channel_id INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(uuid),
+  FOREIGN KEY (channel_id) REFERENCES channels(id)
 );
 
 CREATE TABLE clusters (
@@ -395,4 +397,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (24, strftime("%s"));
+INSERT INTO schema (version, updated_at) VALUES (25, strftime("%s"));

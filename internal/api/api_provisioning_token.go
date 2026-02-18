@@ -146,6 +146,7 @@ func (t *tokenHandler) tokensGet(r *http.Request) response.Response {
 					UsesRemaining: token.UsesRemaining,
 					ExpireAt:      token.ExpireAt,
 					Description:   token.Description,
+					Channel:       token.Channel,
 				},
 			})
 		}
@@ -206,6 +207,7 @@ func (t *tokenHandler) tokensPost(r *http.Request) response.Response {
 		UsesRemaining: token.UsesRemaining,
 		ExpireAt:      token.ExpireAt,
 		Description:   token.Description,
+		Channel:       token.Channel,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed creating token: %w", err))
@@ -269,6 +271,7 @@ func (t *tokenHandler) tokenGet(r *http.Request) response.Response {
 				UsesRemaining: token.UsesRemaining,
 				ExpireAt:      token.ExpireAt,
 				Description:   token.Description,
+				Channel:       token.Channel,
 			},
 		},
 		token,
@@ -343,6 +346,7 @@ func (t *tokenHandler) tokenPut(r *http.Request) response.Response {
 		UsesRemaining: token.UsesRemaining,
 		ExpireAt:      token.ExpireAt,
 		Description:   token.Description,
+		Channel:       token.Channel,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating token %q: %w", UUID.String(), err))
@@ -455,7 +459,7 @@ func (t *tokenHandler) tokenImagePost(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	imageUUID, err := t.service.PreparePreSeededImage(r.Context(), UUID, tokenImagePost.Type, tokenImagePost.Architecture, tokenImagePost.Channel, provisioning.TokenImageSeedConfigs{
+	imageUUID, err := t.service.PreparePreSeededImage(r.Context(), UUID, tokenImagePost.Type, tokenImagePost.Architecture, provisioning.TokenImageSeedConfigs{
 		Applications:     tokenImagePost.Seeds.Applications,
 		Incus:            tokenImagePost.Seeds.Incus,
 		Install:          tokenImagePost.Seeds.Install,
