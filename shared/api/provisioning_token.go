@@ -35,6 +35,11 @@ type TokenPut struct {
 	// Description of this token.
 	// Example: "Test Environment"
 	Description string `json:"description" yaml:"description"`
+
+	// Channel, used to seed images as well as which gets assigned to servers
+	// using this token during provisioning.
+	// Example: "stable"
+	Channel string `json:"channel" yaml:"channel"`
 }
 
 type ImageType string
@@ -113,10 +118,6 @@ type TokenImagePost struct {
 	// Architecture contains the CPU architecture the image should be generated
 	// for.
 	Architecture images.UpdateFileArchitecture `json:"architecture" yaml:"architecture"`
-
-	// Channel where the most recent software update is taken from to generate the
-	// installation image.
-	Channel string `json:"channel" yaml:"channel"`
 
 	// Seeds represents the seed configuration for e.g. applications.yaml,
 	// install.yaml and network.yaml.
