@@ -52,6 +52,32 @@ var updates = map[int]update{
 	22: updateFromV21,
 	23: updateFromV22,
 	24: updateFromV23,
+	25: updateFromV24,
+}
+
+func updateFromV24(ctx context.Context, tx *sql.Tx) error {
+	// v24..v25 add channel_id foreign key to tokens
+	stmt := `
+CREATE TABLE tokens_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  uuid TEXT NOT NULL,
+  uses_remaining INTEGER NOT NULL,
+  expire_at DATETIME NOT NULL,
+  description TEXT NOT NULL,
+  channel_id INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(uuid),
+  FOREIGN KEY (channel_id) REFERENCES channels(id)
+);
+WITH stable_channel AS (
+  -- Find the id for the channel 'stable', if not found, fall back to the channel with the lowest id.
+  SELECT id FROM (SELECT id, 1 AS prio FROM channels WHERE name = 'stable' UNION SELECT * FROM (SELECT id, 2 AS prio FROM channels ORDER BY id LIMIT 1)) ORDER BY prio LIMIT 1
+)
+INSERT INTO tokens_new SELECT id, uuid, uses_remaining, expire_at, description, (SELECT id FROM stable_channel) FROM tokens;
+DROP TABLE tokens;
+ALTER TABLE tokens_new RENAME TO tokens;
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV23(ctx context.Context, tx *sql.Tx) error {
