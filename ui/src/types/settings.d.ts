@@ -55,4 +55,6 @@ export interface SystemUpdates {
   signature_verification_root_ca: string;
   filter_expression: string;
   file_filter_expression: string;
+  server_default_channel: string;
+  updates_default_channel: string;
 }
