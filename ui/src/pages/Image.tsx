@@ -16,7 +16,7 @@ const Image = () => {
     return (
       a.cluster.localeCompare(b.cluster) ||
       a.project_name.localeCompare(b.project_name) ||
-      a.object.properties?.description.localeCompare(
+      a.object.properties?.description?.localeCompare(
         b.object.properties?.description,
       ) ||
       a.object.type.localeCompare(b.object.type)
