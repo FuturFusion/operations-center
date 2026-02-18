@@ -42,7 +42,7 @@ func NewTokenServiceWithPrometheus(base provisioning.TokenService, instanceName 
 }
 
 // Consume implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) Consume(ctx context.Context, id uuid.UUID) (err error) {
+func (_d TokenServiceWithPrometheus) Consume(ctx context.Context, id uuid.UUID) (channel string, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -238,7 +238,7 @@ func (_d TokenServiceWithPrometheus) GetTokenSeedByName(ctx context.Context, id 
 }
 
 // PreparePreSeededImage implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, seedConfig provisioning.TokenImageSeedConfigs) (uUID uuid.UUID, err error) {
+func (_d TokenServiceWithPrometheus) PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig provisioning.TokenImageSeedConfigs) (uUID uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -248,7 +248,7 @@ func (_d TokenServiceWithPrometheus) PreparePreSeededImage(ctx context.Context, 
 
 		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PreparePreSeededImage", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.PreparePreSeededImage(ctx, id, imageType, architecture, channel, seedConfig)
+	return _d.base.PreparePreSeededImage(ctx, id, imageType, architecture, seedConfig)
 }
 
 // Update implements provisioning.TokenService.
