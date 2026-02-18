@@ -44,12 +44,13 @@ func NewNetworkLoadBalancerServerClientWithSlog(base inventory.NetworkLoadBalanc
 }
 
 // GetNetworkLoadBalancerByName implements inventory.NetworkLoadBalancerServerClient.
-func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
+func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkName", networkName),
 			slog.String("networkLoadBalancerName", networkLoadBalancerName),
 		)
@@ -77,16 +78,17 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(c
 			log.DebugContext(ctx, "<= method GetNetworkLoadBalancerByName finished")
 		}
 	}()
-	return _d._base.GetNetworkLoadBalancerByName(ctx, endpoint, networkName, networkLoadBalancerName)
+	return _d._base.GetNetworkLoadBalancerByName(ctx, endpoint, projectName, networkName, networkLoadBalancerName)
 }
 
 // GetNetworkLoadBalancers implements inventory.NetworkLoadBalancerServerClient.
-func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
+func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkName", networkName),
 		)
 	}
@@ -113,5 +115,5 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancers(ctx co
 			log.DebugContext(ctx, "<= method GetNetworkLoadBalancers finished")
 		}
 	}()
-	return _d._base.GetNetworkLoadBalancers(ctx, endpoint, networkName)
+	return _d._base.GetNetworkLoadBalancers(ctx, endpoint, projectName, networkName)
 }

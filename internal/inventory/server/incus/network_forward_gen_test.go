@@ -21,7 +21,7 @@ func networkForwardClientTestCases(t *testing.T) []methodTestSet {
 		{
 			name: "GetNetworkForwards",
 			clientCall: func(ctx context.Context, client inventory.ServerClient, endpoint provisioning.Endpoint) (any, error) {
-				return client.GetNetworkForwards(ctx, endpoint, "network")
+				return client.GetNetworkForwards(ctx, endpoint, "project", "network")
 			},
 			testCases: []methodTestCase{
 				{
@@ -87,7 +87,7 @@ func networkForwardClientTestCases(t *testing.T) []methodTestSet {
 		{
 			name: "GetNetworkForwardByName",
 			clientCall: func(ctx context.Context, client inventory.ServerClient, endpoint provisioning.Endpoint) (any, error) {
-				return client.GetNetworkForwardByName(ctx, endpoint, "network", "name")
+				return client.GetNetworkForwardByName(ctx, endpoint, "project", "network", "name")
 			},
 			testCases: []methodTestCase{
 				{

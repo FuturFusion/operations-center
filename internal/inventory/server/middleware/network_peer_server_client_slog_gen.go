@@ -44,12 +44,13 @@ func NewNetworkPeerServerClientWithSlog(base inventory.NetworkPeerServerClient, 
 }
 
 // GetNetworkPeerByName implements inventory.NetworkPeerServerClient.
-func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
+func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkName", networkName),
 			slog.String("networkPeerName", networkPeerName),
 		)
@@ -77,16 +78,17 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Conte
 			log.DebugContext(ctx, "<= method GetNetworkPeerByName finished")
 		}
 	}()
-	return _d._base.GetNetworkPeerByName(ctx, endpoint, networkName, networkPeerName)
+	return _d._base.GetNetworkPeerByName(ctx, endpoint, projectName, networkName, networkPeerName)
 }
 
 // GetNetworkPeers implements inventory.NetworkPeerServerClient.
-func (_d NetworkPeerServerClientWithSlog) GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (networkPeers []api.NetworkPeer, err error) {
+func (_d NetworkPeerServerClientWithSlog) GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkPeers []api.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkName", networkName),
 		)
 	}
@@ -113,5 +115,5 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeers(ctx context.Context, e
 			log.DebugContext(ctx, "<= method GetNetworkPeers finished")
 		}
 	}()
-	return _d._base.GetNetworkPeers(ctx, endpoint, networkName)
+	return _d._base.GetNetworkPeers(ctx, endpoint, projectName, networkName)
 }

@@ -21,7 +21,7 @@ func networkLoadBalancerClientTestCases(t *testing.T) []methodTestSet {
 		{
 			name: "GetNetworkLoadBalancers",
 			clientCall: func(ctx context.Context, client inventory.ServerClient, endpoint provisioning.Endpoint) (any, error) {
-				return client.GetNetworkLoadBalancers(ctx, endpoint, "network")
+				return client.GetNetworkLoadBalancers(ctx, endpoint, "project", "network")
 			},
 			testCases: []methodTestCase{
 				{
@@ -87,7 +87,7 @@ func networkLoadBalancerClientTestCases(t *testing.T) []methodTestSet {
 		{
 			name: "GetNetworkLoadBalancerByName",
 			clientCall: func(ctx context.Context, client inventory.ServerClient, endpoint provisioning.Endpoint) (any, error) {
-				return client.GetNetworkLoadBalancerByName(ctx, endpoint, "network", "name")
+				return client.GetNetworkLoadBalancerByName(ctx, endpoint, "project", "network", "name")
 			},
 			testCases: []methodTestCase{
 				{

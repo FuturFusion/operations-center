@@ -12,11 +12,13 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkLoadBalancers(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]incusapi.NetworkLoadBalancer, error) {
+func (s serverClient) GetNetworkLoadBalancers(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) ([]incusapi.NetworkLoadBalancer, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
+
+	client = client.UseProject(projectName)
 
 	serverNetworkLoadBalancers, err := client.GetNetworkLoadBalancers(networkName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
@@ -30,11 +32,13 @@ func (s serverClient) GetNetworkLoadBalancers(ctx context.Context, endpoint prov
 	return serverNetworkLoadBalancers, nil
 }
 
-func (s serverClient) GetNetworkLoadBalancerByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error) {
+func (s serverClient) GetNetworkLoadBalancerByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.NetworkLoadBalancer{}, err
 	}
+
+	client = client.UseProject(projectName)
 
 	serverNetworkLoadBalancer, _, err := client.GetNetworkLoadBalancer(networkName, networkLoadBalancerName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {

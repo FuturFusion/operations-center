@@ -369,12 +369,13 @@ func (_d ServerClientWithSlog) GetNetworkByName(ctx context.Context, endpoint pr
 }
 
 // GetNetworkForwardByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
+func (_d ServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkName", networkName),
 			slog.String("networkForwardName", networkForwardName),
 		)
@@ -402,16 +403,17 @@ func (_d ServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, endp
 			log.DebugContext(ctx, "<= method GetNetworkForwardByName finished")
 		}
 	}()
-	return _d._base.GetNetworkForwardByName(ctx, endpoint, networkName, networkForwardName)
+	return _d._base.GetNetworkForwardByName(ctx, endpoint, projectName, networkName, networkForwardName)
 }
 
 // GetNetworkForwards implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (networkForwards []api.NetworkForward, err error) {
+func (_d ServerClientWithSlog) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkForwards []api.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkName", networkName),
 		)
 	}
@@ -438,7 +440,7 @@ func (_d ServerClientWithSlog) GetNetworkForwards(ctx context.Context, endpoint 
 			log.DebugContext(ctx, "<= method GetNetworkForwards finished")
 		}
 	}()
-	return _d._base.GetNetworkForwards(ctx, endpoint, networkName)
+	return _d._base.GetNetworkForwards(ctx, endpoint, projectName, networkName)
 }
 
 // GetNetworkIntegrationByName implements inventory.ServerClient.
@@ -513,12 +515,13 @@ func (_d ServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, endpo
 }
 
 // GetNetworkLoadBalancerByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
+func (_d ServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkName", networkName),
 			slog.String("networkLoadBalancerName", networkLoadBalancerName),
 		)
@@ -546,16 +549,17 @@ func (_d ServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context,
 			log.DebugContext(ctx, "<= method GetNetworkLoadBalancerByName finished")
 		}
 	}()
-	return _d._base.GetNetworkLoadBalancerByName(ctx, endpoint, networkName, networkLoadBalancerName)
+	return _d._base.GetNetworkLoadBalancerByName(ctx, endpoint, projectName, networkName, networkLoadBalancerName)
 }
 
 // GetNetworkLoadBalancers implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
+func (_d ServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkName", networkName),
 		)
 	}
@@ -582,16 +586,17 @@ func (_d ServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, endp
 			log.DebugContext(ctx, "<= method GetNetworkLoadBalancers finished")
 		}
 	}()
-	return _d._base.GetNetworkLoadBalancers(ctx, endpoint, networkName)
+	return _d._base.GetNetworkLoadBalancers(ctx, endpoint, projectName, networkName)
 }
 
 // GetNetworkPeerByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
+func (_d ServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkName", networkName),
 			slog.String("networkPeerName", networkPeerName),
 		)
@@ -619,16 +624,17 @@ func (_d ServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, endpoin
 			log.DebugContext(ctx, "<= method GetNetworkPeerByName finished")
 		}
 	}()
-	return _d._base.GetNetworkPeerByName(ctx, endpoint, networkName, networkPeerName)
+	return _d._base.GetNetworkPeerByName(ctx, endpoint, projectName, networkName, networkPeerName)
 }
 
 // GetNetworkPeers implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (networkPeers []api.NetworkPeer, err error) {
+func (_d ServerClientWithSlog) GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkPeers []api.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkName", networkName),
 		)
 	}
@@ -655,7 +661,7 @@ func (_d ServerClientWithSlog) GetNetworkPeers(ctx context.Context, endpoint pro
 			log.DebugContext(ctx, "<= method GetNetworkPeers finished")
 		}
 	}()
-	return _d._base.GetNetworkPeers(ctx, endpoint, networkName)
+	return _d._base.GetNetworkPeers(ctx, endpoint, projectName, networkName)
 }
 
 // GetNetworkZoneByName implements inventory.ServerClient.

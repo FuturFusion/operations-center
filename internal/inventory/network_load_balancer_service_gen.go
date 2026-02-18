@@ -170,7 +170,7 @@ func (s networkLoadBalancerService) ResyncByUUID(ctx context.Context, id uuid.UU
 			return err
 		}
 
-		retrievedNetworkLoadBalancer, err := s.networkLoadBalancerClient.GetNetworkLoadBalancerByName(ctx, endpoint, networkLoadBalancer.NetworkName, networkLoadBalancer.Name)
+		retrievedNetworkLoadBalancer, err := s.networkLoadBalancerClient.GetNetworkLoadBalancerByName(ctx, endpoint, networkLoadBalancer.ProjectName, networkLoadBalancer.NetworkName, networkLoadBalancer.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkLoadBalancer.UUID)
 			if err != nil {
@@ -248,7 +248,7 @@ func (s networkLoadBalancerService) handleCreateEvent(ctx context.Context, clust
 		return err
 	}
 
-	retrievedNetworkLoadBalancer, err := s.networkLoadBalancerClient.GetNetworkLoadBalancerByName(ctx, endpoint, event.Source.ParentName, event.Source.Name)
+	retrievedNetworkLoadBalancer, err := s.networkLoadBalancerClient.GetNetworkLoadBalancerByName(ctx, endpoint, event.Source.ProjectName, event.Source.ParentName, event.Source.Name)
 	if err != nil {
 		return err
 	}
@@ -383,7 +383,7 @@ func (s networkLoadBalancerService) SyncCluster(ctx context.Context, name string
 			continue
 		}
 
-		retrievedNetworkLoadBalancers, err := s.networkLoadBalancerClient.GetNetworkLoadBalancers(ctx, endpoint, network.Name)
+		retrievedNetworkLoadBalancers, err := s.networkLoadBalancerClient.GetNetworkLoadBalancers(ctx, endpoint, network.Project, network.Name)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
