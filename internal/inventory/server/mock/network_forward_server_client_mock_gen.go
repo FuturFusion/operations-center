@@ -23,10 +23,10 @@ var _ inventory.NetworkForwardServerClient = &NetworkForwardServerClientMock{}
 //
 //		// make and configure a mocked inventory.NetworkForwardServerClient
 //		mockedNetworkForwardServerClient := &NetworkForwardServerClientMock{
-//			GetNetworkForwardByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkForwardName string) (api.NetworkForward, error) {
+//			GetNetworkForwardByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkForwardName string) (api.NetworkForward, error) {
 //				panic("mock out the GetNetworkForwardByName method")
 //			},
-//			GetNetworkForwardsFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]api.NetworkForward, error) {
+//			GetNetworkForwardsFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) ([]api.NetworkForward, error) {
 //				panic("mock out the GetNetworkForwards method")
 //			},
 //		}
@@ -37,10 +37,10 @@ var _ inventory.NetworkForwardServerClient = &NetworkForwardServerClientMock{}
 //	}
 type NetworkForwardServerClientMock struct {
 	// GetNetworkForwardByNameFunc mocks the GetNetworkForwardByName method.
-	GetNetworkForwardByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkForwardName string) (api.NetworkForward, error)
+	GetNetworkForwardByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkForwardName string) (api.NetworkForward, error)
 
 	// GetNetworkForwardsFunc mocks the GetNetworkForwards method.
-	GetNetworkForwardsFunc func(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]api.NetworkForward, error)
+	GetNetworkForwardsFunc func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) ([]api.NetworkForward, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -50,6 +50,8 @@ type NetworkForwardServerClientMock struct {
 			Ctx context.Context
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
+			// ProjectName is the projectName argument value.
+			ProjectName string
 			// NetworkName is the networkName argument value.
 			NetworkName string
 			// NetworkForwardName is the networkForwardName argument value.
@@ -61,6 +63,8 @@ type NetworkForwardServerClientMock struct {
 			Ctx context.Context
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
+			// ProjectName is the projectName argument value.
+			ProjectName string
 			// NetworkName is the networkName argument value.
 			NetworkName string
 		}
@@ -70,25 +74,27 @@ type NetworkForwardServerClientMock struct {
 }
 
 // GetNetworkForwardByName calls GetNetworkForwardByNameFunc.
-func (mock *NetworkForwardServerClientMock) GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkForwardName string) (api.NetworkForward, error) {
+func (mock *NetworkForwardServerClientMock) GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkForwardName string) (api.NetworkForward, error) {
 	if mock.GetNetworkForwardByNameFunc == nil {
 		panic("NetworkForwardServerClientMock.GetNetworkForwardByNameFunc: method is nil but NetworkForwardServerClient.GetNetworkForwardByName was just called")
 	}
 	callInfo := struct {
 		Ctx                context.Context
 		Endpoint           provisioning.Endpoint
+		ProjectName        string
 		NetworkName        string
 		NetworkForwardName string
 	}{
 		Ctx:                ctx,
 		Endpoint:           endpoint,
+		ProjectName:        projectName,
 		NetworkName:        networkName,
 		NetworkForwardName: networkForwardName,
 	}
 	mock.lockGetNetworkForwardByName.Lock()
 	mock.calls.GetNetworkForwardByName = append(mock.calls.GetNetworkForwardByName, callInfo)
 	mock.lockGetNetworkForwardByName.Unlock()
-	return mock.GetNetworkForwardByNameFunc(ctx, endpoint, networkName, networkForwardName)
+	return mock.GetNetworkForwardByNameFunc(ctx, endpoint, projectName, networkName, networkForwardName)
 }
 
 // GetNetworkForwardByNameCalls gets all the calls that were made to GetNetworkForwardByName.
@@ -98,12 +104,14 @@ func (mock *NetworkForwardServerClientMock) GetNetworkForwardByName(ctx context.
 func (mock *NetworkForwardServerClientMock) GetNetworkForwardByNameCalls() []struct {
 	Ctx                context.Context
 	Endpoint           provisioning.Endpoint
+	ProjectName        string
 	NetworkName        string
 	NetworkForwardName string
 } {
 	var calls []struct {
 		Ctx                context.Context
 		Endpoint           provisioning.Endpoint
+		ProjectName        string
 		NetworkName        string
 		NetworkForwardName string
 	}
@@ -114,23 +122,25 @@ func (mock *NetworkForwardServerClientMock) GetNetworkForwardByNameCalls() []str
 }
 
 // GetNetworkForwards calls GetNetworkForwardsFunc.
-func (mock *NetworkForwardServerClientMock) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]api.NetworkForward, error) {
+func (mock *NetworkForwardServerClientMock) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) ([]api.NetworkForward, error) {
 	if mock.GetNetworkForwardsFunc == nil {
 		panic("NetworkForwardServerClientMock.GetNetworkForwardsFunc: method is nil but NetworkForwardServerClient.GetNetworkForwards was just called")
 	}
 	callInfo := struct {
 		Ctx         context.Context
 		Endpoint    provisioning.Endpoint
+		ProjectName string
 		NetworkName string
 	}{
 		Ctx:         ctx,
 		Endpoint:    endpoint,
+		ProjectName: projectName,
 		NetworkName: networkName,
 	}
 	mock.lockGetNetworkForwards.Lock()
 	mock.calls.GetNetworkForwards = append(mock.calls.GetNetworkForwards, callInfo)
 	mock.lockGetNetworkForwards.Unlock()
-	return mock.GetNetworkForwardsFunc(ctx, endpoint, networkName)
+	return mock.GetNetworkForwardsFunc(ctx, endpoint, projectName, networkName)
 }
 
 // GetNetworkForwardsCalls gets all the calls that were made to GetNetworkForwards.
@@ -140,11 +150,13 @@ func (mock *NetworkForwardServerClientMock) GetNetworkForwards(ctx context.Conte
 func (mock *NetworkForwardServerClientMock) GetNetworkForwardsCalls() []struct {
 	Ctx         context.Context
 	Endpoint    provisioning.Endpoint
+	ProjectName string
 	NetworkName string
 } {
 	var calls []struct {
 		Ctx         context.Context
 		Endpoint    provisioning.Endpoint
+		ProjectName string
 		NetworkName string
 	}
 	mock.lockGetNetworkForwards.RLock()

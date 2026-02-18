@@ -476,8 +476,9 @@ func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
 			}
 
 			networkForwardClient := &serverMock.NetworkForwardServerClientMock{
-				GetNetworkForwardByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
+				GetNetworkForwardByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
 					require.Equal(t, tc.repoGetByUUIDNetworkForward.Name, networkForwardName)
+					require.Equal(t, tc.repoGetByUUIDNetworkForward.ProjectName, projectName)
 					require.Equal(t, "network", networkName)
 					return tc.networkForwardClientGetNetworkForwardByName, tc.networkForwardClientGetNetworkForwardByNameErr
 				},
@@ -970,10 +971,11 @@ func TestNetworkForwardService_ResyncByName(t *testing.T) {
 			}
 
 			networkForwardClient := &serverMock.NetworkForwardServerClientMock{
-				GetNetworkForwardByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
+				GetNetworkForwardByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
 					clusterName, err := endpoint.GetServerName()
 					require.NoError(t, err)
 					require.Equal(t, tc.argClusterName, clusterName)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, projectName)
 					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, networkName)
 					require.Equal(t, tc.argLifecycleEvent.Source.Name, networkForwardName)
 					return tc.networkForwardClientGetNetworkForwardByName, tc.networkForwardClientGetNetworkForwardByNameErr
@@ -1230,7 +1232,7 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 			}
 
 			networkForwardClient := &serverMock.NetworkForwardServerClientMock{
-				GetNetworkForwardsFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]incusapi.NetworkForward, error) {
+				GetNetworkForwardsFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) ([]incusapi.NetworkForward, error) {
 					return tc.networkForwardClientGetNetworkForwards, tc.networkForwardClientGetNetworkForwardsErr
 				},
 			}

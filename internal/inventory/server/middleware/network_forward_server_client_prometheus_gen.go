@@ -40,7 +40,7 @@ func NewNetworkForwardServerClientWithPrometheus(base inventory.NetworkForwardSe
 }
 
 // GetNetworkForwardByName implements inventory.NetworkForwardServerClient.
-func (_d NetworkForwardServerClientWithPrometheus) GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
+func (_d NetworkForwardServerClientWithPrometheus) GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -50,11 +50,11 @@ func (_d NetworkForwardServerClientWithPrometheus) GetNetworkForwardByName(ctx c
 
 		networkForwardServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkForwardByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkForwardByName(ctx, endpoint, networkName, networkForwardName)
+	return _d.base.GetNetworkForwardByName(ctx, endpoint, projectName, networkName, networkForwardName)
 }
 
 // GetNetworkForwards implements inventory.NetworkForwardServerClient.
-func (_d NetworkForwardServerClientWithPrometheus) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (networkForwards []api.NetworkForward, err error) {
+func (_d NetworkForwardServerClientWithPrometheus) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkForwards []api.NetworkForward, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -64,5 +64,5 @@ func (_d NetworkForwardServerClientWithPrometheus) GetNetworkForwards(ctx contex
 
 		networkForwardServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkForwards", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkForwards(ctx, endpoint, networkName)
+	return _d.base.GetNetworkForwards(ctx, endpoint, projectName, networkName)
 }

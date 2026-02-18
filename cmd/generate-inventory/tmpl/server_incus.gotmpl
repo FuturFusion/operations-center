@@ -10,13 +10,17 @@ import (
   "github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) Get{{ .PluralName | pascalcase }}(ctx context.Context, endpoint provisioning.Endpoint {{- if .HasParent }}, {{ .Name | camelcase }}Name string {{- end -}} ) ([]incusapi.{{ .ObjectType | pascalcase }}, error) {
+func (s serverClient) Get{{ .PluralName | pascalcase }}(ctx context.Context, endpoint provisioning.Endpoint {{- if .HasProjectFromParent }}, projectName string {{- end }}{{- if .HasParent }}, {{ .ParentName | camelcase }}Name string {{- end -}} ) ([]incusapi.{{ .ObjectType | pascalcase }}, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
+{{- if .HasProjectFromParent }}
 
-	server{{ .PluralName | pascalcase }}, err := client.{{ .IncusGetAllMethod }}({{ if eq .IncusGetAllMethod "GetInstancesFullAllProjects" }}incusapi.{{ .Name | pascalcase }}TypeAny{{ end }}{{ if .HasParent }}{{ .Name | camelcase }}Name{{ end }})
+	client = client.UseProject(projectName)
+{{- end }}
+
+	server{{ .PluralName | pascalcase }}, err := client.{{ .IncusGetAllMethod }}({{ if eq .IncusGetAllMethod "GetInstancesFullAllProjects" }}incusapi.{{ .Name | pascalcase }}TypeAny{{ end }}{{ if .HasParent }}{{ .ParentName | camelcase }}Name{{ end }})
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
 		return nil, domain.ErrNotFound
 	}
@@ -28,12 +32,12 @@ func (s serverClient) Get{{ .PluralName | pascalcase }}(ctx context.Context, end
 	return server{{ .PluralName | pascalcase }}, nil
 }
 
-func (s serverClient) Get{{ .Name | pascalcase }}ByName(ctx context.Context, endpoint provisioning.Endpoint, {{- if .HasProjectDirect }}projectName string, {{ end -}}{{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }}{{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error) {
+func (s serverClient) Get{{ .Name | pascalcase }}ByName(ctx context.Context, endpoint provisioning.Endpoint, {{- if .HasProject }}projectName string, {{ end -}}{{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }}{{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.{{ .ObjectType | pascalcase }}{}, err
 	}
-{{- if .HasProjectDirect }}
+{{- if .HasProject }}
 
 	client = client.UseProject(projectName)
 {{- end }}

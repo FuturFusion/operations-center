@@ -44,12 +44,13 @@ func NewNetworkForwardServerClientWithSlog(base inventory.NetworkForwardServerCl
 }
 
 // GetNetworkForwardByName implements inventory.NetworkForwardServerClient.
-func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
+func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkName", networkName),
 			slog.String("networkForwardName", networkForwardName),
 		)
@@ -77,16 +78,17 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context
 			log.DebugContext(ctx, "<= method GetNetworkForwardByName finished")
 		}
 	}()
-	return _d._base.GetNetworkForwardByName(ctx, endpoint, networkName, networkForwardName)
+	return _d._base.GetNetworkForwardByName(ctx, endpoint, projectName, networkName, networkForwardName)
 }
 
 // GetNetworkForwards implements inventory.NetworkForwardServerClient.
-func (_d NetworkForwardServerClientWithSlog) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (networkForwards []api.NetworkForward, err error) {
+func (_d NetworkForwardServerClientWithSlog) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkForwards []api.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkName", networkName),
 		)
 	}
@@ -113,5 +115,5 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwards(ctx context.Cont
 			log.DebugContext(ctx, "<= method GetNetworkForwards finished")
 		}
 	}()
-	return _d._base.GetNetworkForwards(ctx, endpoint, networkName)
+	return _d._base.GetNetworkForwards(ctx, endpoint, projectName, networkName)
 }

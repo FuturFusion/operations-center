@@ -170,7 +170,7 @@ func (s networkForwardService) ResyncByUUID(ctx context.Context, id uuid.UUID) e
 			return err
 		}
 
-		retrievedNetworkForward, err := s.networkForwardClient.GetNetworkForwardByName(ctx, endpoint, networkForward.NetworkName, networkForward.Name)
+		retrievedNetworkForward, err := s.networkForwardClient.GetNetworkForwardByName(ctx, endpoint, networkForward.ProjectName, networkForward.NetworkName, networkForward.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkForward.UUID)
 			if err != nil {
@@ -248,7 +248,7 @@ func (s networkForwardService) handleCreateEvent(ctx context.Context, clusterNam
 		return err
 	}
 
-	retrievedNetworkForward, err := s.networkForwardClient.GetNetworkForwardByName(ctx, endpoint, event.Source.ParentName, event.Source.Name)
+	retrievedNetworkForward, err := s.networkForwardClient.GetNetworkForwardByName(ctx, endpoint, event.Source.ProjectName, event.Source.ParentName, event.Source.Name)
 	if err != nil {
 		return err
 	}
@@ -383,7 +383,7 @@ func (s networkForwardService) SyncCluster(ctx context.Context, name string) err
 			continue
 		}
 
-		retrievedNetworkForwards, err := s.networkForwardClient.GetNetworkForwards(ctx, endpoint, network.Name)
+		retrievedNetworkForwards, err := s.networkForwardClient.GetNetworkForwards(ctx, endpoint, network.Project, network.Name)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}

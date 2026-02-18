@@ -12,13 +12,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, networkPeerName string) ([]incusapi.NetworkPeer, error) {
+func (s serverClient) GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) ([]incusapi.NetworkPeer, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	serverNetworkPeers, err := client.GetNetworkPeers(networkPeerName)
+	client = client.UseProject(projectName)
+
+	serverNetworkPeers, err := client.GetNetworkPeers(networkName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
 		return nil, domain.ErrNotFound
 	}
@@ -30,11 +32,13 @@ func (s serverClient) GetNetworkPeers(ctx context.Context, endpoint provisioning
 	return serverNetworkPeers, nil
 }
 
-func (s serverClient) GetNetworkPeerByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
+func (s serverClient) GetNetworkPeerByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.NetworkPeer{}, err
 	}
+
+	client = client.UseProject(projectName)
 
 	serverNetworkPeer, _, err := client.GetNetworkPeer(networkName, networkPeerName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {

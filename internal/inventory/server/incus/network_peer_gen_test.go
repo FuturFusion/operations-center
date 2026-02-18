@@ -21,7 +21,7 @@ func networkPeerClientTestCases(t *testing.T) []methodTestSet {
 		{
 			name: "GetNetworkPeers",
 			clientCall: func(ctx context.Context, client inventory.ServerClient, endpoint provisioning.Endpoint) (any, error) {
-				return client.GetNetworkPeers(ctx, endpoint, "network")
+				return client.GetNetworkPeers(ctx, endpoint, "project", "network")
 			},
 			testCases: []methodTestCase{
 				{
@@ -87,7 +87,7 @@ func networkPeerClientTestCases(t *testing.T) []methodTestSet {
 		{
 			name: "GetNetworkPeerByName",
 			clientCall: func(ctx context.Context, client inventory.ServerClient, endpoint provisioning.Endpoint) (any, error) {
-				return client.GetNetworkPeerByName(ctx, endpoint, "network", "name")
+				return client.GetNetworkPeerByName(ctx, endpoint, "project", "network", "name")
 			},
 			testCases: []methodTestCase{
 				{

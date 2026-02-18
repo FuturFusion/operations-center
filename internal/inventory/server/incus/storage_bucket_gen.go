@@ -12,13 +12,13 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetStorageBuckets(ctx context.Context, endpoint provisioning.Endpoint, storageBucketName string) ([]incusapi.StorageBucketFull, error) {
+func (s serverClient) GetStorageBuckets(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]incusapi.StorageBucketFull, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	serverStorageBuckets, err := client.GetStoragePoolBucketsFullAllProjects(storageBucketName)
+	serverStorageBuckets, err := client.GetStoragePoolBucketsFullAllProjects(storagePoolName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
 		return nil, domain.ErrNotFound
 	}

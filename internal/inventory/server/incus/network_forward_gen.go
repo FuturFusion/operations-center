@@ -12,13 +12,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, networkForwardName string) ([]incusapi.NetworkForward, error) {
+func (s serverClient) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) ([]incusapi.NetworkForward, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	serverNetworkForwards, err := client.GetNetworkForwards(networkForwardName)
+	client = client.UseProject(projectName)
+
+	serverNetworkForwards, err := client.GetNetworkForwards(networkName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
 		return nil, domain.ErrNotFound
 	}
@@ -30,11 +32,13 @@ func (s serverClient) GetNetworkForwards(ctx context.Context, endpoint provision
 	return serverNetworkForwards, nil
 }
 
-func (s serverClient) GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
+func (s serverClient) GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.NetworkForward{}, err
 	}
+
+	client = client.UseProject(projectName)
 
 	serverNetworkForward, _, err := client.GetNetworkForward(networkName, networkForwardName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {

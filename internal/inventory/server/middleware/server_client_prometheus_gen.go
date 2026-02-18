@@ -166,7 +166,7 @@ func (_d ServerClientWithPrometheus) GetNetworkByName(ctx context.Context, endpo
 }
 
 // GetNetworkForwardByName implements inventory.ServerClient.
-func (_d ServerClientWithPrometheus) GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
+func (_d ServerClientWithPrometheus) GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -176,11 +176,11 @@ func (_d ServerClientWithPrometheus) GetNetworkForwardByName(ctx context.Context
 
 		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkForwardByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkForwardByName(ctx, endpoint, networkName, networkForwardName)
+	return _d.base.GetNetworkForwardByName(ctx, endpoint, projectName, networkName, networkForwardName)
 }
 
 // GetNetworkForwards implements inventory.ServerClient.
-func (_d ServerClientWithPrometheus) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (networkForwards []api.NetworkForward, err error) {
+func (_d ServerClientWithPrometheus) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkForwards []api.NetworkForward, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -190,7 +190,7 @@ func (_d ServerClientWithPrometheus) GetNetworkForwards(ctx context.Context, end
 
 		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkForwards", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkForwards(ctx, endpoint, networkName)
+	return _d.base.GetNetworkForwards(ctx, endpoint, projectName, networkName)
 }
 
 // GetNetworkIntegrationByName implements inventory.ServerClient.
@@ -222,7 +222,7 @@ func (_d ServerClientWithPrometheus) GetNetworkIntegrations(ctx context.Context,
 }
 
 // GetNetworkLoadBalancerByName implements inventory.ServerClient.
-func (_d ServerClientWithPrometheus) GetNetworkLoadBalancerByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
+func (_d ServerClientWithPrometheus) GetNetworkLoadBalancerByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -232,11 +232,11 @@ func (_d ServerClientWithPrometheus) GetNetworkLoadBalancerByName(ctx context.Co
 
 		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkLoadBalancerByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkLoadBalancerByName(ctx, endpoint, networkName, networkLoadBalancerName)
+	return _d.base.GetNetworkLoadBalancerByName(ctx, endpoint, projectName, networkName, networkLoadBalancerName)
 }
 
 // GetNetworkLoadBalancers implements inventory.ServerClient.
-func (_d ServerClientWithPrometheus) GetNetworkLoadBalancers(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
+func (_d ServerClientWithPrometheus) GetNetworkLoadBalancers(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -246,11 +246,11 @@ func (_d ServerClientWithPrometheus) GetNetworkLoadBalancers(ctx context.Context
 
 		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkLoadBalancers", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkLoadBalancers(ctx, endpoint, networkName)
+	return _d.base.GetNetworkLoadBalancers(ctx, endpoint, projectName, networkName)
 }
 
 // GetNetworkPeerByName implements inventory.ServerClient.
-func (_d ServerClientWithPrometheus) GetNetworkPeerByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
+func (_d ServerClientWithPrometheus) GetNetworkPeerByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -260,11 +260,11 @@ func (_d ServerClientWithPrometheus) GetNetworkPeerByName(ctx context.Context, e
 
 		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkPeerByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkPeerByName(ctx, endpoint, networkName, networkPeerName)
+	return _d.base.GetNetworkPeerByName(ctx, endpoint, projectName, networkName, networkPeerName)
 }
 
 // GetNetworkPeers implements inventory.ServerClient.
-func (_d ServerClientWithPrometheus) GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (networkPeers []api.NetworkPeer, err error) {
+func (_d ServerClientWithPrometheus) GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkPeers []api.NetworkPeer, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -274,7 +274,7 @@ func (_d ServerClientWithPrometheus) GetNetworkPeers(ctx context.Context, endpoi
 
 		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkPeers", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkPeers(ctx, endpoint, networkName)
+	return _d.base.GetNetworkPeers(ctx, endpoint, projectName, networkName)
 }
 
 // GetNetworkZoneByName implements inventory.ServerClient.

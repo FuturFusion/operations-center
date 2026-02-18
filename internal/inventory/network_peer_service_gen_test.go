@@ -476,8 +476,9 @@ func TestNetworkPeerService_ResyncByUUID(t *testing.T) {
 			}
 
 			networkPeerClient := &serverMock.NetworkPeerServerClientMock{
-				GetNetworkPeerByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
+				GetNetworkPeerByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
 					require.Equal(t, tc.repoGetByUUIDNetworkPeer.Name, networkPeerName)
+					require.Equal(t, tc.repoGetByUUIDNetworkPeer.ProjectName, projectName)
 					require.Equal(t, "network", networkName)
 					return tc.networkPeerClientGetNetworkPeerByName, tc.networkPeerClientGetNetworkPeerByNameErr
 				},
@@ -970,10 +971,11 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 			}
 
 			networkPeerClient := &serverMock.NetworkPeerServerClientMock{
-				GetNetworkPeerByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
+				GetNetworkPeerByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
 					clusterName, err := endpoint.GetServerName()
 					require.NoError(t, err)
 					require.Equal(t, tc.argClusterName, clusterName)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, projectName)
 					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, networkName)
 					require.Equal(t, tc.argLifecycleEvent.Source.Name, networkPeerName)
 					return tc.networkPeerClientGetNetworkPeerByName, tc.networkPeerClientGetNetworkPeerByNameErr
@@ -1230,7 +1232,7 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			}
 
 			networkPeerClient := &serverMock.NetworkPeerServerClientMock{
-				GetNetworkPeersFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]incusapi.NetworkPeer, error) {
+				GetNetworkPeersFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) ([]incusapi.NetworkPeer, error) {
 					return tc.networkPeerClientGetNetworkPeers, tc.networkPeerClientGetNetworkPeersErr
 				},
 			}
