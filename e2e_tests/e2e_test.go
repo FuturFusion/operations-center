@@ -16,54 +16,44 @@ func TestE2E(t *testing.T) {
 		t.Skip("OPERATIONS_CENTER_E2E_TEST env var not set, skipping end 2 end tests.")
 	}
 
-	useSnapshotsEnv := os.Getenv("OPERATIONS_CENTER_E2E_TEST_USE_SNAPSHOTS")
-	useSnapshots, _ := strconv.ParseBool(useSnapshotsEnv)
-
-	type testCase struct {
+	testCases := []struct {
 		name string
 
-		testFunc func(t *testing.T, tmpDir string)
-
-		skip bool
-	}
-
-	type setupType struct {
-		name        string
-		setupFunc   func(t *testing.T, useSnapshots bool, tmpDir string)
-		cleanupFunc func(t *testing.T, useSnapshots bool) func()
-	}
-
-	setupTypeTests := []setupType{
+		setupFunc   func(t *testing.T, tmpDir string)
+		cleanupFunc func(t *testing.T) func()
+		testFunc    func(t *testing.T, tmpDir string)
+	}{
 		{
-			name:        "with token",
+			name:        "token - setup only",
 			setupFunc:   setupIncusOSWithToken,
 			cleanupFunc: cleanupIncusOS,
-		},
-		{
-			name:        "with token seed",
-			setupFunc:   setupIncusOSWithTokenSeed,
-			cleanupFunc: cleanupIncusOS,
-		},
-	}
-
-	testCases := []testCase{
-		{
-			name: "setup only",
 			testFunc: func(t *testing.T, tmpDir string) {
 				t.Helper()
 			},
 		},
 		{
-			name:     "create cluster",
-			testFunc: createCluster,
+			name:        "token - create cluster",
+			setupFunc:   setupIncusOSWithToken,
+			cleanupFunc: cleanupIncusOS,
+			testFunc:    createCluster,
 		},
 		{
-			name:     "create cluster from cluster template",
-			testFunc: createClusterFromTemplate,
+			name:        "token - create cluster from cluster template",
+			setupFunc:   setupIncusOSWithToken,
+			cleanupFunc: cleanupIncusOS,
+			testFunc:    createClusterFromTemplate,
 		},
 		{
-			name:     "factory reset cluster",
-			testFunc: factoryResetCluster,
+			name:        "token - factory reset cluster",
+			setupFunc:   setupIncusOSWithToken,
+			cleanupFunc: cleanupIncusOS,
+			testFunc:    factoryResetCluster,
+		},
+		{
+			name:        "token seed - create cluster",
+			setupFunc:   setupIncusOSWithTokenSeed,
+			cleanupFunc: cleanupIncusOS,
+			testFunc:    createCluster,
 		},
 	}
 
@@ -87,28 +77,19 @@ func TestE2E(t *testing.T) {
 
 	t.Logf("Temporary directory: %s", tmpDir)
 
-	for _, ts := range setupTypeTests {
-		t.Run(ts.name, func(t *testing.T) {
-			setupOperationsCenter(t, useSnapshots, tmpDir)
+	setupOperationsCenter(t, tmpDir)
 
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			stop := timeTrack(t, tc.name)
+			defer stop()
+
+			tc.setupFunc(t, tmpDir)
 			if !noCleanup {
-				t.Cleanup(ts.cleanupFunc(t, useSnapshots))
+				t.Cleanup(tc.cleanupFunc(t))
 			}
 
-			for _, tc := range testCases {
-				t.Run(tc.name, func(t *testing.T) {
-					if tc.skip {
-						t.SkipNow()
-					}
-
-					stop := timeTrack(t, tc.name)
-					defer stop()
-
-					ts.setupFunc(t, useSnapshots, tmpDir)
-
-					tc.testFunc(t, tmpDir)
-				})
-			}
+			tc.testFunc(t, tmpDir)
 		})
 	}
 }
