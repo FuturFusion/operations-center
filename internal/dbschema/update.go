@@ -54,6 +54,16 @@ var updates = map[int]update{
 	24: updateFromV23,
 	25: updateFromV24,
 	26: updateFromV25,
+	27: updateFromV26,
+}
+
+func updateFromV26(ctx context.Context, tx *sql.Tx) error {
+	// v26..v27 add tokens.auto_remove
+	stmt := `
+ALTER TABLE tokens ADD COLUMN auto_remove BOOLEAN NOT NULL DEFAULT 0;
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV25(ctx context.Context, tx *sql.Tx) error {
