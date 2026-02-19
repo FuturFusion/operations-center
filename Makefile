@@ -188,10 +188,13 @@ doc-linkcheck: doc-setup
 doc-lint:
 	doc/.sphinx/.markdownlint/doc-lint.sh
 
+GO_TEST_RUN ?= 'TestE2E'
+
 .PHONY: e2e-test
 e2e-test: build
+	@echo "go test flags: $(GO_TEST_RUN) (change by running 'make e2e-test GO_TEST_RUN=TestMyTest')"
 	mkdir -p $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)
-	OPERATIONS_CENTER_E2E_TEST=1 OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) go test ./e2e_tests/ -v -timeout 60m -count 1 | tee $$OPERATIONS_CENTER_E2E_TEST_TMP_DIR/e2e_tests_$$(date +%F-%H-%M-%S).log
+	OPERATIONS_CENTER_E2E_TEST=1 OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) go test ./e2e_tests/ -v -timeout 60m -count 1 -run $(GO_TEST_RUN) | tee $$OPERATIONS_CENTER_E2E_TEST_TMP_DIR/e2e_tests_$$(date +%F-%H-%M-%S).log
 
 .PHONY: clean-e2e-test
 clean-e2e-test:
