@@ -15,8 +15,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/inventory"
-	"github.com/FuturFusion/operations-center/internal/render"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
 )
 
