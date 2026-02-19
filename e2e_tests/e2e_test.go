@@ -84,10 +84,10 @@ func TestE2E(t *testing.T) {
 			stop := timeTrack(t, tc.name)
 			defer stop()
 
-			tc.setupFunc(t, tmpDir)
 			if !noCleanup {
 				t.Cleanup(tc.cleanupFunc(t))
 			}
+			tc.setupFunc(t, tmpDir)
 
 			tc.testFunc(t, tmpDir)
 		})
