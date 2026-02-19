@@ -14,7 +14,6 @@ import (
 
 // SystemServiceWithSlog implements system.SystemService that is instrumented with slog logger.
 type SystemServiceWithSlog struct {
-	_log                  *slog.Logger
 	_base                 system.SystemService
 	_isInformativeErrFunc func(error) bool
 }
@@ -28,10 +27,9 @@ func SystemServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error
 }
 
 // NewSystemServiceWithSlog instruments an implementation of the system.SystemService with simple logging.
-func NewSystemServiceWithSlog(base system.SystemService, log *slog.Logger, opts ...SystemServiceWithSlogOption) SystemServiceWithSlog {
+func NewSystemServiceWithSlog(base system.SystemService, opts ...SystemServiceWithSlogOption) SystemServiceWithSlog {
 	this := SystemServiceWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -44,17 +42,17 @@ func NewSystemServiceWithSlog(base system.SystemService, log *slog.Logger, opts 
 
 // GetNetworkConfig implements system.SystemService.
 func (_d SystemServiceWithSlog) GetNetworkConfig(ctx context.Context) (systemNetwork api.SystemNetwork) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("systemNetwork", systemNetwork),
 			)
 		} else {
@@ -66,17 +64,17 @@ func (_d SystemServiceWithSlog) GetNetworkConfig(ctx context.Context) (systemNet
 
 // GetSecurityConfig implements system.SystemService.
 func (_d SystemServiceWithSlog) GetSecurityConfig(ctx context.Context) (systemSecurity api.SystemSecurity) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetSecurityConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("systemSecurity", systemSecurity),
 			)
 		} else {
@@ -88,17 +86,17 @@ func (_d SystemServiceWithSlog) GetSecurityConfig(ctx context.Context) (systemSe
 
 // GetSettingsConfig implements system.SystemService.
 func (_d SystemServiceWithSlog) GetSettingsConfig(ctx context.Context) (systemSettings api.SystemSettings) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetSettingsConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("systemSettings", systemSettings),
 			)
 		} else {
@@ -110,17 +108,17 @@ func (_d SystemServiceWithSlog) GetSettingsConfig(ctx context.Context) (systemSe
 
 // GetUpdatesConfig implements system.SystemService.
 func (_d SystemServiceWithSlog) GetUpdatesConfig(ctx context.Context) (systemUpdates api.SystemUpdates) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetUpdatesConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("systemUpdates", systemUpdates),
 			)
 		} else {
@@ -132,8 +130,8 @@ func (_d SystemServiceWithSlog) GetUpdatesConfig(ctx context.Context) (systemUpd
 
 // TriggerCertificateRenew implements system.SystemService.
 func (_d SystemServiceWithSlog) TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Bool("force", force),
@@ -141,15 +139,15 @@ func (_d SystemServiceWithSlog) TriggerCertificateRenew(ctx context.Context, for
 	}
 	log.DebugContext(ctx, "=> calling TriggerCertificateRenew")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Bool("changed", changed),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -167,8 +165,8 @@ func (_d SystemServiceWithSlog) TriggerCertificateRenew(ctx context.Context, for
 
 // UpdateCertificate implements system.SystemService.
 func (_d SystemServiceWithSlog) UpdateCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("certificatePEM", certificatePEM),
@@ -177,14 +175,14 @@ func (_d SystemServiceWithSlog) UpdateCertificate(ctx context.Context, certifica
 	}
 	log.DebugContext(ctx, "=> calling UpdateCertificate")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -202,8 +200,8 @@ func (_d SystemServiceWithSlog) UpdateCertificate(ctx context.Context, certifica
 
 // UpdateNetworkConfig implements system.SystemService.
 func (_d SystemServiceWithSlog) UpdateNetworkConfig(ctx context.Context, cfg api.SystemNetworkPut) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("cfg", cfg),
@@ -211,14 +209,14 @@ func (_d SystemServiceWithSlog) UpdateNetworkConfig(ctx context.Context, cfg api
 	}
 	log.DebugContext(ctx, "=> calling UpdateNetworkConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -236,8 +234,8 @@ func (_d SystemServiceWithSlog) UpdateNetworkConfig(ctx context.Context, cfg api
 
 // UpdateSecurityConfig implements system.SystemService.
 func (_d SystemServiceWithSlog) UpdateSecurityConfig(ctx context.Context, cfg api.SystemSecurityPut) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("cfg", cfg),
@@ -245,14 +243,14 @@ func (_d SystemServiceWithSlog) UpdateSecurityConfig(ctx context.Context, cfg ap
 	}
 	log.DebugContext(ctx, "=> calling UpdateSecurityConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -270,8 +268,8 @@ func (_d SystemServiceWithSlog) UpdateSecurityConfig(ctx context.Context, cfg ap
 
 // UpdateSettingsConfig implements system.SystemService.
 func (_d SystemServiceWithSlog) UpdateSettingsConfig(ctx context.Context, cfg api.SystemSettingsPut) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("cfg", cfg),
@@ -279,14 +277,14 @@ func (_d SystemServiceWithSlog) UpdateSettingsConfig(ctx context.Context, cfg ap
 	}
 	log.DebugContext(ctx, "=> calling UpdateSettingsConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -304,8 +302,8 @@ func (_d SystemServiceWithSlog) UpdateSettingsConfig(ctx context.Context, cfg ap
 
 // UpdateUpdatesConfig implements system.SystemService.
 func (_d SystemServiceWithSlog) UpdateUpdatesConfig(ctx context.Context, cfg api.SystemUpdatesPut) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("cfg", cfg),
@@ -313,14 +311,14 @@ func (_d SystemServiceWithSlog) UpdateUpdatesConfig(ctx context.Context, cfg api
 	}
 	log.DebugContext(ctx, "=> calling UpdateUpdatesConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
