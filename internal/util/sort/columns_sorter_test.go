@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/sort"
+	"github.com/FuturFusion/operations-center/internal/util/sort"
 )
 
 func TestColumnsSorter(t *testing.T) {

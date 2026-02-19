@@ -13,8 +13,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/render"
-	"github.com/FuturFusion/operations-center/internal/sort"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/sort"
 )
 
 type cmdClusterArtifact struct {
