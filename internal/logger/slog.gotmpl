@@ -27,7 +27,6 @@ import (
 
 // {{$decorator}} implements {{ $srcPkgQualifier }}{{ $wrapper.Name }} that is instrumented with slog logger.
 type {{$decorator}} struct {
-	_log  *slog.Logger
 	_base {{ $srcPkgQualifier }}{{ $wrapper.Name }}
 	_isInformativeErrFunc func(error) bool
 }
@@ -41,10 +40,9 @@ func {{$decorator}}WithInformativeErrFunc(isInformativeErrFunc func(error) bool)
 }
 
 // New{{$decorator}} instruments an implementation of the {{ $srcPkgQualifier }}{{ $wrapper.Name }} with simple logging.
-func New{{$decorator}}(base {{ $srcPkgQualifier }}{{ $wrapper.Name }}, log *slog.Logger, opts ...{{$decorator}}Option) {{$decorator}} {
+func New{{$decorator}}(base {{ $srcPkgQualifier }}{{ $wrapper.Name }}, opts ...{{$decorator}}Option) {{$decorator}} {
 	this := {{$decorator}}{
 		_base: base,
-		_log: log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -62,9 +60,9 @@ func New{{$decorator}}(base {{ $srcPkgQualifier }}{{ $wrapper.Name }}, log *slog
 		{{- if not $method.AcceptsContext }}
 		ctx := context.Background()
 		{{- end }}
-		log := _d._log.With()
+		log := slog.With()
 		{{- if gt ($method.Params | len) 0 }}
-			if _d._log.Enabled(ctx, logger.LevelTrace) {
+			if slog.Default().Enabled(ctx, logger.LevelTrace) {
 				log = log.With(
 					{{range $param := $method.Params}}
 						{{- if eq $param.TypeString "string" -}}
@@ -92,10 +90,10 @@ func New{{$decorator}}(base {{ $srcPkgQualifier }}{{ $wrapper.Name }}, log *slog
 		{{end -}}
 		log.DebugContext(ctx, "=> calling {{$method.Name}}")
 		defer func() {
-			log := _d._log.With()
+			log := slog.With()
 			{{- if gt ($method.Returns | len) 0}}
-				if _d._log.Enabled(ctx, logger.LevelTrace) {
-					log = _d._log.With(
+				if slog.Default().Enabled(ctx, logger.LevelTrace) {
+					log = slog.With(
 						{{- range $param := $method.Returns}}
 							{{if eq $param.TypeString "string" -}}
 							slog.String("{{ $param.Name }}", {{ $param.Name }}),
@@ -121,7 +119,7 @@ func New{{$decorator}}(base {{ $srcPkgQualifier }}{{ $wrapper.Name }}, log *slog
 				} else {
 					{{- if $method.ReturnsError }}
 						if err != nil {
-							log = _d._log.With("err", err)
+							log = slog.With("err", err)
 						}
 					{{- end }}
 				}
