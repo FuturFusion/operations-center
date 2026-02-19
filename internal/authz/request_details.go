@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/FuturFusion/operations-center/internal/authn"
+	"github.com/FuturFusion/operations-center/internal/security/authn"
 )
 
 // RequestDetails is a type representing an authorization request.

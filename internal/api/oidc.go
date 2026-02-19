@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"github.com/FuturFusion/operations-center/internal/authn/oidc"
+	"github.com/FuturFusion/operations-center/internal/security/authn/oidc"
 )
 
 func registerOIDCHandlers(router Router, oidcVerifier *oidc.Verifier) {

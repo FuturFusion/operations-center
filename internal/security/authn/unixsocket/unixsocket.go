@@ -3,7 +3,7 @@ package unixsocket
 import (
 	"net/http"
 
-	"github.com/FuturFusion/operations-center/internal/authn"
+	"github.com/FuturFusion/operations-center/internal/security/authn"
 )
 
 type UnixSocket struct{}

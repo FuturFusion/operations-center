@@ -11,7 +11,7 @@ import (
 
 	incustls "github.com/lxc/incus/v6/shared/tls"
 
-	"github.com/FuturFusion/operations-center/internal/authn"
+	"github.com/FuturFusion/operations-center/internal/security/authn"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
