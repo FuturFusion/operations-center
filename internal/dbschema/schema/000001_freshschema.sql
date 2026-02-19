@@ -165,12 +165,13 @@ CREATE TABLE network_forwards (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
+  project_name TEXT NOT NULL,
   network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
-  UNIQUE (cluster_id, network_name, name),
+  UNIQUE (cluster_id, project_name, network_name, name),
   FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
 );
 
@@ -190,12 +191,13 @@ CREATE TABLE network_load_balancers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
+  project_name TEXT NOT NULL,
   network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
-  UNIQUE (cluster_id, network_name, name),
+  UNIQUE (cluster_id, project_name, network_name, name),
   FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
 );
 
@@ -203,12 +205,13 @@ CREATE TABLE network_peers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
+  project_name TEXT NOT NULL,
   network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
-  UNIQUE (cluster_id, network_name, name),
+  UNIQUE (cluster_id, project_name,network_name, name),
   FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
 );
 
@@ -397,4 +400,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (25, strftime("%s"));
+INSERT INTO schema (version, updated_at) VALUES (26, strftime("%s"));

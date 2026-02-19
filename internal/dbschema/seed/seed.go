@@ -446,9 +446,11 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		networkForwardCount := randBetween(config.NetworkForwardsMin, config.NetworkForwardsMax)
 		for networkForwardIdx := 0; networkForwardIdx < networkForwardCount; networkForwardIdx++ {
 			networkForwardName := fmt.Sprintf("networkForward-%08x-%08x", clusterIdx, networkForwardIdx)
+			projectName := faker.RandomString(projects)
 			networkForward := inventory.NetworkForward{
 				Cluster:     clusterName,
 				Name:        networkForwardName,
+				ProjectName: projectName,
 				NetworkName: faker.RandomString(networks),
 				Object: inventory.IncusNetworkForwardWrapper{
 					NetworkForward: incusapi.NetworkForward{
@@ -508,10 +510,12 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		networkLoadBalancerCount := randBetween(config.NetworkLoadBalancersMin, config.NetworkLoadBalancersMax)
 		for networkLoadBalancerIdx := 0; networkLoadBalancerIdx < networkLoadBalancerCount; networkLoadBalancerIdx++ {
 			networkLoadBalancerName := fmt.Sprintf("networkLoadBalancer-%08x-%08x", clusterIdx, networkLoadBalancerIdx)
+			projectName := faker.RandomString(projects)
 			networkLoadBalancer := inventory.NetworkLoadBalancer{
 				Cluster:     clusterName,
 				Name:        networkLoadBalancerName,
 				NetworkName: faker.RandomString(networks),
+				ProjectName: projectName,
 				Object: inventory.IncusNetworkLoadBalancerWrapper{
 					NetworkLoadBalancer: incusapi.NetworkLoadBalancer{
 						NetworkLoadBalancerPut: incusapi.NetworkLoadBalancerPut{
@@ -549,10 +553,12 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		networkPeerCount := randBetween(config.NetworkPeersMin, config.NetworkPeersMax)
 		for networkPeerIdx := 0; networkPeerIdx < networkPeerCount; networkPeerIdx++ {
 			networkPeerName := fmt.Sprintf("networkPeer-%08x-%08x", clusterIdx, networkPeerIdx)
+			projectName := faker.RandomString(projects)
 			networkPeer := inventory.NetworkPeer{
 				Cluster:     clusterName,
 				Name:        networkPeerName,
 				NetworkName: faker.RandomString(networks),
+				ProjectName: projectName,
 				Object: inventory.IncusNetworkPeerWrapper{
 					NetworkPeer: incusapi.NetworkPeer{
 						NetworkPeerPut: incusapi.NetworkPeerPut{
