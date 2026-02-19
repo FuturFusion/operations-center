@@ -22,10 +22,10 @@ import (
 	"github.com/lxc/incus-os/incus-osd/api/images"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
-	"github.com/FuturFusion/operations-center/internal/file"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/signature"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 

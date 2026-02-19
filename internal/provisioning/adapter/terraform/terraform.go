@@ -20,8 +20,8 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/FuturFusion/operations-center/internal/environment"
-	"github.com/FuturFusion/operations-center/internal/file"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 )
 
 var terraformProviders = map[string]struct {

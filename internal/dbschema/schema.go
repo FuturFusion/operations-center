@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/FuturFusion/operations-center/internal/file"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/maps"
 )
 

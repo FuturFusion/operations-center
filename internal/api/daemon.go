@@ -40,7 +40,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/dbschema"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
-	"github.com/FuturFusion/operations-center/internal/file"
 	inventoryEntities "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite/entities"
 	inventoryIncusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
 	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
@@ -63,6 +62,7 @@ import (
 	systemServiceMiddleware "github.com/FuturFusion/operations-center/internal/system/middleware"
 	"github.com/FuturFusion/operations-center/internal/task"
 	"github.com/FuturFusion/operations-center/internal/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/version"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
