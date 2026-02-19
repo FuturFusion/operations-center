@@ -11,8 +11,8 @@ import (
 	"github.com/lxc/incus/v6/shared/revert"
 	incustls "github.com/lxc/incus/v6/shared/tls"
 
-	"github.com/FuturFusion/operations-center/internal/acme"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/security/acme"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
