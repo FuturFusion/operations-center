@@ -11,8 +11,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
-	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 )
 
 func TestUpdateChannelDatabaseActions(t *testing.T) {

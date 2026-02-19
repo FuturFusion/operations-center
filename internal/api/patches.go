@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
-	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 )
 
 type patchStage int

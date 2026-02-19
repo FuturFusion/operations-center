@@ -22,8 +22,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact/entities"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	clusterEntities "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
-	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 

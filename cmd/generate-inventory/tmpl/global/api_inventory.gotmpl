@@ -10,7 +10,7 @@ import (
 	inventoryRepoMiddleware "github.com/FuturFusion/operations-center/internal/inventory/repo/middleware"
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 )
 
 func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverClient inventory.ServerClient, authorizer *authz.Authorizer, inventoryRouter Router) map[domain.ResourceType]provisioning.InventorySyncer {

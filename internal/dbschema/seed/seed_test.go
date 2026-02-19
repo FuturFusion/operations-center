@@ -9,8 +9,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/dbschema"
 	"github.com/FuturFusion/operations-center/internal/dbschema/seed"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
-	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 )
 
 func TestSeedDB(t *testing.T) {
