@@ -11,6 +11,7 @@ import {
   MdOutlineSettings,
   MdOutlineSystemUpdateAlt,
   MdOutlineToken,
+  MdViewList,
 } from "react-icons/md";
 import {
   RiArticleLine,
@@ -148,6 +149,11 @@ const Sidebar = () => {
     updates: {
       id: "updates",
       to: "/ui/provisioning/updates",
+      menu: ["", ""],
+    },
+    channels: {
+      id: "channels",
+      to: "/ui/provisioning/channels",
       menu: ["", ""],
     },
     settings: {
@@ -349,6 +355,14 @@ const Sidebar = () => {
                   isActive={isItemActive("updates")}
                 >
                   <MdOutlineSystemUpdateAlt /> Updates
+                </NavItemLink>
+              </Nav.Item>
+              <Nav.Item>
+                <NavItemLink
+                  item={menuItems["channels"]}
+                  isActive={isItemActive("channels")}
+                >
+                  <MdViewList /> Channels
                 </NavItemLink>
               </Nav.Item>
             </>

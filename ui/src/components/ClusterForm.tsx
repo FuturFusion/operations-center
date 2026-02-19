@@ -1,6 +1,7 @@
 import { FC } from "react";
 import { Button, Form } from "react-bootstrap";
 import { useFormik } from "formik";
+import ChannelSelect from "components/ChannelSelect";
 import { Cluster, ClusterFormValues } from "types/cluster";
 
 interface Props {
@@ -13,6 +14,7 @@ const ClusterForm: FC<Props> = ({ cluster, onRename, onSubmit }) => {
   const formikInitialValues = {
     name: cluster?.name || "",
     connection_url: cluster?.connection_url || "",
+    channel: cluster?.channel || "",
   };
 
   const formik = useFormik({
@@ -60,6 +62,11 @@ const ClusterForm: FC<Props> = ({ cluster, onRename, onSubmit }) => {
               onBlur={formik.handleBlur}
             />
           </Form.Group>
+          <ChannelSelect
+            formClasses="mb-3"
+            value={formik.values.channel}
+            onChange={(val) => formik.setFieldValue("channel", val)}
+          />
         </Form>
       </div>
       <div className="fixed-footer p-3">

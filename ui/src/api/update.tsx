@@ -48,6 +48,21 @@ export const downloadUpdateFile = (
   });
 };
 
+export const updateUpdate = (
+  uuid: string,
+  body: string,
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/updates/${uuid}`, {
+      method: "PUT",
+      body: body,
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
 export const importUpdates = (
   body: File | null,
 ): Promise<APIResponse<null>> => {

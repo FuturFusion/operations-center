@@ -88,7 +88,10 @@ const ServerConfiguration = () => {
     return updateServer(
       values.name,
       JSON.stringify(
-        { public_connection_url: values.public_connection_url },
+        {
+          public_connection_url: values.public_connection_url,
+          channel: values.channel,
+        },
         null,
         2,
       ),

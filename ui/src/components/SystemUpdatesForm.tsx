@@ -1,6 +1,7 @@
 import { FC } from "react";
 import { Button, Form } from "react-bootstrap";
 import { useFormik } from "formik";
+import ChannelSelect from "components/ChannelSelect";
 import { SystemUpdates } from "types/settings";
 
 interface Props {
@@ -15,6 +16,8 @@ const SystemUpdatesForm: FC<Props> = ({ updates, onSubmit }) => {
       updates?.signature_verification_root_ca ?? "",
     filter_expression: updates?.filter_expression ?? "",
     file_filter_expression: updates?.file_filter_expression ?? "",
+    server_default_channel: updates?.server_default_channel ?? "",
+    updates_default_channel: updates?.updates_default_channel ?? "",
   };
 
   const formik = useFormik({
@@ -74,6 +77,22 @@ const SystemUpdatesForm: FC<Props> = ({ updates, onSubmit }) => {
               onBlur={formik.handleBlur}
             />
           </Form.Group>
+          <ChannelSelect
+            formClasses="mb-3"
+            label="Server default channel"
+            value={formik.values.server_default_channel}
+            onChange={(val) =>
+              formik.setFieldValue("server_default_channel", val)
+            }
+          />
+          <ChannelSelect
+            formClasses="mb-3"
+            label="Updates default channel"
+            value={formik.values.updates_default_channel}
+            onChange={(val) =>
+              formik.setFieldValue("updates_default_channel", val)
+            }
+          />
         </Form>
       </div>
       <div className="fixed-footer p-3">

@@ -1,3 +1,5 @@
+import { KeyboardEvent } from "react";
+
 export function bytesToHumanReadable(
   bytes: number,
   decimalPlaces: number = 2,
@@ -74,3 +76,14 @@ export function downloadFile(url: string, filename: string) {
   a.remove();
   window.URL.revokeObjectURL(url);
 }
+
+// Explicit handler for Ctrl+A, since Firefox does not handle this shortcut properly.
+export const handleCtrlA = (
+  handler: (e: KeyboardEvent<HTMLSelectElement>) => void,
+) => {
+  return (e: KeyboardEvent<HTMLSelectElement>) => {
+    if (e.ctrlKey && e.key === "a") {
+      handler(e);
+    }
+  };
+};

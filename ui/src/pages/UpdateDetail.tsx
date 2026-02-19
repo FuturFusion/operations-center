@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router";
 import { fetchUpdate } from "api/update";
 import TabView from "components/TabView";
+import UpdateConfiguration from "pages/UpdateConfiguration";
 import UpdateFiles from "pages/UpdateFiles";
 import UpdateOverview from "pages/UpdateOverview";
 
@@ -31,6 +32,11 @@ const UpdateDetail = () => {
       key: "overview",
       title: "Overview",
       content: <UpdateOverview />,
+    },
+    {
+      key: "configuration",
+      title: "Configuration",
+      content: <UpdateConfiguration />,
     },
     {
       key: "files",

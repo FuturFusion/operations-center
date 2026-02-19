@@ -12,3 +12,10 @@ export const ServerTypeString = {
 };
 
 export type ServerTypeKey = keyof typeof ServerTypeString;
+
+export enum ServerAction {
+  Evacuate = "evacuate",
+  Reboot = "reboot",
+  Restore = "restore",
+  Update = "update",
+}

@@ -1,6 +1,7 @@
 export interface Cluster {
   name: string;
   connection_url: string;
+  channel: string;
   certificate: string;
   fingerprint: string;
   status: string;
@@ -10,6 +11,7 @@ export interface Cluster {
 export interface ClusterPost {
   name: string;
   connection_url: string;
+  channel: string;
   server_names: string[];
   server_type: string;
   services_config: YamlValue;
@@ -21,6 +23,7 @@ export interface ClusterPost {
 export interface ClusterFormValues {
   name: string;
   connection_url: string;
+  channel: string;
 }
 
 export interface ClusterCertFormValues {

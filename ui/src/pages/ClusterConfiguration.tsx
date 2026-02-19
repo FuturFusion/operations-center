@@ -13,7 +13,11 @@ const ClusterConfiguration = () => {
   const onSubmit = (values: ClusterFormValues) => {
     updateCluster(
       values.name,
-      JSON.stringify({ connection_url: values.connection_url }, null, 2),
+      JSON.stringify(
+        { connection_url: values.connection_url, channel: values.channel },
+        null,
+        2,
+      ),
     )
       .then((response) => {
         if (response.error_code == 0) {
