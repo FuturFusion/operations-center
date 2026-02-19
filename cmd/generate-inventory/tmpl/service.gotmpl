@@ -17,7 +17,7 @@ import (
 {{- if .IsServerIDOptional }}
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 {{- end }}
-	"github.com/FuturFusion/operations-center/internal/transaction"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 )
 
 type {{ .Name | camelcase }}Service struct {

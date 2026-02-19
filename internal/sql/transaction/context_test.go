@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
-	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
 func TestForceTx_inStartedTransacationRollback(t *testing.T) {

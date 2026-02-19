@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
-	"github.com/FuturFusion/operations-center/internal/transaction"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 )
 
 type networkAddressSetService struct {

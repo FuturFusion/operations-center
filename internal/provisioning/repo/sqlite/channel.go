@@ -5,8 +5,8 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
-	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
 type channel struct {
