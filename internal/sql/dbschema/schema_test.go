@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/dbschema"
+	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
 )
 

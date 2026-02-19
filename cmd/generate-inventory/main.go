@@ -167,7 +167,7 @@ var globalTargets = []struct {
 	},
 	{
 		TemplateName: "seed_config.gotmpl",
-		TargetName:   "internal/dbschema/seed/config_gen.go",
+		TargetName:   "internal/sql/dbschema/seed/config_gen.go",
 	},
 	{
 		TemplateName: "server_incus_testcases.gotmpl",
