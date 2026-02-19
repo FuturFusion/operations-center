@@ -27,22 +27,19 @@ const ServerActions: FC<Props> = ({ server }) => {
     let action = "";
     if (server.version_data.needs_update) {
       action = ServerAction.Update;
-    }
-
-    if (server.version_data.needs_reboot) {
+    } else if (server.version_data.needs_reboot) {
       if (
         !server.version_data.in_maintenance &&
         server.server_type == ServerType.Incus
       ) {
         action = ServerAction.Evacuate;
+      } else {
+        action = ServerAction.Reboot;
       }
-
-      action = ServerAction.Reboot;
-    }
-
-    if (server.version_data.in_maintenance) {
+    } else if (server.version_data.in_maintenance) {
       action = ServerAction.Restore;
     }
+
     setRecommendedAction(action);
   }, [
     server.server_type,
