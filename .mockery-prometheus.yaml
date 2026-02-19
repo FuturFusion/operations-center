@@ -1,7 +1,7 @@
 ---
 
 all: False
-template: file://./internal/metrics/prometheus.gotmpl
+template: file://./internal/util/metrics/prometheus.gotmpl
 require-template-schema-exists: false
 force-file-write: true
 include-auto-generated: true
