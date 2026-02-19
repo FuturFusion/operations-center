@@ -118,6 +118,12 @@ or
 make e2e-test
 ```
 
+or a specific test:
+
+```shell
+make e2e-test GO_TEST_RUN=TestE2E/token_-_create_cluster
+```
+
 ## Cleanup
 
 ```shell
