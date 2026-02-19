@@ -10,7 +10,7 @@ import (
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
-	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
+	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 

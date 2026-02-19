@@ -13,7 +13,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/authn"
 	"github.com/FuturFusion/operations-center/internal/authz"
 	systemMock "github.com/FuturFusion/operations-center/internal/system/mock"
-	"github.com/FuturFusion/operations-center/internal/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 )
 
 func Test_systemHandler_certificatePut(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
+	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
 func TestFromPattern(t *testing.T) {

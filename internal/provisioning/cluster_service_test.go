@@ -24,10 +24,10 @@ import (
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
-	"github.com/FuturFusion/operations-center/internal/testing/boom"
-	"github.com/FuturFusion/operations-center/internal/testing/queue"
-	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
+	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 

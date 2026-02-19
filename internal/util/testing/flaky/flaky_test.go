@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/testing/boom"
-	"github.com/FuturFusion/operations-center/internal/testing/flaky"
+	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/flaky"
 )
 
 func TestSkipOnFail(t *testing.T) {
