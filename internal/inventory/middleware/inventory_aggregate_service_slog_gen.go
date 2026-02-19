@@ -13,7 +13,6 @@ import (
 
 // InventoryAggregateServiceWithSlog implements inventory.InventoryAggregateService that is instrumented with slog logger.
 type InventoryAggregateServiceWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.InventoryAggregateService
 	_isInformativeErrFunc func(error) bool
 }
@@ -27,10 +26,9 @@ func InventoryAggregateServiceWithSlogWithInformativeErrFunc(isInformativeErrFun
 }
 
 // NewInventoryAggregateServiceWithSlog instruments an implementation of the inventory.InventoryAggregateService with simple logging.
-func NewInventoryAggregateServiceWithSlog(base inventory.InventoryAggregateService, log *slog.Logger, opts ...InventoryAggregateServiceWithSlogOption) InventoryAggregateServiceWithSlog {
+func NewInventoryAggregateServiceWithSlog(base inventory.InventoryAggregateService, opts ...InventoryAggregateServiceWithSlogOption) InventoryAggregateServiceWithSlog {
 	this := InventoryAggregateServiceWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -43,8 +41,8 @@ func NewInventoryAggregateServiceWithSlog(base inventory.InventoryAggregateServi
 
 // GetAllWithFilter implements inventory.InventoryAggregateService.
 func (_d InventoryAggregateServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.InventoryAggregateFilter) (inventoryAggregates inventory.InventoryAggregates, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -52,15 +50,15 @@ func (_d InventoryAggregateServiceWithSlog) GetAllWithFilter(ctx context.Context
 	}
 	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("inventoryAggregates", inventoryAggregates),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

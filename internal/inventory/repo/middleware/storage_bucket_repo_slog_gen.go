@@ -14,7 +14,6 @@ import (
 
 // StorageBucketRepoWithSlog implements inventory.StorageBucketRepo that is instrumented with slog logger.
 type StorageBucketRepoWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.StorageBucketRepo
 	_isInformativeErrFunc func(error) bool
 }
@@ -28,10 +27,9 @@ func StorageBucketRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(e
 }
 
 // NewStorageBucketRepoWithSlog instruments an implementation of the inventory.StorageBucketRepo with simple logging.
-func NewStorageBucketRepoWithSlog(base inventory.StorageBucketRepo, log *slog.Logger, opts ...StorageBucketRepoWithSlogOption) StorageBucketRepoWithSlog {
+func NewStorageBucketRepoWithSlog(base inventory.StorageBucketRepo, opts ...StorageBucketRepoWithSlogOption) StorageBucketRepoWithSlog {
 	this := StorageBucketRepoWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -44,8 +42,8 @@ func NewStorageBucketRepoWithSlog(base inventory.StorageBucketRepo, log *slog.Lo
 
 // Create implements inventory.StorageBucketRepo.
 func (_d StorageBucketRepoWithSlog) Create(ctx context.Context, storageBucket inventory.StorageBucket) (storageBucket1 inventory.StorageBucket, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("storageBucket", storageBucket),
@@ -53,15 +51,15 @@ func (_d StorageBucketRepoWithSlog) Create(ctx context.Context, storageBucket in
 	}
 	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storageBucket1", storageBucket1),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -79,8 +77,8 @@ func (_d StorageBucketRepoWithSlog) Create(ctx context.Context, storageBucket in
 
 // DeleteByUUID implements inventory.StorageBucketRepo.
 func (_d StorageBucketRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -88,14 +86,14 @@ func (_d StorageBucketRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UU
 	}
 	log.DebugContext(ctx, "=> calling DeleteByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -113,8 +111,8 @@ func (_d StorageBucketRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UU
 
 // DeleteWithFilter implements inventory.StorageBucketRepo.
 func (_d StorageBucketRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -122,14 +120,14 @@ func (_d StorageBucketRepoWithSlog) DeleteWithFilter(ctx context.Context, filter
 	}
 	log.DebugContext(ctx, "=> calling DeleteWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -147,8 +145,8 @@ func (_d StorageBucketRepoWithSlog) DeleteWithFilter(ctx context.Context, filter
 
 // GetAllUUIDsWithFilter implements inventory.StorageBucketRepo.
 func (_d StorageBucketRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) (uUIDs []uuid.UUID, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -156,15 +154,15 @@ func (_d StorageBucketRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, f
 	}
 	log.DebugContext(ctx, "=> calling GetAllUUIDsWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -182,8 +180,8 @@ func (_d StorageBucketRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, f
 
 // GetAllWithFilter implements inventory.StorageBucketRepo.
 func (_d StorageBucketRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) (storageBuckets inventory.StorageBuckets, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -191,15 +189,15 @@ func (_d StorageBucketRepoWithSlog) GetAllWithFilter(ctx context.Context, filter
 	}
 	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storageBuckets", storageBuckets),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -217,8 +215,8 @@ func (_d StorageBucketRepoWithSlog) GetAllWithFilter(ctx context.Context, filter
 
 // GetByUUID implements inventory.StorageBucketRepo.
 func (_d StorageBucketRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (storageBucket inventory.StorageBucket, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -226,15 +224,15 @@ func (_d StorageBucketRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID)
 	}
 	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storageBucket", storageBucket),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -252,8 +250,8 @@ func (_d StorageBucketRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID)
 
 // UpdateByUUID implements inventory.StorageBucketRepo.
 func (_d StorageBucketRepoWithSlog) UpdateByUUID(ctx context.Context, storageBucket inventory.StorageBucket) (storageBucket1 inventory.StorageBucket, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("storageBucket", storageBucket),
@@ -261,15 +259,15 @@ func (_d StorageBucketRepoWithSlog) UpdateByUUID(ctx context.Context, storageBuc
 	}
 	log.DebugContext(ctx, "=> calling UpdateByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storageBucket1", storageBucket1),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

@@ -15,7 +15,6 @@ import (
 
 // NetworkAddressSetServerClientWithSlog implements inventory.NetworkAddressSetServerClient that is instrumented with slog logger.
 type NetworkAddressSetServerClientWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.NetworkAddressSetServerClient
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func NetworkAddressSetServerClientWithSlogWithInformativeErrFunc(isInformativeEr
 }
 
 // NewNetworkAddressSetServerClientWithSlog instruments an implementation of the inventory.NetworkAddressSetServerClient with simple logging.
-func NewNetworkAddressSetServerClientWithSlog(base inventory.NetworkAddressSetServerClient, log *slog.Logger, opts ...NetworkAddressSetServerClientWithSlogOption) NetworkAddressSetServerClientWithSlog {
+func NewNetworkAddressSetServerClientWithSlog(base inventory.NetworkAddressSetServerClient, opts ...NetworkAddressSetServerClientWithSlogOption) NetworkAddressSetServerClientWithSlog {
 	this := NetworkAddressSetServerClientWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewNetworkAddressSetServerClientWithSlog(base inventory.NetworkAddressSetSe
 
 // GetNetworkAddressSetByName implements inventory.NetworkAddressSetServerClient.
 func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -56,15 +54,15 @@ func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSetByName(ctx c
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkAddressSetByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkAddressSet", networkAddressSet),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -82,8 +80,8 @@ func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSetByName(ctx c
 
 // GetNetworkAddressSets implements inventory.NetworkAddressSetServerClient.
 func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSets(ctx context.Context, endpoint provisioning.Endpoint) (networkAddressSets []api.NetworkAddressSet, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -91,15 +89,15 @@ func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSets(ctx contex
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkAddressSets")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkAddressSets", networkAddressSets),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -117,8 +115,8 @@ func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSets(ctx contex
 
 // HasExtension implements inventory.NetworkAddressSetServerClient.
 func (_d NetworkAddressSetServerClientWithSlog) HasExtension(ctx context.Context, endpoint provisioning.Endpoint, extension string) (exists bool) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -127,9 +125,9 @@ func (_d NetworkAddressSetServerClientWithSlog) HasExtension(ctx context.Context
 	}
 	log.DebugContext(ctx, "=> calling HasExtension")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Bool("exists", exists),
 			)
 		} else {

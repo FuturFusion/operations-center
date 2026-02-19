@@ -14,7 +14,6 @@ import (
 
 // NetworkForwardRepoWithSlog implements inventory.NetworkForwardRepo that is instrumented with slog logger.
 type NetworkForwardRepoWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.NetworkForwardRepo
 	_isInformativeErrFunc func(error) bool
 }
@@ -28,10 +27,9 @@ func NetworkForwardRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(
 }
 
 // NewNetworkForwardRepoWithSlog instruments an implementation of the inventory.NetworkForwardRepo with simple logging.
-func NewNetworkForwardRepoWithSlog(base inventory.NetworkForwardRepo, log *slog.Logger, opts ...NetworkForwardRepoWithSlogOption) NetworkForwardRepoWithSlog {
+func NewNetworkForwardRepoWithSlog(base inventory.NetworkForwardRepo, opts ...NetworkForwardRepoWithSlogOption) NetworkForwardRepoWithSlog {
 	this := NetworkForwardRepoWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -44,8 +42,8 @@ func NewNetworkForwardRepoWithSlog(base inventory.NetworkForwardRepo, log *slog.
 
 // Create implements inventory.NetworkForwardRepo.
 func (_d NetworkForwardRepoWithSlog) Create(ctx context.Context, networkForward inventory.NetworkForward) (networkForward1 inventory.NetworkForward, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("networkForward", networkForward),
@@ -53,15 +51,15 @@ func (_d NetworkForwardRepoWithSlog) Create(ctx context.Context, networkForward 
 	}
 	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkForward1", networkForward1),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -79,8 +77,8 @@ func (_d NetworkForwardRepoWithSlog) Create(ctx context.Context, networkForward 
 
 // DeleteByUUID implements inventory.NetworkForwardRepo.
 func (_d NetworkForwardRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -88,14 +86,14 @@ func (_d NetworkForwardRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.U
 	}
 	log.DebugContext(ctx, "=> calling DeleteByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -113,8 +111,8 @@ func (_d NetworkForwardRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.U
 
 // DeleteWithFilter implements inventory.NetworkForwardRepo.
 func (_d NetworkForwardRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -122,14 +120,14 @@ func (_d NetworkForwardRepoWithSlog) DeleteWithFilter(ctx context.Context, filte
 	}
 	log.DebugContext(ctx, "=> calling DeleteWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -147,8 +145,8 @@ func (_d NetworkForwardRepoWithSlog) DeleteWithFilter(ctx context.Context, filte
 
 // GetAllUUIDsWithFilter implements inventory.NetworkForwardRepo.
 func (_d NetworkForwardRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (uUIDs []uuid.UUID, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -156,15 +154,15 @@ func (_d NetworkForwardRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, 
 	}
 	log.DebugContext(ctx, "=> calling GetAllUUIDsWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -182,8 +180,8 @@ func (_d NetworkForwardRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, 
 
 // GetAllWithFilter implements inventory.NetworkForwardRepo.
 func (_d NetworkForwardRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (networkForwards inventory.NetworkForwards, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -191,15 +189,15 @@ func (_d NetworkForwardRepoWithSlog) GetAllWithFilter(ctx context.Context, filte
 	}
 	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkForwards", networkForwards),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -217,8 +215,8 @@ func (_d NetworkForwardRepoWithSlog) GetAllWithFilter(ctx context.Context, filte
 
 // GetByUUID implements inventory.NetworkForwardRepo.
 func (_d NetworkForwardRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkForward inventory.NetworkForward, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -226,15 +224,15 @@ func (_d NetworkForwardRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID
 	}
 	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkForward", networkForward),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -252,8 +250,8 @@ func (_d NetworkForwardRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID
 
 // UpdateByUUID implements inventory.NetworkForwardRepo.
 func (_d NetworkForwardRepoWithSlog) UpdateByUUID(ctx context.Context, networkForward inventory.NetworkForward) (networkForward1 inventory.NetworkForward, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("networkForward", networkForward),
@@ -261,15 +259,15 @@ func (_d NetworkForwardRepoWithSlog) UpdateByUUID(ctx context.Context, networkFo
 	}
 	log.DebugContext(ctx, "=> calling UpdateByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkForward1", networkForward1),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

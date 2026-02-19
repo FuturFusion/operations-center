@@ -15,7 +15,6 @@ import (
 
 // NetworkZoneServerClientWithSlog implements inventory.NetworkZoneServerClient that is instrumented with slog logger.
 type NetworkZoneServerClientWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.NetworkZoneServerClient
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func NetworkZoneServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc 
 }
 
 // NewNetworkZoneServerClientWithSlog instruments an implementation of the inventory.NetworkZoneServerClient with simple logging.
-func NewNetworkZoneServerClientWithSlog(base inventory.NetworkZoneServerClient, log *slog.Logger, opts ...NetworkZoneServerClientWithSlogOption) NetworkZoneServerClientWithSlog {
+func NewNetworkZoneServerClientWithSlog(base inventory.NetworkZoneServerClient, opts ...NetworkZoneServerClientWithSlogOption) NetworkZoneServerClientWithSlog {
 	this := NetworkZoneServerClientWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewNetworkZoneServerClientWithSlog(base inventory.NetworkZoneServerClient, 
 
 // GetNetworkZoneByName implements inventory.NetworkZoneServerClient.
 func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkZoneName string) (networkZone api.NetworkZone, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -56,15 +54,15 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Conte
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkZoneByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkZone", networkZone),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -82,8 +80,8 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Conte
 
 // GetNetworkZones implements inventory.NetworkZoneServerClient.
 func (_d NetworkZoneServerClientWithSlog) GetNetworkZones(ctx context.Context, endpoint provisioning.Endpoint) (networkZones []api.NetworkZone, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -91,15 +89,15 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZones(ctx context.Context, e
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkZones")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkZones", networkZones),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

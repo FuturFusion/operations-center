@@ -15,7 +15,6 @@ import (
 
 // ServerClientWithSlog implements inventory.ServerClient that is instrumented with slog logger.
 type ServerClientWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.ServerClient
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func ServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error)
 }
 
 // NewServerClientWithSlog instruments an implementation of the inventory.ServerClient with simple logging.
-func NewServerClientWithSlog(base inventory.ServerClient, log *slog.Logger, opts ...ServerClientWithSlogOption) ServerClientWithSlog {
+func NewServerClientWithSlog(base inventory.ServerClient, opts ...ServerClientWithSlogOption) ServerClientWithSlog {
 	this := ServerClientWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewServerClientWithSlog(base inventory.ServerClient, log *slog.Logger, opts
 
 // GetImageByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (image api.Image, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -56,15 +54,15 @@ func (_d ServerClientWithSlog) GetImageByName(ctx context.Context, endpoint prov
 	}
 	log.DebugContext(ctx, "=> calling GetImageByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("image", image),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -82,8 +80,8 @@ func (_d ServerClientWithSlog) GetImageByName(ctx context.Context, endpoint prov
 
 // GetImages implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetImages(ctx context.Context, endpoint provisioning.Endpoint) (images []api.Image, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -91,15 +89,15 @@ func (_d ServerClientWithSlog) GetImages(ctx context.Context, endpoint provision
 	}
 	log.DebugContext(ctx, "=> calling GetImages")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("images", images),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -117,8 +115,8 @@ func (_d ServerClientWithSlog) GetImages(ctx context.Context, endpoint provision
 
 // GetInstanceByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, instanceName string) (instanceFull api.InstanceFull, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -128,15 +126,15 @@ func (_d ServerClientWithSlog) GetInstanceByName(ctx context.Context, endpoint p
 	}
 	log.DebugContext(ctx, "=> calling GetInstanceByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("instanceFull", instanceFull),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -154,8 +152,8 @@ func (_d ServerClientWithSlog) GetInstanceByName(ctx context.Context, endpoint p
 
 // GetInstances implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetInstances(ctx context.Context, endpoint provisioning.Endpoint) (instanceFulls []api.InstanceFull, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -163,15 +161,15 @@ func (_d ServerClientWithSlog) GetInstances(ctx context.Context, endpoint provis
 	}
 	log.DebugContext(ctx, "=> calling GetInstances")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("instanceFulls", instanceFulls),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -189,8 +187,8 @@ func (_d ServerClientWithSlog) GetInstances(ctx context.Context, endpoint provis
 
 // GetNetworkACLByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkACLName string) (networkACL api.NetworkACL, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -200,15 +198,15 @@ func (_d ServerClientWithSlog) GetNetworkACLByName(ctx context.Context, endpoint
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkACLByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkACL", networkACL),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -226,8 +224,8 @@ func (_d ServerClientWithSlog) GetNetworkACLByName(ctx context.Context, endpoint
 
 // GetNetworkACLs implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkACLs(ctx context.Context, endpoint provisioning.Endpoint) (networkACLs []api.NetworkACL, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -235,15 +233,15 @@ func (_d ServerClientWithSlog) GetNetworkACLs(ctx context.Context, endpoint prov
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkACLs")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkACLs", networkACLs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -261,8 +259,8 @@ func (_d ServerClientWithSlog) GetNetworkACLs(ctx context.Context, endpoint prov
 
 // GetNetworkAddressSetByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -272,15 +270,15 @@ func (_d ServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, e
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkAddressSetByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkAddressSet", networkAddressSet),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -298,8 +296,8 @@ func (_d ServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, e
 
 // GetNetworkAddressSets implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkAddressSets(ctx context.Context, endpoint provisioning.Endpoint) (networkAddressSets []api.NetworkAddressSet, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -307,15 +305,15 @@ func (_d ServerClientWithSlog) GetNetworkAddressSets(ctx context.Context, endpoi
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkAddressSets")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkAddressSets", networkAddressSets),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -333,8 +331,8 @@ func (_d ServerClientWithSlog) GetNetworkAddressSets(ctx context.Context, endpoi
 
 // GetNetworkByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (network api.Network, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -344,15 +342,15 @@ func (_d ServerClientWithSlog) GetNetworkByName(ctx context.Context, endpoint pr
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("network", network),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -370,8 +368,8 @@ func (_d ServerClientWithSlog) GetNetworkByName(ctx context.Context, endpoint pr
 
 // GetNetworkForwardByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -382,15 +380,15 @@ func (_d ServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, endp
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkForwardByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkForward", networkForward),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -408,8 +406,8 @@ func (_d ServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, endp
 
 // GetNetworkForwards implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkForwards []api.NetworkForward, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -419,15 +417,15 @@ func (_d ServerClientWithSlog) GetNetworkForwards(ctx context.Context, endpoint 
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkForwards")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkForwards", networkForwards),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -445,8 +443,8 @@ func (_d ServerClientWithSlog) GetNetworkForwards(ctx context.Context, endpoint 
 
 // GetNetworkIntegrationByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, endpoint provisioning.Endpoint, networkIntegrationName string) (networkIntegration api.NetworkIntegration, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -455,15 +453,15 @@ func (_d ServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, 
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkIntegrationByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkIntegration", networkIntegration),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -481,8 +479,8 @@ func (_d ServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, 
 
 // GetNetworkIntegrations implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, endpoint provisioning.Endpoint) (networkIntegrations []api.NetworkIntegration, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -490,15 +488,15 @@ func (_d ServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, endpo
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkIntegrations")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkIntegrations", networkIntegrations),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -516,8 +514,8 @@ func (_d ServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, endpo
 
 // GetNetworkLoadBalancerByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -528,15 +526,15 @@ func (_d ServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context,
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkLoadBalancerByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkLoadBalancer", networkLoadBalancer),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -554,8 +552,8 @@ func (_d ServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context,
 
 // GetNetworkLoadBalancers implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -565,15 +563,15 @@ func (_d ServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, endp
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkLoadBalancers")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkLoadBalancers", networkLoadBalancers),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -591,8 +589,8 @@ func (_d ServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, endp
 
 // GetNetworkPeerByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -603,15 +601,15 @@ func (_d ServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, endpoin
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkPeerByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkPeer", networkPeer),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -629,8 +627,8 @@ func (_d ServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, endpoin
 
 // GetNetworkPeers implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkPeers []api.NetworkPeer, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -640,15 +638,15 @@ func (_d ServerClientWithSlog) GetNetworkPeers(ctx context.Context, endpoint pro
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkPeers")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkPeers", networkPeers),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -666,8 +664,8 @@ func (_d ServerClientWithSlog) GetNetworkPeers(ctx context.Context, endpoint pro
 
 // GetNetworkZoneByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkZoneName string) (networkZone api.NetworkZone, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -677,15 +675,15 @@ func (_d ServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, endpoin
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkZoneByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkZone", networkZone),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -703,8 +701,8 @@ func (_d ServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, endpoin
 
 // GetNetworkZones implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkZones(ctx context.Context, endpoint provisioning.Endpoint) (networkZones []api.NetworkZone, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -712,15 +710,15 @@ func (_d ServerClientWithSlog) GetNetworkZones(ctx context.Context, endpoint pro
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkZones")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkZones", networkZones),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -738,8 +736,8 @@ func (_d ServerClientWithSlog) GetNetworkZones(ctx context.Context, endpoint pro
 
 // GetNetworks implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworks(ctx context.Context, endpoint provisioning.Endpoint) (networks []api.Network, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -747,15 +745,15 @@ func (_d ServerClientWithSlog) GetNetworks(ctx context.Context, endpoint provisi
 	}
 	log.DebugContext(ctx, "=> calling GetNetworks")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networks", networks),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -773,8 +771,8 @@ func (_d ServerClientWithSlog) GetNetworks(ctx context.Context, endpoint provisi
 
 // GetProfileByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, profileName string) (profile api.Profile, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -784,15 +782,15 @@ func (_d ServerClientWithSlog) GetProfileByName(ctx context.Context, endpoint pr
 	}
 	log.DebugContext(ctx, "=> calling GetProfileByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("profile", profile),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -810,8 +808,8 @@ func (_d ServerClientWithSlog) GetProfileByName(ctx context.Context, endpoint pr
 
 // GetProfiles implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetProfiles(ctx context.Context, endpoint provisioning.Endpoint) (profiles []api.Profile, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -819,15 +817,15 @@ func (_d ServerClientWithSlog) GetProfiles(ctx context.Context, endpoint provisi
 	}
 	log.DebugContext(ctx, "=> calling GetProfiles")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("profiles", profiles),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -845,8 +843,8 @@ func (_d ServerClientWithSlog) GetProfiles(ctx context.Context, endpoint provisi
 
 // GetProjectByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetProjectByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string) (project api.Project, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -855,15 +853,15 @@ func (_d ServerClientWithSlog) GetProjectByName(ctx context.Context, endpoint pr
 	}
 	log.DebugContext(ctx, "=> calling GetProjectByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("project", project),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -881,8 +879,8 @@ func (_d ServerClientWithSlog) GetProjectByName(ctx context.Context, endpoint pr
 
 // GetProjects implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetProjects(ctx context.Context, endpoint provisioning.Endpoint) (projects []api.Project, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -890,15 +888,15 @@ func (_d ServerClientWithSlog) GetProjects(ctx context.Context, endpoint provisi
 	}
 	log.DebugContext(ctx, "=> calling GetProjects")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("projects", projects),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -916,8 +914,8 @@ func (_d ServerClientWithSlog) GetProjects(ctx context.Context, endpoint provisi
 
 // GetStorageBucketByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (storageBucketFull api.StorageBucketFull, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -928,15 +926,15 @@ func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, endpo
 	}
 	log.DebugContext(ctx, "=> calling GetStorageBucketByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storageBucketFull", storageBucketFull),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -954,8 +952,8 @@ func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, endpo
 
 // GetStorageBuckets implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetStorageBuckets(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageBucketFulls []api.StorageBucketFull, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -964,15 +962,15 @@ func (_d ServerClientWithSlog) GetStorageBuckets(ctx context.Context, endpoint p
 	}
 	log.DebugContext(ctx, "=> calling GetStorageBuckets")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storageBucketFulls", storageBucketFulls),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -990,8 +988,8 @@ func (_d ServerClientWithSlog) GetStorageBuckets(ctx context.Context, endpoint p
 
 // GetStoragePoolByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetStoragePoolByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storagePool api.StoragePool, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -1000,15 +998,15 @@ func (_d ServerClientWithSlog) GetStoragePoolByName(ctx context.Context, endpoin
 	}
 	log.DebugContext(ctx, "=> calling GetStoragePoolByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storagePool", storagePool),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -1026,8 +1024,8 @@ func (_d ServerClientWithSlog) GetStoragePoolByName(ctx context.Context, endpoin
 
 // GetStoragePools implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetStoragePools(ctx context.Context, endpoint provisioning.Endpoint) (storagePools []api.StoragePool, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -1035,15 +1033,15 @@ func (_d ServerClientWithSlog) GetStoragePools(ctx context.Context, endpoint pro
 	}
 	log.DebugContext(ctx, "=> calling GetStoragePools")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storagePools", storagePools),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -1061,8 +1059,8 @@ func (_d ServerClientWithSlog) GetStoragePools(ctx context.Context, endpoint pro
 
 // GetStorageVolumeByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolumeFull api.StorageVolumeFull, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -1074,15 +1072,15 @@ func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpo
 	}
 	log.DebugContext(ctx, "=> calling GetStorageVolumeByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storageVolumeFull", storageVolumeFull),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -1100,8 +1098,8 @@ func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpo
 
 // GetStorageVolumes implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageVolumeFulls []api.StorageVolumeFull, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -1110,15 +1108,15 @@ func (_d ServerClientWithSlog) GetStorageVolumes(ctx context.Context, endpoint p
 	}
 	log.DebugContext(ctx, "=> calling GetStorageVolumes")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storageVolumeFulls", storageVolumeFulls),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -1136,8 +1134,8 @@ func (_d ServerClientWithSlog) GetStorageVolumes(ctx context.Context, endpoint p
 
 // HasExtension implements inventory.ServerClient.
 func (_d ServerClientWithSlog) HasExtension(ctx context.Context, endpoint provisioning.Endpoint, extension string) (exists bool) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -1146,9 +1144,9 @@ func (_d ServerClientWithSlog) HasExtension(ctx context.Context, endpoint provis
 	}
 	log.DebugContext(ctx, "=> calling HasExtension")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Bool("exists", exists),
 			)
 		} else {
@@ -1160,8 +1158,8 @@ func (_d ServerClientWithSlog) HasExtension(ctx context.Context, endpoint provis
 
 // Ping implements inventory.ServerClient.
 func (_d ServerClientWithSlog) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -1169,14 +1167,14 @@ func (_d ServerClientWithSlog) Ping(ctx context.Context, endpoint provisioning.E
 	}
 	log.DebugContext(ctx, "=> calling Ping")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

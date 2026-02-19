@@ -14,7 +14,6 @@ import (
 
 // ProvisioningClusterServiceWithSlog implements inventory.ProvisioningClusterService that is instrumented with slog logger.
 type ProvisioningClusterServiceWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.ProvisioningClusterService
 	_isInformativeErrFunc func(error) bool
 }
@@ -28,10 +27,9 @@ func ProvisioningClusterServiceWithSlogWithInformativeErrFunc(isInformativeErrFu
 }
 
 // NewProvisioningClusterServiceWithSlog instruments an implementation of the inventory.ProvisioningClusterService with simple logging.
-func NewProvisioningClusterServiceWithSlog(base inventory.ProvisioningClusterService, log *slog.Logger, opts ...ProvisioningClusterServiceWithSlogOption) ProvisioningClusterServiceWithSlog {
+func NewProvisioningClusterServiceWithSlog(base inventory.ProvisioningClusterService, opts ...ProvisioningClusterServiceWithSlogOption) ProvisioningClusterServiceWithSlog {
 	this := ProvisioningClusterServiceWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -44,23 +42,23 @@ func NewProvisioningClusterServiceWithSlog(base inventory.ProvisioningClusterSer
 
 // GetAll implements inventory.ProvisioningClusterService.
 func (_d ProvisioningClusterServiceWithSlog) GetAll(ctx context.Context) (clusters provisioning.Clusters, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAll")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("clusters", clusters),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -78,8 +76,8 @@ func (_d ProvisioningClusterServiceWithSlog) GetAll(ctx context.Context) (cluste
 
 // GetEndpoint implements inventory.ProvisioningClusterService.
 func (_d ProvisioningClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (endpoint provisioning.Endpoint, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -87,15 +85,15 @@ func (_d ProvisioningClusterServiceWithSlog) GetEndpoint(ctx context.Context, na
 	}
 	log.DebugContext(ctx, "=> calling GetEndpoint")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("endpoint", endpoint),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

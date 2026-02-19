@@ -15,7 +15,6 @@ import (
 
 // ProfileServerClientWithSlog implements inventory.ProfileServerClient that is instrumented with slog logger.
 type ProfileServerClientWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.ProfileServerClient
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func ProfileServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func
 }
 
 // NewProfileServerClientWithSlog instruments an implementation of the inventory.ProfileServerClient with simple logging.
-func NewProfileServerClientWithSlog(base inventory.ProfileServerClient, log *slog.Logger, opts ...ProfileServerClientWithSlogOption) ProfileServerClientWithSlog {
+func NewProfileServerClientWithSlog(base inventory.ProfileServerClient, opts ...ProfileServerClientWithSlogOption) ProfileServerClientWithSlog {
 	this := ProfileServerClientWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewProfileServerClientWithSlog(base inventory.ProfileServerClient, log *slo
 
 // GetProfileByName implements inventory.ProfileServerClient.
 func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, profileName string) (profile api.Profile, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -56,15 +54,15 @@ func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, endp
 	}
 	log.DebugContext(ctx, "=> calling GetProfileByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("profile", profile),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -82,8 +80,8 @@ func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, endp
 
 // GetProfiles implements inventory.ProfileServerClient.
 func (_d ProfileServerClientWithSlog) GetProfiles(ctx context.Context, endpoint provisioning.Endpoint) (profiles []api.Profile, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -91,15 +89,15 @@ func (_d ProfileServerClientWithSlog) GetProfiles(ctx context.Context, endpoint 
 	}
 	log.DebugContext(ctx, "=> calling GetProfiles")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("profiles", profiles),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
