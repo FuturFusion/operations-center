@@ -7,10 +7,9 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/google/uuid"
-
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/google/uuid"
 )
 
 // NetworkAddressSetRepoWithSlog implements inventory.NetworkAddressSetRepo that is instrumented with slog logger.

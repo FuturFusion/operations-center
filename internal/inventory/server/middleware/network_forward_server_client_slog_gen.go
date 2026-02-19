@@ -7,11 +7,10 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/lxc/incus/v6/shared/api"
-
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/lxc/incus/v6/shared/api"
 )
 
 // NetworkForwardServerClientWithSlog implements inventory.NetworkForwardServerClient that is instrumented with slog logger.

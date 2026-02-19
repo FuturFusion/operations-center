@@ -7,10 +7,9 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/google/uuid"
-
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/google/uuid"
 )
 
 // UpdateRepoWithSlog implements provisioning.UpdateRepo that is instrumented with slog logger.

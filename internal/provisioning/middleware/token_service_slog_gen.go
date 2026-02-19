@@ -8,12 +8,11 @@ import (
 	"io"
 	"log/slog"
 
-	"github.com/google/uuid"
-	"github.com/lxc/incus-os/incus-osd/api/images"
-
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 )
 
 // TokenServiceWithSlog implements provisioning.TokenService that is instrumented with slog logger.

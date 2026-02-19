@@ -9,10 +9,9 @@ import (
 	"io"
 	"log/slog"
 
-	"github.com/google/uuid"
-
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/google/uuid"
 )
 
 // UpdateServiceWithSlog implements provisioning.UpdateService that is instrumented with slog logger.

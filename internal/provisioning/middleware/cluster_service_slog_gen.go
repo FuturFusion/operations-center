@@ -8,11 +8,10 @@ import (
 	"io"
 	"log/slog"
 
-	"github.com/google/uuid"
-
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/google/uuid"
 )
 
 // ClusterServiceWithSlog implements provisioning.ClusterService that is instrumented with slog logger.
