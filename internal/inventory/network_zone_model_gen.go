@@ -45,7 +45,7 @@ func (w *IncusNetworkZoneWrapper) Scan(value interface{}) error {
 type NetworkZone struct {
 	ID          int                     `json:"-"`
 	UUID        uuid.UUID               `json:"uuid"          db:"primary=yes"`
-	Cluster     string                  `json:"cluster"       db:"leftjoin=clusters.name"`
+	Cluster     string                  `json:"cluster"       db:"join=clusters.name"`
 	ProjectName string                  `json:"project"`
 	Name        string                  `json:"name"`
 	Object      IncusNetworkZoneWrapper `json:"object"`

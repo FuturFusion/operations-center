@@ -30,7 +30,7 @@ type ExprIncusStoragePoolWrapper struct {
 type ExprStoragePool struct {
 	ID          int                         `json:"-" expr:"-"`
 	UUID        uuid.UUID                   `json:"uuid"          db:"primary=yes" expr:"uuid"`
-	Cluster     string                      `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
+	Cluster     string                      `json:"cluster"       db:"join=clusters.name" expr:"cluster"`
 	Name        string                      `json:"name" expr:"name"`
 	Object      ExprIncusStoragePoolWrapper `json:"object" expr:"object"`
 	LastUpdated time.Time                   `json:"last_updated"  db:"update_timestamp" expr:"last_updated"`

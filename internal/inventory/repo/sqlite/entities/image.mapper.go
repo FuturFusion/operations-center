@@ -18,14 +18,14 @@ import (
 var imageObjects = RegisterStmt(`
 SELECT images.id, images.uuid, clusters.name AS cluster, images.project_name, images.name, images.object, images.last_updated
   FROM images
-  LEFT JOIN clusters ON images.cluster_id = clusters.id
+  JOIN clusters ON images.cluster_id = clusters.id
   ORDER BY images.uuid
 `)
 
 var imageObjectsByUUID = RegisterStmt(`
 SELECT images.id, images.uuid, clusters.name AS cluster, images.project_name, images.name, images.object, images.last_updated
   FROM images
-  LEFT JOIN clusters ON images.cluster_id = clusters.id
+  JOIN clusters ON images.cluster_id = clusters.id
   WHERE ( images.uuid = ? )
   ORDER BY images.uuid
 `)

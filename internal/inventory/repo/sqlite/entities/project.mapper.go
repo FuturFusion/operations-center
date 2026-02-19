@@ -18,14 +18,14 @@ import (
 var projectObjects = RegisterStmt(`
 SELECT projects.id, projects.uuid, clusters.name AS cluster, projects.name, projects.object, projects.last_updated
   FROM projects
-  LEFT JOIN clusters ON projects.cluster_id = clusters.id
+  JOIN clusters ON projects.cluster_id = clusters.id
   ORDER BY projects.uuid
 `)
 
 var projectObjectsByUUID = RegisterStmt(`
 SELECT projects.id, projects.uuid, clusters.name AS cluster, projects.name, projects.object, projects.last_updated
   FROM projects
-  LEFT JOIN clusters ON projects.cluster_id = clusters.id
+  JOIN clusters ON projects.cluster_id = clusters.id
   WHERE ( projects.uuid = ? )
   ORDER BY projects.uuid
 `)

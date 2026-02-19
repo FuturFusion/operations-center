@@ -49,7 +49,7 @@ type ExprApiImageSource struct {
 type ExprImage struct {
 	ID          int                   `json:"-" expr:"-"`
 	UUID        uuid.UUID             `json:"uuid"          db:"primary=yes" expr:"uuid"`
-	Cluster     string                `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
+	Cluster     string                `json:"cluster"       db:"join=clusters.name" expr:"cluster"`
 	ProjectName string                `json:"project" expr:"project"`
 	Name        string                `json:"name" expr:"name"`
 	Object      ExprIncusImageWrapper `json:"object" expr:"object"`

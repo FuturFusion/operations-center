@@ -18,14 +18,14 @@ import (
 var networkPeerObjects = RegisterStmt(`
 SELECT network_peers.id, network_peers.uuid, clusters.name AS cluster, network_peers.project_name, network_peers.network_name, network_peers.name, network_peers.object, network_peers.last_updated
   FROM network_peers
-  LEFT JOIN clusters ON network_peers.cluster_id = clusters.id
+  JOIN clusters ON network_peers.cluster_id = clusters.id
   ORDER BY network_peers.uuid
 `)
 
 var networkPeerObjectsByUUID = RegisterStmt(`
 SELECT network_peers.id, network_peers.uuid, clusters.name AS cluster, network_peers.project_name, network_peers.network_name, network_peers.name, network_peers.object, network_peers.last_updated
   FROM network_peers
-  LEFT JOIN clusters ON network_peers.cluster_id = clusters.id
+  JOIN clusters ON network_peers.cluster_id = clusters.id
   WHERE ( network_peers.uuid = ? )
   ORDER BY network_peers.uuid
 `)

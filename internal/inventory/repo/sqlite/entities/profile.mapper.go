@@ -18,14 +18,14 @@ import (
 var profileObjects = RegisterStmt(`
 SELECT profiles.id, profiles.uuid, clusters.name AS cluster, profiles.project_name, profiles.name, profiles.object, profiles.last_updated
   FROM profiles
-  LEFT JOIN clusters ON profiles.cluster_id = clusters.id
+  JOIN clusters ON profiles.cluster_id = clusters.id
   ORDER BY profiles.uuid
 `)
 
 var profileObjectsByUUID = RegisterStmt(`
 SELECT profiles.id, profiles.uuid, clusters.name AS cluster, profiles.project_name, profiles.name, profiles.object, profiles.last_updated
   FROM profiles
-  LEFT JOIN clusters ON profiles.cluster_id = clusters.id
+  JOIN clusters ON profiles.cluster_id = clusters.id
   WHERE ( profiles.uuid = ? )
   ORDER BY profiles.uuid
 `)

@@ -18,14 +18,14 @@ import (
 var networkForwardObjects = RegisterStmt(`
 SELECT network_forwards.id, network_forwards.uuid, clusters.name AS cluster, network_forwards.project_name, network_forwards.network_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
   FROM network_forwards
-  LEFT JOIN clusters ON network_forwards.cluster_id = clusters.id
+  JOIN clusters ON network_forwards.cluster_id = clusters.id
   ORDER BY network_forwards.uuid
 `)
 
 var networkForwardObjectsByUUID = RegisterStmt(`
 SELECT network_forwards.id, network_forwards.uuid, clusters.name AS cluster, network_forwards.project_name, network_forwards.network_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
   FROM network_forwards
-  LEFT JOIN clusters ON network_forwards.cluster_id = clusters.id
+  JOIN clusters ON network_forwards.cluster_id = clusters.id
   WHERE ( network_forwards.uuid = ? )
   ORDER BY network_forwards.uuid
 `)

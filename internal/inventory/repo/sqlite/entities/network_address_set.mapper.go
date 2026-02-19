@@ -18,14 +18,14 @@ import (
 var networkAddressSetObjects = RegisterStmt(`
 SELECT network_address_sets.id, network_address_sets.uuid, clusters.name AS cluster, network_address_sets.project_name, network_address_sets.name, network_address_sets.object, network_address_sets.last_updated
   FROM network_address_sets
-  LEFT JOIN clusters ON network_address_sets.cluster_id = clusters.id
+  JOIN clusters ON network_address_sets.cluster_id = clusters.id
   ORDER BY network_address_sets.uuid
 `)
 
 var networkAddressSetObjectsByUUID = RegisterStmt(`
 SELECT network_address_sets.id, network_address_sets.uuid, clusters.name AS cluster, network_address_sets.project_name, network_address_sets.name, network_address_sets.object, network_address_sets.last_updated
   FROM network_address_sets
-  LEFT JOIN clusters ON network_address_sets.cluster_id = clusters.id
+  JOIN clusters ON network_address_sets.cluster_id = clusters.id
   WHERE ( network_address_sets.uuid = ? )
   ORDER BY network_address_sets.uuid
 `)

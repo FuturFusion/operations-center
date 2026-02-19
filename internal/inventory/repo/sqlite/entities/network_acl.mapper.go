@@ -18,14 +18,14 @@ import (
 var networkAclObjects = RegisterStmt(`
 SELECT network_acls.id, network_acls.uuid, clusters.name AS cluster, network_acls.project_name, network_acls.name, network_acls.object, network_acls.last_updated
   FROM network_acls
-  LEFT JOIN clusters ON network_acls.cluster_id = clusters.id
+  JOIN clusters ON network_acls.cluster_id = clusters.id
   ORDER BY network_acls.uuid
 `)
 
 var networkAclObjectsByUUID = RegisterStmt(`
 SELECT network_acls.id, network_acls.uuid, clusters.name AS cluster, network_acls.project_name, network_acls.name, network_acls.object, network_acls.last_updated
   FROM network_acls
-  LEFT JOIN clusters ON network_acls.cluster_id = clusters.id
+  JOIN clusters ON network_acls.cluster_id = clusters.id
   WHERE ( network_acls.uuid = ? )
   ORDER BY network_acls.uuid
 `)

@@ -18,14 +18,14 @@ import (
 var storagePoolObjects = RegisterStmt(`
 SELECT storage_pools.id, storage_pools.uuid, clusters.name AS cluster, storage_pools.name, storage_pools.object, storage_pools.last_updated
   FROM storage_pools
-  LEFT JOIN clusters ON storage_pools.cluster_id = clusters.id
+  JOIN clusters ON storage_pools.cluster_id = clusters.id
   ORDER BY storage_pools.uuid
 `)
 
 var storagePoolObjectsByUUID = RegisterStmt(`
 SELECT storage_pools.id, storage_pools.uuid, clusters.name AS cluster, storage_pools.name, storage_pools.object, storage_pools.last_updated
   FROM storage_pools
-  LEFT JOIN clusters ON storage_pools.cluster_id = clusters.id
+  JOIN clusters ON storage_pools.cluster_id = clusters.id
   WHERE ( storage_pools.uuid = ? )
   ORDER BY storage_pools.uuid
 `)

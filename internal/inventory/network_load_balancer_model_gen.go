@@ -45,7 +45,7 @@ func (w *IncusNetworkLoadBalancerWrapper) Scan(value interface{}) error {
 type NetworkLoadBalancer struct {
 	ID          int                             `json:"-"`
 	UUID        uuid.UUID                       `json:"uuid"          db:"primary=yes"`
-	Cluster     string                          `json:"cluster"       db:"leftjoin=clusters.name"`
+	Cluster     string                          `json:"cluster"       db:"join=clusters.name"`
 	ProjectName string                          `json:"project"`
 	NetworkName string                          `json:"network_name" db:"joinon=networks.name"`
 	Name        string                          `json:"name"`

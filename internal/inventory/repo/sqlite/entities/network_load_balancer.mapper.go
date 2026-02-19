@@ -18,14 +18,14 @@ import (
 var networkLoadBalancerObjects = RegisterStmt(`
 SELECT network_load_balancers.id, network_load_balancers.uuid, clusters.name AS cluster, network_load_balancers.project_name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
   FROM network_load_balancers
-  LEFT JOIN clusters ON network_load_balancers.cluster_id = clusters.id
+  JOIN clusters ON network_load_balancers.cluster_id = clusters.id
   ORDER BY network_load_balancers.uuid
 `)
 
 var networkLoadBalancerObjectsByUUID = RegisterStmt(`
 SELECT network_load_balancers.id, network_load_balancers.uuid, clusters.name AS cluster, network_load_balancers.project_name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
   FROM network_load_balancers
-  LEFT JOIN clusters ON network_load_balancers.cluster_id = clusters.id
+  JOIN clusters ON network_load_balancers.cluster_id = clusters.id
   WHERE ( network_load_balancers.uuid = ? )
   ORDER BY network_load_balancers.uuid
 `)

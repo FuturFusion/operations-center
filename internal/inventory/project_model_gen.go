@@ -45,7 +45,7 @@ func (w *IncusProjectWrapper) Scan(value interface{}) error {
 type Project struct {
 	ID          int                 `json:"-"`
 	UUID        uuid.UUID           `json:"uuid"          db:"primary=yes"`
-	Cluster     string              `json:"cluster"       db:"leftjoin=clusters.name"`
+	Cluster     string              `json:"cluster"       db:"join=clusters.name"`
 	Name        string              `json:"name"`
 	Object      IncusProjectWrapper `json:"object"`
 	LastUpdated time.Time           `json:"last_updated"  db:"update_timestamp"`
