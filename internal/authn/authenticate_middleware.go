@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/FuturFusion/operations-center/internal/logger"
-	"github.com/FuturFusion/operations-center/internal/response"
+	"github.com/FuturFusion/operations-center/internal/util/response"
 )
 
 type MiddlewareOption func(c *middlewareConfig)

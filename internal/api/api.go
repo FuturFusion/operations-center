@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"github.com/FuturFusion/operations-center/internal/response"
+	"github.com/FuturFusion/operations-center/internal/util/response"
 )
 
 // swagger:operation GET / server api_get

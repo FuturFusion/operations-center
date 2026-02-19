@@ -8,7 +8,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/authz"
 	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
-	"github.com/FuturFusion/operations-center/internal/response"
+	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
