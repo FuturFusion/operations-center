@@ -29,9 +29,9 @@ import (
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
-	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/testing/queue"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 

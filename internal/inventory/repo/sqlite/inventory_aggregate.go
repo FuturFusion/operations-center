@@ -13,8 +13,8 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/maps"
-	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
 type inventoryAggregate struct {

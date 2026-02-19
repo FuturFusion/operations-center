@@ -10,8 +10,8 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
-	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
 func TestIncusNetworkLoadBalancerWrapper_Value(t *testing.T) {

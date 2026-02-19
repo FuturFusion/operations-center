@@ -23,7 +23,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/ptr"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
 func TestClient_ClusterEndpointWithCA(t *testing.T) {

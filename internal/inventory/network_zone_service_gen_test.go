@@ -17,9 +17,9 @@ import (
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
 	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
 func TestNetworkZoneService_GetAllWithFilter(t *testing.T) {
