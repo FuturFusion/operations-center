@@ -80,14 +80,9 @@ server-two
 
 	testServers := []provisioning.Server{testServerA, testServerB}
 
-	network := inventory.Network{
-		Cluster:     "one",
-		Name:        "parent one",
-		ProjectName: "one",
-	}
-
 	networkLoadBalancerA := inventory.NetworkLoadBalancer{
 		Cluster:     "one",
+		ProjectName: "one",
 		NetworkName: "parent one",
 		Name:        "one",
 		Object:      inventory.IncusNetworkLoadBalancerWrapper{},
@@ -98,6 +93,7 @@ server-two
 
 	networkLoadBalancerB := inventory.NetworkLoadBalancer{
 		Cluster:     "two",
+		ProjectName: "two",
 		NetworkName: "parent two",
 		Name:        "two",
 		Object:      inventory.IncusNetworkLoadBalancerWrapper{},
@@ -135,9 +131,6 @@ server-two
 	err = seed.Provisioning(ctx, db, testClusters, testServers)
 	require.NoError(t, err)
 
-	_, err = inventorySqlite.NewNetwork(db).Create(ctx, network)
-	require.NoError(t, err)
-
 	// Add network_load_balancers
 	networkLoadBalancerA, err = networkLoadBalancer.Create(ctx, networkLoadBalancerA)
 	require.NoError(t, err)
@@ -159,8 +152,6 @@ server-two
 	require.Len(t, dbNetworkLoadBalancer, 2)
 	require.Equal(t, networkLoadBalancerA.Name, dbNetworkLoadBalancer[0].Name)
 	require.Equal(t, networkLoadBalancerB.Name, dbNetworkLoadBalancer[1].Name)
-	require.Equal(t, networkLoadBalancerA.ProjectName, network.ProjectName)
-	require.Equal(t, networkLoadBalancerB.ProjectName, "")
 
 	// Ensure we have one entry with filter for cluster, server, project, network and name.
 	networkLoadBalancerUUIDs, err = networkLoadBalancer.GetAllUUIDsWithFilter(ctx, inventory.NetworkLoadBalancerFilter{

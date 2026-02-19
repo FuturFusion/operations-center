@@ -32,12 +32,10 @@ func (r networkLoadBalancer) Create(ctx context.Context, in inventory.NetworkLoa
 	const sqlStmt = `
 WITH _lookup AS (
   SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
-), _parent_lookup AS (
-  SELECT project_name FROM networks WHERE networks.name = :network_name
 )
-INSERT INTO network_load_balancers (uuid, cluster_id, network_name, name, object, last_updated)
-VALUES (:uuid, (SELECT cluster_id FROM _lookup), :network_name, :name, :object, :last_updated)
-RETURNING id, :uuid, :cluster_name, COALESCE((select project_name from _parent_lookup), '') AS project_name, network_name, name, object, last_updated;
+INSERT INTO network_load_balancers (uuid, cluster_id, project_name, network_name, name, object, last_updated)
+VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :network_name, :name, :object, :last_updated)
+RETURNING id, :uuid, :cluster_name, project_name, network_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object.NetworkLoadBalancer)
@@ -48,6 +46,7 @@ RETURNING id, :uuid, :cluster_name, COALESCE((select project_name from _parent_l
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
+		sql.Named("project_name", in.ProjectName),
 		sql.Named("network_name", in.NetworkName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -63,10 +62,9 @@ RETURNING id, :uuid, :cluster_name, COALESCE((select project_name from _parent_l
 func (r networkLoadBalancer) GetAllWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (inventory.NetworkLoadBalancers, error) {
 	const sqlStmt = `
 SELECT
-  network_load_balancers.id, network_load_balancers.uuid, clusters.name, COALESCE(networks.project_name, '') AS project_name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
+  network_load_balancers.id, network_load_balancers.uuid, clusters.name, network_load_balancers.project_name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
 FROM network_load_balancers
   INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
-  LEFT JOIN networks ON network_load_balancers.network_name = networks.name
 WHERE true
 %s
 ORDER BY clusters.name, network_load_balancers.name
@@ -81,7 +79,7 @@ ORDER BY clusters.name, network_load_balancers.name
 	}
 
 	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND networks.project_name = :project`)
+		whereClause = append(whereClause, ` AND network_load_balancers.project_name = :project`)
 		args = append(args, sql.Named("project", filter.ProjectName))
 	}
 
@@ -127,7 +125,6 @@ func (r networkLoadBalancer) selectStmtGetAllUUIDWithFilter(filter inventory.Net
 SELECT network_load_balancers.uuid
 FROM network_load_balancers
   INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
-  LEFT JOIN networks ON network_load_balancers.network_name = networks.name
 WHERE true
 %s
 ORDER BY network_load_balancers.id
@@ -141,7 +138,7 @@ ORDER BY network_load_balancers.id
 	}
 
 	if filter.ProjectName != nil {
-		whereClause = append(whereClause, ` AND networks.project_name = :project`)
+		whereClause = append(whereClause, ` AND network_load_balancers.project_name = :project`)
 		args = append(args, sql.Named("project", filter.ProjectName))
 	}
 
@@ -189,11 +186,10 @@ func (r networkLoadBalancer) GetAllUUIDsWithFilter(ctx context.Context, filter i
 func (r networkLoadBalancer) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.NetworkLoadBalancer, error) {
 	const sqlStmt = `
 SELECT
-  network_load_balancers.id, network_load_balancers.uuid, clusters.name, COALESCE(networks.project_name, '') AS project_name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
+  network_load_balancers.id, network_load_balancers.uuid, clusters.name, network_load_balancers.project_name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
 FROM
   network_load_balancers
   INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
-  LEFT JOIN networks ON network_load_balancers.network_name = networks.name
 WHERE network_load_balancers.uuid=:uuid;
 `
 
@@ -255,12 +251,10 @@ func (r networkLoadBalancer) UpdateByUUID(ctx context.Context, in inventory.Netw
 	const sqlStmt = `
 WITH _lookup AS (
   SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
-), _parent_lookup AS (
-  SELECT project_name FROM networks WHERE networks.name = :network_name
 )
-UPDATE network_load_balancers SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
+UPDATE network_load_balancers SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
 WHERE uuid=:uuid
-RETURNING id, :uuid, :cluster_name, COALESCE((select project_name from _parent_lookup), '') AS project_name, network_name, name, object, last_updated;
+RETURNING id, :uuid, :cluster_name, project_name, network_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object.NetworkLoadBalancer)
@@ -271,6 +265,7 @@ RETURNING id, :uuid, :cluster_name, COALESCE((select project_name from _parent_l
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
+		sql.Named("project_name", in.ProjectName),
 		sql.Named("network_name", in.NetworkName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),

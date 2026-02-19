@@ -46,7 +46,7 @@ type NetworkPeer struct {
 	ID          int                     `json:"-"`
 	UUID        uuid.UUID               `json:"uuid"          db:"primary=yes"`
 	Cluster     string                  `json:"cluster"       db:"leftjoin=clusters.name"`
-	ProjectName string                  `json:"project"       db:"leftjoin=networks.project_name&joinon=network_peers.network_name&jointo=name&omit=create,update"`
+	ProjectName string                  `json:"project"`
 	NetworkName string                  `json:"network_name" db:"joinon=networks.name"`
 	Name        string                  `json:"name"`
 	Object      IncusNetworkPeerWrapper `json:"object"`
@@ -56,6 +56,7 @@ type NetworkPeer struct {
 func (m *NetworkPeer) DeriveUUID() *NetworkPeer {
 	identifier := strings.Join([]string{
 		m.Cluster,
+		m.ProjectName,
 		m.NetworkName,
 		m.Name,
 	}, ":")
@@ -72,6 +73,10 @@ func (m NetworkPeer) Validate() error {
 
 	if m.Name == "" {
 		return domain.NewValidationErrf("Invalid NetworkPeer, name can not be empty")
+	}
+
+	if m.ProjectName == "" {
+		return domain.NewValidationErrf("Invalid NetworkPeer, project name can not be empty")
 	}
 
 	if m.NetworkName == "" {
@@ -92,7 +97,7 @@ type NetworkPeers []NetworkPeer
 type NetworkPeerFilter struct {
 	UUID        *uuid.UUID
 	Cluster     *string
-	ProjectName *string `db:"ignore"`
+	ProjectName *string
 	NetworkName *string
 	Name        *string
 	Expression  *string `db:"ignore"`

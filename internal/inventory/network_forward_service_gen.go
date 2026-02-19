@@ -184,6 +184,7 @@ func (s networkForwardService) ResyncByUUID(ctx context.Context, id uuid.UUID) e
 			return err
 		}
 
+		networkForward.ProjectName = firstNonEmpty(networkForward.ProjectName, "default")
 		networkForward.Object = IncusNetworkForwardWrapper{retrievedNetworkForward}
 		networkForward.LastUpdated = s.now()
 		networkForward.DeriveUUID()
@@ -255,6 +256,7 @@ func (s networkForwardService) handleCreateEvent(ctx context.Context, clusterNam
 
 	networkForward := NetworkForward{
 		Cluster:     clusterName,
+		ProjectName: firstNonEmpty(event.Source.ProjectName, "default"),
 		NetworkName: event.Source.ParentName,
 		Name:        retrievedNetworkForward.ListenAddress,
 		Object:      IncusNetworkForwardWrapper{retrievedNetworkForward},
@@ -391,6 +393,7 @@ func (s networkForwardService) SyncCluster(ctx context.Context, name string) err
 		err = transaction.Do(ctx, func(ctx context.Context) error {
 			err = s.repo.DeleteWithFilter(ctx, NetworkForwardFilter{
 				Cluster:     &name,
+				ProjectName: &network.Project,
 				NetworkName: &network.Name,
 			})
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
@@ -400,6 +403,7 @@ func (s networkForwardService) SyncCluster(ctx context.Context, name string) err
 			for _, retrievedNetworkForward := range retrievedNetworkForwards {
 				networkForward := NetworkForward{
 					Cluster:     name,
+					ProjectName: network.Project,
 					NetworkName: network.Name,
 					Name:        retrievedNetworkForward.ListenAddress,
 					Object:      IncusNetworkForwardWrapper{retrievedNetworkForward},

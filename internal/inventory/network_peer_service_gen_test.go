@@ -941,12 +941,14 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 			repo := &repoMock.NetworkPeerRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkPeerFilter) ([]uuid.UUID, error) {
 					require.Equal(t, tc.argClusterName, *filter.Cluster)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.ProjectName)
 					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, *filter.NetworkName)
 					require.Contains(t, tc.argLifecycleEvent.Source.Name, *filter.Name)
 					return tc.repoGetAllUUIDsWithFilterUUIDs, tc.repoGetAllUUIDsWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, networkPeer inventory.NetworkPeer) (inventory.NetworkPeer, error) {
 					require.Equal(t, tc.argClusterName, networkPeer.Cluster)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, networkPeer.ProjectName)
 					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, networkPeer.NetworkName)
 					require.Equal(t, tc.argLifecycleEvent.Source.Name, networkPeer.Name)
 					return inventory.NetworkPeer{}, tc.repoCreateErr
@@ -1026,7 +1028,8 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkPeerClientGetNetworkPeers: []incusapi.NetworkPeer{
@@ -1048,10 +1051,12 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 				{
-					Name: "filtered",
+					Name:    "filtered",
+					Project: "project one",
 				},
 			},
 			networkPeerClientGetNetworkPeers: []incusapi.NetworkPeer{
@@ -1078,7 +1083,8 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkPeerClientGetNetworkPeers: []incusapi.NetworkPeer{
@@ -1127,7 +1133,8 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkPeerClientGetNetworkPeersErr: boom.Error,
@@ -1145,7 +1152,8 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkPeerClientGetNetworkPeers: []incusapi.NetworkPeer{
@@ -1168,7 +1176,8 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkPeerClientGetNetworkPeers: []incusapi.NetworkPeer{
@@ -1193,7 +1202,8 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkPeerClientGetNetworkPeers: []incusapi.NetworkPeer{
@@ -1212,6 +1222,8 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkPeerRepoMock{
 				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.NetworkPeerFilter) error {
+					require.Equal(t, tc.networkClientGetNetworks[0].Project, *filter.ProjectName)
+					require.Equal(t, tc.networkClientGetNetworks[0].Name, *filter.NetworkName)
 					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, networkPeer inventory.NetworkPeer) (inventory.NetworkPeer, error) {
