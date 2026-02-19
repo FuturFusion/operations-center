@@ -76,6 +76,10 @@ func cleanupIncusOS(t *testing.T) func() {
 		names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 		for _, name := range names {
 			mustRunWithContext(ctx, t, `incus remove --force %s`, name)
+			resp := mustRunWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '.[] | select(.server_type == "incus") | .name'`, cpuArch)
+			for server := range strings.Lines(resp.Output()) {
+				mustRunWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning server remove %s`, cpuArch, server)
+			}
 		}
 	}
 }
