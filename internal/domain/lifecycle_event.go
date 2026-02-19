@@ -7,9 +7,10 @@ import (
 )
 
 type LifecycleEvent struct {
-	ResourceType ResourceType
-	Operation    LifecycleOperation
-	Source       LifecycleSource
+	LifecycleEventAction string
+	ResourceType         ResourceType
+	Operation            LifecycleOperation
+	Source               LifecycleSource
 }
 
 type ResourceType string

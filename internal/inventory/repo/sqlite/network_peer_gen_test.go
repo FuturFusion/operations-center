@@ -80,14 +80,9 @@ server-two
 
 	testServers := []provisioning.Server{testServerA, testServerB}
 
-	network := inventory.Network{
-		Cluster:     "one",
-		Name:        "parent one",
-		ProjectName: "one",
-	}
-
 	networkPeerA := inventory.NetworkPeer{
 		Cluster:     "one",
+		ProjectName: "one",
 		NetworkName: "parent one",
 		Name:        "one",
 		Object:      inventory.IncusNetworkPeerWrapper{},
@@ -98,6 +93,7 @@ server-two
 
 	networkPeerB := inventory.NetworkPeer{
 		Cluster:     "two",
+		ProjectName: "two",
 		NetworkName: "parent two",
 		Name:        "two",
 		Object:      inventory.IncusNetworkPeerWrapper{},
@@ -135,9 +131,6 @@ server-two
 	err = seed.Provisioning(ctx, db, testClusters, testServers)
 	require.NoError(t, err)
 
-	_, err = inventorySqlite.NewNetwork(db).Create(ctx, network)
-	require.NoError(t, err)
-
 	// Add network_peers
 	networkPeerA, err = networkPeer.Create(ctx, networkPeerA)
 	require.NoError(t, err)
@@ -159,8 +152,6 @@ server-two
 	require.Len(t, dbNetworkPeer, 2)
 	require.Equal(t, networkPeerA.Name, dbNetworkPeer[0].Name)
 	require.Equal(t, networkPeerB.Name, dbNetworkPeer[1].Name)
-	require.Equal(t, networkPeerA.ProjectName, network.ProjectName)
-	require.Equal(t, networkPeerB.ProjectName, "")
 
 	// Ensure we have one entry with filter for cluster, server, project, network and name.
 	networkPeerUUIDs, err = networkPeer.GetAllUUIDsWithFilter(ctx, inventory.NetworkPeerFilter{

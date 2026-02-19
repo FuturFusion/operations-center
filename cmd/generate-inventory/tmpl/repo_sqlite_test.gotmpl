@@ -77,14 +77,6 @@ server-two
 	}
 
 	testServers := []provisioning.Server{testServerA, testServerB}
-{{- if .HasProjectFromParent }}
-
-	{{ .ParentName | camelcase }} := inventory.{{ .ParentName | pascalcase }}{
-		Cluster:     "one",
-		Name:        "parent one",
-		ProjectName: "one",
-	}
-{{- end }}
 
 	{{ .Name | camelcase }}A := inventory.{{ .Name | pascalcase }}{
 		Cluster:     "one",
@@ -95,7 +87,7 @@ server-two
 		Server:      "one",
 	{{- end }}
 {{- end }}
-{{- if .HasProjectDirect }}
+{{- if .HasProject }}
 		ProjectName: "one",
 {{- end }}
 {{- if .HasParent }}
@@ -120,7 +112,7 @@ server-two
 		Server:      "two",
 	{{- end }}
 {{- end }}
-{{- if .HasProjectDirect }}
+{{- if .HasProject }}
 		ProjectName: "two",
 {{- end }}
 {{- if .HasParent }}
@@ -164,11 +156,6 @@ server-two
 	// Seed provisioning
 	err = seed.Provisioning(ctx, db, testClusters, testServers)
 	require.NoError(t, err)
-{{- if .HasProjectFromParent }}
-
-	_, err = inventorySqlite.New{{ .ParentName | pascalcase }}(db).Create(ctx, {{ .ParentName | camelcase }})
-	require.NoError(t, err)
-{{- end }}
 
 	// Add {{ .PluralName }}
 	{{ .Name | camelcase }}A, err = {{ .Name | camelcase }}.Create(ctx, {{ .Name | camelcase }}A)
@@ -191,10 +178,6 @@ server-two
 	require.Len(t, db{{ .Name | pascalcase }}, 2)
 	require.Equal(t, {{ .Name | camelcase }}A.Name, db{{ .Name | pascalcase }}[0].Name)
 	require.Equal(t, {{ .Name | camelcase }}B.Name, db{{ .Name | pascalcase }}[1].Name)
-{{- if .HasProjectFromParent }}
-	require.Equal(t, {{ .Name | camelcase }}A.ProjectName, {{ .ParentName | camelcase }}.ProjectName)
-	require.Equal(t, {{ .Name | camelcase }}B.ProjectName, "")
-{{- end }}
 
 	// Ensure we have one entry with filter for cluster, server{{ if .HasProject }}, project{{ end }}{{ if .HasParent }}, {{ .ParentName }}{{ end }} and name.
 	{{ .Name | camelcase }}UUIDs, err = {{ .Name | camelcase }}.GetAllUUIDsWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{
@@ -260,7 +243,7 @@ server-two
 	{{ .Name | camelcase }}C := inventory.{{ .Name | pascalcase }}{
 		Cluster:     "two",
 		Server:      nil, // no server set
-{{- if .HasProjectDirect }}
+{{- if .HasProject }}
 		ProjectName: "two",
 {{- end }}
 {{- if .HasParent }}

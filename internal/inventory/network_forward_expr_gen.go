@@ -37,8 +37,8 @@ type ExprIncusNetworkForwardWrapper struct {
 type ExprNetworkForward struct {
 	ID          int                            `json:"-" expr:"-"`
 	UUID        uuid.UUID                      `json:"uuid"          db:"primary=yes" expr:"uuid"`
-	Cluster     string                         `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
-	ProjectName string                         `json:"project"       db:"leftjoin=networks.project_name&joinon=network_forwards.network_name&jointo=name&omit=create,update" expr:"project"`
+	Cluster     string                         `json:"cluster"       db:"join=clusters.name" expr:"cluster"`
+	ProjectName string                         `json:"project" expr:"project"`
 	NetworkName string                         `json:"network_name" db:"joinon=networks.name" expr:"network_name"`
 	Name        string                         `json:"name" expr:"name"`
 	Object      ExprIncusNetworkForwardWrapper `json:"object" expr:"object"`

@@ -941,12 +941,14 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 			repo := &repoMock.NetworkLoadBalancerRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) ([]uuid.UUID, error) {
 					require.Equal(t, tc.argClusterName, *filter.Cluster)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.ProjectName)
 					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, *filter.NetworkName)
 					require.Contains(t, tc.argLifecycleEvent.Source.Name, *filter.Name)
 					return tc.repoGetAllUUIDsWithFilterUUIDs, tc.repoGetAllUUIDsWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {
 					require.Equal(t, tc.argClusterName, networkLoadBalancer.Cluster)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, networkLoadBalancer.ProjectName)
 					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, networkLoadBalancer.NetworkName)
 					require.Equal(t, tc.argLifecycleEvent.Source.Name, networkLoadBalancer.Name)
 					return inventory.NetworkLoadBalancer{}, tc.repoCreateErr
@@ -1026,7 +1028,8 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancers: []incusapi.NetworkLoadBalancer{
@@ -1048,10 +1051,12 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 				{
-					Name: "filtered",
+					Name:    "filtered",
+					Project: "project one",
 				},
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancers: []incusapi.NetworkLoadBalancer{
@@ -1078,7 +1083,8 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancers: []incusapi.NetworkLoadBalancer{
@@ -1127,7 +1133,8 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancersErr: boom.Error,
@@ -1145,7 +1152,8 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancers: []incusapi.NetworkLoadBalancer{
@@ -1168,7 +1176,8 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancers: []incusapi.NetworkLoadBalancer{
@@ -1193,7 +1202,8 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancers: []incusapi.NetworkLoadBalancer{
@@ -1212,6 +1222,8 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkLoadBalancerRepoMock{
 				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) error {
+					require.Equal(t, tc.networkClientGetNetworks[0].Project, *filter.ProjectName)
+					require.Equal(t, tc.networkClientGetNetworks[0].Name, *filter.NetworkName)
 					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {

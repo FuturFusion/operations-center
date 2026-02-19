@@ -18,16 +18,16 @@ import (
 var instanceObjects = RegisterStmt(`
 SELECT instances.id, instances.uuid, clusters.name AS cluster, servers.name AS server, instances.project_name, instances.name, instances.object, instances.last_updated
   FROM instances
-  LEFT JOIN clusters ON instances.cluster_id = clusters.id
-  LEFT JOIN servers ON instances.server_id = servers.id
+  JOIN clusters ON instances.cluster_id = clusters.id
+  JOIN servers ON instances.server_id = servers.id
   ORDER BY instances.uuid
 `)
 
 var instanceObjectsByUUID = RegisterStmt(`
 SELECT instances.id, instances.uuid, clusters.name AS cluster, servers.name AS server, instances.project_name, instances.name, instances.object, instances.last_updated
   FROM instances
-  LEFT JOIN clusters ON instances.cluster_id = clusters.id
-  LEFT JOIN servers ON instances.server_id = servers.id
+  JOIN clusters ON instances.cluster_id = clusters.id
+  JOIN servers ON instances.server_id = servers.id
   WHERE ( instances.uuid = ? )
   ORDER BY instances.uuid
 `)

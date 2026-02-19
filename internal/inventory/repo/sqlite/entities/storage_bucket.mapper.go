@@ -18,7 +18,7 @@ import (
 var storageBucketObjects = RegisterStmt(`
 SELECT storage_buckets.id, storage_buckets.uuid, clusters.name AS cluster, servers.name AS server, storage_buckets.project_name, storage_buckets.storage_pool_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
   FROM storage_buckets
-  LEFT JOIN clusters ON storage_buckets.cluster_id = clusters.id
+  JOIN clusters ON storage_buckets.cluster_id = clusters.id
   LEFT JOIN servers ON storage_buckets.server_id = servers.id
   ORDER BY storage_buckets.uuid
 `)
@@ -26,7 +26,7 @@ SELECT storage_buckets.id, storage_buckets.uuid, clusters.name AS cluster, serve
 var storageBucketObjectsByUUID = RegisterStmt(`
 SELECT storage_buckets.id, storage_buckets.uuid, clusters.name AS cluster, servers.name AS server, storage_buckets.project_name, storage_buckets.storage_pool_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
   FROM storage_buckets
-  LEFT JOIN clusters ON storage_buckets.cluster_id = clusters.id
+  JOIN clusters ON storage_buckets.cluster_id = clusters.id
   LEFT JOIN servers ON storage_buckets.server_id = servers.id
   WHERE ( storage_buckets.uuid = ? )
   ORDER BY storage_buckets.uuid

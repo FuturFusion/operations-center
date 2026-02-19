@@ -18,14 +18,14 @@ import (
 var networkObjects = RegisterStmt(`
 SELECT networks.id, networks.uuid, clusters.name AS cluster, networks.project_name, networks.name, networks.object, networks.last_updated
   FROM networks
-  LEFT JOIN clusters ON networks.cluster_id = clusters.id
+  JOIN clusters ON networks.cluster_id = clusters.id
   ORDER BY networks.uuid
 `)
 
 var networkObjectsByUUID = RegisterStmt(`
 SELECT networks.id, networks.uuid, clusters.name AS cluster, networks.project_name, networks.name, networks.object, networks.last_updated
   FROM networks
-  LEFT JOIN clusters ON networks.cluster_id = clusters.id
+  JOIN clusters ON networks.cluster_id = clusters.id
   WHERE ( networks.uuid = ? )
   ORDER BY networks.uuid
 `)

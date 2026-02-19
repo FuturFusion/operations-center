@@ -16,18 +16,16 @@ import (
 )
 
 var networkLoadBalancerObjects = RegisterStmt(`
-SELECT network_load_balancers.id, network_load_balancers.uuid, clusters.name AS cluster, networks.project_name AS project_name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
+SELECT network_load_balancers.id, network_load_balancers.uuid, clusters.name AS cluster, network_load_balancers.project_name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
   FROM network_load_balancers
-  LEFT JOIN clusters ON network_load_balancers.cluster_id = clusters.id
-  LEFT JOIN networks ON network_load_balancers.network_name = networks.name
+  JOIN clusters ON network_load_balancers.cluster_id = clusters.id
   ORDER BY network_load_balancers.uuid
 `)
 
 var networkLoadBalancerObjectsByUUID = RegisterStmt(`
-SELECT network_load_balancers.id, network_load_balancers.uuid, clusters.name AS cluster, networks.project_name AS project_name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
+SELECT network_load_balancers.id, network_load_balancers.uuid, clusters.name AS cluster, network_load_balancers.project_name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
   FROM network_load_balancers
-  LEFT JOIN clusters ON network_load_balancers.cluster_id = clusters.id
-  LEFT JOIN networks ON network_load_balancers.network_name = networks.name
+  JOIN clusters ON network_load_balancers.cluster_id = clusters.id
   WHERE ( network_load_balancers.uuid = ? )
   ORDER BY network_load_balancers.uuid
 `)
@@ -44,13 +42,13 @@ SELECT network_load_balancers.id FROM network_load_balancers
 `)
 
 var networkLoadBalancerCreate = RegisterStmt(`
-INSERT INTO network_load_balancers (uuid, cluster_id, network_name, name, object, last_updated)
-  VALUES (?, (SELECT clusters.id FROM clusters WHERE clusters.name = ?), ?, ?, ?, ?)
+INSERT INTO network_load_balancers (uuid, cluster_id, project_name, network_name, name, object, last_updated)
+  VALUES (?, (SELECT clusters.id FROM clusters WHERE clusters.name = ?), ?, ?, ?, ?, ?)
 `)
 
 var networkLoadBalancerUpdate = RegisterStmt(`
 UPDATE network_load_balancers
-  SET uuid = ?, cluster_id = (SELECT clusters.id FROM clusters WHERE clusters.name = ?), network_name = ?, name = ?, object = ?, last_updated = ?
+  SET uuid = ?, cluster_id = (SELECT clusters.id FROM clusters WHERE clusters.name = ?), project_name = ?, network_name = ?, name = ?, object = ?, last_updated = ?
  WHERE id = ?
 `)
 
@@ -142,7 +140,7 @@ func GetNetworkLoadBalancer(ctx context.Context, db dbtx, uuid uuid.UUID) (_ *in
 // networkLoadBalancerColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the NetworkLoadBalancer entity.
 func networkLoadBalancerColumns() string {
-	return "network_load_balancers.id, network_load_balancers.uuid, clusters.name AS cluster, networks.project_name AS project_name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated"
+	return "network_load_balancers.id, network_load_balancers.uuid, clusters.name AS cluster, network_load_balancers.project_name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated"
 }
 
 // getNetworkLoadBalancers can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -218,7 +216,7 @@ func GetNetworkLoadBalancers(ctx context.Context, db dbtx, filters ...inventory.
 	}
 
 	for i, filter := range filters {
-		if filter.UUID != nil && filter.Cluster == nil && filter.NetworkName == nil && filter.Name == nil {
+		if filter.UUID != nil && filter.Cluster == nil && filter.ProjectName == nil && filter.NetworkName == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, networkLoadBalancerObjectsByUUID)
@@ -242,7 +240,7 @@ func GetNetworkLoadBalancers(ctx context.Context, db dbtx, filters ...inventory.
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.UUID == nil && filter.Cluster == nil && filter.NetworkName == nil && filter.Name == nil {
+		} else if filter.UUID == nil && filter.Cluster == nil && filter.ProjectName == nil && filter.NetworkName == nil && filter.Name == nil {
 			return nil, fmt.Errorf("Cannot filter on empty NetworkLoadBalancerFilter")
 		} else {
 			return nil, errors.New("No statement exists for the given Filter")
@@ -289,7 +287,7 @@ func GetNetworkLoadBalancerNames(ctx context.Context, db dbtx, filters ...invent
 	}
 
 	for _, filter := range filters {
-		if filter.UUID == nil && filter.Cluster == nil && filter.NetworkName == nil && filter.Name == nil {
+		if filter.UUID == nil && filter.Cluster == nil && filter.ProjectName == nil && filter.NetworkName == nil && filter.Name == nil {
 			return nil, fmt.Errorf("Cannot filter on empty NetworkLoadBalancerFilter")
 		} else {
 			return nil, errors.New("No statement exists for the given Filter")
@@ -335,15 +333,16 @@ func CreateNetworkLoadBalancer(ctx context.Context, db dbtx, object inventory.Ne
 		_err = mapErr(_err, "Network_load_balancer")
 	}()
 
-	args := make([]any, 6)
+	args := make([]any, 7)
 
 	// Populate the statement arguments.
 	args[0] = object.UUID
 	args[1] = object.Cluster
-	args[2] = object.NetworkName
-	args[3] = object.Name
-	args[4] = object.Object
-	args[5] = time.Now().UTC().Format(time.RFC3339)
+	args[2] = object.ProjectName
+	args[3] = object.NetworkName
+	args[4] = object.Name
+	args[5] = object.Object
+	args[6] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, networkLoadBalancerCreate)
@@ -386,7 +385,7 @@ func UpdateNetworkLoadBalancer(ctx context.Context, db tx, uuid uuid.UUID, objec
 		return fmt.Errorf("Failed to get \"networkLoadBalancerUpdate\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(object.UUID, object.Cluster, object.NetworkName, object.Name, object.Object, time.Now().UTC().Format(time.RFC3339), id)
+	result, err := stmt.Exec(object.UUID, object.Cluster, object.ProjectName, object.NetworkName, object.Name, object.Object, time.Now().UTC().Format(time.RFC3339), id)
 	if err != nil {
 		return fmt.Errorf("Update \"network_load_balancers\" entry failed: %w", err)
 	}

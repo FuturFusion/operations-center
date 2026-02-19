@@ -18,7 +18,7 @@ import (
 var storageVolumeObjects = RegisterStmt(`
 SELECT storage_volumes.id, storage_volumes.uuid, clusters.name AS cluster, servers.name AS server, storage_volumes.project_name, storage_volumes.storage_pool_name, storage_volumes.name, storage_volumes.type, storage_volumes.object, storage_volumes.last_updated
   FROM storage_volumes
-  LEFT JOIN clusters ON storage_volumes.cluster_id = clusters.id
+  JOIN clusters ON storage_volumes.cluster_id = clusters.id
   LEFT JOIN servers ON storage_volumes.server_id = servers.id
   ORDER BY storage_volumes.uuid
 `)
@@ -26,7 +26,7 @@ SELECT storage_volumes.id, storage_volumes.uuid, clusters.name AS cluster, serve
 var storageVolumeObjectsByUUID = RegisterStmt(`
 SELECT storage_volumes.id, storage_volumes.uuid, clusters.name AS cluster, servers.name AS server, storage_volumes.project_name, storage_volumes.storage_pool_name, storage_volumes.name, storage_volumes.type, storage_volumes.object, storage_volumes.last_updated
   FROM storage_volumes
-  LEFT JOIN clusters ON storage_volumes.cluster_id = clusters.id
+  JOIN clusters ON storage_volumes.cluster_id = clusters.id
   LEFT JOIN servers ON storage_volumes.server_id = servers.id
   WHERE ( storage_volumes.uuid = ? )
   ORDER BY storage_volumes.uuid

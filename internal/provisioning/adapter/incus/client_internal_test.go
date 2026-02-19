@@ -216,8 +216,9 @@ func Test_mapIncusEventToLifecycleEvent(t *testing.T) {
 			assertErr:            require.NoError,
 			wantIsLifecycleEvent: true,
 			wantEvent: domain.LifecycleEvent{
-				Operation:    domain.LifecycleOperationCreate,
-				ResourceType: domain.ResourceTypeImage,
+				Operation:            domain.LifecycleOperationCreate,
+				ResourceType:         domain.ResourceTypeImage,
+				LifecycleEventAction: "image-created",
 				Source: domain.LifecycleSource{
 					Name:        "7ca66bd33c15ced9c300c76438e8c7d126ee4d114c66de65c59d04ca2cc818b7",
 					ProjectName: "default",
@@ -250,8 +251,9 @@ func Test_mapIncusEventToLifecycleEvent(t *testing.T) {
 			assertErr:            require.NoError,
 			wantIsLifecycleEvent: true,
 			wantEvent: domain.LifecycleEvent{
-				Operation:    domain.LifecycleOperationRename,
-				ResourceType: domain.ResourceTypeInstance,
+				Operation:            domain.LifecycleOperationRename,
+				ResourceType:         domain.ResourceTypeInstance,
+				LifecycleEventAction: "instance-renamed",
 				Source: domain.LifecycleSource{
 					Name:        "name-new",
 					ProjectName: "default",
@@ -282,8 +284,9 @@ func Test_mapIncusEventToLifecycleEvent(t *testing.T) {
 			assertErr:            require.NoError,
 			wantIsLifecycleEvent: true,
 			wantEvent: domain.LifecycleEvent{
-				Operation:    domain.LifecycleOperationDelete,
-				ResourceType: domain.ResourceTypeStorageVolume,
+				Operation:            domain.LifecycleOperationDelete,
+				ResourceType:         domain.ResourceTypeStorageVolume,
+				LifecycleEventAction: "storage-volume-deleted",
 				Source: domain.LifecycleSource{
 					Name:        "7ca66bd33c15ced9c300c76438e8c7d126ee4d114c66de65c59d04ca2cc818b7",
 					ParentType:  "storage-pool",
@@ -392,8 +395,9 @@ func Test_mapIncusEventToLifecycleEvent(t *testing.T) {
 			assertErr:            require.NoError,
 			wantIsLifecycleEvent: true,
 			wantEvent: domain.LifecycleEvent{
-				Operation:    domain.LifecycleOperationDelete,
-				ResourceType: domain.ResourceTypeStorageVolume,
+				Operation:            domain.LifecycleOperationDelete,
+				ResourceType:         domain.ResourceTypeStorageVolume,
+				LifecycleEventAction: "storage-volume-deleted",
 				Source: domain.LifecycleSource{
 					Name:        "7ca66bd33c15ced9c300c76438e8c7d126ee4d114c66de65c59d04ca2cc818b7",
 					ParentType:  "storage-pool",

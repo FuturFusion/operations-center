@@ -80,14 +80,9 @@ server-two
 
 	testServers := []provisioning.Server{testServerA, testServerB}
 
-	network := inventory.Network{
-		Cluster:     "one",
-		Name:        "parent one",
-		ProjectName: "one",
-	}
-
 	networkForwardA := inventory.NetworkForward{
 		Cluster:     "one",
+		ProjectName: "one",
 		NetworkName: "parent one",
 		Name:        "one",
 		Object:      inventory.IncusNetworkForwardWrapper{},
@@ -98,6 +93,7 @@ server-two
 
 	networkForwardB := inventory.NetworkForward{
 		Cluster:     "two",
+		ProjectName: "two",
 		NetworkName: "parent two",
 		Name:        "two",
 		Object:      inventory.IncusNetworkForwardWrapper{},
@@ -135,9 +131,6 @@ server-two
 	err = seed.Provisioning(ctx, db, testClusters, testServers)
 	require.NoError(t, err)
 
-	_, err = inventorySqlite.NewNetwork(db).Create(ctx, network)
-	require.NoError(t, err)
-
 	// Add network_forwards
 	networkForwardA, err = networkForward.Create(ctx, networkForwardA)
 	require.NoError(t, err)
@@ -159,8 +152,6 @@ server-two
 	require.Len(t, dbNetworkForward, 2)
 	require.Equal(t, networkForwardA.Name, dbNetworkForward[0].Name)
 	require.Equal(t, networkForwardB.Name, dbNetworkForward[1].Name)
-	require.Equal(t, networkForwardA.ProjectName, network.ProjectName)
-	require.Equal(t, networkForwardB.ProjectName, "")
 
 	// Ensure we have one entry with filter for cluster, server, project, network and name.
 	networkForwardUUIDs, err = networkForward.GetAllUUIDsWithFilter(ctx, inventory.NetworkForwardFilter{

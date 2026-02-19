@@ -2459,8 +2459,9 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 			assertErr:        require.NoError,
 			assertErrChanErr: require.NoError,
 			wantEvent: domain.LifecycleEvent{
-				Operation:    domain.LifecycleOperationCreate,
-				ResourceType: domain.ResourceTypeImage,
+				Operation:            domain.LifecycleOperationCreate,
+				ResourceType:         domain.ResourceTypeImage,
+				LifecycleEventAction: "image-created",
 				Source: domain.LifecycleSource{
 					Name:        "7ca66bd33c15ced9c300c76438e8c7d126ee4d114c66de65c59d04ca2cc818b7",
 					ProjectName: "default",
@@ -2536,8 +2537,9 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 			assertErr:        require.NoError,
 			assertErrChanErr: require.NoError,
 			wantEvent: domain.LifecycleEvent{
-				Operation:    domain.LifecycleOperationCreate,
-				ResourceType: domain.ResourceTypeImage,
+				Operation:            domain.LifecycleOperationCreate,
+				ResourceType:         domain.ResourceTypeImage,
+				LifecycleEventAction: "image-created",
 				Source: domain.LifecycleSource{
 					Name:        "7ca66bd33c15ced9c300c76438e8c7d126ee4d114c66de65c59d04ca2cc818b7",
 					ProjectName: "default",
@@ -2581,8 +2583,9 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 			assertErr:        require.NoError,
 			assertErrChanErr: require.NoError,
 			wantEvent: domain.LifecycleEvent{
-				Operation:    domain.LifecycleOperationCreate,
-				ResourceType: domain.ResourceTypeImage,
+				Operation:            domain.LifecycleOperationCreate,
+				ResourceType:         domain.ResourceTypeImage,
+				LifecycleEventAction: "image-created",
 				Source: domain.LifecycleSource{
 					Name:        "7ca66bd33c15ced9c300c76438e8c7d126ee4d114c66de65c59d04ca2cc818b7",
 					ProjectName: "default",

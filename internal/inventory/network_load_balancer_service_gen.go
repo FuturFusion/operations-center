@@ -184,6 +184,7 @@ func (s networkLoadBalancerService) ResyncByUUID(ctx context.Context, id uuid.UU
 			return err
 		}
 
+		networkLoadBalancer.ProjectName = firstNonEmpty(networkLoadBalancer.ProjectName, "default")
 		networkLoadBalancer.Object = IncusNetworkLoadBalancerWrapper{retrievedNetworkLoadBalancer}
 		networkLoadBalancer.LastUpdated = s.now()
 		networkLoadBalancer.DeriveUUID()
@@ -255,6 +256,7 @@ func (s networkLoadBalancerService) handleCreateEvent(ctx context.Context, clust
 
 	networkLoadBalancer := NetworkLoadBalancer{
 		Cluster:     clusterName,
+		ProjectName: firstNonEmpty(event.Source.ProjectName, "default"),
 		NetworkName: event.Source.ParentName,
 		Name:        retrievedNetworkLoadBalancer.ListenAddress,
 		Object:      IncusNetworkLoadBalancerWrapper{retrievedNetworkLoadBalancer},
@@ -391,6 +393,7 @@ func (s networkLoadBalancerService) SyncCluster(ctx context.Context, name string
 		err = transaction.Do(ctx, func(ctx context.Context) error {
 			err = s.repo.DeleteWithFilter(ctx, NetworkLoadBalancerFilter{
 				Cluster:     &name,
+				ProjectName: &network.Project,
 				NetworkName: &network.Name,
 			})
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
@@ -400,6 +403,7 @@ func (s networkLoadBalancerService) SyncCluster(ctx context.Context, name string
 			for _, retrievedNetworkLoadBalancer := range retrievedNetworkLoadBalancers {
 				networkLoadBalancer := NetworkLoadBalancer{
 					Cluster:     name,
+					ProjectName: network.Project,
 					NetworkName: network.Name,
 					Name:        retrievedNetworkLoadBalancer.ListenAddress,
 					Object:      IncusNetworkLoadBalancerWrapper{retrievedNetworkLoadBalancer},

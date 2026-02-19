@@ -18,14 +18,14 @@ import (
 var networkIntegrationObjects = RegisterStmt(`
 SELECT network_integrations.id, network_integrations.uuid, clusters.name AS cluster, network_integrations.name, network_integrations.object, network_integrations.last_updated
   FROM network_integrations
-  LEFT JOIN clusters ON network_integrations.cluster_id = clusters.id
+  JOIN clusters ON network_integrations.cluster_id = clusters.id
   ORDER BY network_integrations.uuid
 `)
 
 var networkIntegrationObjectsByUUID = RegisterStmt(`
 SELECT network_integrations.id, network_integrations.uuid, clusters.name AS cluster, network_integrations.name, network_integrations.object, network_integrations.last_updated
   FROM network_integrations
-  LEFT JOIN clusters ON network_integrations.cluster_id = clusters.id
+  JOIN clusters ON network_integrations.cluster_id = clusters.id
   WHERE ( network_integrations.uuid = ? )
   ORDER BY network_integrations.uuid
 `)

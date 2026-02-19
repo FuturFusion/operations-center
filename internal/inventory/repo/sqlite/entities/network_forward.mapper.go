@@ -16,18 +16,16 @@ import (
 )
 
 var networkForwardObjects = RegisterStmt(`
-SELECT network_forwards.id, network_forwards.uuid, clusters.name AS cluster, networks.project_name AS project_name, network_forwards.network_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
+SELECT network_forwards.id, network_forwards.uuid, clusters.name AS cluster, network_forwards.project_name, network_forwards.network_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
   FROM network_forwards
-  LEFT JOIN clusters ON network_forwards.cluster_id = clusters.id
-  LEFT JOIN networks ON network_forwards.network_name = networks.name
+  JOIN clusters ON network_forwards.cluster_id = clusters.id
   ORDER BY network_forwards.uuid
 `)
 
 var networkForwardObjectsByUUID = RegisterStmt(`
-SELECT network_forwards.id, network_forwards.uuid, clusters.name AS cluster, networks.project_name AS project_name, network_forwards.network_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
+SELECT network_forwards.id, network_forwards.uuid, clusters.name AS cluster, network_forwards.project_name, network_forwards.network_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
   FROM network_forwards
-  LEFT JOIN clusters ON network_forwards.cluster_id = clusters.id
-  LEFT JOIN networks ON network_forwards.network_name = networks.name
+  JOIN clusters ON network_forwards.cluster_id = clusters.id
   WHERE ( network_forwards.uuid = ? )
   ORDER BY network_forwards.uuid
 `)
@@ -44,13 +42,13 @@ SELECT network_forwards.id FROM network_forwards
 `)
 
 var networkForwardCreate = RegisterStmt(`
-INSERT INTO network_forwards (uuid, cluster_id, network_name, name, object, last_updated)
-  VALUES (?, (SELECT clusters.id FROM clusters WHERE clusters.name = ?), ?, ?, ?, ?)
+INSERT INTO network_forwards (uuid, cluster_id, project_name, network_name, name, object, last_updated)
+  VALUES (?, (SELECT clusters.id FROM clusters WHERE clusters.name = ?), ?, ?, ?, ?, ?)
 `)
 
 var networkForwardUpdate = RegisterStmt(`
 UPDATE network_forwards
-  SET uuid = ?, cluster_id = (SELECT clusters.id FROM clusters WHERE clusters.name = ?), network_name = ?, name = ?, object = ?, last_updated = ?
+  SET uuid = ?, cluster_id = (SELECT clusters.id FROM clusters WHERE clusters.name = ?), project_name = ?, network_name = ?, name = ?, object = ?, last_updated = ?
  WHERE id = ?
 `)
 
@@ -142,7 +140,7 @@ func GetNetworkForward(ctx context.Context, db dbtx, uuid uuid.UUID) (_ *invento
 // networkForwardColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the NetworkForward entity.
 func networkForwardColumns() string {
-	return "network_forwards.id, network_forwards.uuid, clusters.name AS cluster, networks.project_name AS project_name, network_forwards.network_name, network_forwards.name, network_forwards.object, network_forwards.last_updated"
+	return "network_forwards.id, network_forwards.uuid, clusters.name AS cluster, network_forwards.project_name, network_forwards.network_name, network_forwards.name, network_forwards.object, network_forwards.last_updated"
 }
 
 // getNetworkForwards can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -218,7 +216,7 @@ func GetNetworkForwards(ctx context.Context, db dbtx, filters ...inventory.Netwo
 	}
 
 	for i, filter := range filters {
-		if filter.UUID != nil && filter.Cluster == nil && filter.NetworkName == nil && filter.Name == nil {
+		if filter.UUID != nil && filter.Cluster == nil && filter.ProjectName == nil && filter.NetworkName == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, networkForwardObjectsByUUID)
@@ -242,7 +240,7 @@ func GetNetworkForwards(ctx context.Context, db dbtx, filters ...inventory.Netwo
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.UUID == nil && filter.Cluster == nil && filter.NetworkName == nil && filter.Name == nil {
+		} else if filter.UUID == nil && filter.Cluster == nil && filter.ProjectName == nil && filter.NetworkName == nil && filter.Name == nil {
 			return nil, fmt.Errorf("Cannot filter on empty NetworkForwardFilter")
 		} else {
 			return nil, errors.New("No statement exists for the given Filter")
@@ -289,7 +287,7 @@ func GetNetworkForwardNames(ctx context.Context, db dbtx, filters ...inventory.N
 	}
 
 	for _, filter := range filters {
-		if filter.UUID == nil && filter.Cluster == nil && filter.NetworkName == nil && filter.Name == nil {
+		if filter.UUID == nil && filter.Cluster == nil && filter.ProjectName == nil && filter.NetworkName == nil && filter.Name == nil {
 			return nil, fmt.Errorf("Cannot filter on empty NetworkForwardFilter")
 		} else {
 			return nil, errors.New("No statement exists for the given Filter")
@@ -335,15 +333,16 @@ func CreateNetworkForward(ctx context.Context, db dbtx, object inventory.Network
 		_err = mapErr(_err, "Network_forward")
 	}()
 
-	args := make([]any, 6)
+	args := make([]any, 7)
 
 	// Populate the statement arguments.
 	args[0] = object.UUID
 	args[1] = object.Cluster
-	args[2] = object.NetworkName
-	args[3] = object.Name
-	args[4] = object.Object
-	args[5] = time.Now().UTC().Format(time.RFC3339)
+	args[2] = object.ProjectName
+	args[3] = object.NetworkName
+	args[4] = object.Name
+	args[5] = object.Object
+	args[6] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, networkForwardCreate)
@@ -386,7 +385,7 @@ func UpdateNetworkForward(ctx context.Context, db tx, uuid uuid.UUID, object inv
 		return fmt.Errorf("Failed to get \"networkForwardUpdate\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(object.UUID, object.Cluster, object.NetworkName, object.Name, object.Object, time.Now().UTC().Format(time.RFC3339), id)
+	result, err := stmt.Exec(object.UUID, object.Cluster, object.ProjectName, object.NetworkName, object.Name, object.Object, time.Now().UTC().Format(time.RFC3339), id)
 	if err != nil {
 		return fmt.Errorf("Update \"network_forwards\" entry failed: %w", err)
 	}

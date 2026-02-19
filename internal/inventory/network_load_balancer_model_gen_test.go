@@ -101,6 +101,7 @@ func TestNetworkLoadBalancer_Validate(t *testing.T) {
 			networkLoadBalancer: (&inventory.NetworkLoadBalancer{
 				ID:          1,
 				Cluster:     "one",
+				ProjectName: "project one",
 				NetworkName: "network one",
 				Name:        "one",
 			}).DeriveUUID(),
@@ -112,6 +113,7 @@ func TestNetworkLoadBalancer_Validate(t *testing.T) {
 			networkLoadBalancer: (&inventory.NetworkLoadBalancer{
 				ID:          1,
 				Cluster:     "", // invalid
+				ProjectName: "project one",
 				NetworkName: "network one",
 				Name:        "one",
 			}).DeriveUUID(),
@@ -126,6 +128,22 @@ func TestNetworkLoadBalancer_Validate(t *testing.T) {
 			networkLoadBalancer: (&inventory.NetworkLoadBalancer{
 				ID:          1,
 				Cluster:     "one",
+				ProjectName: "", // invalid
+				NetworkName: "network one",
+				Name:        "one",
+			}).DeriveUUID(),
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - invalid project name",
+			networkLoadBalancer: (&inventory.NetworkLoadBalancer{
+				ID:          1,
+				Cluster:     "one",
+				ProjectName: "project one",
 				NetworkName: "", // invalid
 				Name:        "one",
 			}).DeriveUUID(),
@@ -140,6 +158,7 @@ func TestNetworkLoadBalancer_Validate(t *testing.T) {
 			networkLoadBalancer: (&inventory.NetworkLoadBalancer{
 				ID:          1,
 				Cluster:     "one",
+				ProjectName: "project one",
 				NetworkName: "network one",
 				Name:        "", // invalid
 			}).DeriveUUID(),
@@ -154,6 +173,7 @@ func TestNetworkLoadBalancer_Validate(t *testing.T) {
 			networkLoadBalancer: &inventory.NetworkLoadBalancer{
 				ID:          1,
 				Cluster:     "one",
+				ProjectName: "project one",
 				NetworkName: "network one",
 				Name:        "one",
 			}, // UUID not derived

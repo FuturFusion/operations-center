@@ -18,14 +18,14 @@ import (
 var networkZoneObjects = RegisterStmt(`
 SELECT network_zones.id, network_zones.uuid, clusters.name AS cluster, network_zones.project_name, network_zones.name, network_zones.object, network_zones.last_updated
   FROM network_zones
-  LEFT JOIN clusters ON network_zones.cluster_id = clusters.id
+  JOIN clusters ON network_zones.cluster_id = clusters.id
   ORDER BY network_zones.uuid
 `)
 
 var networkZoneObjectsByUUID = RegisterStmt(`
 SELECT network_zones.id, network_zones.uuid, clusters.name AS cluster, network_zones.project_name, network_zones.name, network_zones.object, network_zones.last_updated
   FROM network_zones
-  LEFT JOIN clusters ON network_zones.cluster_id = clusters.id
+  JOIN clusters ON network_zones.cluster_id = clusters.id
   WHERE ( network_zones.uuid = ? )
   ORDER BY network_zones.uuid
 `)

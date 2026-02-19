@@ -820,8 +820,9 @@ func mapIncusEventToLifecycleEvent(ctx context.Context, event incusapi.Event) (d
 	}
 
 	ret := domain.LifecycleEvent{
-		ResourceType: lifecycleResourceTypeOperation.ResourceType,
-		Operation:    lifecycleResourceTypeOperation.Operation,
+		LifecycleEventAction: incusLifecycleEvent.Action,
+		ResourceType:         lifecycleResourceTypeOperation.ResourceType,
+		Operation:            lifecycleResourceTypeOperation.Operation,
 		Source: domain.LifecycleSource{
 			ParentType:  lifecycleEventParentType,
 			ParentName:  lifecycleEventParentName,

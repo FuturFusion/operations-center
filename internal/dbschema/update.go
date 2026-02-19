@@ -53,6 +53,61 @@ var updates = map[int]update{
 	23: updateFromV22,
 	24: updateFromV23,
 	25: updateFromV24,
+	26: updateFromV25,
+}
+
+func updateFromV25(ctx context.Context, tx *sql.Tx) error {
+	// v25..v26 add project column for inventory entities, where project is derived from their parent
+	stmt := withResourcesView(`
+-- Drop existing inventory tables, the data will be fetched by Operations Center upon start
+-- anyway and there is no way to fill the added project_name column with the correct value.
+DROP TABLE network_forwards;
+CREATE TABLE network_forwards (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  uuid TEXT NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  project_name TEXT NOT NULL,
+  network_name TEXT NOT NULL,
+  name TEXT NOT NULL,
+  object TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (uuid),
+  UNIQUE (cluster_id, project_name, network_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
+);
+
+DROP TABLE network_load_balancers;
+CREATE TABLE network_load_balancers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  uuid TEXT NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  project_name TEXT NOT NULL,
+  network_name TEXT NOT NULL,
+  name TEXT NOT NULL,
+  object TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (uuid),
+  UNIQUE (cluster_id, project_name, network_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
+);
+
+DROP TABLE network_peers;
+CREATE TABLE network_peers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  uuid TEXT NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  project_name TEXT NOT NULL,
+  network_name TEXT NOT NULL,
+  name TEXT NOT NULL,
+  object TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (uuid),
+  UNIQUE (cluster_id, project_name,network_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
+);
+`)
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV24(ctx context.Context, tx *sql.Tx) error {

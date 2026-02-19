@@ -46,7 +46,7 @@ func (w *IncusStorageBucketFullWrapper) Scan(value interface{}) error {
 type StorageBucket struct {
 	ID              int                           `json:"-"`
 	UUID            uuid.UUID                     `json:"uuid"          db:"primary=yes"`
-	Cluster         string                        `json:"cluster"       db:"leftjoin=clusters.name"`
+	Cluster         string                        `json:"cluster"       db:"join=clusters.name"`
 	Server          *string                       `json:"server"        db:"leftjoin=servers.name"`
 	ProjectName     string                        `json:"project"`
 	StoragePoolName string                        `json:"storage_pool_name" db:"joinon=networks.name"`

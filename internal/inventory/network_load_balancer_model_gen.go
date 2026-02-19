@@ -45,8 +45,8 @@ func (w *IncusNetworkLoadBalancerWrapper) Scan(value interface{}) error {
 type NetworkLoadBalancer struct {
 	ID          int                             `json:"-"`
 	UUID        uuid.UUID                       `json:"uuid"          db:"primary=yes"`
-	Cluster     string                          `json:"cluster"       db:"leftjoin=clusters.name"`
-	ProjectName string                          `json:"project"       db:"leftjoin=networks.project_name&joinon=network_load_balancers.network_name&jointo=name&omit=create,update"`
+	Cluster     string                          `json:"cluster"       db:"join=clusters.name"`
+	ProjectName string                          `json:"project"`
 	NetworkName string                          `json:"network_name" db:"joinon=networks.name"`
 	Name        string                          `json:"name"`
 	Object      IncusNetworkLoadBalancerWrapper `json:"object"`
@@ -56,6 +56,7 @@ type NetworkLoadBalancer struct {
 func (m *NetworkLoadBalancer) DeriveUUID() *NetworkLoadBalancer {
 	identifier := strings.Join([]string{
 		m.Cluster,
+		m.ProjectName,
 		m.NetworkName,
 		m.Name,
 	}, ":")
@@ -72,6 +73,10 @@ func (m NetworkLoadBalancer) Validate() error {
 
 	if m.Name == "" {
 		return domain.NewValidationErrf("Invalid NetworkLoadBalancer, name can not be empty")
+	}
+
+	if m.ProjectName == "" {
+		return domain.NewValidationErrf("Invalid NetworkLoadBalancer, project name can not be empty")
 	}
 
 	if m.NetworkName == "" {
@@ -92,7 +97,7 @@ type NetworkLoadBalancers []NetworkLoadBalancer
 type NetworkLoadBalancerFilter struct {
 	UUID        *uuid.UUID
 	Cluster     *string
-	ProjectName *string `db:"ignore"`
+	ProjectName *string
 	NetworkName *string
 	Name        *string
 	Expression  *string `db:"ignore"`

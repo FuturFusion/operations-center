@@ -45,7 +45,7 @@ func (w *IncusNetworkIntegrationWrapper) Scan(value interface{}) error {
 type NetworkIntegration struct {
 	ID          int                            `json:"-"`
 	UUID        uuid.UUID                      `json:"uuid"          db:"primary=yes"`
-	Cluster     string                         `json:"cluster"       db:"leftjoin=clusters.name"`
+	Cluster     string                         `json:"cluster"       db:"join=clusters.name"`
 	Name        string                         `json:"name"`
 	Object      IncusNetworkIntegrationWrapper `json:"object"`
 	LastUpdated time.Time                      `json:"last_updated"  db:"update_timestamp"`

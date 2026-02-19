@@ -184,6 +184,7 @@ func (s networkPeerService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 			return err
 		}
 
+		networkPeer.ProjectName = firstNonEmpty(networkPeer.ProjectName, "default")
 		networkPeer.Object = IncusNetworkPeerWrapper{retrievedNetworkPeer}
 		networkPeer.LastUpdated = s.now()
 		networkPeer.DeriveUUID()
@@ -255,6 +256,7 @@ func (s networkPeerService) handleCreateEvent(ctx context.Context, clusterName s
 
 	networkPeer := NetworkPeer{
 		Cluster:     clusterName,
+		ProjectName: firstNonEmpty(event.Source.ProjectName, "default"),
 		NetworkName: event.Source.ParentName,
 		Name:        retrievedNetworkPeer.Name,
 		Object:      IncusNetworkPeerWrapper{retrievedNetworkPeer},
@@ -391,6 +393,7 @@ func (s networkPeerService) SyncCluster(ctx context.Context, name string) error 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
 			err = s.repo.DeleteWithFilter(ctx, NetworkPeerFilter{
 				Cluster:     &name,
+				ProjectName: &network.Project,
 				NetworkName: &network.Name,
 			})
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
@@ -400,6 +403,7 @@ func (s networkPeerService) SyncCluster(ctx context.Context, name string) error 
 			for _, retrievedNetworkPeer := range retrievedNetworkPeers {
 				networkPeer := NetworkPeer{
 					Cluster:     name,
+					ProjectName: network.Project,
 					NetworkName: network.Name,
 					Name:        retrievedNetworkPeer.Name,
 					Object:      IncusNetworkPeerWrapper{retrievedNetworkPeer},

@@ -1304,6 +1304,7 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 			// Setup
 			repo := &repoMock.StorageVolumeRepoMock{
 				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.StorageVolumeFilter) error {
+					require.Equal(t, tc.storagePoolClientGetStoragePools[0].Name, *filter.StoragePoolName)
 					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, storageVolume inventory.StorageVolume) (inventory.StorageVolume, error) {

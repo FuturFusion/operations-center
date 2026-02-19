@@ -941,12 +941,14 @@ func TestNetworkForwardService_ResyncByName(t *testing.T) {
 			repo := &repoMock.NetworkForwardRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkForwardFilter) ([]uuid.UUID, error) {
 					require.Equal(t, tc.argClusterName, *filter.Cluster)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.ProjectName)
 					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, *filter.NetworkName)
 					require.Contains(t, tc.argLifecycleEvent.Source.Name, *filter.Name)
 					return tc.repoGetAllUUIDsWithFilterUUIDs, tc.repoGetAllUUIDsWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, networkForward inventory.NetworkForward) (inventory.NetworkForward, error) {
 					require.Equal(t, tc.argClusterName, networkForward.Cluster)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, networkForward.ProjectName)
 					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, networkForward.NetworkName)
 					require.Equal(t, tc.argLifecycleEvent.Source.Name, networkForward.Name)
 					return inventory.NetworkForward{}, tc.repoCreateErr
@@ -1026,7 +1028,8 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkForwardClientGetNetworkForwards: []incusapi.NetworkForward{
@@ -1048,10 +1051,12 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 				{
-					Name: "filtered",
+					Name:    "filtered",
+					Project: "project one",
 				},
 			},
 			networkForwardClientGetNetworkForwards: []incusapi.NetworkForward{
@@ -1078,7 +1083,8 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkForwardClientGetNetworkForwards: []incusapi.NetworkForward{
@@ -1127,7 +1133,8 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkForwardClientGetNetworkForwardsErr: boom.Error,
@@ -1145,7 +1152,8 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkForwardClientGetNetworkForwards: []incusapi.NetworkForward{
@@ -1168,7 +1176,8 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkForwardClientGetNetworkForwards: []incusapi.NetworkForward{
@@ -1193,7 +1202,8 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
-					Name: "network one",
+					Name:    "network one",
+					Project: "project one",
 				},
 			},
 			networkForwardClientGetNetworkForwards: []incusapi.NetworkForward{
@@ -1212,6 +1222,8 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkForwardRepoMock{
 				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.NetworkForwardFilter) error {
+					require.Equal(t, tc.networkClientGetNetworks[0].Project, *filter.ProjectName)
+					require.Equal(t, tc.networkClientGetNetworks[0].Name, *filter.NetworkName)
 					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, networkForward inventory.NetworkForward) (inventory.NetworkForward, error) {
