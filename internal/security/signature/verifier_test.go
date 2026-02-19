@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/signature"
-	"github.com/FuturFusion/operations-center/internal/signature/signaturetest"
+	"github.com/FuturFusion/operations-center/internal/security/signature"
+	"github.com/FuturFusion/operations-center/internal/security/signature/signaturetest"
 )
 
 func TestVerifierVerify(t *testing.T) {
