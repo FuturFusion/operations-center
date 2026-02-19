@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/FuturFusion/operations-center/internal/authz"
+	"github.com/FuturFusion/operations-center/internal/security/authz"
 )
 
 type dummyAuthenticator struct{}

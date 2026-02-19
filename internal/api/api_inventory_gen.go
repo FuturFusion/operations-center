@@ -5,13 +5,13 @@ package api
 import (
 	"errors"
 
-	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	inventoryServiceMiddleware "github.com/FuturFusion/operations-center/internal/inventory/middleware"
 	inventoryRepoMiddleware "github.com/FuturFusion/operations-center/internal/inventory/repo/middleware"
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/security/authz"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 )
 

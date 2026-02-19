@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/FuturFusion/operations-center/internal/authz"
+	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 

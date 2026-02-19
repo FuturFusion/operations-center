@@ -10,8 +10,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/security/authn"
+	"github.com/FuturFusion/operations-center/internal/security/authz"
 	systemMock "github.com/FuturFusion/operations-center/internal/system/mock"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 )

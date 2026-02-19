@@ -13,7 +13,7 @@ import (
 	"github.com/openfga/go-sdk/client"
 	"github.com/openfga/go-sdk/credentials"
 
-	"github.com/FuturFusion/operations-center/internal/authz"
+	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
