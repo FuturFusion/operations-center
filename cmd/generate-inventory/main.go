@@ -16,7 +16,7 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	"github.com/spf13/pflag"
 
-	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/maps"
 )
 

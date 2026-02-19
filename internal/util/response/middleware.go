@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"slices"
 
-	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
 func With(handler HandlerFunc, middlewares ...func(next HandlerFunc) HandlerFunc) http.HandlerFunc {

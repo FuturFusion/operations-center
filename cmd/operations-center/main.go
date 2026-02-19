@@ -16,7 +16,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/client"
 	config "github.com/FuturFusion/operations-center/internal/config/cli"
 	"github.com/FuturFusion/operations-center/internal/environment"
-	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/version"
 )
 
