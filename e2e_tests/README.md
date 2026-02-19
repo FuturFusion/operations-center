@@ -20,6 +20,7 @@ Use `-run` to run specific tests, e.g. `-run TestE2E/create_cluster`.
 Other environment variables that can be set to control the tests:
 
 * `OPERATIONS_CENTER_E2E_TEST_TMP_DIR`: Directory to use for temporary files. If not set, a temporary directory will be created and removed automatically. This is useful for developers, since artifacts (e.g. ISO files) are taken from the temporary directory if present, which speeds up the tests on subsequent runs.
+* `OPERATIONS_CENTER_E2E_TEST_USE_SNAPSHOTS`: Whether to use snapshots for the IncusOS instances (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_DISK_SIZE`: Disk size to use for the IncusOS instances (default: "50GiB")
 * `OPERATIONS_CENTER_E2E_TEST_MEMORY_SIZE`: Memory size to use for the IncusOS instances (default: "4GiB")
 * `OPERATIONS_CENTER_E2E_TEST_CPU_COUNT`: CPU count to use for the IncusOS instances (default: "2")

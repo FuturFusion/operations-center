@@ -16,6 +16,9 @@ func TestE2E(t *testing.T) {
 		t.Skip("OPERATIONS_CENTER_E2E_TEST env var not set, skipping end 2 end tests.")
 	}
 
+	useSnapshotsEnv := os.Getenv("OPERATIONS_CENTER_E2E_TEST_USE_SNAPSHOTS")
+	useSnapshots, _ := strconv.ParseBool(useSnapshotsEnv)
+
 	type testCase struct {
 		name string
 
@@ -26,8 +29,8 @@ func TestE2E(t *testing.T) {
 
 	type setupType struct {
 		name        string
-		setupFunc   func(t *testing.T, tmpDir string)
-		cleanupFunc func(t *testing.T) func()
+		setupFunc   func(t *testing.T, useSnapshots bool, tmpDir string)
+		cleanupFunc func(t *testing.T, useSnapshots bool) func()
 	}
 
 	setupTypeTests := []setupType{
@@ -86,10 +89,10 @@ func TestE2E(t *testing.T) {
 
 	for _, ts := range setupTypeTests {
 		t.Run(ts.name, func(t *testing.T) {
-			setupOperationsCenter(t, tmpDir)
+			setupOperationsCenter(t, useSnapshots, tmpDir)
 
 			if !noCleanup {
-				t.Cleanup(ts.cleanupFunc(t))
+				t.Cleanup(ts.cleanupFunc(t, useSnapshots))
 			}
 
 			for _, tc := range testCases {
@@ -101,7 +104,7 @@ func TestE2E(t *testing.T) {
 					stop := timeTrack(t, tc.name)
 					defer stop()
 
-					ts.setupFunc(t, tmpDir)
+					ts.setupFunc(t, useSnapshots, tmpDir)
 
 					tc.testFunc(t, tmpDir)
 				})
