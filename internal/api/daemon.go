@@ -454,7 +454,6 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 	updateSvcBase := provisioning.NewUpdateService(
 		provisioningRepoMiddleware.NewUpdateRepoWithSlog(
 			provisioningSqlite.NewUpdate(db),
-			slog.Default(),
 			provisioningRepoMiddleware.UpdateRepoWithSlogWithInformativeErrFunc(
 				func(err error) bool {
 					return errors.Is(err, domain.ErrNotFound)
@@ -463,11 +462,9 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 		),
 		provisioningRepoMiddleware.NewUpdateFilesRepoWithSlog(
 			repoUpdateFiles,
-			slog.Default(),
 		),
 		provisioningAdapterMiddleware.NewUpdateSourcePortWithSlog(
 			updateServer,
-			slog.Default(),
 		),
 		updateServiceOptions...,
 	)
@@ -479,7 +476,6 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 
 	return provisioningServiceMiddleware.NewUpdateServiceWithSlog(
 		updateSvcBase,
-		slog.Default(),
 	), nil
 }
 
@@ -501,13 +497,11 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 		provisioning.NewTokenService(
 			provisioningRepoMiddleware.NewTokenRepoWithSlog(
 				provisioningSqlite.NewToken(db),
-				slog.Default(),
 			),
 			updateSvc,
 			channelSvc,
 			imageFlasher,
 		),
-		slog.Default(),
 	)
 }
 
@@ -515,14 +509,12 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 	serverSvc := provisioning.NewServerService(
 		provisioningRepoMiddleware.NewServerRepoWithSlog(
 			provisioningSqlite.NewServer(db),
-			slog.Default(),
 		),
 		provisioningAdapterMiddleware.NewServerClientPortWithSlog(
 			provisioningIncusAdapter.New(
 				d.clientCertificate,
 				d.clientKey,
 			),
-			slog.Default(),
 			provisioningAdapterMiddleware.ServerClientPortWithSlogWithInformativeErrFunc(
 				func(err error) bool {
 					// ErrSelfUpdateNotification is used as cause when the context is
@@ -559,7 +551,6 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 
 	return provisioningServiceMiddleware.NewServerServiceWithSlog(
 		serverSvc,
-		slog.Default(),
 	)
 }
 
@@ -595,18 +586,15 @@ func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.Se
 		provisioning.NewClusterService(
 			provisioningRepoMiddleware.NewClusterRepoWithSlog(
 				provisioningSqlite.NewCluster(db),
-				slog.Default(),
 			),
 			provisioningRepoMiddleware.NewClusterArtifactRepoWithSlog(
 				localClusterArtifactRepo,
-				slog.Default(),
 			),
 			provisioningAdapterMiddleware.NewClusterClientPortWithSlog(
 				provisioningIncusAdapter.New(
 					d.clientCertificate,
 					d.clientKey,
 				),
-				slog.Default(),
 			),
 			serverSvc,
 			tokenSvc,
@@ -614,7 +602,6 @@ func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.Se
 			terraformProvisioner,
 			provisioning.WithClusterServiceUpdateSignal(updateSignal),
 		),
-		slog.Default(),
 	), nil
 }
 
@@ -623,10 +610,8 @@ func (d *Daemon) setupClusterTemplateService(db dbdriver.DBTX) provisioning.Clus
 		provisioning.NewClusterTemplateService(
 			provisioningRepoMiddleware.NewClusterTemplateRepoWithSlog(
 				provisioningSqlite.NewClusterTemplate(db),
-				slog.Default(),
 			),
 		),
-		slog.Default(),
 	)
 }
 
@@ -635,18 +620,15 @@ func (d *Daemon) setupChannelService(db dbdriver.DBTX, updateSvc provisioning.Up
 		provisioning.NewChannelService(
 			provisioningRepoMiddleware.NewChannelRepoWithSlog(
 				provisioningSqlite.NewChannel(db),
-				slog.Default(),
 			),
 			updateSvc,
 		),
-		slog.Default(),
 	)
 }
 
 func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) system.SystemService {
 	return systemServiceMiddleware.NewSystemServiceWithSlog(
 		system.NewSystemService(d.env, serverSvc),
-		slog.Default(),
 	)
 }
 
@@ -666,7 +648,6 @@ func (d *Daemon) setupAPIRoutes(
 			d.clientCertificate,
 			d.clientKey,
 		),
-		slog.Default(),
 		serverMiddleware.ServerClientWithSlogWithInformativeErrFunc(
 			func(err error) bool {
 				return errors.Is(err, domain.ErrNotFound)
