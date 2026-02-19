@@ -30,6 +30,10 @@ const UpdateOverview = () => {
         <div className="col-10 detail-table-cell">{update?.uuid}</div>
       </div>
       <div className="row">
+        <div className="col-2 detail-table-header">Origin</div>
+        <div className="col-10 detail-table-cell">{update?.origin}</div>
+      </div>
+      <div className="row">
         <div className="col-2 detail-table-header">Version</div>
         <div className="col-10 detail-table-cell">{update?.version}</div>
       </div>
@@ -40,32 +44,24 @@ const UpdateOverview = () => {
         </div>
       </div>
       <div className="row">
-        <div className="col-2 detail-table-header">Status</div>
-        <div className="col-10 detail-table-cell">{update?.update_status}</div>
-      </div>
-      <div className="row">
         <div className="col-2 detail-table-header">Severity</div>
         <div className="col-10 detail-table-cell">{update?.severity}</div>
       </div>
       <div className="row">
-        <div className="col-2 detail-table-header">Origin</div>
-        <div className="col-10 detail-table-cell">{update?.origin}</div>
-      </div>
-      <div className="row">
-        <div className="col-2 detail-table-header">Channels</div>
-        <div className="col-10 detail-table-cell">
-          {(update?.channels ?? []).join(", ")}
-        </div>
-      </div>
-      <div className="row">
-        <div className="col-2 detail-table-header">Upstream Channels</div>
+        <div className="col-2 detail-table-header">Upstream channels</div>
         <div className="col-10 detail-table-cell">
           {(update?.upstream_channels ?? []).join(", ")}
         </div>
       </div>
       <div className="row">
-        <div className="col-2 detail-table-header">Changelog</div>
-        <div className="col-10 detail-table-cell">{update?.changelog}</div>
+        <div className="col-2 detail-table-header">Downstream channels</div>
+        <div className="col-10 detail-table-cell">
+          {(update?.channels ?? []).join(", ")}
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Status</div>
+        <div className="col-10 detail-table-cell">{update?.update_status}</div>
       </div>
     </div>
   );

@@ -75,7 +75,7 @@ const ChannelOverview = () => {
                   to={`/ui/provisioning/updates/${u.uuid}`}
                   className="data-table-link"
                 >
-                  {u.uuid}
+                  {u.version}
                 </Link>
               </div>
             ))}

@@ -64,10 +64,10 @@ const Update = () => {
   const headers = [
     "Version",
     "Published at",
-    "Status",
     "Severity",
-    "Origin",
-    "Upstream Channels",
+    "Upstream channels",
+    "Downstream channels",
+    "Status",
   ];
   const rows = updates.map((item) => {
     return [
@@ -87,19 +87,18 @@ const Update = () => {
         sortKey: item.published_at,
       },
       {
-        content: item.update_status,
-        sortKey: item.update_status,
-      },
-      {
         content: item.severity,
         sortKey: item.severity,
       },
       {
-        content: item.origin,
-        sortKey: item.origin,
+        content: (item.upstream_channels ?? []).join(", "),
       },
       {
-        content: (item.upstream_channels ?? []).join(", "),
+        content: (item.channels ?? []).join(", "),
+      },
+      {
+        content: item.update_status,
+        sortKey: item.update_status,
       },
     ];
   });
