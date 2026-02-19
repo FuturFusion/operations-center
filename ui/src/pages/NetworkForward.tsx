@@ -6,14 +6,12 @@ import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import ObjectIncusLink from "components/ObjectIncusLink";
-import { useNetworkMap } from "context/useNetworks";
 import type { NetworkForward } from "types/network_forward";
 import { formatDate } from "util/date";
 
 const NetworkForward = () => {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
-  const { networkMap } = useNetworkMap();
 
   const sortData = (a: NetworkForward, b: NetworkForward) => {
     return (
@@ -48,7 +46,7 @@ const NetworkForward = () => {
           <ObjectIncusLink
             cluster={item.cluster}
             objectName={item.name}
-            incusPath={`/ui/project/default/network/${item.parent_name}/forwards`}
+            incusPath={`/ui/project/${item.project_name}/network/${item.parent_name}/forwards`}
           />
         ),
         sortKey: item.name,
@@ -58,8 +56,8 @@ const NetworkForward = () => {
         sortKey: item.parent_name,
       },
       {
-        content: networkMap[item.parent_name]?.project_name,
-        sortKey: networkMap[item.parent_name]?.project_name,
+        content: item.project_name,
+        sortKey: item.project_name,
       },
       {
         content: <ClusterLink cluster={item.cluster} />,

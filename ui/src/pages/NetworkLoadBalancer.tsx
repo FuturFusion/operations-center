@@ -5,14 +5,12 @@ import { fetchNetworkLoadBalancers } from "api/network_load_balancer";
 import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
-import { useNetworkMap } from "context/useNetworks";
 import type { NetworkLoadBalancer } from "types/network_load_balancer";
 import { formatDate } from "util/date";
 
 const NetworkLoadBalancer = () => {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
-  const { networkMap } = useNetworkMap();
 
   const sortData = (a: NetworkLoadBalancer, b: NetworkLoadBalancer) => {
     return (
@@ -52,8 +50,8 @@ const NetworkLoadBalancer = () => {
         sortKey: item.parent_name,
       },
       {
-        content: networkMap[item.parent_name]?.project_name,
-        sortKey: networkMap[item.parent_name]?.project_name,
+        content: item.project_name,
+        sortKey: item.project_name,
       },
       {
         content: <ClusterLink cluster={item.cluster} />,
