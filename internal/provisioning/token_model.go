@@ -23,6 +23,7 @@ type Token struct {
 	ExpireAt      time.Time
 	Description   string
 	Channel       string `db:"join=channels.name"`
+	AutoRemove    bool
 }
 
 func (t Token) Validate() error {
