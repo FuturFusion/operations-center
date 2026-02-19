@@ -1292,7 +1292,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 			repo := &repoMock.{{ .Name | pascalcase }}RepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) ([]uuid.UUID, error) {
 					require.Equal(t, tc.argClusterName, *filter.Cluster)
-{{- if .HasProjectDirect }}
+{{- if .HasProject }}
 					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.ProjectName)
 {{- end }}
 {{- if .HasParent }}
@@ -1303,7 +1303,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 				},
 				CreateFunc: func(ctx context.Context, {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
 					require.Equal(t, tc.argClusterName, {{ .Name | camelcase }}.Cluster)
-{{- if .HasProjectDirect }}
+{{- if .HasProject }}
 					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, {{ .Name | camelcase }}.ProjectName)
 {{- end }}
 {{- if .HasParent }}
@@ -1404,6 +1404,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
 				{
 					Name: "{{ .ParentName | camelcase }} one",
+{{- if .HasProjectFromParent }}
+					Project: "project one",
+{{- end }}
 				},
 			},
 {{- end }}
@@ -1449,9 +1452,15 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
 				{
 					Name: "{{ .ParentName | camelcase }} one",
+{{- if .HasProjectFromParent }}
+					Project: "project one",
+{{- end }}
 				},
 				{
 					Name: "filtered",
+{{- if .HasProjectFromParent }}
+					Project: "project one",
+{{- end }}
 				},
 			},
 			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}: []incusapi.{{ .ObjectType | pascalcase }}{
@@ -1502,6 +1511,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
 				{
 					Name: "{{ .ParentName | camelcase }} one",
+{{- if .HasProjectFromParent }}
+					Project: "project one",
+{{- end }}
 				},
 			},
 {{- end }}
@@ -1612,6 +1624,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
 				{
 					Name: "{{ .ParentName | camelcase }} one",
+{{- if .HasProjectFromParent }}
+					Project: "project one",
+{{- end }}
 				},
 			},
 {{- end }}
@@ -1635,6 +1650,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
 				{
 					Name: "{{ .ParentName | camelcase }} one",
+{{- if .HasProjectFromParent }}
+					Project: "project one",
+{{- end }}
 				},
 			},
 {{- end }}
@@ -1681,6 +1699,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
 				{
 					Name: "{{ .ParentName | camelcase }} one",
+{{- if .HasProjectFromParent }}
+					Project: "project one",
+{{- end }}
 				},
 			},
 {{- end }}
@@ -1729,6 +1750,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
 				{
 					Name: "{{ .ParentName | camelcase }} one",
+{{- if .HasProjectFromParent }}
+					Project: "project one",
+{{- end }}
 				},
 			},
 {{- end }}
@@ -1766,6 +1790,12 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			// Setup
 			repo := &repoMock.{{ .Name | pascalcase }}RepoMock{
 				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) error {
+{{- if .HasProjectFromParent }}
+					require.Equal(t, tc.{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}[0].Project, *filter.ProjectName)
+{{- end }}
+{{- if .HasParent }}
+					require.Equal(t, tc.{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}[0].Name, *filter.{{ .ParentName | pascalcase }}Name)
+{{- end }}
 					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {

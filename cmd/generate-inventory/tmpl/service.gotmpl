@@ -206,8 +206,8 @@ func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uui
 		{{ .Name | camelcase }}.Server = retrieved{{ .Name | pascalcase }}.Location
 	{{- end }}
 {{- end }}
-{{- if .HasProjectDirect }}
-		{{ .Name | camelcase }}.ProjectName = firstNonEmpty(retrieved{{ .Name | pascalcase }}.Project, {{ .Name | camelcase }}.ProjectName, "default")
+{{- if .HasProject }}
+		{{ .Name | camelcase }}.ProjectName = firstNonEmpty({{ if .HasProjectDirect }}retrieved{{ .Name | pascalcase }}.Project, {{ end }}{{ .Name | camelcase }}.ProjectName, "default")
 {{- end }}
 {{- range .ExtraAttributes }}
 		{{ $.Name | camelcase }}. {{ .Name | pascalcase }} = retrieved{{ $.Name | pascalcase }}.{{ .Name | pascalcase }}
@@ -290,8 +290,8 @@ func (s {{ .Name | camelcase }}Service) handleCreateEvent(ctx context.Context, c
 		Server:      retrieved{{ .Name | pascalcase }}.Location,
 	{{- end }}
 {{- end }}
-{{- if .HasProjectDirect }}
-		ProjectName: firstNonEmpty(retrieved{{ .Name | pascalcase }}.Project, event.Source.ProjectName, "default"),
+{{- if .HasProject }}
+		ProjectName: firstNonEmpty({{ if .HasProjectDirect }}retrieved{{ .Name | pascalcase }}.Project, {{ end }}event.Source.ProjectName, "default"),
 {{- end }}
 {{- if .HasParent }}
 		{{ .ParentName | pascalcase }}Name: event.Source.ParentName,
@@ -458,6 +458,9 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		err = s.repo.DeleteWithFilter(ctx, {{ .Name | pascalcase }}Filter{
 			Cluster: &name,
+{{- if .HasProjectFromParent }}
+			ProjectName: &{{ .ParentName | camelcase }}.Project,
+{{- end }}
 {{- if .HasParent }}
 			{{ .ParentName | pascalcase }}Name: &{{ .ParentName | camelcase }}.Name,
 {{- end }}
@@ -476,8 +479,8 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 				Server:      retrieved{{ .Name | pascalcase }}.Location,
 	{{- end }}
 {{- end }}
-{{- if .HasProjectDirect }}
-				ProjectName: retrieved{{ .Name | pascalcase }}.Project,
+{{- if .HasProject }}
+				ProjectName: {{ if .HasProjectDirect }}retrieved{{ .Name | pascalcase }}{{ else }}{{ .ParentName | camelcase }}{{ end }}.Project,
 {{- end }}
 {{- if .HasParent }}
 				{{ .ParentName | pascalcase }}Name: {{ .ParentName | camelcase }}.Name,

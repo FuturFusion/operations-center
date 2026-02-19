@@ -106,7 +106,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				Server:      "one",
 	{{- end }}
 {{- end }}
-{{- if .HasProjectDirect }}
+{{- if .HasProject }}
 				ProjectName: "project one",
 {{- end }}
 {{- if .HasParent }}
@@ -129,7 +129,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				Server:      "one",
 	{{- end }}
 {{- end }}
-{{- if .HasProjectDirect }}
+{{- if .HasProject }}
 				ProjectName: "project one",
 {{- end }}
 {{- if .HasParent }}
@@ -150,7 +150,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				ID:          1,
 				Cluster:     "one",
 				Server:      "", // invalid
-{{- if .HasProjectDirect }}
+{{- if .HasProject }}
 				ProjectName: "project one",
 {{- end }}
 {{- if .HasParent }}
@@ -165,7 +165,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			},
 		},
 {{- end }}
-{{- if .HasProjectDirect }}
+{{- if .HasProject }}
 		{
 			name: "error - invalid project name",
 			{{ .Name | camelcase }}: (&inventory.{{ .Name | pascalcase }}{
@@ -204,7 +204,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				Server:      "one",
 	{{- end }}
 {{- end }}
-{{- if .HasProjectDirect }}
+{{- if .HasProject }}
 				ProjectName: "project one",
 {{- end }}
 				{{ .ParentName | pascalcase }}Name: "", // invalid
@@ -229,7 +229,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				Server:      "one",
 	{{- end }}
 {{- end }}
-{{- if .HasProjectDirect }}
+{{- if .HasProject }}
 				ProjectName: "project one",
 {{- end }}
 {{- if .HasParent }}
@@ -255,7 +255,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				Server:      "one",
 	{{- end }}
 {{- end }}
-{{- if .HasProjectDirect }}
+{{- if .HasProject }}
 				ProjectName: "project one",
 {{- end }}
 {{- if .HasParent }}

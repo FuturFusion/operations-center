@@ -51,7 +51,7 @@ type {{ .Name | pascalcase }} struct {
 	Server      {{ if .IsServerIDOptional }}*{{ end }}string `json:"server"        db:"leftjoin=servers.name"`
 {{- end }}
 {{- if .HasProject }}
-	ProjectName string `json:"project"{{ if .HasProjectFromParent }}       db:"leftjoin={{ .ParentPluralName | snakecase }}.project_name&joinon={{ .PluralName | snakecase }}.{{ .ParentName | snakecase }}_name&jointo=name&omit=create,update"{{ end }}`
+	ProjectName string `json:"project"`
 {{- end }}
 {{- if .HasParent }}
 	{{ .ParentName | pascalcase }}Name string `json:"{{ .ParentName }}_name" db:"joinon=networks.name"`
@@ -74,7 +74,7 @@ func (m *{{ .Name | pascalcase }}) DeriveUUID() *{{ .Name | pascalcase }} {
 		m.Server,
 	{{- end }}
 {{- end }}
-{{- if .HasProjectDirect }}
+{{- if .HasProject }}
 		m.ProjectName,
 {{- end }}
 {{- if .HasParent }}
@@ -105,7 +105,7 @@ func (m {{ .Name | pascalcase }}) Validate() error {
 	if m.Name == "" {
 		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, name can not be empty")
 	}
-{{- if .HasProjectDirect }}
+{{- if .HasProject }}
 
 	if m.ProjectName == "" {
 		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, project name can not be empty")
@@ -136,7 +136,7 @@ type {{ .Name | pascalcase }}Filter struct{
 	Server      *string
 {{- end }}
 {{- if .HasProject }}
-	ProjectName *string {{ if .HasProjectFromParent }}`db:"ignore"`{{ end }}
+	ProjectName *string
 {{- end }}
 {{- if .HasParent }}
 	{{ .ParentName | pascalcase }}Name *string
