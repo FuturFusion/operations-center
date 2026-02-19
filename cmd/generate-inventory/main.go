@@ -17,7 +17,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/FuturFusion/operations-center/internal/logger"
-	"github.com/FuturFusion/operations-center/internal/maps"
+	"github.com/FuturFusion/operations-center/internal/util/maps"
 )
 
 //go:embed tmpl

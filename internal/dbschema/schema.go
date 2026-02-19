@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/file"
-	"github.com/FuturFusion/operations-center/internal/maps"
+	"github.com/FuturFusion/operations-center/internal/util/maps"
 )
 
 // Ensure applies all relevant schema updates to the local database.

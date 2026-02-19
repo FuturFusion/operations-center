@@ -12,8 +12,8 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
-	"github.com/FuturFusion/operations-center/internal/maps"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/internal/util/maps"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
