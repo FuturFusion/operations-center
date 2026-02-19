@@ -15,7 +15,6 @@ import (
 
 // NetworkForwardServiceWithSlog implements inventory.NetworkForwardService that is instrumented with slog logger.
 type NetworkForwardServiceWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.NetworkForwardService
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func NetworkForwardServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc fu
 }
 
 // NewNetworkForwardServiceWithSlog instruments an implementation of the inventory.NetworkForwardService with simple logging.
-func NewNetworkForwardServiceWithSlog(base inventory.NetworkForwardService, log *slog.Logger, opts ...NetworkForwardServiceWithSlogOption) NetworkForwardServiceWithSlog {
+func NewNetworkForwardServiceWithSlog(base inventory.NetworkForwardService, opts ...NetworkForwardServiceWithSlogOption) NetworkForwardServiceWithSlog {
 	this := NetworkForwardServiceWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewNetworkForwardServiceWithSlog(base inventory.NetworkForwardService, log 
 
 // GetAllUUIDsWithFilter implements inventory.NetworkForwardService.
 func (_d NetworkForwardServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (uUIDs []uuid.UUID, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -54,15 +52,15 @@ func (_d NetworkForwardServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Contex
 	}
 	log.DebugContext(ctx, "=> calling GetAllUUIDsWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -80,8 +78,8 @@ func (_d NetworkForwardServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Contex
 
 // GetAllWithFilter implements inventory.NetworkForwardService.
 func (_d NetworkForwardServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (networkForwards inventory.NetworkForwards, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -89,15 +87,15 @@ func (_d NetworkForwardServiceWithSlog) GetAllWithFilter(ctx context.Context, fi
 	}
 	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkForwards", networkForwards),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -115,8 +113,8 @@ func (_d NetworkForwardServiceWithSlog) GetAllWithFilter(ctx context.Context, fi
 
 // GetByUUID implements inventory.NetworkForwardService.
 func (_d NetworkForwardServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkForward inventory.NetworkForward, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -124,15 +122,15 @@ func (_d NetworkForwardServiceWithSlog) GetByUUID(ctx context.Context, id uuid.U
 	}
 	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkForward", networkForward),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -150,8 +148,8 @@ func (_d NetworkForwardServiceWithSlog) GetByUUID(ctx context.Context, id uuid.U
 
 // ResyncByName implements inventory.NetworkForwardService.
 func (_d NetworkForwardServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -160,14 +158,14 @@ func (_d NetworkForwardServiceWithSlog) ResyncByName(ctx context.Context, cluste
 	}
 	log.DebugContext(ctx, "=> calling ResyncByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -185,8 +183,8 @@ func (_d NetworkForwardServiceWithSlog) ResyncByName(ctx context.Context, cluste
 
 // ResyncByUUID implements inventory.NetworkForwardService.
 func (_d NetworkForwardServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -194,14 +192,14 @@ func (_d NetworkForwardServiceWithSlog) ResyncByUUID(ctx context.Context, id uui
 	}
 	log.DebugContext(ctx, "=> calling ResyncByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -219,8 +217,8 @@ func (_d NetworkForwardServiceWithSlog) ResyncByUUID(ctx context.Context, id uui
 
 // SyncCluster implements inventory.NetworkForwardService.
 func (_d NetworkForwardServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
@@ -228,14 +226,14 @@ func (_d NetworkForwardServiceWithSlog) SyncCluster(ctx context.Context, cluster
 	}
 	log.DebugContext(ctx, "=> calling SyncCluster")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

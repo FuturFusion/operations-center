@@ -15,7 +15,6 @@ import (
 
 // ProjectServerClientWithSlog implements inventory.ProjectServerClient that is instrumented with slog logger.
 type ProjectServerClientWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.ProjectServerClient
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func ProjectServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func
 }
 
 // NewProjectServerClientWithSlog instruments an implementation of the inventory.ProjectServerClient with simple logging.
-func NewProjectServerClientWithSlog(base inventory.ProjectServerClient, log *slog.Logger, opts ...ProjectServerClientWithSlogOption) ProjectServerClientWithSlog {
+func NewProjectServerClientWithSlog(base inventory.ProjectServerClient, opts ...ProjectServerClientWithSlogOption) ProjectServerClientWithSlog {
 	this := ProjectServerClientWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewProjectServerClientWithSlog(base inventory.ProjectServerClient, log *slo
 
 // GetProjectByName implements inventory.ProjectServerClient.
 func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string) (project api.Project, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -55,15 +53,15 @@ func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, endp
 	}
 	log.DebugContext(ctx, "=> calling GetProjectByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("project", project),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -81,8 +79,8 @@ func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, endp
 
 // GetProjects implements inventory.ProjectServerClient.
 func (_d ProjectServerClientWithSlog) GetProjects(ctx context.Context, endpoint provisioning.Endpoint) (projects []api.Project, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -90,15 +88,15 @@ func (_d ProjectServerClientWithSlog) GetProjects(ctx context.Context, endpoint 
 	}
 	log.DebugContext(ctx, "=> calling GetProjects")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("projects", projects),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

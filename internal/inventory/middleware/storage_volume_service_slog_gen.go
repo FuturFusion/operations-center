@@ -15,7 +15,6 @@ import (
 
 // StorageVolumeServiceWithSlog implements inventory.StorageVolumeService that is instrumented with slog logger.
 type StorageVolumeServiceWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.StorageVolumeService
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func StorageVolumeServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc fun
 }
 
 // NewStorageVolumeServiceWithSlog instruments an implementation of the inventory.StorageVolumeService with simple logging.
-func NewStorageVolumeServiceWithSlog(base inventory.StorageVolumeService, log *slog.Logger, opts ...StorageVolumeServiceWithSlogOption) StorageVolumeServiceWithSlog {
+func NewStorageVolumeServiceWithSlog(base inventory.StorageVolumeService, opts ...StorageVolumeServiceWithSlogOption) StorageVolumeServiceWithSlog {
 	this := StorageVolumeServiceWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewStorageVolumeServiceWithSlog(base inventory.StorageVolumeService, log *s
 
 // GetAllUUIDsWithFilter implements inventory.StorageVolumeService.
 func (_d StorageVolumeServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.StorageVolumeFilter) (uUIDs []uuid.UUID, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -54,15 +52,15 @@ func (_d StorageVolumeServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context
 	}
 	log.DebugContext(ctx, "=> calling GetAllUUIDsWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -80,8 +78,8 @@ func (_d StorageVolumeServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context
 
 // GetAllWithFilter implements inventory.StorageVolumeService.
 func (_d StorageVolumeServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.StorageVolumeFilter) (storageVolumes inventory.StorageVolumes, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -89,15 +87,15 @@ func (_d StorageVolumeServiceWithSlog) GetAllWithFilter(ctx context.Context, fil
 	}
 	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storageVolumes", storageVolumes),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -115,8 +113,8 @@ func (_d StorageVolumeServiceWithSlog) GetAllWithFilter(ctx context.Context, fil
 
 // GetByUUID implements inventory.StorageVolumeService.
 func (_d StorageVolumeServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (storageVolume inventory.StorageVolume, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -124,15 +122,15 @@ func (_d StorageVolumeServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UU
 	}
 	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storageVolume", storageVolume),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -150,8 +148,8 @@ func (_d StorageVolumeServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UU
 
 // ResyncByName implements inventory.StorageVolumeService.
 func (_d StorageVolumeServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -160,14 +158,14 @@ func (_d StorageVolumeServiceWithSlog) ResyncByName(ctx context.Context, cluster
 	}
 	log.DebugContext(ctx, "=> calling ResyncByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -185,8 +183,8 @@ func (_d StorageVolumeServiceWithSlog) ResyncByName(ctx context.Context, cluster
 
 // ResyncByUUID implements inventory.StorageVolumeService.
 func (_d StorageVolumeServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -194,14 +192,14 @@ func (_d StorageVolumeServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid
 	}
 	log.DebugContext(ctx, "=> calling ResyncByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -219,8 +217,8 @@ func (_d StorageVolumeServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid
 
 // SyncCluster implements inventory.StorageVolumeService.
 func (_d StorageVolumeServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
@@ -228,14 +226,14 @@ func (_d StorageVolumeServiceWithSlog) SyncCluster(ctx context.Context, cluster 
 	}
 	log.DebugContext(ctx, "=> calling SyncCluster")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

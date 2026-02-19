@@ -15,7 +15,6 @@ import (
 
 // StoragePoolServerClientWithSlog implements inventory.StoragePoolServerClient that is instrumented with slog logger.
 type StoragePoolServerClientWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.StoragePoolServerClient
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func StoragePoolServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc 
 }
 
 // NewStoragePoolServerClientWithSlog instruments an implementation of the inventory.StoragePoolServerClient with simple logging.
-func NewStoragePoolServerClientWithSlog(base inventory.StoragePoolServerClient, log *slog.Logger, opts ...StoragePoolServerClientWithSlogOption) StoragePoolServerClientWithSlog {
+func NewStoragePoolServerClientWithSlog(base inventory.StoragePoolServerClient, opts ...StoragePoolServerClientWithSlogOption) StoragePoolServerClientWithSlog {
 	this := StoragePoolServerClientWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewStoragePoolServerClientWithSlog(base inventory.StoragePoolServerClient, 
 
 // GetStoragePoolByName implements inventory.StoragePoolServerClient.
 func (_d StoragePoolServerClientWithSlog) GetStoragePoolByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storagePool api.StoragePool, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -55,15 +53,15 @@ func (_d StoragePoolServerClientWithSlog) GetStoragePoolByName(ctx context.Conte
 	}
 	log.DebugContext(ctx, "=> calling GetStoragePoolByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storagePool", storagePool),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -81,8 +79,8 @@ func (_d StoragePoolServerClientWithSlog) GetStoragePoolByName(ctx context.Conte
 
 // GetStoragePools implements inventory.StoragePoolServerClient.
 func (_d StoragePoolServerClientWithSlog) GetStoragePools(ctx context.Context, endpoint provisioning.Endpoint) (storagePools []api.StoragePool, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -90,15 +88,15 @@ func (_d StoragePoolServerClientWithSlog) GetStoragePools(ctx context.Context, e
 	}
 	log.DebugContext(ctx, "=> calling GetStoragePools")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storagePools", storagePools),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

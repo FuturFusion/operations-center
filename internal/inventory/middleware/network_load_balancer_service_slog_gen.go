@@ -15,7 +15,6 @@ import (
 
 // NetworkLoadBalancerServiceWithSlog implements inventory.NetworkLoadBalancerService that is instrumented with slog logger.
 type NetworkLoadBalancerServiceWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.NetworkLoadBalancerService
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func NetworkLoadBalancerServiceWithSlogWithInformativeErrFunc(isInformativeErrFu
 }
 
 // NewNetworkLoadBalancerServiceWithSlog instruments an implementation of the inventory.NetworkLoadBalancerService with simple logging.
-func NewNetworkLoadBalancerServiceWithSlog(base inventory.NetworkLoadBalancerService, log *slog.Logger, opts ...NetworkLoadBalancerServiceWithSlogOption) NetworkLoadBalancerServiceWithSlog {
+func NewNetworkLoadBalancerServiceWithSlog(base inventory.NetworkLoadBalancerService, opts ...NetworkLoadBalancerServiceWithSlogOption) NetworkLoadBalancerServiceWithSlog {
 	this := NetworkLoadBalancerServiceWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewNetworkLoadBalancerServiceWithSlog(base inventory.NetworkLoadBalancerSer
 
 // GetAllUUIDsWithFilter implements inventory.NetworkLoadBalancerService.
 func (_d NetworkLoadBalancerServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (uUIDs []uuid.UUID, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -54,15 +52,15 @@ func (_d NetworkLoadBalancerServiceWithSlog) GetAllUUIDsWithFilter(ctx context.C
 	}
 	log.DebugContext(ctx, "=> calling GetAllUUIDsWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -80,8 +78,8 @@ func (_d NetworkLoadBalancerServiceWithSlog) GetAllUUIDsWithFilter(ctx context.C
 
 // GetAllWithFilter implements inventory.NetworkLoadBalancerService.
 func (_d NetworkLoadBalancerServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (networkLoadBalancers inventory.NetworkLoadBalancers, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -89,15 +87,15 @@ func (_d NetworkLoadBalancerServiceWithSlog) GetAllWithFilter(ctx context.Contex
 	}
 	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkLoadBalancers", networkLoadBalancers),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -115,8 +113,8 @@ func (_d NetworkLoadBalancerServiceWithSlog) GetAllWithFilter(ctx context.Contex
 
 // GetByUUID implements inventory.NetworkLoadBalancerService.
 func (_d NetworkLoadBalancerServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkLoadBalancer inventory.NetworkLoadBalancer, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -124,15 +122,15 @@ func (_d NetworkLoadBalancerServiceWithSlog) GetByUUID(ctx context.Context, id u
 	}
 	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkLoadBalancer", networkLoadBalancer),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -150,8 +148,8 @@ func (_d NetworkLoadBalancerServiceWithSlog) GetByUUID(ctx context.Context, id u
 
 // ResyncByName implements inventory.NetworkLoadBalancerService.
 func (_d NetworkLoadBalancerServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -160,14 +158,14 @@ func (_d NetworkLoadBalancerServiceWithSlog) ResyncByName(ctx context.Context, c
 	}
 	log.DebugContext(ctx, "=> calling ResyncByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -185,8 +183,8 @@ func (_d NetworkLoadBalancerServiceWithSlog) ResyncByName(ctx context.Context, c
 
 // ResyncByUUID implements inventory.NetworkLoadBalancerService.
 func (_d NetworkLoadBalancerServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -194,14 +192,14 @@ func (_d NetworkLoadBalancerServiceWithSlog) ResyncByUUID(ctx context.Context, i
 	}
 	log.DebugContext(ctx, "=> calling ResyncByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -219,8 +217,8 @@ func (_d NetworkLoadBalancerServiceWithSlog) ResyncByUUID(ctx context.Context, i
 
 // SyncCluster implements inventory.NetworkLoadBalancerService.
 func (_d NetworkLoadBalancerServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
@@ -228,14 +226,14 @@ func (_d NetworkLoadBalancerServiceWithSlog) SyncCluster(ctx context.Context, cl
 	}
 	log.DebugContext(ctx, "=> calling SyncCluster")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

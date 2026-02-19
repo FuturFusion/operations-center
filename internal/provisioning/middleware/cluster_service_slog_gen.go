@@ -16,7 +16,6 @@ import (
 
 // ClusterServiceWithSlog implements provisioning.ClusterService that is instrumented with slog logger.
 type ClusterServiceWithSlog struct {
-	_log                  *slog.Logger
 	_base                 provisioning.ClusterService
 	_isInformativeErrFunc func(error) bool
 }
@@ -30,10 +29,9 @@ func ClusterServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(erro
 }
 
 // NewClusterServiceWithSlog instruments an implementation of the provisioning.ClusterService with simple logging.
-func NewClusterServiceWithSlog(base provisioning.ClusterService, log *slog.Logger, opts ...ClusterServiceWithSlogOption) ClusterServiceWithSlog {
+func NewClusterServiceWithSlog(base provisioning.ClusterService, opts ...ClusterServiceWithSlogOption) ClusterServiceWithSlog {
 	this := ClusterServiceWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -46,8 +44,8 @@ func NewClusterServiceWithSlog(base provisioning.ClusterService, log *slog.Logge
 
 // Create implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) Create(ctx context.Context, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("cluster", cluster),
@@ -55,15 +53,15 @@ func (_d ClusterServiceWithSlog) Create(ctx context.Context, cluster provisionin
 	}
 	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("cluster1", cluster1),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -81,8 +79,8 @@ func (_d ClusterServiceWithSlog) Create(ctx context.Context, cluster provisionin
 
 // DeleteAndFactoryResetByName implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) DeleteAndFactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -92,14 +90,14 @@ func (_d ClusterServiceWithSlog) DeleteAndFactoryResetByName(ctx context.Context
 	}
 	log.DebugContext(ctx, "=> calling DeleteAndFactoryResetByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -117,8 +115,8 @@ func (_d ClusterServiceWithSlog) DeleteAndFactoryResetByName(ctx context.Context
 
 // DeleteByName implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) DeleteByName(ctx context.Context, name string, force bool) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -127,14 +125,14 @@ func (_d ClusterServiceWithSlog) DeleteByName(ctx context.Context, name string, 
 	}
 	log.DebugContext(ctx, "=> calling DeleteByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -152,23 +150,23 @@ func (_d ClusterServiceWithSlog) DeleteByName(ctx context.Context, name string, 
 
 // GetAll implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) GetAll(ctx context.Context) (clusters provisioning.Clusters, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAll")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("clusters", clusters),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -186,23 +184,23 @@ func (_d ClusterServiceWithSlog) GetAll(ctx context.Context) (clusters provision
 
 // GetAllNames implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAllNames")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("strings", strings),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -220,8 +218,8 @@ func (_d ClusterServiceWithSlog) GetAllNames(ctx context.Context) (strings []str
 
 // GetAllNamesWithFilter implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) GetAllNamesWithFilter(ctx context.Context, filter provisioning.ClusterFilter) (strings []string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -229,15 +227,15 @@ func (_d ClusterServiceWithSlog) GetAllNamesWithFilter(ctx context.Context, filt
 	}
 	log.DebugContext(ctx, "=> calling GetAllNamesWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("strings", strings),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -255,8 +253,8 @@ func (_d ClusterServiceWithSlog) GetAllNamesWithFilter(ctx context.Context, filt
 
 // GetAllWithFilter implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) GetAllWithFilter(ctx context.Context, filter provisioning.ClusterFilter) (clusters provisioning.Clusters, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -264,15 +262,15 @@ func (_d ClusterServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pr
 	}
 	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("clusters", clusters),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -290,8 +288,8 @@ func (_d ClusterServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pr
 
 // GetByName implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cluster *provisioning.Cluster, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -299,15 +297,15 @@ func (_d ClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cl
 	}
 	log.DebugContext(ctx, "=> calling GetByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("cluster", cluster),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -325,8 +323,8 @@ func (_d ClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cl
 
 // GetClusterArtifactAll implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) GetClusterArtifactAll(ctx context.Context, clusterName string) (clusterArtifacts provisioning.ClusterArtifacts, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -334,15 +332,15 @@ func (_d ClusterServiceWithSlog) GetClusterArtifactAll(ctx context.Context, clus
 	}
 	log.DebugContext(ctx, "=> calling GetClusterArtifactAll")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("clusterArtifacts", clusterArtifacts),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -360,8 +358,8 @@ func (_d ClusterServiceWithSlog) GetClusterArtifactAll(ctx context.Context, clus
 
 // GetClusterArtifactAllNames implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) GetClusterArtifactAllNames(ctx context.Context, clusterName string) (strings []string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -369,15 +367,15 @@ func (_d ClusterServiceWithSlog) GetClusterArtifactAllNames(ctx context.Context,
 	}
 	log.DebugContext(ctx, "=> calling GetClusterArtifactAllNames")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("strings", strings),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -395,8 +393,8 @@ func (_d ClusterServiceWithSlog) GetClusterArtifactAllNames(ctx context.Context,
 
 // GetClusterArtifactArchiveByName implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType provisioning.ClusterArtifactArchiveType) (readCloser io.ReadCloser, size int, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -406,16 +404,16 @@ func (_d ClusterServiceWithSlog) GetClusterArtifactArchiveByName(ctx context.Con
 	}
 	log.DebugContext(ctx, "=> calling GetClusterArtifactArchiveByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("readCloser", readCloser),
 				slog.Int("size", size),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -433,8 +431,8 @@ func (_d ClusterServiceWithSlog) GetClusterArtifactArchiveByName(ctx context.Con
 
 // GetClusterArtifactByName implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (clusterArtifact *provisioning.ClusterArtifact, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -443,15 +441,15 @@ func (_d ClusterServiceWithSlog) GetClusterArtifactByName(ctx context.Context, c
 	}
 	log.DebugContext(ctx, "=> calling GetClusterArtifactByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("clusterArtifact", clusterArtifact),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -469,8 +467,8 @@ func (_d ClusterServiceWithSlog) GetClusterArtifactByName(ctx context.Context, c
 
 // GetClusterArtifactFileByName implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) GetClusterArtifactFileByName(ctx context.Context, clusterName string, artifactName string, filename string) (clusterArtifactFile *provisioning.ClusterArtifactFile, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -480,15 +478,15 @@ func (_d ClusterServiceWithSlog) GetClusterArtifactFileByName(ctx context.Contex
 	}
 	log.DebugContext(ctx, "=> calling GetClusterArtifactFileByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("clusterArtifactFile", clusterArtifactFile),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -506,8 +504,8 @@ func (_d ClusterServiceWithSlog) GetClusterArtifactFileByName(ctx context.Contex
 
 // GetEndpoint implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (endpoint provisioning.Endpoint, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -515,15 +513,15 @@ func (_d ClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (
 	}
 	log.DebugContext(ctx, "=> calling GetEndpoint")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("endpoint", endpoint),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -541,8 +539,8 @@ func (_d ClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (
 
 // Rename implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("oldName", oldName),
@@ -551,14 +549,14 @@ func (_d ClusterServiceWithSlog) Rename(ctx context.Context, oldName string, new
 	}
 	log.DebugContext(ctx, "=> calling Rename")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -576,22 +574,22 @@ func (_d ClusterServiceWithSlog) Rename(ctx context.Context, oldName string, new
 
 // ResyncInventory implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) ResyncInventory(ctx context.Context) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling ResyncInventory")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -609,8 +607,8 @@ func (_d ClusterServiceWithSlog) ResyncInventory(ctx context.Context) (err error
 
 // ResyncInventoryByName implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) ResyncInventoryByName(ctx context.Context, name string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -618,14 +616,14 @@ func (_d ClusterServiceWithSlog) ResyncInventoryByName(ctx context.Context, name
 	}
 	log.DebugContext(ctx, "=> calling ResyncInventoryByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -644,15 +642,15 @@ func (_d ClusterServiceWithSlog) ResyncInventoryByName(ctx context.Context, name
 // SetInventorySyncers implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) SetInventorySyncers(inventorySyncers map[domain.ResourceType]provisioning.InventorySyncer) {
 	ctx := context.Background()
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("inventorySyncers", inventorySyncers),
 		)
 	}
 	log.DebugContext(ctx, "=> calling SetInventorySyncers")
 	defer func() {
-		log := _d._log.With()
+		log := slog.With()
 		log.DebugContext(ctx, "<= method SetInventorySyncers finished")
 	}()
 	_d._base.SetInventorySyncers(inventorySyncers)
@@ -660,22 +658,22 @@ func (_d ClusterServiceWithSlog) SetInventorySyncers(inventorySyncers map[domain
 
 // StartLifecycleEventsMonitor implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) StartLifecycleEventsMonitor(ctx context.Context) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling StartLifecycleEventsMonitor")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -693,8 +691,8 @@ func (_d ClusterServiceWithSlog) StartLifecycleEventsMonitor(ctx context.Context
 
 // Update implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) Update(ctx context.Context, cluster provisioning.Cluster) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("cluster", cluster),
@@ -702,14 +700,14 @@ func (_d ClusterServiceWithSlog) Update(ctx context.Context, cluster provisionin
 	}
 	log.DebugContext(ctx, "=> calling Update")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -727,8 +725,8 @@ func (_d ClusterServiceWithSlog) Update(ctx context.Context, cluster provisionin
 
 // UpdateCertificate implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -738,14 +736,14 @@ func (_d ClusterServiceWithSlog) UpdateCertificate(ctx context.Context, name str
 	}
 	log.DebugContext(ctx, "=> calling UpdateCertificate")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

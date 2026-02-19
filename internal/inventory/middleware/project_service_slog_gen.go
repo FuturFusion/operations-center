@@ -15,7 +15,6 @@ import (
 
 // ProjectServiceWithSlog implements inventory.ProjectService that is instrumented with slog logger.
 type ProjectServiceWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.ProjectService
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func ProjectServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(erro
 }
 
 // NewProjectServiceWithSlog instruments an implementation of the inventory.ProjectService with simple logging.
-func NewProjectServiceWithSlog(base inventory.ProjectService, log *slog.Logger, opts ...ProjectServiceWithSlogOption) ProjectServiceWithSlog {
+func NewProjectServiceWithSlog(base inventory.ProjectService, opts ...ProjectServiceWithSlogOption) ProjectServiceWithSlog {
 	this := ProjectServiceWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewProjectServiceWithSlog(base inventory.ProjectService, log *slog.Logger, 
 
 // GetAllUUIDsWithFilter implements inventory.ProjectService.
 func (_d ProjectServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.ProjectFilter) (uUIDs []uuid.UUID, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -54,15 +52,15 @@ func (_d ProjectServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filt
 	}
 	log.DebugContext(ctx, "=> calling GetAllUUIDsWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -80,8 +78,8 @@ func (_d ProjectServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filt
 
 // GetAllWithFilter implements inventory.ProjectService.
 func (_d ProjectServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.ProjectFilter) (projects inventory.Projects, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -89,15 +87,15 @@ func (_d ProjectServiceWithSlog) GetAllWithFilter(ctx context.Context, filter in
 	}
 	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("projects", projects),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -115,8 +113,8 @@ func (_d ProjectServiceWithSlog) GetAllWithFilter(ctx context.Context, filter in
 
 // GetByUUID implements inventory.ProjectService.
 func (_d ProjectServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (project inventory.Project, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -124,15 +122,15 @@ func (_d ProjectServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (p
 	}
 	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("project", project),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -150,8 +148,8 @@ func (_d ProjectServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (p
 
 // ResyncByName implements inventory.ProjectService.
 func (_d ProjectServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -160,14 +158,14 @@ func (_d ProjectServiceWithSlog) ResyncByName(ctx context.Context, clusterName s
 	}
 	log.DebugContext(ctx, "=> calling ResyncByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -185,8 +183,8 @@ func (_d ProjectServiceWithSlog) ResyncByName(ctx context.Context, clusterName s
 
 // ResyncByUUID implements inventory.ProjectService.
 func (_d ProjectServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -194,14 +192,14 @@ func (_d ProjectServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID)
 	}
 	log.DebugContext(ctx, "=> calling ResyncByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -219,8 +217,8 @@ func (_d ProjectServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID)
 
 // SyncCluster implements inventory.ProjectService.
 func (_d ProjectServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
@@ -228,14 +226,14 @@ func (_d ProjectServiceWithSlog) SyncCluster(ctx context.Context, cluster string
 	}
 	log.DebugContext(ctx, "=> calling SyncCluster")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

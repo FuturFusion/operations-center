@@ -15,7 +15,6 @@ import (
 
 // NetworkForwardServerClientWithSlog implements inventory.NetworkForwardServerClient that is instrumented with slog logger.
 type NetworkForwardServerClientWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.NetworkForwardServerClient
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func NetworkForwardServerClientWithSlogWithInformativeErrFunc(isInformativeErrFu
 }
 
 // NewNetworkForwardServerClientWithSlog instruments an implementation of the inventory.NetworkForwardServerClient with simple logging.
-func NewNetworkForwardServerClientWithSlog(base inventory.NetworkForwardServerClient, log *slog.Logger, opts ...NetworkForwardServerClientWithSlogOption) NetworkForwardServerClientWithSlog {
+func NewNetworkForwardServerClientWithSlog(base inventory.NetworkForwardServerClient, opts ...NetworkForwardServerClientWithSlogOption) NetworkForwardServerClientWithSlog {
 	this := NetworkForwardServerClientWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewNetworkForwardServerClientWithSlog(base inventory.NetworkForwardServerCl
 
 // GetNetworkForwardByName implements inventory.NetworkForwardServerClient.
 func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -57,15 +55,15 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkForwardByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkForward", networkForward),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -83,8 +81,8 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context
 
 // GetNetworkForwards implements inventory.NetworkForwardServerClient.
 func (_d NetworkForwardServerClientWithSlog) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkForwards []api.NetworkForward, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -94,15 +92,15 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwards(ctx context.Cont
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkForwards")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkForwards", networkForwards),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

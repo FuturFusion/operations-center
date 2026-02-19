@@ -14,7 +14,6 @@ import (
 
 // NetworkRepoWithSlog implements inventory.NetworkRepo that is instrumented with slog logger.
 type NetworkRepoWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.NetworkRepo
 	_isInformativeErrFunc func(error) bool
 }
@@ -28,10 +27,9 @@ func NetworkRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) 
 }
 
 // NewNetworkRepoWithSlog instruments an implementation of the inventory.NetworkRepo with simple logging.
-func NewNetworkRepoWithSlog(base inventory.NetworkRepo, log *slog.Logger, opts ...NetworkRepoWithSlogOption) NetworkRepoWithSlog {
+func NewNetworkRepoWithSlog(base inventory.NetworkRepo, opts ...NetworkRepoWithSlogOption) NetworkRepoWithSlog {
 	this := NetworkRepoWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -44,8 +42,8 @@ func NewNetworkRepoWithSlog(base inventory.NetworkRepo, log *slog.Logger, opts .
 
 // Create implements inventory.NetworkRepo.
 func (_d NetworkRepoWithSlog) Create(ctx context.Context, network inventory.Network) (network1 inventory.Network, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("network", network),
@@ -53,15 +51,15 @@ func (_d NetworkRepoWithSlog) Create(ctx context.Context, network inventory.Netw
 	}
 	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("network1", network1),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -79,8 +77,8 @@ func (_d NetworkRepoWithSlog) Create(ctx context.Context, network inventory.Netw
 
 // DeleteByUUID implements inventory.NetworkRepo.
 func (_d NetworkRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -88,14 +86,14 @@ func (_d NetworkRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (e
 	}
 	log.DebugContext(ctx, "=> calling DeleteByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -113,8 +111,8 @@ func (_d NetworkRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (e
 
 // DeleteWithFilter implements inventory.NetworkRepo.
 func (_d NetworkRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.NetworkFilter) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -122,14 +120,14 @@ func (_d NetworkRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inven
 	}
 	log.DebugContext(ctx, "=> calling DeleteWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -147,8 +145,8 @@ func (_d NetworkRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inven
 
 // GetAllUUIDsWithFilter implements inventory.NetworkRepo.
 func (_d NetworkRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkFilter) (uUIDs []uuid.UUID, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -156,15 +154,15 @@ func (_d NetworkRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter 
 	}
 	log.DebugContext(ctx, "=> calling GetAllUUIDsWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -182,8 +180,8 @@ func (_d NetworkRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter 
 
 // GetAllWithFilter implements inventory.NetworkRepo.
 func (_d NetworkRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkFilter) (networks inventory.Networks, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -191,15 +189,15 @@ func (_d NetworkRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inven
 	}
 	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networks", networks),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -217,8 +215,8 @@ func (_d NetworkRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inven
 
 // GetByUUID implements inventory.NetworkRepo.
 func (_d NetworkRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (network inventory.Network, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -226,15 +224,15 @@ func (_d NetworkRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (netw
 	}
 	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("network", network),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -252,8 +250,8 @@ func (_d NetworkRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (netw
 
 // UpdateByUUID implements inventory.NetworkRepo.
 func (_d NetworkRepoWithSlog) UpdateByUUID(ctx context.Context, network inventory.Network) (network1 inventory.Network, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("network", network),
@@ -261,15 +259,15 @@ func (_d NetworkRepoWithSlog) UpdateByUUID(ctx context.Context, network inventor
 	}
 	log.DebugContext(ctx, "=> calling UpdateByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("network1", network1),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

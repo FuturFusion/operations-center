@@ -15,7 +15,6 @@ import (
 
 // InstanceServerClientWithSlog implements inventory.InstanceServerClient that is instrumented with slog logger.
 type InstanceServerClientWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.InstanceServerClient
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func InstanceServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc fun
 }
 
 // NewInstanceServerClientWithSlog instruments an implementation of the inventory.InstanceServerClient with simple logging.
-func NewInstanceServerClientWithSlog(base inventory.InstanceServerClient, log *slog.Logger, opts ...InstanceServerClientWithSlogOption) InstanceServerClientWithSlog {
+func NewInstanceServerClientWithSlog(base inventory.InstanceServerClient, opts ...InstanceServerClientWithSlogOption) InstanceServerClientWithSlog {
 	this := InstanceServerClientWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewInstanceServerClientWithSlog(base inventory.InstanceServerClient, log *s
 
 // GetInstanceByName implements inventory.InstanceServerClient.
 func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, instanceName string) (instanceFull api.InstanceFull, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -56,15 +54,15 @@ func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, en
 	}
 	log.DebugContext(ctx, "=> calling GetInstanceByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("instanceFull", instanceFull),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -82,8 +80,8 @@ func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, en
 
 // GetInstances implements inventory.InstanceServerClient.
 func (_d InstanceServerClientWithSlog) GetInstances(ctx context.Context, endpoint provisioning.Endpoint) (instanceFulls []api.InstanceFull, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -91,15 +89,15 @@ func (_d InstanceServerClientWithSlog) GetInstances(ctx context.Context, endpoin
 	}
 	log.DebugContext(ctx, "=> calling GetInstances")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("instanceFulls", instanceFulls),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

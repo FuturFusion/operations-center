@@ -15,7 +15,6 @@ import (
 
 // NetworkAddressSetServiceWithSlog implements inventory.NetworkAddressSetService that is instrumented with slog logger.
 type NetworkAddressSetServiceWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.NetworkAddressSetService
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func NetworkAddressSetServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc
 }
 
 // NewNetworkAddressSetServiceWithSlog instruments an implementation of the inventory.NetworkAddressSetService with simple logging.
-func NewNetworkAddressSetServiceWithSlog(base inventory.NetworkAddressSetService, log *slog.Logger, opts ...NetworkAddressSetServiceWithSlogOption) NetworkAddressSetServiceWithSlog {
+func NewNetworkAddressSetServiceWithSlog(base inventory.NetworkAddressSetService, opts ...NetworkAddressSetServiceWithSlogOption) NetworkAddressSetServiceWithSlog {
 	this := NetworkAddressSetServiceWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewNetworkAddressSetServiceWithSlog(base inventory.NetworkAddressSetService
 
 // GetAllUUIDsWithFilter implements inventory.NetworkAddressSetService.
 func (_d NetworkAddressSetServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkAddressSetFilter) (uUIDs []uuid.UUID, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -54,15 +52,15 @@ func (_d NetworkAddressSetServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Con
 	}
 	log.DebugContext(ctx, "=> calling GetAllUUIDsWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -80,8 +78,8 @@ func (_d NetworkAddressSetServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Con
 
 // GetAllWithFilter implements inventory.NetworkAddressSetService.
 func (_d NetworkAddressSetServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkAddressSetFilter) (networkAddressSets inventory.NetworkAddressSets, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -89,15 +87,15 @@ func (_d NetworkAddressSetServiceWithSlog) GetAllWithFilter(ctx context.Context,
 	}
 	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkAddressSets", networkAddressSets),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -115,8 +113,8 @@ func (_d NetworkAddressSetServiceWithSlog) GetAllWithFilter(ctx context.Context,
 
 // GetByUUID implements inventory.NetworkAddressSetService.
 func (_d NetworkAddressSetServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkAddressSet inventory.NetworkAddressSet, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -124,15 +122,15 @@ func (_d NetworkAddressSetServiceWithSlog) GetByUUID(ctx context.Context, id uui
 	}
 	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkAddressSet", networkAddressSet),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -150,8 +148,8 @@ func (_d NetworkAddressSetServiceWithSlog) GetByUUID(ctx context.Context, id uui
 
 // ResyncByName implements inventory.NetworkAddressSetService.
 func (_d NetworkAddressSetServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -160,14 +158,14 @@ func (_d NetworkAddressSetServiceWithSlog) ResyncByName(ctx context.Context, clu
 	}
 	log.DebugContext(ctx, "=> calling ResyncByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -185,8 +183,8 @@ func (_d NetworkAddressSetServiceWithSlog) ResyncByName(ctx context.Context, clu
 
 // ResyncByUUID implements inventory.NetworkAddressSetService.
 func (_d NetworkAddressSetServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -194,14 +192,14 @@ func (_d NetworkAddressSetServiceWithSlog) ResyncByUUID(ctx context.Context, id 
 	}
 	log.DebugContext(ctx, "=> calling ResyncByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -219,8 +217,8 @@ func (_d NetworkAddressSetServiceWithSlog) ResyncByUUID(ctx context.Context, id 
 
 // SyncCluster implements inventory.NetworkAddressSetService.
 func (_d NetworkAddressSetServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
@@ -228,14 +226,14 @@ func (_d NetworkAddressSetServiceWithSlog) SyncCluster(ctx context.Context, clus
 	}
 	log.DebugContext(ctx, "=> calling SyncCluster")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

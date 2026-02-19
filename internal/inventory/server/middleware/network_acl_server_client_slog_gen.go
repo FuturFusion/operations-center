@@ -15,7 +15,6 @@ import (
 
 // NetworkACLServerClientWithSlog implements inventory.NetworkACLServerClient that is instrumented with slog logger.
 type NetworkACLServerClientWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.NetworkACLServerClient
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func NetworkACLServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc f
 }
 
 // NewNetworkACLServerClientWithSlog instruments an implementation of the inventory.NetworkACLServerClient with simple logging.
-func NewNetworkACLServerClientWithSlog(base inventory.NetworkACLServerClient, log *slog.Logger, opts ...NetworkACLServerClientWithSlogOption) NetworkACLServerClientWithSlog {
+func NewNetworkACLServerClientWithSlog(base inventory.NetworkACLServerClient, opts ...NetworkACLServerClientWithSlogOption) NetworkACLServerClientWithSlog {
 	this := NetworkACLServerClientWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewNetworkACLServerClientWithSlog(base inventory.NetworkACLServerClient, lo
 
 // GetNetworkACLByName implements inventory.NetworkACLServerClient.
 func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkACLName string) (networkACL api.NetworkACL, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -56,15 +54,15 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkACLByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkACL", networkACL),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -82,8 +80,8 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context
 
 // GetNetworkACLs implements inventory.NetworkACLServerClient.
 func (_d NetworkACLServerClientWithSlog) GetNetworkACLs(ctx context.Context, endpoint provisioning.Endpoint) (networkACLs []api.NetworkACL, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -91,15 +89,15 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLs(ctx context.Context, end
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkACLs")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkACLs", networkACLs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

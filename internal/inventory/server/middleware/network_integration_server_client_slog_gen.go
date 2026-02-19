@@ -15,7 +15,6 @@ import (
 
 // NetworkIntegrationServerClientWithSlog implements inventory.NetworkIntegrationServerClient that is instrumented with slog logger.
 type NetworkIntegrationServerClientWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.NetworkIntegrationServerClient
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func NetworkIntegrationServerClientWithSlogWithInformativeErrFunc(isInformativeE
 }
 
 // NewNetworkIntegrationServerClientWithSlog instruments an implementation of the inventory.NetworkIntegrationServerClient with simple logging.
-func NewNetworkIntegrationServerClientWithSlog(base inventory.NetworkIntegrationServerClient, log *slog.Logger, opts ...NetworkIntegrationServerClientWithSlogOption) NetworkIntegrationServerClientWithSlog {
+func NewNetworkIntegrationServerClientWithSlog(base inventory.NetworkIntegrationServerClient, opts ...NetworkIntegrationServerClientWithSlogOption) NetworkIntegrationServerClientWithSlog {
 	this := NetworkIntegrationServerClientWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewNetworkIntegrationServerClientWithSlog(base inventory.NetworkIntegration
 
 // GetNetworkIntegrationByName implements inventory.NetworkIntegrationServerClient.
 func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, endpoint provisioning.Endpoint, networkIntegrationName string) (networkIntegration api.NetworkIntegration, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -55,15 +53,15 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkIntegrationByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkIntegration", networkIntegration),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -81,8 +79,8 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx
 
 // GetNetworkIntegrations implements inventory.NetworkIntegrationServerClient.
 func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, endpoint provisioning.Endpoint) (networkIntegrations []api.NetworkIntegration, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -90,15 +88,15 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrations(ctx cont
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkIntegrations")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkIntegrations", networkIntegrations),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

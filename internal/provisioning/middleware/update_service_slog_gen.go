@@ -16,7 +16,6 @@ import (
 
 // UpdateServiceWithSlog implements provisioning.UpdateService that is instrumented with slog logger.
 type UpdateServiceWithSlog struct {
-	_log                  *slog.Logger
 	_base                 provisioning.UpdateService
 	_isInformativeErrFunc func(error) bool
 }
@@ -30,10 +29,9 @@ func UpdateServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error
 }
 
 // NewUpdateServiceWithSlog instruments an implementation of the provisioning.UpdateService with simple logging.
-func NewUpdateServiceWithSlog(base provisioning.UpdateService, log *slog.Logger, opts ...UpdateServiceWithSlogOption) UpdateServiceWithSlog {
+func NewUpdateServiceWithSlog(base provisioning.UpdateService, opts ...UpdateServiceWithSlogOption) UpdateServiceWithSlog {
 	this := UpdateServiceWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -46,22 +44,22 @@ func NewUpdateServiceWithSlog(base provisioning.UpdateService, log *slog.Logger,
 
 // CleanupAll implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) CleanupAll(ctx context.Context) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling CleanupAll")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -79,8 +77,8 @@ func (_d UpdateServiceWithSlog) CleanupAll(ctx context.Context) (err error) {
 
 // CreateFromArchive implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (uUID uuid.UUID, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("tarReader", tarReader),
@@ -88,15 +86,15 @@ func (_d UpdateServiceWithSlog) CreateFromArchive(ctx context.Context, tarReader
 	}
 	log.DebugContext(ctx, "=> calling CreateFromArchive")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("uUID", uUID),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -114,23 +112,23 @@ func (_d UpdateServiceWithSlog) CreateFromArchive(ctx context.Context, tarReader
 
 // GetAll implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetAll(ctx context.Context) (updates provisioning.Updates, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAll")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("updates", updates),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -148,23 +146,23 @@ func (_d UpdateServiceWithSlog) GetAll(ctx context.Context) (updates provisionin
 
 // GetAllUUIDs implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UUID, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAllUUIDs")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -182,8 +180,8 @@ func (_d UpdateServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.U
 
 // GetAllUUIDsWithFilter implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter provisioning.UpdateFilter) (uUIDs []uuid.UUID, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -191,15 +189,15 @@ func (_d UpdateServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filte
 	}
 	log.DebugContext(ctx, "=> calling GetAllUUIDsWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -217,8 +215,8 @@ func (_d UpdateServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filte
 
 // GetAllWithFilter implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetAllWithFilter(ctx context.Context, filter provisioning.UpdateFilter) (updates provisioning.Updates, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -226,15 +224,15 @@ func (_d UpdateServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pro
 	}
 	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("updates", updates),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -252,8 +250,8 @@ func (_d UpdateServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pro
 
 // GetByUUID implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (update *provisioning.Update, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -261,15 +259,15 @@ func (_d UpdateServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (up
 	}
 	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("update", update),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -287,8 +285,8 @@ func (_d UpdateServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (up
 
 // GetUpdateAllFiles implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (updateFiles provisioning.UpdateFiles, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -296,15 +294,15 @@ func (_d UpdateServiceWithSlog) GetUpdateAllFiles(ctx context.Context, id uuid.U
 	}
 	log.DebugContext(ctx, "=> calling GetUpdateAllFiles")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("updateFiles", updateFiles),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -322,8 +320,8 @@ func (_d UpdateServiceWithSlog) GetUpdateAllFiles(ctx context.Context, id uuid.U
 
 // GetUpdateFileByFilename implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID, filename string) (readCloser io.ReadCloser, n int, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -332,16 +330,16 @@ func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, id 
 	}
 	log.DebugContext(ctx, "=> calling GetUpdateFileByFilename")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("readCloser", readCloser),
 				slog.Int("n", n),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -359,8 +357,8 @@ func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, id 
 
 // GetUpdatesByAssignedChannelName implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetUpdatesByAssignedChannelName(ctx context.Context, channelName string) (updates provisioning.Updates, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("channelName", channelName),
@@ -368,15 +366,15 @@ func (_d UpdateServiceWithSlog) GetUpdatesByAssignedChannelName(ctx context.Cont
 	}
 	log.DebugContext(ctx, "=> calling GetUpdatesByAssignedChannelName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("updates", updates),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -394,22 +392,22 @@ func (_d UpdateServiceWithSlog) GetUpdatesByAssignedChannelName(ctx context.Cont
 
 // Prune implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) Prune(ctx context.Context) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling Prune")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -427,22 +425,22 @@ func (_d UpdateServiceWithSlog) Prune(ctx context.Context) (err error) {
 
 // Refresh implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling Refresh")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -460,8 +458,8 @@ func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) (err error) {
 
 // Update implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) Update(ctx context.Context, update provisioning.Update) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("update", update),
@@ -469,14 +467,14 @@ func (_d UpdateServiceWithSlog) Update(ctx context.Context, update provisioning.
 	}
 	log.DebugContext(ctx, "=> calling Update")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

@@ -15,7 +15,6 @@ import (
 
 // ImageServerClientWithSlog implements inventory.ImageServerClient that is instrumented with slog logger.
 type ImageServerClientWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.ImageServerClient
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func ImageServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(e
 }
 
 // NewImageServerClientWithSlog instruments an implementation of the inventory.ImageServerClient with simple logging.
-func NewImageServerClientWithSlog(base inventory.ImageServerClient, log *slog.Logger, opts ...ImageServerClientWithSlogOption) ImageServerClientWithSlog {
+func NewImageServerClientWithSlog(base inventory.ImageServerClient, opts ...ImageServerClientWithSlogOption) ImageServerClientWithSlog {
 	this := ImageServerClientWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewImageServerClientWithSlog(base inventory.ImageServerClient, log *slog.Lo
 
 // GetImageByName implements inventory.ImageServerClient.
 func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (image api.Image, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -56,15 +54,15 @@ func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, endpoint
 	}
 	log.DebugContext(ctx, "=> calling GetImageByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("image", image),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -82,8 +80,8 @@ func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, endpoint
 
 // GetImages implements inventory.ImageServerClient.
 func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, endpoint provisioning.Endpoint) (images []api.Image, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -91,15 +89,15 @@ func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, endpoint prov
 	}
 	log.DebugContext(ctx, "=> calling GetImages")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("images", images),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

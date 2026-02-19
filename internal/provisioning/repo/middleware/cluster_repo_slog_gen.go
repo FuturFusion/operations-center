@@ -13,7 +13,6 @@ import (
 
 // ClusterRepoWithSlog implements provisioning.ClusterRepo that is instrumented with slog logger.
 type ClusterRepoWithSlog struct {
-	_log                  *slog.Logger
 	_base                 provisioning.ClusterRepo
 	_isInformativeErrFunc func(error) bool
 }
@@ -27,10 +26,9 @@ func ClusterRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) 
 }
 
 // NewClusterRepoWithSlog instruments an implementation of the provisioning.ClusterRepo with simple logging.
-func NewClusterRepoWithSlog(base provisioning.ClusterRepo, log *slog.Logger, opts ...ClusterRepoWithSlogOption) ClusterRepoWithSlog {
+func NewClusterRepoWithSlog(base provisioning.ClusterRepo, opts ...ClusterRepoWithSlogOption) ClusterRepoWithSlog {
 	this := ClusterRepoWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -43,8 +41,8 @@ func NewClusterRepoWithSlog(base provisioning.ClusterRepo, log *slog.Logger, opt
 
 // Create implements provisioning.ClusterRepo.
 func (_d ClusterRepoWithSlog) Create(ctx context.Context, cluster provisioning.Cluster) (n int64, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("cluster", cluster),
@@ -52,15 +50,15 @@ func (_d ClusterRepoWithSlog) Create(ctx context.Context, cluster provisioning.C
 	}
 	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Int64("n", n),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -78,8 +76,8 @@ func (_d ClusterRepoWithSlog) Create(ctx context.Context, cluster provisioning.C
 
 // DeleteByName implements provisioning.ClusterRepo.
 func (_d ClusterRepoWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -87,14 +85,14 @@ func (_d ClusterRepoWithSlog) DeleteByName(ctx context.Context, name string) (er
 	}
 	log.DebugContext(ctx, "=> calling DeleteByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -112,8 +110,8 @@ func (_d ClusterRepoWithSlog) DeleteByName(ctx context.Context, name string) (er
 
 // ExistsByName implements provisioning.ClusterRepo.
 func (_d ClusterRepoWithSlog) ExistsByName(ctx context.Context, name string) (b bool, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -121,15 +119,15 @@ func (_d ClusterRepoWithSlog) ExistsByName(ctx context.Context, name string) (b 
 	}
 	log.DebugContext(ctx, "=> calling ExistsByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Bool("b", b),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -147,23 +145,23 @@ func (_d ClusterRepoWithSlog) ExistsByName(ctx context.Context, name string) (b 
 
 // GetAll implements provisioning.ClusterRepo.
 func (_d ClusterRepoWithSlog) GetAll(ctx context.Context) (clusters provisioning.Clusters, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAll")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("clusters", clusters),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -181,23 +179,23 @@ func (_d ClusterRepoWithSlog) GetAll(ctx context.Context) (clusters provisioning
 
 // GetAllNames implements provisioning.ClusterRepo.
 func (_d ClusterRepoWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAllNames")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("strings", strings),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -215,8 +213,8 @@ func (_d ClusterRepoWithSlog) GetAllNames(ctx context.Context) (strings []string
 
 // GetByName implements provisioning.ClusterRepo.
 func (_d ClusterRepoWithSlog) GetByName(ctx context.Context, name string) (cluster *provisioning.Cluster, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -224,15 +222,15 @@ func (_d ClusterRepoWithSlog) GetByName(ctx context.Context, name string) (clust
 	}
 	log.DebugContext(ctx, "=> calling GetByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("cluster", cluster),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -250,8 +248,8 @@ func (_d ClusterRepoWithSlog) GetByName(ctx context.Context, name string) (clust
 
 // Rename implements provisioning.ClusterRepo.
 func (_d ClusterRepoWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("oldName", oldName),
@@ -260,14 +258,14 @@ func (_d ClusterRepoWithSlog) Rename(ctx context.Context, oldName string, newNam
 	}
 	log.DebugContext(ctx, "=> calling Rename")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -285,8 +283,8 @@ func (_d ClusterRepoWithSlog) Rename(ctx context.Context, oldName string, newNam
 
 // Update implements provisioning.ClusterRepo.
 func (_d ClusterRepoWithSlog) Update(ctx context.Context, cluster provisioning.Cluster) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("cluster", cluster),
@@ -294,14 +292,14 @@ func (_d ClusterRepoWithSlog) Update(ctx context.Context, cluster provisioning.C
 	}
 	log.DebugContext(ctx, "=> calling Update")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

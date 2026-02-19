@@ -15,7 +15,6 @@ import (
 
 // NetworkACLServiceWithSlog implements inventory.NetworkACLService that is instrumented with slog logger.
 type NetworkACLServiceWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.NetworkACLService
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func NetworkACLServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(e
 }
 
 // NewNetworkACLServiceWithSlog instruments an implementation of the inventory.NetworkACLService with simple logging.
-func NewNetworkACLServiceWithSlog(base inventory.NetworkACLService, log *slog.Logger, opts ...NetworkACLServiceWithSlogOption) NetworkACLServiceWithSlog {
+func NewNetworkACLServiceWithSlog(base inventory.NetworkACLService, opts ...NetworkACLServiceWithSlogOption) NetworkACLServiceWithSlog {
 	this := NetworkACLServiceWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewNetworkACLServiceWithSlog(base inventory.NetworkACLService, log *slog.Lo
 
 // GetAllUUIDsWithFilter implements inventory.NetworkACLService.
 func (_d NetworkACLServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) (uUIDs []uuid.UUID, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -54,15 +52,15 @@ func (_d NetworkACLServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, f
 	}
 	log.DebugContext(ctx, "=> calling GetAllUUIDsWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -80,8 +78,8 @@ func (_d NetworkACLServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, f
 
 // GetAllWithFilter implements inventory.NetworkACLService.
 func (_d NetworkACLServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) (networkACLs inventory.NetworkACLs, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -89,15 +87,15 @@ func (_d NetworkACLServiceWithSlog) GetAllWithFilter(ctx context.Context, filter
 	}
 	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkACLs", networkACLs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -115,8 +113,8 @@ func (_d NetworkACLServiceWithSlog) GetAllWithFilter(ctx context.Context, filter
 
 // GetByUUID implements inventory.NetworkACLService.
 func (_d NetworkACLServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkACL inventory.NetworkACL, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -124,15 +122,15 @@ func (_d NetworkACLServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID)
 	}
 	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkACL", networkACL),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -150,8 +148,8 @@ func (_d NetworkACLServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID)
 
 // ResyncByName implements inventory.NetworkACLService.
 func (_d NetworkACLServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -160,14 +158,14 @@ func (_d NetworkACLServiceWithSlog) ResyncByName(ctx context.Context, clusterNam
 	}
 	log.DebugContext(ctx, "=> calling ResyncByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -185,8 +183,8 @@ func (_d NetworkACLServiceWithSlog) ResyncByName(ctx context.Context, clusterNam
 
 // ResyncByUUID implements inventory.NetworkACLService.
 func (_d NetworkACLServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -194,14 +192,14 @@ func (_d NetworkACLServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UU
 	}
 	log.DebugContext(ctx, "=> calling ResyncByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -219,8 +217,8 @@ func (_d NetworkACLServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UU
 
 // SyncCluster implements inventory.NetworkACLService.
 func (_d NetworkACLServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
@@ -228,14 +226,14 @@ func (_d NetworkACLServiceWithSlog) SyncCluster(ctx context.Context, cluster str
 	}
 	log.DebugContext(ctx, "=> calling SyncCluster")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

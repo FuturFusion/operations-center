@@ -16,7 +16,6 @@ import (
 
 // ClusterClientPortWithSlog implements provisioning.ClusterClientPort that is instrumented with slog logger.
 type ClusterClientPortWithSlog struct {
-	_log                  *slog.Logger
 	_base                 provisioning.ClusterClientPort
 	_isInformativeErrFunc func(error) bool
 }
@@ -30,10 +29,9 @@ func ClusterClientPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(e
 }
 
 // NewClusterClientPortWithSlog instruments an implementation of the provisioning.ClusterClientPort with simple logging.
-func NewClusterClientPortWithSlog(base provisioning.ClusterClientPort, log *slog.Logger, opts ...ClusterClientPortWithSlogOption) ClusterClientPortWithSlog {
+func NewClusterClientPortWithSlog(base provisioning.ClusterClientPort, opts ...ClusterClientPortWithSlogOption) ClusterClientPortWithSlog {
 	this := ClusterClientPortWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -46,8 +44,8 @@ func NewClusterClientPortWithSlog(base provisioning.ClusterClientPort, log *slog
 
 // EnableCluster implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) EnableCluster(ctx context.Context, server provisioning.Server) (clusterCertificate string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -55,15 +53,15 @@ func (_d ClusterClientPortWithSlog) EnableCluster(ctx context.Context, server pr
 	}
 	log.DebugContext(ctx, "=> calling EnableCluster")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.String("clusterCertificate", clusterCertificate),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -81,8 +79,8 @@ func (_d ClusterClientPortWithSlog) EnableCluster(ctx context.Context, server pr
 
 // EnableOSService implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) EnableOSService(ctx context.Context, server provisioning.Server, name string, config map[string]any) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -92,14 +90,14 @@ func (_d ClusterClientPortWithSlog) EnableOSService(ctx context.Context, server 
 	}
 	log.DebugContext(ctx, "=> calling EnableOSService")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -117,8 +115,8 @@ func (_d ClusterClientPortWithSlog) EnableOSService(ctx context.Context, server 
 
 // GetClusterJoinToken implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetClusterJoinToken(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (joinToken string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -127,15 +125,15 @@ func (_d ClusterClientPortWithSlog) GetClusterJoinToken(ctx context.Context, end
 	}
 	log.DebugContext(ctx, "=> calling GetClusterJoinToken")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.String("joinToken", joinToken),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -153,8 +151,8 @@ func (_d ClusterClientPortWithSlog) GetClusterJoinToken(ctx context.Context, end
 
 // GetClusterNodeNames implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetClusterNodeNames(ctx context.Context, endpoint provisioning.Endpoint) (nodeNames []string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -162,15 +160,15 @@ func (_d ClusterClientPortWithSlog) GetClusterNodeNames(ctx context.Context, end
 	}
 	log.DebugContext(ctx, "=> calling GetClusterNodeNames")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("nodeNames", nodeNames),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -188,8 +186,8 @@ func (_d ClusterClientPortWithSlog) GetClusterNodeNames(ctx context.Context, end
 
 // GetOSData implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (oSData api.OSData, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -197,15 +195,15 @@ func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, endpoint prov
 	}
 	log.DebugContext(ctx, "=> calling GetOSData")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("oSData", oSData),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -223,8 +221,8 @@ func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, endpoint prov
 
 // GetRemoteCertificate implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetRemoteCertificate(ctx context.Context, endpoint provisioning.Endpoint) (certificate *x509.Certificate, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -232,15 +230,15 @@ func (_d ClusterClientPortWithSlog) GetRemoteCertificate(ctx context.Context, en
 	}
 	log.DebugContext(ctx, "=> calling GetRemoteCertificate")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("certificate", certificate),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -258,8 +256,8 @@ func (_d ClusterClientPortWithSlog) GetRemoteCertificate(ctx context.Context, en
 
 // JoinCluster implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -269,14 +267,14 @@ func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server prov
 	}
 	log.DebugContext(ctx, "=> calling JoinCluster")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -294,8 +292,8 @@ func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server prov
 
 // Ping implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -303,14 +301,14 @@ func (_d ClusterClientPortWithSlog) Ping(ctx context.Context, endpoint provision
 	}
 	log.DebugContext(ctx, "=> calling Ping")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -328,8 +326,8 @@ func (_d ClusterClientPortWithSlog) Ping(ctx context.Context, endpoint provision
 
 // SetServerConfig implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) SetServerConfig(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -338,14 +336,14 @@ func (_d ClusterClientPortWithSlog) SetServerConfig(ctx context.Context, endpoin
 	}
 	log.DebugContext(ctx, "=> calling SetServerConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -363,8 +361,8 @@ func (_d ClusterClientPortWithSlog) SetServerConfig(ctx context.Context, endpoin
 
 // SubscribeLifecycleEvents implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) SubscribeLifecycleEvents(ctx context.Context, endpoint provisioning.Endpoint) (lifecycleEventCh chan domain.LifecycleEvent, errCh chan error, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -372,16 +370,16 @@ func (_d ClusterClientPortWithSlog) SubscribeLifecycleEvents(ctx context.Context
 	}
 	log.DebugContext(ctx, "=> calling SubscribeLifecycleEvents")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("lifecycleEventCh", lifecycleEventCh),
 				slog.Any("errCh", errCh),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -399,8 +397,8 @@ func (_d ClusterClientPortWithSlog) SubscribeLifecycleEvents(ctx context.Context
 
 // SystemFactoryReset implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) SystemFactoryReset(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -411,14 +409,14 @@ func (_d ClusterClientPortWithSlog) SystemFactoryReset(ctx context.Context, endp
 	}
 	log.DebugContext(ctx, "=> calling SystemFactoryReset")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -436,8 +434,8 @@ func (_d ClusterClientPortWithSlog) SystemFactoryReset(ctx context.Context, endp
 
 // UpdateClusterCertificate implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) UpdateClusterCertificate(ctx context.Context, endpoint provisioning.Endpoint, certificatePEM string, keyPEM string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -447,14 +445,14 @@ func (_d ClusterClientPortWithSlog) UpdateClusterCertificate(ctx context.Context
 	}
 	log.DebugContext(ctx, "=> calling UpdateClusterCertificate")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -472,8 +470,8 @@ func (_d ClusterClientPortWithSlog) UpdateClusterCertificate(ctx context.Context
 
 // UpdateUpdateConfig implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) UpdateUpdateConfig(ctx context.Context, server provisioning.Server, updateConfig provisioning.ServerSystemUpdate) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -482,14 +480,14 @@ func (_d ClusterClientPortWithSlog) UpdateUpdateConfig(ctx context.Context, serv
 	}
 	log.DebugContext(ctx, "=> calling UpdateUpdateConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

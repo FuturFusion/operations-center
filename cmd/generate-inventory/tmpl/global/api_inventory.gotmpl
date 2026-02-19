@@ -2,7 +2,6 @@ package api
 
 import (
 	"errors"
-	"log/slog"
 
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -20,7 +19,6 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 		inventory.NewInventoryAggregateService(
 			inventoryRepoMiddleware.NewInventoryAggregateRepoWithSlog(
 				inventorySqlite.NewInventoryAggregate(db),
-				slog.Default(),
 				inventoryRepoMiddleware.InventoryAggregateRepoWithSlogWithInformativeErrFunc(
 					func(err error) bool {
 						return errors.Is(err, domain.ErrNotFound)
@@ -28,7 +26,6 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 				),
 			),
 		),
-		slog.Default(),
 	)
 
 {{ range . }}
@@ -36,7 +33,6 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 		inventory.New{{ .Name | pascalcase }}Service(
 			inventoryRepoMiddleware.New{{ .Name | pascalcase }}RepoWithSlog(
 				inventorySqlite.New{{ .Name | pascalcase }}(db),
-				slog.Default(),
 				inventoryRepoMiddleware.{{ .Name | pascalcase }}RepoWithSlogWithInformativeErrFunc(
 					func(err error) bool {
 						return errors.Is(err, domain.ErrNotFound)
@@ -55,7 +51,6 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventory.{{ .Name | pascalcase }}WithParentFilter({{ .Name | camelcase }}WithParentFilter),
 			{{- end }}
 		),
-		slog.Default(),
 	)
 
 {{ end }}

@@ -15,7 +15,6 @@ import (
 
 // NetworkLoadBalancerServerClientWithSlog implements inventory.NetworkLoadBalancerServerClient that is instrumented with slog logger.
 type NetworkLoadBalancerServerClientWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.NetworkLoadBalancerServerClient
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func NetworkLoadBalancerServerClientWithSlogWithInformativeErrFunc(isInformative
 }
 
 // NewNetworkLoadBalancerServerClientWithSlog instruments an implementation of the inventory.NetworkLoadBalancerServerClient with simple logging.
-func NewNetworkLoadBalancerServerClientWithSlog(base inventory.NetworkLoadBalancerServerClient, log *slog.Logger, opts ...NetworkLoadBalancerServerClientWithSlogOption) NetworkLoadBalancerServerClientWithSlog {
+func NewNetworkLoadBalancerServerClientWithSlog(base inventory.NetworkLoadBalancerServerClient, opts ...NetworkLoadBalancerServerClientWithSlogOption) NetworkLoadBalancerServerClientWithSlog {
 	this := NetworkLoadBalancerServerClientWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewNetworkLoadBalancerServerClientWithSlog(base inventory.NetworkLoadBalanc
 
 // GetNetworkLoadBalancerByName implements inventory.NetworkLoadBalancerServerClient.
 func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -57,15 +55,15 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(c
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkLoadBalancerByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkLoadBalancer", networkLoadBalancer),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -83,8 +81,8 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(c
 
 // GetNetworkLoadBalancers implements inventory.NetworkLoadBalancerServerClient.
 func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -94,15 +92,15 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancers(ctx co
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkLoadBalancers")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkLoadBalancers", networkLoadBalancers),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

@@ -13,7 +13,6 @@ import (
 
 // ClusterProvisioningPortWithSlog implements provisioning.ClusterProvisioningPort that is instrumented with slog logger.
 type ClusterProvisioningPortWithSlog struct {
-	_log                  *slog.Logger
 	_base                 provisioning.ClusterProvisioningPort
 	_isInformativeErrFunc func(error) bool
 }
@@ -27,10 +26,9 @@ func ClusterProvisioningPortWithSlogWithInformativeErrFunc(isInformativeErrFunc 
 }
 
 // NewClusterProvisioningPortWithSlog instruments an implementation of the provisioning.ClusterProvisioningPort with simple logging.
-func NewClusterProvisioningPortWithSlog(base provisioning.ClusterProvisioningPort, log *slog.Logger, opts ...ClusterProvisioningPortWithSlogOption) ClusterProvisioningPortWithSlog {
+func NewClusterProvisioningPortWithSlog(base provisioning.ClusterProvisioningPort, opts ...ClusterProvisioningPortWithSlogOption) ClusterProvisioningPortWithSlog {
 	this := ClusterProvisioningPortWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -43,8 +41,8 @@ func NewClusterProvisioningPortWithSlog(base provisioning.ClusterProvisioningPor
 
 // Apply implements provisioning.ClusterProvisioningPort.
 func (_d ClusterProvisioningPortWithSlog) Apply(ctx context.Context, cluster provisioning.Cluster) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("cluster", cluster),
@@ -52,14 +50,14 @@ func (_d ClusterProvisioningPortWithSlog) Apply(ctx context.Context, cluster pro
 	}
 	log.DebugContext(ctx, "=> calling Apply")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -77,8 +75,8 @@ func (_d ClusterProvisioningPortWithSlog) Apply(ctx context.Context, cluster pro
 
 // Init implements provisioning.ClusterProvisioningPort.
 func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, clusterName string, config provisioning.ClusterProvisioningConfig) (temporaryPath string, cleanup func() error, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -87,16 +85,16 @@ func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, clusterName 
 	}
 	log.DebugContext(ctx, "=> calling Init")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.String("temporaryPath", temporaryPath),
 				slog.Any("cleanup", cleanup),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -114,8 +112,8 @@ func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, clusterName 
 
 // SeedCertificate implements provisioning.ClusterProvisioningPort.
 func (_d ClusterProvisioningPortWithSlog) SeedCertificate(ctx context.Context, clusterName string, certificate string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -124,14 +122,14 @@ func (_d ClusterProvisioningPortWithSlog) SeedCertificate(ctx context.Context, c
 	}
 	log.DebugContext(ctx, "=> calling SeedCertificate")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

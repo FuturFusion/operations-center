@@ -15,7 +15,6 @@ import (
 
 // StorageVolumeServerClientWithSlog implements inventory.StorageVolumeServerClient that is instrumented with slog logger.
 type StorageVolumeServerClientWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.StorageVolumeServerClient
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func StorageVolumeServerClientWithSlogWithInformativeErrFunc(isInformativeErrFun
 }
 
 // NewStorageVolumeServerClientWithSlog instruments an implementation of the inventory.StorageVolumeServerClient with simple logging.
-func NewStorageVolumeServerClientWithSlog(base inventory.StorageVolumeServerClient, log *slog.Logger, opts ...StorageVolumeServerClientWithSlogOption) StorageVolumeServerClientWithSlog {
+func NewStorageVolumeServerClientWithSlog(base inventory.StorageVolumeServerClient, opts ...StorageVolumeServerClientWithSlogOption) StorageVolumeServerClientWithSlog {
 	this := StorageVolumeServerClientWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewStorageVolumeServerClientWithSlog(base inventory.StorageVolumeServerClie
 
 // GetStorageVolumeByName implements inventory.StorageVolumeServerClient.
 func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolumeFull api.StorageVolumeFull, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -58,15 +56,15 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.C
 	}
 	log.DebugContext(ctx, "=> calling GetStorageVolumeByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storageVolumeFull", storageVolumeFull),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -84,8 +82,8 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.C
 
 // GetStorageVolumes implements inventory.StorageVolumeServerClient.
 func (_d StorageVolumeServerClientWithSlog) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageVolumeFulls []api.StorageVolumeFull, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -94,15 +92,15 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumes(ctx context.Contex
 	}
 	log.DebugContext(ctx, "=> calling GetStorageVolumes")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storageVolumeFulls", storageVolumeFulls),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

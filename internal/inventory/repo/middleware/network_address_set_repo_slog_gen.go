@@ -14,7 +14,6 @@ import (
 
 // NetworkAddressSetRepoWithSlog implements inventory.NetworkAddressSetRepo that is instrumented with slog logger.
 type NetworkAddressSetRepoWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.NetworkAddressSetRepo
 	_isInformativeErrFunc func(error) bool
 }
@@ -28,10 +27,9 @@ func NetworkAddressSetRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc fu
 }
 
 // NewNetworkAddressSetRepoWithSlog instruments an implementation of the inventory.NetworkAddressSetRepo with simple logging.
-func NewNetworkAddressSetRepoWithSlog(base inventory.NetworkAddressSetRepo, log *slog.Logger, opts ...NetworkAddressSetRepoWithSlogOption) NetworkAddressSetRepoWithSlog {
+func NewNetworkAddressSetRepoWithSlog(base inventory.NetworkAddressSetRepo, opts ...NetworkAddressSetRepoWithSlogOption) NetworkAddressSetRepoWithSlog {
 	this := NetworkAddressSetRepoWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -44,8 +42,8 @@ func NewNetworkAddressSetRepoWithSlog(base inventory.NetworkAddressSetRepo, log 
 
 // Create implements inventory.NetworkAddressSetRepo.
 func (_d NetworkAddressSetRepoWithSlog) Create(ctx context.Context, networkAddressSet inventory.NetworkAddressSet) (networkAddressSet1 inventory.NetworkAddressSet, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("networkAddressSet", networkAddressSet),
@@ -53,15 +51,15 @@ func (_d NetworkAddressSetRepoWithSlog) Create(ctx context.Context, networkAddre
 	}
 	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkAddressSet1", networkAddressSet1),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -79,8 +77,8 @@ func (_d NetworkAddressSetRepoWithSlog) Create(ctx context.Context, networkAddre
 
 // DeleteByUUID implements inventory.NetworkAddressSetRepo.
 func (_d NetworkAddressSetRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -88,14 +86,14 @@ func (_d NetworkAddressSetRepoWithSlog) DeleteByUUID(ctx context.Context, id uui
 	}
 	log.DebugContext(ctx, "=> calling DeleteByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -113,8 +111,8 @@ func (_d NetworkAddressSetRepoWithSlog) DeleteByUUID(ctx context.Context, id uui
 
 // DeleteWithFilter implements inventory.NetworkAddressSetRepo.
 func (_d NetworkAddressSetRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.NetworkAddressSetFilter) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -122,14 +120,14 @@ func (_d NetworkAddressSetRepoWithSlog) DeleteWithFilter(ctx context.Context, fi
 	}
 	log.DebugContext(ctx, "=> calling DeleteWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -147,8 +145,8 @@ func (_d NetworkAddressSetRepoWithSlog) DeleteWithFilter(ctx context.Context, fi
 
 // GetAllUUIDsWithFilter implements inventory.NetworkAddressSetRepo.
 func (_d NetworkAddressSetRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkAddressSetFilter) (uUIDs []uuid.UUID, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -156,15 +154,15 @@ func (_d NetworkAddressSetRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Contex
 	}
 	log.DebugContext(ctx, "=> calling GetAllUUIDsWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -182,8 +180,8 @@ func (_d NetworkAddressSetRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Contex
 
 // GetAllWithFilter implements inventory.NetworkAddressSetRepo.
 func (_d NetworkAddressSetRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkAddressSetFilter) (networkAddressSets inventory.NetworkAddressSets, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -191,15 +189,15 @@ func (_d NetworkAddressSetRepoWithSlog) GetAllWithFilter(ctx context.Context, fi
 	}
 	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkAddressSets", networkAddressSets),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -217,8 +215,8 @@ func (_d NetworkAddressSetRepoWithSlog) GetAllWithFilter(ctx context.Context, fi
 
 // GetByUUID implements inventory.NetworkAddressSetRepo.
 func (_d NetworkAddressSetRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkAddressSet inventory.NetworkAddressSet, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -226,15 +224,15 @@ func (_d NetworkAddressSetRepoWithSlog) GetByUUID(ctx context.Context, id uuid.U
 	}
 	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkAddressSet", networkAddressSet),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -252,8 +250,8 @@ func (_d NetworkAddressSetRepoWithSlog) GetByUUID(ctx context.Context, id uuid.U
 
 // UpdateByUUID implements inventory.NetworkAddressSetRepo.
 func (_d NetworkAddressSetRepoWithSlog) UpdateByUUID(ctx context.Context, networkAddressSet inventory.NetworkAddressSet) (networkAddressSet1 inventory.NetworkAddressSet, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("networkAddressSet", networkAddressSet),
@@ -261,15 +259,15 @@ func (_d NetworkAddressSetRepoWithSlog) UpdateByUUID(ctx context.Context, networ
 	}
 	log.DebugContext(ctx, "=> calling UpdateByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkAddressSet1", networkAddressSet1),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

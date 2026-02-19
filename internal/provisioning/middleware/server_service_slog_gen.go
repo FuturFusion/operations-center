@@ -16,7 +16,6 @@ import (
 
 // ServerServiceWithSlog implements provisioning.ServerService that is instrumented with slog logger.
 type ServerServiceWithSlog struct {
-	_log                  *slog.Logger
 	_base                 provisioning.ServerService
 	_isInformativeErrFunc func(error) bool
 }
@@ -30,10 +29,9 @@ func ServerServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error
 }
 
 // NewServerServiceWithSlog instruments an implementation of the provisioning.ServerService with simple logging.
-func NewServerServiceWithSlog(base provisioning.ServerService, log *slog.Logger, opts ...ServerServiceWithSlogOption) ServerServiceWithSlog {
+func NewServerServiceWithSlog(base provisioning.ServerService, opts ...ServerServiceWithSlogOption) ServerServiceWithSlog {
 	this := ServerServiceWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -46,8 +44,8 @@ func NewServerServiceWithSlog(base provisioning.ServerService, log *slog.Logger,
 
 // Create implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) Create(ctx context.Context, token uuid.UUID, server provisioning.Server) (server1 provisioning.Server, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("token", token),
@@ -56,15 +54,15 @@ func (_d ServerServiceWithSlog) Create(ctx context.Context, token uuid.UUID, ser
 	}
 	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("server1", server1),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -82,8 +80,8 @@ func (_d ServerServiceWithSlog) Create(ctx context.Context, token uuid.UUID, ser
 
 // DeleteByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -91,14 +89,14 @@ func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (
 	}
 	log.DebugContext(ctx, "=> calling DeleteByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -116,8 +114,8 @@ func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (
 
 // EvacuateSystemByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) EvacuateSystemByName(ctx context.Context, name string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -125,14 +123,14 @@ func (_d ServerServiceWithSlog) EvacuateSystemByName(ctx context.Context, name s
 	}
 	log.DebugContext(ctx, "=> calling EvacuateSystemByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -150,23 +148,23 @@ func (_d ServerServiceWithSlog) EvacuateSystemByName(ctx context.Context, name s
 
 // GetAll implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetAll(ctx context.Context) (servers provisioning.Servers, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAll")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("servers", servers),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -184,23 +182,23 @@ func (_d ServerServiceWithSlog) GetAll(ctx context.Context) (servers provisionin
 
 // GetAllNames implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAllNames")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("strings", strings),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -218,8 +216,8 @@ func (_d ServerServiceWithSlog) GetAllNames(ctx context.Context) (strings []stri
 
 // GetAllNamesWithFilter implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetAllNamesWithFilter(ctx context.Context, filter provisioning.ServerFilter) (strings []string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -227,15 +225,15 @@ func (_d ServerServiceWithSlog) GetAllNamesWithFilter(ctx context.Context, filte
 	}
 	log.DebugContext(ctx, "=> calling GetAllNamesWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("strings", strings),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -253,8 +251,8 @@ func (_d ServerServiceWithSlog) GetAllNamesWithFilter(ctx context.Context, filte
 
 // GetAllWithFilter implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetAllWithFilter(ctx context.Context, filter provisioning.ServerFilter) (servers provisioning.Servers, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -262,15 +260,15 @@ func (_d ServerServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pro
 	}
 	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("servers", servers),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -288,8 +286,8 @@ func (_d ServerServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pro
 
 // GetByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (server *provisioning.Server, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -297,15 +295,15 @@ func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (ser
 	}
 	log.DebugContext(ctx, "=> calling GetByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("server", server),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -323,8 +321,8 @@ func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (ser
 
 // GetSystemProvider implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetSystemProvider(ctx context.Context, name string) (v provisioning.ServerSystemProvider, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -332,15 +330,15 @@ func (_d ServerServiceWithSlog) GetSystemProvider(ctx context.Context, name stri
 	}
 	log.DebugContext(ctx, "=> calling GetSystemProvider")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("v", v),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -358,8 +356,8 @@ func (_d ServerServiceWithSlog) GetSystemProvider(ctx context.Context, name stri
 
 // GetSystemUpdate implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetSystemUpdate(ctx context.Context, name string) (v provisioning.ServerSystemUpdate, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -367,15 +365,15 @@ func (_d ServerServiceWithSlog) GetSystemUpdate(ctx context.Context, name string
 	}
 	log.DebugContext(ctx, "=> calling GetSystemUpdate")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("v", v),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -393,8 +391,8 @@ func (_d ServerServiceWithSlog) GetSystemUpdate(ctx context.Context, name string
 
 // PollServer implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) PollServer(ctx context.Context, server provisioning.Server, updateServerConfiguration bool) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -403,14 +401,14 @@ func (_d ServerServiceWithSlog) PollServer(ctx context.Context, server provision
 	}
 	log.DebugContext(ctx, "=> calling PollServer")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -428,8 +426,8 @@ func (_d ServerServiceWithSlog) PollServer(ctx context.Context, server provision
 
 // PollServers implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("serverStatus", serverStatus),
@@ -438,14 +436,14 @@ func (_d ServerServiceWithSlog) PollServers(ctx context.Context, serverStatus ap
 	}
 	log.DebugContext(ctx, "=> calling PollServers")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -463,8 +461,8 @@ func (_d ServerServiceWithSlog) PollServers(ctx context.Context, serverStatus ap
 
 // PoweroffSystemByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) PoweroffSystemByName(ctx context.Context, name string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -472,14 +470,14 @@ func (_d ServerServiceWithSlog) PoweroffSystemByName(ctx context.Context, name s
 	}
 	log.DebugContext(ctx, "=> calling PoweroffSystemByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -497,8 +495,8 @@ func (_d ServerServiceWithSlog) PoweroffSystemByName(ctx context.Context, name s
 
 // RebootSystemByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) RebootSystemByName(ctx context.Context, name string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -506,14 +504,14 @@ func (_d ServerServiceWithSlog) RebootSystemByName(ctx context.Context, name str
 	}
 	log.DebugContext(ctx, "=> calling RebootSystemByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -531,8 +529,8 @@ func (_d ServerServiceWithSlog) RebootSystemByName(ctx context.Context, name str
 
 // Rename implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("oldName", oldName),
@@ -541,14 +539,14 @@ func (_d ServerServiceWithSlog) Rename(ctx context.Context, oldName string, newN
 	}
 	log.DebugContext(ctx, "=> calling Rename")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -566,8 +564,8 @@ func (_d ServerServiceWithSlog) Rename(ctx context.Context, oldName string, newN
 
 // RestoreSystemByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) RestoreSystemByName(ctx context.Context, name string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -575,14 +573,14 @@ func (_d ServerServiceWithSlog) RestoreSystemByName(ctx context.Context, name st
 	}
 	log.DebugContext(ctx, "=> calling RestoreSystemByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -600,8 +598,8 @@ func (_d ServerServiceWithSlog) RestoreSystemByName(ctx context.Context, name st
 
 // ResyncByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -610,14 +608,14 @@ func (_d ServerServiceWithSlog) ResyncByName(ctx context.Context, clusterName st
 	}
 	log.DebugContext(ctx, "=> calling ResyncByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -635,22 +633,22 @@ func (_d ServerServiceWithSlog) ResyncByName(ctx context.Context, clusterName st
 
 // SelfRegisterOperationsCenter implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) SelfRegisterOperationsCenter(ctx context.Context) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling SelfRegisterOperationsCenter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -668,8 +666,8 @@ func (_d ServerServiceWithSlog) SelfRegisterOperationsCenter(ctx context.Context
 
 // SelfUpdate implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) SelfUpdate(ctx context.Context, serverUpdate provisioning.ServerSelfUpdate) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("serverUpdate", serverUpdate),
@@ -677,14 +675,14 @@ func (_d ServerServiceWithSlog) SelfUpdate(ctx context.Context, serverUpdate pro
 	}
 	log.DebugContext(ctx, "=> calling SelfUpdate")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -703,15 +701,15 @@ func (_d ServerServiceWithSlog) SelfUpdate(ctx context.Context, serverUpdate pro
 // SetClusterService implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) SetClusterService(clusterSvc provisioning.ClusterService) {
 	ctx := context.Background()
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("clusterSvc", clusterSvc),
 		)
 	}
 	log.DebugContext(ctx, "=> calling SetClusterService")
 	defer func() {
-		log := _d._log.With()
+		log := slog.With()
 		log.DebugContext(ctx, "<= method SetClusterService finished")
 	}()
 	_d._base.SetClusterService(clusterSvc)
@@ -719,8 +717,8 @@ func (_d ServerServiceWithSlog) SetClusterService(clusterSvc provisioning.Cluste
 
 // SyncCluster implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) SyncCluster(ctx context.Context, clusterName string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -728,14 +726,14 @@ func (_d ServerServiceWithSlog) SyncCluster(ctx context.Context, clusterName str
 	}
 	log.DebugContext(ctx, "=> calling SyncCluster")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -753,8 +751,8 @@ func (_d ServerServiceWithSlog) SyncCluster(ctx context.Context, clusterName str
 
 // Update implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) Update(ctx context.Context, server provisioning.Server, force bool, updateSystem bool) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -764,14 +762,14 @@ func (_d ServerServiceWithSlog) Update(ctx context.Context, server provisioning.
 	}
 	log.DebugContext(ctx, "=> calling Update")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -789,8 +787,8 @@ func (_d ServerServiceWithSlog) Update(ctx context.Context, server provisioning.
 
 // UpdateSystemByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -799,14 +797,14 @@ func (_d ServerServiceWithSlog) UpdateSystemByName(ctx context.Context, name str
 	}
 	log.DebugContext(ctx, "=> calling UpdateSystemByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -824,8 +822,8 @@ func (_d ServerServiceWithSlog) UpdateSystemByName(ctx context.Context, name str
 
 // UpdateSystemNetwork implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) UpdateSystemNetwork(ctx context.Context, name string, networkConfig provisioning.ServerSystemNetwork) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -834,14 +832,14 @@ func (_d ServerServiceWithSlog) UpdateSystemNetwork(ctx context.Context, name st
 	}
 	log.DebugContext(ctx, "=> calling UpdateSystemNetwork")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -859,8 +857,8 @@ func (_d ServerServiceWithSlog) UpdateSystemNetwork(ctx context.Context, name st
 
 // UpdateSystemProvider implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) UpdateSystemProvider(ctx context.Context, name string, providerConfig provisioning.ServerSystemProvider) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -869,14 +867,14 @@ func (_d ServerServiceWithSlog) UpdateSystemProvider(ctx context.Context, name s
 	}
 	log.DebugContext(ctx, "=> calling UpdateSystemProvider")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -894,8 +892,8 @@ func (_d ServerServiceWithSlog) UpdateSystemProvider(ctx context.Context, name s
 
 // UpdateSystemStorage implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) UpdateSystemStorage(ctx context.Context, name string, networkConfig provisioning.ServerSystemStorage) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -904,14 +902,14 @@ func (_d ServerServiceWithSlog) UpdateSystemStorage(ctx context.Context, name st
 	}
 	log.DebugContext(ctx, "=> calling UpdateSystemStorage")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -929,8 +927,8 @@ func (_d ServerServiceWithSlog) UpdateSystemStorage(ctx context.Context, name st
 
 // UpdateSystemUpdate implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) UpdateSystemUpdate(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -939,14 +937,14 @@ func (_d ServerServiceWithSlog) UpdateSystemUpdate(ctx context.Context, name str
 	}
 	log.DebugContext(ctx, "=> calling UpdateSystemUpdate")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

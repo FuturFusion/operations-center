@@ -15,7 +15,6 @@ import (
 
 // NetworkPeerServerClientWithSlog implements inventory.NetworkPeerServerClient that is instrumented with slog logger.
 type NetworkPeerServerClientWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.NetworkPeerServerClient
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func NetworkPeerServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc 
 }
 
 // NewNetworkPeerServerClientWithSlog instruments an implementation of the inventory.NetworkPeerServerClient with simple logging.
-func NewNetworkPeerServerClientWithSlog(base inventory.NetworkPeerServerClient, log *slog.Logger, opts ...NetworkPeerServerClientWithSlogOption) NetworkPeerServerClientWithSlog {
+func NewNetworkPeerServerClientWithSlog(base inventory.NetworkPeerServerClient, opts ...NetworkPeerServerClientWithSlogOption) NetworkPeerServerClientWithSlog {
 	this := NetworkPeerServerClientWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,8 +43,8 @@ func NewNetworkPeerServerClientWithSlog(base inventory.NetworkPeerServerClient, 
 
 // GetNetworkPeerByName implements inventory.NetworkPeerServerClient.
 func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -57,15 +55,15 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Conte
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkPeerByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkPeer", networkPeer),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -83,8 +81,8 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Conte
 
 // GetNetworkPeers implements inventory.NetworkPeerServerClient.
 func (_d NetworkPeerServerClientWithSlog) GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (networkPeers []api.NetworkPeer, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -94,15 +92,15 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeers(ctx context.Context, e
 	}
 	log.DebugContext(ctx, "=> calling GetNetworkPeers")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkPeers", networkPeers),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

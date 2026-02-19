@@ -17,7 +17,6 @@ import (
 
 // TokenServiceWithSlog implements provisioning.TokenService that is instrumented with slog logger.
 type TokenServiceWithSlog struct {
-	_log                  *slog.Logger
 	_base                 provisioning.TokenService
 	_isInformativeErrFunc func(error) bool
 }
@@ -31,10 +30,9 @@ func TokenServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error)
 }
 
 // NewTokenServiceWithSlog instruments an implementation of the provisioning.TokenService with simple logging.
-func NewTokenServiceWithSlog(base provisioning.TokenService, log *slog.Logger, opts ...TokenServiceWithSlogOption) TokenServiceWithSlog {
+func NewTokenServiceWithSlog(base provisioning.TokenService, opts ...TokenServiceWithSlogOption) TokenServiceWithSlog {
 	this := TokenServiceWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -47,8 +45,8 @@ func NewTokenServiceWithSlog(base provisioning.TokenService, log *slog.Logger, o
 
 // Consume implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) Consume(ctx context.Context, id uuid.UUID) (channel string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -56,15 +54,15 @@ func (_d TokenServiceWithSlog) Consume(ctx context.Context, id uuid.UUID) (chann
 	}
 	log.DebugContext(ctx, "=> calling Consume")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.String("channel", channel),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -82,8 +80,8 @@ func (_d TokenServiceWithSlog) Consume(ctx context.Context, id uuid.UUID) (chann
 
 // Create implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) Create(ctx context.Context, token provisioning.Token) (token1 provisioning.Token, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("token", token),
@@ -91,15 +89,15 @@ func (_d TokenServiceWithSlog) Create(ctx context.Context, token provisioning.To
 	}
 	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("token1", token1),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -117,8 +115,8 @@ func (_d TokenServiceWithSlog) Create(ctx context.Context, token provisioning.To
 
 // CreateTokenSeed implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) CreateTokenSeed(ctx context.Context, tokenSeedConfig provisioning.TokenSeed) (tokenSeed provisioning.TokenSeed, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("tokenSeedConfig", tokenSeedConfig),
@@ -126,15 +124,15 @@ func (_d TokenServiceWithSlog) CreateTokenSeed(ctx context.Context, tokenSeedCon
 	}
 	log.DebugContext(ctx, "=> calling CreateTokenSeed")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("tokenSeed", tokenSeed),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -152,8 +150,8 @@ func (_d TokenServiceWithSlog) CreateTokenSeed(ctx context.Context, tokenSeedCon
 
 // DeleteByUUID implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -161,14 +159,14 @@ func (_d TokenServiceWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (
 	}
 	log.DebugContext(ctx, "=> calling DeleteByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -186,8 +184,8 @@ func (_d TokenServiceWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (
 
 // DeleteTokenSeedByName implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -196,14 +194,14 @@ func (_d TokenServiceWithSlog) DeleteTokenSeedByName(ctx context.Context, id uui
 	}
 	log.DebugContext(ctx, "=> calling DeleteTokenSeedByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -221,23 +219,23 @@ func (_d TokenServiceWithSlog) DeleteTokenSeedByName(ctx context.Context, id uui
 
 // GetAll implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetAll(ctx context.Context) (tokens provisioning.Tokens, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAll")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("tokens", tokens),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -255,23 +253,23 @@ func (_d TokenServiceWithSlog) GetAll(ctx context.Context) (tokens provisioning.
 
 // GetAllUUIDs implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UUID, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAllUUIDs")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -289,8 +287,8 @@ func (_d TokenServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UU
 
 // GetByUUID implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (token *provisioning.Token, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -298,15 +296,15 @@ func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (tok
 	}
 	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("token", token),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -324,8 +322,8 @@ func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (tok
 
 // GetPreSeededImage implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetPreSeededImage(ctx context.Context, id uuid.UUID, imageUUID uuid.UUID) (readCloser io.ReadCloser, filename string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -334,16 +332,16 @@ func (_d TokenServiceWithSlog) GetPreSeededImage(ctx context.Context, id uuid.UU
 	}
 	log.DebugContext(ctx, "=> calling GetPreSeededImage")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("readCloser", readCloser),
 				slog.String("filename", filename),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -361,8 +359,8 @@ func (_d TokenServiceWithSlog) GetPreSeededImage(ctx context.Context, id uuid.UU
 
 // GetTokenImageFromTokenSeed implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (readCloser io.ReadCloser, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -374,15 +372,15 @@ func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, i
 	}
 	log.DebugContext(ctx, "=> calling GetTokenImageFromTokenSeed")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("readCloser", readCloser),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -400,8 +398,8 @@ func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, i
 
 // GetTokenProviderConfig implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetTokenProviderConfig(ctx context.Context, id uuid.UUID) (tokenProviderConfig *api.TokenProviderConfig, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -409,15 +407,15 @@ func (_d TokenServiceWithSlog) GetTokenProviderConfig(ctx context.Context, id uu
 	}
 	log.DebugContext(ctx, "=> calling GetTokenProviderConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("tokenProviderConfig", tokenProviderConfig),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -435,8 +433,8 @@ func (_d TokenServiceWithSlog) GetTokenProviderConfig(ctx context.Context, id uu
 
 // GetTokenSeedAll implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetTokenSeedAll(ctx context.Context, id uuid.UUID) (tokenSeeds provisioning.TokenSeeds, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -444,15 +442,15 @@ func (_d TokenServiceWithSlog) GetTokenSeedAll(ctx context.Context, id uuid.UUID
 	}
 	log.DebugContext(ctx, "=> calling GetTokenSeedAll")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("tokenSeeds", tokenSeeds),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -470,8 +468,8 @@ func (_d TokenServiceWithSlog) GetTokenSeedAll(ctx context.Context, id uuid.UUID
 
 // GetTokenSeedAllNames implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) (strings []string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -479,15 +477,15 @@ func (_d TokenServiceWithSlog) GetTokenSeedAllNames(ctx context.Context, id uuid
 	}
 	log.DebugContext(ctx, "=> calling GetTokenSeedAllNames")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("strings", strings),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -505,8 +503,8 @@ func (_d TokenServiceWithSlog) GetTokenSeedAllNames(ctx context.Context, id uuid
 
 // GetTokenSeedByName implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (tokenSeed *provisioning.TokenSeed, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -515,15 +513,15 @@ func (_d TokenServiceWithSlog) GetTokenSeedByName(ctx context.Context, id uuid.U
 	}
 	log.DebugContext(ctx, "=> calling GetTokenSeedByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("tokenSeed", tokenSeed),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -541,8 +539,8 @@ func (_d TokenServiceWithSlog) GetTokenSeedByName(ctx context.Context, id uuid.U
 
 // PreparePreSeededImage implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig provisioning.TokenImageSeedConfigs) (uUID uuid.UUID, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -553,15 +551,15 @@ func (_d TokenServiceWithSlog) PreparePreSeededImage(ctx context.Context, id uui
 	}
 	log.DebugContext(ctx, "=> calling PreparePreSeededImage")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("uUID", uUID),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -579,8 +577,8 @@ func (_d TokenServiceWithSlog) PreparePreSeededImage(ctx context.Context, id uui
 
 // Update implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) Update(ctx context.Context, token provisioning.Token) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("token", token),
@@ -588,14 +586,14 @@ func (_d TokenServiceWithSlog) Update(ctx context.Context, token provisioning.To
 	}
 	log.DebugContext(ctx, "=> calling Update")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -613,8 +611,8 @@ func (_d TokenServiceWithSlog) Update(ctx context.Context, token provisioning.To
 
 // UpdateTokenSeed implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) UpdateTokenSeed(ctx context.Context, tokenSeed provisioning.TokenSeed) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("tokenSeed", tokenSeed),
@@ -622,14 +620,14 @@ func (_d TokenServiceWithSlog) UpdateTokenSeed(ctx context.Context, tokenSeed pr
 	}
 	log.DebugContext(ctx, "=> calling UpdateTokenSeed")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

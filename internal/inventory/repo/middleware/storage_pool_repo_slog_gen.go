@@ -14,7 +14,6 @@ import (
 
 // StoragePoolRepoWithSlog implements inventory.StoragePoolRepo that is instrumented with slog logger.
 type StoragePoolRepoWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.StoragePoolRepo
 	_isInformativeErrFunc func(error) bool
 }
@@ -28,10 +27,9 @@ func StoragePoolRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(err
 }
 
 // NewStoragePoolRepoWithSlog instruments an implementation of the inventory.StoragePoolRepo with simple logging.
-func NewStoragePoolRepoWithSlog(base inventory.StoragePoolRepo, log *slog.Logger, opts ...StoragePoolRepoWithSlogOption) StoragePoolRepoWithSlog {
+func NewStoragePoolRepoWithSlog(base inventory.StoragePoolRepo, opts ...StoragePoolRepoWithSlogOption) StoragePoolRepoWithSlog {
 	this := StoragePoolRepoWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -44,8 +42,8 @@ func NewStoragePoolRepoWithSlog(base inventory.StoragePoolRepo, log *slog.Logger
 
 // Create implements inventory.StoragePoolRepo.
 func (_d StoragePoolRepoWithSlog) Create(ctx context.Context, storagePool inventory.StoragePool) (storagePool1 inventory.StoragePool, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("storagePool", storagePool),
@@ -53,15 +51,15 @@ func (_d StoragePoolRepoWithSlog) Create(ctx context.Context, storagePool invent
 	}
 	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storagePool1", storagePool1),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -79,8 +77,8 @@ func (_d StoragePoolRepoWithSlog) Create(ctx context.Context, storagePool invent
 
 // DeleteByUUID implements inventory.StoragePoolRepo.
 func (_d StoragePoolRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -88,14 +86,14 @@ func (_d StoragePoolRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID
 	}
 	log.DebugContext(ctx, "=> calling DeleteByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -113,8 +111,8 @@ func (_d StoragePoolRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID
 
 // DeleteWithFilter implements inventory.StoragePoolRepo.
 func (_d StoragePoolRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -122,14 +120,14 @@ func (_d StoragePoolRepoWithSlog) DeleteWithFilter(ctx context.Context, filter i
 	}
 	log.DebugContext(ctx, "=> calling DeleteWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -147,8 +145,8 @@ func (_d StoragePoolRepoWithSlog) DeleteWithFilter(ctx context.Context, filter i
 
 // GetAllUUIDsWithFilter implements inventory.StoragePoolRepo.
 func (_d StoragePoolRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) (uUIDs []uuid.UUID, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -156,15 +154,15 @@ func (_d StoragePoolRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, fil
 	}
 	log.DebugContext(ctx, "=> calling GetAllUUIDsWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -182,8 +180,8 @@ func (_d StoragePoolRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, fil
 
 // GetAllWithFilter implements inventory.StoragePoolRepo.
 func (_d StoragePoolRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) (storagePools inventory.StoragePools, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -191,15 +189,15 @@ func (_d StoragePoolRepoWithSlog) GetAllWithFilter(ctx context.Context, filter i
 	}
 	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storagePools", storagePools),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -217,8 +215,8 @@ func (_d StoragePoolRepoWithSlog) GetAllWithFilter(ctx context.Context, filter i
 
 // GetByUUID implements inventory.StoragePoolRepo.
 func (_d StoragePoolRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (storagePool inventory.StoragePool, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -226,15 +224,15 @@ func (_d StoragePoolRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (
 	}
 	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storagePool", storagePool),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -252,8 +250,8 @@ func (_d StoragePoolRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (
 
 // UpdateByUUID implements inventory.StoragePoolRepo.
 func (_d StoragePoolRepoWithSlog) UpdateByUUID(ctx context.Context, storagePool inventory.StoragePool) (storagePool1 inventory.StoragePool, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("storagePool", storagePool),
@@ -261,15 +259,15 @@ func (_d StoragePoolRepoWithSlog) UpdateByUUID(ctx context.Context, storagePool 
 	}
 	log.DebugContext(ctx, "=> calling UpdateByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("storagePool1", storagePool1),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

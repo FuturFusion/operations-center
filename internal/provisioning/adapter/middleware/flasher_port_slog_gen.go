@@ -16,7 +16,6 @@ import (
 
 // FlasherPortWithSlog implements provisioning.FlasherPort that is instrumented with slog logger.
 type FlasherPortWithSlog struct {
-	_log                  *slog.Logger
 	_base                 provisioning.FlasherPort
 	_isInformativeErrFunc func(error) bool
 }
@@ -30,10 +29,9 @@ func FlasherPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) 
 }
 
 // NewFlasherPortWithSlog instruments an implementation of the provisioning.FlasherPort with simple logging.
-func NewFlasherPortWithSlog(base provisioning.FlasherPort, log *slog.Logger, opts ...FlasherPortWithSlogOption) FlasherPortWithSlog {
+func NewFlasherPortWithSlog(base provisioning.FlasherPort, opts ...FlasherPortWithSlogOption) FlasherPortWithSlog {
 	this := FlasherPortWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -46,8 +44,8 @@ func NewFlasherPortWithSlog(base provisioning.FlasherPort, log *slog.Logger, opt
 
 // GenerateSeededImage implements provisioning.FlasherPort.
 func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (readCloser io.ReadCloser, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -57,15 +55,15 @@ func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, id uuid.U
 	}
 	log.DebugContext(ctx, "=> calling GenerateSeededImage")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("readCloser", readCloser),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -83,8 +81,8 @@ func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, id uuid.U
 
 // GetProviderConfig implements provisioning.FlasherPort.
 func (_d FlasherPortWithSlog) GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (tokenProviderConfig *api.TokenProviderConfig, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("tokenID", tokenID),
@@ -92,15 +90,15 @@ func (_d FlasherPortWithSlog) GetProviderConfig(ctx context.Context, tokenID uui
 	}
 	log.DebugContext(ctx, "=> calling GetProviderConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("tokenProviderConfig", tokenProviderConfig),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

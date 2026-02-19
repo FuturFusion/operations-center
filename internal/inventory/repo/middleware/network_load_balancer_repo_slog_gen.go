@@ -14,7 +14,6 @@ import (
 
 // NetworkLoadBalancerRepoWithSlog implements inventory.NetworkLoadBalancerRepo that is instrumented with slog logger.
 type NetworkLoadBalancerRepoWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.NetworkLoadBalancerRepo
 	_isInformativeErrFunc func(error) bool
 }
@@ -28,10 +27,9 @@ func NetworkLoadBalancerRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc 
 }
 
 // NewNetworkLoadBalancerRepoWithSlog instruments an implementation of the inventory.NetworkLoadBalancerRepo with simple logging.
-func NewNetworkLoadBalancerRepoWithSlog(base inventory.NetworkLoadBalancerRepo, log *slog.Logger, opts ...NetworkLoadBalancerRepoWithSlogOption) NetworkLoadBalancerRepoWithSlog {
+func NewNetworkLoadBalancerRepoWithSlog(base inventory.NetworkLoadBalancerRepo, opts ...NetworkLoadBalancerRepoWithSlogOption) NetworkLoadBalancerRepoWithSlog {
 	this := NetworkLoadBalancerRepoWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -44,8 +42,8 @@ func NewNetworkLoadBalancerRepoWithSlog(base inventory.NetworkLoadBalancerRepo, 
 
 // Create implements inventory.NetworkLoadBalancerRepo.
 func (_d NetworkLoadBalancerRepoWithSlog) Create(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (networkLoadBalancer1 inventory.NetworkLoadBalancer, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("networkLoadBalancer", networkLoadBalancer),
@@ -53,15 +51,15 @@ func (_d NetworkLoadBalancerRepoWithSlog) Create(ctx context.Context, networkLoa
 	}
 	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkLoadBalancer1", networkLoadBalancer1),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -79,8 +77,8 @@ func (_d NetworkLoadBalancerRepoWithSlog) Create(ctx context.Context, networkLoa
 
 // DeleteByUUID implements inventory.NetworkLoadBalancerRepo.
 func (_d NetworkLoadBalancerRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -88,14 +86,14 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteByUUID(ctx context.Context, id u
 	}
 	log.DebugContext(ctx, "=> calling DeleteByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -113,8 +111,8 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteByUUID(ctx context.Context, id u
 
 // DeleteWithFilter implements inventory.NetworkLoadBalancerRepo.
 func (_d NetworkLoadBalancerRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -122,14 +120,14 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteWithFilter(ctx context.Context, 
 	}
 	log.DebugContext(ctx, "=> calling DeleteWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -147,8 +145,8 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteWithFilter(ctx context.Context, 
 
 // GetAllUUIDsWithFilter implements inventory.NetworkLoadBalancerRepo.
 func (_d NetworkLoadBalancerRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (uUIDs []uuid.UUID, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -156,15 +154,15 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Cont
 	}
 	log.DebugContext(ctx, "=> calling GetAllUUIDsWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -182,8 +180,8 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Cont
 
 // GetAllWithFilter implements inventory.NetworkLoadBalancerRepo.
 func (_d NetworkLoadBalancerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (networkLoadBalancers inventory.NetworkLoadBalancers, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -191,15 +189,15 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetAllWithFilter(ctx context.Context, 
 	}
 	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkLoadBalancers", networkLoadBalancers),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -217,8 +215,8 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetAllWithFilter(ctx context.Context, 
 
 // GetByUUID implements inventory.NetworkLoadBalancerRepo.
 func (_d NetworkLoadBalancerRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkLoadBalancer inventory.NetworkLoadBalancer, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
@@ -226,15 +224,15 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetByUUID(ctx context.Context, id uuid
 	}
 	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkLoadBalancer", networkLoadBalancer),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -252,8 +250,8 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetByUUID(ctx context.Context, id uuid
 
 // UpdateByUUID implements inventory.NetworkLoadBalancerRepo.
 func (_d NetworkLoadBalancerRepoWithSlog) UpdateByUUID(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (networkLoadBalancer1 inventory.NetworkLoadBalancer, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("networkLoadBalancer", networkLoadBalancer),
@@ -261,15 +259,15 @@ func (_d NetworkLoadBalancerRepoWithSlog) UpdateByUUID(ctx context.Context, netw
 	}
 	log.DebugContext(ctx, "=> calling UpdateByUUID")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("networkLoadBalancer1", networkLoadBalancer1),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

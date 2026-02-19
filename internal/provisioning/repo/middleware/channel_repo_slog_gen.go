@@ -13,7 +13,6 @@ import (
 
 // ChannelRepoWithSlog implements provisioning.ChannelRepo that is instrumented with slog logger.
 type ChannelRepoWithSlog struct {
-	_log                  *slog.Logger
 	_base                 provisioning.ChannelRepo
 	_isInformativeErrFunc func(error) bool
 }
@@ -27,10 +26,9 @@ func ChannelRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) 
 }
 
 // NewChannelRepoWithSlog instruments an implementation of the provisioning.ChannelRepo with simple logging.
-func NewChannelRepoWithSlog(base provisioning.ChannelRepo, log *slog.Logger, opts ...ChannelRepoWithSlogOption) ChannelRepoWithSlog {
+func NewChannelRepoWithSlog(base provisioning.ChannelRepo, opts ...ChannelRepoWithSlogOption) ChannelRepoWithSlog {
 	this := ChannelRepoWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -43,8 +41,8 @@ func NewChannelRepoWithSlog(base provisioning.ChannelRepo, log *slog.Logger, opt
 
 // Create implements provisioning.ChannelRepo.
 func (_d ChannelRepoWithSlog) Create(ctx context.Context, newChannel provisioning.Channel) (n int64, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("newChannel", newChannel),
@@ -52,15 +50,15 @@ func (_d ChannelRepoWithSlog) Create(ctx context.Context, newChannel provisionin
 	}
 	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Int64("n", n),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -78,8 +76,8 @@ func (_d ChannelRepoWithSlog) Create(ctx context.Context, newChannel provisionin
 
 // DeleteByName implements provisioning.ChannelRepo.
 func (_d ChannelRepoWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -87,14 +85,14 @@ func (_d ChannelRepoWithSlog) DeleteByName(ctx context.Context, name string) (er
 	}
 	log.DebugContext(ctx, "=> calling DeleteByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -112,23 +110,23 @@ func (_d ChannelRepoWithSlog) DeleteByName(ctx context.Context, name string) (er
 
 // GetAll implements provisioning.ChannelRepo.
 func (_d ChannelRepoWithSlog) GetAll(ctx context.Context) (channels provisioning.Channels, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAll")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("channels", channels),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -146,23 +144,23 @@ func (_d ChannelRepoWithSlog) GetAll(ctx context.Context) (channels provisioning
 
 // GetAllNames implements provisioning.ChannelRepo.
 func (_d ChannelRepoWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAllNames")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("strings", strings),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -180,8 +178,8 @@ func (_d ChannelRepoWithSlog) GetAllNames(ctx context.Context) (strings []string
 
 // GetByName implements provisioning.ChannelRepo.
 func (_d ChannelRepoWithSlog) GetByName(ctx context.Context, name string) (channel *provisioning.Channel, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -189,15 +187,15 @@ func (_d ChannelRepoWithSlog) GetByName(ctx context.Context, name string) (chann
 	}
 	log.DebugContext(ctx, "=> calling GetByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("channel", channel),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -215,8 +213,8 @@ func (_d ChannelRepoWithSlog) GetByName(ctx context.Context, name string) (chann
 
 // Update implements provisioning.ChannelRepo.
 func (_d ChannelRepoWithSlog) Update(ctx context.Context, newChannel provisioning.Channel) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("newChannel", newChannel),
@@ -224,14 +222,14 @@ func (_d ChannelRepoWithSlog) Update(ctx context.Context, newChannel provisionin
 	}
 	log.DebugContext(ctx, "=> calling Update")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

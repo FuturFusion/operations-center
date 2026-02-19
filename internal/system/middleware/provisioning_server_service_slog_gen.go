@@ -14,7 +14,6 @@ import (
 
 // ProvisioningServerServiceWithSlog implements system.ProvisioningServerService that is instrumented with slog logger.
 type ProvisioningServerServiceWithSlog struct {
-	_log                  *slog.Logger
 	_base                 system.ProvisioningServerService
 	_isInformativeErrFunc func(error) bool
 }
@@ -28,10 +27,9 @@ func ProvisioningServerServiceWithSlogWithInformativeErrFunc(isInformativeErrFun
 }
 
 // NewProvisioningServerServiceWithSlog instruments an implementation of the system.ProvisioningServerService with simple logging.
-func NewProvisioningServerServiceWithSlog(base system.ProvisioningServerService, log *slog.Logger, opts ...ProvisioningServerServiceWithSlogOption) ProvisioningServerServiceWithSlog {
+func NewProvisioningServerServiceWithSlog(base system.ProvisioningServerService, opts ...ProvisioningServerServiceWithSlogOption) ProvisioningServerServiceWithSlog {
 	this := ProvisioningServerServiceWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -44,23 +42,23 @@ func NewProvisioningServerServiceWithSlog(base system.ProvisioningServerService,
 
 // GetAll implements system.ProvisioningServerService.
 func (_d ProvisioningServerServiceWithSlog) GetAll(ctx context.Context) (servers provisioning.Servers, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAll")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("servers", servers),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -78,8 +76,8 @@ func (_d ProvisioningServerServiceWithSlog) GetAll(ctx context.Context) (servers
 
 // GetSystemProvider implements system.ProvisioningServerService.
 func (_d ProvisioningServerServiceWithSlog) GetSystemProvider(ctx context.Context, name string) (v provisioning.ServerSystemProvider, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -87,15 +85,15 @@ func (_d ProvisioningServerServiceWithSlog) GetSystemProvider(ctx context.Contex
 	}
 	log.DebugContext(ctx, "=> calling GetSystemProvider")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("v", v),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -113,8 +111,8 @@ func (_d ProvisioningServerServiceWithSlog) GetSystemProvider(ctx context.Contex
 
 // UpdateSystemProvider implements system.ProvisioningServerService.
 func (_d ProvisioningServerServiceWithSlog) UpdateSystemProvider(ctx context.Context, name string, providerConfig provisioning.ServerSystemProvider) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -123,14 +121,14 @@ func (_d ProvisioningServerServiceWithSlog) UpdateSystemProvider(ctx context.Con
 	}
 	log.DebugContext(ctx, "=> calling UpdateSystemProvider")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

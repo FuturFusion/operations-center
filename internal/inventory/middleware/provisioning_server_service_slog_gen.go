@@ -14,7 +14,6 @@ import (
 
 // ProvisioningServerServiceWithSlog implements inventory.ProvisioningServerService that is instrumented with slog logger.
 type ProvisioningServerServiceWithSlog struct {
-	_log                  *slog.Logger
 	_base                 inventory.ProvisioningServerService
 	_isInformativeErrFunc func(error) bool
 }
@@ -28,10 +27,9 @@ func ProvisioningServerServiceWithSlogWithInformativeErrFunc(isInformativeErrFun
 }
 
 // NewProvisioningServerServiceWithSlog instruments an implementation of the inventory.ProvisioningServerService with simple logging.
-func NewProvisioningServerServiceWithSlog(base inventory.ProvisioningServerService, log *slog.Logger, opts ...ProvisioningServerServiceWithSlogOption) ProvisioningServerServiceWithSlog {
+func NewProvisioningServerServiceWithSlog(base inventory.ProvisioningServerService, opts ...ProvisioningServerServiceWithSlogOption) ProvisioningServerServiceWithSlog {
 	this := ProvisioningServerServiceWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -44,8 +42,8 @@ func NewProvisioningServerServiceWithSlog(base inventory.ProvisioningServerServi
 
 // GetAllByClusterName implements inventory.ProvisioningServerService.
 func (_d ProvisioningServerServiceWithSlog) GetAllByClusterName(ctx context.Context, name string) (servers provisioning.Servers, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -53,15 +51,15 @@ func (_d ProvisioningServerServiceWithSlog) GetAllByClusterName(ctx context.Cont
 	}
 	log.DebugContext(ctx, "=> calling GetAllByClusterName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("servers", servers),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
