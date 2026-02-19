@@ -55,8 +55,8 @@ const NetworkPeer = () => {
         sortKey: item.parent_name,
       },
       {
-        content: item.object.target_project,
-        sortKey: item.object.target_project,
+        content: item.project_name,
+        sortKey: item.project_name,
       },
       {
         content: <ClusterLink cluster={item.cluster} />,
