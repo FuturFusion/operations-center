@@ -3,8 +3,8 @@ package api
 import (
 	"net/http"
 
-	"github.com/FuturFusion/operations-center/internal/authn"
-	"github.com/FuturFusion/operations-center/internal/response"
+	"github.com/FuturFusion/operations-center/internal/security/authn"
+	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 

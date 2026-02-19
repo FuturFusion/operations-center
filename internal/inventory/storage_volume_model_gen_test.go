@@ -10,8 +10,8 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
-	"github.com/FuturFusion/operations-center/internal/ptr"
-	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
 func TestIncusStorageVolumeFullWrapper_Value(t *testing.T) {

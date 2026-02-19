@@ -8,7 +8,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
-	"github.com/FuturFusion/operations-center/internal/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 )
 
 func TestInventoryAggregateService_GetAllWithFilter(t *testing.T) {

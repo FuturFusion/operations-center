@@ -6,8 +6,8 @@ import (
 
 	"github.com/mattn/go-sqlite3"
 
-	"github.com/FuturFusion/operations-center/internal/dbschema"
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 )
 
 func init() {

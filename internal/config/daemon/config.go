@@ -18,10 +18,10 @@ import (
 	"github.com/maniartech/signals"
 	"gopkg.in/yaml.v3"
 
-	"github.com/FuturFusion/operations-center/internal/acme"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/environment"
-	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/security/acme"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 

@@ -8,7 +8,7 @@ import (
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/testing/flaky"
+	"github.com/FuturFusion/operations-center/internal/util/testing/flaky"
 )
 
 func Test_isSelfSigned(t *testing.T) {

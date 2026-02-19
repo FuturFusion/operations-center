@@ -17,7 +17,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
-	"github.com/FuturFusion/operations-center/internal/signature/signaturetest"
+	"github.com/FuturFusion/operations-center/internal/security/signature/signaturetest"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 

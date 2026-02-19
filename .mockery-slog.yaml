@@ -1,7 +1,7 @@
 ---
 
 all: False
-template: file://./internal/logger/slog.gotmpl
+template: file://./internal/util/logger/slog.gotmpl
 require-template-schema-exists: false
 force-file-write: true
 include-auto-generated: true

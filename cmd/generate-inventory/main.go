@@ -16,8 +16,8 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	"github.com/spf13/pflag"
 
-	"github.com/FuturFusion/operations-center/internal/logger"
-	"github.com/FuturFusion/operations-center/internal/maps"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/maps"
 )
 
 //go:embed tmpl
@@ -167,7 +167,7 @@ var globalTargets = []struct {
 	},
 	{
 		TemplateName: "seed_config.gotmpl",
-		TargetName:   "internal/dbschema/seed/config_gen.go",
+		TargetName:   "internal/sql/dbschema/seed/config_gen.go",
 	},
 	{
 		TemplateName: "server_incus_testcases.gotmpl",

@@ -17,7 +17,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/client"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
-	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	shared "github.com/FuturFusion/operations-center/shared/api"
 )
 
