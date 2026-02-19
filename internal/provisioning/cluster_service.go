@@ -752,8 +752,10 @@ func (s clusterService) DeleteAndFactoryResetByName(ctx context.Context, name st
 
 	if tokenID == nil {
 		token, err := s.tokenSvc.Create(ctx, Token{
+			Description:   fmt.Sprintf("factory reset cluster %q", name),
 			UsesRemaining: len(servers),
 			ExpireAt:      time.Now().Add(1 * time.Hour),
+			AutoRemove:    true,
 		})
 		if err != nil {
 			return fmt.Errorf("Pre factory reset failed to get a provisioning token: %w", err)

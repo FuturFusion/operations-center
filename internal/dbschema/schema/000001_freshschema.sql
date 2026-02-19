@@ -19,6 +19,7 @@ CREATE TABLE tokens (
   expire_at DATETIME NOT NULL,
   description TEXT NOT NULL,
   channel_id INTEGER NOT NULL DEFAULT 0,
+  auto_remove BOOLEAN NOT NULL DEFAULT 0,
   UNIQUE(uuid),
   FOREIGN KEY (channel_id) REFERENCES channels(id)
 );
@@ -400,4 +401,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (26, strftime("%s"));
+INSERT INTO schema (version, updated_at) VALUES (27, strftime("%s"));

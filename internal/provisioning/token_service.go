@@ -118,9 +118,14 @@ func (s *tokenService) Consume(ctx context.Context, id uuid.UUID) (channel strin
 
 		token.UsesRemaining--
 
-		err = s.repo.Update(ctx, *token)
+		if token.AutoRemove && token.UsesRemaining == 0 {
+			err = s.repo.DeleteByUUID(ctx, id)
+		} else {
+			err = s.repo.Update(ctx, *token)
+		}
+
 		if err != nil {
-			return fmt.Errorf("Update token: %w", err)
+			return fmt.Errorf("Update token %s: %w", id.String(), err)
 		}
 
 		channel = token.Channel

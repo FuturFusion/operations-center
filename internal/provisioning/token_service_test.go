@@ -401,9 +401,10 @@ func TestTokenService_Consume(t *testing.T) {
 		name     string
 		tokenArg uuid.UUID
 
-		repoGetByUUIDToken *provisioning.Token
-		repoGetByUUIDErr   error
-		repoUpdateErr      error
+		repoGetByUUIDToken  *provisioning.Token
+		repoGetByUUIDErr    error
+		repoUpdateErr       error
+		repoDeleteByUUIDErr error
 
 		assertErr       require.ErrorAssertionFunc
 		wantUsesRemaing int
@@ -424,6 +425,22 @@ func TestTokenService_Consume(t *testing.T) {
 			assertErr:       require.NoError,
 			wantUsesRemaing: 9,
 			wantChannel:     "testing",
+		},
+		{
+			name:     "success - auto remove",
+			tokenArg: token,
+
+			repoGetByUUIDToken: &provisioning.Token{
+				ID:            1,
+				UUID:          token,
+				UsesRemaining: 1,
+				ExpireAt:      time.Now().Add(1 * time.Minute),
+				Channel:       "testing",
+				AutoRemove:    true,
+			},
+
+			assertErr:   require.NoError,
+			wantChannel: "testing",
 		},
 		{
 			name:     "error - GetByUUID",
@@ -483,6 +500,22 @@ func TestTokenService_Consume(t *testing.T) {
 			assertErr:       boom.ErrorIs,
 			wantUsesRemaing: 9,
 		},
+		{
+			name:     "error - repo.DeleteByUUID",
+			tokenArg: token,
+
+			repoGetByUUIDToken: &provisioning.Token{
+				ID:            1,
+				UUID:          token,
+				UsesRemaining: 1,
+				ExpireAt:      time.Now().Add(1 * time.Minute),
+				Channel:       "stable",
+				AutoRemove:    true,
+			},
+			repoDeleteByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
 	}
 
 	for _, tc := range tests {
@@ -496,6 +529,9 @@ func TestTokenService_Consume(t *testing.T) {
 					require.Equal(t, tc.tokenArg, token.UUID)
 					require.Equal(t, tc.wantUsesRemaing, token.UsesRemaining)
 					return tc.repoUpdateErr
+				},
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					return tc.repoDeleteByUUIDErr
 				},
 			}
 

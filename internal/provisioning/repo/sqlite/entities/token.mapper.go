@@ -15,14 +15,14 @@ import (
 )
 
 var tokenObjects = RegisterStmt(`
-SELECT tokens.id, tokens.uuid, tokens.uses_remaining, tokens.expire_at, tokens.description, channels.name AS channel
+SELECT tokens.id, tokens.uuid, tokens.uses_remaining, tokens.expire_at, tokens.description, channels.name AS channel, tokens.auto_remove
   FROM tokens
   JOIN channels ON tokens.channel_id = channels.id
   ORDER BY tokens.uuid
 `)
 
 var tokenObjectsByUUID = RegisterStmt(`
-SELECT tokens.id, tokens.uuid, tokens.uses_remaining, tokens.expire_at, tokens.description, channels.name AS channel
+SELECT tokens.id, tokens.uuid, tokens.uses_remaining, tokens.expire_at, tokens.description, channels.name AS channel, tokens.auto_remove
   FROM tokens
   JOIN channels ON tokens.channel_id = channels.id
   WHERE ( tokens.uuid = ? )
@@ -41,13 +41,13 @@ SELECT tokens.id FROM tokens
 `)
 
 var tokenCreate = RegisterStmt(`
-INSERT INTO tokens (uuid, uses_remaining, expire_at, description, channel_id)
-  VALUES (?, ?, ?, ?, (SELECT channels.id FROM channels WHERE channels.name = ?))
+INSERT INTO tokens (uuid, uses_remaining, expire_at, description, channel_id, auto_remove)
+  VALUES (?, ?, ?, ?, (SELECT channels.id FROM channels WHERE channels.name = ?), ?)
 `)
 
 var tokenUpdate = RegisterStmt(`
 UPDATE tokens
-  SET uuid = ?, uses_remaining = ?, expire_at = ?, description = ?, channel_id = (SELECT channels.id FROM channels WHERE channels.name = ?)
+  SET uuid = ?, uses_remaining = ?, expire_at = ?, description = ?, channel_id = (SELECT channels.id FROM channels WHERE channels.name = ?), auto_remove = ?
  WHERE id = ?
 `)
 
@@ -135,7 +135,7 @@ func GetToken(ctx context.Context, db dbtx, uuid uuid.UUID) (_ *provisioning.Tok
 // tokenColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the Token entity.
 func tokenColumns() string {
-	return "tokens.id, tokens.uuid, tokens.uses_remaining, tokens.expire_at, tokens.description, channels.name AS channel"
+	return "tokens.id, tokens.uuid, tokens.uses_remaining, tokens.expire_at, tokens.description, channels.name AS channel, tokens.auto_remove"
 }
 
 // getTokens can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -144,7 +144,7 @@ func getTokens(ctx context.Context, stmt *sql.Stmt, args ...any) ([]provisioning
 
 	dest := func(scan func(dest ...any) error) error {
 		t := provisioning.Token{}
-		err := scan(&t.ID, &t.UUID, &t.UsesRemaining, &t.ExpireAt, &t.Description, &t.Channel)
+		err := scan(&t.ID, &t.UUID, &t.UsesRemaining, &t.ExpireAt, &t.Description, &t.Channel, &t.AutoRemove)
 		if err != nil {
 			return err
 		}
@@ -168,7 +168,7 @@ func getTokensRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]prov
 
 	dest := func(scan func(dest ...any) error) error {
 		t := provisioning.Token{}
-		err := scan(&t.ID, &t.UUID, &t.UsesRemaining, &t.ExpireAt, &t.Description, &t.Channel)
+		err := scan(&t.ID, &t.UUID, &t.UsesRemaining, &t.ExpireAt, &t.Description, &t.Channel, &t.AutoRemove)
 		if err != nil {
 			return err
 		}
@@ -328,7 +328,7 @@ func CreateToken(ctx context.Context, db dbtx, object provisioning.Token) (_ int
 		_err = mapErr(_err, "Token")
 	}()
 
-	args := make([]any, 5)
+	args := make([]any, 6)
 
 	// Populate the statement arguments.
 	args[0] = object.UUID
@@ -336,6 +336,7 @@ func CreateToken(ctx context.Context, db dbtx, object provisioning.Token) (_ int
 	args[2] = object.ExpireAt
 	args[3] = object.Description
 	args[4] = object.Channel
+	args[5] = object.AutoRemove
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, tokenCreate)
@@ -378,7 +379,7 @@ func UpdateToken(ctx context.Context, db tx, uuid uuid.UUID, object provisioning
 		return fmt.Errorf("Failed to get \"tokenUpdate\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(object.UUID, object.UsesRemaining, object.ExpireAt, object.Description, object.Channel, id)
+	result, err := stmt.Exec(object.UUID, object.UsesRemaining, object.ExpireAt, object.Description, object.Channel, object.AutoRemove, id)
 	if err != nil {
 		return fmt.Errorf("Update \"tokens\" entry failed: %w", err)
 	}
