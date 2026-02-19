@@ -14,7 +14,6 @@ import (
 
 // ClusterArtifactRepoWithSlog implements provisioning.ClusterArtifactRepo that is instrumented with slog logger.
 type ClusterArtifactRepoWithSlog struct {
-	_log                  *slog.Logger
 	_base                 provisioning.ClusterArtifactRepo
 	_isInformativeErrFunc func(error) bool
 }
@@ -28,10 +27,9 @@ func ClusterArtifactRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func
 }
 
 // NewClusterArtifactRepoWithSlog instruments an implementation of the provisioning.ClusterArtifactRepo with simple logging.
-func NewClusterArtifactRepoWithSlog(base provisioning.ClusterArtifactRepo, log *slog.Logger, opts ...ClusterArtifactRepoWithSlogOption) ClusterArtifactRepoWithSlog {
+func NewClusterArtifactRepoWithSlog(base provisioning.ClusterArtifactRepo, opts ...ClusterArtifactRepoWithSlogOption) ClusterArtifactRepoWithSlog {
 	this := ClusterArtifactRepoWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -44,8 +42,8 @@ func NewClusterArtifactRepoWithSlog(base provisioning.ClusterArtifactRepo, log *
 
 // CreateClusterArtifactFromPath implements provisioning.ClusterArtifactRepo.
 func (_d ClusterArtifactRepoWithSlog) CreateClusterArtifactFromPath(ctx context.Context, artifact provisioning.ClusterArtifact, path string, ignoredFiles []string) (n int64, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("artifact", artifact),
@@ -55,15 +53,15 @@ func (_d ClusterArtifactRepoWithSlog) CreateClusterArtifactFromPath(ctx context.
 	}
 	log.DebugContext(ctx, "=> calling CreateClusterArtifactFromPath")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Int64("n", n),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -81,8 +79,8 @@ func (_d ClusterArtifactRepoWithSlog) CreateClusterArtifactFromPath(ctx context.
 
 // GetClusterArtifactAll implements provisioning.ClusterArtifactRepo.
 func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactAll(ctx context.Context, clusterName string) (clusterArtifacts provisioning.ClusterArtifacts, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -90,15 +88,15 @@ func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactAll(ctx context.Context,
 	}
 	log.DebugContext(ctx, "=> calling GetClusterArtifactAll")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("clusterArtifacts", clusterArtifacts),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -116,8 +114,8 @@ func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactAll(ctx context.Context,
 
 // GetClusterArtifactAllNames implements provisioning.ClusterArtifactRepo.
 func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactAllNames(ctx context.Context, clusterName string) (strings []string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -125,15 +123,15 @@ func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactAllNames(ctx context.Con
 	}
 	log.DebugContext(ctx, "=> calling GetClusterArtifactAllNames")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("strings", strings),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -151,8 +149,8 @@ func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactAllNames(ctx context.Con
 
 // GetClusterArtifactArchiveByName implements provisioning.ClusterArtifactRepo.
 func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType provisioning.ClusterArtifactArchiveType) (readCloser io.ReadCloser, size int, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -162,16 +160,16 @@ func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactArchiveByName(ctx contex
 	}
 	log.DebugContext(ctx, "=> calling GetClusterArtifactArchiveByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("readCloser", readCloser),
 				slog.Int("size", size),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -189,8 +187,8 @@ func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactArchiveByName(ctx contex
 
 // GetClusterArtifactByName implements provisioning.ClusterArtifactRepo.
 func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (clusterArtifact *provisioning.ClusterArtifact, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
@@ -199,15 +197,15 @@ func (_d ClusterArtifactRepoWithSlog) GetClusterArtifactByName(ctx context.Conte
 	}
 	log.DebugContext(ctx, "=> calling GetClusterArtifactByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("clusterArtifact", clusterArtifact),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

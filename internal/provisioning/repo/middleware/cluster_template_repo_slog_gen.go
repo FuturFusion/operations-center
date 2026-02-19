@@ -13,7 +13,6 @@ import (
 
 // ClusterTemplateRepoWithSlog implements provisioning.ClusterTemplateRepo that is instrumented with slog logger.
 type ClusterTemplateRepoWithSlog struct {
-	_log                  *slog.Logger
 	_base                 provisioning.ClusterTemplateRepo
 	_isInformativeErrFunc func(error) bool
 }
@@ -27,10 +26,9 @@ func ClusterTemplateRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func
 }
 
 // NewClusterTemplateRepoWithSlog instruments an implementation of the provisioning.ClusterTemplateRepo with simple logging.
-func NewClusterTemplateRepoWithSlog(base provisioning.ClusterTemplateRepo, log *slog.Logger, opts ...ClusterTemplateRepoWithSlogOption) ClusterTemplateRepoWithSlog {
+func NewClusterTemplateRepoWithSlog(base provisioning.ClusterTemplateRepo, opts ...ClusterTemplateRepoWithSlogOption) ClusterTemplateRepoWithSlog {
 	this := ClusterTemplateRepoWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -43,8 +41,8 @@ func NewClusterTemplateRepoWithSlog(base provisioning.ClusterTemplateRepo, log *
 
 // Create implements provisioning.ClusterTemplateRepo.
 func (_d ClusterTemplateRepoWithSlog) Create(ctx context.Context, clusterTemplate provisioning.ClusterTemplate) (n int64, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("clusterTemplate", clusterTemplate),
@@ -52,15 +50,15 @@ func (_d ClusterTemplateRepoWithSlog) Create(ctx context.Context, clusterTemplat
 	}
 	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Int64("n", n),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -78,8 +76,8 @@ func (_d ClusterTemplateRepoWithSlog) Create(ctx context.Context, clusterTemplat
 
 // DeleteByName implements provisioning.ClusterTemplateRepo.
 func (_d ClusterTemplateRepoWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -87,14 +85,14 @@ func (_d ClusterTemplateRepoWithSlog) DeleteByName(ctx context.Context, name str
 	}
 	log.DebugContext(ctx, "=> calling DeleteByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -112,23 +110,23 @@ func (_d ClusterTemplateRepoWithSlog) DeleteByName(ctx context.Context, name str
 
 // GetAll implements provisioning.ClusterTemplateRepo.
 func (_d ClusterTemplateRepoWithSlog) GetAll(ctx context.Context) (clusterTemplates provisioning.ClusterTemplates, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAll")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("clusterTemplates", clusterTemplates),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -146,23 +144,23 @@ func (_d ClusterTemplateRepoWithSlog) GetAll(ctx context.Context) (clusterTempla
 
 // GetAllNames implements provisioning.ClusterTemplateRepo.
 func (_d ClusterTemplateRepoWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAllNames")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("strings", strings),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -180,8 +178,8 @@ func (_d ClusterTemplateRepoWithSlog) GetAllNames(ctx context.Context) (strings 
 
 // GetByName implements provisioning.ClusterTemplateRepo.
 func (_d ClusterTemplateRepoWithSlog) GetByName(ctx context.Context, name string) (clusterTemplate *provisioning.ClusterTemplate, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -189,15 +187,15 @@ func (_d ClusterTemplateRepoWithSlog) GetByName(ctx context.Context, name string
 	}
 	log.DebugContext(ctx, "=> calling GetByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("clusterTemplate", clusterTemplate),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -215,8 +213,8 @@ func (_d ClusterTemplateRepoWithSlog) GetByName(ctx context.Context, name string
 
 // Rename implements provisioning.ClusterTemplateRepo.
 func (_d ClusterTemplateRepoWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("oldName", oldName),
@@ -225,14 +223,14 @@ func (_d ClusterTemplateRepoWithSlog) Rename(ctx context.Context, oldName string
 	}
 	log.DebugContext(ctx, "=> calling Rename")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -250,8 +248,8 @@ func (_d ClusterTemplateRepoWithSlog) Rename(ctx context.Context, oldName string
 
 // Update implements provisioning.ClusterTemplateRepo.
 func (_d ClusterTemplateRepoWithSlog) Update(ctx context.Context, clusterTemplate provisioning.ClusterTemplate) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("clusterTemplate", clusterTemplate),
@@ -259,14 +257,14 @@ func (_d ClusterTemplateRepoWithSlog) Update(ctx context.Context, clusterTemplat
 	}
 	log.DebugContext(ctx, "=> calling Update")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

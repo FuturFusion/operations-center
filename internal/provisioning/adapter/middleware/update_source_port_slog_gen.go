@@ -14,7 +14,6 @@ import (
 
 // UpdateSourcePortWithSlog implements provisioning.UpdateSourcePort that is instrumented with slog logger.
 type UpdateSourcePortWithSlog struct {
-	_log                  *slog.Logger
 	_base                 provisioning.UpdateSourcePort
 	_isInformativeErrFunc func(error) bool
 }
@@ -28,10 +27,9 @@ func UpdateSourcePortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(er
 }
 
 // NewUpdateSourcePortWithSlog instruments an implementation of the provisioning.UpdateSourcePort with simple logging.
-func NewUpdateSourcePortWithSlog(base provisioning.UpdateSourcePort, log *slog.Logger, opts ...UpdateSourcePortWithSlogOption) UpdateSourcePortWithSlog {
+func NewUpdateSourcePortWithSlog(base provisioning.UpdateSourcePort, opts ...UpdateSourcePortWithSlogOption) UpdateSourcePortWithSlog {
 	this := UpdateSourcePortWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -44,8 +42,8 @@ func NewUpdateSourcePortWithSlog(base provisioning.UpdateSourcePort, log *slog.L
 
 // GetLatest implements provisioning.UpdateSourcePort.
 func (_d UpdateSourcePortWithSlog) GetLatest(ctx context.Context, limit int) (updates provisioning.Updates, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("limit", limit),
@@ -53,15 +51,15 @@ func (_d UpdateSourcePortWithSlog) GetLatest(ctx context.Context, limit int) (up
 	}
 	log.DebugContext(ctx, "=> calling GetLatest")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("updates", updates),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -79,8 +77,8 @@ func (_d UpdateSourcePortWithSlog) GetLatest(ctx context.Context, limit int) (up
 
 // GetUpdateFileByFilenameUnverified implements provisioning.UpdateSourcePort.
 func (_d UpdateSourcePortWithSlog) GetUpdateFileByFilenameUnverified(ctx context.Context, update provisioning.Update, filename string) (readCloser io.ReadCloser, n int, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("update", update),
@@ -89,16 +87,16 @@ func (_d UpdateSourcePortWithSlog) GetUpdateFileByFilenameUnverified(ctx context
 	}
 	log.DebugContext(ctx, "=> calling GetUpdateFileByFilenameUnverified")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("readCloser", readCloser),
 				slog.Int("n", n),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

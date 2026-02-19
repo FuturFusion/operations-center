@@ -15,7 +15,6 @@ import (
 
 // UpdateFilesRepoWithSlog implements provisioning.UpdateFilesRepo that is instrumented with slog logger.
 type UpdateFilesRepoWithSlog struct {
-	_log                  *slog.Logger
 	_base                 provisioning.UpdateFilesRepo
 	_isInformativeErrFunc func(error) bool
 }
@@ -29,10 +28,9 @@ func UpdateFilesRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(err
 }
 
 // NewUpdateFilesRepoWithSlog instruments an implementation of the provisioning.UpdateFilesRepo with simple logging.
-func NewUpdateFilesRepoWithSlog(base provisioning.UpdateFilesRepo, log *slog.Logger, opts ...UpdateFilesRepoWithSlogOption) UpdateFilesRepoWithSlog {
+func NewUpdateFilesRepoWithSlog(base provisioning.UpdateFilesRepo, opts ...UpdateFilesRepoWithSlogOption) UpdateFilesRepoWithSlog {
 	this := UpdateFilesRepoWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -45,22 +43,22 @@ func NewUpdateFilesRepoWithSlog(base provisioning.UpdateFilesRepo, log *slog.Log
 
 // CleanupAll implements provisioning.UpdateFilesRepo.
 func (_d UpdateFilesRepoWithSlog) CleanupAll(ctx context.Context) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling CleanupAll")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -78,8 +76,8 @@ func (_d UpdateFilesRepoWithSlog) CleanupAll(ctx context.Context) (err error) {
 
 // CreateFromArchive implements provisioning.UpdateFilesRepo.
 func (_d UpdateFilesRepoWithSlog) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (update *provisioning.Update, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("tarReader", tarReader),
@@ -87,15 +85,15 @@ func (_d UpdateFilesRepoWithSlog) CreateFromArchive(ctx context.Context, tarRead
 	}
 	log.DebugContext(ctx, "=> calling CreateFromArchive")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("update", update),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -113,8 +111,8 @@ func (_d UpdateFilesRepoWithSlog) CreateFromArchive(ctx context.Context, tarRead
 
 // Delete implements provisioning.UpdateFilesRepo.
 func (_d UpdateFilesRepoWithSlog) Delete(ctx context.Context, update provisioning.Update) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("update", update),
@@ -122,14 +120,14 @@ func (_d UpdateFilesRepoWithSlog) Delete(ctx context.Context, update provisionin
 	}
 	log.DebugContext(ctx, "=> calling Delete")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -147,8 +145,8 @@ func (_d UpdateFilesRepoWithSlog) Delete(ctx context.Context, update provisionin
 
 // Get implements provisioning.UpdateFilesRepo.
 func (_d UpdateFilesRepoWithSlog) Get(ctx context.Context, update provisioning.Update, filename string) (readCloser io.ReadCloser, size int, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("update", update),
@@ -157,16 +155,16 @@ func (_d UpdateFilesRepoWithSlog) Get(ctx context.Context, update provisioning.U
 	}
 	log.DebugContext(ctx, "=> calling Get")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("readCloser", readCloser),
 				slog.Int("size", size),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -184,8 +182,8 @@ func (_d UpdateFilesRepoWithSlog) Get(ctx context.Context, update provisioning.U
 
 // Put implements provisioning.UpdateFilesRepo.
 func (_d UpdateFilesRepoWithSlog) Put(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (commitFunc provisioning.CommitFunc, cancelFunc provisioning.CancelFunc, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("update", update),
@@ -195,16 +193,16 @@ func (_d UpdateFilesRepoWithSlog) Put(ctx context.Context, update provisioning.U
 	}
 	log.DebugContext(ctx, "=> calling Put")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("commitFunc", commitFunc),
 				slog.Any("cancelFunc", cancelFunc),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -222,23 +220,23 @@ func (_d UpdateFilesRepoWithSlog) Put(ctx context.Context, update provisioning.U
 
 // UsageInformation implements provisioning.UpdateFilesRepo.
 func (_d UpdateFilesRepoWithSlog) UsageInformation(ctx context.Context) (usageInformation provisioning.UsageInformation, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling UsageInformation")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("usageInformation", usageInformation),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

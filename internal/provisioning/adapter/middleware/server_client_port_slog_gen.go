@@ -14,7 +14,6 @@ import (
 
 // ServerClientPortWithSlog implements provisioning.ServerClientPort that is instrumented with slog logger.
 type ServerClientPortWithSlog struct {
-	_log                  *slog.Logger
 	_base                 provisioning.ServerClientPort
 	_isInformativeErrFunc func(error) bool
 }
@@ -28,10 +27,9 @@ func ServerClientPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(er
 }
 
 // NewServerClientPortWithSlog instruments an implementation of the provisioning.ServerClientPort with simple logging.
-func NewServerClientPortWithSlog(base provisioning.ServerClientPort, log *slog.Logger, opts ...ServerClientPortWithSlogOption) ServerClientPortWithSlog {
+func NewServerClientPortWithSlog(base provisioning.ServerClientPort, opts ...ServerClientPortWithSlogOption) ServerClientPortWithSlog {
 	this := ServerClientPortWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -44,8 +42,8 @@ func NewServerClientPortWithSlog(base provisioning.ServerClientPort, log *slog.L
 
 // Evacuate implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) Evacuate(ctx context.Context, server provisioning.Server) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -53,14 +51,14 @@ func (_d ServerClientPortWithSlog) Evacuate(ctx context.Context, server provisio
 	}
 	log.DebugContext(ctx, "=> calling Evacuate")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -78,8 +76,8 @@ func (_d ServerClientPortWithSlog) Evacuate(ctx context.Context, server provisio
 
 // GetOSData implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (oSData api.OSData, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -87,15 +85,15 @@ func (_d ServerClientPortWithSlog) GetOSData(ctx context.Context, endpoint provi
 	}
 	log.DebugContext(ctx, "=> calling GetOSData")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("oSData", oSData),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -113,8 +111,8 @@ func (_d ServerClientPortWithSlog) GetOSData(ctx context.Context, endpoint provi
 
 // GetProviderConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetProviderConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemProvider, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -122,15 +120,15 @@ func (_d ServerClientPortWithSlog) GetProviderConfig(ctx context.Context, server
 	}
 	log.DebugContext(ctx, "=> calling GetProviderConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("v", v),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -148,8 +146,8 @@ func (_d ServerClientPortWithSlog) GetProviderConfig(ctx context.Context, server
 
 // GetResources implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetResources(ctx context.Context, endpoint provisioning.Endpoint) (hardwareData api.HardwareData, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -157,15 +155,15 @@ func (_d ServerClientPortWithSlog) GetResources(ctx context.Context, endpoint pr
 	}
 	log.DebugContext(ctx, "=> calling GetResources")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("hardwareData", hardwareData),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -183,8 +181,8 @@ func (_d ServerClientPortWithSlog) GetResources(ctx context.Context, endpoint pr
 
 // GetServerType implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetServerType(ctx context.Context, endpoint provisioning.Endpoint) (serverType api.ServerType, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -192,15 +190,15 @@ func (_d ServerClientPortWithSlog) GetServerType(ctx context.Context, endpoint p
 	}
 	log.DebugContext(ctx, "=> calling GetServerType")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("serverType", serverType),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -218,8 +216,8 @@ func (_d ServerClientPortWithSlog) GetServerType(ctx context.Context, endpoint p
 
 // GetUpdateConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetUpdateConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemUpdate, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -227,15 +225,15 @@ func (_d ServerClientPortWithSlog) GetUpdateConfig(ctx context.Context, server p
 	}
 	log.DebugContext(ctx, "=> calling GetUpdateConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("v", v),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -253,8 +251,8 @@ func (_d ServerClientPortWithSlog) GetUpdateConfig(ctx context.Context, server p
 
 // GetVersionData implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetVersionData(ctx context.Context, server provisioning.Server) (serverVersionData api.ServerVersionData, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -262,15 +260,15 @@ func (_d ServerClientPortWithSlog) GetVersionData(ctx context.Context, server pr
 	}
 	log.DebugContext(ctx, "=> calling GetVersionData")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("serverVersionData", serverVersionData),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -288,8 +286,8 @@ func (_d ServerClientPortWithSlog) GetVersionData(ctx context.Context, server pr
 
 // Ping implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
@@ -297,14 +295,14 @@ func (_d ServerClientPortWithSlog) Ping(ctx context.Context, endpoint provisioni
 	}
 	log.DebugContext(ctx, "=> calling Ping")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -322,8 +320,8 @@ func (_d ServerClientPortWithSlog) Ping(ctx context.Context, endpoint provisioni
 
 // Poweroff implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) Poweroff(ctx context.Context, server provisioning.Server) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -331,14 +329,14 @@ func (_d ServerClientPortWithSlog) Poweroff(ctx context.Context, server provisio
 	}
 	log.DebugContext(ctx, "=> calling Poweroff")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -356,8 +354,8 @@ func (_d ServerClientPortWithSlog) Poweroff(ctx context.Context, server provisio
 
 // Reboot implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) Reboot(ctx context.Context, server provisioning.Server) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -365,14 +363,14 @@ func (_d ServerClientPortWithSlog) Reboot(ctx context.Context, server provisioni
 	}
 	log.DebugContext(ctx, "=> calling Reboot")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -390,8 +388,8 @@ func (_d ServerClientPortWithSlog) Reboot(ctx context.Context, server provisioni
 
 // Restore implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) Restore(ctx context.Context, server provisioning.Server) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -399,14 +397,14 @@ func (_d ServerClientPortWithSlog) Restore(ctx context.Context, server provision
 	}
 	log.DebugContext(ctx, "=> calling Restore")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -424,8 +422,8 @@ func (_d ServerClientPortWithSlog) Restore(ctx context.Context, server provision
 
 // UpdateNetworkConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -433,14 +431,14 @@ func (_d ServerClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, serv
 	}
 	log.DebugContext(ctx, "=> calling UpdateNetworkConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -458,8 +456,8 @@ func (_d ServerClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, serv
 
 // UpdateOS implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) UpdateOS(ctx context.Context, server provisioning.Server) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -467,14 +465,14 @@ func (_d ServerClientPortWithSlog) UpdateOS(ctx context.Context, server provisio
 	}
 	log.DebugContext(ctx, "=> calling UpdateOS")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -492,8 +490,8 @@ func (_d ServerClientPortWithSlog) UpdateOS(ctx context.Context, server provisio
 
 // UpdateProviderConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) UpdateProviderConfig(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -502,14 +500,14 @@ func (_d ServerClientPortWithSlog) UpdateProviderConfig(ctx context.Context, ser
 	}
 	log.DebugContext(ctx, "=> calling UpdateProviderConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -527,8 +525,8 @@ func (_d ServerClientPortWithSlog) UpdateProviderConfig(ctx context.Context, ser
 
 // UpdateStorageConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) UpdateStorageConfig(ctx context.Context, server provisioning.Server) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -536,14 +534,14 @@ func (_d ServerClientPortWithSlog) UpdateStorageConfig(ctx context.Context, serv
 	}
 	log.DebugContext(ctx, "=> calling UpdateStorageConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -561,8 +559,8 @@ func (_d ServerClientPortWithSlog) UpdateStorageConfig(ctx context.Context, serv
 
 // UpdateUpdateConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) UpdateUpdateConfig(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemUpdate) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -571,14 +569,14 @@ func (_d ServerClientPortWithSlog) UpdateUpdateConfig(ctx context.Context, serve
 	}
 	log.DebugContext(ctx, "=> calling UpdateUpdateConfig")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

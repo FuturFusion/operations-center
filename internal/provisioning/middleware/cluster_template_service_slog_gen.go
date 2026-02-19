@@ -14,7 +14,6 @@ import (
 
 // ClusterTemplateServiceWithSlog implements provisioning.ClusterTemplateService that is instrumented with slog logger.
 type ClusterTemplateServiceWithSlog struct {
-	_log                  *slog.Logger
 	_base                 provisioning.ClusterTemplateService
 	_isInformativeErrFunc func(error) bool
 }
@@ -28,10 +27,9 @@ func ClusterTemplateServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc f
 }
 
 // NewClusterTemplateServiceWithSlog instruments an implementation of the provisioning.ClusterTemplateService with simple logging.
-func NewClusterTemplateServiceWithSlog(base provisioning.ClusterTemplateService, log *slog.Logger, opts ...ClusterTemplateServiceWithSlogOption) ClusterTemplateServiceWithSlog {
+func NewClusterTemplateServiceWithSlog(base provisioning.ClusterTemplateService, opts ...ClusterTemplateServiceWithSlogOption) ClusterTemplateServiceWithSlog {
 	this := ClusterTemplateServiceWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -44,8 +42,8 @@ func NewClusterTemplateServiceWithSlog(base provisioning.ClusterTemplateService,
 
 // Apply implements provisioning.ClusterTemplateService.
 func (_d ClusterTemplateServiceWithSlog) Apply(ctx context.Context, name string, templateVariables api.ConfigMap) (servicesConfig map[string]any, applicationSeedConfig map[string]any, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -54,16 +52,16 @@ func (_d ClusterTemplateServiceWithSlog) Apply(ctx context.Context, name string,
 	}
 	log.DebugContext(ctx, "=> calling Apply")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("servicesConfig", servicesConfig),
 				slog.Any("applicationSeedConfig", applicationSeedConfig),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -81,8 +79,8 @@ func (_d ClusterTemplateServiceWithSlog) Apply(ctx context.Context, name string,
 
 // Create implements provisioning.ClusterTemplateService.
 func (_d ClusterTemplateServiceWithSlog) Create(ctx context.Context, clusterTemplate provisioning.ClusterTemplate) (clusterTemplate1 provisioning.ClusterTemplate, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("clusterTemplate", clusterTemplate),
@@ -90,15 +88,15 @@ func (_d ClusterTemplateServiceWithSlog) Create(ctx context.Context, clusterTemp
 	}
 	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("clusterTemplate1", clusterTemplate1),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -116,8 +114,8 @@ func (_d ClusterTemplateServiceWithSlog) Create(ctx context.Context, clusterTemp
 
 // DeleteByName implements provisioning.ClusterTemplateService.
 func (_d ClusterTemplateServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -125,14 +123,14 @@ func (_d ClusterTemplateServiceWithSlog) DeleteByName(ctx context.Context, name 
 	}
 	log.DebugContext(ctx, "=> calling DeleteByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -150,23 +148,23 @@ func (_d ClusterTemplateServiceWithSlog) DeleteByName(ctx context.Context, name 
 
 // GetAll implements provisioning.ClusterTemplateService.
 func (_d ClusterTemplateServiceWithSlog) GetAll(ctx context.Context) (clusterTemplates provisioning.ClusterTemplates, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAll")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("clusterTemplates", clusterTemplates),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -184,23 +182,23 @@ func (_d ClusterTemplateServiceWithSlog) GetAll(ctx context.Context) (clusterTem
 
 // GetAllNames implements provisioning.ClusterTemplateService.
 func (_d ClusterTemplateServiceWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAllNames")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("strings", strings),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -218,8 +216,8 @@ func (_d ClusterTemplateServiceWithSlog) GetAllNames(ctx context.Context) (strin
 
 // GetByName implements provisioning.ClusterTemplateService.
 func (_d ClusterTemplateServiceWithSlog) GetByName(ctx context.Context, name string) (clusterTemplate *provisioning.ClusterTemplate, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -227,15 +225,15 @@ func (_d ClusterTemplateServiceWithSlog) GetByName(ctx context.Context, name str
 	}
 	log.DebugContext(ctx, "=> calling GetByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("clusterTemplate", clusterTemplate),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -253,8 +251,8 @@ func (_d ClusterTemplateServiceWithSlog) GetByName(ctx context.Context, name str
 
 // Rename implements provisioning.ClusterTemplateService.
 func (_d ClusterTemplateServiceWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("oldName", oldName),
@@ -263,14 +261,14 @@ func (_d ClusterTemplateServiceWithSlog) Rename(ctx context.Context, oldName str
 	}
 	log.DebugContext(ctx, "=> calling Rename")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -288,8 +286,8 @@ func (_d ClusterTemplateServiceWithSlog) Rename(ctx context.Context, oldName str
 
 // Update implements provisioning.ClusterTemplateService.
 func (_d ClusterTemplateServiceWithSlog) Update(ctx context.Context, clusterTemplate provisioning.ClusterTemplate) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("clusterTemplate", clusterTemplate),
@@ -297,14 +295,14 @@ func (_d ClusterTemplateServiceWithSlog) Update(ctx context.Context, clusterTemp
 	}
 	log.DebugContext(ctx, "=> calling Update")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

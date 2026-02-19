@@ -13,7 +13,6 @@ import (
 
 // ChannelServiceWithSlog implements provisioning.ChannelService that is instrumented with slog logger.
 type ChannelServiceWithSlog struct {
-	_log                  *slog.Logger
 	_base                 provisioning.ChannelService
 	_isInformativeErrFunc func(error) bool
 }
@@ -27,10 +26,9 @@ func ChannelServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(erro
 }
 
 // NewChannelServiceWithSlog instruments an implementation of the provisioning.ChannelService with simple logging.
-func NewChannelServiceWithSlog(base provisioning.ChannelService, log *slog.Logger, opts ...ChannelServiceWithSlogOption) ChannelServiceWithSlog {
+func NewChannelServiceWithSlog(base provisioning.ChannelService, opts ...ChannelServiceWithSlogOption) ChannelServiceWithSlog {
 	this := ChannelServiceWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -43,8 +41,8 @@ func NewChannelServiceWithSlog(base provisioning.ChannelService, log *slog.Logge
 
 // Create implements provisioning.ChannelService.
 func (_d ChannelServiceWithSlog) Create(ctx context.Context, newChannel provisioning.Channel) (channel provisioning.Channel, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("newChannel", newChannel),
@@ -52,15 +50,15 @@ func (_d ChannelServiceWithSlog) Create(ctx context.Context, newChannel provisio
 	}
 	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("channel", channel),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -78,8 +76,8 @@ func (_d ChannelServiceWithSlog) Create(ctx context.Context, newChannel provisio
 
 // DeleteByName implements provisioning.ChannelService.
 func (_d ChannelServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -87,14 +85,14 @@ func (_d ChannelServiceWithSlog) DeleteByName(ctx context.Context, name string) 
 	}
 	log.DebugContext(ctx, "=> calling DeleteByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -112,23 +110,23 @@ func (_d ChannelServiceWithSlog) DeleteByName(ctx context.Context, name string) 
 
 // GetAll implements provisioning.ChannelService.
 func (_d ChannelServiceWithSlog) GetAll(ctx context.Context) (channels provisioning.Channels, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAll")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("channels", channels),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -146,23 +144,23 @@ func (_d ChannelServiceWithSlog) GetAll(ctx context.Context) (channels provision
 
 // GetAllNames implements provisioning.ChannelService.
 func (_d ChannelServiceWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAllNames")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("strings", strings),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -180,8 +178,8 @@ func (_d ChannelServiceWithSlog) GetAllNames(ctx context.Context) (strings []str
 
 // GetByName implements provisioning.ChannelService.
 func (_d ChannelServiceWithSlog) GetByName(ctx context.Context, name string) (channel *provisioning.Channel, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -189,15 +187,15 @@ func (_d ChannelServiceWithSlog) GetByName(ctx context.Context, name string) (ch
 	}
 	log.DebugContext(ctx, "=> calling GetByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("channel", channel),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -216,15 +214,15 @@ func (_d ChannelServiceWithSlog) GetByName(ctx context.Context, name string) (ch
 // SetServerService implements provisioning.ChannelService.
 func (_d ChannelServiceWithSlog) SetServerService(serverSvc provisioning.ServerService) {
 	ctx := context.Background()
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("serverSvc", serverSvc),
 		)
 	}
 	log.DebugContext(ctx, "=> calling SetServerService")
 	defer func() {
-		log := _d._log.With()
+		log := slog.With()
 		log.DebugContext(ctx, "<= method SetServerService finished")
 	}()
 	_d._base.SetServerService(serverSvc)
@@ -232,8 +230,8 @@ func (_d ChannelServiceWithSlog) SetServerService(serverSvc provisioning.ServerS
 
 // Update implements provisioning.ChannelService.
 func (_d ChannelServiceWithSlog) Update(ctx context.Context, newChannel provisioning.Channel) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("newChannel", newChannel),
@@ -241,14 +239,14 @@ func (_d ChannelServiceWithSlog) Update(ctx context.Context, newChannel provisio
 	}
 	log.DebugContext(ctx, "=> calling Update")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {

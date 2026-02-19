@@ -13,7 +13,6 @@ import (
 
 // ServerRepoWithSlog implements provisioning.ServerRepo that is instrumented with slog logger.
 type ServerRepoWithSlog struct {
-	_log                  *slog.Logger
 	_base                 provisioning.ServerRepo
 	_isInformativeErrFunc func(error) bool
 }
@@ -27,10 +26,9 @@ func ServerRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) b
 }
 
 // NewServerRepoWithSlog instruments an implementation of the provisioning.ServerRepo with simple logging.
-func NewServerRepoWithSlog(base provisioning.ServerRepo, log *slog.Logger, opts ...ServerRepoWithSlogOption) ServerRepoWithSlog {
+func NewServerRepoWithSlog(base provisioning.ServerRepo, opts ...ServerRepoWithSlogOption) ServerRepoWithSlog {
 	this := ServerRepoWithSlog{
 		_base:                 base,
-		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
 
@@ -43,8 +41,8 @@ func NewServerRepoWithSlog(base provisioning.ServerRepo, log *slog.Logger, opts 
 
 // Create implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) Create(ctx context.Context, server provisioning.Server) (n int64, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -52,15 +50,15 @@ func (_d ServerRepoWithSlog) Create(ctx context.Context, server provisioning.Ser
 	}
 	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Int64("n", n),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -78,8 +76,8 @@ func (_d ServerRepoWithSlog) Create(ctx context.Context, server provisioning.Ser
 
 // DeleteByName implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -87,14 +85,14 @@ func (_d ServerRepoWithSlog) DeleteByName(ctx context.Context, name string) (err
 	}
 	log.DebugContext(ctx, "=> calling DeleteByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -112,23 +110,23 @@ func (_d ServerRepoWithSlog) DeleteByName(ctx context.Context, name string) (err
 
 // GetAll implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) GetAll(ctx context.Context) (servers provisioning.Servers, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAll")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("servers", servers),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -146,23 +144,23 @@ func (_d ServerRepoWithSlog) GetAll(ctx context.Context) (servers provisioning.S
 
 // GetAllNames implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetAllNames")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("strings", strings),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -180,8 +178,8 @@ func (_d ServerRepoWithSlog) GetAllNames(ctx context.Context) (strings []string,
 
 // GetAllNamesWithFilter implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) GetAllNamesWithFilter(ctx context.Context, filter provisioning.ServerFilter) (strings []string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -189,15 +187,15 @@ func (_d ServerRepoWithSlog) GetAllNamesWithFilter(ctx context.Context, filter p
 	}
 	log.DebugContext(ctx, "=> calling GetAllNamesWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("strings", strings),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -215,8 +213,8 @@ func (_d ServerRepoWithSlog) GetAllNamesWithFilter(ctx context.Context, filter p
 
 // GetAllWithFilter implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter provisioning.ServerFilter) (servers provisioning.Servers, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
@@ -224,15 +222,15 @@ func (_d ServerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter provis
 	}
 	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("servers", servers),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -250,8 +248,8 @@ func (_d ServerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter provis
 
 // GetByCertificate implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) GetByCertificate(ctx context.Context, certificatePEM string) (server *provisioning.Server, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("certificatePEM", certificatePEM),
@@ -259,15 +257,15 @@ func (_d ServerRepoWithSlog) GetByCertificate(ctx context.Context, certificatePE
 	}
 	log.DebugContext(ctx, "=> calling GetByCertificate")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("server", server),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -285,8 +283,8 @@ func (_d ServerRepoWithSlog) GetByCertificate(ctx context.Context, certificatePE
 
 // GetByName implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) GetByName(ctx context.Context, name string) (server *provisioning.Server, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
@@ -294,15 +292,15 @@ func (_d ServerRepoWithSlog) GetByName(ctx context.Context, name string) (server
 	}
 	log.DebugContext(ctx, "=> calling GetByName")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("server", server),
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -320,8 +318,8 @@ func (_d ServerRepoWithSlog) GetByName(ctx context.Context, name string) (server
 
 // Rename implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("oldName", oldName),
@@ -330,14 +328,14 @@ func (_d ServerRepoWithSlog) Rename(ctx context.Context, oldName string, newName
 	}
 	log.DebugContext(ctx, "=> calling Rename")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
@@ -355,8 +353,8 @@ func (_d ServerRepoWithSlog) Rename(ctx context.Context, oldName string, newName
 
 // Update implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) Update(ctx context.Context, server provisioning.Server) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
@@ -364,14 +362,14 @@ func (_d ServerRepoWithSlog) Update(ctx context.Context, server provisioning.Ser
 	}
 	log.DebugContext(ctx, "=> calling Update")
 	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
 				slog.Any("err", err),
 			)
 		} else {
 			if err != nil {
-				log = _d._log.With("err", err)
+				log = slog.With("err", err)
 			}
 		}
 		if err != nil {
