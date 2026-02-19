@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/FuturFusion/operations-center/internal/task"
+	"github.com/FuturFusion/operations-center/internal/util/task"
 )
 
 func TestGroup_Add(t *testing.T) {
