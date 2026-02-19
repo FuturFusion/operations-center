@@ -84,6 +84,17 @@ export const resyncServer = (name: string): Promise<APIResponse<null>> => {
   });
 };
 
+export const evacuateServer = (name: string): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/servers/${name}/system/:evacuate`, {
+      method: "POST",
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
 export const poweroffServer = (name: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/system/:poweroff`, {
@@ -99,6 +110,32 @@ export const rebootServer = (name: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/system/:reboot`, {
       method: "POST",
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
+export const restoreServer = (name: string): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/servers/${name}/system/:restore`, {
+      method: "POST",
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
+export const updateSystemServer = (
+  name: string,
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/servers/${name}/system/:update`, {
+      method: "POST",
+      // TODO: Hardcoded because the server currently supports only OS updates.
+      body: JSON.stringify({ os: { trigger_update: true } }),
     })
       .then((response) => response.json())
       .then((data) => resolve(data))

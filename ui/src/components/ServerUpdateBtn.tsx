@@ -1,6 +1,6 @@
 import { FC, useState } from "react";
-import { MdOutlineReplay } from "react-icons/md";
-import { rebootServer } from "api/server";
+import { MdSystemUpdateAlt } from "react-icons/md";
+import { updateSystemServer } from "api/server";
 import LoadingButton from "components/LoadingButton";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
@@ -11,39 +11,39 @@ interface Props {
   recommended?: boolean;
 }
 
-const ServerRebootBtn: FC<Props> = ({ server, recommended }) => {
+const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
   const [showModal, setShowModal] = useState(false);
-  const [rebootInProgress, setRebootInProgress] = useState(false);
+  const [opInProgress, setOpInProgress] = useState(false);
   const { notify } = useNotification();
   const actionStyle = {
     cursor: "pointer",
     color: recommended ? "red" : "grey",
   };
 
-  const onRebootServer = () => {
-    setRebootInProgress(true);
-    rebootServer(server.name)
+  const onUpdateServer = () => {
+    setOpInProgress(true);
+    updateSystemServer(server.name)
       .then((response) => {
-        setRebootInProgress(false);
+        setOpInProgress(false);
         setShowModal(false);
         if (response.error_code == 0) {
-          notify.success(`Server resync triggered`);
+          notify.success(`Server update triggered`);
           return;
         }
         notify.error(response.error);
       })
       .catch((e) => {
-        setRebootInProgress(false);
+        setOpInProgress(false);
         setShowModal(false);
-        notify.error(`Error during server sync: ${e}`);
+        notify.error(`Error during server update: ${e}`);
       });
   };
 
   return (
     <>
-      <MdOutlineReplay
+      <MdSystemUpdateAlt
         size={25}
-        title="Reboot server"
+        title="Update server"
         style={actionStyle}
         onClick={() => {
           setShowModal(true);
@@ -53,23 +53,23 @@ const ServerRebootBtn: FC<Props> = ({ server, recommended }) => {
         show={showModal}
         scrollable
         handleClose={() => setShowModal(false)}
-        title="Reboot server"
+        title="Update server"
         footer={
           <>
             <LoadingButton
-              isLoading={rebootInProgress}
+              isLoading={opInProgress}
               variant="danger"
-              onClick={onRebootServer}
+              onClick={onUpdateServer}
             >
-              Reboot
+              Update
             </LoadingButton>
           </>
         }
       >
-        <p>Are you sure you want to reboot the server "{server.name}"?</p>
+        <p>Are you sure you want to update the server "{server.name}"?</p>
       </ModalWindow>
     </>
   );
 };
 
-export default ServerRebootBtn;
+export default ServerUpdateBtn;
