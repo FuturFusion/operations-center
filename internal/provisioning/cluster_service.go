@@ -933,7 +933,7 @@ func (s clusterService) startLifecycleEventHandler(ctx context.Context, clusterN
 			for {
 				select {
 				case event := <-events:
-					slog.InfoContext(ctx, "lifecycle event", slog.String("cluster", clusterName), slog.Any("action", event.Operation), slog.Any("resource_type", event.ResourceType), slog.String("source", event.Source.String()))
+					slog.InfoContext(ctx, "lifecycle event", slog.String("event", event.LifecycleEventAction), slog.String("cluster", clusterName), slog.Any("action", event.Operation), slog.Any("resource_type", event.ResourceType), slog.String("source", event.Source.String()))
 
 					inventorySyncer, ok := s.inventorySyncers[event.ResourceType]
 					if !ok {
