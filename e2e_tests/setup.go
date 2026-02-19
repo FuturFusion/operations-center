@@ -20,14 +20,14 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func setupOperationsCenter(t *testing.T, tmpDir string) {
+func setupOperationsCenter(t *testing.T, useSnapshots bool, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
 	names := []string{"OperationsCenter"}
-	if hasSnapshot(t, "setupOperationsCenter", names) {
+	if useSnapshots && hasSnapshot(t, "setupOperationsCenter", names) {
 		if !hasLastSnapshot(t, "setupOperationsCenter", names) {
 			return
 		}
@@ -56,17 +56,19 @@ func setupOperationsCenter(t *testing.T, tmpDir string) {
 
 	mustWaitUpdatesReady(t)
 
-	createSnapshot(t, "setupOperationsCenter", names)
+	if useSnapshots {
+		createSnapshot(t, "setupOperationsCenter", names)
+	}
 }
 
-func setupIncusOSWithToken(t *testing.T, tmpDir string) {
+func setupIncusOSWithToken(t *testing.T, useSnapshots bool, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
 	names := []string{"OperationsCenter", "IncusOS01", "IncusOS02", "IncusOS03"}
-	if hasSnapshot(t, "setup", names) {
+	if useSnapshots && hasSnapshot(t, "setup", names) {
 		// Restore OperationsCenter first for it to be running when the Incus instances are restored.
 		restoreSnapshot(t, "setup", names[:1])
 		replaceOperationsCenterExecutable(t)
@@ -86,10 +88,12 @@ func setupIncusOSWithToken(t *testing.T, tmpDir string) {
 
 	printServerList(t)
 
-	createSnapshot(t, "setup", names)
+	if useSnapshots {
+		createSnapshot(t, "setup", names)
+	}
 }
 
-func cleanupIncusOS(t *testing.T) func() {
+func cleanupIncusOS(t *testing.T, useSnapshots bool) func() {
 	t.Helper()
 
 	return func() {
@@ -102,20 +106,20 @@ func cleanupIncusOS(t *testing.T) func() {
 			mustRunWithContext(ctx, t, `incus remove --force %s`, name)
 		}
 
-		mustRunWithContext(ctx, t, `incus snapshot remove OperationsCenter setup`)
+		if useSnapshots {
+			mustRunWithContext(ctx, t, `incus snapshot remove OperationsCenter setup`)
+		}
 	}
 }
 
-func setupIncusOSWithTokenSeed(t *testing.T, tmpDir string) {
+func setupIncusOSWithTokenSeed(t *testing.T, useSnapshots bool, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
-	setupOperationsCenter(t, tmpDir)
-
 	names := []string{"OperationsCenter", "IncusOS01", "IncusOS02", "IncusOS03"}
-	if hasSnapshot(t, "setup", names) {
+	if useSnapshots && hasSnapshot(t, "setup", names) {
 		// Restore OperationsCenter first for it to be running when the Incus instances are restored.
 		restoreSnapshot(t, "setup", names[:1])
 		replaceOperationsCenterExecutable(t)
@@ -135,7 +139,9 @@ func setupIncusOSWithTokenSeed(t *testing.T, tmpDir string) {
 
 	printServerList(t)
 
-	createSnapshot(t, "setup", names)
+	if useSnapshots {
+		createSnapshot(t, "setup", names)
+	}
 }
 
 func hasSnapshot(t *testing.T, snapshot string, names []string) bool {
