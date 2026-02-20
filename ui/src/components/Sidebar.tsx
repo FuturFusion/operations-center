@@ -10,7 +10,6 @@ import {
   MdOutlineInventory2,
   MdOutlineSettings,
   MdOutlineSystemUpdateAlt,
-  MdOutlineToken,
 } from "react-icons/md";
 import {
   RiArticleLine,
@@ -132,12 +131,7 @@ const Sidebar = () => {
     },
     servers: {
       id: "servers",
-      to: "/ui/provisioning/servers",
-      menu: ["", ""],
-    },
-    tokens: {
-      id: "tokens",
-      to: "/ui/provisioning/tokens",
+      to: "/ui/provisioning/servers-view",
       menu: ["", ""],
     },
     updates: {
@@ -320,14 +314,6 @@ const Sidebar = () => {
                   isActive={isItemActive("servers")}
                 >
                   <GoServer /> Servers
-                </NavItemLink>
-              </Nav.Item>
-              <Nav.Item>
-                <NavItemLink
-                  item={menuItems["tokens"]}
-                  isActive={isItemActive("tokens")}
-                >
-                  <MdOutlineToken /> Tokens
                 </NavItemLink>
               </Nav.Item>
               <Nav.Item>

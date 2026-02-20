@@ -27,7 +27,6 @@ import ClusterTemplateCreate from "pages/ClusterTemplateCreate";
 import ClusterTemplateDetail from "pages/ClusterTemplateDetail";
 import Server from "pages/Server";
 import ServerDetail from "pages/ServerDetail";
-import Token from "pages/Token";
 import TokenCreate from "pages/TokenCreate";
 import TokenDetail from "pages/TokenDetail";
 import TokenSeedCreate from "pages/TokenSeedCreate";
@@ -142,7 +141,11 @@ function App() {
               path="/ui/provisioning/cluster-templates/:name/:activeTab"
               element={<ClusterTemplateDetail />}
             />
-            <Route path="/ui/provisioning/servers" element={<Server />} />
+            <Route path="/ui/provisioning/servers-view" element={<Server />} />
+            <Route
+              path="/ui/provisioning/servers-view/:activeTab"
+              element={<Server />}
+            />
             <Route
               path="/ui/provisioning/servers/:name"
               element={<ServerDetail />}
@@ -153,7 +156,6 @@ function App() {
             />
             <Route path="/ui/settings" element={<Settings />} />
             <Route path="/ui/settings/:activeTab" element={<Settings />} />
-            <Route path="/ui/provisioning/tokens" element={<Token />} />
             <Route
               path="/ui/provisioning/tokens/create"
               element={<TokenCreate />}
