@@ -42,7 +42,7 @@ const ClusterTemplateDetail = () => {
         if (response.error_code == 0) {
           notify.success(`Cluster template ${name} deleted`);
           queryClient.invalidateQueries({ queryKey: ["cluster-templates"] });
-          navigate("/ui/provisioning/cluster-templates");
+          navigate("/ui/provisioning/clusters-view/templates");
           return;
         }
         notify.error(response.error);

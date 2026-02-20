@@ -1,5 +1,6 @@
 import { FC, useEffect, useState } from "react";
 import { MdOutlineSync } from "react-icons/md";
+import { useQueryClient } from "@tanstack/react-query";
 import { resyncServer } from "api/server";
 import ServerEvacuateBtn from "components/ServerEvacuateBtn";
 import ServerPoweroffBtn from "components/ServerPoweroffBtn";
@@ -16,6 +17,7 @@ interface Props {
 
 const ServerActions: FC<Props> = ({ server }) => {
   const { notify } = useNotification();
+  const queryClient = useQueryClient();
   const [recommendedAction, setRecommendedAction] = useState("");
 
   const actionStyle = {
@@ -53,6 +55,7 @@ const ServerActions: FC<Props> = ({ server }) => {
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`Server resync triggered`);
+          queryClient.invalidateQueries({ queryKey: ["servers"] });
           return;
         }
         notify.error(response.error);

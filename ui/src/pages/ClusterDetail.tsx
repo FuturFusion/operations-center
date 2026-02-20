@@ -39,7 +39,7 @@ const ClusterDetail = () => {
         if (response.error_code == 0) {
           notify.success(`Cluster ${name} deleted`);
           queryClient.invalidateQueries({ queryKey: ["clusters"] });
-          navigate("/ui/provisioning/clusters");
+          navigate("/ui/provisioning/clusters-view/clusters");
           return;
         }
         notify.error(response.error);

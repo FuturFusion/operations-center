@@ -15,7 +15,7 @@ const ClusterCreate = () => {
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`Cluster ${values.name} created`);
-          navigate(`/ui/provisioning/clusters`);
+          navigate(`/ui/provisioning/clusters-view/clusters`);
           return;
         }
         notify.error(response.error);

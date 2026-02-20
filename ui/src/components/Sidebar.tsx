@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Nav, Navbar, Collapse } from "react-bootstrap";
 import { useLocation } from "react-router";
 import { AiOutlineCluster } from "react-icons/ai";
-import { GoProjectTemplate, GoServer } from "react-icons/go";
+import { GoServer } from "react-icons/go";
 import { IoChevronDownOutline, IoChevronForward } from "react-icons/io5";
 import {
   MdLogin,
@@ -11,7 +11,6 @@ import {
   MdOutlineSettings,
   MdOutlineSystemUpdateAlt,
   MdOutlineToken,
-  MdViewList,
 } from "react-icons/md";
 import {
   RiArticleLine,
@@ -128,12 +127,7 @@ const Sidebar = () => {
     },
     clusters: {
       id: "clusters",
-      to: "/ui/provisioning/clusters",
-      menu: ["", ""],
-    },
-    cluster_templates: {
-      id: "cluster_templates",
-      to: "/ui/provisioning/cluster-templates",
+      to: "/ui/provisioning/clusters-view",
       menu: ["", ""],
     },
     servers: {
@@ -148,12 +142,7 @@ const Sidebar = () => {
     },
     updates: {
       id: "updates",
-      to: "/ui/provisioning/updates",
-      menu: ["", ""],
-    },
-    channels: {
-      id: "channels",
-      to: "/ui/provisioning/channels",
+      to: "/ui/provisioning/updates-view",
       menu: ["", ""],
     },
     settings: {
@@ -327,14 +316,6 @@ const Sidebar = () => {
               </Nav.Item>
               <Nav.Item>
                 <NavItemLink
-                  item={menuItems["cluster_templates"]}
-                  isActive={isItemActive("cluster_templates")}
-                >
-                  <GoProjectTemplate /> Cluster templates
-                </NavItemLink>
-              </Nav.Item>
-              <Nav.Item>
-                <NavItemLink
                   item={menuItems["servers"]}
                   isActive={isItemActive("servers")}
                 >
@@ -355,14 +336,6 @@ const Sidebar = () => {
                   isActive={isItemActive("updates")}
                 >
                   <MdOutlineSystemUpdateAlt /> Updates
-                </NavItemLink>
-              </Nav.Item>
-              <Nav.Item>
-                <NavItemLink
-                  item={menuItems["channels"]}
-                  isActive={isItemActive("channels")}
-                >
-                  <MdViewList /> Channels
                 </NavItemLink>
               </Nav.Item>
             </>

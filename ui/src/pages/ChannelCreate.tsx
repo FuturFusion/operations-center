@@ -13,7 +13,7 @@ const ChannelCreate = () => {
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`Channel created`);
-          navigate("/ui/provisioning/channels");
+          navigate("/ui/provisioning/updates-view/channels");
           return;
         }
         notify.error(response.error);

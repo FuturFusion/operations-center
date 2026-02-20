@@ -52,7 +52,7 @@ const ChannelDetail = () => {
         if (response.error_code == 0) {
           notify.success(`Channel ${name} deleted`);
           queryClient.invalidateQueries({ queryKey: ["channels"] });
-          navigate("/ui/provisioning/channels");
+          navigate("/ui/provisioning/updates-view/channels");
           return;
         }
         notify.error(response.error);

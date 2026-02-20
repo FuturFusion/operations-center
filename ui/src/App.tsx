@@ -23,7 +23,6 @@ import Cluster from "pages/Cluster";
 import ClusterArtifactFiles from "pages/ClusterArtifactFiles";
 import ClusterCreate from "pages/ClusterCreate";
 import ClusterDetail from "pages/ClusterDetail";
-import ClusterTemplate from "pages/ClusterTemplate";
 import ClusterTemplateCreate from "pages/ClusterTemplateCreate";
 import ClusterTemplateDetail from "pages/ClusterTemplateDetail";
 import Server from "pages/Server";
@@ -35,7 +34,6 @@ import TokenSeedCreate from "pages/TokenSeedCreate";
 import TokenSeedDetail from "pages/TokenSeedDetail";
 import Update from "pages/Update";
 import UpdateDetail from "pages/UpdateDetail";
-import Channel from "pages/Channel";
 import ChannelCreate from "pages/ChannelCreate";
 import ChannelDetail from "pages/ChannelDetail";
 
@@ -104,7 +102,14 @@ function App() {
             />
             <Route path="/ui/inventory/profiles" element={<Profile />} />
             <Route path="/ui/inventory/projects" element={<Project />} />
-            <Route path="/ui/provisioning/clusters" element={<Cluster />} />
+            <Route
+              path="/ui/provisioning/clusters-view"
+              element={<Cluster />}
+            />
+            <Route
+              path="/ui/provisioning/clusters-view/:activeTab"
+              element={<Cluster />}
+            />
             <Route
               path="/ui/provisioning/clusters/:clusterName/artifacts/:artifactName/files"
               element={<ClusterArtifactFiles />}
@@ -124,10 +129,6 @@ function App() {
             <Route
               path="/ui/provisioning/clusters/:name/:activeTab"
               element={<ClusterDetail />}
-            />
-            <Route
-              path="/ui/provisioning/cluster-templates"
-              element={<ClusterTemplate />}
             />
             <Route
               path="/ui/provisioning/cluster-templates/create"
@@ -177,7 +178,11 @@ function App() {
               path="/ui/provisioning/tokens/:uuid/seeds/:name/:activeTab"
               element={<TokenSeedDetail />}
             />
-            <Route path="/ui/provisioning/updates" element={<Update />} />
+            <Route path="/ui/provisioning/updates-view" element={<Update />} />
+            <Route
+              path="/ui/provisioning/updates-view/:activeTab"
+              element={<Update />}
+            />
             <Route
               path="/ui/provisioning/updates/:uuid"
               element={<UpdateDetail />}
@@ -186,7 +191,6 @@ function App() {
               path="/ui/provisioning/updates/:uuid/:activeTab"
               element={<UpdateDetail />}
             />
-            <Route path="/ui/provisioning/channels" element={<Channel />} />
             <Route
               path="/ui/provisioning/channels/create"
               element={<ChannelCreate />}

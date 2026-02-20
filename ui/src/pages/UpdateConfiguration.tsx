@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router";
 import { fetchUpdate, updateUpdate } from "api/update";
 import UpdateForm from "components/UpdateForm";
@@ -9,12 +9,14 @@ const UpdateConfiguration = () => {
   const { uuid } = useParams() as { uuid: string };
   const { notify } = useNotification();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const onSubmit = (values: UpdateFormValues) => {
     updateUpdate(uuid, JSON.stringify(values, null, 2))
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`Update ${uuid} updated`);
+          queryClient.invalidateQueries({ queryKey: ["updates"] });
           navigate(`/ui/provisioning/updates/${uuid}/configuration`);
           return;
         }
