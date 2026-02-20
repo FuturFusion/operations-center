@@ -34,7 +34,6 @@ import TokenSeedCreate from "pages/TokenSeedCreate";
 import TokenSeedDetail from "pages/TokenSeedDetail";
 import Update from "pages/Update";
 import UpdateDetail from "pages/UpdateDetail";
-import Channel from "pages/Channel";
 import ChannelCreate from "pages/ChannelCreate";
 import ChannelDetail from "pages/ChannelDetail";
 
@@ -179,7 +178,11 @@ function App() {
               path="/ui/provisioning/tokens/:uuid/seeds/:name/:activeTab"
               element={<TokenSeedDetail />}
             />
-            <Route path="/ui/provisioning/updates" element={<Update />} />
+            <Route path="/ui/provisioning/updates-view" element={<Update />} />
+            <Route
+              path="/ui/provisioning/updates-view/:activeTab"
+              element={<Update />}
+            />
             <Route
               path="/ui/provisioning/updates/:uuid"
               element={<UpdateDetail />}
@@ -188,7 +191,6 @@ function App() {
               path="/ui/provisioning/updates/:uuid/:activeTab"
               element={<UpdateDetail />}
             />
-            <Route path="/ui/provisioning/channels" element={<Channel />} />
             <Route
               path="/ui/provisioning/channels/create"
               element={<ChannelCreate />}
