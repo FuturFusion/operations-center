@@ -39,7 +39,7 @@ const ServerDetail = () => {
         if (response.error_code == 0) {
           notify.success(`Server ${name} deleted`);
           queryClient.invalidateQueries({ queryKey: ["servers"] });
-          navigate("/ui/provisioning/servers");
+          navigate("/ui/provisioning/servers-view");
           return;
         }
         notify.error(response.error);

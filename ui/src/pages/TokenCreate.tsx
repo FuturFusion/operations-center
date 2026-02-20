@@ -13,7 +13,7 @@ const TokenCreate = () => {
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`Token created`);
-          navigate("/ui/provisioning/tokens");
+          navigate("/ui/provisioning/servers-view/tokens");
           return;
         }
         notify.error(response.error);

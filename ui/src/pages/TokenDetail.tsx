@@ -40,7 +40,7 @@ const TokenDetail = () => {
         if (response.error_code == 0) {
           notify.success(`Token ${uuid} deleted`);
           queryClient.invalidateQueries({ queryKey: ["tokens"] });
-          navigate("/ui/provisioning/tokens");
+          navigate("/ui/provisioning/servers-view/tokens");
           return;
         }
         notify.error(response.error);
