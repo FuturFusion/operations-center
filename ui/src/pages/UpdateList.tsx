@@ -6,6 +6,7 @@ import { cleanupUpdates, fetchUpdates, refreshUpdates } from "api/update";
 import DataTable from "components/DataTable";
 import ModalWindow from "components/ModalWindow";
 import ImportUpdatesBtn from "components/ImportUpdatesBtn";
+import UpdateActions from "components/UpdateActions";
 import { useNotification } from "context/notificationContext";
 import { formatDate } from "util/date";
 
@@ -68,6 +69,7 @@ const Update = () => {
     "Upstream channels",
     "Downstream channels",
     "Status",
+    "Actions",
   ];
   const rows = updates.map((item) => {
     return [
@@ -99,6 +101,9 @@ const Update = () => {
       {
         content: item.update_status,
         sortKey: item.update_status,
+      },
+      {
+        content: <UpdateActions update={item} />,
       },
     ];
   });

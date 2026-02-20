@@ -1,6 +1,7 @@
 import { FC, KeyboardEvent } from "react";
 import { Button, Form } from "react-bootstrap";
 import { useFormik } from "formik";
+import ChannelMultiSelect from "components/ChannelMultiSelect";
 import { useChannels } from "context/useChannels";
 import { Update, UpdateFormValues } from "types/update";
 import { handleCtrlA } from "util/util";
@@ -36,24 +37,13 @@ const UpdateForm: FC<Props> = ({ update, onSubmit }) => {
         <Form noValidate>
           <Form.Group className="mb-4" controlId="channels">
             <Form.Label>Channels</Form.Label>
-            <Form.Select
-              multiple
+            <ChannelMultiSelect
               value={formik.values.channels}
-              onChange={(e) => {
-                const selected = Array.from(
-                  e.target.selectedOptions,
-                  (option) => option.value,
-                );
-                formik.setFieldValue("channels", selected);
-              }}
+              onChange={(selected) =>
+                formik.setFieldValue("channels", selected)
+              }
               onKeyDown={handleCtrlA(handleChannelsCtrlA)}
-            >
-              {channels?.map((channel) => (
-                <option key={channel.name} value={channel.name}>
-                  {channel.name}
-                </option>
-              ))}
-            </Form.Select>
+            />
           </Form.Group>
         </Form>
       </div>
