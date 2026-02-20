@@ -400,12 +400,16 @@ func (s *ServerVersionData) Compute(latestAvailableVersions map[images.UpdateFil
 
 	// NeedsUpdate is true, if OS.VersionNext != OS.AvailableVersion or for any application Version != AvailableVersion.
 	s.NeedsUpdate = s.OS.NeedsUpdate
-	for _, app := range s.Applications {
-		if *app.NeedsUpdate {
+	if !*s.NeedsUpdate {
+		for _, app := range s.Applications {
+			if !*app.NeedsUpdate {
+				continue
+			}
+
+			s.NeedsUpdate = app.NeedsUpdate
+
 			break
 		}
-
-		s.NeedsUpdate = app.NeedsUpdate
 	}
 }
 
