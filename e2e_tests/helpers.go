@@ -413,37 +413,6 @@ func mustWaitUpdatesReady(t *testing.T) {
 	t.Logf("Updates present Operations Center after %ds", count)
 }
 
-func mustWaitOperationsCenterAPIReady(t *testing.T) {
-	t.Helper()
-
-	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(60*time.Second))
-	defer cancel()
-
-	count := 0
-	for {
-		resp, err := run(t, `../bin/operations-center.linux.%s provisioning server list`, cpuArch)
-		require.NoError(t, err)
-		if resp.Success() {
-			break
-		}
-
-		if count%10 == 0 {
-			t.Logf("Waiting %ds on Operations Center API to become ready", count)
-		}
-
-		count++
-
-		select {
-		case <-ctx.Done():
-			t.Fatalf("Context done: %v", ctx.Err())
-
-		case <-time.After(1 * time.Second):
-		}
-	}
-
-	t.Logf("Operations Center API ready after %ds", count)
-}
-
 func mustWaitIncusOSReady(t *testing.T, names []string) {
 	t.Helper()
 
