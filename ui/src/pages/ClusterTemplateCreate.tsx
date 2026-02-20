@@ -13,7 +13,7 @@ const ClusterTemplateCreate = () => {
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`Cluster template ${values.name} created`);
-          navigate("/ui/provisioning/cluster-templates");
+          navigate("/ui/provisioning/clusters-view/templates");
           return;
         }
         notify.error(response.error);

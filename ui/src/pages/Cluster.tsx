@@ -1,101 +1,36 @@
-import { Button, Container } from "react-bootstrap";
-import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate, useSearchParams } from "react-router";
-import { fetchClusters } from "api/cluster";
-import ClusterActions from "components/ClusterActions";
-import ExtendedDataTable from "components/ExtendedDataTable";
-import InventorySearchBox from "components/InventorySearchBox";
-import type { Cluster } from "types/cluster";
+import { useNavigate, useParams } from "react-router";
+import TabView from "components/TabView";
+import ClusterList from "pages/ClusterList";
+import ClusterTemplate from "pages/ClusterTemplate";
 
 const Cluster = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const filter = searchParams.get("filter");
+  const { activeTab } = useParams<{ activeTab: string }>();
 
-  const sortData = (a: Cluster, b: Cluster) => {
-    return a.name.localeCompare(b.name);
-  };
-
-  const {
-    data: clusters = [],
-    error,
-    isLoading,
-  } = useQuery({
-    queryKey: ["clusters", filter],
-    queryFn: () => fetchClusters(filter || ""),
-    select: (items) => [...items].sort(sortData),
-    retry: false,
-  });
-
-  const headers = ["Name", "Connection URL", "Status", "Actions"];
-  const rows = clusters.map((item) => {
-    return [
-      {
-        content: (
-          <Link
-            to={`/ui/provisioning/clusters/${item.name}`}
-            className="data-table-link"
-          >
-            {item.name}
-          </Link>
-        ),
-        sortKey: item.name,
-      },
-      {
-        content: (
-          <Link
-            to={`${item.connection_url}`}
-            target="_blank"
-            className="data-table-link"
-          >
-            {item.connection_url}
-          </Link>
-        ),
-        sortKey: item.connection_url,
-      },
-      {
-        content: item.status,
-        sortKey: item.status,
-      },
-      {
-        content: <ClusterActions cluster={item} />,
-      },
-    ];
-  });
+  const tabs = [
+    {
+      key: "clusters",
+      title: "Clusters",
+      content: <ClusterList />,
+    },
+    {
+      key: "templates",
+      title: "Templates",
+      content: <ClusterTemplate />,
+    },
+  ];
 
   return (
-    <>
-      <div className="d-flex flex-column">
-        <div className="mx-2 mx-md-4">
-          <div className="row">
-            <div className="col-12">
-              <Container className="d-flex justify-content-center">
-                <InventorySearchBox />
-              </Container>
-            </div>
-          </div>
-          <div className="row">
-            <div className="col-12">
-              <Button
-                variant="success"
-                className="float-end"
-                onClick={() => navigate("/ui/provisioning/clusters/create")}
-              >
-                Create cluster
-              </Button>
-            </div>
-          </div>
-        </div>
-        <div className="scroll-container flex-grow-1">
-          <ExtendedDataTable
-            headers={headers}
-            rows={rows}
-            isLoading={isLoading}
-            error={error}
-          />
-        </div>
+    <div className="d-flex flex-column">
+      <div className="scroll-container flex-grow-1 p-3">
+        <TabView
+          defaultTab="clusters"
+          activeTab={activeTab}
+          tabs={tabs}
+          onSelect={(key) => navigate(`/ui/provisioning/clusters-view/${key}`)}
+        />
       </div>
-    </>
+    </div>
   );
 };
 

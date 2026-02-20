@@ -23,7 +23,6 @@ import Cluster from "pages/Cluster";
 import ClusterArtifactFiles from "pages/ClusterArtifactFiles";
 import ClusterCreate from "pages/ClusterCreate";
 import ClusterDetail from "pages/ClusterDetail";
-import ClusterTemplate from "pages/ClusterTemplate";
 import ClusterTemplateCreate from "pages/ClusterTemplateCreate";
 import ClusterTemplateDetail from "pages/ClusterTemplateDetail";
 import Server from "pages/Server";
@@ -104,7 +103,14 @@ function App() {
             />
             <Route path="/ui/inventory/profiles" element={<Profile />} />
             <Route path="/ui/inventory/projects" element={<Project />} />
-            <Route path="/ui/provisioning/clusters" element={<Cluster />} />
+            <Route
+              path="/ui/provisioning/clusters-view"
+              element={<Cluster />}
+            />
+            <Route
+              path="/ui/provisioning/clusters-view/:activeTab"
+              element={<Cluster />}
+            />
             <Route
               path="/ui/provisioning/clusters/:clusterName/artifacts/:artifactName/files"
               element={<ClusterArtifactFiles />}
@@ -124,10 +130,6 @@ function App() {
             <Route
               path="/ui/provisioning/clusters/:name/:activeTab"
               element={<ClusterDetail />}
-            />
-            <Route
-              path="/ui/provisioning/cluster-templates"
-              element={<ClusterTemplate />}
             />
             <Route
               path="/ui/provisioning/cluster-templates/create"

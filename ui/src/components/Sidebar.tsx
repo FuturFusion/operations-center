@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Nav, Navbar, Collapse } from "react-bootstrap";
 import { useLocation } from "react-router";
 import { AiOutlineCluster } from "react-icons/ai";
-import { GoProjectTemplate, GoServer } from "react-icons/go";
+import { GoServer } from "react-icons/go";
 import { IoChevronDownOutline, IoChevronForward } from "react-icons/io5";
 import {
   MdLogin,
@@ -128,12 +128,7 @@ const Sidebar = () => {
     },
     clusters: {
       id: "clusters",
-      to: "/ui/provisioning/clusters",
-      menu: ["", ""],
-    },
-    cluster_templates: {
-      id: "cluster_templates",
-      to: "/ui/provisioning/cluster-templates",
+      to: "/ui/provisioning/clusters-view",
       menu: ["", ""],
     },
     servers: {
@@ -323,14 +318,6 @@ const Sidebar = () => {
                   isActive={isItemActive("clusters")}
                 >
                   <AiOutlineCluster /> Clusters
-                </NavItemLink>
-              </Nav.Item>
-              <Nav.Item>
-                <NavItemLink
-                  item={menuItems["cluster_templates"]}
-                  isActive={isItemActive("cluster_templates")}
-                >
-                  <GoProjectTemplate /> Cluster templates
                 </NavItemLink>
               </Nav.Item>
               <Nav.Item>
