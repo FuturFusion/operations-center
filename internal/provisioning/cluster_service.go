@@ -752,7 +752,7 @@ func (s clusterService) DeleteAndFactoryResetByName(ctx context.Context, name st
 
 	if tokenID == nil {
 		token, err := s.tokenSvc.Create(ctx, Token{
-			Description:   fmt.Sprintf("factory reset cluster %q", name),
+			Description:   fmt.Sprintf("Factory reset of cluster %q", name),
 			UsesRemaining: len(servers),
 			ExpireAt:      time.Now().Add(1 * time.Hour),
 			AutoRemove:    true,

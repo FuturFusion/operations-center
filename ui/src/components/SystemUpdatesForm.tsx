@@ -33,7 +33,7 @@ const SystemUpdatesForm: FC<Props> = ({ updates, onSubmit }) => {
       <div>
         <Form noValidate>
           <Form.Group className="mb-3" controlId="source">
-            <Form.Label>Source</Form.Label>
+            <Form.Label>Image server URL</Form.Label>
             <Form.Control
               type="text"
               name="source"
@@ -46,7 +46,7 @@ const SystemUpdatesForm: FC<Props> = ({ updates, onSubmit }) => {
             className="mb-3"
             controlId="signature_verification_root_ca"
           >
-            <Form.Label>Signature verification root CA</Form.Label>
+            <Form.Label>Image metadata signing CA</Form.Label>
             <Form.Control
               type="text"
               as="textarea"
@@ -79,7 +79,7 @@ const SystemUpdatesForm: FC<Props> = ({ updates, onSubmit }) => {
           </Form.Group>
           <ChannelSelect
             formClasses="mb-3"
-            label="Server default channel"
+            label="Default update channel for new servers"
             value={formik.values.server_default_channel}
             onChange={(val) =>
               formik.setFieldValue("server_default_channel", val)
@@ -87,7 +87,7 @@ const SystemUpdatesForm: FC<Props> = ({ updates, onSubmit }) => {
           />
           <ChannelSelect
             formClasses="mb-3"
-            label="Updates default channel"
+            label="Default update channel for new images"
             value={formik.values.updates_default_channel}
             onChange={(val) =>
               formik.setFieldValue("updates_default_channel", val)
