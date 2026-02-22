@@ -27,7 +27,7 @@ const SystemNetworkForm: FC<Props> = ({ network, onSubmit }) => {
       <div>
         <Form noValidate>
           <Form.Group className="mb-3" controlId="rest_server_endoint">
-            <Form.Label>Rest server endpoint</Form.Label>
+            <Form.Label>REST API listen address</Form.Label>
             <Form.Control
               type="text"
               name="rest_server_address"
@@ -44,7 +44,7 @@ const SystemNetworkForm: FC<Props> = ({ network, onSubmit }) => {
             </Form.Control.Feedback>
           </Form.Group>
           <Form.Group className="mb-3" controlId="address">
-            <Form.Label>Operations center address</Form.Label>
+            <Form.Label>Public URL</Form.Label>
             <Form.Control
               type="text"
               name="address"
