@@ -48,6 +48,15 @@ func TestE2E_WithToken_FactoryResetCluster(t *testing.T) {
 	)
 }
 
+func TestE2E_WithToken_FactoryResetClusterWithTokenSeed(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - factory reset cluster",
+		setupIncusOSWithToken,
+		factoryResetClusterWithTokenSeed,
+	)
+}
+
 func TestE2E_WithTokenSeed_CreateCluster(t *testing.T) {
 	runE2ETest(
 		t,

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func factoryResetCluster(t *testing.T, tmpDir string) {
+func factoryResetClusterWithTokenSeed(t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -37,22 +37,30 @@ func factoryResetCluster(t *testing.T, tmpDir string) {
 	t.Log("Create cluster incus-os-cluster")
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add incus-os-cluster https://%s:8443 --server-names %s --services-config %s --application-seed-config %s`, cpuArch, instanceIPs[0], servers, filepath.Join(tmpDir, "services.yaml"), filepath.Join(tmpDir, "application.yaml"))
 
+	t.Log("Create token seed for factory reset")
+	token := createProvisioningToken(t)
+
+	clientCertificate := getClientCertificate(t)
+	incusOSSeedFileYAML := replacePlaceholders(incusOSSeedFileYAMLTemplate,
+		map[string]string{
+			"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 10)),
+		},
+	)
+
+	err = os.WriteFile(filepath.Join(tmpDir, "incusos_seed.yaml"), incusOSSeedFileYAML, 0o600)
+	require.NoError(t, err)
+
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed add %s factory-reset %s/incusos_seed.yaml`, cpuArch, token, tmpDir)
+
 	t.Log("Factory reset cluster")
-	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster factory-reset incus-os-cluster`, cpuArch)
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster factory-reset incus-os-cluster %s incus-os-cluster`, cpuArch, token)
 	time.Sleep(strechedTimeout(10 * time.Second)) // Wait for the factory reset to happen.
 
 	mustWaitIncusOSReady(t, []string{"IncusOS01", "IncusOS02", "IncusOS03"})
 
 	mustWaitInventoryReady(t, instanceNames)
 
-	clientCertificate := getClientCertificate(t)
-	applicationConfig := replacePlaceholders(incusOSClusterApplicationConfigPostFactoryReset,
-		map[string]string{
-			"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 10)),
-		},
-	)
-
-	err = os.WriteFile(filepath.Join(tmpDir, "application-post-factory-reset.yaml"), applicationConfig, 0o600)
+	err = os.WriteFile(filepath.Join(tmpDir, "application-post-factory-reset.yaml"), incusOSClusterApplicationConfig, 0o600)
 	require.NoError(t, err)
 
 	t.Log("Create cluster incus-os-cluster-after-factory-reset")
