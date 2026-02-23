@@ -75,10 +75,24 @@ func cleanupIncusOS(t *testing.T) func() {
 
 		names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 		for _, name := range names {
-			mustRunWithContext(ctx, t, `incus remove --force %s`, name)
-			resp := mustRunWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '.[] | select(.server_type == "incus") | .name'`, cpuArch)
+			resp := runWithContext(ctx, t, `incus remove --force %s`, name)
+			if !resp.Success() {
+				t.Error(resp.Error())
+				continue
+			}
+
+			resp = runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '.[] | select(.server_type == "incus") | .name'`, cpuArch)
+			if !resp.Success() {
+				t.Error(resp.Error())
+				continue
+			}
+
 			for server := range strings.Lines(resp.Output()) {
-				mustRunWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning server remove %s`, cpuArch, server)
+				resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning server remove %s`, cpuArch, server)
+				if !resp.Success() {
+					t.Error(resp.Error())
+					continue
+				}
 			}
 		}
 	}
@@ -112,8 +126,8 @@ func getClientCertificate(t *testing.T) string {
 		stop := timeTrack(t)
 		defer stop()
 
-		_, err := run(t, `incus remote generate-certificate`)
-		require.NoError(t, err)
+		resp := run(t, `incus remote generate-certificate`)
+		require.NoError(t, resp.err)
 	}
 
 	clientCertificate, err := os.ReadFile(clientCertPath)
@@ -195,8 +209,8 @@ func removeBootMedia(t *testing.T) {
 		stop := timeTrack(t)
 		defer stop()
 
-		_, err := run(t, `incus stop OperationsCenter`)
-		require.NoError(t, err)
+		resp := run(t, `incus stop OperationsCenter`)
+		require.NoError(t, resp.err)
 		mustRun(t, `incus config device remove OperationsCenter boot-media`)
 		mustRun(t, `incus start OperationsCenter`)
 
@@ -238,8 +252,8 @@ func setupLocalOperationsCenterConfig(t *testing.T) {
 
 	var operationsCenterCetificate string
 	for {
-		operationsCenterCetificateResp, err := runWithTimeout(t, `/usr/bin/openssl s_client -connect %s:8443 </dev/null 2>/dev/null | openssl x509 -outform PEM`, 30*time.Second, operationsCenterIPAddress)
-		require.NoError(t, err)
+		operationsCenterCetificateResp := runWithTimeout(t, `/usr/bin/openssl s_client -connect %s:8443 </dev/null 2>/dev/null | openssl x509 -outform PEM`, 30*time.Second, operationsCenterIPAddress)
+		require.NoError(t, operationsCenterCetificateResp.err)
 		if strings.Contains(operationsCenterCetificateResp.Output(), "-----BEGIN CERTIFICATE-----") {
 			operationsCenterCetificate = indent(operationsCenterCetificateResp.Output(), strings.Repeat(" ", 6))
 			break
@@ -364,8 +378,8 @@ func createIncusOSInstances(t *testing.T, token string) {
 				}
 			}()
 
-			incusInstanceList, err := runWithContext(errgrpctx, t, "incus list -f compact")
-			err = fmtRunErr(incusInstanceList, err)
+			incusInstanceList := runWithContext(errgrpctx, t, "incus list -f compact")
+			err = fmtRunErr(incusInstanceList)
 			if err != nil {
 				return err
 			}
@@ -408,8 +422,8 @@ func createIncusOSInstances(t *testing.T, token string) {
 			instanceHasBootMedia := mustRun(t, "incus config device list %s", name)
 			if strings.Contains(instanceHasBootMedia.Output(), "boot-media") {
 				t.Logf("Removing boot media from %s VM", name)
-				_, err = run(t, `incus stop %s`, name)
-				if err != nil {
+				resp := run(t, `incus stop %s`, name)
+				if resp.err != nil {
 					return err
 				}
 

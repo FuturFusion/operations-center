@@ -89,8 +89,9 @@ func isExecutable(t *testing.T, path string) bool {
 
 type cmdResponse struct {
 	command  string
-	output   bytes.Buffer
+	output   *bytes.Buffer
 	exitCode int
+	err      error
 }
 
 func (c cmdResponse) Output() string {
@@ -98,7 +99,11 @@ func (c cmdResponse) Output() string {
 }
 
 func (c cmdResponse) Success() bool {
-	return c.exitCode == 0
+	return c.err == nil && c.exitCode == 0
+}
+
+func (c cmdResponse) Error() string {
+	return fmt.Sprintf("run %q produced exit code: %d and error: %v\nOutput:\n%s\n", c.command, c.exitCode, c.err, c.Output())
 }
 
 // mustRun executes the provided command in a shell.
@@ -107,8 +112,8 @@ func (c cmdResponse) Success() bool {
 func mustRun(t *testing.T, command string, args ...any) cmdResponse {
 	t.Helper()
 
-	resp, err := runWithContext(t.Context(), t, command, args...)
-	require.NoError(t, err)
+	resp := runWithContext(t.Context(), t, command, args...)
+	require.NoError(t, resp.err)
 	if !resp.Success() {
 		t.Fatalf("Run: %q failed with:\n%s", resp.command, resp.Output())
 	}
@@ -124,8 +129,8 @@ func mustRunWithTimeout(t *testing.T, command string, timeout time.Duration, arg
 	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(timeout))
 	defer cancel()
 
-	resp, err := runWithContext(ctx, t, command, args...)
-	require.NoError(t, err)
+	resp := runWithContext(ctx, t, command, args...)
+	require.NoError(t, resp.err)
 	if !resp.Success() {
 		t.Fatalf("Run: %q failed with:\n%s", resp.command, resp.Output())
 	}
@@ -138,8 +143,8 @@ func mustRunWithTimeout(t *testing.T, command string, timeout time.Duration, arg
 func mustRunWithContext(ctx context.Context, t *testing.T, command string, args ...any) cmdResponse { //nolint:unparam
 	t.Helper()
 
-	resp, err := runWithContext(ctx, t, command, args...)
-	require.NoError(t, err)
+	resp := runWithContext(ctx, t, command, args...)
+	require.NoError(t, resp.err)
 	if !resp.Success() {
 		t.Fatalf("Run: %q failed with:\n%s", resp.command, resp.Output())
 	}
@@ -147,8 +152,21 @@ func mustRunWithContext(ctx context.Context, t *testing.T, command string, args 
 	return resp
 }
 
+// func tryRunWithContext(ctx context.Context, t *testing.T, command string, args ...any) cmdResponse {
+// 	t.Helper()
+// 	resp := runWithContext(ctx, t, command, args...)
+// 	if resp.err != nil {
+// 		return cmdResponse{
+// 			exitCode: -1, // mark as not successful
+// 			output:   bytes.NewBufferString(fmt.Sprintf("failed to run %q: %v", command, resp.err)),
+// 		}
+// 	}
+
+// 	return resp
+// }
+
 // run executes the provided command in a shell.
-func run(t *testing.T, command string, args ...any) (cmdResponse, error) {
+func run(t *testing.T, command string, args ...any) cmdResponse {
 	t.Helper()
 
 	return runWithContext(t.Context(), t, command, args...)
@@ -156,7 +174,7 @@ func run(t *testing.T, command string, args ...any) (cmdResponse, error) {
 
 // runWithTimout executes the provided command in a shell and fails if not
 // completed before the given timeout.
-func runWithTimeout(t *testing.T, command string, timeout time.Duration, args ...any) (cmdResponse, error) {
+func runWithTimeout(t *testing.T, command string, timeout time.Duration, args ...any) cmdResponse {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(timeout))
@@ -167,14 +185,16 @@ func runWithTimeout(t *testing.T, command string, timeout time.Duration, args ..
 
 // runWithContext executes the provided command in a shell and accepts additionally
 // a context.
-func runWithContext(ctx context.Context, t *testing.T, command string, args ...any) (cmdResponse, error) {
+func runWithContext(ctx context.Context, t *testing.T, command string, args ...any) cmdResponse {
 	t.Helper()
 
 	command = fmt.Sprintf(`bash -c %q`, command)
 	command = fmt.Sprintf(command, args...)
 	shellArgs, err := shellwords.Parse(command)
 	if err != nil {
-		return cmdResponse{}, fmt.Errorf("run parse command %q: %w", command, err)
+		return cmdResponse{
+			err: fmt.Errorf("run parse command %q: %w", command, err),
+		}
 	}
 
 	name := shellArgs[0]
@@ -184,18 +204,21 @@ func runWithContext(ctx context.Context, t *testing.T, command string, args ...a
 
 	resp := cmdResponse{
 		command: fmt.Sprintf("%s %s", name, strings.Join(shellArgs, " ")),
+		output:  &bytes.Buffer{},
 	}
 
 	cmd := exec.CommandContext(ctx, name, shellArgs...)
-	cmd.Stdout = &resp.output
-	cmd.Stderr = &resp.output
+	cmd.Stdout = resp.output
+	cmd.Stderr = resp.output
 
 	err = cmd.Run()
 	if err != nil {
 		exitErr := &exec.ExitError{}
 		if !errors.As(err, &exitErr) {
 			debugf("command: %q\nerr: %v\noutput:\n%s", resp.command, err, resp.Output())
-			return cmdResponse{}, fmt.Errorf("run: %q: %w", resp.command, err)
+			return cmdResponse{
+				err: fmt.Errorf("run: %q: %w", resp.command, err),
+			}
 		}
 
 		resp.exitCode = exitErr.ExitCode()
@@ -203,7 +226,7 @@ func runWithContext(ctx context.Context, t *testing.T, command string, args ...a
 
 	debugf("command: %q\nexit code: %d\noutput:\n%s", resp.command, resp.exitCode, resp.Output())
 
-	return resp, nil
+	return resp
 }
 
 // mustWaitAgentRunningContext waits for the incus agent to be running inside
@@ -216,9 +239,9 @@ func waitForSuccessWithTimeout(t *testing.T, desc string, command string, timeou
 
 	count := 0
 	for {
-		resp, err := run(t, command, args...)
-		if err != nil {
-			return false, err
+		resp := run(t, command, args...)
+		if resp.err != nil {
+			return false, resp.err
 		}
 
 		if resp.Success() {
@@ -281,9 +304,9 @@ func waitAgentRunningWithContext(ctx context.Context, t *testing.T, vm string, a
 
 	count := 0
 	for {
-		resp, err := run(t, `incus exec %s true`, vm)
-		if err != nil {
-			return err
+		resp := run(t, `incus exec %s true`, vm)
+		if resp.err != nil {
+			return resp.err
 		}
 
 		if resp.Success() {
@@ -346,9 +369,9 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 
 	count := 0
 	for {
-		resp, err := run(t, `incus exec %s -- bash -c "journalctl -b -u %s"`, vm, unit)
-		if err != nil {
-			return err
+		resp := run(t, `incus exec %s -- bash -c "journalctl -b -u %s"`, vm, unit)
+		if resp.err != nil {
+			return resp.err
 		}
 
 		if isRegex {
@@ -482,8 +505,8 @@ func mustWaitInventoryReady(t *testing.T, names []string) {
 
 			count := 0
 			for {
-				resp, err := run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.name == "%s" and .server_status == "ready") ] | length == 1'`, cpuArch, name)
-				if err != nil {
+				resp := run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.name == "%s" and .server_status == "ready") ] | length == 1'`, cpuArch, name)
+				if resp.err != nil {
 					return err
 				}
 
@@ -517,13 +540,13 @@ func mustWaitInventoryReady(t *testing.T, names []string) {
 
 // fmtRunErr takes the cmdResponse and the error of a run function
 // and formats the error, on none 0 exit code.
-func fmtRunErr(resp cmdResponse, err error) error {
-	if err != nil {
-		return err
+func fmtRunErr(resp cmdResponse) error {
+	if resp.err != nil {
+		return resp.err
 	}
 
 	if resp.exitCode != 0 {
-		return fmt.Errorf("exit code %d:\n%s", resp.exitCode, resp.Output())
+		return fmt.Errorf("exit code %d:\nOutput:\n%s\n", resp.exitCode, resp.Output())
 	}
 
 	return nil
@@ -532,8 +555,8 @@ func fmtRunErr(resp cmdResponse, err error) error {
 func mustNotBeAlreadyClustered(t *testing.T) {
 	t.Helper()
 
-	clusterListResp, err := run(t, "incus exec IncusOS01 -- incus cluster list")
-	require.NoError(t, err)
+	clusterListResp := run(t, "incus exec IncusOS01 -- incus cluster list")
+	require.NoError(t, clusterListResp.err)
 	require.NotEqual(t, 0, clusterListResp.exitCode, "IncusOS01 is already part of a cluster")
 }
 
