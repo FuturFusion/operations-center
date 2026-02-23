@@ -386,7 +386,13 @@ func (s *ServerVersionData) Compute(latestAvailableVersions map[images.UpdateFil
 	osLatestAvailableVersion, ok := latestAvailableVersions[images.UpdateFileComponentOS]
 	if ok {
 		s.OS.AvailableVersion = &osLatestAvailableVersion
-		s.OS.NeedsUpdate = ptr.To(availableVersionGreaterThan(s.OS.VersionNext, osLatestAvailableVersion))
+
+		currentOrPendingVersion := s.OS.Version
+		if s.OS.VersionNext != "" {
+			currentOrPendingVersion = s.OS.VersionNext
+		}
+
+		s.OS.NeedsUpdate = ptr.To(availableVersionGreaterThan(currentOrPendingVersion, osLatestAvailableVersion))
 	}
 
 	// Set per application AvailableVersion and NeedsUpdate.
