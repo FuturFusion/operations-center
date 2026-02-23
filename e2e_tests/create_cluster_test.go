@@ -50,7 +50,7 @@ func clusterCleanup(t *testing.T) func() {
 		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
 		defer cancel()
 
-		stop := timeTrack(t)
+		stop := timeTrack(t, "cluster cleanup")
 		defer stop()
 
 		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[].name'`, cpuArch)
