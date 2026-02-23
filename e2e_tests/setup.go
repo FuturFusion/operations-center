@@ -51,6 +51,9 @@ func setupIncusOSWithToken(t *testing.T, tmpDir string) {
 	stop := timeTrack(t)
 	defer stop()
 
+	// Register cleanup
+	t.Cleanup(cleanupIncusOS(t))
+
 	token := createProvisioningToken(t)
 
 	incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
@@ -64,6 +67,10 @@ func setupIncusOSWithToken(t *testing.T, tmpDir string) {
 
 func cleanupIncusOS(t *testing.T) func() {
 	t.Helper()
+
+	if !noCleanup {
+		t.Cleanup(func() {})
+	}
 
 	return func() {
 		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
@@ -104,6 +111,9 @@ func setupIncusOSWithTokenSeed(t *testing.T, tmpDir string) {
 	stop := timeTrack(t)
 	defer stop()
 
+	// Register cleanup
+	t.Cleanup(cleanupIncusOS(t))
+
 	token := createProvisioningToken(t)
 
 	incusOSPreseededISOFilename := createIncusOSPreseededISOFromTokenSeed(t, tmpDir, token)
@@ -113,6 +123,28 @@ func setupIncusOSWithTokenSeed(t *testing.T, tmpDir string) {
 	createIncusOSInstances(t, token)
 
 	printServerList(t)
+}
+
+func cleanupTokenSeed(t *testing.T, token string) func() {
+	t.Helper()
+
+	if !noCleanup {
+		t.Cleanup(func() {})
+	}
+
+	return func() {
+		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
+		defer cancel()
+
+		stop := timeTrack(t)
+		defer stop()
+
+		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning token seed remove %s incus-os-cluster`, cpuArch, token)
+		if !resp.Success() {
+			t.Error(resp.Error())
+		}
+	}
 }
 
 func getClientCertificate(t *testing.T) string {
@@ -316,7 +348,7 @@ func createIncusOSPreseededISO(t *testing.T, tmpDir string, token string) string
 func createIncusOSPreseededISOFromTokenSeed(t *testing.T, tmpDir string, token string) string {
 	t.Helper()
 
-	incusOSPreseededISOFilename := fmt.Sprintf("IncusOS-preseeded-%[1]s.iso", token)
+	incusOSPreseededISOFilename := fmt.Sprintf("IncusOS-preseeded-from-token-seed-%[1]s.iso", token)
 	if !isFile(filepath.Join(tmpDir, incusOSPreseededISOFilename)) {
 		stop := timeTrack(t)
 		defer stop()
@@ -332,6 +364,7 @@ func createIncusOSPreseededISOFromTokenSeed(t *testing.T, tmpDir string, token s
 		err := os.WriteFile(filepath.Join(tmpDir, "incusos_seed.yaml"), incusOSSeedFileYAML, 0o600)
 		require.NoError(t, err)
 
+		t.Cleanup(cleanupTokenSeed(t, token))
 		mustRun(t, `../bin/operations-center.linux.%s provisioning token seed add %s incus-os-cluster %s/incusos_seed.yaml`, cpuArch, token, tmpDir)
 		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning token seed get-image %s incus-os-cluster %s/%s`, 10*time.Minute, cpuArch, token, tmpDir, incusOSPreseededISOFilename)
 	}

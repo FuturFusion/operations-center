@@ -20,6 +20,10 @@ func createClusterFromTemplate(t *testing.T, tmpDir string) {
 	// Pre check
 	mustNotBeAlreadyClustered(t)
 
+	// Register cleanup
+	t.Cleanup(clusterCleanup(t))
+	t.Cleanup(clusterTemplateCleanup(t))
+
 	// Setup
 	err := os.WriteFile(filepath.Join(tmpDir, "services_template.yaml"), incusOSClusterServicesConfigTemplate, 0o600)
 	require.NoError(t, err)
@@ -50,18 +54,20 @@ func createClusterFromTemplate(t *testing.T, tmpDir string) {
 	assertWebsocketEventsInventoryUpdate(t, "incus-os-cluster")
 }
 
-func clusterFromTemplateCleanup(t *testing.T) func() {
+func clusterTemplateCleanup(t *testing.T) func() {
 	t.Helper()
+
+	if !noCleanup {
+		t.Cleanup(func() {})
+	}
 
 	return func() {
 		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
 		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
 		defer cancel()
 
-		stop := timeTrack(t, "cluster from template cleanup")
+		stop := timeTrack(t, "cluster template cleanup")
 		defer stop()
-
-		clusterCleanup(t)()
 
 		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning cluster-template remove incus-os-cluster`, cpuArch)
 		if !resp.Success() {

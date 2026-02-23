@@ -20,6 +20,9 @@ func createCluster(t *testing.T, tmpDir string) {
 	// Pre check
 	mustNotBeAlreadyClustered(t)
 
+	// Register cleanup
+	t.Cleanup(clusterCleanup(t))
+
 	// Setup
 	err := os.WriteFile(filepath.Join(tmpDir, "services.yaml"), incusOSClusterServicesConfig, 0o600)
 	require.NoError(t, err)
@@ -44,6 +47,10 @@ func createCluster(t *testing.T, tmpDir string) {
 
 func clusterCleanup(t *testing.T) func() {
 	t.Helper()
+
+	if !noCleanup {
+		t.Cleanup(func() {})
+	}
 
 	return func() {
 		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.

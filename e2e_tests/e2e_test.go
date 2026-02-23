@@ -14,15 +14,9 @@ func TestE2E_WithToken_SetupOnly(t *testing.T) {
 		t,
 		"token - setup only",
 		setupIncusOSWithToken,
-		cleanupIncusOS,
 		func(t *testing.T, tmpDir string) {
 			t.Helper()
 			// Setup only
-		},
-		func(t *testing.T) func() {
-			t.Helper()
-			// Setup only, no cleanup
-			return func() {}
 		},
 	)
 }
@@ -32,9 +26,7 @@ func TestE2E_WithToken_CreateCluster(t *testing.T) {
 		t,
 		"token - create cluster",
 		setupIncusOSWithToken,
-		cleanupIncusOS,
 		createCluster,
-		clusterCleanup,
 	)
 }
 
@@ -43,9 +35,7 @@ func TestE2E_WithToken_CreateClusterFromClusterTemplate(t *testing.T) {
 		t,
 		"token - create cluster from cluster template",
 		setupIncusOSWithToken,
-		cleanupIncusOS,
 		createClusterFromTemplate,
-		clusterCleanup,
 	)
 }
 
@@ -54,10 +44,7 @@ func TestE2E_WithToken_FactoryResetCluster(t *testing.T) {
 		t,
 		"token - factory reset cluster",
 		setupIncusOSWithToken,
-		cleanupIncusOS,
 		factoryResetCluster,
-		// TODO: more cleanup needed?
-		clusterCleanup,
 	)
 }
 
@@ -66,10 +53,7 @@ func TestE2E_WithTokenSeed_CreateCluster(t *testing.T) {
 		t,
 		"token seed - create cluster",
 		setupIncusOSWithTokenSeed,
-		cleanupIncusOS,
 		createCluster,
-		// TODO: Token seed cleanup needed?
-		clusterCleanup,
 	)
 }
 
@@ -77,9 +61,7 @@ func runE2ETest(
 	t *testing.T,
 	name string,
 	setup func(t *testing.T, tmpDir string),
-	setupCleanup func(t *testing.T) func(),
 	test func(t *testing.T, tmpDir string),
-	testCleanup func(t *testing.T) func(),
 ) {
 	t.Helper()
 
@@ -94,14 +76,7 @@ func runE2ETest(
 	stop := timeTrack(t, name)
 	defer stop()
 
-	if !noCleanup {
-		t.Cleanup(setupCleanup(t))
-	}
 	setup(t, tmpDir)
-
-	if !noCleanup {
-		t.Cleanup(testCleanup(t))
-	}
 
 	test(t, tmpDir)
 }

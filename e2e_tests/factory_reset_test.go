@@ -19,6 +19,9 @@ func factoryResetCluster(t *testing.T, tmpDir string) {
 	// Pre check
 	mustNotBeAlreadyClustered(t)
 
+	// Register cleanup
+	t.Cleanup(clusterCleanup(t))
+
 	// Setup
 	err := os.WriteFile(filepath.Join(tmpDir, "services.yaml"), incusOSClusterServicesConfig, 0o600)
 	require.NoError(t, err)
