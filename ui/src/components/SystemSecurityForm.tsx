@@ -70,7 +70,9 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
           <fieldset className="border p-3 mb-3 rounded">
             <legend className="fs-5">General</legend>
             <Form.Group className="mb-3" controlId="trusted_tls_cert">
-              <Form.Label>Trusted TLS certification fingerprints</Form.Label>
+              <Form.Label>
+                Trusted TLS client certificate fingerprints
+              </Form.Label>
               <Form.Control
                 type="text"
                 as="textarea"
@@ -90,7 +92,7 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
               />
             </Form.Group>
             <Form.Group className="mb-3" controlId="trusted_https_proxies">
-              <Form.Label>Trusted HTTPS proxies</Form.Label>
+              <Form.Label>Trusted reverse proxies (HTTPS)</Form.Label>
               <Form.Control
                 type="text"
                 as="textarea"
@@ -108,7 +110,7 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
           <fieldset className="border p-3 mb-3 rounded">
             <legend className="fs-5">OIDC</legend>
             <Form.Group className="mb-3" controlId="issuer">
-              <Form.Label>Issuer</Form.Label>
+              <Form.Label>Issuer URL</Form.Label>
               <Form.Control
                 type="text"
                 name="oidc.issuer"
@@ -148,7 +150,7 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
               />
             </Form.Group>
             <Form.Group className="mb-3" controlId="Claim">
-              <Form.Label>Claim</Form.Label>
+              <Form.Label>Identity claim</Form.Label>
               <Form.Control
                 type="text"
                 name="oidc.claim"
@@ -160,22 +162,22 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
           </fieldset>
           <fieldset className="border p-3 mb-3 rounded">
             <legend className="fs-5">OpenFGA</legend>
+            <Form.Group className="mb-3" controlId="api_url">
+              <Form.Label>API URL</Form.Label>
+              <Form.Control
+                type="text"
+                name="openfga.api_url"
+                value={formik.values.openfga.api_url}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+              />
+            </Form.Group>
             <Form.Group className="mb-3" controlId="api_token">
               <Form.Label>API token</Form.Label>
               <Form.Control
                 type="text"
                 name="openfga.api_token"
                 value={formik.values.openfga.api_token}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3" controlId="api_url">
-              <Form.Label>API url</Form.Label>
-              <Form.Control
-                type="text"
-                name="openfga.api_url"
-                value={formik.values.openfga.api_url}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
               />
@@ -205,7 +207,7 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
                 onBlur={formik.handleBlur}
               />
               <Form.Label className="me-2 mb-0">
-                Agree to ACME{" "}
+                Agree to{" "}
                 <a
                   href="https://letsencrypt.org/repository/"
                   target="_blank"
@@ -217,7 +219,7 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
               </Form.Label>
             </Form.Group>
             <Form.Group className="mb-3" controlId="ca_url">
-              <Form.Label>CA URL</Form.Label>
+              <Form.Label>Issuer URL</Form.Label>
               <Form.Control
                 type="text"
                 name="acme.ca_url"
@@ -227,7 +229,7 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
               />
             </Form.Group>
             <Form.Group className="mb-3" controlId="challenge">
-              <Form.Label>Challenge</Form.Label>
+              <Form.Label>Challenge type</Form.Label>
               <Form.Select
                 name="acme.challenge"
                 value={formik.values.acme.challenge}
@@ -252,7 +254,7 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
               />
             </Form.Group>
             <Form.Group className="mb-3" controlId="email">
-              <Form.Label>Email</Form.Label>
+              <Form.Label>Contact email</Form.Label>
               <Form.Control
                 type="text"
                 name="acme.email"
