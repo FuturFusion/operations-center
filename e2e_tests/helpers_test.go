@@ -37,8 +37,8 @@ func Test_cmd(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			resp, err := run(t, `%s`, tc.cmd)
-			require.NoError(t, err)
+			resp := run(t, `%s`, tc.cmd)
+			require.NoError(t, resp.err)
 
 			require.Equal(t, tc.wantSuccess, resp.Success())
 			require.Equal(t, tc.wantOutput, resp.Output())

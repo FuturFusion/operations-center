@@ -30,13 +30,12 @@ func assertInventory(t *testing.T, clusterName string) {
 	t.Helper()
 
 	var resp cmdResponse
-	var err error
 	success := true
 
 	t.Log("Assert inventory content after cluster creation")
 
-	resp, err = run(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r -e '[ .[] | select(.name == "%s") ] | length == 1'`, cpuArch, clusterName)
-	require.NoError(t, err, "expect 1 cluster entry with name %s", clusterName)
+	resp = run(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r -e '[ .[] | select(.name == "%s") ] | length == 1'`, cpuArch, clusterName)
+	require.NoError(t, resp.err, "expect 1 cluster entry with name %s", clusterName)
 	if !resp.Success() {
 		t.Errorf("expect 1 cluster entry with name %s", clusterName)
 		success = false
@@ -45,8 +44,8 @@ func assertInventory(t *testing.T, clusterName string) {
 		fmt.Println(resp.Output())
 	}
 
-	resp, err = run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_type == "incus" and .server_status == "ready") ] | length == 3'`, cpuArch)
-	require.NoError(t, err, "expect 3 incus servers in ready state")
+	resp = run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_type == "incus" and .server_status == "ready") ] | length == 3'`, cpuArch)
+	require.NoError(t, resp.err, "expect 3 incus servers in ready state")
 	if !resp.Success() {
 		t.Error("expect 3 incus servers in ready state")
 		success = false
@@ -55,8 +54,8 @@ func assertInventory(t *testing.T, clusterName string) {
 		fmt.Println(resp.Output())
 	}
 
-	resp, err = run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_type == "operations-center" and .server_status == "ready") ] | length == 1'`, cpuArch)
-	require.NoError(t, err, "expect 1 operations-center in ready state")
+	resp = run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_type == "operations-center" and .server_status == "ready") ] | length == 1'`, cpuArch)
+	require.NoError(t, resp.err, "expect 1 operations-center in ready state")
 	if !resp.Success() {
 		t.Error("expect 1 operations-center in ready state")
 		success = false
@@ -68,8 +67,8 @@ func assertInventory(t *testing.T, clusterName string) {
 	// Performing cluster resync of inventory data.
 	mustRun(t, "../bin/operations-center.linux.%s provisioning cluster resync %s", cpuArch, clusterName)
 
-	resp, err = run(t, `../bin/operations-center.linux.%s inventory network list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == 2'`, cpuArch, clusterName)
-	require.NoError(t, err, "expect 2 networks: incusbr0, meshbr0")
+	resp = run(t, `../bin/operations-center.linux.%s inventory network list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == 2'`, cpuArch, clusterName)
+	require.NoError(t, resp.err, "expect 2 networks: incusbr0, meshbr0")
 	if !resp.Success() {
 		t.Error("expect 2 networks: incusbr0, meshbr0")
 		success = false
@@ -78,8 +77,8 @@ func assertInventory(t *testing.T, clusterName string) {
 		fmt.Println(resp.Output())
 	}
 
-	resp, err = run(t, `../bin/operations-center.linux.%s inventory profile list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == 2'`, cpuArch, clusterName)
-	require.NoError(t, err, "expect 2 profiles: default, internal")
+	resp = run(t, `../bin/operations-center.linux.%s inventory profile list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == 2'`, cpuArch, clusterName)
+	require.NoError(t, resp.err, "expect 2 profiles: default, internal")
 	if !resp.Success() {
 		t.Error("expect 2 profiles: default, internal")
 		success = false
@@ -88,8 +87,8 @@ func assertInventory(t *testing.T, clusterName string) {
 		fmt.Println(resp.Output())
 	}
 
-	resp, err = run(t, `../bin/operations-center.linux.%s inventory project list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == 2'`, cpuArch, clusterName)
-	require.NoError(t, err, "expect 2 profiles: default, internal")
+	resp = run(t, `../bin/operations-center.linux.%s inventory project list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == 2'`, cpuArch, clusterName)
+	require.NoError(t, resp.err, "expect 2 profiles: default, internal")
 	if !resp.Success() {
 		t.Error("expect 2 profiles: default, internal")
 		success = false
@@ -98,8 +97,8 @@ func assertInventory(t *testing.T, clusterName string) {
 		fmt.Println(resp.Output())
 	}
 
-	resp, err = run(t, `../bin/operations-center.linux.%s inventory storage-pool list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == 1'`, cpuArch, clusterName)
-	require.NoError(t, err, "expect 1 storage pool: local")
+	resp = run(t, `../bin/operations-center.linux.%s inventory storage-pool list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == 1'`, cpuArch, clusterName)
+	require.NoError(t, resp.err, "expect 1 storage pool: local")
 	if !resp.Success() {
 		t.Error("expect 1 storage pool: local")
 		success = false
@@ -108,8 +107,8 @@ func assertInventory(t *testing.T, clusterName string) {
 		fmt.Println(resp.Output())
 	}
 
-	resp, err = run(t, `../bin/operations-center.linux.%s inventory storage-volume list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == 6'`, cpuArch, clusterName)
-	require.NoError(t, err, "expect 6 storage-volumes: images and backups for each server")
+	resp = run(t, `../bin/operations-center.linux.%s inventory storage-volume list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == 6'`, cpuArch, clusterName)
+	require.NoError(t, resp.err, "expect 6 storage-volumes: images and backups for each server")
 	if !resp.Success() {
 		t.Error("expect 6 storage-volumes: images and backups for each server")
 		success = false
@@ -125,14 +124,13 @@ func assertTerraformArtifact(t *testing.T, clusterName string) {
 	t.Helper()
 
 	var resp cmdResponse
-	var err error
 	success := true
 
 	tmpDir := t.TempDir()
 
 	t.Log("List cluster artifacts")
-	resp, err = run(t, `../bin/operations-center.linux.%[1]s provisioning cluster artifact list %[2]s -f json | jq -r -e '[ .[] | select(.cluster == "%[2]s") ] | length == 1'`, cpuArch, clusterName)
-	require.NoError(t, err, "expect 1 artifact for cluster %s: terraform-cofiguration", clusterName)
+	resp = run(t, `../bin/operations-center.linux.%[1]s provisioning cluster artifact list %[2]s -f json | jq -r -e '[ .[] | select(.cluster == "%[2]s") ] | length == 1'`, cpuArch, clusterName)
+	require.NoError(t, resp.err, "expect 1 artifact for cluster %s: terraform-cofiguration", clusterName)
 	if !resp.Success() {
 		success = false
 		fmt.Println("====[ Cluster List ]====")

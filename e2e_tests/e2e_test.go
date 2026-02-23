@@ -9,57 +9,118 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestE2E(t *testing.T) {
+func TestE2E_WithToken_SetupOnly(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - setup only",
+		setupIncusOSWithToken,
+		cleanupIncusOS,
+		func(t *testing.T, tmpDir string) {
+			t.Helper()
+			// Setup only
+		},
+		func(t *testing.T) func() {
+			t.Helper()
+			// Setup only, no cleanup
+			return func() {}
+		},
+	)
+}
+
+func TestE2E_WithToken_CreateCluster(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - create cluster",
+		setupIncusOSWithToken,
+		cleanupIncusOS,
+		createCluster,
+		clusterCleanup,
+	)
+}
+
+func TestE2E_WithToken_CreateClusterFromClusterTemplate(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - create cluster from cluster template",
+		setupIncusOSWithToken,
+		cleanupIncusOS,
+		createClusterFromTemplate,
+		clusterCleanup,
+	)
+}
+
+func TestE2E_WithToken_FactoryResetCluster(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - factory reset cluster",
+		setupIncusOSWithToken,
+		cleanupIncusOS,
+		factoryResetCluster,
+		// TODO: more cleanup needed?
+		clusterCleanup,
+	)
+}
+
+func TestE2E_WithTokenSeed_CreateCluster(t *testing.T) {
+	runE2ETest(
+		t,
+		"token seed - create cluster",
+		setupIncusOSWithTokenSeed,
+		cleanupIncusOS,
+		createCluster,
+		// TODO: Token seed cleanup needed?
+		clusterCleanup,
+	)
+}
+
+func runE2ETest(
+	t *testing.T,
+	name string,
+	setup func(t *testing.T, tmpDir string),
+	setupCleanup func(t *testing.T) func(),
+	test func(t *testing.T, tmpDir string),
+	testCleanup func(t *testing.T) func(),
+) {
+	t.Helper()
+
 	e2eTest := os.Getenv("OPERATIONS_CENTER_E2E_TEST")
 	runE2ETest, _ := strconv.ParseBool(e2eTest)
 	if !runE2ETest {
 		t.Skip("OPERATIONS_CENTER_E2E_TEST env var not set, skipping end 2 end tests.")
 	}
 
-	testCases := []struct {
-		name string
+	tmpDir := setupE2ETest(t)
 
-		setupFunc   func(t *testing.T, tmpDir string)
-		cleanupFunc func(t *testing.T) func()
-		testFunc    func(t *testing.T, tmpDir string)
-	}{
-		{
-			name:        "token - setup only",
-			setupFunc:   setupIncusOSWithToken,
-			cleanupFunc: cleanupIncusOS,
-			testFunc: func(t *testing.T, tmpDir string) {
-				t.Helper()
-			},
-		},
-		{
-			name:        "token - create cluster",
-			setupFunc:   setupIncusOSWithToken,
-			cleanupFunc: cleanupIncusOS,
-			testFunc:    createCluster,
-		},
-		{
-			name:        "token - create cluster from cluster template",
-			setupFunc:   setupIncusOSWithToken,
-			cleanupFunc: cleanupIncusOS,
-			testFunc:    createClusterFromTemplate,
-		},
-		{
-			name:        "token - factory reset cluster",
-			setupFunc:   setupIncusOSWithToken,
-			cleanupFunc: cleanupIncusOS,
-			testFunc:    factoryResetCluster,
-		},
-		{
-			name:        "token seed - create cluster",
-			setupFunc:   setupIncusOSWithTokenSeed,
-			cleanupFunc: cleanupIncusOS,
-			testFunc:    createCluster,
-		},
+	stop := timeTrack(t, name)
+	defer stop()
+
+	if !noCleanup {
+		t.Cleanup(setupCleanup(t))
+	}
+	setup(t, tmpDir)
+
+	if !noCleanup {
+		t.Cleanup(testCleanup(t))
 	}
 
-	var err error
+	test(t, tmpDir)
+}
 
-	preCheck(t)
+func setupE2ETest(t *testing.T) string {
+	t.Helper()
+
+	// Precheck
+	executables := []string{
+		fmt.Sprintf("../bin/operations-center.linux.%s", cpuArch),
+		"../bin/operations-centerd",
+		"/usr/bin/incus",
+	}
+
+	for _, executable := range executables {
+		if !isExecutable(t, executable) {
+			t.Fatalf("%q is not executable by the current user", executable)
+		}
+	}
 
 	homeDir, err := os.UserHomeDir()
 	require.NoError(t, err)
@@ -79,33 +140,5 @@ func TestE2E(t *testing.T) {
 
 	setupOperationsCenter(t, tmpDir)
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			stop := timeTrack(t, tc.name)
-			defer stop()
-
-			if !noCleanup {
-				t.Cleanup(tc.cleanupFunc(t))
-			}
-			tc.setupFunc(t, tmpDir)
-
-			tc.testFunc(t, tmpDir)
-		})
-	}
-}
-
-func preCheck(t *testing.T) {
-	t.Helper()
-
-	executables := []string{
-		fmt.Sprintf("../bin/operations-center.linux.%s", cpuArch),
-		"../bin/operations-centerd",
-		"/usr/bin/incus",
-	}
-
-	for _, executable := range executables {
-		if !isExecutable(t, executable) {
-			t.Fatalf("%q is not executable by the current user", executable)
-		}
-	}
+	return tmpDir
 }
