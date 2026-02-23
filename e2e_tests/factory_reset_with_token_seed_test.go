@@ -50,7 +50,8 @@ func factoryResetClusterWithTokenSeed(t *testing.T, tmpDir string) {
 	err = os.WriteFile(filepath.Join(tmpDir, "incusos_seed.yaml"), incusOSSeedFileYAML, 0o600)
 	require.NoError(t, err)
 
-	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed add %s factory-reset %s/incusos_seed.yaml`, cpuArch, token, tmpDir)
+	t.Cleanup(cleanupTokenSeed(t, token))
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed add %s incus-os-cluster %s/incusos_seed.yaml`, cpuArch, token, tmpDir)
 
 	t.Log("Factory reset cluster")
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster factory-reset incus-os-cluster %s incus-os-cluster`, cpuArch, token)
