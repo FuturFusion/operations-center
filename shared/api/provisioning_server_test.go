@@ -265,3 +265,192 @@ func TestServerVersionData_RecommendedAction(t *testing.T) {
 		})
 	}
 }
+
+func TestServerVersionData_Compute(t *testing.T) {
+	tests := []struct {
+		name                    string
+		serverVersionData       api.ServerVersionData
+		latestAvailableVersions map[images.UpdateFileComponent]string
+
+		wantServerVersionData api.ServerVersionData
+	}{
+		{
+			name: "everything up to date",
+			serverVersionData: api.ServerVersionData{
+				OS: api.OSVersionData{
+					Name:        "incusos",
+					Version:     "202602230000",
+					VersionNext: "",
+				},
+				Applications: []api.ApplicationVersionData{
+					{
+						Name:    "incus",
+						Version: "202602230000",
+					},
+				},
+			},
+			latestAvailableVersions: map[images.UpdateFileComponent]string{
+				images.UpdateFileComponentOS:    "202602230000",
+				images.UpdateFileComponentIncus: "202602230000",
+			},
+			wantServerVersionData: api.ServerVersionData{
+				OS: api.OSVersionData{
+					Name:             "incusos",
+					Version:          "202602230000",
+					VersionNext:      "",
+					NeedsReboot:      false,
+					AvailableVersion: ptr.To("202602230000"),
+					NeedsUpdate:      ptr.To(false),
+				},
+				Applications: []api.ApplicationVersionData{
+					{
+						Name:             "incus",
+						Version:          "202602230000",
+						AvailableVersion: ptr.To("202602230000"),
+						InMaintenance:    false,
+						NeedsUpdate:      ptr.To(false),
+					},
+				},
+				NeedsUpdate:   ptr.To(false),
+				NeedsReboot:   ptr.To(false),
+				InMaintenance: ptr.To(false),
+			},
+		},
+		{
+			name: "os and app needs update",
+			serverVersionData: api.ServerVersionData{
+				OS: api.OSVersionData{
+					Name:        "incusos",
+					Version:     "202602230000",
+					VersionNext: "",
+				},
+				Applications: []api.ApplicationVersionData{
+					{
+						Name:    "incus",
+						Version: "202602230000",
+					},
+				},
+			},
+			latestAvailableVersions: map[images.UpdateFileComponent]string{
+				images.UpdateFileComponentOS:    "202602230001",
+				images.UpdateFileComponentIncus: "202602230001",
+			},
+			wantServerVersionData: api.ServerVersionData{
+				OS: api.OSVersionData{
+					Name:             "incusos",
+					Version:          "202602230000",
+					VersionNext:      "",
+					NeedsReboot:      false,
+					AvailableVersion: ptr.To("202602230001"),
+					NeedsUpdate:      ptr.To(true),
+				},
+				Applications: []api.ApplicationVersionData{
+					{
+						Name:             "incus",
+						Version:          "202602230000",
+						AvailableVersion: ptr.To("202602230001"),
+						InMaintenance:    false,
+						NeedsUpdate:      ptr.To(true),
+					},
+				},
+				NeedsUpdate:   ptr.To(true),
+				NeedsReboot:   ptr.To(false),
+				InMaintenance: ptr.To(false),
+			},
+		},
+		{
+			name: "os has current version as next",
+			serverVersionData: api.ServerVersionData{
+				OS: api.OSVersionData{
+					Name:        "incusos",
+					Version:     "202602230000",
+					VersionNext: "202602230001",
+					NeedsReboot: true,
+				},
+				Applications: []api.ApplicationVersionData{
+					{
+						Name:    "incus",
+						Version: "202602230001",
+					},
+				},
+			},
+			latestAvailableVersions: map[images.UpdateFileComponent]string{
+				images.UpdateFileComponentOS:    "202602230001",
+				images.UpdateFileComponentIncus: "202602230001",
+			},
+			wantServerVersionData: api.ServerVersionData{
+				OS: api.OSVersionData{
+					Name:             "incusos",
+					Version:          "202602230000",
+					VersionNext:      "202602230001",
+					NeedsReboot:      true,
+					AvailableVersion: ptr.To("202602230001"),
+					NeedsUpdate:      ptr.To(false),
+				},
+				Applications: []api.ApplicationVersionData{
+					{
+						Name:             "incus",
+						Version:          "202602230001",
+						AvailableVersion: ptr.To("202602230001"),
+						InMaintenance:    false,
+						NeedsUpdate:      ptr.To(false),
+					},
+				},
+				NeedsUpdate:   ptr.To(false),
+				NeedsReboot:   ptr.To(true),
+				InMaintenance: ptr.To(false),
+			},
+		},
+		{
+			name: "app needs update",
+			serverVersionData: api.ServerVersionData{
+				OS: api.OSVersionData{
+					Name:        "incusos",
+					Version:     "202602230000",
+					VersionNext: "",
+				},
+				Applications: []api.ApplicationVersionData{
+					{
+						Name:    "incus",
+						Version: "202602230000",
+					},
+				},
+			},
+			latestAvailableVersions: map[images.UpdateFileComponent]string{
+				images.UpdateFileComponentOS:    "202602230000",
+				images.UpdateFileComponentIncus: "202602230001",
+			},
+			wantServerVersionData: api.ServerVersionData{
+				OS: api.OSVersionData{
+					Name:             "incusos",
+					Version:          "202602230000",
+					VersionNext:      "",
+					NeedsReboot:      false,
+					AvailableVersion: ptr.To("202602230000"),
+					NeedsUpdate:      ptr.To(false),
+				},
+				Applications: []api.ApplicationVersionData{
+					{
+						Name:             "incus",
+						Version:          "202602230000",
+						AvailableVersion: ptr.To("202602230001"),
+						InMaintenance:    false,
+						NeedsUpdate:      ptr.To(true),
+					},
+				},
+				NeedsUpdate:   ptr.To(true),
+				NeedsReboot:   ptr.To(false),
+				InMaintenance: ptr.To(false),
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.serverVersionData
+			got.Compute(tc.latestAvailableVersions)
+
+			require.Equal(t, tc.wantServerVersionData, got)
+		})
+	}
+}
