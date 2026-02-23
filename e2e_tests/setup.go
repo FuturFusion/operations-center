@@ -58,9 +58,9 @@ func setupIncusOSWithToken(t *testing.T, tmpDir string) {
 
 	incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
 
-	importIncusOSISOStorageVolume(t, tmpDir, token, incusOSPreseededISOFilename)
+	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
 
-	createIncusOSInstances(t, token)
+	createIncusOSInstances(t, incusOSPreseededISOFilename)
 
 	printServerList(t)
 }
@@ -77,7 +77,7 @@ func cleanupIncusOS(t *testing.T) func() {
 		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
 		defer cancel()
 
-		stop := timeTrack(t)
+		stop := timeTrack(t, "cleanup IncusOS")
 		defer stop()
 
 		names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
@@ -118,9 +118,9 @@ func setupIncusOSWithTokenSeed(t *testing.T, tmpDir string) {
 
 	incusOSPreseededISOFilename := createIncusOSPreseededISOFromTokenSeed(t, tmpDir, token)
 
-	importIncusOSISOStorageVolume(t, tmpDir, token, incusOSPreseededISOFilename)
+	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
 
-	createIncusOSInstances(t, token)
+	createIncusOSInstances(t, incusOSPreseededISOFilename)
 
 	printServerList(t)
 }
@@ -372,7 +372,7 @@ func createIncusOSPreseededISOFromTokenSeed(t *testing.T, tmpDir string, token s
 	return incusOSPreseededISOFilename
 }
 
-func importIncusOSISOStorageVolume(t *testing.T, tmpDir string, token string, incusOSPreseededISOFilename string) {
+func importIncusOSISOStorageVolume(t *testing.T, tmpDir string, incusOSPreseededISOFilename string) {
 	t.Helper()
 
 	storageVolumes := mustRun(t, "incus storage volume list default -f compact")
@@ -380,11 +380,11 @@ func importIncusOSISOStorageVolume(t *testing.T, tmpDir string, token string, in
 		stop := timeTrack(t)
 		defer stop()
 
-		mustRunWithTimeout(t, `incus storage volume import default %[2]s/%[3]s %[3]s --type=iso`, 5*time.Minute, token, tmpDir, incusOSPreseededISOFilename)
+		mustRunWithTimeout(t, `incus storage volume import default %[1]s/%[2]s %[2]s --type=iso`, 5*time.Minute, tmpDir, incusOSPreseededISOFilename)
 	}
 }
 
-func createIncusOSInstances(t *testing.T, token string) {
+func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -430,7 +430,7 @@ func createIncusOSInstances(t *testing.T, token string) {
 					return err
 				}
 
-				err = fmtRunErr(runWithContext(errgrpctx, t, `incus config device add %s boot-media disk pool=default source=IncusOS-preseeded-%s.iso boot.priority=10`, name, token))
+				err = fmtRunErr(runWithContext(errgrpctx, t, `incus config device add %s boot-media disk pool=default source=%s boot.priority=10`, name, incusOSPreseededISOFilename))
 				if err != nil {
 					return err
 				}
