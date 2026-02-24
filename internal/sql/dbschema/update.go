@@ -55,6 +55,35 @@ var updates = map[int]update{
 	25: updateFromV24,
 	26: updateFromV25,
 	27: updateFromV26,
+	28: updateFromV27,
+}
+
+func updateFromV27(ctx context.Context, tx *sql.Tx) error {
+	// v27..v28 add servers.status_detail
+	stmt := `
+ALTER TABLE servers ADD COLUMN status_detail TEXT NOT NULL DEFAULT '';
+
+UPDATE servers
+SET version_data = json_set(
+    version_data,
+    '$.applications',
+    (
+        SELECT json_group_array(
+            json_set(
+                value,
+                '$.in_maintenance',
+                CASE json_extract(value, '$.in_maintenance')
+                    WHEN 1 THEN 2
+                    WHEN 0 THEN 0
+                END
+            )
+        )
+        FROM json_each(version_data, '$.applications')
+    )
+);
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV26(ctx context.Context, tx *sql.Tx) error {
