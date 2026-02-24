@@ -57,8 +57,8 @@ func TestE2E_WithToken_FactoryResetCluster(t *testing.T) {
 // json.DisallowUnknownFields() in IncusOS JSON handling in order to improve
 // the validation of the provided JSON preseeds.
 // See: https://discuss.linuxcontainers.org/t/specify-certificate-using-seed-tar/26148
+// Fixed by: https://github.com/lxc/incus/pull/2968
 func TestE2E_WithToken_FactoryResetClusterWithTokenSeed(t *testing.T) {
-	t.Skip("Currently broken, see comment above")
 	runE2ETest(
 		t,
 		"token - factory reset cluster",

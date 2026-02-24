@@ -654,6 +654,8 @@ func (c client) SystemFactoryReset(ctx context.Context, endpoint provisioning.En
 		Version:              providerConfig.Version,
 	}
 
+	seedConfig.Incus = fixIncusJSONPreseed(seedConfig.Incus)
+
 	seedData := map[string]any{
 		"applications": seedConfig.Applications,
 		"incus":        seedConfig.Incus,
@@ -680,6 +682,58 @@ func (c client) SystemFactoryReset(ctx context.Context, endpoint provisioning.En
 	}
 
 	return nil
+}
+
+// This function compensates for the issue raised in
+// https://discuss.linuxcontainers.org/t/specify-certificate-using-seed-tar/26148
+// which is about https://github.com/lxc/incus/blob/3caec34c3bbff5ce17f1728c089d91ad8540e145/shared/api/init.go#L9
+// where Server is not embedded and the JSON struct tag is missing.
+//
+// TODO: once https://github.com/lxc/incus/pull/2968 has landed.
+func fixIncusJSONPreseed(in map[string]any) map[string]any {
+	preseedAny, ok := in["preseed"]
+	if !ok {
+		return in
+	}
+
+	preseed, ok := preseedAny.(map[string]any)
+	if !ok {
+		return in
+	}
+
+	_, ok = preseed["Server"]
+	if ok {
+		return in
+	}
+
+	server := make(map[string]any, len(preseed))
+	var cluster map[string]any
+
+	for k, v := range preseed {
+		if k == `cluster` {
+			clusterMap, ok := v.(map[string]any)
+			if !ok {
+				continue
+			}
+
+			cluster = clusterMap
+			continue
+		}
+
+		server[k] = v
+	}
+
+	preseedUpdated := map[string]any{
+		"Server": server, // this is intentionally upper case, since in https://github.com/lxc/incus/blob/3caec34c3bbff5ce17f1728c089d91ad8540e145/shared/api/init.go#L9 the JSON struct tag is missing.
+	}
+
+	if cluster != nil {
+		preseedUpdated["cluster"] = cluster
+	}
+
+	in["preseed"] = preseedUpdated
+
+	return in
 }
 
 func (c client) SubscribeLifecycleEvents(ctx context.Context, endpoint provisioning.Endpoint) (chan domain.LifecycleEvent, chan error, error) {
