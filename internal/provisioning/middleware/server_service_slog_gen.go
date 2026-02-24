@@ -425,12 +425,12 @@ func (_d ServerServiceWithSlog) PollServer(ctx context.Context, server provision
 }
 
 // PollServers implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) (err error) {
+func (_d ServerServiceWithSlog) PollServers(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("serverStatus", serverStatus),
+			slog.Any("serverFilter", serverFilter),
 			slog.Bool("updateServerConfiguration", updateServerConfiguration),
 		)
 	}
@@ -456,7 +456,7 @@ func (_d ServerServiceWithSlog) PollServers(ctx context.Context, serverStatus ap
 			log.DebugContext(ctx, "<= method PollServers finished")
 		}
 	}()
-	return _d._base.PollServers(ctx, serverStatus, updateServerConfiguration)
+	return _d._base.PollServers(ctx, serverFilter, updateServerConfiguration)
 }
 
 // PoweroffSystemByName implements provisioning.ServerService.

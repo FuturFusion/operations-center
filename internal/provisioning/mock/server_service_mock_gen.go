@@ -57,7 +57,7 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			PollServerFunc: func(ctx context.Context, server provisioning.Server, updateServerConfiguration bool) error {
 //				panic("mock out the PollServer method")
 //			},
-//			PollServersFunc: func(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error {
+//			PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
 //				panic("mock out the PollServers method")
 //			},
 //			PoweroffSystemByNameFunc: func(ctx context.Context, name string) error {
@@ -146,7 +146,7 @@ type ServerServiceMock struct {
 	PollServerFunc func(ctx context.Context, server provisioning.Server, updateServerConfiguration bool) error
 
 	// PollServersFunc mocks the PollServers method.
-	PollServersFunc func(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error
+	PollServersFunc func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error
 
 	// PoweroffSystemByNameFunc mocks the PoweroffSystemByName method.
 	PoweroffSystemByNameFunc func(ctx context.Context, name string) error
@@ -276,8 +276,8 @@ type ServerServiceMock struct {
 		PollServers []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ServerStatus is the serverStatus argument value.
-			ServerStatus api.ServerStatus
+			// ServerFilter is the serverFilter argument value.
+			ServerFilter provisioning.ServerFilter
 			// UpdateServerConfiguration is the updateServerConfiguration argument value.
 			UpdateServerConfiguration bool
 		}
@@ -827,23 +827,23 @@ func (mock *ServerServiceMock) PollServerCalls() []struct {
 }
 
 // PollServers calls PollServersFunc.
-func (mock *ServerServiceMock) PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error {
+func (mock *ServerServiceMock) PollServers(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
 	if mock.PollServersFunc == nil {
 		panic("ServerServiceMock.PollServersFunc: method is nil but ServerService.PollServers was just called")
 	}
 	callInfo := struct {
 		Ctx                       context.Context
-		ServerStatus              api.ServerStatus
+		ServerFilter              provisioning.ServerFilter
 		UpdateServerConfiguration bool
 	}{
 		Ctx:                       ctx,
-		ServerStatus:              serverStatus,
+		ServerFilter:              serverFilter,
 		UpdateServerConfiguration: updateServerConfiguration,
 	}
 	mock.lockPollServers.Lock()
 	mock.calls.PollServers = append(mock.calls.PollServers, callInfo)
 	mock.lockPollServers.Unlock()
-	return mock.PollServersFunc(ctx, serverStatus, updateServerConfiguration)
+	return mock.PollServersFunc(ctx, serverFilter, updateServerConfiguration)
 }
 
 // PollServersCalls gets all the calls that were made to PollServers.
@@ -852,12 +852,12 @@ func (mock *ServerServiceMock) PollServers(ctx context.Context, serverStatus api
 //	len(mockedServerService.PollServersCalls())
 func (mock *ServerServiceMock) PollServersCalls() []struct {
 	Ctx                       context.Context
-	ServerStatus              api.ServerStatus
+	ServerFilter              provisioning.ServerFilter
 	UpdateServerConfiguration bool
 } {
 	var calls []struct {
 		Ctx                       context.Context
-		ServerStatus              api.ServerStatus
+		ServerFilter              provisioning.ServerFilter
 		UpdateServerConfiguration bool
 	}
 	mock.lockPollServers.RLock()

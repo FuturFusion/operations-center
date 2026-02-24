@@ -195,7 +195,7 @@ func (_d ServerServiceWithPrometheus) PollServer(ctx context.Context, server pro
 }
 
 // PollServers implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) (err error) {
+func (_d ServerServiceWithPrometheus) PollServers(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -205,7 +205,7 @@ func (_d ServerServiceWithPrometheus) PollServers(ctx context.Context, serverSta
 
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PollServers", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.PollServers(ctx, serverStatus, updateServerConfiguration)
+	return _d.base.PollServers(ctx, serverFilter, updateServerConfiguration)
 }
 
 // PoweroffSystemByName implements provisioning.ServerService.
