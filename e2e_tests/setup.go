@@ -68,11 +68,11 @@ func setupIncusOSWithToken(t *testing.T, tmpDir string) {
 func cleanupIncusOS(t *testing.T) func() {
 	t.Helper()
 
-	if !noCleanup {
-		t.Cleanup(func() {})
-	}
-
 	return func() {
+		if noCleanup {
+			return
+		}
+
 		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
 		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
 		defer cancel()
@@ -128,11 +128,11 @@ func setupIncusOSWithTokenSeed(t *testing.T, tmpDir string) {
 func cleanupTokenSeed(t *testing.T, token string) func() {
 	t.Helper()
 
-	if !noCleanup {
-		t.Cleanup(func() {})
-	}
-
 	return func() {
+		if noCleanup {
+			return
+		}
+
 		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
 		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
 		defer cancel()

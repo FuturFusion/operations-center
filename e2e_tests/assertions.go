@@ -16,6 +16,10 @@ func assertIncusRemote(t *testing.T, clusterName string, clusterIP string) {
 
 	mustRun(t, `incus remote add --accept-certificate --auth-type tls %s https://%s:8443`, clusterName, clusterIP)
 	t.Cleanup(func() {
+		if noCleanup {
+			return
+		}
+
 		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()

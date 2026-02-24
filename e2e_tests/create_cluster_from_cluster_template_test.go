@@ -57,11 +57,11 @@ func createClusterFromTemplate(t *testing.T, tmpDir string) {
 func clusterTemplateCleanup(t *testing.T) func() {
 	t.Helper()
 
-	if !noCleanup {
-		t.Cleanup(func() {})
-	}
-
 	return func() {
+		if noCleanup {
+			return
+		}
+
 		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
 		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
 		defer cancel()
