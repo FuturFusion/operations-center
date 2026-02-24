@@ -801,7 +801,105 @@ func TestClientServer(t *testing.T) {
 			},
 			testCases: []methodTestCase{
 				{
-					name: "success",
+					name: "success - Evacuating",
+					response: []queue.Item[response]{
+						// GET /os/1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "environment": {
+      "hostname": "af94e64e-1993-41b6-8f10-a8eebb828fce",
+      "os_name": "IncusOS",
+      "os_version": "202511041601",
+      "os_version_next": "202512210545"
+    }
+  }
+}`),
+							},
+						},
+						// GET /os/1.0/applications
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": [
+    "/1.0/applications/incus"
+  ]
+}`),
+							},
+						},
+						// GET /os/1.0/applications/incus
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {},
+    "state": {
+      "initialized": true,
+      "version": "202511041601"
+    }
+  }
+}`),
+							},
+						},
+						// GET /1.0/cluster/members/server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "status": "Evacuating"
+  }
+}`),
+							},
+						},
+						// GET /os/1.0/system/update
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "channel": "stable"
+    },
+    "state": {
+      "needs_reboot": true
+    }
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /os/1.0", "GET /os/1.0/applications", "GET /os/1.0/applications/incus", "GET /1.0/cluster/members/server01", "GET /os/1.0/system/update"},
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+						wantResources := api.ServerVersionData{
+							OS: api.OSVersionData{
+								Name:        "IncusOS",
+								Version:     "202511041601",
+								VersionNext: "202512210545",
+								NeedsReboot: true,
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:          "incus",
+									Version:       "202511041601",
+									InMaintenance: api.InMaintenanceEvacuating,
+								},
+							},
+							UpdateChannel: "stable",
+						}
+
+						require.Equal(t, wantResources, res)
+					},
+				},
+				{
+					name: "success - Evacuated",
 					response: []queue.Item[response]{
 						// GET /os/1.0
 						{
@@ -889,7 +987,7 @@ func TestClientServer(t *testing.T) {
 								{
 									Name:          "incus",
 									Version:       "202511041601",
-									InMaintenance: true,
+									InMaintenance: api.InMaintenanceEvacuated,
 								},
 							},
 							UpdateChannel: "stable",
@@ -898,6 +996,105 @@ func TestClientServer(t *testing.T) {
 						require.Equal(t, wantResources, res)
 					},
 				},
+				{
+					name: "success - Restoring",
+					response: []queue.Item[response]{
+						// GET /os/1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "environment": {
+      "hostname": "af94e64e-1993-41b6-8f10-a8eebb828fce",
+      "os_name": "IncusOS",
+      "os_version": "202511041601",
+      "os_version_next": "202512210545"
+    }
+  }
+}`),
+							},
+						},
+						// GET /os/1.0/applications
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": [
+    "/1.0/applications/incus"
+  ]
+}`),
+							},
+						},
+						// GET /os/1.0/applications/incus
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {},
+    "state": {
+      "initialized": true,
+      "version": "202511041601"
+    }
+  }
+}`),
+							},
+						},
+						// GET /1.0/cluster/members/server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "status": "Restoring"
+  }
+}`),
+							},
+						},
+						// GET /os/1.0/system/update
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "channel": "stable"
+    },
+    "state": {
+      "needs_reboot": true
+    }
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /os/1.0", "GET /os/1.0/applications", "GET /os/1.0/applications/incus", "GET /1.0/cluster/members/server01", "GET /os/1.0/system/update"},
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+						wantResources := api.ServerVersionData{
+							OS: api.OSVersionData{
+								Name:        "IncusOS",
+								Version:     "202511041601",
+								VersionNext: "202512210545",
+								NeedsReboot: true,
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:          "incus",
+									Version:       "202511041601",
+									InMaintenance: api.InMaintenanceRestoring,
+								},
+							},
+							UpdateChannel: "stable",
+						}
+
+						require.Equal(t, wantResources, res)
+					},
+				},
+
 				{
 					name: "error - os version unexpected http status code",
 					response: []queue.Item[response]{
