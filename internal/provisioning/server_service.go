@@ -126,6 +126,7 @@ func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer S
 		}
 
 		newServer.Status = api.ServerStatusPending
+		newServer.StatusDetail = api.ServerStatusDetailPendingReconfiguring
 		newServer.LastSeen = s.now()
 		newServer.Channel = channel
 
@@ -157,12 +158,23 @@ func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer S
 	// Since we have the background task to update the server state, we do not
 	// care about graceful shutdown for this "one off" check.
 	go func() {
-		time.Sleep(s.initialConnectionDelay)
-
+		var err error
 		ctx := context.Background()
-		err = s.PollServer(ctx, newServer, true)
+		log := slog.With(slog.String("name", newServer.Name), slog.String("url", newServer.ConnectionURL))
+
+		for i := range 10 {
+			time.Sleep(s.initialConnectionDelay)
+
+			err = s.PollServer(ctx, newServer, true)
+			if err == nil {
+				break
+			}
+
+			log.DebugContext(ctx, "Initial server connection test failed", logger.Err(err), slog.Int("count", i))
+		}
+
 		if err != nil {
-			slog.WarnContext(ctx, "Initial server connection test failed", logger.Err(err), slog.String("name", newServer.Name), slog.String("url", newServer.ConnectionURL))
+			log.WarnContext(ctx, "Initial server connection test failed", logger.Err(err))
 		}
 	}()
 
@@ -440,6 +452,7 @@ func (s *serverService) UpdateSystemNetwork(ctx context.Context, name string, sy
 
 		updatedServer.OSData.Network = systemNetwork
 		updatedServer.Status = api.ServerStatusPending
+		updatedServer.StatusDetail = api.ServerStatusDetailPendingReconfiguring
 
 		updatedServer.LastSeen = s.now()
 
@@ -507,6 +520,7 @@ func (s *serverService) UpdateSystemStorage(ctx context.Context, name string, sy
 
 		updatedServer.OSData.Storage = systemStorage
 		updatedServer.Status = api.ServerStatusPending
+		updatedServer.StatusDetail = api.ServerStatusDetailPendingReconfiguring
 
 		updatedServer.LastSeen = s.now()
 
@@ -638,8 +652,6 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfU
 		}
 
 		server.ConnectionURL = serverUpdate.ConnectionURL
-		server.Status = api.ServerStatusReady
-		server.LastSeen = s.now()
 
 		err = server.Validate()
 		if err != nil {
@@ -657,12 +669,29 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfU
 		return err
 	}
 
-	err = s.PollServer(ctx, *server, true)
-	if err != nil {
-		return fmt.Errorf("Failed to update server configuration after self update: %w", err)
-	}
+	go func() {
+		var err error
+		ctx := context.Background()
+		log := slog.With(slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 
-	s.selfUpdateSignal.Emit(ctx, *server)
+		for i := range 10 {
+			time.Sleep(s.initialConnectionDelay)
+
+			err = s.PollServer(ctx, *server, true)
+			if err == nil {
+				break
+			}
+
+			log.DebugContext(ctx, "Failed to poll server after self update", logger.Err(err), slog.Int("count", i))
+		}
+
+		if err != nil {
+			log.ErrorContext(ctx, "Failed to update server configuration after self update", logger.Err(err))
+			return
+		}
+
+		s.selfUpdateSignal.Emit(ctx, *server)
+	}()
 
 	return nil
 }
@@ -832,10 +861,8 @@ func (s *serverService) DeleteByName(ctx context.Context, name string) error {
 //   - Periodic connectivity test for all servers in the inventory.
 //   - Periodic connectivity test for all pending servers in the inventory.
 //   - Periodic update of server configuration data (network, security, resources)
-func (s *serverService) PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error {
-	servers, err := s.repo.GetAllWithFilter(ctx, ServerFilter{
-		Status: ptr.To(serverStatus),
-	})
+func (s *serverService) PollServers(ctx context.Context, serverFilter ServerFilter, updateServerConfiguration bool) error {
+	servers, err := s.repo.GetAllWithFilter(ctx, serverFilter)
 	if err != nil {
 		return fmt.Errorf("Failed to get servers for polling: %w", err)
 	}
@@ -865,14 +892,14 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string) e
 
 		for i := range server.VersionData.Applications {
 			if server.VersionData.Applications[i].Name == string(images.UpdateFileComponentIncus) {
-				server.VersionData.Applications[i].InMaintenance = true
+				server.VersionData.Applications[i].InMaintenance = api.InMaintenanceEvacuating
 				break
 			}
 		}
 
 		err = s.repo.Update(ctx, *server)
 		if err != nil {
-			return fmt.Errorf("Failed put server %q in maintenance: %w", name, err)
+			return fmt.Errorf("Failed put server %q in evacuating: %w", name, err)
 		}
 
 		err = s.client.Evacuate(ctx, *server)
@@ -890,77 +917,144 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string) e
 }
 
 func (s *serverService) PoweroffSystemByName(ctx context.Context, name string) error {
-	server, err := s.GetByName(ctx, name)
-	if err != nil {
-		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
-	}
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		server, err := s.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+		}
 
-	err = s.client.Poweroff(ctx, *server)
+		server.Status = api.ServerStatusOffline
+		server.StatusDetail = api.ServerStatusDetailOfflineShutdown
+
+		err = s.Update(ctx, *server, false, false)
+		if err != nil {
+			return fmt.Errorf("Failed to update server %q: %w", name, err)
+		}
+
+		err = s.client.Poweroff(ctx, *server)
+		if err != nil {
+			return fmt.Errorf("Failed to poweroff server %q by name: %w", name, err)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return fmt.Errorf("Failed to poweroff server %q by name: %w", name, err)
+		return err
 	}
 
 	return nil
 }
 
 func (s *serverService) RebootSystemByName(ctx context.Context, name string) error {
-	server, err := s.GetByName(ctx, name)
-	if err != nil {
-		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
-	}
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		server, err := s.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+		}
 
-	err = s.client.Reboot(ctx, *server)
+		server.Status = api.ServerStatusOffline
+		server.StatusDetail = api.ServerStatusDetailOfflineRebooting
+
+		err = s.Update(ctx, *server, false, false)
+		if err != nil {
+			return fmt.Errorf("Failed to update server %q: %w", name, err)
+		}
+
+		err = s.client.Reboot(ctx, *server)
+		if err != nil {
+			return fmt.Errorf("Failed to reboot server %q by name: %w", name, err)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return fmt.Errorf("Failed to reboot server %q by name: %w", name, err)
+		return err
 	}
 
 	return nil
 }
 
 func (s *serverService) RestoreSystemByName(ctx context.Context, name string) error {
-	server, err := s.GetByName(ctx, name)
-	if err != nil {
-		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
-	}
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		server, err := s.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+		}
 
-	if server.Type != api.ServerTypeIncus {
-		return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
-	}
+		if server.Type != api.ServerTypeIncus {
+			return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
+		}
 
-	err = s.client.Restore(ctx, *server)
+		for i := range server.VersionData.Applications {
+			if server.VersionData.Applications[i].Name == string(images.UpdateFileComponentIncus) {
+				server.VersionData.Applications[i].InMaintenance = api.InMaintenanceRestoring
+				break
+			}
+		}
+
+		err = s.repo.Update(ctx, *server)
+		if err != nil {
+			return fmt.Errorf("Failed put server %q in restoring: %w", name, err)
+		}
+
+		err = s.client.Restore(ctx, *server)
+		if err != nil {
+			return fmt.Errorf("Failed to restore server %q by name: %w", name, err)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return fmt.Errorf("Failed to evacuate server %q by name: %w", name, err)
+		return err
 	}
 
 	return nil
 }
 
 func (s *serverService) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error {
-	server, err := s.GetByName(ctx, name)
-	if err != nil {
-		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
-	}
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		server, err := s.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+		}
 
-	// Forcefully set channel and update frequency on server before triggering update.
-	err = s.UpdateSystemUpdate(ctx, name, incusosapi.SystemUpdate{
-		Config: incusosapi.SystemUpdateConfig{
-			Channel: server.Channel,
-		},
+		if server.Status != api.ServerStatusReady {
+			return fmt.Errorf("Server is not ready: %w", domain.ErrOperationNotPermitted)
+		}
+
+		server.StatusDetail = api.ServerStatusDetailReadyUpdating
+
+		err = s.Update(ctx, *server, false, false)
+		if err != nil {
+			return fmt.Errorf("Failed to update server state to updating for %q: %w", server.Name, err)
+		}
+
+		// Forcefully set channel and update frequency on server before triggering update.
+		err = s.UpdateSystemUpdate(ctx, name, incusosapi.SystemUpdate{
+			Config: incusosapi.SystemUpdateConfig{
+				Channel: server.Channel,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("Failed to enforce update channel for server %q: %w", server.Name, err)
+		}
+
+		if updateRequest.OS.TriggerUpdate {
+			err = s.client.UpdateOS(ctx, *server)
+			if err != nil {
+				return fmt.Errorf("Failed to update the OS of server %q by name: %w", name, err)
+			}
+		}
+
+		// FIXME: iterate over the applications and trigger the update for the applications
+		// as well, if the TriggerUpdate flag is set to true for the particular application.
+		// https://github.com/FuturFusion/operations-center/issues/616
+
+		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("Failed to enforce update channel for server %q: %w", server.Name, err)
+		return err
 	}
-
-	if updateRequest.OS.TriggerUpdate {
-		err = s.client.UpdateOS(ctx, *server)
-		if err != nil {
-			return fmt.Errorf("Failed to update the OS of server %q by name: %w", name, err)
-		}
-	}
-
-	// FIXME: iterate over the applications and trigger the update for the applications
-	// as well, if the TriggerUpdate flag is set to true for the particular application.
-	// https://github.com/FuturFusion/operations-center/issues/616
 
 	return nil
 }
@@ -983,10 +1077,10 @@ func (s *serverService) ResyncByName(ctx context.Context, _ string, event domain
 
 	switch event.Operation {
 	case domain.LifecycleOperationEvacuate:
-		err = s.handleMaintenanceUpdate(ctx, server, true)
+		err = s.handleMaintenanceUpdate(ctx, server, api.InMaintenanceEvacuated)
 
 	case domain.LifecycleOperationRestore:
-		err = s.handleMaintenanceUpdate(ctx, server, false)
+		err = s.handleMaintenanceUpdate(ctx, server, api.NotInMaintenance)
 
 	case domain.LifecycleOperationUpdate:
 		err = s.PollServer(ctx, *server, true)
@@ -1001,7 +1095,7 @@ func (s *serverService) ResyncByName(ctx context.Context, _ string, event domain
 	return nil
 }
 
-func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *Server, inMaintenance bool) error {
+func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *Server, inMaintenance api.InMaintenanceState) error {
 	if server.Type != api.ServerTypeIncus {
 		return nil
 	}
@@ -1019,17 +1113,63 @@ func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *Ser
 func (s *serverService) PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error {
 	log := slog.With(slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 
-	updatedServerCertificate, err := s.connectionTestWithCertificateUpdate(ctx, server, log)
-	if err != nil {
+	var err error
+
+	updatedServerCertificate, connTestErr := s.connectionTestWithCertificateUpdate(ctx, server, log)
+	if connTestErr != nil {
 		var retryableErr domain.ErrRetryable
-		if errors.As(err, &retryableErr) {
-			// Errors are expected if a system is not (yet) available. Therefore
-			// we ignore the errors.
-			log.WarnContext(ctx, "Server connection test failed", logger.Err(err))
+		if errors.As(connTestErr, &retryableErr) {
+			// Query the server again for updating in a transaction.
+			err = transaction.Do(ctx, func(ctx context.Context) error {
+				server, err := s.repo.GetByName(ctx, server.Name)
+				if err != nil {
+					return err
+				}
+
+				log = log.With(logger.Err(err), slog.Any("status", server.Status))
+				switch server.Status {
+				case api.ServerStatusUnknown:
+					log.WarnContext(ctx, "Server connection test failed")
+
+				case api.ServerStatusPending:
+					// TODO: it would make more sense to return a retryable error here
+					// as well, similar to the reboot case.
+					log.WarnContext(ctx, "Server connection test failed")
+
+				case api.ServerStatusReady:
+					log.WarnContext(ctx, "Server connection test failed")
+
+					server.Status = api.ServerStatusOffline
+					server.StatusDetail = api.ServerStatusDetailOfflineUnresponsive
+					err = s.repo.Update(ctx, *server)
+					if err != nil {
+						return err
+					}
+
+				case api.ServerStatusOffline:
+					log = log.With(slog.Any("status_detail", server.StatusDetail))
+					switch server.StatusDetail {
+					case api.ServerStatusDetailOfflineRebooting:
+						return fmt.Errorf("still rebooting: %w", connTestErr)
+
+					case api.ServerStatusDetailOfflineShutdown:
+						log.DebugContext(ctx, "Server connection test failed, shutdown")
+
+					case api.ServerStatusDetailOfflineUnresponsive:
+						log.WarnContext(ctx, "Server connection test failed, unresponsive")
+					}
+				}
+
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+
 			return nil
 		}
 
-		return err
+		return connTestErr
 	}
 
 	var hardwareData api.HardwareData
@@ -1079,12 +1219,32 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 			server.Certificate = updatedServerCertificate
 		}
 
+		// Clear status detail, if previous state was not ready, e.g. because
+		// of reboot or reconfiguration.
+		if server.Status != api.ServerStatusReady {
+			server.StatusDetail = api.ServerStatusDetailNone
+		}
+
+		server.Status = api.ServerStatusReady
+
 		if updateServerConfiguration {
-			server.Status = api.ServerStatusReady
 			server.HardwareData = hardwareData
 			server.OSData = osData
 			server.VersionData = versionData
 			server.Type = serverType
+
+			// If an update has been triggered, check if an update is still needed.
+			// If not, updating is done.
+			if server.StatusDetail == api.ServerStatusDetailReadyUpdating {
+				err = s.enrichServerWithVersionDetails(ctx, server)
+				if err != nil {
+					slog.WarnContext(ctx, "Failed to enrich server with version details", logger.Err(err))
+				} else {
+					if !ptr.From(server.VersionData.NeedsUpdate) {
+						server.StatusDetail = api.ServerStatusDetailNone
+					}
+				}
+			}
 		}
 
 		return s.repo.Update(ctx, *server)

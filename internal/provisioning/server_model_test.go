@@ -250,6 +250,27 @@ one
 			},
 		},
 		{
+			name: "error - status detail invalid",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetail("invalid"), // invalid
+				Channel:      "stable",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
 			name: "error - channel empty",
 			server: provisioning.Server{
 				Name:          "one",

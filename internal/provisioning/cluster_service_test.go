@@ -282,7 +282,7 @@ func TestClusterService_Create(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, `Server "server1" not ready to be clustered (needs update: true, needs reboot: false, in maintenance: false)`)
+				require.ErrorContains(tt, err, `Server "server1" not ready to be clustered (needs update: true, needs reboot: false, in maintenance: not in maintenance)`)
 			},
 			signalHandler: requireNoCallSignalHandler,
 		},
