@@ -62,6 +62,7 @@ import (
 	systemServiceMiddleware "github.com/FuturFusion/operations-center/internal/system/middleware"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/task"
 	"github.com/FuturFusion/operations-center/internal/version"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -763,16 +764,36 @@ func (d *Daemon) setupBackgroundTasks(
 		return updateSourceTaskStop(deadlineFrom(ctx, 60*time.Second))
 	})
 
-	// Start background task to poll servers in pending state to become available.
+	// Start background task to poll servers in pending, updating or rebooting state to become available.
 	pollPendingServersTask := func(ctx context.Context) {
-		slog.InfoContext(ctx, "Polling for pending servers triggered")
-		err := serverSvc.PollServers(ctx, api.ServerStatusPending, true)
+		slog.InfoContext(ctx, "Polling for pending, updating and rebooting servers triggered")
+		err := serverSvc.PollServers(ctx, provisioning.ServerFilter{
+			Status: ptr.To(api.ServerStatusPending),
+		}, true)
 		if err != nil {
 			slog.ErrorContext(ctx, "Polling for pending servers failed", logger.Err(err))
 			return
 		}
 
-		slog.InfoContext(ctx, "Polling for pending servers completed")
+		err = serverSvc.PollServers(ctx, provisioning.ServerFilter{
+			Status:       ptr.To(api.ServerStatusReady),
+			StatusDetail: ptr.To(api.ServerStatusDetailReadyUpdating),
+		}, true)
+		if err != nil {
+			slog.ErrorContext(ctx, "Polling for updating servers failed", logger.Err(err))
+			return
+		}
+
+		err = serverSvc.PollServers(ctx, provisioning.ServerFilter{
+			Status:       ptr.To(api.ServerStatusOffline),
+			StatusDetail: ptr.To(api.ServerStatusDetailOfflineRebooting),
+		}, true)
+		if err != nil {
+			slog.ErrorContext(ctx, "Polling for rebooting servers failed", logger.Err(err))
+			return
+		}
+
+		slog.InfoContext(ctx, "Polling for pending, updating and rebooting servers completed")
 	}
 
 	pollPendingServersTaskStop, _ := task.Start(ctx, pollPendingServersTask, task.Every(config.PendingServerPollInterval))
@@ -786,7 +807,9 @@ func (d *Daemon) setupBackgroundTasks(
 
 		// Within the first connectivityInterval of the hour, we also update the configuration.
 		updateConfiguration := time.Since(time.Now().Truncate(time.Hour)) <= config.ConnectivityCheckInterval
-		err := serverSvc.PollServers(ctx, api.ServerStatusReady, updateConfiguration)
+		err := serverSvc.PollServers(ctx, provisioning.ServerFilter{
+			Status: ptr.To(api.ServerStatusReady),
+		}, updateConfiguration)
 		if err != nil {
 			slog.ErrorContext(ctx, "Connectivity test for some servers failed", logger.Err(err))
 			return
