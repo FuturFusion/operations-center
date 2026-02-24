@@ -168,7 +168,7 @@ func (c *cmdServerList) run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Cluster", "Name", "Connection URL", "Public Connection URL", "Certificate Fingerprint", "Type", "Channel", "Status", "Update Status", "Last Updated", "Last Seen"}
+	header := []string{"Cluster", "Name", "Connection URL", "Public Connection URL", "Certificate Fingerprint", "Type", "Channel", "Status", "Update Status", "Last Updated", "Last Seen", "Recommended Action"}
 	data := [][]string{}
 
 	for _, server := range servers {
@@ -180,10 +180,11 @@ func (c *cmdServerList) run(cmd *cobra.Command, args []string) error {
 			server.Fingerprint[:min(len(server.Fingerprint), 12)],
 			server.Type.String(),
 			server.Channel,
-			server.Status.String(),
-			server.VersionData.State().String(),
+			server.State(),
+			server.UpdateState().String(),
 			server.LastUpdated.Truncate(time.Second).String(),
 			server.LastSeen.Truncate(time.Second).String(),
+			string(server.RecommendedAction()),
 		})
 	}
 
@@ -490,10 +491,11 @@ func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Certificate Fingerprint: %s\n", server.Fingerprint)
 	fmt.Printf("Type: %s\n", server.Type.String())
 	fmt.Printf("Channel: %s\n", server.Channel)
-	fmt.Printf("Status: %s\n", server.Status.String())
-	fmt.Printf("Update Status: %s\n", server.VersionData.State().String())
+	fmt.Printf("Status: %s\n", server.State())
+	fmt.Printf("Update Status: %s\n", server.UpdateState().String())
 	fmt.Printf("Last Updated: %s\n", server.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Last Seen: %s\n", server.LastSeen.Truncate(time.Second).String())
+	fmt.Printf("Recommended Action: %v\n", server.RecommendedAction())
 
 	if c.flagShowResources {
 		hardwareDataJSON, err := json.MarshalIndent(server.HardwareData, "", "  ")
