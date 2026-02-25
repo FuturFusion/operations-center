@@ -121,7 +121,13 @@ make e2e-test
 or a specific test:
 
 ```shell
-make e2e-test GO_TEST_RUN=TestE2E/token_-_create_cluster
+make e2e-test GO_TEST_RUN=TestE2E_WithToken_CreateCluster
+```
+
+to show all available test cases:
+
+```shell
+make e2e-test-list
 ```
 
 ## Cleanup
@@ -129,3 +135,28 @@ make e2e-test GO_TEST_RUN=TestE2E/token_-_create_cluster
 ```shell
 make clean-e2e-test
 ```
+
+## Development
+
+### Idempotent tests
+
+The existing end to end tests are designed to be run individually as well as in
+a sequence. This means, that each test case should clean up any resources it
+creates, so that the next test case can run without interference.
+
+This is achieved by using `t.Cleanup` to register cleanup functions that are
+executed after the test case finishes, regardless of whether it passes or fails.
+
+The cleanup functions should be designed to not fail if the resource they are
+trying to clean up does not exist.
+
+In most cases, the cleanup functions should be registered before the actual
+resource is created, to ensure that they are executed even if the resource
+creation is only partially successful.
+
+Examples:
+
+* `t.Cleanup(clusterCleanup(t))`, cleans up any cluster created during the test
+  case.
+* `t.Cleanup(cleanupTokenSeed(t, token))`, cleans up the token seed created
+  during the test case.
