@@ -10,11 +10,11 @@ import (
 )
 
 type ExprApiApplicationVersionData struct {
-	Name             string  `json:"name" yaml:"name" expr:"name"`
-	Version          string  `json:"version" yaml:"version" expr:"version"`
-	AvailableVersion *string `json:"available_version,omitempty" yaml:"available_version,omitempty" expr:"available_version"`
-	NeedsUpdate      *bool   `json:"needs_update,omitempty" yaml:"needs_update,omitempty" expr:"needs_update"`
-	InMaintenance    bool    `json:"in_maintenance" yaml:"in_maintenance" expr:"in_maintenance"`
+	Name             string                 `json:"name" yaml:"name" expr:"name"`
+	Version          string                 `json:"version" yaml:"version" expr:"version"`
+	AvailableVersion *string                `json:"available_version,omitempty" yaml:"available_version,omitempty" expr:"available_version"`
+	NeedsUpdate      *bool                  `json:"needs_update,omitempty" yaml:"needs_update,omitempty" expr:"needs_update"`
+	InMaintenance    api.InMaintenanceState `json:"in_maintenance" yaml:"in_maintenance" expr:"in_maintenance"`
 }
 
 type ExprApiOSData struct {
@@ -38,7 +38,7 @@ type ExprApiServerVersionData struct {
 	UpdateChannel string                          `json:"update_channel" yaml:"update_channel" expr:"update_channel"`
 	NeedsUpdate   *bool                           `json:"needs_update,omitempty" yaml:"needs_update" expr:"needs_update"`
 	NeedsReboot   *bool                           `json:"needs_reboot,omitempty" yaml:"needs_reboot" expr:"needs_reboot"`
-	InMaintenance *bool                           `json:"in_maintenance,omitempty" yaml:"in_maintenance" expr:"in_maintenance"`
+	InMaintenance *api.InMaintenanceState         `json:"in_maintenance,omitempty" yaml:"in_maintenance" expr:"in_maintenance"`
 }
 
 type ExprOsapiSystemNetwork struct {
@@ -356,6 +356,7 @@ type ExprServer struct {
 	VersionData          ExprApiServerVersionData `json:"version_data" expr:"version_data"`
 	Channel              string                   `json:"channel"                db:"join=channels.name" expr:"channel"`
 	Status               api.ServerStatus         `json:"status" expr:"status"`
+	StatusDetail         api.ServerStatusDetail   `json:"status_detail" expr:"status_detail"`
 	LastUpdated          time.Time                `json:"last_updated"           db:"update_timestamp" expr:"last_updated"`
 	LastSeen             time.Time                `json:"last_seen" expr:"last_seen"`
 }
@@ -786,6 +787,7 @@ func ToExprServer(s Server) ExprServer {
 		VersionData:          ToExprApiServerVersionData(s.VersionData),
 		Channel:              s.Channel,
 		Status:               s.Status,
+		StatusDetail:         s.StatusDetail,
 		LastUpdated:          s.LastUpdated,
 		LastSeen:             s.LastSeen,
 	}

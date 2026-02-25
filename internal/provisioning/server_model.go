@@ -14,23 +14,24 @@ import (
 //generate-expr: Server
 
 type Server struct {
-	ID                   int64                 `json:"-"`
-	Cluster              *string               `json:"cluster"                db:"leftjoin=clusters.name"`
-	Name                 string                `json:"name"                   db:"primary=yes"`
-	Type                 api.ServerType        `json:"type"`
-	ConnectionURL        string                `json:"connection_url"`
-	PublicConnectionURL  string                `json:"public_connection_url"`
-	Certificate          string                `json:"certificate"`
-	Fingerprint          string                `json:"fingerprint"            db:"ignore"`
-	ClusterCertificate   *string               `json:"cluster_certificate"    db:"omit=create,update&leftjoin=clusters.certificate"`
-	ClusterConnectionURL *string               `json:"cluster_connection_url" db:"omit=create,update&leftjoin=clusters.connection_url"`
-	HardwareData         api.HardwareData      `json:"hardware_data"`
-	OSData               api.OSData            `json:"os_data"`
-	VersionData          api.ServerVersionData `json:"version_data"`
-	Channel              string                `json:"channel"                db:"join=channels.name"`
-	Status               api.ServerStatus      `json:"status"`
-	LastUpdated          time.Time             `json:"last_updated"           db:"update_timestamp"`
-	LastSeen             time.Time             `json:"last_seen"`
+	ID                   int64                  `json:"-"`
+	Cluster              *string                `json:"cluster"                db:"leftjoin=clusters.name"`
+	Name                 string                 `json:"name"                   db:"primary=yes"`
+	Type                 api.ServerType         `json:"type"`
+	ConnectionURL        string                 `json:"connection_url"`
+	PublicConnectionURL  string                 `json:"public_connection_url"`
+	Certificate          string                 `json:"certificate"`
+	Fingerprint          string                 `json:"fingerprint"            db:"ignore"`
+	ClusterCertificate   *string                `json:"cluster_certificate"    db:"omit=create,update&leftjoin=clusters.certificate"`
+	ClusterConnectionURL *string                `json:"cluster_connection_url" db:"omit=create,update&leftjoin=clusters.connection_url"`
+	HardwareData         api.HardwareData       `json:"hardware_data"`
+	OSData               api.OSData             `json:"os_data"`
+	VersionData          api.ServerVersionData  `json:"version_data"`
+	Channel              string                 `json:"channel"                db:"join=channels.name"`
+	Status               api.ServerStatus       `json:"status"`
+	StatusDetail         api.ServerStatusDetail `json:"status_detail"`
+	LastUpdated          time.Time              `json:"last_updated"           db:"update_timestamp"`
+	LastSeen             time.Time              `json:"last_seen"`
 }
 
 func (s Server) GetConnectionURL() string {
@@ -104,6 +105,12 @@ func (s Server) Validate() error {
 		return domain.NewValidationErrf("Invalid server, validation of status failed: %v", err)
 	}
 
+	var serverStatusDetail api.ServerStatusDetail
+	err = serverStatusDetail.UnmarshalText([]byte(s.StatusDetail))
+	if err != nil {
+		return domain.NewValidationErrf("Invalid server, validation of status detail failed: %v", err)
+	}
+
 	if s.Channel == "" {
 		return domain.NewValidationErrf("Invalid server, channel can not be empty")
 	}
@@ -114,13 +121,14 @@ func (s Server) Validate() error {
 type Servers []Server
 
 type ServerFilter struct {
-	ID          *int
-	Name        *string
-	Cluster     *string
-	Status      *api.ServerStatus
-	Certificate *string
-	Type        *api.ServerType
-	Expression  *string `db:"ignore"`
+	ID           *int
+	Name         *string
+	Cluster      *string
+	Status       *api.ServerStatus
+	StatusDetail *api.ServerStatusDetail
+	Certificate  *string
+	Type         *api.ServerType
+	Expression   *string `db:"ignore"`
 }
 
 func (f ServerFilter) AppendToURLValues(query url.Values) url.Values {

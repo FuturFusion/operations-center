@@ -31,7 +31,7 @@ type ServerService interface {
 	ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error
 	SyncCluster(ctx context.Context, clusterName string) error
 
-	PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error
+	PollServers(ctx context.Context, serverFilter ServerFilter, updateServerConfiguration bool) error
 	PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error
 
 	EvacuateSystemByName(ctx context.Context, name string) error

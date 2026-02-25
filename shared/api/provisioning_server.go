@@ -88,12 +88,14 @@ const (
 	ServerStatusUnknown ServerStatus = "unknown"
 	ServerStatusPending ServerStatus = "pending"
 	ServerStatusReady   ServerStatus = "ready"
+	ServerStatusOffline ServerStatus = "offline"
 )
 
 var serverStatuses = map[ServerStatus]struct{}{
 	ServerStatusUnknown: {},
 	ServerStatusPending: {},
 	ServerStatusReady:   {},
+	ServerStatusOffline: {},
 }
 
 func (s ServerStatus) String() string {
@@ -142,6 +144,78 @@ func (s *ServerStatus) Scan(value any) error {
 
 	default:
 		return fmt.Errorf("type %T is not supported for server status", value)
+	}
+}
+
+type ServerStatusDetail string
+
+const (
+	ServerStatusDetailNone ServerStatusDetail = ""
+
+	ServerStatusDetailPendingReconfiguring ServerStatusDetail = "re-configuring"
+
+	ServerStatusDetailReadyUpdating ServerStatusDetail = "updating"
+
+	ServerStatusDetailOfflineRebooting    ServerStatusDetail = "rebooting"
+	ServerStatusDetailOfflineShutdown     ServerStatusDetail = "shut down"
+	ServerStatusDetailOfflineUnresponsive ServerStatusDetail = "unresponsive"
+)
+
+var serverStatusDetails = map[ServerStatusDetail]struct{}{
+	ServerStatusDetailNone:                 {},
+	ServerStatusDetailPendingReconfiguring: {},
+	ServerStatusDetailReadyUpdating:        {},
+	ServerStatusDetailOfflineRebooting:     {},
+	ServerStatusDetailOfflineShutdown:      {},
+	ServerStatusDetailOfflineUnresponsive:  {},
+}
+
+func (s ServerStatusDetail) String() string {
+	return string(s)
+}
+
+// MarshalText implements the encoding.TextMarshaler interface.
+func (s ServerStatusDetail) MarshalText() ([]byte, error) {
+	return []byte(s), nil
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (s *ServerStatusDetail) UnmarshalText(text []byte) error {
+	if len(text) == 0 {
+		*s = ServerStatusDetailNone
+		return nil
+	}
+
+	_, ok := serverStatusDetails[ServerStatusDetail(text)]
+	if !ok {
+		return fmt.Errorf("%q is not a valid server status", string(text))
+	}
+
+	*s = ServerStatusDetail(text)
+
+	return nil
+}
+
+// Value implements the sql driver.Valuer interface.
+func (s ServerStatusDetail) Value() (driver.Value, error) {
+	return string(s), nil
+}
+
+// Scan implements the sql.Scanner interface.
+func (s *ServerStatusDetail) Scan(value any) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid server status detail")
+	}
+
+	switch v := value.(type) {
+	case string:
+		return s.UnmarshalText([]byte(v))
+
+	case []byte:
+		return s.UnmarshalText(v)
+
+	default:
+		return fmt.Errorf("type %T is not supported for server status detail", value)
 	}
 }
 
@@ -250,7 +324,35 @@ type ServerVersionData struct {
 
 	// InMaintenance is the aggreaged state over OS and all applications indicating
 	// if there is any component currently in maintenance state.
-	InMaintenance *bool `json:"in_maintenance,omitempty" yaml:"in_maintenance"`
+	InMaintenance *InMaintenanceState `json:"in_maintenance,omitempty" yaml:"in_maintenance"`
+}
+
+type InMaintenanceState int
+
+const (
+	NotInMaintenance        InMaintenanceState = 0
+	InMaintenanceEvacuating InMaintenanceState = 1
+	InMaintenanceEvacuated  InMaintenanceState = 2
+	InMaintenanceRestoring  InMaintenanceState = 3
+)
+
+func (m InMaintenanceState) String() string {
+	switch m {
+	case NotInMaintenance:
+		return "not in maintenance"
+
+	case InMaintenanceEvacuating:
+		return "evacuating"
+
+	case InMaintenanceEvacuated:
+		return "evacuated"
+
+	case InMaintenanceRestoring:
+		return "restoring"
+
+	default:
+		return "not in maintenance"
+	}
 }
 
 // OSVersionData defines a single version information for the OS.
@@ -306,10 +408,9 @@ type ApplicationVersionData struct {
 	// (available_version > version).
 	NeedsUpdate *bool `json:"needs_update,omitempty" yaml:"needs_update,omitempty"`
 
-	// InMaintenance is true, if the application is in maintenance mode (e.g. for
-	// Incus, if it has been evacuated). If false, the system is in normal
-	// operation (also the case, if an Incus restore operation has been executed).
-	InMaintenance bool `json:"in_maintenance" yaml:"in_maintenance"`
+	// InMaintenance is the application state indicating if the application
+	// is in maintenance mode (e.g. for Incus, if it has been evacuated).
+	InMaintenance InMaintenanceState `json:"in_maintenance" yaml:"in_maintenance"`
 }
 
 // Value implements the sql driver.Valuer interface.
@@ -364,7 +465,7 @@ func (s *ServerVersionData) Scan(value any) error {
 func (s *ServerVersionData) Compute(latestAvailableVersions map[images.UpdateFileComponent]string) {
 	// Init calculated fields with default values, if no value is currently set.
 	s.NeedsReboot = ptr.To(false)
-	s.InMaintenance = ptr.To(false)
+	s.InMaintenance = ptr.To(NotInMaintenance)
 	s.NeedsUpdate = ptr.To(false)
 	s.OS.NeedsUpdate = ptr.To(false)
 	for i := range s.Applications {
@@ -374,7 +475,7 @@ func (s *ServerVersionData) Compute(latestAvailableVersions map[images.UpdateFil
 	// NeedsReboot is true, if OS.NeedsReboot is true.
 	s.NeedsReboot = &s.OS.NeedsReboot
 
-	// InMaintenance is true, if the server type is incus and the state of Incus is evacuated.
+	// InMaintenance is the InMaintenance state of Incus.
 	for _, application := range s.Applications {
 		if application.Name == string(images.UpdateFileComponentIncus) {
 			s.InMaintenance = &application.InMaintenance
@@ -417,91 +518,6 @@ func (s *ServerVersionData) Compute(latestAvailableVersions map[images.UpdateFil
 			break
 		}
 	}
-}
-
-type ServerUpdateState string
-
-const (
-	ServerUpdateStateReady                       ServerUpdateState = "up to date"
-	ServerUpdateStateUpdatePending               ServerUpdateState = "update pending"
-	ServerUpdateStateEvacuationPending           ServerUpdateState = "evacuation pending"
-	ServerUpdateStateInMaintenanceRebootPending  ServerUpdateState = "in maintenance, reboot pending"
-	ServerUpdateStateInMaintenanceRestorePending ServerUpdateState = "restore pending"
-	ServerUpdateStateRebootPending               ServerUpdateState = "reboot pending"
-)
-
-func (s ServerUpdateState) String() string {
-	return string(s)
-}
-
-func (s *ServerVersionData) State() ServerUpdateState {
-	if ptr.From(s.NeedsUpdate) {
-		return ServerUpdateStateUpdatePending
-	}
-
-	if ptr.From(s.NeedsReboot) {
-		isIncus := false
-		for _, app := range s.Applications {
-			if app.Name == string(images.UpdateFileComponentIncus) {
-				isIncus = true
-				break
-			}
-		}
-
-		if ptr.From(s.InMaintenance) {
-			return ServerUpdateStateInMaintenanceRebootPending
-		}
-
-		if !ptr.From(s.InMaintenance) && isIncus {
-			return ServerUpdateStateEvacuationPending
-		}
-
-		return ServerUpdateStateRebootPending
-	}
-
-	if ptr.From(s.InMaintenance) {
-		return ServerUpdateStateInMaintenanceRestorePending
-	}
-
-	return ServerUpdateStateReady
-}
-
-type ServerAction string
-
-const (
-	ServerActionNone     ServerAction = ""
-	ServerActionUpdate   ServerAction = "update"
-	ServerActionEvacuate ServerAction = "evacuate"
-	ServerActionReboot   ServerAction = "reboot"
-	ServerActionRestore  ServerAction = "restore"
-)
-
-func (s *ServerVersionData) RecommendedAction() ServerAction {
-	if ptr.From(s.NeedsUpdate) {
-		return ServerActionUpdate
-	}
-
-	if ptr.From(s.NeedsReboot) {
-		isIncus := false
-		for _, app := range s.Applications {
-			if app.Name == string(images.UpdateFileComponentIncus) {
-				isIncus = true
-				break
-			}
-		}
-
-		if !ptr.From(s.InMaintenance) && isIncus {
-			return ServerActionEvacuate
-		}
-
-		return ServerActionReboot
-	}
-
-	if ptr.From(s.InMaintenance) {
-		return ServerActionRestore
-	}
-
-	return ServerActionNone
 }
 
 func availableVersionGreaterThan(currentVersion string, availableVersion string) bool {
@@ -588,6 +604,8 @@ type Server struct {
 	// Example: pending
 	Status ServerStatus `json:"server_status" yaml:"server_status"`
 
+	StatusDetail ServerStatusDetail `json:"server_status_detail" yaml:"server_status_detail"`
+
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
 	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
@@ -597,6 +615,176 @@ type Server struct {
 	// in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
 	LastSeen time.Time `json:"last_seen" yaml:"last_seen"`
+}
+
+func (s Server) State() string {
+	statusDetail := s.StatusDetail.String()
+	if statusDetail != "" {
+		statusDetail = " (" + statusDetail + ")"
+	}
+
+	return s.Status.String() + statusDetail
+}
+
+type ServerUpdateState string
+
+const (
+	ServerUpdateStateUndefined                   ServerUpdateState = "undefined"                       // Returned for undefined states
+	ServerUpdateStateUpToDate                    ServerUpdateState = "up to date"                      // ServerStatusReady, NeedsUpdate: false, NeedsReboot: false, InMaintenance: NotInMaintenance
+	ServerUpdateStateUpdatePending               ServerUpdateState = "update pending"                  // ServerStatusReady, NeedsUpdate: true
+	ServerUpdateStateUpdating                    ServerUpdateState = "updating"                        // ServerStatusReady, ServerStatusDetailReadyUpdating
+	ServerUpdateStateEvacuationPending           ServerUpdateState = "evacuation pending"              // ServerStatusReady, NeedsUpdate: false, NeedsReboot: true, IsIncusCluster: true, InMaintenance: NotInMaintenance
+	ServerUpdateStateEvacuating                  ServerUpdateState = "evacuating"                      // ServerStatusReady, NeedsUpdate: false, InMaintenance: InMaintenanceEvacuating
+	ServerUpdateStateInMaintenanceRebootPending  ServerUpdateState = "in maintenance, reboot pending"  // ServerStatusReady, NeedsUpdate: false, NeedsReboot: true, InMaintenance: InMaintenanceEvacuated
+	ServerUpdateStateInMaintenanceRebooting      ServerUpdateState = "in maintenance, rebooting"       // ServerStatusOffline, ServerStatusDetailOfflineRebooting, InMaintenance: InMaintenanceEvacuated
+	ServerUpdateStateInMaintenanceRestorePending ServerUpdateState = "in maintenance, restore pending" // ServerStatusReady, NeedsUpdate: false, InMaintenance: InMaintenanceEvacuated
+	ServerUpdateStateInMaintenanceRestoring      ServerUpdateState = "restoring"                       // ServerStatusReady, NeedsUpdate: false, InMaintenance: InMaintenanceRestoring
+	ServerUpdateStateRebootPending               ServerUpdateState = "reboot pending"                  // ServerStatusReady, NeedsUpdate: false, NeedsReboot: true, IsIncusCluster: false, InMaintenance: NotInMaintenance
+	ServerUpdateStateRebooting                   ServerUpdateState = "rebooting"                       // ServerStatusOffline, ServerStatusDetailOfflineRebooting
+)
+
+func (s ServerUpdateState) String() string {
+	return string(s)
+}
+
+func (s Server) UpdateState() ServerUpdateState {
+	switch s.Status {
+	case ServerStatusUnknown, ServerStatusPending:
+		return ServerUpdateStateUndefined
+
+	case ServerStatusOffline:
+		// Offline is only defined as update state for explicitly triggered reboots.
+		if s.StatusDetail == ServerStatusDetailOfflineRebooting {
+			if ptr.From(s.VersionData.InMaintenance) == InMaintenanceEvacuated {
+				return ServerUpdateStateInMaintenanceRebooting
+			}
+
+			return ServerUpdateStateRebooting
+		}
+	}
+
+	// Handle ServerStatusReady states.
+	// Offline states, that are not tackled above are threated the same as their
+	// respective ready counter-parts.
+	if s.StatusDetail == ServerStatusDetailReadyUpdating {
+		return ServerUpdateStateUpdating
+	}
+
+	if !ptr.From(s.VersionData.NeedsUpdate) &&
+		!ptr.From(s.VersionData.NeedsReboot) &&
+		ptr.From(s.VersionData.InMaintenance) == NotInMaintenance {
+		return ServerUpdateStateUpToDate
+	}
+
+	if ptr.From(s.VersionData.NeedsUpdate) {
+		return ServerUpdateStateUpdatePending
+	}
+
+	switch ptr.From(s.VersionData.InMaintenance) {
+	case InMaintenanceEvacuating:
+		return ServerUpdateStateEvacuating
+
+	case InMaintenanceRestoring:
+		return ServerUpdateStateInMaintenanceRestoring
+	}
+
+	if ptr.From(s.VersionData.NeedsReboot) {
+		isClusteredIncus := false
+		if s.Cluster != "" {
+			for _, app := range s.VersionData.Applications {
+				if app.Name == string(images.UpdateFileComponentIncus) {
+					isClusteredIncus = true
+					break
+				}
+			}
+		}
+
+		if !isClusteredIncus {
+			if ptr.From(s.VersionData.InMaintenance) == NotInMaintenance {
+				return ServerUpdateStateRebootPending
+			}
+
+			return ServerUpdateStateUndefined
+		}
+
+		switch ptr.From(s.VersionData.InMaintenance) {
+		case NotInMaintenance:
+			return ServerUpdateStateEvacuationPending
+
+		case InMaintenanceEvacuated:
+			return ServerUpdateStateInMaintenanceRebootPending
+		}
+
+		return ServerUpdateStateUndefined
+	}
+
+	if ptr.From(s.VersionData.InMaintenance) == InMaintenanceEvacuated {
+		return ServerUpdateStateInMaintenanceRestorePending
+	}
+
+	return ServerUpdateStateUndefined
+}
+
+type ServerAction string
+
+const (
+	ServerActionNone     ServerAction = ""
+	ServerActionUpdate   ServerAction = "update"
+	ServerActionEvacuate ServerAction = "evacuate"
+	ServerActionReboot   ServerAction = "reboot"
+	ServerActionRestore  ServerAction = "restore"
+)
+
+func (s Server) RecommendedAction() ServerAction {
+	// Don't recommend an action, if the server is not ready.
+	if s.Status != ServerStatusReady {
+		return ServerActionNone
+	}
+
+	// Already an update in progress, don't trigger an other action.
+	if s.StatusDetail == ServerStatusDetailReadyUpdating {
+		return ServerActionNone
+	}
+
+	// Updates can be triggered whenever an update is pending.
+	if ptr.From(s.VersionData.NeedsUpdate) {
+		return ServerActionUpdate
+	}
+
+	// For clustered Incus, the system should be evacuated before reboot.
+	// All other systems can be rebooted directly.
+	if ptr.From(s.VersionData.NeedsReboot) {
+		isClusteredIncus := false
+		if s.Cluster != "" {
+			for _, app := range s.VersionData.Applications {
+				if app.Name == string(images.UpdateFileComponentIncus) {
+					isClusteredIncus = true
+					break
+				}
+			}
+		}
+
+		if !isClusteredIncus && ptr.From(s.VersionData.InMaintenance) == NotInMaintenance {
+			return ServerActionReboot
+		}
+
+		switch ptr.From(s.VersionData.InMaintenance) {
+		case NotInMaintenance:
+			return ServerActionEvacuate
+
+		case InMaintenanceEvacuated:
+			return ServerActionReboot
+
+		default:
+			return ServerActionNone
+		}
+	}
+
+	if ptr.From(s.VersionData.InMaintenance) == InMaintenanceEvacuated {
+		return ServerActionRestore
+	}
+
+	return ServerActionNone
 }
 
 // ServerSelfUpdate defines a self update request of a server.

@@ -35,7 +35,7 @@ func TestServerVersionData_Value(t *testing.T) {
 	val, err := svd.Value()
 	require.NoError(t, err)
 
-	require.JSONEq(t, `{"applications":[{"in_maintenance":false,"name":"app","version":"123"}],"os":{"name":"os","version":"123","version_next":"234","needs_reboot":true},"update_channel":"stable"}`, string(val.([]byte)))
+	require.JSONEq(t, `{"applications":[{"in_maintenance":0,"name":"app","version":"123"}],"os":{"name":"os","version":"123","version_next":"234","needs_reboot":true},"update_channel":"stable"}`, string(val.([]byte)))
 
 	var svdNew api.ServerVersionData
 	err = svdNew.Scan(val.([]byte))
@@ -60,102 +60,224 @@ func TestServerVersionData_Value(t *testing.T) {
 
 func TestServerVersionData_State(t *testing.T) {
 	tests := []struct {
+		status        api.ServerStatus
+		statusDetail  api.ServerStatusDetail
+		cluster       string
 		needsUpdate   bool
 		needsReboot   bool
-		inMaintenance bool
+		inMaintenance api.InMaintenanceState
 		isTypeIncus   bool
 
 		wantServerUpdateState api.ServerUpdateState
 	}{
 		{
+			status:        api.ServerStatusReady,
+			statusDetail:  api.ServerStatusDetailNone,
+			cluster:       "",
 			needsUpdate:   false,
 			needsReboot:   false,
-			inMaintenance: false,
+			inMaintenance: api.NotInMaintenance,
 			isTypeIncus:   false,
 
-			wantServerUpdateState: api.ServerUpdateStateReady,
+			wantServerUpdateState: api.ServerUpdateStateUpToDate,
 		},
 		{
+			status:        api.ServerStatusOffline,
+			statusDetail:  api.ServerStatusDetailOfflineShutdown,
+			inMaintenance: api.NotInMaintenance,
+
+			wantServerUpdateState: api.ServerUpdateStateUpToDate,
+		},
+		{
+			status:        api.ServerStatusReady,
+			statusDetail:  api.ServerStatusDetailNone,
+			cluster:       "",
 			needsUpdate:   true,
 			needsReboot:   false,
-			inMaintenance: false,
+			inMaintenance: api.NotInMaintenance,
 			isTypeIncus:   false,
 
 			wantServerUpdateState: api.ServerUpdateStateUpdatePending,
 		},
 		{
+			status:        api.ServerStatusReady,
+			statusDetail:  api.ServerStatusDetailReadyUpdating,
+			cluster:       "",
 			needsUpdate:   false,
-			needsReboot:   true,
-			inMaintenance: false,
+			needsReboot:   false,
+			inMaintenance: api.NotInMaintenance,
 			isTypeIncus:   false,
 
-			wantServerUpdateState: api.ServerUpdateStateRebootPending,
+			wantServerUpdateState: api.ServerUpdateStateUpdating,
 		},
 		{
+			status:        api.ServerStatusReady,
+			statusDetail:  api.ServerStatusDetailNone,
+			cluster:       "one",
 			needsUpdate:   false,
 			needsReboot:   true,
-			inMaintenance: false,
+			inMaintenance: api.NotInMaintenance,
 			isTypeIncus:   true,
 
 			wantServerUpdateState: api.ServerUpdateStateEvacuationPending,
 		},
 		{
+			status:        api.ServerStatusReady,
+			statusDetail:  api.ServerStatusDetailNone,
+			cluster:       "one",
 			needsUpdate:   false,
 			needsReboot:   true,
-			inMaintenance: true,
+			inMaintenance: api.InMaintenanceEvacuating,
+			isTypeIncus:   true,
+
+			wantServerUpdateState: api.ServerUpdateStateEvacuating,
+		},
+		{
+			status:        api.ServerStatusReady,
+			statusDetail:  api.ServerStatusDetailNone,
+			cluster:       "one",
+			needsUpdate:   false,
+			needsReboot:   true,
+			inMaintenance: api.InMaintenanceEvacuated,
 			isTypeIncus:   true,
 
 			wantServerUpdateState: api.ServerUpdateStateInMaintenanceRebootPending,
 		},
 		{
+			status:        api.ServerStatusOffline,
+			statusDetail:  api.ServerStatusDetailOfflineRebooting,
+			cluster:       "one",
+			needsUpdate:   false,
+			needsReboot:   true,
+			inMaintenance: api.InMaintenanceEvacuated,
+			isTypeIncus:   true,
+
+			wantServerUpdateState: api.ServerUpdateStateInMaintenanceRebooting,
+		},
+		{
+			status:        api.ServerStatusReady,
+			statusDetail:  api.ServerStatusDetailNone,
+			cluster:       "one",
 			needsUpdate:   false,
 			needsReboot:   false,
-			inMaintenance: true,
-			isTypeIncus:   false,
+			inMaintenance: api.InMaintenanceEvacuated,
+			isTypeIncus:   true,
 
 			wantServerUpdateState: api.ServerUpdateStateInMaintenanceRestorePending,
 		},
 		{
+			status:        api.ServerStatusReady,
+			statusDetail:  api.ServerStatusDetailNone,
+			cluster:       "one",
+			needsUpdate:   false,
+			needsReboot:   false,
+			inMaintenance: api.InMaintenanceRestoring,
+			isTypeIncus:   true,
+
+			wantServerUpdateState: api.ServerUpdateStateInMaintenanceRestoring,
+		},
+		{
+			status:        api.ServerStatusReady,
+			statusDetail:  api.ServerStatusDetailNone,
+			cluster:       "",
+			needsUpdate:   false,
+			needsReboot:   true,
+			inMaintenance: api.NotInMaintenance,
+			isTypeIncus:   false,
+
+			wantServerUpdateState: api.ServerUpdateStateRebootPending,
+		},
+		{
+			status:        api.ServerStatusOffline,
+			statusDetail:  api.ServerStatusDetailOfflineRebooting,
+			cluster:       "",
+			needsUpdate:   false,
+			needsReboot:   false,
+			inMaintenance: api.NotInMaintenance,
+			isTypeIncus:   false,
+
+			wantServerUpdateState: api.ServerUpdateStateRebooting,
+		},
+
+		// Update pending edge cases:
+		{
+			status:        api.ServerStatusReady,
+			statusDetail:  api.ServerStatusDetailNone,
+			cluster:       "",
 			needsUpdate:   true,
 			needsReboot:   true,
-			inMaintenance: false,
+			inMaintenance: api.NotInMaintenance,
 			isTypeIncus:   false,
 
 			wantServerUpdateState: api.ServerUpdateStateUpdatePending,
 		},
 		{
+			status:        api.ServerStatusReady,
+			statusDetail:  api.ServerStatusDetailNone,
+			cluster:       "",
 			needsUpdate:   true,
 			needsReboot:   false,
-			inMaintenance: true,
+			inMaintenance: api.InMaintenanceEvacuated,
 			isTypeIncus:   false,
 
 			wantServerUpdateState: api.ServerUpdateStateUpdatePending,
 		},
 		{
+			status:        api.ServerStatusReady,
+			statusDetail:  api.ServerStatusDetailNone,
+			cluster:       "",
 			needsUpdate:   true,
 			needsReboot:   true,
-			inMaintenance: true,
+			inMaintenance: api.InMaintenanceEvacuated,
 			isTypeIncus:   false,
 
 			wantServerUpdateState: api.ServerUpdateStateUpdatePending,
+		},
+
+		// Edge cases:
+		{
+			status: api.ServerStatusUnknown,
+
+			wantServerUpdateState: api.ServerUpdateStateUndefined,
+		},
+		{
+			status: api.ServerStatusPending,
+
+			wantServerUpdateState: api.ServerUpdateStateUndefined,
+		},
+		{
+			status:        api.ServerStatusReady,
+			statusDetail:  api.ServerStatusDetailNone,
+			cluster:       "",
+			needsUpdate:   false,
+			needsReboot:   true,
+			inMaintenance: api.InMaintenanceEvacuated,
+			isTypeIncus:   false,
+
+			wantServerUpdateState: api.ServerUpdateStateUndefined,
 		},
 	}
 
 	for _, tc := range tests {
-		t.Run(fmt.Sprintf("needsUpdate: %t, needsReboot: %t, inMaintenance: %t, isTypeIncus: %t", tc.needsUpdate, tc.needsReboot, tc.inMaintenance, tc.isTypeIncus), func(t *testing.T) {
-			serverVersionData := api.ServerVersionData{
-				NeedsUpdate:   &tc.needsUpdate,
-				NeedsReboot:   &tc.needsReboot,
-				InMaintenance: &tc.inMaintenance,
+		t.Run(fmt.Sprintf("status: %v, statusDetail: %v, cluster: %t, needsUpdate: %t, needsReboot: %t, inMaintenance: %v, isTypeIncus: %t", tc.status, tc.statusDetail, tc.cluster != "", tc.needsUpdate, tc.needsReboot, tc.inMaintenance, tc.isTypeIncus), func(t *testing.T) {
+			server := api.Server{
+				Status:       tc.status,
+				StatusDetail: tc.statusDetail,
+				Cluster:      tc.cluster,
+				VersionData: api.ServerVersionData{
+					NeedsUpdate:   &tc.needsUpdate,
+					NeedsReboot:   &tc.needsReboot,
+					InMaintenance: &tc.inMaintenance,
+				},
 			}
 
 			if tc.isTypeIncus {
-				serverVersionData.Applications = append(serverVersionData.Applications, api.ApplicationVersionData{
+				server.VersionData.Applications = append(server.VersionData.Applications, api.ApplicationVersionData{
 					Name: string(images.UpdateFileComponentIncus),
 				})
 			}
 
-			got := serverVersionData.State()
+			got := server.UpdateState()
 
 			require.Equal(t, tc.wantServerUpdateState, got)
 		})
@@ -164,102 +286,176 @@ func TestServerVersionData_State(t *testing.T) {
 
 func TestServerVersionData_RecommendedAction(t *testing.T) {
 	tests := []struct {
+		status        api.ServerStatus
+		statusDetail  api.ServerStatusDetail
+		cluster       string
 		needsUpdate   bool
 		needsReboot   bool
-		inMaintenance bool
+		inMaintenance api.InMaintenanceState
 		isTypeIncus   bool
 
 		wantServerAction api.ServerAction
 	}{
 		{
+			status:        api.ServerStatusReady,
+			cluster:       "",
 			needsUpdate:   false,
 			needsReboot:   false,
-			inMaintenance: false,
+			inMaintenance: api.NotInMaintenance,
 			isTypeIncus:   false,
 
 			wantServerAction: api.ServerActionNone,
 		},
 		{
+			status:        api.ServerStatusReady,
+			cluster:       "",
 			needsUpdate:   true,
 			needsReboot:   false,
-			inMaintenance: false,
+			inMaintenance: api.NotInMaintenance,
 			isTypeIncus:   false,
 
 			wantServerAction: api.ServerActionUpdate,
 		},
 		{
+			status:        api.ServerStatusReady,
+			cluster:       "",
 			needsUpdate:   false,
 			needsReboot:   true,
-			inMaintenance: false,
+			inMaintenance: api.NotInMaintenance,
 			isTypeIncus:   false,
 
 			wantServerAction: api.ServerActionReboot,
 		},
 		{
+			status:        api.ServerStatusReady,
+			cluster:       "one",
 			needsUpdate:   false,
 			needsReboot:   true,
-			inMaintenance: false,
+			inMaintenance: api.NotInMaintenance,
 			isTypeIncus:   true,
 
 			wantServerAction: api.ServerActionEvacuate,
 		},
 		{
+			status:        api.ServerStatusReady,
+			cluster:       "",
 			needsUpdate:   false,
 			needsReboot:   true,
-			inMaintenance: true,
+			inMaintenance: api.NotInMaintenance,
 			isTypeIncus:   true,
 
 			wantServerAction: api.ServerActionReboot,
 		},
 		{
+			status:        api.ServerStatusReady,
+			cluster:       "one",
+			needsUpdate:   false,
+			needsReboot:   true,
+			inMaintenance: api.InMaintenanceEvacuated,
+			isTypeIncus:   true,
+
+			wantServerAction: api.ServerActionReboot,
+		},
+		{
+			status:        api.ServerStatusReady,
+			cluster:       "",
 			needsUpdate:   false,
 			needsReboot:   false,
-			inMaintenance: true,
+			inMaintenance: api.InMaintenanceEvacuated,
 			isTypeIncus:   false,
 
 			wantServerAction: api.ServerActionRestore,
 		},
 		{
+			status:        api.ServerStatusReady,
+			cluster:       "",
 			needsUpdate:   true,
 			needsReboot:   true,
-			inMaintenance: false,
+			inMaintenance: api.NotInMaintenance,
 			isTypeIncus:   false,
 
 			wantServerAction: api.ServerActionUpdate,
 		},
 		{
+			status:        api.ServerStatusReady,
+			cluster:       "",
 			needsUpdate:   true,
 			needsReboot:   false,
-			inMaintenance: true,
+			inMaintenance: api.InMaintenanceEvacuated,
 			isTypeIncus:   false,
 
 			wantServerAction: api.ServerActionUpdate,
 		},
 		{
+			status:        api.ServerStatusReady,
+			cluster:       "",
 			needsUpdate:   true,
 			needsReboot:   true,
-			inMaintenance: true,
+			inMaintenance: api.InMaintenanceEvacuated,
 			isTypeIncus:   false,
 
 			wantServerAction: api.ServerActionUpdate,
+		},
+
+		// Edge cases
+		{
+			status: api.ServerStatusUnknown,
+
+			wantServerAction: api.ServerActionNone,
+		},
+		{
+			status: api.ServerStatusPending,
+
+			wantServerAction: api.ServerActionNone,
+		},
+		{
+			status: api.ServerStatusOffline,
+
+			wantServerAction: api.ServerActionNone,
+		},
+		{
+			status:        api.ServerStatusReady,
+			statusDetail:  api.ServerStatusDetailReadyUpdating,
+			cluster:       "",
+			needsUpdate:   false,
+			needsReboot:   false,
+			inMaintenance: api.NotInMaintenance,
+			isTypeIncus:   false,
+
+			wantServerAction: api.ServerActionNone,
+		},
+		{
+			status:        api.ServerStatusReady,
+			cluster:       "",
+			needsUpdate:   false,
+			needsReboot:   true,
+			inMaintenance: api.InMaintenanceEvacuating,
+			isTypeIncus:   false,
+
+			wantServerAction: api.ServerActionNone,
 		},
 	}
 
 	for _, tc := range tests {
-		t.Run(fmt.Sprintf("needsUpdate: %t, needsReboot: %t, inMaintenance: %t, isTypeIncus: %t", tc.needsUpdate, tc.needsReboot, tc.inMaintenance, tc.isTypeIncus), func(t *testing.T) {
-			serverVersionData := api.ServerVersionData{
-				NeedsUpdate:   &tc.needsUpdate,
-				NeedsReboot:   &tc.needsReboot,
-				InMaintenance: &tc.inMaintenance,
+		t.Run(fmt.Sprintf("status: %v, statusDetail: %v, cluster: %t, needsUpdate: %t, needsReboot: %t, inMaintenance: %v, isTypeIncus: %t", tc.status, tc.statusDetail, tc.cluster != "", tc.needsUpdate, tc.needsReboot, tc.inMaintenance, tc.isTypeIncus), func(t *testing.T) {
+			server := api.Server{
+				Status:       tc.status,
+				StatusDetail: tc.statusDetail,
+				Cluster:      tc.cluster,
+				VersionData: api.ServerVersionData{
+					NeedsUpdate:   &tc.needsUpdate,
+					NeedsReboot:   &tc.needsReboot,
+					InMaintenance: &tc.inMaintenance,
+				},
 			}
 
 			if tc.isTypeIncus {
-				serverVersionData.Applications = append(serverVersionData.Applications, api.ApplicationVersionData{
+				server.VersionData.Applications = append(server.VersionData.Applications, api.ApplicationVersionData{
 					Name: string(images.UpdateFileComponentIncus),
 				})
 			}
 
-			got := serverVersionData.RecommendedAction()
+			got := server.RecommendedAction()
 
 			require.Equal(t, tc.wantServerAction, got)
 		})
@@ -307,13 +503,13 @@ func TestServerVersionData_Compute(t *testing.T) {
 						Name:             "incus",
 						Version:          "202602230000",
 						AvailableVersion: ptr.To("202602230000"),
-						InMaintenance:    false,
+						InMaintenance:    api.NotInMaintenance,
 						NeedsUpdate:      ptr.To(false),
 					},
 				},
 				NeedsUpdate:   ptr.To(false),
 				NeedsReboot:   ptr.To(false),
-				InMaintenance: ptr.To(false),
+				InMaintenance: ptr.To(api.NotInMaintenance),
 			},
 		},
 		{
@@ -349,13 +545,13 @@ func TestServerVersionData_Compute(t *testing.T) {
 						Name:             "incus",
 						Version:          "202602230000",
 						AvailableVersion: ptr.To("202602230001"),
-						InMaintenance:    false,
+						InMaintenance:    api.NotInMaintenance,
 						NeedsUpdate:      ptr.To(true),
 					},
 				},
 				NeedsUpdate:   ptr.To(true),
 				NeedsReboot:   ptr.To(false),
-				InMaintenance: ptr.To(false),
+				InMaintenance: ptr.To(api.NotInMaintenance),
 			},
 		},
 		{
@@ -392,13 +588,13 @@ func TestServerVersionData_Compute(t *testing.T) {
 						Name:             "incus",
 						Version:          "202602230001",
 						AvailableVersion: ptr.To("202602230001"),
-						InMaintenance:    false,
+						InMaintenance:    api.NotInMaintenance,
 						NeedsUpdate:      ptr.To(false),
 					},
 				},
 				NeedsUpdate:   ptr.To(false),
 				NeedsReboot:   ptr.To(true),
-				InMaintenance: ptr.To(false),
+				InMaintenance: ptr.To(api.NotInMaintenance),
 			},
 		},
 		{
@@ -434,13 +630,13 @@ func TestServerVersionData_Compute(t *testing.T) {
 						Name:             "incus",
 						Version:          "202602230000",
 						AvailableVersion: ptr.To("202602230001"),
-						InMaintenance:    false,
+						InMaintenance:    api.NotInMaintenance,
 						NeedsUpdate:      ptr.To(true),
 					},
 				},
 				NeedsUpdate:   ptr.To(true),
 				NeedsReboot:   ptr.To(false),
-				InMaintenance: ptr.To(false),
+				InMaintenance: ptr.To(api.NotInMaintenance),
 			},
 		},
 	}

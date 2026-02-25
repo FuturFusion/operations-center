@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"regexp"
 	"sync"
 	"testing"
 	"time"
@@ -31,6 +30,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -753,7 +753,7 @@ func TestServerService_GetByName(t *testing.T) {
 				VersionData: api.ServerVersionData{
 					NeedsUpdate:   ptr.To(false),
 					NeedsReboot:   ptr.To(false),
-					InMaintenance: ptr.To(false),
+					InMaintenance: ptr.To(api.NotInMaintenance),
 					OS: api.OSVersionData{
 						NeedsUpdate: ptr.To(false),
 					},
@@ -845,7 +845,7 @@ func TestServerService_GetByName(t *testing.T) {
 					},
 					NeedsUpdate:   ptr.To(false),
 					NeedsReboot:   ptr.To(false),
-					InMaintenance: ptr.To(false),
+					InMaintenance: ptr.To(api.NotInMaintenance),
 				},
 			},
 		},
@@ -948,7 +948,7 @@ func TestServerService_GetByName(t *testing.T) {
 					},
 					NeedsUpdate:   ptr.To(true),
 					NeedsReboot:   ptr.To(false),
-					InMaintenance: ptr.To(false),
+					InMaintenance: ptr.To(api.NotInMaintenance),
 				},
 			},
 		},
@@ -1032,7 +1032,7 @@ func TestServerService_GetByName(t *testing.T) {
 					},
 					NeedsUpdate:   ptr.To(false),
 					NeedsReboot:   ptr.To(false),
-					InMaintenance: ptr.To(false),
+					InMaintenance: ptr.To(api.NotInMaintenance),
 				},
 			},
 		},
@@ -2304,6 +2304,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		repoGetByNameErr           error
 
 		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
 	}{
 		{
 			name: "success",
@@ -2321,6 +2322,26 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+		{
+			name: "success - rebooting",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one-new/",
+				AuthenticationCertificate: serverCertificate.Leaf,
+			},
+			repoGetByCertificateServer: &provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate:   string(serverCertPEM),
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusOffline,
+				StatusDetail:  api.ServerStatusDetailOfflineRebooting,
+				Channel:       "stable",
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
 			name: "success - operations center self update",
@@ -2339,6 +2360,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - repo.GetByCertificate not found",
@@ -2351,6 +2373,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthorized)
 			},
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - repo.GetByCertificate",
@@ -2361,6 +2384,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - validation",
@@ -2381,6 +2405,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - repo.UpdateByID",
@@ -2399,9 +2424,10 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
-			name: "error - repo.UpdateByID",
+			name: "error - repo.GetByName",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
 				ConnectionURL:             "http://one/",
 				AuthenticationCertificate: serverCertificate.Leaf,
@@ -2416,13 +2442,18 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 			repoGetByNameErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr: require.NoError, // handled async in Goroutine, error is logged.
+			assertLog: log.Contains("Failed to update server configuration after self update"),
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, true)
+			require.NoError(t, err)
+
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return &provisioning.Server{}, tc.repoGetByNameErr
@@ -2434,7 +2465,6 @@ func TestServerService_SelfUpdate(t *testing.T) {
 					return tc.repoGetByCertificateServer, tc.repoGetByCertificateErr
 				},
 				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
-					require.Equal(t, fixedDate, in.LastSeen)
 					return tc.repoUpdateErr
 				},
 			}
@@ -2459,13 +2489,15 @@ func TestServerService_SelfUpdate(t *testing.T) {
 
 			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, nil, serverCertificate,
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
+				provisioning.ServerServiceWithInitialConnectionDelay(1*time.Millisecond),
 			)
 
 			// Run test
-			err := serverSvc.SelfUpdate(t.Context(), tc.serverSelfUpdate)
+			err = serverSvc.SelfUpdate(t.Context(), tc.serverSelfUpdate)
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
 		})
 	}
 }
@@ -2803,33 +2835,73 @@ func TestServerService_DeleteByName(t *testing.T) {
 }
 
 func TestServerService_PollServers(t *testing.T) {
-	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+	tests := []struct {
+		name                        string
+		repoGetAllWithFilterServers provisioning.Servers
+		repoGetAllWithFilterErr     error
+		repoGetByNameErr            error
+		clientPingErr               error
 
-	logEmpty := func(t *testing.T, logBuf *bytes.Buffer) {
-		t.Helper()
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:                        "success - no pending servers",
+			repoGetAllWithFilterServers: provisioning.Servers{},
 
-		require.Empty(t, logBuf.String())
+			assertErr: require.NoError,
+		},
+		{
+			name:                    "error - GetAllWithFilter",
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client Ping",
+			repoGetAllWithFilterServers: provisioning.Servers{
+				provisioning.Server{
+					Name:   "one",
+					Status: api.ServerStatusPending,
+				},
+			},
+			repoGetByNameErr: boom.Error,
+			clientPingErr:    boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
 	}
 
-	logMatch := func(expr string) func(t *testing.T, logBuf *bytes.Buffer) {
-		re, err := regexp.Compile(expr)
-		require.NoError(t, err)
-
-		return func(t *testing.T, logBuf *bytes.Buffer) {
-			t.Helper()
-
-			// Give logs a little bit of time to be processed.
-			for range 5 {
-				if re.Match(logBuf.Bytes()) {
-					break
-				}
-
-				time.Sleep(10 * time.Millisecond)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := &repoMock.ServerRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.repoGetAllWithFilterServers, tc.repoGetAllWithFilterErr
+				},
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return nil, tc.repoGetByNameErr
+				},
 			}
 
-			require.True(t, re.Match(logBuf.Bytes()), "logBuf did not match expression: %q, logBuf:\n%s", expr, logBuf.String())
-		}
+			client := &adapterMock.ServerClientPortMock{
+				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return tc.clientPingErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, nil, tls.Certificate{})
+			// Run test
+			err := serverSvc.PollServers(t.Context(), provisioning.ServerFilter{
+				Status: ptr.To(api.ServerStatusPending),
+			}, true)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
 	}
+}
+
+func TestServerService_PollServer_connectionTestWithCertificateUpdate(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	httpsServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -2843,70 +2915,65 @@ func TestServerService_PollServers(t *testing.T) {
 	}))
 
 	tests := []struct {
-		name                        string
-		repoGetAllWithFilterServers provisioning.Servers
-		repoGetAllWithFilterErr     error
-		clientPing                  []queue.Item[struct{}]
-		clientGetResourcesErr       error
-		clientGetOSDataErr          error
-		clientGetVersionData        api.ServerVersionData
-		clientGetVersionDataErr     error
-		repoGetByNameServer         provisioning.Server
-		repoGetByNameErr            error
-		repoUpdateErr               error
-		clusterSvcGetByName         *provisioning.Cluster
-		clusterSvcGetByNameErr      error
-		clusterSvcUpdateErr         error
+		name                   string
+		serverArg              provisioning.Server
+		clientPing             []queue.Item[struct{}]
+		repoGetByName          []queue.Item[*provisioning.Server]
+		repoUpdate             []queue.Item[struct{}]
+		clusterSvcGetByName    *provisioning.Cluster
+		clusterSvcGetByNameErr error
+		clusterSvcUpdateErr    error
 
 		assertErr               require.ErrorAssertionFunc
 		assertLog               func(t *testing.T, logBuf *bytes.Buffer)
 		assertServerCertificate string
+		wantServerStatus        api.ServerStatus
+		wantLastSeen            time.Time
 	}{
 		{
-			name:                        "success - no pending servers",
-			repoGetAllWithFilterServers: provisioning.Servers{},
-
-			assertErr: require.NoError,
-			assertLog: logEmpty,
-		},
-		{
 			name: "success",
-			repoGetAllWithFilterServers: provisioning.Servers{
-				provisioning.Server{
-					Name:   "pending",
-					Status: api.ServerStatusPending,
-				},
-			},
-			repoGetByNameServer: provisioning.Server{
-				Name:   "pending",
+			serverArg: provisioning.Server{
+				Name:   "one",
 				Status: api.ServerStatusPending,
-				Certificate: `-----BEGIN CERTIFICATE-----
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "one",
+						Status: api.ServerStatusPending,
+						Certificate: `-----BEGIN CERTIFICATE-----
 foobar
 -----END CERTIFICATE-----`,
+					},
+				},
+			},
+			repoUpdate: []queue.Item[struct{}]{
+				{},
 			},
 			clientPing: []queue.Item[struct{}]{
 				{},
 			},
 
 			assertErr: require.NoError,
-			assertLog: logEmpty,
+			assertLog: log.Empty,
 			assertServerCertificate: `-----BEGIN CERTIFICATE-----
 foobar
 -----END CERTIFICATE-----`,
+			wantServerStatus: api.ServerStatusReady,
+			wantLastSeen:     fixedDate,
 		},
 		{
-			name:                    "error - GetAllWithFilter",
-			repoGetAllWithFilterErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-			assertLog: logEmpty,
-		},
-		{
-			name: "error - client Ping",
-			repoGetAllWithFilterServers: provisioning.Servers{
-				provisioning.Server{
-					Name:   "pending",
-					Status: api.ServerStatusPending,
+			name: "error - client Ping - server state unknown",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusUnknown,
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "one",
+						Status: api.ServerStatusUnknown,
+					},
 				},
 			},
 			clientPing: []queue.Item[struct{}]{
@@ -2916,14 +2983,123 @@ foobar
 			},
 
 			assertErr: require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
-			assertLog: logMatch("Server connection test failed"),
+			assertLog: log.Match("Server connection test failed"),
 		},
 		{
+			name: "error - client Ping - server state pending",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "one",
+						Status: api.ServerStatusPending,
+					},
+				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
+			assertLog: log.Match("Server connection test failed"),
+		},
+		{
+			name: "error - client Ping - server state offline rebooting",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:         "one",
+						Status:       api.ServerStatusOffline,
+						StatusDetail: api.ServerStatusDetailOfflineRebooting,
+					},
+				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				boom.ErrorIs(t, err)
+				var retryableErr domain.ErrRetryable
+				require.ErrorAs(t, err, &retryableErr)
+			},
+			assertLog:        log.Empty,
+			wantServerStatus: api.ServerStatusOffline,
+		},
+		{
+			name: "error - client Ping - server state offline shutdown",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:         "one",
+						Status:       api.ServerStatusOffline,
+						StatusDetail: api.ServerStatusDetailOfflineShutdown,
+					},
+				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr:        require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
+			assertLog:        log.Match("Server connection test failed, shutdown"),
+			wantServerStatus: api.ServerStatusOffline,
+		},
+		{
+			name: "error - client Ping - server state offline unresponsive",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:         "one",
+						Status:       api.ServerStatusOffline,
+						StatusDetail: api.ServerStatusDetailOfflineUnresponsive,
+					},
+				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr:        require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
+			assertLog:        log.Match("Server connection test failed, unresponsive"),
+			wantServerStatus: api.ServerStatusOffline,
+		},
+
+		{
 			name: "error - client Ping with tls.CertificateVerificationError but server is not part of cluster",
-			repoGetAllWithFilterServers: provisioning.Servers{
-				provisioning.Server{
-					Name:   "pending",
-					Status: api.ServerStatusPending,
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "one",
+						Status: api.ServerStatusPending,
+					},
 				},
 			},
 			clientPing: []queue.Item[struct{}]{
@@ -2935,26 +3111,28 @@ foobar
 			},
 
 			assertErr: require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
-			assertLog: logMatch("Server connection test failed"),
+			assertLog: log.Match("Server connection test failed"),
 		},
 		{
 			name: "success - cluster now has publicly valid certificate",
-			repoGetAllWithFilterServers: provisioning.Servers{
-				provisioning.Server{
-					Name:   "ready",
-					Status: api.ServerStatusReady,
-					Certificate: `-----BEGIN CERTIFICATE-----
-foobar
------END CERTIFICATE-----`,
-					Cluster:            ptr.To("cluster"),
-					ClusterCertificate: ptr.To("certificate"),
-				},
-			},
-			repoGetByNameServer: provisioning.Server{
-				Name: "ready",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
 				Certificate: `-----BEGIN CERTIFICATE-----
 foobar
 -----END CERTIFICATE-----`,
+				Cluster:            ptr.To("cluster"),
+				ClusterCertificate: ptr.To("certificate"),
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "one",
+						Certificate: `-----BEGIN CERTIFICATE-----
+foobar
+-----END CERTIFICATE-----`,
+					},
+				},
 			},
 			clientPing: []queue.Item[struct{}]{
 				// Simulate failing connection with pinned certificate, because cluster
@@ -2966,26 +3144,40 @@ foobar
 				},
 				{},
 			},
+			repoUpdate: []queue.Item[struct{}]{
+				{},
+			},
 			clusterSvcGetByName: &provisioning.Cluster{
 				Name:        "cluster",
 				Certificate: ptr.To("certificate"),
 			},
 
 			assertErr: require.NoError,
-			assertLog: logEmpty,
+			assertLog: log.Empty,
 			assertServerCertificate: `-----BEGIN CERTIFICATE-----
 foobar
 -----END CERTIFICATE-----`,
+			wantServerStatus: api.ServerStatusReady,
+			wantLastSeen:     fixedDate,
 		},
 		{
 			name: "error - client Ping with tls.CertificateVerificationError but second ping fails",
-			repoGetAllWithFilterServers: provisioning.Servers{
-				provisioning.Server{
-					Name:               "ready",
-					Status:             api.ServerStatusReady,
-					Cluster:            ptr.To("cluster"),
-					ClusterCertificate: ptr.To("certificate"),
+			serverArg: provisioning.Server{
+				Name:               "one",
+				Status:             api.ServerStatusReady,
+				Cluster:            ptr.To("cluster"),
+				ClusterCertificate: ptr.To("certificate"),
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "one",
+						Status: api.ServerStatusReady,
+					},
 				},
+			},
+			repoUpdate: []queue.Item[struct{}]{
+				{},
 			},
 			clientPing: []queue.Item[struct{}]{
 				// Simulate failing connection with pinned certificate, because cluster
@@ -3004,18 +3196,17 @@ foobar
 				Certificate: ptr.To("certificate"),
 			},
 
-			assertErr: require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
-			assertLog: logMatch("Server connection test failed"),
+			assertErr:        require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
+			assertLog:        log.Match("Server connection test failed"),
+			wantServerStatus: api.ServerStatusOffline,
 		},
 		{
 			name: "error - cluster now has publicly valid certificate - clusterSvc.GetByName",
-			repoGetAllWithFilterServers: provisioning.Servers{
-				provisioning.Server{
-					Name:               "ready",
-					Status:             api.ServerStatusReady,
-					Cluster:            ptr.To("cluster"),
-					ClusterCertificate: ptr.To("certificate"),
-				},
+			serverArg: provisioning.Server{
+				Name:               "one",
+				Status:             api.ServerStatusReady,
+				Cluster:            ptr.To("cluster"),
+				ClusterCertificate: ptr.To("certificate"),
 			},
 			clientPing: []queue.Item[struct{}]{
 				// Simulate failing connection with pinned certificate, because cluster
@@ -3030,17 +3221,15 @@ foobar
 			clusterSvcGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
-			assertLog: logEmpty,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - cluster now has publicly valid certificate - clusterSvc.Update",
-			repoGetAllWithFilterServers: provisioning.Servers{
-				provisioning.Server{
-					Name:               "ready",
-					Status:             api.ServerStatusReady,
-					Cluster:            ptr.To("cluster"),
-					ClusterCertificate: ptr.To("certificate"),
-				},
+			serverArg: provisioning.Server{
+				Name:               "one",
+				Status:             api.ServerStatusReady,
+				Cluster:            ptr.To("cluster"),
+				ClusterCertificate: ptr.To("certificate"),
 			},
 			clientPing: []queue.Item[struct{}]{
 				// Simulate failing connection with pinned certificate, because cluster
@@ -3059,21 +3248,30 @@ foobar
 			clusterSvcUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
-			assertLog: logEmpty,
+			assertLog: log.Empty,
 		},
 		{
 			name: "success - standalone server now has publicly valid certificate",
-			repoGetAllWithFilterServers: provisioning.Servers{
-				provisioning.Server{
-					Name: "ready",
-					Certificate: `-----BEGIN CERTIFICATE-----
+			serverArg: provisioning.Server{
+				Name: "one",
+				Certificate: `-----BEGIN CERTIFICATE-----
 foobar
 -----END CERTIFICATE-----`,
-					Status:              api.ServerStatusReady,
-					Type:                api.ServerTypeMigrationManager,
-					ConnectionURL:       "https:/127.0.0.1:7443",
-					PublicConnectionURL: httpsServer.URL,
+				Status:              api.ServerStatusReady,
+				Type:                api.ServerTypeMigrationManager,
+				ConnectionURL:       "https:/127.0.0.1:7443",
+				PublicConnectionURL: httpsServer.URL,
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "one",
+						Status: api.ServerStatusReady,
+					},
 				},
+			},
+			repoUpdate: []queue.Item[struct{}]{
+				{},
 			},
 			clientPing: []queue.Item[struct{}]{
 				// Simulate failing connection with pinned certificate, because cluster
@@ -3086,7 +3284,7 @@ foobar
 			},
 
 			assertErr: require.NoError,
-			assertLog: logEmpty,
+			assertLog: log.Empty,
 			assertServerCertificate: func() string {
 				return string(
 					pem.EncodeToMemory(
@@ -3097,17 +3295,28 @@ foobar
 					),
 				)
 			}(),
+			wantServerStatus: api.ServerStatusReady,
+			wantLastSeen:     fixedDate,
 		},
 		{
 			name: "error - standalone server - invalid public connection URL",
-			repoGetAllWithFilterServers: provisioning.Servers{
-				provisioning.Server{
-					Name:                "ready",
-					Status:              api.ServerStatusReady,
-					Type:                api.ServerTypeMigrationManager,
-					ConnectionURL:       "https:/127.0.0.1:7443",
-					PublicConnectionURL: ":|\\", // invalid
+			serverArg: provisioning.Server{
+				Name:                "one",
+				Status:              api.ServerStatusReady,
+				Type:                api.ServerTypeMigrationManager,
+				ConnectionURL:       "https:/127.0.0.1:7443",
+				PublicConnectionURL: ":|\\", // invalid
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "one",
+						Status: api.ServerStatusReady,
+					},
 				},
+			},
+			repoUpdate: []queue.Item[struct{}]{
+				{},
 			},
 			clientPing: []queue.Item[struct{}]{
 				// Simulate failing connection with pinned certificate, because cluster
@@ -3119,18 +3328,98 @@ foobar
 				},
 			},
 
-			assertErr: require.NoError,
-			assertLog: logMatch("Server connection test failed"),
+			assertErr:        require.NoError,
+			assertLog:        log.Match("Server connection test failed"),
+			wantServerStatus: api.ServerStatusOffline,
 		},
 		{
 			name: "error - standalone server - connection error",
-			repoGetAllWithFilterServers: provisioning.Servers{
-				provisioning.Server{
-					Name:                "ready",
-					Status:              api.ServerStatusReady,
-					Type:                api.ServerTypeMigrationManager,
-					ConnectionURL:       "https:/127.0.0.1:7443",
-					PublicConnectionURL: "https:/127.0.0.1:7443",
+			serverArg: provisioning.Server{
+				Name:                "one",
+				Status:              api.ServerStatusReady,
+				Type:                api.ServerTypeMigrationManager,
+				ConnectionURL:       "https:/127.0.0.1:7443",
+				PublicConnectionURL: "https:/127.0.0.1:7443",
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "one",
+						Status: api.ServerStatusReady,
+					},
+				},
+			},
+			repoUpdate: []queue.Item[struct{}]{
+				{},
+			},
+			clientPing: []queue.Item[struct{}]{
+				// Simulate failing connection with pinned certificate, because cluster
+				// now has a publicly valid certificate (e.g. ACME).
+				{
+					Err: &url.Error{
+						Err: &tls.CertificateVerificationError{},
+					},
+				},
+			},
+
+			assertErr:        require.NoError,
+			assertLog:        log.Match("(?ms)Refresh certificate connection attempt to public connection URL failed.*Server connection test failed"),
+			wantServerStatus: api.ServerStatusOffline,
+		},
+		{
+			name: "error - standalone server - connection error not TLS",
+			serverArg: provisioning.Server{
+				Name:                "one",
+				Status:              api.ServerStatusReady,
+				Type:                api.ServerTypeMigrationManager,
+				ConnectionURL:       "https:/127.0.0.1:7443",
+				PublicConnectionURL: httpServer.URL,
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "one",
+						Status: api.ServerStatusReady,
+					},
+				},
+			},
+			repoUpdate: []queue.Item[struct{}]{
+				{},
+			},
+			clientPing: []queue.Item[struct{}]{
+				// Simulate failing connection with pinned certificate, because cluster
+				// now has a publicly valid certificate (e.g. ACME).
+				{
+					Err: &url.Error{
+						Err: &tls.CertificateVerificationError{},
+					},
+				},
+			},
+
+			assertErr:        require.NoError,
+			assertLog:        log.Match("(?ms)Refresh certificate connection attempt did not return TLS connection or no peer certificates.*Server connection test failed"),
+			wantServerStatus: api.ServerStatusOffline,
+		},
+		{
+			name: "error - standalone server - connection error not TLS - repo.Update error",
+			serverArg: provisioning.Server{
+				Name:                "one",
+				Status:              api.ServerStatusReady,
+				Type:                api.ServerTypeMigrationManager,
+				ConnectionURL:       "https:/127.0.0.1:7443",
+				PublicConnectionURL: httpServer.URL,
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:   "one",
+						Status: api.ServerStatusReady,
+					},
+				},
+			},
+			repoUpdate: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
 				},
 			},
 			clientPing: []queue.Item[struct{}]{
@@ -3143,115 +3432,9 @@ foobar
 				},
 			},
 
-			assertErr: require.NoError,
-			assertLog: logMatch("(?ms)Refresh certificate connection attempt to public connection URL failed.*Server connection test failed"),
-		},
-		{
-			name: "error - standalone server - connection error",
-			repoGetAllWithFilterServers: provisioning.Servers{
-				provisioning.Server{
-					Name:                "ready",
-					Status:              api.ServerStatusReady,
-					Type:                api.ServerTypeMigrationManager,
-					ConnectionURL:       "https:/127.0.0.1:7443",
-					PublicConnectionURL: httpServer.URL,
-				},
-			},
-			clientPing: []queue.Item[struct{}]{
-				// Simulate failing connection with pinned certificate, because cluster
-				// now has a publicly valid certificate (e.g. ACME).
-				{
-					Err: &url.Error{
-						Err: &tls.CertificateVerificationError{},
-					},
-				},
-			},
-
-			assertErr: require.NoError,
-			assertLog: logMatch("(?ms)Refresh certificate connection attempt did not return TLS connection or no peer certificates.*Server connection test failed"),
-		},
-		{
-			name: "error - client GetResources",
-			repoGetAllWithFilterServers: provisioning.Servers{
-				provisioning.Server{
-					Name:   "pending",
-					Status: api.ServerStatusPending,
-				},
-			},
-			clientPing: []queue.Item[struct{}]{
-				{},
-			},
-			clientGetResourcesErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-			assertLog: logEmpty,
-		},
-		{
-			name: "error - client GetOSData",
-			repoGetAllWithFilterServers: provisioning.Servers{
-				provisioning.Server{
-					Name:   "pending",
-					Status: api.ServerStatusPending,
-				},
-			},
-			clientPing: []queue.Item[struct{}]{
-				{},
-			},
-			clientGetOSDataErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-			assertLog: logEmpty,
-		},
-		{
-			name: "error - client GetVersionData",
-			repoGetAllWithFilterServers: provisioning.Servers{
-				provisioning.Server{
-					Name:   "pending",
-					Status: api.ServerStatusPending,
-				},
-			},
-			clientPing: []queue.Item[struct{}]{
-				{},
-			},
-			clientGetVersionDataErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-			assertLog: logEmpty,
-		},
-		{
-			name: "error - update channel mismatch",
-			repoGetAllWithFilterServers: provisioning.Servers{
-				provisioning.Server{
-					Name:    "pending",
-					Status:  api.ServerStatusPending,
-					Channel: "stable",
-				},
-			},
-			clientPing: []queue.Item[struct{}]{
-				{},
-			},
-			clientGetVersionData: api.ServerVersionData{
-				UpdateChannel: "testing", // does not match expected channel
-			},
-
-			assertErr: require.NoError,
-			assertLog: logMatch("update channel reported by server does not match expected update channel"),
-		},
-		{
-			name: "error - GetByName",
-			repoGetAllWithFilterServers: provisioning.Servers{
-				provisioning.Server{
-					Name:   "pending",
-					Status: api.ServerStatusPending,
-				},
-			},
-			clientPing: []queue.Item[struct{}]{
-				{},
-			},
-			repoGetByNameErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-			assertLog: logEmpty,
+			assertErr:        boom.ErrorIs,
+			assertLog:        log.Match("(?ms)Refresh certificate connection attempt did not return TLS connection or no peer certificates.*Server connection test failed"),
+			wantServerStatus: api.ServerStatusOffline,
 		},
 	}
 
@@ -3263,17 +3446,15 @@ foobar
 			require.NoError(t, err)
 
 			repo := &repoMock.ServerRepoMock{
-				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
-					return tc.repoGetAllWithFilterServers, tc.repoGetAllWithFilterErr
-				},
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
-					return &tc.repoGetByNameServer, tc.repoGetByNameErr
+					return queue.Pop(t, &tc.repoGetByName)
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
-					require.Equal(t, api.ServerStatusReady, server.Status)
-					require.Equal(t, fixedDate, server.LastSeen)
+					require.Equal(t, tc.wantServerStatus, server.Status)
+					require.Equal(t, tc.wantLastSeen, server.LastSeen)
 					require.Equal(t, tc.assertServerCertificate, server.Certificate)
-					return tc.repoUpdateErr
+					_, err := queue.Pop(t, &tc.repoUpdate)
+					return err
 				},
 			}
 
@@ -3281,18 +3462,6 @@ foobar
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					_, err := queue.Pop(t, &tc.clientPing)
 					return err
-				},
-				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
-					return api.HardwareData{}, tc.clientGetResourcesErr
-				},
-				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
-					return api.OSData{}, tc.clientGetOSDataErr
-				},
-				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
-					return tc.clientGetVersionData, tc.clientGetVersionDataErr
-				},
-				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
-					return api.ServerTypeIncus, nil
 				},
 			}
 
@@ -3312,12 +3481,238 @@ foobar
 			serverSvc.SetClusterService(clusterSvc)
 
 			// Run test
-			err = serverSvc.PollServers(t.Context(), api.ServerStatusPending, true)
+			err = serverSvc.PollServer(t.Context(), tc.serverArg, false)
 
 			// Assert
 			tc.assertErr(t, err)
 			tc.assertLog(t, logBuf)
 			require.Empty(t, tc.clientPing)
+			require.Empty(t, tc.repoGetByName)
+			require.Empty(t, tc.repoUpdate)
+		})
+	}
+}
+
+func TestServerService_PollServer(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	tests := []struct {
+		name                         string
+		serverArg                    provisioning.Server
+		updateServerConfigArg        bool
+		clientGetResourcesErr        error
+		clientGetOSDataErr           error
+		clientGetVersionData         api.ServerVersionData
+		clientGetVersionDataErr      error
+		repoGetByName                *provisioning.Server
+		repoGetByNameErr             error
+		repoUpdateErr                error
+		updateSvcGetAllWithFilterErr error
+
+		assertErr require.ErrorAssertionFunc
+		assertLog log.MatcherFunc
+	}{
+		{
+			name: "success",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+		{
+			name: "success - without config update",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			updateServerConfigArg: false,
+			repoGetByName: &provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+		{
+			name: "success - pending update",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailReadyUpdating,
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name: "error - client GetResources",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			updateServerConfigArg: true,
+			clientGetResourcesErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - client GetOSData",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			updateServerConfigArg: true,
+			clientGetOSDataErr:    boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - client GetVersionData",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			updateServerConfigArg:   true,
+			clientGetVersionDataErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - update channel mismatch",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Status:  api.ServerStatusPending,
+				Channel: "stable",
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			clientGetVersionData: api.ServerVersionData{
+				UpdateChannel: "testing", // does not match expected channel
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Match("update channel reported by server does not match expected update channel"),
+		},
+		{
+			name: "error - GetByName",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			updateServerConfigArg: true,
+			repoGetByNameErr:      boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - enrichServerWithVersionDetails",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailReadyUpdating,
+			},
+			updateSvcGetAllWithFilterErr: boom.Error,
+
+			assertErr: require.NoError, // no error is returned, just a warning is logged.
+			assertLog: log.Match("Failed to enrich server with version details"),
+		},
+		{
+			name: "error - Update",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			repoGetByName: &provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			updateServerConfigArg: true,
+			repoUpdateErr:         boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, true)
+			require.NoError(t, err)
+
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+					require.Equal(t, api.ServerStatusReady, server.Status)
+					require.Equal(t, fixedDate, server.LastSeen)
+					return tc.repoUpdateErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return nil
+				},
+				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
+					return api.HardwareData{}, tc.clientGetResourcesErr
+				},
+				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
+					return api.OSData{}, tc.clientGetOSDataErr
+				},
+				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
+					return tc.clientGetVersionData, tc.clientGetVersionDataErr
+				},
+				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
+					return api.ServerTypeIncus, nil
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, tc.updateSvcGetAllWithFilterErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, tls.Certificate{},
+				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
+			)
+
+			// Run test
+			err = serverSvc.PollServer(t.Context(), tc.serverArg, tc.updateServerConfigArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
 		})
 	}
 }
@@ -3589,7 +3984,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
 					server.VersionData.Compute(nil)
-					require.True(t, *server.VersionData.InMaintenance)
+					require.Equal(t, api.InMaintenanceEvacuating, *server.VersionData.InMaintenance)
 					return tc.repoUpdateErr
 				},
 			}
@@ -3622,6 +4017,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 		name              string
 		repoGetByName     provisioning.Server
 		repoGetByNameErr  error
+		repoUpdateErr     error
 		clientPoweroffErr error
 
 		assertErr require.ErrorAssertionFunc
@@ -3629,8 +4025,12 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 		{
 			name: "success",
 			repoGetByName: provisioning.Server{
-				Name:   "operations-center",
-				Status: api.ServerStatusReady,
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
 			},
 
 			assertErr: require.NoError,
@@ -3642,7 +4042,29 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:              "error - client.Poweroff",
+			name: "error - repo.Update",
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.Poweroff",
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
 			clientPoweroffErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -3655,6 +4077,11 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return &tc.repoGetByName, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+					require.Equal(t, api.ServerStatusOffline, server.Status)
+					require.Equal(t, api.ServerStatusDetailOfflineShutdown, server.StatusDetail)
+					return tc.repoUpdateErr
 				},
 			}
 
@@ -3686,6 +4113,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 		name             string
 		repoGetByName    provisioning.Server
 		repoGetByNameErr error
+		repoUpdateErr    error
 		clientRebootErr  error
 
 		assertErr require.ErrorAssertionFunc
@@ -3693,8 +4121,12 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 		{
 			name: "success",
 			repoGetByName: provisioning.Server{
-				Name:   "operations-center",
-				Status: api.ServerStatusReady,
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
 			},
 
 			assertErr: require.NoError,
@@ -3706,7 +4138,29 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:            "error - client.Reboot",
+			name: "error - repo.Update",
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.Reboot",
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
 			clientRebootErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -3719,6 +4173,11 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return &tc.repoGetByName, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+					require.Equal(t, api.ServerStatusOffline, server.Status)
+					require.Equal(t, api.ServerStatusDetailOfflineRebooting, server.StatusDetail)
+					return tc.repoUpdateErr
 				},
 			}
 
@@ -3750,6 +4209,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 		name             string
 		repoGetByName    provisioning.Server
 		repoGetByNameErr error
+		repoUpdateErr    error
 		clientRestoreErr error
 
 		assertErr require.ErrorAssertionFunc
@@ -3803,6 +4263,24 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 					},
 				},
 			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.Restore",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
 			clientRestoreErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -3815,6 +4293,11 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return &tc.repoGetByName, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+					server.VersionData.Compute(nil)
+					require.Equal(t, api.InMaintenanceRestoring, *server.VersionData.InMaintenance)
+					return tc.repoUpdateErr
 				},
 			}
 
@@ -3847,6 +4330,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 		updateRequestArg       api.ServerUpdatePost
 		repoGetByName          provisioning.Server
 		repoGetByNameErr       error
+		repoUpdateErr          error
 		clientUpdateOSErr      error
 		channelSvcGetByNameErr error
 
@@ -3855,8 +4339,12 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 		{
 			name: "success - no update triggered",
 			repoGetByName: provisioning.Server{
-				Name:   "operations-center",
-				Status: api.ServerStatusReady,
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
 			},
 
 			assertErr: require.NoError,
@@ -3870,8 +4358,12 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				},
 			},
 			repoGetByName: provisioning.Server{
-				Name:   "operations-center",
-				Status: api.ServerStatusReady,
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
 			},
 
 			assertErr: require.NoError,
@@ -3883,12 +4375,49 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - server not ready",
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusPending, // server not ready
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+			},
+		},
+		{
+			name: "error - repo.Update",
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - UpdateSystemUpdate - channelSvc.GetByName",
 			updateRequestArg: api.ServerUpdatePost{
 				OS: api.ServerUpdateApplication{
 					Name:          "os",
 					TriggerUpdate: true,
 				},
+			},
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
 			},
 			channelSvcGetByNameErr: boom.Error,
 
@@ -3902,6 +4431,14 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 					TriggerUpdate: true,
 				},
 			},
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
 			clientUpdateOSErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -3914,6 +4451,9 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return &tc.repoGetByName, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.repoUpdateErr
 				},
 			}
 
