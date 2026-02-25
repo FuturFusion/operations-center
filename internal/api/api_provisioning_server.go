@@ -227,6 +227,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 				OSData:       server.OSData,
 				VersionData:  server.VersionData,
 				Status:       server.Status,
+				StatusDetail: server.StatusDetail,
 				LastUpdated:  server.LastUpdated,
 				LastSeen:     server.LastSeen,
 			})
@@ -406,6 +407,7 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 			OSData:       server.OSData,
 			VersionData:  server.VersionData,
 			Status:       server.Status,
+			StatusDetail: server.StatusDetail,
 			LastUpdated:  server.LastUpdated,
 			LastSeen:     server.LastSeen,
 		},
