@@ -9,64 +9,112 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestE2E(t *testing.T) {
+func TestE2E_WithToken_SetupOnly(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - setup only",
+		setupIncusOSWithToken,
+		func(t *testing.T, tmpDir string) {
+			t.Helper()
+			// Setup only
+		},
+	)
+}
+
+func TestE2E_WithToken_CreateCluster(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - create cluster",
+		setupIncusOSWithToken,
+		createCluster,
+	)
+}
+
+func TestE2E_WithToken_CreateClusterFromClusterTemplate(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - create cluster from cluster template",
+		setupIncusOSWithToken,
+		createClusterFromTemplate,
+	)
+}
+
+func TestE2E_WithToken_FactoryResetCluster(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - factory reset cluster",
+		setupIncusOSWithToken,
+		factoryResetCluster,
+	)
+}
+
+// TODO: does not work right now, produces the following error in IncusOS:
+//
+//	INFO Initializing application name=incus version=202602230420
+//	ERROR json: unknown field "certificates"
+//
+// The root cause for this error is assumed to be related to the introduction of
+// json.DisallowUnknownFields() in IncusOS JSON handling in order to improve
+// the validation of the provided JSON preseeds.
+// See: https://discuss.linuxcontainers.org/t/specify-certificate-using-seed-tar/26148
+// Fixed by: https://github.com/lxc/incus/pull/2968
+func TestE2E_WithToken_FactoryResetClusterWithTokenSeed(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - factory reset cluster",
+		setupIncusOSWithToken,
+		factoryResetClusterWithTokenSeed,
+	)
+}
+
+func TestE2E_WithTokenSeed_CreateCluster(t *testing.T) {
+	runE2ETest(
+		t,
+		"token seed - create cluster",
+		setupIncusOSWithTokenSeed,
+		createCluster,
+	)
+}
+
+func runE2ETest(
+	t *testing.T,
+	name string,
+	setup func(t *testing.T, tmpDir string),
+	test func(t *testing.T, tmpDir string),
+) {
+	t.Helper()
+
 	e2eTest := os.Getenv("OPERATIONS_CENTER_E2E_TEST")
 	runE2ETest, _ := strconv.ParseBool(e2eTest)
 	if !runE2ETest {
 		t.Skip("OPERATIONS_CENTER_E2E_TEST env var not set, skipping end 2 end tests.")
 	}
 
-	type testCase struct {
-		name string
+	tmpDir := setupE2ETest(t)
 
-		testFunc func(t *testing.T, tmpDir string)
+	stop := timeTrack(t, name)
+	defer stop()
 
-		skip bool
+	setup(t, tmpDir)
+
+	test(t, tmpDir)
+}
+
+func setupE2ETest(t *testing.T) string {
+	t.Helper()
+
+	// Precheck
+	executables := []string{
+		fmt.Sprintf("../bin/operations-center.linux.%s", cpuArch),
+		"../bin/operations-centerd",
+		"/usr/bin/incus",
 	}
 
-	type setupType struct {
-		name        string
-		setupFunc   func(t *testing.T, tmpDir string)
-		cleanupFunc func(t *testing.T) func()
+	for _, executable := range executables {
+		if !isExecutable(t, executable) {
+			t.Fatalf("%q is not executable by the current user", executable)
+		}
 	}
-
-	setupTypeTests := []setupType{
-		{
-			name:        "with token",
-			setupFunc:   setupIncusOSWithToken,
-			cleanupFunc: cleanupIncusOS,
-		},
-		{
-			name:        "with token seed",
-			setupFunc:   setupIncusOSWithTokenSeed,
-			cleanupFunc: cleanupIncusOS,
-		},
-	}
-
-	testCases := []testCase{
-		{
-			name: "setup only",
-			testFunc: func(t *testing.T, tmpDir string) {
-				t.Helper()
-			},
-		},
-		{
-			name:     "create cluster",
-			testFunc: createCluster,
-		},
-		{
-			name:     "create cluster from cluster template",
-			testFunc: createClusterFromTemplate,
-		},
-		{
-			name:     "factory reset cluster",
-			testFunc: factoryResetCluster,
-		},
-	}
-
-	var err error
-
-	preCheck(t)
 
 	homeDir, err := os.UserHomeDir()
 	require.NoError(t, err)
@@ -84,44 +132,7 @@ func TestE2E(t *testing.T) {
 
 	t.Logf("Temporary directory: %s", tmpDir)
 
-	for _, ts := range setupTypeTests {
-		t.Run(ts.name, func(t *testing.T) {
-			setupOperationsCenter(t, tmpDir)
+	setupOperationsCenter(t, tmpDir)
 
-			if !noCleanup {
-				t.Cleanup(ts.cleanupFunc(t))
-			}
-
-			for _, tc := range testCases {
-				t.Run(tc.name, func(t *testing.T) {
-					if tc.skip {
-						t.SkipNow()
-					}
-
-					stop := timeTrack(t, tc.name)
-					defer stop()
-
-					ts.setupFunc(t, tmpDir)
-
-					tc.testFunc(t, tmpDir)
-				})
-			}
-		})
-	}
-}
-
-func preCheck(t *testing.T) {
-	t.Helper()
-
-	executables := []string{
-		fmt.Sprintf("../bin/operations-center.linux.%s", cpuArch),
-		"../bin/operations-centerd",
-		"/usr/bin/incus",
-	}
-
-	for _, executable := range executables {
-		if !isExecutable(t, executable) {
-			t.Fatalf("%q is not executable by the current user", executable)
-		}
-	}
+	return tmpDir
 }

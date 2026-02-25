@@ -472,3 +472,92 @@ func Test_firstNonEmpty(t *testing.T) {
 		})
 	}
 }
+
+func Test_fixIncusJSONPreseed(t *testing.T) {
+	tests := []struct {
+		name string
+		in   map[string]any
+
+		want map[string]any
+	}{
+		{
+			name: "success",
+			in: map[string]any{
+				"version": "1",
+				"preseed": map[string]any{
+					"certificates": []any{
+						map[string]any{
+							"name":        "admin",
+							"type":        "client",
+							"certificate": "CLIENT_CERTIFICATE",
+							"description": "Initial adamin client",
+						},
+					},
+				},
+			},
+
+			want: map[string]any{
+				"version": "1",
+				"preseed": map[string]any{
+					"Server": map[string]any{
+						"certificates": []any{
+							map[string]any{
+								"name":        "admin",
+								"type":        "client",
+								"certificate": "CLIENT_CERTIFICATE",
+								"description": "Initial adamin client",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "success - with cluster",
+			in: map[string]any{
+				"version": "1",
+				"preseed": map[string]any{
+					"certificates": []any{
+						map[string]any{
+							"name":        "admin",
+							"type":        "client",
+							"certificate": "CLIENT_CERTIFICATE",
+							"description": "Initial adamin client",
+						},
+					},
+					"cluster": map[string]any{
+						"cluster_certificate_path": "/some/path",
+					},
+				},
+			},
+
+			want: map[string]any{
+				"version": "1",
+				"preseed": map[string]any{
+					"Server": map[string]any{
+						"certificates": []any{
+							map[string]any{
+								"name":        "admin",
+								"type":        "client",
+								"certificate": "CLIENT_CERTIFICATE",
+								"description": "Initial adamin client",
+							},
+						},
+					},
+					"cluster": map[string]any{
+						"cluster_certificate_path": "/some/path",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := fixIncusJSONPreseed(tc.in)
+			require.Equal(t, tc.want, got)
+
+			// Test with json.DisallowUnknownFields()
+		})
+	}
+}

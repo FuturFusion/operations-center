@@ -1,10 +1,12 @@
 package e2e
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -17,6 +19,9 @@ func createCluster(t *testing.T, tmpDir string) {
 
 	// Pre check
 	mustNotBeAlreadyClustered(t)
+
+	// Register cleanup
+	t.Cleanup(clusterCleanup(t))
 
 	// Setup
 	err := os.WriteFile(filepath.Join(tmpDir, "services.yaml"), incusOSClusterServicesConfig, 0o600)
@@ -38,4 +43,34 @@ func createCluster(t *testing.T, tmpDir string) {
 	assertInventory(t, "incus-os-cluster")
 	assertTerraformArtifact(t, "incus-os-cluster")
 	assertWebsocketEventsInventoryUpdate(t, "incus-os-cluster")
+}
+
+func clusterCleanup(t *testing.T) func() {
+	t.Helper()
+
+	return func() {
+		if noCleanup {
+			return
+		}
+
+		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
+		defer cancel()
+
+		stop := timeTrack(t, "cluster cleanup")
+		defer stop()
+
+		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[].name'`, cpuArch)
+		if !resp.Success() {
+			t.Error(resp.Error())
+		} else {
+			for cluster := range strings.Lines(resp.Output()) {
+				cluster = strings.TrimSpace(cluster)
+				resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning cluster remove %s --force`, cpuArch, cluster)
+				if !resp.Success() {
+					t.Error(resp.Error())
+				}
+			}
+		}
+	}
 }
