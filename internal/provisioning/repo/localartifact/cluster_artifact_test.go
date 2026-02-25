@@ -7,9 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/dsnet/golib/memfile"
 	"github.com/maniartech/signals"
@@ -24,33 +22,13 @@ import (
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestLocalArtifact_updateSignalHandler(t *testing.T) {
 	const clusterName = "old"
 	const existingClusterName = "existing"
-
-	noLogAssert := func(t *testing.T, logBuf *bytes.Buffer) {
-		t.Helper()
-	}
-
-	logContains := func(want string) func(t *testing.T, logBuf *bytes.Buffer) {
-		return func(t *testing.T, logBuf *bytes.Buffer) {
-			t.Helper()
-
-			// Give logs a little bit of time to be processed.
-			for range 5 {
-				if strings.Contains(logBuf.String(), want) {
-					break
-				}
-
-				time.Sleep(10 * time.Millisecond)
-			}
-
-			require.Contains(t, logBuf.String(), want)
-		}
-	}
 
 	tests := []struct {
 		name           string
@@ -66,20 +44,20 @@ func TestLocalArtifact_updateSignalHandler(t *testing.T) {
 			clusterName:    "new",
 			oldClusterName: clusterName,
 
-			assertLog: noLogAssert,
+			assertLog: log.Noop,
 		},
 		{
 			name:        "success - delete",
 			operation:   provisioning.ClusterUpdateOperationDelete,
 			clusterName: clusterName,
 
-			assertLog: noLogAssert,
+			assertLog: log.Noop,
 		},
 		{
 			name:      "skip - create operation",
 			operation: provisioning.ClusterUpdateOperationCreate,
 
-			assertLog: noLogAssert,
+			assertLog: log.Noop,
 		},
 		{
 			name:           "skip - rename - old does not exist",
@@ -87,7 +65,7 @@ func TestLocalArtifact_updateSignalHandler(t *testing.T) {
 			clusterName:    "new",
 			oldClusterName: "does_not_exist", // does not exist
 
-			assertLog: noLogAssert,
+			assertLog: log.Noop,
 		},
 		{
 			name:           "error - rename - new does already exist",
@@ -95,18 +73,16 @@ func TestLocalArtifact_updateSignalHandler(t *testing.T) {
 			clusterName:    existingClusterName,
 			oldClusterName: clusterName,
 
-			assertLog: logContains("Failed to rename cluster artifact storage directory"),
+			assertLog: log.Contains("Failed to rename cluster artifact storage directory"),
 		},
 		{
 			name:        "skip - delete - does not exist",
 			operation:   provisioning.ClusterUpdateOperationDelete,
 			clusterName: "does_not_exist", // does not exist
 
-			assertLog: noLogAssert,
+			assertLog: log.Noop,
 		},
 	}
-
-	_ = logContains
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

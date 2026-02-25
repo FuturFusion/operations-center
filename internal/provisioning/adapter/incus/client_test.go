@@ -11,7 +11,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -26,6 +25,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -2592,27 +2592,6 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 		return ctx, cancel
 	}
 
-	noLogAssert := func(t *testing.T, logBuf *bytes.Buffer) {
-		t.Helper()
-	}
-
-	logContains := func(want string) func(t *testing.T, logBuf *bytes.Buffer) {
-		return func(t *testing.T, logBuf *bytes.Buffer) {
-			t.Helper()
-
-			// Give logs a little bit of time to be processed.
-			for range 5 {
-				if strings.Contains(logBuf.String(), want) {
-					break
-				}
-
-				time.Sleep(10 * time.Millisecond)
-			}
-
-			require.Contains(t, logBuf.String(), want)
-		}
-	}
-
 	tests := []struct {
 		name              string
 		getCtx            func() (context.Context, func())
@@ -2664,7 +2643,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 					ProjectName: "default",
 				},
 			},
-			assertLog: noLogAssert,
+			assertLog: log.Noop,
 		},
 		{
 			name:   "error - getClient",
@@ -2742,7 +2721,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 					ProjectName: "default",
 				},
 			},
-			assertLog: logContains("Failed to map incus event to lifecycle event"),
+			assertLog: log.Contains("Failed to map incus event to lifecycle event"),
 		},
 		{
 			name:   "error - unsupported lifecycle event resource type",
@@ -2788,7 +2767,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 					ProjectName: "default",
 				},
 			},
-			assertLog: noLogAssert,
+			assertLog: log.Noop,
 		},
 		{
 			name:              "handle event - cancelled context",
@@ -2830,7 +2809,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 
 			assertErr:        require.NoError,
 			assertErrChanErr: require.NoError,
-			assertLog:        noLogAssert,
+			assertLog:        log.Noop,
 		},
 		{
 			name:   "error - webserver disconnect websocket immediately",
@@ -2853,7 +2832,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 
 			assertErr:        require.NoError,
 			assertErrChanErr: require.Error,
-			assertLog:        noLogAssert,
+			assertLog:        log.Noop,
 		},
 	}
 

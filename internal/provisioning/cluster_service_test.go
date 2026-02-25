@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/x509"
 	"io"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -26,6 +25,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -2874,27 +2874,6 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 		return ch
 	}
 
-	noLogAssert := func(t *testing.T, logBuf *bytes.Buffer) {
-		t.Helper()
-	}
-
-	logContains := func(want string) func(t *testing.T, logBuf *bytes.Buffer) {
-		return func(t *testing.T, logBuf *bytes.Buffer) {
-			t.Helper()
-
-			// Give logs a little bit of time to be processed.
-			for range 5 {
-				if strings.Contains(logBuf.String(), want) {
-					break
-				}
-
-				time.Sleep(10 * time.Millisecond)
-			}
-
-			require.Contains(t, logBuf.String(), want)
-		}
-	}
-
 	tests := []struct {
 		name                           string
 		initDone                       func() chan struct{}
@@ -2933,7 +2912,7 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 
 			assertErr:           require.NoError,
 			wantProcessedEvents: 1,
-			assertLog:           noLogAssert,
+			assertLog:           log.Noop,
 		},
 		{
 			name:          "error - GetAll",
@@ -2941,7 +2920,7 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 			repoGetAllErr: boom.Error,
 
 			assertErr: require.Error,
-			assertLog: noLogAssert,
+			assertLog: log.Noop,
 		},
 		{
 			name:     "error - GetEndpoint",
@@ -2954,7 +2933,7 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 			serverSvcGetAllWithFilterErr: boom.Error,
 
 			assertErr: require.NoError,
-			assertLog: logContains("Failed to start lifecycle monitor"),
+			assertLog: log.Contains("Failed to start lifecycle monitor"),
 		},
 		{
 			name:     "error - client.SubscribeLifecycleEvents - ctx.Done",
@@ -2980,7 +2959,7 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			assertLog: logContains("Failed to re-establish event stream"),
+			assertLog: log.Contains("Failed to re-establish event stream"),
 		},
 		{
 			name:     "error - client.SubscribeLifecycleEvents - retry",
@@ -3010,7 +2989,7 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 
 			assertErr:           require.NoError,
 			wantProcessedEvents: 1,
-			assertLog:           logContains("Failed to re-establish event stream"),
+			assertLog:           log.Contains("Failed to re-establish event stream"),
 		},
 		{
 			name:     "error - unavailable inventory syncer",
@@ -3042,7 +3021,7 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 
 			assertErr:           require.NoError,
 			wantProcessedEvents: 1,
-			assertLog:           logContains("No inventory syncer available for the resource type"),
+			assertLog:           log.Contains("No inventory syncer available for the resource type"),
 		},
 		{
 			name:     "error - inventorySyncer.ResyncByName",
@@ -3070,7 +3049,7 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 
 			assertErr:           require.NoError,
 			wantProcessedEvents: 1,
-			assertLog:           logContains("Failed to resync"),
+			assertLog:           log.Contains("Failed to resync"),
 		},
 		{
 			name:     "error - Lifecycle subscription ended",
@@ -3107,7 +3086,7 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 
 			assertErr:           require.NoError,
 			wantProcessedEvents: 1,
-			assertLog:           logContains("Lifecycle events subscription ended"),
+			assertLog:           log.Contains("Lifecycle events subscription ended"),
 		},
 	}
 
@@ -3187,24 +3166,12 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 }
 
 func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
-	noLogAssert := func(t *testing.T, logBuf string) {
-		t.Helper()
-	}
-
-	logContains := func(want string) func(t *testing.T, logBuf string) {
-		return func(t *testing.T, logBuf string) {
-			t.Helper()
-
-			require.Contains(t, logBuf, want)
-		}
-	}
-
 	tests := []struct {
 		name                         string
 		serverSvcGetAllWithFilterErr error
 		updateMessage                provisioning.ClusterUpdateMessage
 
-		assertLog func(t *testing.T, logBuf string)
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
 	}{
 		{
 			name: "success register cluster",
@@ -3213,7 +3180,7 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 				Name:      "new",
 			},
 
-			assertLog: noLogAssert,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - startLifecycleEventHandler",
@@ -3223,7 +3190,7 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 			},
 			serverSvcGetAllWithFilterErr: boom.Error,
 
-			assertLog: logContains("Failed to start lifecycle monitor"),
+			assertLog: log.Contains("Failed to start lifecycle monitor"),
 		},
 		{
 			name: "success delete cluster",
@@ -3232,7 +3199,7 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 				Name:      "existing",
 			},
 
-			assertLog: noLogAssert,
+			assertLog: log.Noop,
 		},
 		{
 			name: "success delete unknown cluster",
@@ -3241,7 +3208,7 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 				Name:      "unknown",
 			},
 
-			assertLog: noLogAssert,
+			assertLog: log.Noop,
 		},
 	}
 
@@ -3304,7 +3271,7 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 
 			// Assert
 			require.NoError(t, err)
-			tc.assertLog(t, logBuf.String())
+			tc.assertLog(t, logBuf)
 		})
 	}
 }
