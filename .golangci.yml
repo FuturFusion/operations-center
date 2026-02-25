@@ -192,6 +192,10 @@ linters:
         # It's useful to have a sort and API package but revive disagrees.
         source: '^package (sort|api)$'
         text: var-naming
+      - linters:
+          - errcheck
+        path: ^e2e_tests/
+        source: 'mustRun'
     paths:
       - third_party$
       - builtin$
