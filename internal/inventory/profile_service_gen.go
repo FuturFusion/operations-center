@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -175,6 +176,13 @@ func (s profileService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 		profile.LastUpdated = s.now()
 		profile.DeriveUUID()
 
+		// NOTE: This log intends to find resources, where project is not properly populated by Incus.
+		// Remove once all the affected resources have been identified.
+		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+		if firstNonEmpty(retrievedProfile.Project, profile.ProjectName, "not found") == "not found" {
+			slog.WarnContext(ctx, "expected project missing in ResyncByUUID", slog.String("resource-type", "profile"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
+		}
+
 		err = profile.Validate()
 		if err != nil {
 			return err
@@ -249,6 +257,13 @@ func (s profileService) handleCreateEvent(ctx context.Context, clusterName strin
 	}
 
 	profile.DeriveUUID()
+
+	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
+	// Remove once all the affected resources have been identified.
+	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+	if firstNonEmpty(retrievedProfile.Project, event.Source.ProjectName, "not found") == "not found" {
+		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "profile"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
+	}
 
 	if s.clusterSyncFilterFunc(profile) {
 		return nil
