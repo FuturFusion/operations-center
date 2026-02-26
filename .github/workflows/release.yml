@@ -22,16 +22,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Go
+      - name: Client - Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "stable"
 
-      - name: Download go dependencies
+      - name: Client - Download go dependencies
         run: |
           go mod download
 
-      - name: Run GoReleaser
+      - name: Client - Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
@@ -39,3 +39,30 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: UI - Install dependencies
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: install
+          dir: ui
+
+      - name: UI - Build
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: build
+          dir: ui
+
+      - name: Prepare uploads
+        run: |
+          mkdir upload
+          cd upload
+
+          tar -zcf ui.tar.gz -C ../ui/dist/ .
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          file: upload/*
+          overwrite: true
+          file_glob: true
+          release_name: ${{ github.ref_name }}
