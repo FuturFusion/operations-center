@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -176,6 +177,13 @@ func (s instanceService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 		instance.LastUpdated = s.now()
 		instance.DeriveUUID()
 
+		// NOTE: This log intends to find resources, where project is not properly populated by Incus.
+		// Remove once all the affected resources have been identified.
+		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+		if firstNonEmpty(retrievedInstance.Project, instance.ProjectName, "not found") == "not found" {
+			slog.WarnContext(ctx, "expected project missing in ResyncByUUID", slog.String("resource-type", "instance"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
+		}
+
 		err = instance.Validate()
 		if err != nil {
 			return err
@@ -251,6 +259,13 @@ func (s instanceService) handleCreateEvent(ctx context.Context, clusterName stri
 	}
 
 	instance.DeriveUUID()
+
+	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
+	// Remove once all the affected resources have been identified.
+	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+	if firstNonEmpty(retrievedInstance.Project, event.Source.ProjectName, "not found") == "not found" {
+		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "instance"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
+	}
 
 	if s.clusterSyncFilterFunc(instance) {
 		return nil
