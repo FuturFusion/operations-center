@@ -46,7 +46,7 @@ func (c *CmdQuery) validateArgsAndFlags(cmd *cobra.Command, args []string) error
 }
 
 func (c *CmdQuery) run(cmd *cobra.Command, args []string) error {
-	query, _ := strings.CutSuffix(args[0], "/1.0")
+	query, _ := strings.CutPrefix(args[0], "/1.0")
 
 	resp, err := c.OCClient.DoRequest(cmd.Context(), c.flagRequest, query, nil, bytes.NewBuffer([]byte(c.flagData)))
 	if err != nil {
