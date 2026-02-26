@@ -504,30 +504,45 @@ func (s clusterService) GetAllWithFilter(ctx context.Context, filter ClusterFilt
 		}
 	}
 
-	clusters, err := s.repo.GetAll(ctx)
-	if err != nil {
-		return nil, err
-	}
+	var clusters Clusters
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		clusters, err = s.repo.GetAll(ctx)
+		if err != nil {
+			return err
+		}
 
-	var filteredClusters Clusters
-	if filter.Expression != nil {
-		for _, cluster := range clusters {
-			output, err := expr.Run(filterExpression, ToExprCluster(cluster))
+		var filteredClusters Clusters
+		if filter.Expression != nil {
+			for _, cluster := range clusters {
+				output, err := expr.Run(filterExpression, ToExprCluster(cluster))
+				if err != nil {
+					return domain.NewValidationErrf("Failed to execute filter expression: %v", err)
+				}
+
+				result, ok := output.(bool)
+				if !ok {
+					return domain.NewValidationErrf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+				}
+
+				if result {
+					filteredClusters = append(filteredClusters, cluster)
+				}
+			}
+
+			clusters = filteredClusters
+		}
+
+		for i := range clusters {
+			clusters[i].UpdateStatus, err = s.getClusterUpdateStatus(ctx, clusters[i].Name)
 			if err != nil {
-				return nil, domain.NewValidationErrf("Failed to execute filter expression: %v", err)
-			}
-
-			result, ok := output.(bool)
-			if !ok {
-				return nil, domain.NewValidationErrf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
-				filteredClusters = append(filteredClusters, cluster)
+				return fmt.Errorf("Failed to get cluster update status for %q: %w", clusters[i].Name, err)
 			}
 		}
 
-		return filteredClusters, nil
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return clusters, nil
@@ -586,7 +601,57 @@ func (s clusterService) GetByName(ctx context.Context, name string) (*Cluster, e
 		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	return s.repo.GetByName(ctx, name)
+	var cluster *Cluster
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		cluster, err = s.repo.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get cluster %q by name: %w", name, err)
+		}
+
+		cluster.UpdateStatus, err = s.getClusterUpdateStatus(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get cluster update status for %q: %w", name, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return cluster, nil
+}
+
+func (s clusterService) getClusterUpdateStatus(ctx context.Context, name string) (*api.ClusterUpdateStatus, error) {
+	servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+		Cluster: ptr.To(name),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get servers for cluster %q: %w", name, err)
+	}
+
+	clusterUpdateStatus := api.ClusterUpdateStatus{
+		NeedsUpdate:   make([]string, 0, len(servers)),
+		NeedsReboot:   make([]string, 0, len(servers)),
+		InMaintenance: make([]string, 0, len(servers)),
+	}
+
+	for _, server := range servers {
+		if server.VersionData.NeedsUpdate != nil && *server.VersionData.NeedsUpdate {
+			clusterUpdateStatus.NeedsUpdate = append(clusterUpdateStatus.NeedsUpdate, server.Name)
+		}
+
+		if server.VersionData.NeedsReboot != nil && *server.VersionData.NeedsReboot {
+			clusterUpdateStatus.NeedsReboot = append(clusterUpdateStatus.NeedsReboot, server.Name)
+		}
+
+		if server.VersionData.InMaintenance != nil && *server.VersionData.InMaintenance != api.NotInMaintenance {
+			clusterUpdateStatus.InMaintenance = append(clusterUpdateStatus.InMaintenance, server.Name)
+		}
+	}
+
+	return &clusterUpdateStatus, nil
 }
 
 func (s clusterService) Update(ctx context.Context, newCluster Cluster) error {

@@ -303,7 +303,7 @@ func (c *cmdClusterList) run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Connection URL", "Certificate Fingerprint", "Channel", "Status", "Last Updated"}
+	header := []string{"Name", "Connection URL", "Certificate Fingerprint", "Channel", "Status", "Update Status", "Last Updated"}
 	data := [][]string{}
 
 	for _, cluster := range clusters {
@@ -313,6 +313,7 @@ func (c *cmdClusterList) run(cmd *cobra.Command, args []string) error {
 			cluster.Fingerprint[:min(len(cluster.Fingerprint), 12)],
 			cluster.Channel,
 			cluster.Status.String(),
+			fmt.Sprintf("%d / %d / %d", len(cluster.UpdateStatus.NeedsUpdate), len(cluster.UpdateStatus.NeedsReboot), len(cluster.UpdateStatus.InMaintenance)),
 			cluster.LastUpdated.Truncate(time.Second).String(),
 		})
 	}
@@ -595,12 +596,31 @@ func (c *cmdClusterShow) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	needUpdate := strings.Join(cluster.UpdateStatus.NeedsUpdate, ", ")
+	if needUpdate == "" {
+		needUpdate = "-"
+	}
+
+	needReboot := strings.Join(cluster.UpdateStatus.NeedsReboot, ", ")
+	if needReboot == "" {
+		needReboot = "-"
+	}
+
+	inMaintenance := strings.Join(cluster.UpdateStatus.InMaintenance, ", ")
+	if inMaintenance == "" {
+		inMaintenance = "-"
+	}
+
 	fmt.Printf("Name: %s\n", cluster.Name)
 	fmt.Printf("Connection URL: %s\n", cluster.ConnectionURL)
 	fmt.Printf("Certificate:\n%s", indent("  ", strings.TrimSpace(cluster.Certificate)))
 	fmt.Printf("Certificate Fingerprint: %s\n", cluster.Fingerprint)
 	fmt.Printf("Channel: %s\n", cluster.Channel)
 	fmt.Printf("Status: %s\n", cluster.Status.String())
+	fmt.Printf("Update Status:\n")
+	fmt.Printf("  Need Update: %s\n", needUpdate)
+	fmt.Printf("  Need Reboot: %s\n", needReboot)
+	fmt.Printf("  In Maintenance: %s\n", inMaintenance)
 	fmt.Printf("Last Updated: %s\n", cluster.LastUpdated.Truncate(time.Second).String())
 
 	return nil

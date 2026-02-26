@@ -159,10 +159,11 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 					ConnectionURL: cluster.ConnectionURL,
 					Channel:       cluster.Channel,
 				},
-				Certificate: ptr.From(cluster.Certificate),
-				Fingerprint: cluster.Fingerprint,
-				Status:      cluster.Status,
-				LastUpdated: cluster.LastUpdated,
+				Certificate:  ptr.From(cluster.Certificate),
+				Fingerprint:  cluster.Fingerprint,
+				Status:       cluster.Status,
+				LastUpdated:  cluster.LastUpdated,
+				UpdateStatus: *cluster.UpdateStatus,
 			})
 		}
 
@@ -291,10 +292,11 @@ func (c *clusterHandler) clusterGet(r *http.Request) response.Response {
 				ConnectionURL: cluster.ConnectionURL,
 				Channel:       cluster.Channel,
 			},
-			Certificate: ptr.From(cluster.Certificate),
-			Fingerprint: cluster.Fingerprint,
-			Status:      cluster.Status,
-			LastUpdated: cluster.LastUpdated,
+			Certificate:  ptr.From(cluster.Certificate),
+			Fingerprint:  cluster.Fingerprint,
+			Status:       cluster.Status,
+			LastUpdated:  cluster.LastUpdated,
+			UpdateStatus: *cluster.UpdateStatus,
 		},
 		cluster,
 	)

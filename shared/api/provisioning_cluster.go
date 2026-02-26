@@ -90,15 +90,21 @@ func (s ClusterDeleteMode) String() string {
 // ClusterUpdateStatus contains the update status of each server of the cluster
 // as well as an aggregated cluster update status.
 type ClusterUpdateStatus struct {
-	NeedsUpdate bool `json:"needs_update"`
+	// NeedsUpdate holds the list of server names of the servers within the
+	// cluster, which need to be updated. If NeedsUpdate is empty, all servers are
+	// up to date.
+	NeedsUpdate []string `json:"needs_update"`
 
-	// OS holds the lowest state of all the servers of the cluster
-	// for the version information of the operating system.
-	OS OSVersionData `json:"os" yaml:"os"`
+	// NeedsReboot holds the list of server names of the servers within the
+	// cluster, which need to be rebooted. If NeedsReboot is empty, all servers
+	// are up to date and don't require a reboot.
+	NeedsReboot []string `json:"needs_reboot"`
 
-	// Applications holds the lowest state of all the servers of the cluster for
-	// the version information of the installed applications.
-	Applications []ApplicationVersionData `json:"applications" yaml:"applications"`
+	// InMaintenance holds the list of server names of the servers within the
+	// cluster, which are currently in a maintenance state other than
+	// `NotInMaintenance`. If InMaintenance is empty, all servers are fully
+	// operational and not in maintenance.
+	InMaintenance []string `json:"in_maintenance"`
 }
 
 // ClusterPut defines the updateable part of a cluster of servers running
