@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/signature"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -138,7 +139,13 @@ func (u *updateServer) fetchAndVerifyIndexSJSON(ctx context.Context) ([]byte, er
 
 	token, err := u.tokenProvider.GetToken(ctx)
 	if err == nil {
-		req.Header.Add("X-IncusOS-Authentication", token)
+		if config.GetUpdates().ImageServerAuthenticationByQueryParam {
+			q := req.URL.Query()
+			q.Set("token", token)
+			req.URL.RawQuery = q.Encode()
+		} else {
+			req.Header.Add("X-IncusOS-Authentication", token)
+		}
 	}
 
 	resp, err := u.client.Do(req)
