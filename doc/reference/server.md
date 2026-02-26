@@ -34,22 +34,25 @@ if a server is currently in maintenance mode. Based on this information,
 administrators can decide to trigger an update, evacuate workloads or reboot the
 server.
 
-During normal update flow, the following states are passed:
+| Server Status | Server Status Detail | Needs Update | Needs Reboot | Incus Cluster? | In Maintenance            | Aggregated Update State         | Recommended Action |
+| ---           | ---                  | ---          | ---          | ---            | ---                       | ---                             | ---                |
+| Ready         | -                    | false        | false        | -              | Not In Maintenance        | up to date                      | -                  |
+| Ready         | -                    | true         | -            | -              | -                         | update pending                  | update             |
+| Ready         | Updating             | -            | -            | -              | -                         | updating                        | -                  |
+| Ready         | -                    | false        | true         | true           | Not In Maintenance        | evacuation pending              | evacuate           |
+| Ready         | -                    | false        | -            | true           | In Maintenance Evacuating | evacuating                      | -                  |
+| Ready         | -                    | false        | true         | true           | In Maintenance Evacuated  | in maintenance, reboot pending  | reboot             |
+| Offline       | Rebooting            | -            | -            | true           | In Maintenance Evacuated  | in maintenance, rebooting       | -                  |
+| Ready         | -                    | false        | -            | true           | In Maintenance Evacuated  | in maintenance, restore pending | restore            |
+| Ready         | -                    | false        | -            | true           | In Maintenance Restoring  | restoring                       | -                  |
+| Ready         | -                    | false        | true         | false          | Not In Maintenance        | reboot pending                  | reboot             |
+| Offline       | Rebooting            | -            | false        | false          | Not In Maintenance        | rebooting                       | -                  |
 
-| needs update | needs reboot | in maintenance | recommended action                             |
-| :---         | :---         | :---           | :---                                           |
-| false        | false        | false          | <none>                                         |
-| true         | false        | false          | update                                         |
-| false        | true         | false          | if `type == "incus"`: "evacuate" else "reboot" |
-| false        | true         | true           | reboot                                         |
-| false        | false        | true           | restore                                        |
+Columns with `-` indicate that the value can be either `true` or `false` without
+affecting the aggregated update state or recommended action.
 
-The following states are also possible, but less likely to be encountered during normal operation:
-
-| needs update | needs reboot | in maintenance | recommended action |
-| :---         | :---         | :---           | :---               |
-| true         | true         | false          | update             |
-| true         | false        | true           | update             |
-| true         | true         | true           | update             |
+For undefined states, the aggregated update state is `undefined` and the recommended action is `-` (none).
 
 Actions "evacuate" and "restore" are only available, if the server has type "Incus".
+
+More detailed information about the server status transitions can be found in [/development/server-status].
