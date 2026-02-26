@@ -303,6 +303,13 @@ func waitAgentRunningWithContext(ctx context.Context, t *testing.T, vm string, a
 		debugCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
+		respList := runWithContext(debugCtx, t, "incus list")
+		if respList.Success() {
+			t.Logf("incus list (after incus wait error for %q):\n%s", vm, respList.Output())
+		} else {
+			t.Logf("failed to get incus list (after incus wait error for %q): %s", vm, respList.Error())
+		}
+
 		respConsole := runWithContext(debugCtx, t, "incus console %s --show-log", vm)
 		if respConsole.Success() {
 			t.Logf("incus console log for %q:\n%s", vm, respConsole.Output())

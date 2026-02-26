@@ -441,7 +441,9 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 				}
 
 				t.Logf("Waiting for %s to complete installation", name)
-				err = waitAgentRunningWithContext(errgrpctx, t, name)
+				agentWaitCtx, cancel := context.WithTimeout(errgrpctx, strechedTimeout(3*time.Minute))
+				err = waitAgentRunningWithContext(agentWaitCtx, t, name)
+				cancel()
 				if err != nil {
 					return err
 				}
@@ -472,7 +474,9 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 			}
 
 			t.Logf("Waiting for %s to be ready", name)
-			err = waitAgentRunningWithContext(errgrpctx, t, name)
+			agentWaitCtx, cancel := context.WithTimeout(errgrpctx, strechedTimeout(3*time.Minute))
+			err = waitAgentRunningWithContext(agentWaitCtx, t, name)
+			cancel()
 			if err != nil {
 				return err
 			}
