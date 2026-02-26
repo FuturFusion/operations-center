@@ -107,6 +107,12 @@ func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
 
 	app.AddCommand(adminCmd.Command())
 
+	queryCmd := cmds.CmdQuery{
+		OCClient: globalCmd.ocClient,
+	}
+
+	app.AddCommand(queryCmd.Command())
+
 	return app.Execute()
 }
 
