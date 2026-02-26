@@ -1678,10 +1678,11 @@ func TestClusterService_GetAll(t *testing.T) {
 
 func TestClusterService_GetAllWithFilter(t *testing.T) {
 	tests := []struct {
-		name                    string
-		filter                  provisioning.ClusterFilter
-		repoGetAllWithFilter    provisioning.Clusters
-		repoGetAllWithFilterErr error
+		name                      string
+		filter                    provisioning.ClusterFilter
+		repoGetAllWithFilter      provisioning.Clusters
+		repoGetAllWithFilterErr   error
+		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
 
 		assertErr require.ErrorAssertionFunc
 		count     int
@@ -1695,6 +1696,48 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 				},
 				provisioning.Cluster{
 					Name: "two",
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				{
+					Value: provisioning.Servers{
+						{
+							Name: "server1",
+							VersionData: api.ServerVersionData{
+								NeedsUpdate:   ptr.To(false),
+								NeedsReboot:   ptr.To(false),
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name: "server2",
+							VersionData: api.ServerVersionData{
+								NeedsUpdate:   ptr.To(false),
+								NeedsReboot:   ptr.To(false),
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+				{
+					Value: provisioning.Servers{
+						{
+							Name: "serverA",
+							VersionData: api.ServerVersionData{
+								NeedsUpdate:   ptr.To(false),
+								NeedsReboot:   ptr.To(false),
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name: "serverB",
+							VersionData: api.ServerVersionData{
+								NeedsUpdate:   ptr.To(false),
+								NeedsReboot:   ptr.To(false),
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
 				},
 			},
 
@@ -1712,6 +1755,28 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 				},
 				provisioning.Cluster{
 					Name: "two",
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				{
+					Value: provisioning.Servers{
+						{
+							Name: "server1",
+							VersionData: api.ServerVersionData{
+								NeedsUpdate:   ptr.To(false),
+								NeedsReboot:   ptr.To(false),
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name: "server2",
+							VersionData: api.ServerVersionData{
+								NeedsUpdate:   ptr.To(false),
+								NeedsReboot:   ptr.To(false),
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
 				},
 			},
 
@@ -1779,6 +1844,25 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 			assertErr: boom.ErrorIs,
 			count:     0,
 		},
+		{
+			name:   "error - serverSvc.GetAllWithFilter",
+			filter: provisioning.ClusterFilter{},
+			repoGetAllWithFilter: provisioning.Clusters{
+				provisioning.Cluster{
+					Name: "one",
+				},
+				provisioning.Cluster{
+					Name: "two",
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
 	}
 
 	for _, tc := range tests {
@@ -1790,7 +1874,13 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil)
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetAllWithFilter(context.Background(), tc.filter)
@@ -1798,6 +1888,7 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Len(t, cluster, tc.count)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
 		})
 	}
 }
@@ -1960,64 +2051,17 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 	}
 }
 
-func TestClusterService_GetByID(t *testing.T) {
-	tests := []struct {
-		name                 string
-		idArg                string
-		repoGetByNameCluster *provisioning.Cluster
-		repoGetByNameErr     error
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name:  "success",
-			idArg: "one",
-			repoGetByNameCluster: &provisioning.Cluster{
-				Name:          "one",
-				ServerNames:   []string{"server1", "server2"},
-				ConnectionURL: "http://one/",
-			},
-
-			assertErr: require.NoError,
-		},
-		{
-			name:             "error - repo",
-			idArg:            "one",
-			repoGetByNameErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			repo := &mock.ClusterRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
-					return tc.repoGetByNameCluster, tc.repoGetByNameErr
-				},
-			}
-
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil)
-
-			// Run test
-			cluster, err := clusterSvc.GetByName(context.Background(), tc.idArg)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByNameCluster, cluster)
-		})
-	}
-}
-
 func TestClusterService_GetByName(t *testing.T) {
 	tests := []struct {
-		name                 string
-		nameArg              string
-		repoGetByNameCluster *provisioning.Cluster
-		repoGetByNameErr     error
+		name                         string
+		nameArg                      string
+		repoGetByNameCluster         *provisioning.Cluster
+		repoGetByNameErr             error
+		serverSvcGetAllWithFilter    provisioning.Servers
+		serverSvcGetAllWithFilterErr error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr   require.ErrorAssertionFunc
+		wantCluster *provisioning.Cluster
 	}{
 		{
 			name:    "success",
@@ -2027,8 +2071,91 @@ func TestClusterService_GetByName(t *testing.T) {
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
 			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "server1",
+					VersionData: api.ServerVersionData{
+						NeedsUpdate:   ptr.To(false),
+						NeedsReboot:   ptr.To(false),
+						InMaintenance: ptr.To(api.NotInMaintenance),
+					},
+				},
+				{
+					Name: "server2",
+					VersionData: api.ServerVersionData{
+						NeedsUpdate:   ptr.To(false),
+						NeedsReboot:   ptr.To(false),
+						InMaintenance: ptr.To(api.NotInMaintenance),
+					},
+				},
+			},
 
 			assertErr: require.NoError,
+			wantCluster: &provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
+				UpdateStatus: &api.ClusterUpdateStatus{
+					NeedsUpdate:   []string{},
+					NeedsReboot:   []string{},
+					InMaintenance: []string{},
+				},
+			},
+		},
+		{
+			name:    "success - with update status",
+			nameArg: "one",
+			repoGetByNameCluster: &provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2", "server3", "server4"},
+				ConnectionURL: "http://one/",
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "server1",
+					VersionData: api.ServerVersionData{
+						NeedsUpdate:   ptr.To(true),
+						NeedsReboot:   ptr.To(false),
+						InMaintenance: ptr.To(api.NotInMaintenance),
+					},
+				},
+				{
+					Name: "server2",
+					VersionData: api.ServerVersionData{
+						NeedsUpdate:   ptr.To(false),
+						NeedsReboot:   ptr.To(true),
+						InMaintenance: ptr.To(api.NotInMaintenance),
+					},
+				},
+				{
+					Name: "server3",
+					VersionData: api.ServerVersionData{
+						NeedsUpdate:   ptr.To(false),
+						NeedsReboot:   ptr.To(false),
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "server4",
+					VersionData: api.ServerVersionData{
+						NeedsUpdate:   ptr.To(false),
+						NeedsReboot:   ptr.To(false),
+						InMaintenance: ptr.To(api.InMaintenanceRestoring),
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantCluster: &provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2", "server3", "server4"},
+				ConnectionURL: "http://one/",
+				UpdateStatus: &api.ClusterUpdateStatus{
+					NeedsUpdate:   []string{"server1"},
+					NeedsReboot:   []string{"server2"},
+					InMaintenance: []string{"server3", "server4"},
+				},
+			},
 		},
 		{
 			name:    "error - name empty",
@@ -2045,6 +2172,18 @@ func TestClusterService_GetByName(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 		},
+		{
+			name:    "error - serverSvc.GetAllWithFilter",
+			nameArg: "one",
+			repoGetByNameCluster: &provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
+			},
+			serverSvcGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
 	}
 
 	for _, tc := range tests {
@@ -2056,14 +2195,20 @@ func TestClusterService_GetByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil)
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.serverSvcGetAllWithFilter, tc.serverSvcGetAllWithFilterErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetByName(context.Background(), tc.nameArg)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByNameCluster, cluster)
+			require.Equal(t, tc.wantCluster, cluster)
 		})
 	}
 }

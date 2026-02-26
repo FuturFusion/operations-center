@@ -8,19 +8,34 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+type ExprApiClusterUpdateStatus struct {
+	NeedsUpdate   []string `json:"needs_update" expr:"needs_update"`
+	NeedsReboot   []string `json:"needs_reboot" expr:"needs_reboot"`
+	InMaintenance []string `json:"in_maintenance" expr:"in_maintenance"`
+}
+
 type ExprCluster struct {
-	ID                    int64             `json:"-" expr:"-"`
-	Name                  string            `json:"name"                    db:"primary=yes" expr:"name"`
-	ConnectionURL         string            `json:"connection_url" expr:"connection_url"`
-	Certificate           *string           `json:"certificate" expr:"certificate"`
-	Fingerprint           string            `json:"fingerprint"             db:"ignore" expr:"fingerprint"`
-	Status                api.ClusterStatus `json:"status" expr:"status"`
-	ServerNames           []string          `json:"server_names"            db:"ignore" expr:"server_names"`
-	ServerType            api.ServerType    `json:"server_type"             db:"ignore" expr:"server_type"`
-	ServicesConfig        map[string]any    `json:"services_config"         db:"ignore" expr:"services_config"`
-	ApplicationSeedConfig map[string]any    `json:"application_seed_config" db:"ignore" expr:"application_seed_config"`
-	Channel               string            `json:"channel"                 db:"join=channels.name" expr:"channel"`
-	LastUpdated           time.Time         `json:"last_updated"            db:"update_timestamp" expr:"last_updated"`
+	ID                    int64                       `json:"-" expr:"-"`
+	Name                  string                      `json:"name"                    db:"primary=yes" expr:"name"`
+	ConnectionURL         string                      `json:"connection_url" expr:"connection_url"`
+	Certificate           *string                     `json:"certificate" expr:"certificate"`
+	Fingerprint           string                      `json:"fingerprint"             db:"ignore" expr:"fingerprint"`
+	Status                api.ClusterStatus           `json:"status" expr:"status"`
+	UpdateStatus          *ExprApiClusterUpdateStatus `json:"update_status"           db:"ignore" expr:"update_status"`
+	ServerNames           []string                    `json:"server_names"            db:"ignore" expr:"server_names"`
+	ServerType            api.ServerType              `json:"server_type"             db:"ignore" expr:"server_type"`
+	ServicesConfig        map[string]any              `json:"services_config"         db:"ignore" expr:"services_config"`
+	ApplicationSeedConfig map[string]any              `json:"application_seed_config" db:"ignore" expr:"application_seed_config"`
+	Channel               string                      `json:"channel"                 db:"join=channels.name" expr:"channel"`
+	LastUpdated           time.Time                   `json:"last_updated"            db:"update_timestamp" expr:"last_updated"`
+}
+
+func ToExprApiClusterUpdateStatus(c api.ClusterUpdateStatus) ExprApiClusterUpdateStatus {
+	return ExprApiClusterUpdateStatus{
+		NeedsUpdate:   c.NeedsUpdate,
+		NeedsReboot:   c.NeedsReboot,
+		InMaintenance: c.InMaintenance,
+	}
 }
 
 func ToExprCluster(c Cluster) ExprCluster {
@@ -31,6 +46,7 @@ func ToExprCluster(c Cluster) ExprCluster {
 		Certificate:           c.Certificate,
 		Fingerprint:           c.Fingerprint,
 		Status:                c.Status,
+		UpdateStatus:          toPtr(ToExprApiClusterUpdateStatus(fromPtr(c.UpdateStatus))),
 		ServerNames:           c.ServerNames,
 		ServerType:            c.ServerType,
 		ServicesConfig:        c.ServicesConfig,
