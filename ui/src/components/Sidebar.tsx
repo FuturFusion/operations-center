@@ -19,6 +19,8 @@ import {
   RiOrganizationChart,
   RiPassPendingLine,
 } from "react-icons/ri";
+import { useQuery } from "@tanstack/react-query";
+import { fetchSettings } from "api/server";
 import { MenuItem, NavItemLink } from "components/NavItemLink";
 import { useAuth } from "context/authContext";
 
@@ -26,6 +28,10 @@ const Sidebar = () => {
   const { isAuthenticated } = useAuth();
   const [openSubmenu, setOpenSubmenu] = useState(["", ""]);
   const { pathname } = useLocation();
+  const { data: settings = null } = useQuery({
+    queryKey: ["settings"],
+    queryFn: fetchSettings,
+  });
 
   const logout = () => {
     fetch("/oidc/logout").then(() => {
@@ -352,6 +358,9 @@ const Sidebar = () => {
               </NavItemLink>
             </>
           )}
+          <Navbar.Text as="span" className="mx-auto">
+            <small>Version: {settings?.server_version}</small>
+          </Navbar.Text>
         </Nav>
       </Navbar>
     </>
