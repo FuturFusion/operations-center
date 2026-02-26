@@ -18,7 +18,7 @@ func (c OperationsCenterClient) GetWithFilterStorageBuckets(ctx context.Context,
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/storage_buckets", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/inventory/storage_buckets", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (c OperationsCenterClient) GetWithFilterStorageBuckets(ctx context.Context,
 }
 
 func (c OperationsCenterClient) GetStorageBucket(ctx context.Context, id string) (api.StorageBucket, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/storage_buckets", id), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/inventory/storage_buckets", id), nil, nil)
 	if err != nil {
 		return api.StorageBucket{}, err
 	}

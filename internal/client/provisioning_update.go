@@ -22,7 +22,7 @@ func (c OperationsCenterClient) GetWithFilterUpdates(ctx context.Context, filter
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/provisioning/updates", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/provisioning/updates", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (c OperationsCenterClient) GetWithFilterUpdates(ctx context.Context, filter
 }
 
 func (c OperationsCenterClient) GetUpdate(ctx context.Context, id string) (api.Update, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/updates", id), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/updates", id), nil, nil)
 	if err != nil {
 		return api.Update{}, err
 	}
@@ -52,7 +52,7 @@ func (c OperationsCenterClient) GetUpdate(ctx context.Context, id string) (api.U
 }
 
 func (c OperationsCenterClient) CreateUpdate(ctx context.Context, updateStream io.ReadCloser) error {
-	_, err := c.doRequest(ctx, http.MethodPost, "/provisioning/updates", nil, updateStream)
+	_, err := c.DoRequest(ctx, http.MethodPost, "/provisioning/updates", nil, updateStream)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (c OperationsCenterClient) CreateUpdate(ctx context.Context, updateStream i
 }
 
 func (c OperationsCenterClient) UpdateUpdate(ctx context.Context, id string, update api.UpdatePut) error {
-	_, err := c.doRequest(ctx, http.MethodPut, path.Join("/provisioning/updates", id), nil, update)
+	_, err := c.DoRequest(ctx, http.MethodPut, path.Join("/provisioning/updates", id), nil, update)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func (c OperationsCenterClient) UpdateUpdate(ctx context.Context, id string, upd
 }
 
 func (c OperationsCenterClient) GetUpdateFiles(ctx context.Context, id string) ([]api.UpdateFile, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/updates", id, "files"), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/updates", id, "files"), nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (c OperationsCenterClient) GetUpdateFiles(ctx context.Context, id string) (
 }
 
 func (c OperationsCenterClient) CleanupAllUpdates(ctx context.Context) error {
-	_, err := c.doRequest(ctx, http.MethodDelete, "/provisioning/updates", nil, nil)
+	_, err := c.DoRequest(ctx, http.MethodDelete, "/provisioning/updates", nil, nil)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (c OperationsCenterClient) RefreshUpdates(ctx context.Context, wait bool) e
 	query := url.Values{}
 	query.Add("wait", strconv.FormatBool(wait))
 
-	_, err := c.doRequest(ctx, http.MethodPost, "/provisioning/updates/:refresh", query, nil)
+	_, err := c.DoRequest(ctx, http.MethodPost, "/provisioning/updates/:refresh", query, nil)
 	if err != nil {
 		return err
 	}

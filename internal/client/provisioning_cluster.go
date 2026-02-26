@@ -21,7 +21,7 @@ func (c OperationsCenterClient) GetWithFilterClusters(ctx context.Context, filte
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/provisioning/clusters", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/provisioning/clusters", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func (c OperationsCenterClient) GetWithFilterClusters(ctx context.Context, filte
 }
 
 func (c OperationsCenterClient) GetCluster(ctx context.Context, name string) (api.Cluster, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/clusters", name), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/clusters", name), nil, nil)
 	if err != nil {
 		return api.Cluster{}, err
 	}
@@ -51,7 +51,7 @@ func (c OperationsCenterClient) GetCluster(ctx context.Context, name string) (ap
 }
 
 func (c OperationsCenterClient) CreateCluster(ctx context.Context, cluster api.ClusterPost) error {
-	response, err := c.doRequest(ctx, http.MethodPost, "/provisioning/clusters", nil, cluster)
+	response, err := c.DoRequest(ctx, http.MethodPost, "/provisioning/clusters", nil, cluster)
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func (c OperationsCenterClient) CreateCluster(ctx context.Context, cluster api.C
 }
 
 func (c OperationsCenterClient) UpdateCluster(ctx context.Context, name string, cluster api.ClusterPut) error {
-	_, err := c.doRequest(ctx, http.MethodPut, path.Join("/provisioning/clusters", name), nil, cluster)
+	_, err := c.DoRequest(ctx, http.MethodPut, path.Join("/provisioning/clusters", name), nil, cluster)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (c OperationsCenterClient) DeleteCluster(ctx context.Context, name string, 
 	query := url.Values{}
 	query.Add("mode", deleteMode.String())
 
-	_, err := c.doRequest(ctx, http.MethodDelete, path.Join("/provisioning/clusters", name), query, nil)
+	_, err := c.DoRequest(ctx, http.MethodDelete, path.Join("/provisioning/clusters", name), query, nil)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func (c OperationsCenterClient) FactoryResetCluster(ctx context.Context, name st
 		query.Add("tokenSeedName", args[1])
 	}
 
-	_, err := c.doRequest(ctx, http.MethodDelete, path.Join("/provisioning/clusters", name), query, nil)
+	_, err := c.DoRequest(ctx, http.MethodDelete, path.Join("/provisioning/clusters", name), query, nil)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (c OperationsCenterClient) FactoryResetCluster(ctx context.Context, name st
 }
 
 func (c OperationsCenterClient) RenameCluster(ctx context.Context, name string, newName string) error {
-	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name), nil, api.Cluster{
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name), nil, api.Cluster{
 		Name: newName,
 	})
 	if err != nil {
@@ -130,7 +130,7 @@ func (c OperationsCenterClient) RenameCluster(ctx context.Context, name string, 
 }
 
 func (c OperationsCenterClient) ResyncCluster(ctx context.Context, name string) error {
-	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, ":resync-inventory"), nil, nil)
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, ":resync-inventory"), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (c OperationsCenterClient) ResyncCluster(ctx context.Context, name string) 
 }
 
 func (c OperationsCenterClient) UpdateClusterCertificate(ctx context.Context, name string, requestBody api.ClusterCertificatePut) error {
-	_, err := c.doRequest(ctx, http.MethodPut, path.Join("/provisioning/clusters", name, "certificate"), nil, requestBody)
+	_, err := c.DoRequest(ctx, http.MethodPut, path.Join("/provisioning/clusters", name, "certificate"), nil, requestBody)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func (c OperationsCenterClient) GetClusterArtifacts(ctx context.Context, cluster
 	query := url.Values{}
 	query.Add("recursion", "1")
 
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/clusters", clusterName, "artifacts"), query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/clusters", clusterName, "artifacts"), query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func (c OperationsCenterClient) GetClusterArtifacts(ctx context.Context, cluster
 }
 
 func (c OperationsCenterClient) GetClusterArtifact(ctx context.Context, clusterName string, artifactName string) (api.ClusterArtifact, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/clusters", clusterName, "artifacts", artifactName), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/clusters", clusterName, "artifacts", artifactName), nil, nil)
 	if err != nil {
 		return api.ClusterArtifact{}, err
 	}

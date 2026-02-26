@@ -14,7 +14,7 @@ func (c OperationsCenterClient) GetClusterTemplates(ctx context.Context) ([]api.
 	query := url.Values{}
 	query.Add("recursion", "1")
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/provisioning/cluster-templates", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/provisioning/cluster-templates", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +29,7 @@ func (c OperationsCenterClient) GetClusterTemplates(ctx context.Context) ([]api.
 }
 
 func (c OperationsCenterClient) GetClusterTemplate(ctx context.Context, name string) (api.ClusterTemplate, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/cluster-templates", name), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/cluster-templates", name), nil, nil)
 	if err != nil {
 		return api.ClusterTemplate{}, err
 	}
@@ -44,7 +44,7 @@ func (c OperationsCenterClient) GetClusterTemplate(ctx context.Context, name str
 }
 
 func (c OperationsCenterClient) CreateClusterTemplate(ctx context.Context, clusterTemplate api.ClusterTemplatePost) error {
-	_, err := c.doRequest(ctx, http.MethodPost, "/provisioning/cluster-templates", nil, clusterTemplate)
+	_, err := c.DoRequest(ctx, http.MethodPost, "/provisioning/cluster-templates", nil, clusterTemplate)
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func (c OperationsCenterClient) CreateClusterTemplate(ctx context.Context, clust
 }
 
 func (c OperationsCenterClient) DeleteClusterTemplate(ctx context.Context, name string) error {
-	_, err := c.doRequest(ctx, http.MethodDelete, path.Join("/provisioning/cluster-templates", name), nil, nil)
+	_, err := c.DoRequest(ctx, http.MethodDelete, path.Join("/provisioning/cluster-templates", name), nil, nil)
 	if err != nil {
 		return err
 	}

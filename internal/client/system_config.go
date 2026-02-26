@@ -9,7 +9,7 @@ import (
 )
 
 func (c OperationsCenterClient) GetSystemNetworkConfig(ctx context.Context) (api.SystemNetwork, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, "/system/network", nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/system/network", nil, nil)
 	if err != nil {
 		return api.SystemNetwork{}, err
 	}
@@ -24,7 +24,7 @@ func (c OperationsCenterClient) GetSystemNetworkConfig(ctx context.Context) (api
 }
 
 func (c OperationsCenterClient) UpdateSystemNetworkConfig(ctx context.Context, cfg api.SystemNetworkPut) error {
-	_, err := c.doRequest(ctx, http.MethodPut, "/system/network", nil, cfg)
+	_, err := c.DoRequest(ctx, http.MethodPut, "/system/network", nil, cfg)
 	if err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func (c OperationsCenterClient) UpdateSystemNetworkConfig(ctx context.Context, c
 }
 
 func (c OperationsCenterClient) GetSystemSecurityConfig(ctx context.Context) (api.SystemSecurity, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, "/system/security", nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/system/security", nil, nil)
 	if err != nil {
 		return api.SystemSecurity{}, err
 	}
@@ -48,7 +48,7 @@ func (c OperationsCenterClient) GetSystemSecurityConfig(ctx context.Context) (ap
 }
 
 func (c OperationsCenterClient) UpdateSystemSecurityConfig(ctx context.Context, cfg api.SystemSecurityPut) error {
-	_, err := c.doRequest(ctx, http.MethodPut, "/system/security", nil, cfg)
+	_, err := c.DoRequest(ctx, http.MethodPut, "/system/security", nil, cfg)
 	if err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func (c OperationsCenterClient) UpdateSystemSecurityConfig(ctx context.Context, 
 }
 
 func (c OperationsCenterClient) GetSystemSettingsConfig(ctx context.Context) (api.SystemSettings, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, "/system/settings", nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/system/settings", nil, nil)
 	if err != nil {
 		return api.SystemSettings{}, err
 	}
@@ -72,7 +72,7 @@ func (c OperationsCenterClient) GetSystemSettingsConfig(ctx context.Context) (ap
 }
 
 func (c OperationsCenterClient) UpdateSystemSettingsConfig(ctx context.Context, cfg api.SystemSettingsPut) error {
-	_, err := c.doRequest(ctx, http.MethodPut, "/system/settings", nil, cfg)
+	_, err := c.DoRequest(ctx, http.MethodPut, "/system/settings", nil, cfg)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (c OperationsCenterClient) UpdateSystemSettingsConfig(ctx context.Context, 
 }
 
 func (c OperationsCenterClient) GetSystemUpdatesConfig(ctx context.Context) (api.SystemUpdates, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, "/system/updates", nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/system/updates", nil, nil)
 	if err != nil {
 		return api.SystemUpdates{}, err
 	}
@@ -96,7 +96,7 @@ func (c OperationsCenterClient) GetSystemUpdatesConfig(ctx context.Context) (api
 }
 
 func (c OperationsCenterClient) UpdateSystemUpdatesConfig(ctx context.Context, cfg api.SystemUpdatesPut) error {
-	_, err := c.doRequest(ctx, http.MethodPut, "/system/updates", nil, cfg)
+	_, err := c.DoRequest(ctx, http.MethodPut, "/system/updates", nil, cfg)
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func (c OperationsCenterClient) UpdateSystemUpdatesConfig(ctx context.Context, c
 }
 
 func (c OperationsCenterClient) SetSystemCertificate(ctx context.Context, cfg api.SystemCertificatePost) error {
-	_, err := c.doRequest(ctx, http.MethodPost, "/system/certificate", nil, cfg)
+	_, err := c.DoRequest(ctx, http.MethodPost, "/system/certificate", nil, cfg)
 	if err != nil {
 		return err
 	}

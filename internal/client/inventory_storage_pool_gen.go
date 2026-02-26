@@ -18,7 +18,7 @@ func (c OperationsCenterClient) GetWithFilterStoragePools(ctx context.Context, f
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/storage_pools", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/inventory/storage_pools", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (c OperationsCenterClient) GetWithFilterStoragePools(ctx context.Context, f
 }
 
 func (c OperationsCenterClient) GetStoragePool(ctx context.Context, id string) (api.StoragePool, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/storage_pools", id), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/inventory/storage_pools", id), nil, nil)
 	if err != nil {
 		return api.StoragePool{}, err
 	}

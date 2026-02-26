@@ -18,7 +18,7 @@ func (c OperationsCenterClient) GetWithFilterInstances(ctx context.Context, filt
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/instances", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/inventory/instances", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (c OperationsCenterClient) GetWithFilterInstances(ctx context.Context, filt
 }
 
 func (c OperationsCenterClient) GetInstance(ctx context.Context, id string) (api.Instance, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/instances", id), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/inventory/instances", id), nil, nil)
 	if err != nil {
 		return api.Instance{}, err
 	}

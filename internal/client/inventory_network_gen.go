@@ -18,7 +18,7 @@ func (c OperationsCenterClient) GetWithFilterNetworks(ctx context.Context, filte
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/networks", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/inventory/networks", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (c OperationsCenterClient) GetWithFilterNetworks(ctx context.Context, filte
 }
 
 func (c OperationsCenterClient) GetNetwork(ctx context.Context, id string) (api.Network, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/networks", id), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/inventory/networks", id), nil, nil)
 	if err != nil {
 		return api.Network{}, err
 	}

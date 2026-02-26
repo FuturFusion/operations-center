@@ -184,7 +184,7 @@ func (c OperationsCenterClient) doRequestRawResponse(ctx context.Context, method
 	return resp, nil
 }
 
-func (c OperationsCenterClient) doRequest(ctx context.Context, method string, endpoint string, query url.Values, content any) (*api.Response, error) {
+func (c OperationsCenterClient) DoRequest(ctx context.Context, method string, endpoint string, query url.Values, content any) (*api.Response, error) {
 	resp, err := c.doRequestRawResponse(ctx, method, endpoint, query, content)
 	if err != nil {
 		return nil, err
@@ -240,7 +240,7 @@ func (c OperationsCenterClient) DoHTTP(req *http.Request) (*http.Response, error
 }
 
 func (c OperationsCenterClient) GetAPIServerInfo(ctx context.Context) (api.ServerUntrusted, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, "", url.Values{}, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "", url.Values{}, nil)
 	if err != nil {
 		return api.ServerUntrusted{}, err
 	}

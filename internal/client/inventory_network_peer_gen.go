@@ -18,7 +18,7 @@ func (c OperationsCenterClient) GetWithFilterNetworkPeers(ctx context.Context, f
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/network_peers", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/inventory/network_peers", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (c OperationsCenterClient) GetWithFilterNetworkPeers(ctx context.Context, f
 }
 
 func (c OperationsCenterClient) GetNetworkPeer(ctx context.Context, id string) (api.NetworkPeer, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/network_peers", id), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/inventory/network_peers", id), nil, nil)
 	if err != nil {
 		return api.NetworkPeer{}, err
 	}
