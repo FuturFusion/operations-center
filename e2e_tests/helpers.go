@@ -152,19 +152,6 @@ func mustRunWithContext(ctx context.Context, t *testing.T, command string, args 
 	return resp
 }
 
-// func tryRunWithContext(ctx context.Context, t *testing.T, command string, args ...any) cmdResponse {
-// 	t.Helper()
-// 	resp := runWithContext(ctx, t, command, args...)
-// 	if resp.err != nil {
-// 		return cmdResponse{
-// 			exitCode: -1, // mark as not successful
-// 			output:   bytes.NewBufferString(fmt.Sprintf("failed to run %q: %v", command, resp.err)),
-// 		}
-// 	}
-
-// 	return resp
-// }
-
 // run executes the provided command in a shell.
 func run(t *testing.T, command string, args ...any) cmdResponse {
 	t.Helper()
@@ -321,6 +308,16 @@ func waitAgentRunningWithContext(ctx context.Context, t *testing.T, vm string, a
 
 		select {
 		case <-ctx.Done():
+			// Use detached context, since ctx is cancelled at this stage.
+			debugCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			resp := runWithContext(debugCtx, t, "incus console %s --show-log", vm)
+			cancel()
+			if resp.Success() {
+				t.Logf("incus console log for %q:\n%s", vm, resp.Output())
+			} else {
+				t.Logf("failed to get incus console log for %q: %s", vm, resp.Error())
+			}
+
 			return fmt.Errorf("Context done: %v", t.Context().Err())
 
 		case <-time.After(1 * time.Second):
