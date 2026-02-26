@@ -216,8 +216,8 @@ func runWithContext(ctx context.Context, t *testing.T, command string, args ...a
 	return resp
 }
 
-// mustWaitAgentRunningContext waits for the incus agent to be running inside
-// the given VM.
+// waitForSuccessWithTimout retries a command until it is executed successfully
+// or the timeout is exceeded.
 func waitForSuccessWithTimeout(t *testing.T, desc string, command string, timeout time.Duration, args ...any) (success bool, err error) {
 	t.Helper()
 
@@ -287,44 +287,40 @@ func mustWaitAgentRunningWithContext(ctx context.Context, t *testing.T, vm strin
 func waitAgentRunningWithContext(ctx context.Context, t *testing.T, vm string, args ...any) error {
 	t.Helper()
 
+	start := time.Now()
+
 	vm = fmt.Sprintf(vm, args...)
 
-	count := 0
-	for {
-		resp := run(t, `incus exec %s true`, vm)
-		if resp.err != nil {
-			return resp.err
-		}
-
-		if resp.Success() {
-			break
-		}
-
-		if count%10 == 0 {
-			t.Logf("Waiting %ds for agent on %s", count, vm)
-		}
-
-		count++
-
-		select {
-		case <-ctx.Done():
-			// Use detached context, since ctx is cancelled at this stage.
-			debugCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			resp := runWithContext(debugCtx, t, "incus console %s --show-log", vm)
-			cancel()
-			if resp.Success() {
-				t.Logf("incus console log for %q:\n%s", vm, resp.Output())
-			} else {
-				t.Logf("failed to get incus console log for %q: %s", vm, resp.Error())
-			}
-
-			return fmt.Errorf("Context done: %v", t.Context().Err())
-
-		case <-time.After(1 * time.Second):
-		}
+	timeoutSeconds := -1 // -1 disables the timeout for incus wait.
+	deadline, ok := ctx.Deadline()
+	if ok {
+		timeoutSeconds = int(time.Until(deadline).Truncate(time.Second).Seconds()) - 2 // Add 2 seconds of headroom.
 	}
 
-	t.Logf("Agent running on %s after %ds", vm, count)
+	resp := runWithContext(ctx, t, `incus wait %s agent --timeout %d`, vm, timeoutSeconds)
+	if !resp.Success() {
+		// Use detached context, since ctx may be cancelled at this stage.
+		debugCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		respList := runWithContext(debugCtx, t, "incus list")
+		if respList.Success() {
+			t.Logf("incus list (after incus wait error for %q):\n%s", vm, respList.Output())
+		} else {
+			t.Logf("failed to get incus list (after incus wait error for %q): %s", vm, respList.Error())
+		}
+
+		respConsole := runWithContext(debugCtx, t, "incus console %s --show-log", vm)
+		if respConsole.Success() {
+			t.Logf("incus console log for %q:\n%s", vm, respConsole.Output())
+		} else {
+			t.Logf("failed to get incus console log for %q: %s", vm, respConsole.Error())
+		}
+
+		return fmt.Errorf("Failed to wait for incus agent on %q after %s: %s", vm, time.Since(start).String(), resp.Error())
+	}
+
+	t.Logf("Agent running on %q after %s", vm, time.Since(start).String())
 
 	return nil
 }
