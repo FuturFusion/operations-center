@@ -14,7 +14,7 @@ func (c OperationsCenterClient) GetChannels(ctx context.Context) ([]api.Channel,
 	query := url.Values{}
 	query.Add("recursion", "1")
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/provisioning/channels", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/provisioning/channels", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +29,7 @@ func (c OperationsCenterClient) GetChannels(ctx context.Context) ([]api.Channel,
 }
 
 func (c OperationsCenterClient) GetChannel(ctx context.Context, name string) (api.Channel, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/channels", name), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/channels", name), nil, nil)
 	if err != nil {
 		return api.Channel{}, err
 	}
@@ -44,7 +44,7 @@ func (c OperationsCenterClient) GetChannel(ctx context.Context, name string) (ap
 }
 
 func (c OperationsCenterClient) CreateChannel(ctx context.Context, channel api.ChannelPost) error {
-	_, err := c.doRequest(ctx, http.MethodPost, "/provisioning/channels", nil, channel)
+	_, err := c.DoRequest(ctx, http.MethodPost, "/provisioning/channels", nil, channel)
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func (c OperationsCenterClient) CreateChannel(ctx context.Context, channel api.C
 }
 
 func (c OperationsCenterClient) UpdateChannel(ctx context.Context, name string, channel api.ChannelPut) error {
-	_, err := c.doRequest(ctx, http.MethodPut, path.Join("/provisioning/channels", name), nil, channel)
+	_, err := c.DoRequest(ctx, http.MethodPut, path.Join("/provisioning/channels", name), nil, channel)
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func (c OperationsCenterClient) UpdateChannel(ctx context.Context, name string, 
 }
 
 func (c OperationsCenterClient) DeleteChannel(ctx context.Context, name string) error {
-	_, err := c.doRequest(ctx, http.MethodDelete, path.Join("/provisioning/channels", name), nil, nil)
+	_, err := c.DoRequest(ctx, http.MethodDelete, path.Join("/provisioning/channels", name), nil, nil)
 	if err != nil {
 		return err
 	}

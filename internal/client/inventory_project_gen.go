@@ -18,7 +18,7 @@ func (c OperationsCenterClient) GetWithFilterProjects(ctx context.Context, filte
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/projects", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/inventory/projects", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (c OperationsCenterClient) GetWithFilterProjects(ctx context.Context, filte
 }
 
 func (c OperationsCenterClient) GetProject(ctx context.Context, id string) (api.Project, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/projects", id), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/inventory/projects", id), nil, nil)
 	if err != nil {
 		return api.Project{}, err
 	}

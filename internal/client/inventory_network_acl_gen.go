@@ -18,7 +18,7 @@ func (c OperationsCenterClient) GetWithFilterNetworkACLs(ctx context.Context, fi
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/network_acls", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/inventory/network_acls", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (c OperationsCenterClient) GetWithFilterNetworkACLs(ctx context.Context, fi
 }
 
 func (c OperationsCenterClient) GetNetworkACL(ctx context.Context, id string) (api.NetworkACL, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/network_acls", id), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/inventory/network_acls", id), nil, nil)
 	if err != nil {
 		return api.NetworkACL{}, err
 	}

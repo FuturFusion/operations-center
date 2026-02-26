@@ -18,7 +18,7 @@ func (c OperationsCenterClient) GetWithFilterStorageVolumes(ctx context.Context,
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/storage_volumes", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/inventory/storage_volumes", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (c OperationsCenterClient) GetWithFilterStorageVolumes(ctx context.Context,
 }
 
 func (c OperationsCenterClient) GetStorageVolume(ctx context.Context, id string) (api.StorageVolume, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/storage_volumes", id), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/inventory/storage_volumes", id), nil, nil)
 	if err != nil {
 		return api.StorageVolume{}, err
 	}

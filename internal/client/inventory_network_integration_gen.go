@@ -18,7 +18,7 @@ func (c OperationsCenterClient) GetWithFilterNetworkIntegrations(ctx context.Con
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/network_integrations", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/inventory/network_integrations", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (c OperationsCenterClient) GetWithFilterNetworkIntegrations(ctx context.Con
 }
 
 func (c OperationsCenterClient) GetNetworkIntegration(ctx context.Context, id string) (api.NetworkIntegration, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/network_integrations", id), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/inventory/network_integrations", id), nil, nil)
 	if err != nil {
 		return api.NetworkIntegration{}, err
 	}

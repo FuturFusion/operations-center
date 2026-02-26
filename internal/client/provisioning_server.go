@@ -20,7 +20,7 @@ func (c OperationsCenterClient) GetWithFilterServers(ctx context.Context, filter
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/provisioning/servers", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/provisioning/servers", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func (c OperationsCenterClient) GetWithFilterServers(ctx context.Context, filter
 }
 
 func (c OperationsCenterClient) GetServer(ctx context.Context, name string) (api.Server, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name), nil, nil)
 	if err != nil {
 		return api.Server{}, err
 	}
@@ -50,7 +50,7 @@ func (c OperationsCenterClient) GetServer(ctx context.Context, name string) (api
 }
 
 func (c OperationsCenterClient) CreateServer(ctx context.Context, server api.Server) error {
-	_, err := c.doRequest(ctx, http.MethodPost, "/provisioning/servers", nil, server)
+	_, err := c.DoRequest(ctx, http.MethodPost, "/provisioning/servers", nil, server)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (c OperationsCenterClient) CreateServer(ctx context.Context, server api.Ser
 }
 
 func (c OperationsCenterClient) UpdateServer(ctx context.Context, name string, server api.ServerPut) error {
-	_, err := c.doRequest(ctx, http.MethodPut, path.Join("/provisioning/servers", name), nil, server)
+	_, err := c.DoRequest(ctx, http.MethodPut, path.Join("/provisioning/servers", name), nil, server)
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (c OperationsCenterClient) UpdateServer(ctx context.Context, name string, s
 }
 
 func (c OperationsCenterClient) DeleteServer(ctx context.Context, name string) error {
-	_, err := c.doRequest(ctx, http.MethodDelete, path.Join("/provisioning/servers", name), nil, nil)
+	_, err := c.DoRequest(ctx, http.MethodDelete, path.Join("/provisioning/servers", name), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func (c OperationsCenterClient) DeleteServer(ctx context.Context, name string) e
 }
 
 func (c OperationsCenterClient) RenameServer(ctx context.Context, name string, newName string) error {
-	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name), nil, api.ServerPost{
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name), nil, api.ServerPost{
 		Name: newName,
 	})
 	if err != nil {
@@ -88,7 +88,7 @@ func (c OperationsCenterClient) RenameServer(ctx context.Context, name string, n
 }
 
 func (c OperationsCenterClient) ResyncServer(ctx context.Context, name string) error {
-	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, ":resync"), nil, nil)
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, ":resync"), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (c OperationsCenterClient) ResyncServer(ctx context.Context, name string) e
 }
 
 func (c OperationsCenterClient) EvacuateServerSystem(ctx context.Context, name string) error {
-	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:evacuate"), nil, nil)
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:evacuate"), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func (c OperationsCenterClient) EvacuateServerSystem(ctx context.Context, name s
 }
 
 func (c OperationsCenterClient) PoweroffServerSystem(ctx context.Context, name string) error {
-	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:poweroff"), nil, nil)
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:poweroff"), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (c OperationsCenterClient) PoweroffServerSystem(ctx context.Context, name s
 }
 
 func (c OperationsCenterClient) RebootServerSystem(ctx context.Context, name string) error {
-	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:reboot"), nil, nil)
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:reboot"), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func (c OperationsCenterClient) RebootServerSystem(ctx context.Context, name str
 }
 
 func (c OperationsCenterClient) RestoreServerSystem(ctx context.Context, name string) error {
-	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:restore"), nil, nil)
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:restore"), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func (c OperationsCenterClient) RestoreServerSystem(ctx context.Context, name st
 }
 
 func (c OperationsCenterClient) UpdateServerSystem(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error {
-	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:update"), nil, updateRequest)
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:update"), nil, updateRequest)
 	if err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func (c OperationsCenterClient) UpdateServerSystem(ctx context.Context, name str
 }
 
 func (c OperationsCenterClient) GetServerSystemNetwork(ctx context.Context, name string) (api.ServerSystemNetwork, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name, "system/network"), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name, "system/network"), nil, nil)
 	if err != nil {
 		return api.ServerSystemNetwork{}, err
 	}
@@ -157,7 +157,7 @@ func (c OperationsCenterClient) GetServerSystemNetwork(ctx context.Context, name
 }
 
 func (c OperationsCenterClient) UpdateServerSystemNetwork(ctx context.Context, name string, server api.ServerSystemNetwork) error {
-	_, err := c.doRequest(ctx, http.MethodPut, path.Join("/provisioning/servers", name, "system/network"), nil, server)
+	_, err := c.DoRequest(ctx, http.MethodPut, path.Join("/provisioning/servers", name, "system/network"), nil, server)
 	if err != nil {
 		return err
 	}
@@ -166,7 +166,7 @@ func (c OperationsCenterClient) UpdateServerSystemNetwork(ctx context.Context, n
 }
 
 func (c OperationsCenterClient) GetServerSystemStorage(ctx context.Context, name string) (api.ServerSystemStorage, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name, "system/storage"), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name, "system/storage"), nil, nil)
 	if err != nil {
 		return api.ServerSystemStorage{}, err
 	}
@@ -181,7 +181,7 @@ func (c OperationsCenterClient) GetServerSystemStorage(ctx context.Context, name
 }
 
 func (c OperationsCenterClient) UpdateServerSystemStorage(ctx context.Context, name string, server api.ServerSystemStorage) error {
-	_, err := c.doRequest(ctx, http.MethodPut, path.Join("/provisioning/servers", name, "system/storage"), nil, server)
+	_, err := c.DoRequest(ctx, http.MethodPut, path.Join("/provisioning/servers", name, "system/storage"), nil, server)
 	if err != nil {
 		return err
 	}

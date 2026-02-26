@@ -18,7 +18,7 @@ func (c OperationsCenterClient) GetWithFilterNetworkForwards(ctx context.Context
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/network_forwards", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/inventory/network_forwards", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (c OperationsCenterClient) GetWithFilterNetworkForwards(ctx context.Context
 }
 
 func (c OperationsCenterClient) GetNetworkForward(ctx context.Context, id string) (api.NetworkForward, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/network_forwards", id), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/inventory/network_forwards", id), nil, nil)
 	if err != nil {
 		return api.NetworkForward{}, err
 	}

@@ -17,7 +17,7 @@ func (c OperationsCenterClient) GetTokens(ctx context.Context) ([]api.Token, err
 	query := url.Values{}
 	query.Add("recursion", "1")
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/provisioning/tokens", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/provisioning/tokens", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func (c OperationsCenterClient) GetTokens(ctx context.Context) ([]api.Token, err
 }
 
 func (c OperationsCenterClient) GetToken(ctx context.Context, id string) (api.Token, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/tokens", id), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/tokens", id), nil, nil)
 	if err != nil {
 		return api.Token{}, err
 	}
@@ -47,7 +47,7 @@ func (c OperationsCenterClient) GetToken(ctx context.Context, id string) (api.To
 }
 
 func (c OperationsCenterClient) CreateToken(ctx context.Context, newToken api.TokenPut) error {
-	response, err := c.doRequest(ctx, http.MethodPost, "/provisioning/tokens", nil, newToken)
+	response, err := c.DoRequest(ctx, http.MethodPost, "/provisioning/tokens", nil, newToken)
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func (c OperationsCenterClient) CreateToken(ctx context.Context, newToken api.To
 }
 
 func (c OperationsCenterClient) DeleteToken(ctx context.Context, id string) error {
-	_, err := c.doRequest(ctx, http.MethodDelete, path.Join("/provisioning/tokens", id), nil, nil)
+	_, err := c.DoRequest(ctx, http.MethodDelete, path.Join("/provisioning/tokens", id), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func (c OperationsCenterClient) DeleteToken(ctx context.Context, id string) erro
 }
 
 func (c OperationsCenterClient) PreparePreSeededImage(ctx context.Context, id string, preseed api.TokenImagePost) (imageID string, _ error) {
-	response, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/tokens", id, "image"), nil, preseed)
+	response, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/tokens", id, "image"), nil, preseed)
 	if err != nil {
 		return "", err
 	}
@@ -103,7 +103,7 @@ func (c OperationsCenterClient) GetTokenSeeds(ctx context.Context, id string) ([
 	query := url.Values{}
 	query.Add("recursion", "1")
 
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/tokens", id, "seeds"), query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/tokens", id, "seeds"), query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (c OperationsCenterClient) GetTokenSeeds(ctx context.Context, id string) ([
 }
 
 func (c OperationsCenterClient) GetTokenSeed(ctx context.Context, id string, name string) (api.TokenSeed, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/tokens", id, "seeds", name), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/tokens", id, "seeds", name), nil, nil)
 	if err != nil {
 		return api.TokenSeed{}, err
 	}
@@ -133,7 +133,7 @@ func (c OperationsCenterClient) GetTokenSeed(ctx context.Context, id string, nam
 }
 
 func (c OperationsCenterClient) CreateTokenSeed(ctx context.Context, id string, newTokenSeed api.TokenSeedPost) error {
-	response, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/tokens", id, "seeds"), nil, newTokenSeed)
+	response, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/tokens", id, "seeds"), nil, newTokenSeed)
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func (c OperationsCenterClient) CreateTokenSeed(ctx context.Context, id string, 
 }
 
 func (c OperationsCenterClient) UpdateTokenSeed(ctx context.Context, id string, name string, tokenSeed api.TokenSeedPut) error {
-	_, err := c.doRequest(ctx, http.MethodPut, path.Join("/provisioning/tokens", id, "seeds", name), nil, tokenSeed)
+	_, err := c.DoRequest(ctx, http.MethodPut, path.Join("/provisioning/tokens", id, "seeds", name), nil, tokenSeed)
 	if err != nil {
 		return err
 	}
@@ -157,7 +157,7 @@ func (c OperationsCenterClient) UpdateTokenSeed(ctx context.Context, id string, 
 }
 
 func (c OperationsCenterClient) DeleteTokenSeed(ctx context.Context, id string, name string) error {
-	_, err := c.doRequest(ctx, http.MethodDelete, path.Join("/provisioning/tokens", id, "seeds", name), nil, nil)
+	_, err := c.DoRequest(ctx, http.MethodDelete, path.Join("/provisioning/tokens", id, "seeds", name), nil, nil)
 	if err != nil {
 		return err
 	}

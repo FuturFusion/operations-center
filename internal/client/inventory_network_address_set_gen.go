@@ -18,7 +18,7 @@ func (c OperationsCenterClient) GetWithFilterNetworkAddressSets(ctx context.Cont
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/network_address_sets", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/inventory/network_address_sets", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (c OperationsCenterClient) GetWithFilterNetworkAddressSets(ctx context.Cont
 }
 
 func (c OperationsCenterClient) GetNetworkAddressSet(ctx context.Context, id string) (api.NetworkAddressSet, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/network_address_sets", id), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/inventory/network_address_sets", id), nil, nil)
 	if err != nil {
 		return api.NetworkAddressSet{}, err
 	}
