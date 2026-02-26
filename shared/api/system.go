@@ -221,4 +221,10 @@ type SystemUpdatesPut struct {
 	// ServerDefaultChannel is the default channel assigned to new server
 	// and cluster instances.
 	ServerDefaultChannel string `json:"server_default_channel" yaml:"server_default_channel"`
+
+	// ImageServerAuthenticationByQueryParam is a flag that allows to switch from
+	// HTTP header based image server authentication to query parameter instead.
+	// If set to true, authentication is done by `token` query parameter on the
+	// first request, if set to false, authentication is done by HTTP header.
+	ImageServerAuthenticationByQueryParam bool `json:"image_server_authentication_by_query_param"`
 }
