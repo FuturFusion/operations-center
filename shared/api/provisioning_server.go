@@ -604,6 +604,9 @@ type Server struct {
 	// Example: pending
 	Status ServerStatus `json:"server_status" yaml:"server_status"`
 
+	// StatusDetail contains the secondary status, which gives additional details
+	// on the server status.
+	// Example: rebooting
 	StatusDetail ServerStatusDetail `json:"server_status_detail" yaml:"server_status_detail"`
 
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
