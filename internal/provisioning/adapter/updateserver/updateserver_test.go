@@ -14,6 +14,7 @@ import (
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
@@ -23,9 +24,10 @@ import (
 
 func TestUpdateServer_GetLatest(t *testing.T) {
 	tests := []struct {
-		name       string
-		statusCode int
-		updates    updateserver.UpdatesIndex
+		name                         string
+		queryParameterAuthentication bool
+		statusCode                   int
+		updates                      updateserver.UpdatesIndex
 
 		assertErr   require.ErrorAssertionFunc
 		wantUpdates provisioning.Updates
@@ -33,6 +35,35 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 		{
 			name:       "success - one update",
 			statusCode: http.StatusOK,
+			updates: updateserver.UpdatesIndex{
+				Format: "1.0",
+				Updates: []updateserver.Update{
+					{
+						Version:     "1",
+						Channels:    []string{"stable", "daily"},
+						Severity:    images.UpdateSeverityNone,
+						PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantUpdates: provisioning.Updates{
+				{
+					UUID:             uuid.MustParse(`84f9f9b4-8bff-50ca-9c9f-020bb266e5cf`),
+					Version:          "1",
+					UpstreamChannels: provisioning.UpdateUpstreamChannels{"daily", "stable"},
+					Severity:         images.UpdateSeverityNone,
+					PublishedAt:      time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
+					Status:           api.UpdateStatusUnknown,
+					Files:            provisioning.UpdateFiles{},
+				},
+			},
+		},
+		{
+			name:                         "success - one update - with query parameter authentication",
+			queryParameterAuthentication: true,
+			statusCode:                   http.StatusOK,
 			updates: updateserver.UpdatesIndex{
 				Format: "1.0",
 				Updates: []updateserver.Update{
@@ -125,6 +156,19 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			envMock := &mock.EnvironmentMock{
+				GetTokenFunc: func(ctx context.Context) (string, error) {
+					return "token", nil
+				},
+				IsIncusOSFunc: func() bool { return true },
+			}
+
+			config.InitTest(t, envMock, nil)
+			updatesConfig := config.GetUpdates()
+			updatesConfig.ImageServerAuthenticationByQueryParam = tc.queryParameterAuthentication
+			err := config.UpdateUpdates(t.Context(), updatesConfig.SystemUpdatesPut)
+			require.NoError(t, err)
+
 			caCert, cert, key := signaturetest.GenerateCertChain(t)
 
 			body, err := json.Marshal(tc.updates)
@@ -132,11 +176,18 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 
 			signedBody := signaturetest.SignContent(t, cert, key, body)
 
+			var gotToken string
 			svr := httptest.NewServer(
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					if !strings.HasSuffix(r.URL.Path, "/index.sjson") {
 						http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 						return
+					}
+
+					if tc.queryParameterAuthentication {
+						gotToken = r.URL.Query().Get("token")
+					} else {
+						gotToken = r.Header.Get("X-IncusOS-Authentication")
 					}
 
 					w.WriteHeader(tc.statusCode)
@@ -145,18 +196,13 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 			)
 			defer svr.Close()
 
-			envMock := &mock.EnvironmentMock{
-				GetTokenFunc: func(ctx context.Context) (string, error) {
-					return "", nil
-				},
-			}
-
 			s := updateserver.New(svr.URL, string(caCert), envMock)
 			updates, err := s.GetLatest(context.Background(), 1)
 			tc.assertErr(t, err)
 
 			require.Len(t, updates, len(tc.wantUpdates))
 			require.Equal(t, tc.wantUpdates, updates)
+			require.Equal(t, "token", gotToken)
 		})
 	}
 }
