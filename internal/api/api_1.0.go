@@ -5,6 +5,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/security/authn"
 	"github.com/FuturFusion/operations-center/internal/util/response"
+	"github.com/FuturFusion/operations-center/internal/version"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -47,10 +48,11 @@ func registerAPI10Handler(router Router) {
 //	    $ref: "#/responses/InternalServerError"
 func api10Get(r *http.Request) response.Response {
 	srv := api.ServerUntrusted{
-		APIStatus:   api.APIStatus,
-		APIVersion:  api.APIVersion,
-		Auth:        "untrusted",
-		AuthMethods: []string{"oidc", "tls"},
+		APIStatus:     api.APIStatus,
+		APIVersion:    api.APIVersion,
+		Auth:          "untrusted",
+		AuthMethods:   []string{"oidc", "tls"},
+		ServerVersion: version.Version,
 	}
 
 	// Return the authentication method, if any, that the client is using.
