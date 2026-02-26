@@ -16,7 +16,7 @@ func (c OperationsCenterClient) GetWithFilter{{ .PluralName | pascalcase }}(ctx 
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/{{ .PluralName }}", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/inventory/{{ .PluralName }}", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func (c OperationsCenterClient) GetWithFilter{{ .PluralName | pascalcase }}(ctx 
 }
 
 func (c OperationsCenterClient) Get{{ .Name | pascalcase }}(ctx context.Context, id string) (api.{{ .Name | pascalcase }}, error) {
-	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/{{ .PluralName }}", id), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/inventory/{{ .PluralName }}", id), nil, nil)
 	if err != nil {
 		return api.{{ .Name | pascalcase }}{}, err
 	}
