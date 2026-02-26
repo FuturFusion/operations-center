@@ -615,6 +615,11 @@ type Server struct {
 	// in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
 	LastSeen time.Time `json:"last_seen" yaml:"last_seen"`
+
+	// SystemStateIsTrusted is extracted from the OSData. The system state is
+	// trusted, if this value is set to true. Otherwise the system state is not
+	// trusted.
+	SystemStateIsTrusted bool `json:"system_state_is_trusted" yaml:"system_state_is_trusted"`
 }
 
 func (s Server) State() string {
