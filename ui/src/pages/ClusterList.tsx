@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { fetchClusters } from "api/cluster";
 import ClusterActions from "components/ClusterActions";
+import ClusterStatus from "components/ClusterStatus";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import type { Cluster } from "types/cluster";
@@ -54,7 +55,7 @@ const Cluster = () => {
         sortKey: item.connection_url,
       },
       {
-        content: item.status,
+        content: <ClusterStatus cluster={item} />,
         sortKey: item.status,
       },
       {
