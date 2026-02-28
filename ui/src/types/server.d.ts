@@ -9,7 +9,7 @@ export interface Settings {
 export interface ServerVersionData {
   needs_reboot: boolean;
   needs_update: boolean;
-  in_maintenance: boolean;
+  in_maintenance: number;
 }
 
 export interface Server {

@@ -31,14 +31,14 @@ const ServerActions: FC<Props> = ({ server }) => {
       action = ServerAction.Update;
     } else if (server.version_data.needs_reboot) {
       if (
-        !server.version_data.in_maintenance &&
+        server.version_data.in_maintenance == 0 &&
         server.server_type == ServerType.Incus
       ) {
         action = ServerAction.Evacuate;
       } else {
         action = ServerAction.Reboot;
       }
-    } else if (server.version_data.in_maintenance) {
+    } else if (server.version_data.in_maintenance > 0) {
       action = ServerAction.Restore;
     }
 
@@ -74,7 +74,7 @@ const ServerActions: FC<Props> = ({ server }) => {
     if (action == ServerAction.Reboot) {
       if (
         versionData.needs_update &&
-        versionData.in_maintenance &&
+        versionData.in_maintenance > 0 &&
         !versionData.needs_reboot
       ) {
         return false;
@@ -83,11 +83,11 @@ const ServerActions: FC<Props> = ({ server }) => {
       return true;
     }
 
-    if (versionData.in_maintenance && action == ServerAction.Restore) {
+    if (versionData.in_maintenance > 0 && action == ServerAction.Restore) {
       return true;
     }
 
-    if (!versionData.in_maintenance && action == ServerAction.Evacuate) {
+    if (versionData.in_maintenance == 0 && action == ServerAction.Evacuate) {
       return true;
     }
 
