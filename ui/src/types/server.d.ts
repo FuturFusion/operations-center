@@ -27,6 +27,7 @@ export interface Server {
   last_seen: string;
   hardware_data: string;
   os_data: string;
+  system_state_is_trusted: boolean;
   version_data: ServerVersionData;
 }
 

@@ -5,6 +5,7 @@ import { fetchServers } from "api/server";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import ServerActions from "components/ServerActions";
+import ServerStatus from "components/ServerStatus";
 import type { Server } from "types/server";
 import type { ServerTypeKey } from "util/server";
 import { ServerTypeString } from "util/server";
@@ -15,16 +16,6 @@ const Server = () => {
 
   const sortData = (a: Server, b: Server) => {
     return a.cluster.localeCompare(b.cluster) || a.name.localeCompare(b.name);
-  };
-
-  const serverStatus = (server: Server) => {
-    let status = server.server_status;
-
-    if (server.server_status_detail != "") {
-      status = status + " (" + server.server_status_detail + ")";
-    }
-
-    return status;
   };
 
   const {
@@ -82,7 +73,7 @@ const Server = () => {
         sortKey: item.server_type,
       },
       {
-        content: serverStatus(item),
+        content: <ServerStatus server={item} />,
         sortKey: item.server_status,
       },
       {
