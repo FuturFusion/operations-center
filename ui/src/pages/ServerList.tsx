@@ -17,6 +17,16 @@ const Server = () => {
     return a.cluster.localeCompare(b.cluster) || a.name.localeCompare(b.name);
   };
 
+  const serverStatus = (server: Server) => {
+    let status = server.server_status;
+
+    if (server.server_status_detail != "") {
+      status = status + " (" + server.server_status_detail + ")";
+    }
+
+    return status;
+  };
+
   const {
     data: servers = [],
     error,
@@ -72,7 +82,7 @@ const Server = () => {
         sortKey: item.server_type,
       },
       {
-        content: item.server_status,
+        content: serverStatus(item),
         sortKey: item.server_status,
       },
       {

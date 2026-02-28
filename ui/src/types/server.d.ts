@@ -20,6 +20,7 @@ export interface Server {
   public_connection_url: string;
   server_type: string;
   server_status: string;
+  server_status_detail: string;
   certificate: string;
   fingerprint: string;
   last_updated: string;
