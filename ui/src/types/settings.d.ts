@@ -57,4 +57,5 @@ export interface SystemUpdates {
   file_filter_expression: string;
   server_default_channel: string;
   updates_default_channel: string;
+  image_server_authentication_by_query_param: boolean;
 }
