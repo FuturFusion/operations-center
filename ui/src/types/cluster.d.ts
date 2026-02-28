@@ -1,3 +1,9 @@
+export interface ClusterUpdateStatus {
+  needs_reboot: string[];
+  needs_update: string[];
+  in_maintenance: string[];
+}
+
 export interface Cluster {
   name: string;
   connection_url: string;
@@ -6,6 +12,7 @@ export interface Cluster {
   fingerprint: string;
   status: string;
   last_updated: string;
+  update_status: ClusterUpdateStatus;
 }
 
 export interface ClusterPost {

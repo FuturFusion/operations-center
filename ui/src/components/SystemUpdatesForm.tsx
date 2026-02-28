@@ -18,6 +18,8 @@ const SystemUpdatesForm: FC<Props> = ({ updates, onSubmit }) => {
     file_filter_expression: updates?.file_filter_expression ?? "",
     server_default_channel: updates?.server_default_channel ?? "",
     updates_default_channel: updates?.updates_default_channel ?? "",
+    image_server_authentication_by_query_param:
+      updates?.image_server_authentication_by_query_param ?? false,
   };
 
   const formik = useFormik({
@@ -56,6 +58,22 @@ const SystemUpdatesForm: FC<Props> = ({ updates, onSubmit }) => {
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
             />
+          </Form.Group>
+          <Form.Group
+            className="mb-3 d-flex align-items-center gap-2"
+            controlId="authentication_by_param"
+          >
+            <Form.Check
+              type="checkbox"
+              name="image_server_authentication_by_query_param"
+              checked={formik.values.image_server_authentication_by_query_param}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
+            <Form.Label className="me-2 mb-0">
+              Send authentication data through HTTP query parameter instead of
+              header
+            </Form.Label>
           </Form.Group>
           <Form.Group className="mb-3" controlId="filter_expression">
             <Form.Label>Filter expression</Form.Label>

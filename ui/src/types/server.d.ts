@@ -9,7 +9,7 @@ export interface Settings {
 export interface ServerVersionData {
   needs_reboot: boolean;
   needs_update: boolean;
-  in_maintenance: boolean;
+  in_maintenance: number;
 }
 
 export interface Server {
@@ -20,12 +20,14 @@ export interface Server {
   public_connection_url: string;
   server_type: string;
   server_status: string;
+  server_status_detail: string;
   certificate: string;
   fingerprint: string;
   last_updated: string;
   last_seen: string;
   hardware_data: string;
   os_data: string;
+  system_state_is_trusted: boolean;
   version_data: ServerVersionData;
 }
 

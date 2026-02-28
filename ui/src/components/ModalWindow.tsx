@@ -19,7 +19,12 @@ const ModalWindow: FC<Props> = ({
   footer,
 }) => {
   return (
-    <Modal show={show} onHide={handleClose} scrollable={scrollable ?? false}>
+    <Modal
+      size="lg"
+      show={show}
+      onHide={handleClose}
+      scrollable={scrollable ?? false}
+    >
       <Modal.Header closeButton>
         <Modal.Title>{title}</Modal.Title>
       </Modal.Header>

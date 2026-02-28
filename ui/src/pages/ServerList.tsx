@@ -5,6 +5,7 @@ import { fetchServers } from "api/server";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import ServerActions from "components/ServerActions";
+import ServerStatus from "components/ServerStatus";
 import type { Server } from "types/server";
 import type { ServerTypeKey } from "util/server";
 import { ServerTypeString } from "util/server";
@@ -72,7 +73,7 @@ const Server = () => {
         sortKey: item.server_type,
       },
       {
-        content: item.server_status,
+        content: <ServerStatus server={item} />,
         sortKey: item.server_status,
       },
       {
