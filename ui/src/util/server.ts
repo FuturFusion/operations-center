@@ -15,6 +15,7 @@ export type ServerTypeKey = keyof typeof ServerTypeString;
 
 export enum ServerAction {
   Evacuate = "evacuate",
+  PowerOff = "poweroff",
   Reboot = "reboot",
   Restore = "restore",
   Update = "update",

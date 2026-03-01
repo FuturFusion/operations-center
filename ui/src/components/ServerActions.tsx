@@ -66,12 +66,16 @@ const ServerActions: FC<Props> = ({ server }) => {
   };
 
   const showButton = (action: string): boolean => {
+    if (server.server_status == "offline") {
+      return false;
+    }
+
     const versionData = server.version_data;
     if (versionData.needs_update && action == ServerAction.Update) {
       return true;
     }
 
-    if (action == ServerAction.Reboot) {
+    if (action == ServerAction.Reboot || action == ServerAction.PowerOff) {
       if (
         versionData.needs_update &&
         versionData.in_maintenance > 0 &&
@@ -128,7 +132,9 @@ const ServerActions: FC<Props> = ({ server }) => {
           recommended={recommendedAction == ServerAction.Update}
         />
       )}
-      <ServerPoweroffBtn server={server} />
+      {showButton(ServerAction.PowerOff) && (
+        <ServerPoweroffBtn server={server} />
+      )}
     </div>
   );
 };
