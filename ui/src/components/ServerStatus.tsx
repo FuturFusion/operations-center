@@ -7,13 +7,25 @@ interface Props {
 }
 
 const ServerStatus: FC<Props> = ({ server }) => {
+  let detail = server.server_status_detail;
+
+  if (detail == "") {
+    if (server.version_data.in_maintenance == 1) {
+      detail = "evacuating";
+    } else if (server.version_data.in_maintenance == 2) {
+      detail = "evacuated";
+    } else if (server.version_data.in_maintenance == 3) {
+      detail = "restoring";
+    }
+  }
+
   return (
     <div>
       {server.server_status}
-      {server.server_status_detail != "" && (
+      {detail != "" && (
         <>
           {" ("}
-          {server.server_status_detail}
+          {detail}
           {")"}
         </>
       )}{" "}
