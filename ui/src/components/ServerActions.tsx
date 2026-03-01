@@ -38,7 +38,7 @@ const ServerActions: FC<Props> = ({ server }) => {
       } else {
         action = ServerAction.Reboot;
       }
-    } else if (server.version_data.in_maintenance > 0) {
+    } else if (server.version_data.in_maintenance == 2) {
       action = ServerAction.Restore;
     }
 
@@ -66,12 +66,16 @@ const ServerActions: FC<Props> = ({ server }) => {
   };
 
   const showButton = (action: string): boolean => {
+    if (server.server_status == "offline") {
+      return false;
+    }
+
     const versionData = server.version_data;
     if (versionData.needs_update && action == ServerAction.Update) {
       return true;
     }
 
-    if (action == ServerAction.Reboot) {
+    if (action == ServerAction.Reboot || action == ServerAction.PowerOff) {
       if (
         versionData.needs_update &&
         versionData.in_maintenance > 0 &&
@@ -83,12 +87,14 @@ const ServerActions: FC<Props> = ({ server }) => {
       return true;
     }
 
-    if (versionData.in_maintenance > 0 && action == ServerAction.Restore) {
-      return true;
-    }
+    if (server.server_type == ServerType.Incus) {
+      if (versionData.in_maintenance == 2 && action == ServerAction.Restore) {
+        return true;
+      }
 
-    if (versionData.in_maintenance == 0 && action == ServerAction.Evacuate) {
-      return true;
+      if (versionData.in_maintenance == 0 && action == ServerAction.Evacuate) {
+        return true;
+      }
     }
 
     return false;
@@ -128,7 +134,9 @@ const ServerActions: FC<Props> = ({ server }) => {
           recommended={recommendedAction == ServerAction.Update}
         />
       )}
-      <ServerPoweroffBtn server={server} />
+      {showButton(ServerAction.PowerOff) && (
+        <ServerPoweroffBtn server={server} />
+      )}
     </div>
   );
 };

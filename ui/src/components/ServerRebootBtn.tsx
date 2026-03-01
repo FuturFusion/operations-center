@@ -5,6 +5,7 @@ import LoadingButton from "components/LoadingButton";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { Server } from "types/server";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Props {
   server: Server;
@@ -15,6 +16,7 @@ const ServerRebootBtn: FC<Props> = ({ server, recommended }) => {
   const [showModal, setShowModal] = useState(false);
   const [rebootInProgress, setRebootInProgress] = useState(false);
   const { notify } = useNotification();
+  const queryClient = useQueryClient();
   const actionStyle = {
     cursor: "pointer",
     color: recommended ? "red" : "grey",
@@ -27,7 +29,8 @@ const ServerRebootBtn: FC<Props> = ({ server, recommended }) => {
         setRebootInProgress(false);
         setShowModal(false);
         if (response.error_code == 0) {
-          notify.success(`Server resync triggered`);
+          notify.success(`Server reboot triggered`);
+          queryClient.invalidateQueries({ queryKey: ["servers"] });
           return;
         }
         notify.error(response.error);
