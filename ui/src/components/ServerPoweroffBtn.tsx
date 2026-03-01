@@ -5,6 +5,7 @@ import LoadingButton from "components/LoadingButton";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { Server } from "types/server";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Props {
   server: Server;
@@ -14,6 +15,7 @@ const ServerPoweroffBtn: FC<Props> = ({ server }) => {
   const [showModal, setShowModal] = useState(false);
   const [poweroffInProgress, setPoweroffInProgress] = useState(false);
   const { notify } = useNotification();
+  const queryClient = useQueryClient();
   const actionStyle = {
     cursor: "pointer",
     color: "grey",
@@ -27,6 +29,7 @@ const ServerPoweroffBtn: FC<Props> = ({ server }) => {
         setShowModal(false);
         if (response.error_code == 0) {
           notify.success(`Server poweroff triggered`);
+          queryClient.invalidateQueries({ queryKey: ["servers"] });
           return;
         }
         notify.error(response.error);
