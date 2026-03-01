@@ -35,10 +35,10 @@ const ServerActions: FC<Props> = ({ server }) => {
         server.server_type == ServerType.Incus
       ) {
         action = ServerAction.Evacuate;
-      } else {
+      } else if (server.version_data.in_maintenance == 2) {
         action = ServerAction.Reboot;
       }
-    } else if (server.version_data.in_maintenance > 0) {
+    } else if (server.version_data.in_maintenance == 2) {
       action = ServerAction.Restore;
     }
 
@@ -83,7 +83,7 @@ const ServerActions: FC<Props> = ({ server }) => {
       return true;
     }
 
-    if (versionData.in_maintenance > 0 && action == ServerAction.Restore) {
+    if (versionData.in_maintenance == 2 && action == ServerAction.Restore) {
       return true;
     }
 
