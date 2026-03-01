@@ -27,7 +27,7 @@ const ServerRebootBtn: FC<Props> = ({ server, recommended }) => {
         setRebootInProgress(false);
         setShowModal(false);
         if (response.error_code == 0) {
-          notify.success(`Server resync triggered`);
+          notify.success(`Server reboot triggered`);
           return;
         }
         notify.error(response.error);
