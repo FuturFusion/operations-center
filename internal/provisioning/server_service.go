@@ -742,6 +742,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 				PublicConnectionURL: config.GetNetwork().OperationsCenterAddress,
 				Certificate:         string(serverCert),
 				Status:              api.ServerStatusReady,
+				StatusDetail:        api.ServerStatusDetailNone,
 				LastSeen:            s.now(),
 				Channel:             config.GetUpdates().ServerDefaultChannel,
 			}
@@ -760,6 +761,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 			server.PublicConnectionURL = config.GetNetwork().OperationsCenterAddress
 			server.Certificate = string(serverCert)
 			server.Status = api.ServerStatusReady
+			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastSeen = s.now()
 
 			upsert = func(ctx context.Context, server Server) error {
