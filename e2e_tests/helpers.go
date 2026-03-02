@@ -436,8 +436,7 @@ func mustWaitIncusOSReady(t *testing.T, names []string) {
 	defer cancel()
 
 	errgrp, errgrpctx := errgroup.WithContext(timeoutCtx)
-	ok, _ := strconv.ParseBool(concurrentSetup)
-	if !ok {
+	if !concurrentSetup {
 		errgrp.SetLimit(1)
 	}
 
@@ -478,8 +477,7 @@ func mustWaitInventoryReady(t *testing.T, names []string) {
 	defer cancel()
 
 	errgrp, errgrpctx := errgroup.WithContext(timeoutCtx)
-	ok, _ := strconv.ParseBool(concurrentSetup)
-	if !ok {
+	if !concurrentSetup {
 		errgrp.SetLimit(1)
 	}
 

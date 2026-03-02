@@ -394,8 +394,7 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 	defer cancel()
 
 	errgrp, errgrpctx := errgroup.WithContext(timeoutCtx)
-	ok, _ := strconv.ParseBool(concurrentSetup)
-	if !ok {
+	if !concurrentSetup {
 		errgrp.SetLimit(1)
 	}
 
