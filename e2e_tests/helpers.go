@@ -432,7 +432,7 @@ func mustWaitUpdatesReady(t *testing.T) {
 func mustWaitIncusOSReady(t *testing.T, names []string) {
 	t.Helper()
 
-	timeoutCtx, cancel := context.WithTimeout(t.Context(), strechedTimeout(10*time.Minute))
+	timeoutCtx, cancel := context.WithTimeout(t.Context(), strechedTimeout(5*time.Minute))
 	defer cancel()
 
 	errgrp, errgrpctx := errgroup.WithContext(timeoutCtx)
@@ -467,7 +467,29 @@ func mustWaitIncusOSReady(t *testing.T, names []string) {
 	}
 
 	err := errgrp.Wait()
-	require.NoError(t, err, "Failed to create IncusOS VMs for e2e test")
+	if err != nil {
+		// Use detached context, since ctx may be cancelled at this stage.
+		debugCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		for _, vm := range names {
+			respList := runWithContext(debugCtx, t, "incus list")
+			if respList.Success() {
+				t.Logf("incus list (after incus wait error for %q):\n%s", vm, respList.Output())
+			} else {
+				t.Logf("failed to get incus list (after incus wait error for %q): %s", vm, respList.Error())
+			}
+
+			respConsole := runWithContext(debugCtx, t, "incus console %s --show-log", vm)
+			if respConsole.Success() {
+				t.Logf("incus console log for %q:\n%s", vm, respConsole.Output())
+			} else {
+				t.Logf("failed to get incus console log for %q: %s", vm, respConsole.Error())
+			}
+		}
+
+		require.NoError(t, err, "Failed to wait for incus agents to become ready")
+	}
 }
 
 func mustWaitInventoryReady(t *testing.T, names []string) {
