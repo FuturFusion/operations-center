@@ -90,7 +90,7 @@ func (c client) Ping(ctx context.Context, endpoint provisioning.Endpoint) error 
 
 	_, _, err = client.RawQuery(http.MethodGet, "/", http.NoBody, "")
 	if err != nil {
-		return fmt.Errorf("Failed to ping %q: %w", endpoint.GetConnectionURL(), err)
+		return fmt.Errorf("Failed to ping %q (%s): %w", endpoint.GetName(), endpoint.GetConnectionURL(), err)
 	}
 
 	return nil
@@ -106,13 +106,13 @@ func (c client) GetResources(ctx context.Context, endpoint provisioning.Endpoint
 	if err != nil {
 		err = api.AsNotIncusOSError(err)
 
-		return api.HardwareData{}, fmt.Errorf("Get resources from %q failed: %w", endpoint.GetConnectionURL(), err)
+		return api.HardwareData{}, fmt.Errorf("Get resources from %q (%s) failed: %w", endpoint.GetName(), endpoint.GetConnectionURL(), err)
 	}
 
 	var resources incusapi.Resources
 	err = json.Unmarshal(resp.Metadata, &resources)
 	if err != nil {
-		return api.HardwareData{}, fmt.Errorf("Unexpected response metadata while getting resource information from %q: %w", endpoint.GetConnectionURL(), err)
+		return api.HardwareData{}, fmt.Errorf("Unexpected response metadata while getting resource information from %q (%s): %w", endpoint.GetName(), endpoint.GetConnectionURL(), err)
 	}
 
 	return api.HardwareData{
@@ -130,35 +130,35 @@ func (c client) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (
 	if err != nil {
 		err = api.AsNotIncusOSError(err)
 
-		return api.OSData{}, fmt.Errorf("Get OS network data from %q failed: %w", endpoint.GetConnectionURL(), err)
+		return api.OSData{}, fmt.Errorf("Get OS network data from %q (%s) failed: %w", endpoint.GetName(), endpoint.GetConnectionURL(), err)
 	}
 
 	var network incusosapi.SystemNetwork
 	err = json.Unmarshal(resp.Metadata, &network)
 	if err != nil {
-		return api.OSData{}, fmt.Errorf("Unexpected response metadata while fetching OS network information from %q: %w", endpoint.GetConnectionURL(), err)
+		return api.OSData{}, fmt.Errorf("Unexpected response metadata while fetching OS network information from %q (%s): %w", endpoint.GetName(), endpoint.GetConnectionURL(), err)
 	}
 
 	resp, _, err = client.RawQuery(http.MethodGet, "/os/1.0/system/security", http.NoBody, "")
 	if err != nil {
-		return api.OSData{}, fmt.Errorf("Get OS security data from %q failed: %w", endpoint.GetConnectionURL(), err)
+		return api.OSData{}, fmt.Errorf("Get OS security data from %q (%s) failed: %w", endpoint.GetName(), endpoint.GetConnectionURL(), err)
 	}
 
 	var security incusosapi.SystemSecurity
 	err = json.Unmarshal(resp.Metadata, &security)
 	if err != nil {
-		return api.OSData{}, fmt.Errorf("Unexpected response metadata while fetching OS security information from %q: %w", endpoint.GetConnectionURL(), err)
+		return api.OSData{}, fmt.Errorf("Unexpected response metadata while fetching OS security information from %q (%s): %w", endpoint.GetName(), endpoint.GetConnectionURL(), err)
 	}
 
 	resp, _, err = client.RawQuery(http.MethodGet, "/os/1.0/system/storage", http.NoBody, "")
 	if err != nil {
-		return api.OSData{}, fmt.Errorf("Get OS storage data from %q failed: %w", endpoint.GetConnectionURL(), err)
+		return api.OSData{}, fmt.Errorf("Get OS storage data from %q (%s) failed: %w", endpoint.GetName(), endpoint.GetConnectionURL(), err)
 	}
 
 	var storage incusosapi.SystemStorage
 	err = json.Unmarshal(resp.Metadata, &storage)
 	if err != nil {
-		return api.OSData{}, fmt.Errorf("Unexpected response metadata while fetching OS storage information from %q: %w", endpoint.GetConnectionURL(), err)
+		return api.OSData{}, fmt.Errorf("Unexpected response metadata while fetching OS storage information from %q (%s): %w", endpoint.GetName(), endpoint.GetConnectionURL(), err)
 	}
 
 	return api.OSData{
@@ -178,7 +178,7 @@ func (c client) GetVersionData(ctx context.Context, server provisioning.Server) 
 	if err != nil {
 		err = api.AsNotIncusOSError(err)
 
-		return api.ServerVersionData{}, fmt.Errorf("Get OS version data from %q failed: %w", server.GetConnectionURL(), err)
+		return api.ServerVersionData{}, fmt.Errorf("Get OS version data from %q (%s) failed: %w", server.Name, server.GetConnectionURL(), err)
 	}
 
 	var osVersionData struct {
@@ -191,7 +191,7 @@ func (c client) GetVersionData(ctx context.Context, server provisioning.Server) 
 	}
 	err = json.Unmarshal(resp.Metadata, &osVersionData)
 	if err != nil {
-		return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching OS version information from %q: %w", server.GetConnectionURL(), err)
+		return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching OS version information from %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
 
 	resp, _, err = client.RawQuery(http.MethodGet, "/os/1.0/applications", http.NoBody, "")
@@ -204,7 +204,7 @@ func (c client) GetVersionData(ctx context.Context, server provisioning.Server) 
 	var applications []string
 	err = json.Unmarshal(resp.Metadata, &applications)
 	if err != nil {
-		return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching applications from %q: %w", server.GetConnectionURL(), err)
+		return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching applications from %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
 
 	applicationVersions := make([]api.ApplicationVersionData, 0, len(applications))
@@ -215,20 +215,20 @@ func (c client) GetVersionData(ctx context.Context, server provisioning.Server) 
 		if err != nil {
 			err = api.AsNotIncusOSError(err)
 
-			return api.ServerVersionData{}, fmt.Errorf("Get application version data for %q from %q failed: %w", applicationName, server.GetConnectionURL(), err)
+			return api.ServerVersionData{}, fmt.Errorf("Get application version data for %q from %q (%s) failed: %w", applicationName, server.Name, server.GetConnectionURL(), err)
 		}
 
 		var application incusosapi.Application
 		err = json.Unmarshal(resp.Metadata, &application)
 		if err != nil {
-			return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching application %q from %q: %w", applicationName, server.GetConnectionURL(), err)
+			return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching application %q from %q (%s): %w", applicationName, server.Name, server.GetConnectionURL(), err)
 		}
 
 		inMaintenance := api.NotInMaintenance
 		if applicationName == string(images.UpdateFileComponentIncus) && server.Cluster != nil {
 			member, _, err := client.GetClusterMember(server.Name)
 			if err != nil {
-				return api.ServerVersionData{}, fmt.Errorf("Failed to get Incus cluster member details for %q: %w", server.Name, err)
+				return api.ServerVersionData{}, fmt.Errorf("Failed to get Incus cluster member details for %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 			}
 
 			switch member.Status {
@@ -254,13 +254,13 @@ func (c client) GetVersionData(ctx context.Context, server provisioning.Server) 
 	if err != nil {
 		err = api.AsNotIncusOSError(err)
 
-		return api.ServerVersionData{}, fmt.Errorf("Get OS version data from %q failed: %w", server.GetConnectionURL(), err)
+		return api.ServerVersionData{}, fmt.Errorf("Get OS version data from %q (%s) failed: %w", server.Name, server.GetConnectionURL(), err)
 	}
 
 	var systemUpdate incusosapi.SystemUpdate
 	err = json.Unmarshal(resp.Metadata, &systemUpdate)
 	if err != nil {
-		return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching system update information from %q: %w", server.GetConnectionURL(), err)
+		return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching system update information from %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
 
 	return api.ServerVersionData{
@@ -285,13 +285,13 @@ func (c client) GetServerType(ctx context.Context, endpoint provisioning.Endpoin
 
 	resp, _, err := client.RawQuery(http.MethodGet, endpointPath, http.NoBody, "")
 	if err != nil {
-		return api.ServerTypeUnknown, fmt.Errorf("Get applications from %q failed: %w", endpoint.GetConnectionURL(), err)
+		return api.ServerTypeUnknown, fmt.Errorf("Get applications from %q (%s) failed: %w", endpoint.GetName(), endpoint.GetConnectionURL(), err)
 	}
 
 	var applications []string
 	err = json.Unmarshal(resp.Metadata, &applications)
 	if err != nil {
-		return api.ServerTypeUnknown, fmt.Errorf("Unexpected response metadata while fetching applications from %q: %w", endpoint.GetConnectionURL(), err)
+		return api.ServerTypeUnknown, fmt.Errorf("Unexpected response metadata while fetching applications from %q (%s): %w", endpoint.GetName(), endpoint.GetConnectionURL(), err)
 	}
 
 	for _, applicationPath := range applications {
@@ -310,7 +310,7 @@ func (c client) GetServerType(ctx context.Context, endpoint provisioning.Endpoin
 		return serverType, nil
 	}
 
-	return api.ServerTypeUnknown, fmt.Errorf("Server did not return any known server type defining application (%v)", applications)
+	return api.ServerTypeUnknown, fmt.Errorf("Server %q (%s) did not return any known server type defining application (%v)", endpoint.GetName(), endpoint.GetConnectionURL(), applications)
 }
 
 func (c client) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) error {
@@ -321,7 +321,7 @@ func (c client) UpdateNetworkConfig(ctx context.Context, server provisioning.Ser
 
 	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/system/network", server.OSData.Network, "")
 	if err != nil {
-		return fmt.Errorf("Put OS network data to %q failed: %w", server.ConnectionURL, err)
+		return fmt.Errorf("Put OS network data to %q (%s) failed: %w", server.Name, server.ConnectionURL, err)
 	}
 
 	return nil
@@ -335,7 +335,7 @@ func (c client) UpdateStorageConfig(ctx context.Context, server provisioning.Ser
 
 	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/system/storage", server.OSData.Storage, "")
 	if err != nil {
-		return fmt.Errorf("Put OS storage data to %q failed: %w", server.ConnectionURL, err)
+		return fmt.Errorf("Put OS storage data to %q (%s) failed: %w", server.Name, server.ConnectionURL, err)
 	}
 
 	return nil
@@ -349,13 +349,13 @@ func (c client) GetProviderConfig(ctx context.Context, server provisioning.Serve
 
 	resp, _, err := client.RawQuery(http.MethodGet, "/os/1.0/system/provider", nil, "")
 	if err != nil {
-		return incusosapi.SystemProvider{}, fmt.Errorf("Get OS provider config from %q failed: %w", server.ConnectionURL, err)
+		return incusosapi.SystemProvider{}, fmt.Errorf("Get OS provider config from %q (%s) failed: %w", server.Name, server.ConnectionURL, err)
 	}
 
 	var providerConfig incusosapi.SystemProvider
 	err = json.Unmarshal(resp.Metadata, &providerConfig)
 	if err != nil {
-		return incusosapi.SystemProvider{}, fmt.Errorf("Unexpected response metadata while getting provider information from %q: %w", server.GetConnectionURL(), err)
+		return incusosapi.SystemProvider{}, fmt.Errorf("Unexpected response metadata while getting provider information from %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
 
 	return providerConfig, nil
@@ -369,7 +369,7 @@ func (c client) UpdateProviderConfig(ctx context.Context, server provisioning.Se
 
 	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/system/provider", providerConfig, "")
 	if err != nil {
-		return fmt.Errorf("Put OS provider config to %q failed: %w", server.ConnectionURL, err)
+		return fmt.Errorf("Put OS provider config to %q (%s) failed: %w", server.Name, server.ConnectionURL, err)
 	}
 
 	return nil
@@ -383,13 +383,13 @@ func (c client) GetUpdateConfig(ctx context.Context, server provisioning.Server)
 
 	resp, _, err := client.RawQuery(http.MethodGet, "/os/1.0/system/update", nil, "")
 	if err != nil {
-		return incusosapi.SystemUpdate{}, fmt.Errorf("Get OS update config from %q failed: %w", server.ConnectionURL, err)
+		return incusosapi.SystemUpdate{}, fmt.Errorf("Get OS update config from %q (%s) failed: %w", server.Name, server.ConnectionURL, err)
 	}
 
 	var updateConfig incusosapi.SystemUpdate
 	err = json.Unmarshal(resp.Metadata, &updateConfig)
 	if err != nil {
-		return incusosapi.SystemUpdate{}, fmt.Errorf("Unexpected response metadata while getting update information from %q: %w", server.GetConnectionURL(), err)
+		return incusosapi.SystemUpdate{}, fmt.Errorf("Unexpected response metadata while getting update information from %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
 
 	return updateConfig, nil
@@ -403,7 +403,7 @@ func (c client) UpdateUpdateConfig(ctx context.Context, server provisioning.Serv
 
 	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/system/update", updateConfig, "")
 	if err != nil {
-		return fmt.Errorf("Put OS update config to %q failed: %w", server.ConnectionURL, err)
+		return fmt.Errorf("Put OS update config to %q (%s) failed: %w", server.Name, server.ConnectionURL, err)
 	}
 
 	return nil
@@ -420,7 +420,7 @@ func (c client) Evacuate(ctx context.Context, server provisioning.Server) error 
 		Mode:   "auto",
 	})
 	if err != nil {
-		return fmt.Errorf("Failed to update cluster member state to evacuated: %w", err)
+		return fmt.Errorf("Failed to update cluster member state to evacuated on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
 
 	return nil
@@ -434,7 +434,7 @@ func (c client) Poweroff(ctx context.Context, server provisioning.Server) error 
 
 	_, _, err = client.RawQuery(http.MethodPost, "/os/1.0/system/:poweroff", http.NoBody, "")
 	if err != nil {
-		return fmt.Errorf("Failed to poweroff %q: %w", server.GetConnectionURL(), err)
+		return fmt.Errorf("Failed to trigger poweroff on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
 
 	return nil
@@ -448,7 +448,7 @@ func (c client) Reboot(ctx context.Context, server provisioning.Server) error {
 
 	_, _, err = client.RawQuery(http.MethodPost, "/os/1.0/system/:reboot", http.NoBody, "")
 	if err != nil {
-		return fmt.Errorf("Failed to reboot %q: %w", server.GetConnectionURL(), err)
+		return fmt.Errorf("Failed to trigger reboot on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
 
 	return nil
@@ -465,7 +465,7 @@ func (c client) Restore(ctx context.Context, server provisioning.Server) error {
 		Mode:   "",
 	})
 	if err != nil {
-		return fmt.Errorf("Failed to update cluster member state to evacuated: %w", err)
+		return fmt.Errorf("Failed to update cluster member state to evacuated on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
 
 	return nil
@@ -479,7 +479,7 @@ func (c client) UpdateOS(ctx context.Context, server provisioning.Server) error 
 
 	_, _, err = client.RawQuery(http.MethodPost, "/os/1.0/system/update/:check", http.NoBody, "")
 	if err != nil {
-		return fmt.Errorf("Failed to trigger update check %q: %w", server.GetConnectionURL(), err)
+		return fmt.Errorf("Failed to trigger update check on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
 
 	return nil
@@ -499,7 +499,7 @@ func (c client) EnableOSService(ctx context.Context, server provisioning.Server,
 
 	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/services/"+nameSanitized, serviceConfig, "")
 	if err != nil {
-		return fmt.Errorf("Enable OS service %q on %q failed: %w", nameSanitized, server.ConnectionURL, err)
+		return fmt.Errorf("Enable OS service %q on %q (%s) failed: %w", nameSanitized, server.Name, server.ConnectionURL, err)
 	}
 
 	return nil
@@ -513,7 +513,7 @@ func (c client) SetServerConfig(ctx context.Context, endpoint provisioning.Endpo
 
 	svr, etag, err := client.GetServer()
 	if err != nil {
-		return fmt.Errorf("Failed to get current config from %q: %w", endpoint.GetConnectionURL(), err)
+		return fmt.Errorf("Failed to get current config from %q (%s): %w", endpoint.GetName(), endpoint.GetConnectionURL(), err)
 	}
 
 	if svr.Config == nil {
@@ -526,7 +526,7 @@ func (c client) SetServerConfig(ctx context.Context, endpoint provisioning.Endpo
 
 	err = client.UpdateServer(svr.Writable(), etag)
 	if err != nil {
-		return fmt.Errorf("Failed to set config on %q: %w", endpoint.GetConnectionURL(), err)
+		return fmt.Errorf("Failed to set config on %q (%s): %w", endpoint.GetName(), endpoint.GetConnectionURL(), err)
 	}
 
 	return nil
@@ -547,12 +547,12 @@ func (c client) EnableCluster(ctx context.Context, server provisioning.Server) (
 
 	op, err := client.UpdateCluster(req, "")
 	if err != nil {
-		return "", fmt.Errorf("Failed to update cluster on %q: %w", server.GetConnectionURL(), err)
+		return "", fmt.Errorf("Failed to update cluster on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
 
 	err = op.WaitContext(ctx)
 	if err != nil {
-		return "", fmt.Errorf("Failed to update cluster on %q: %w", server.GetConnectionURL(), err)
+		return "", fmt.Errorf("Failed to update cluster on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
 
 	anyClusterCertificate, ok := op.Get().Metadata["certificate"]
@@ -576,7 +576,7 @@ func (c client) GetClusterNodeNames(ctx context.Context, endpoint provisioning.E
 
 	nodeNames, err := client.GetClusterMemberNames()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get cluster node names on %q: %w", endpoint.GetConnectionURL(), err)
+		return nil, fmt.Errorf("Failed to get cluster node names on %q (%s): %w", endpoint.GetName(), endpoint.GetConnectionURL(), err)
 	}
 
 	return nodeNames, nil
@@ -592,7 +592,7 @@ func (c client) GetClusterJoinToken(ctx context.Context, endpoint provisioning.E
 		ServerName: memberName,
 	})
 	if err != nil {
-		return "", fmt.Errorf("Failed to get cluster join token on %q: %w", endpoint.GetConnectionURL(), err)
+		return "", fmt.Errorf("Failed to get cluster join token on %q (%s): %w", endpoint.GetName(), endpoint.GetConnectionURL(), err)
 	}
 
 	opAPI := op.Get()
@@ -627,12 +627,12 @@ func (c client) JoinCluster(ctx context.Context, server provisioning.Server, joi
 		ClusterAddress:     clusterAddressURL.Host,
 	}, "")
 	if err != nil {
-		return fmt.Errorf("Failed to update cluster during cluster join on %q: %w", server.GetConnectionURL(), err)
+		return fmt.Errorf("Failed to update cluster during cluster join on %q (%s): %w", endpoint.GetName(), server.GetConnectionURL(), err)
 	}
 
 	err = op.WaitContext(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to wait for update operation during cluster join on %q: %w", server.GetConnectionURL(), err)
+		return fmt.Errorf("Failed to wait for update operation during cluster join on %q (%s): %w", endpoint.GetName(), server.GetConnectionURL(), err)
 	}
 
 	return nil
@@ -683,7 +683,7 @@ func (c client) SystemFactoryReset(ctx context.Context, endpoint provisioning.En
 
 	_, _, err = client.RawQuery(http.MethodPost, "/os/1.0/system/:factory-reset", resetData, "")
 	if err != nil {
-		return fmt.Errorf("Factory reset on %q failed: %w", endpoint.GetConnectionURL(), err)
+		return fmt.Errorf("Factory reset on %q (%s) failed: %w", endpoint.GetName(), endpoint.GetConnectionURL(), err)
 	}
 
 	return nil

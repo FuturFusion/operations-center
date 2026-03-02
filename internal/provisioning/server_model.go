@@ -64,6 +64,10 @@ func (s Server) GetServerName() (string, error) {
 	return connectionURL.Hostname(), nil
 }
 
+func (s Server) GetName() string {
+	return s.Name
+}
+
 func (s Server) Validate() error {
 	if s.Name == "" {
 		return domain.NewValidationErrf("Invalid server, name can not be empty")
