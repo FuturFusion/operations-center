@@ -313,6 +313,26 @@ func (c client) GetServerType(ctx context.Context, endpoint provisioning.Endpoin
 	return api.ServerTypeUnknown, fmt.Errorf("Server %q (%s) did not return any known server type defining application (%v)", endpoint.GetName(), endpoint.GetConnectionURL(), applications)
 }
 
+func (c client) GetNetworkConfig(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemNetwork, error) {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return provisioning.ServerSystemNetwork{}, err
+	}
+
+	resp, _, err := client.RawQuery(http.MethodGet, "/os/1.0/system/network", http.NoBody, "")
+	if err != nil {
+		return provisioning.ServerSystemNetwork{}, fmt.Errorf("Failed to get system network configuration on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+	}
+
+	var networkConfig provisioning.ServerSystemNetwork
+	err = json.Unmarshal(resp.Metadata, &networkConfig)
+	if err != nil {
+		return provisioning.ServerSystemNetwork{}, fmt.Errorf("Unexpected response metadata while fetching system network configuration from %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+	}
+
+	return networkConfig, nil
+}
+
 func (c client) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {
@@ -325,6 +345,26 @@ func (c client) UpdateNetworkConfig(ctx context.Context, server provisioning.Ser
 	}
 
 	return nil
+}
+
+func (c client) GetStorageConfig(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemStorage, error) {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return provisioning.ServerSystemStorage{}, err
+	}
+
+	resp, _, err := client.RawQuery(http.MethodGet, "/os/1.0/system/storage", http.NoBody, "")
+	if err != nil {
+		return provisioning.ServerSystemStorage{}, fmt.Errorf("Failed to get system storage configuration on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+	}
+
+	var storageConfig provisioning.ServerSystemStorage
+	err = json.Unmarshal(resp.Metadata, &storageConfig)
+	if err != nil {
+		return provisioning.ServerSystemStorage{}, fmt.Errorf("Unexpected response metadata while fetching system storage configuration from %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+	}
+
+	return storageConfig, nil
 }
 
 func (c client) UpdateStorageConfig(ctx context.Context, server provisioning.Server) error {
@@ -480,6 +520,90 @@ func (c client) UpdateOS(ctx context.Context, server provisioning.Server) error 
 	_, _, err = client.RawQuery(http.MethodPost, "/os/1.0/system/update/:check", http.NoBody, "")
 	if err != nil {
 		return fmt.Errorf("Failed to trigger update check on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+	}
+
+	return nil
+}
+
+func (c client) AddApplication(ctx context.Context, server provisioning.Server, application string) error {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = client.RawQuery(http.MethodPost, "/os/1.0/applications", map[string]string{
+		"name": application,
+	}, "")
+	if err != nil {
+		return fmt.Errorf("Failed to add application on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+	}
+
+	return nil
+}
+
+func (c client) GetSystemKernel(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemKernel, error) {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return provisioning.ServerSystemKernel{}, err
+	}
+
+	resp, _, err := client.RawQuery(http.MethodGet, "/os/1.0/system/kernel", http.NoBody, "")
+	if err != nil {
+		return provisioning.ServerSystemKernel{}, fmt.Errorf("Failed to get system kernel configuration on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+	}
+
+	var kernelConfig provisioning.ServerSystemKernel
+	err = json.Unmarshal(resp.Metadata, &kernelConfig)
+	if err != nil {
+		return provisioning.ServerSystemKernel{}, fmt.Errorf("Unexpected response metadata while fetching system kernel configuration from %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+	}
+
+	return kernelConfig, nil
+}
+
+func (c client) UpdateSystemKernel(ctx context.Context, server provisioning.Server, config provisioning.ServerSystemKernel) error {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/system/kernel", config, "")
+	if err != nil {
+		return fmt.Errorf("Failed to update system kernel configuration on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+	}
+
+	return nil
+}
+
+func (c client) GetSystemLogging(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemLogging, error) {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return provisioning.ServerSystemLogging{}, err
+	}
+
+	resp, _, err := client.RawQuery(http.MethodGet, "/os/1.0/system/logging", http.NoBody, "")
+	if err != nil {
+		return provisioning.ServerSystemLogging{}, fmt.Errorf("Failed to get system logging configuration on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+	}
+
+	var loggingConfig provisioning.ServerSystemLogging
+	err = json.Unmarshal(resp.Metadata, &loggingConfig)
+	if err != nil {
+		return provisioning.ServerSystemLogging{}, fmt.Errorf("Unexpected response metadata while fetching system logging configuration from %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+	}
+
+	return loggingConfig, nil
+}
+
+func (c client) UpdateSystemLogging(ctx context.Context, server provisioning.Server, config provisioning.ServerSystemLogging) error {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/system/logging", config, "")
+	if err != nil {
+		return fmt.Errorf("Failed to update system logging configuration on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
 
 	return nil

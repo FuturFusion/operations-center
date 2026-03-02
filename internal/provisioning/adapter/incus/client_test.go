@@ -1606,6 +1606,300 @@ func TestClientServer(t *testing.T) {
 			},
 		},
 		{
+			name: "AddApplication",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.AddApplication(ctx, target, "debug")
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// POST /os/1.0/applications
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"POST /os/1.0/applications"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// POST /os/1.0/applications
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"POST /os/1.0/applications"},
+					assertResult: noResult,
+				},
+			},
+		},
+		{
+			name: "GetSystemKernel",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetSystemKernel(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/kernel
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "blacklist_modules": [
+        "bad-module"
+      ],
+      "network": {
+        "buffer_size": 33554432
+      },
+      "pci": {
+        "passthrough": [
+          {
+            "product_id": "1050"
+          }
+        ]
+      }
+    }
+  },
+  "status": "Success",
+  "status_code": 200,
+  "type": "sync"
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /os/1.0/system/kernel"},
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantKernelConfig := provisioning.ServerSystemKernel{
+							Config: incusosapi.SystemKernelConfig{
+								BlacklistModules: []string{"bad-module"},
+								Network: &incusosapi.SystemKernelConfigNetwork{
+									BufferSize: 33554432,
+								},
+								PCI: &incusosapi.SystemKernelConfigPCI{
+									Passthrough: []incusosapi.SystemKernelConfigPCIPassthrough{
+										{
+											ProductID: "1050",
+										},
+									},
+								},
+							},
+						}
+
+						require.Equal(t, wantKernelConfig, res)
+					},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/kernel
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/kernel"},
+					assertResult: noResult,
+				},
+				{
+					name: "error - kernel config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/kernel
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/kernel"},
+					assertResult: noResult,
+				},
+			},
+		},
+		{
+			name: "UpdateSystemKernel",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.UpdateSystemKernel(ctx, target, incusosapi.SystemKernel{})
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// PUT /os/1.0/system/kernel
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"PUT /os/1.0/system/kernel"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// PUT /os/1.0/system/kernel
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"PUT /os/1.0/system/kernel"},
+					assertResult: noResult,
+				},
+			},
+		},
+		{
+			name: "GetSystemLogging",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetSystemLogging(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/logging
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "syslog": {
+        "address": "localhost"
+      }
+    },
+    "state": {}
+  },
+  "status": "Success",
+  "status_code": 200,
+  "type": "sync"
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /os/1.0/system/logging"},
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantLoggingConfig := provisioning.ServerSystemLogging{
+							Config: incusosapi.SystemLoggingConfig{
+								Syslog: incusosapi.SystemLoggingSyslog{
+									Address: "localhost",
+								},
+							},
+							State: incusosapi.SystemLoggingState{},
+						}
+
+						require.Equal(t, wantLoggingConfig, res)
+					},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/logging
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/logging"},
+					assertResult: noResult,
+				},
+				{
+					name: "error - logging config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/logging
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/logging"},
+					assertResult: noResult,
+				},
+			},
+		},
+		{
+			name: "UpdateSystemLogging",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.UpdateSystemLogging(ctx, target, incusosapi.SystemLogging{})
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// PUT /os/1.0/system/logging
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"PUT /os/1.0/system/logging"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// PUT /os/1.0/system/logging
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"PUT /os/1.0/system/logging"},
+					assertResult: noResult,
+				},
+			},
+		},
+		{
 			name: "EnableOSServiceLVM",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
 				return nil, client.EnableOSService(ctx, target, "lvm", map[string]any{"enabled": true})
@@ -1896,6 +2190,110 @@ func TestClientServer(t *testing.T) {
 			},
 		},
 		{
+			name: "GetNetworkConfig",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetNetworkConfig(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/network
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "interfaces": [
+        {
+          "name": "enp5s0"
+        }
+      ],
+      "time": {
+        "timezone": "UTC"
+      }
+    },
+    "state": {
+      "interfaces": {
+        "enp5s0": {
+          "type": "interface"
+        }
+      }
+    }
+  },
+  "status": "Success",
+  "status_code": 200,
+  "type": "sync"
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantNetworkConfig := provisioning.ServerSystemNetwork{
+							Config: &incusosapi.SystemNetworkConfig{
+								Interfaces: []incusosapi.SystemNetworkInterface{
+									{
+										Name: "enp5s0",
+									},
+								},
+								Time: &incusosapi.SystemNetworkTime{
+									Timezone: "UTC",
+								},
+							},
+							State: incusosapi.SystemNetworkState{
+								Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+									"enp5s0": {
+										Type: "interface",
+									},
+								},
+							},
+						}
+
+						require.Equal(t, wantNetworkConfig, res)
+					},
+					wantPaths: []string{"GET /os/1.0/system/network"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/network
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/network"},
+					assertResult: noResult,
+				},
+				{
+					name: "error - network config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/network
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/network"},
+					assertResult: noResult,
+				},
+			},
+		},
+		{
 			name: "UpdateNetworkConfig",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
 				return nil, client.UpdateNetworkConfig(ctx, target)
@@ -1927,6 +2325,102 @@ func TestClientServer(t *testing.T) {
 
 					assertErr: require.Error,
 					wantPaths: []string{"PUT /os/1.0/system/network"},
+				},
+			},
+		},
+		{
+			name: "GetStorageConfig",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetStorageConfig(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/storage
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {},
+    "state": {
+      "drives": [
+        {
+          "id": "/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_incus_root"
+        }
+      ],
+      "pools": [
+        {
+          "name": "local"
+        }
+      ]
+    }
+  },
+  "status": "Success",
+  "status_code": 200,
+  "type": "sync"
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantStorageConfig := provisioning.ServerSystemStorage{
+							Config: incusosapi.SystemStorageConfig{},
+							State: incusosapi.SystemStorageState{
+								Drives: []incusosapi.SystemStorageDrive{
+									{
+										ID: "/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_incus_root",
+									},
+								},
+								Pools: []incusosapi.SystemStoragePool{
+									{
+										Name: "local",
+									},
+								},
+							},
+						}
+
+						require.Equal(t, wantStorageConfig, res)
+					},
+					wantPaths: []string{"GET /os/1.0/system/storage"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/storage
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/storage"},
+					assertResult: noResult,
+				},
+				{
+					name: "error - storage config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/storage
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/storage"},
+					assertResult: noResult,
 				},
 			},
 		},
@@ -2367,7 +2861,7 @@ func TestClientServer(t *testing.T) {
 			},
 		},
 		{
-			name: "Update",
+			name: "UpdateOS",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
 				return nil, client.UpdateOS(ctx, target)
 			},
@@ -2896,7 +3390,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 
 			close(ready)
 
-			tick := time.NewTicker(100 * time.Millisecond)
+			tick := time.NewTicker(200 * time.Millisecond)
 			defer tick.Stop()
 
 			select {
