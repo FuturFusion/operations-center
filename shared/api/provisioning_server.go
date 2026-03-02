@@ -814,6 +814,9 @@ type ServerRegistrationResponse struct {
 // ServerSystemNetwork is a type alias to hold the system network configuration from IncusOS.
 type ServerSystemNetwork = incusosapi.SystemNetwork
 
+// ServerSystemNetworkVLAN is a type alias to hold the system network vlan configuration from IncusOS.
+type ServerSystemNetworkVLAN = incusosapi.SystemNetworkVLAN
+
 // ServerSystemStorage is a type alias to hold the system network configuration from IncusOS.
 type ServerSystemStorage = incusosapi.SystemStorage
 
@@ -822,6 +825,12 @@ type ServerSystemProvider = incusosapi.SystemProvider
 
 // ServerSystemUpdate is a type alias to hold the system update configuration from IncusOS.
 type ServerSystemUpdate = incusosapi.SystemUpdate
+
+// ServerSystemKernel is a type alias to hold the system kernel configuration from IncusOS.
+type ServerSystemKernel = incusosapi.SystemKernel
+
+// ServerSystemLogging is a type alias to hold the system logging configuration from IncusOS.
+type ServerSystemLogging = incusosapi.SystemLogging
 
 // ServerUpdatePost defines the update trigger information for an update
 // request for a server including the OS and/or its applications.
