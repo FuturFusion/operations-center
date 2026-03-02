@@ -175,8 +175,14 @@ type ServerSelfUpdate struct {
 
 type ServerSystemNetwork = api.ServerSystemNetwork
 
+type ServerSystemNetworkVLAN = api.ServerSystemNetworkVLAN
+
 type ServerSystemStorage = api.ServerSystemStorage
 
 type ServerSystemProvider = api.ServerSystemProvider
 
 type ServerSystemUpdate = api.ServerSystemUpdate
+
+type ServerSystemKernel = api.ServerSystemKernel
+
+type ServerSystemLogging = api.ServerSystemLogging
