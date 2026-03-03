@@ -3727,6 +3727,290 @@ func TestClusterService_RemoveServerSystemNetworkVLAN(t *testing.T) {
 	}
 }
 
+func TestClusterService_UpdateSystemLogging(t *testing.T) {
+	tests := []struct {
+		name                         string
+		nameArg                      string
+		loggingConfigArg             provisioning.ServerSystemLogging
+		repoGetByName                *provisioning.Cluster
+		repoGetByNameErr             error
+		serverSvcPollServersErr      error
+		serverSvcGetAllWithFilter    []queue.Item[provisioning.Servers]
+		serverSvcGetSystemLogging    []queue.Item[provisioning.ServerSystemLogging]
+		serverSvcUpdateSystemLogging []queue.Item[struct{}]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:             "success",
+			nameArg:          "one",
+			loggingConfigArg: incusosapi.SystemLogging{},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetSystemLogging: []queue.Item[provisioning.ServerSystemLogging]{
+				{},
+				{},
+			},
+			serverSvcUpdateSystemLogging: []queue.Item[struct{}]{
+				{},
+				{},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:                    "error - GetByName error",
+			nameArg:                 "one",
+			loggingConfigArg:        incusosapi.SystemLogging{},
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:             "error - serverSvc.GetSystemLogging",
+			nameArg:          "one",
+			loggingConfigArg: incusosapi.SystemLogging{},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetSystemLogging: []queue.Item[provisioning.ServerSystemLogging]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:             "error - serverSvc.UpdateSystemLogging - revert",
+			nameArg:          "one",
+			loggingConfigArg: incusosapi.SystemLogging{},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetSystemLogging: []queue.Item[provisioning.ServerSystemLogging]{
+				{},
+				{},
+			},
+			serverSvcUpdateSystemLogging: []queue.Item[struct{}]{
+				// Update server one
+				{},
+				// Update server two
+				{
+					Err: errors.New("error"),
+				},
+				// Revert server one
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously updated logging config.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+				GetSystemLoggingFunc: func(ctx context.Context, name string) (provisioning.ServerSystemLogging, error) {
+					return queue.Pop(t, &tc.serverSvcGetSystemLogging)
+				},
+				UpdateSystemLoggingFunc: func(ctx context.Context, name string, config provisioning.ServerSystemLogging) error {
+					_, err := queue.Pop(t, &tc.serverSvcUpdateSystemLogging)
+					return err
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.UpdateSystemLogging(context.Background(), tc.nameArg, tc.loggingConfigArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.serverSvcGetSystemLogging)
+			require.Empty(t, tc.serverSvcUpdateSystemLogging)
+		})
+	}
+}
+
 func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 	doneChannel := func() chan struct{} {
 		t.Helper()

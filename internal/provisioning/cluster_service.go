@@ -1022,6 +1022,47 @@ func (s clusterService) RemoveServerSystemNetworkVLAN(ctx context.Context, clust
 	return nil
 }
 
+func (s clusterService) UpdateSystemLogging(ctx context.Context, clusterName string, loggingConfig ServerSystemLogging) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Update logging for cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		var currentLoggingConfig ServerSystemLogging
+		currentLoggingConfig, err = s.serverSvc.GetSystemLogging(ctx, server.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to get current logging config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		err = s.serverSvc.UpdateSystemLogging(ctx, server.Name, loggingConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to update logging config on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			revertErr := s.serverSvc.UpdateSystemLogging(ctx, server.Name, currentLoggingConfig)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously updated logging config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("logging-config", currentLoggingConfig), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
 func (s clusterService) prepareBulkUpdate(ctx context.Context, clusterName string) (Servers, error) {
 	cluster, err := s.GetByName(ctx, clusterName)
 	if err != nil {

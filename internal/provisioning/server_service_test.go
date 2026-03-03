@@ -4834,6 +4834,165 @@ func TestServerService_RemoveSystemNetworkVLAN(t *testing.T) {
 	}
 }
 
+func TestServerService_GetSystemLogging(t *testing.T) {
+	tests := []struct {
+		name                      string
+		argName                   string
+		repoGetByName             *provisioning.Server
+		repoGetByNameErr          error
+		clientGetSystemLogging    provisioning.ServerSystemLogging
+		clientGetSystemLoggingErr error
+
+		assertErr         require.ErrorAssertionFunc
+		wantLoggingConfig provisioning.ServerSystemLogging
+	}{
+		{
+			name:    "success",
+			argName: "one",
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+			},
+			clientGetSystemLogging: incusosapi.SystemLogging{
+				Config: incusosapi.SystemLoggingConfig{
+					Syslog: incusosapi.SystemLoggingSyslog{
+						Address: "localhost",
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantLoggingConfig: incusosapi.SystemLogging{
+				Config: incusosapi.SystemLoggingConfig{
+					Syslog: incusosapi.SystemLoggingSyslog{
+						Address: "localhost",
+					},
+				},
+			},
+		},
+		{
+			name:             "error - repo.GetByName",
+			argName:          "one",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - client.GetSystemLogging",
+			argName: "one",
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+			},
+			clientGetSystemLoggingErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				GetSystemLoggingFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemLogging, error) {
+					return tc.clientGetSystemLogging, tc.clientGetSystemLoggingErr
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, tls.Certificate{})
+
+			// Run test
+			loggingConfig, err := serverSvc.GetSystemLogging(t.Context(), tc.argName)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantLoggingConfig, loggingConfig)
+		})
+	}
+}
+
+func TestServerService_UpdateSystemLogging(t *testing.T) {
+	tests := []struct {
+		name                         string
+		argName                      string
+		argLoggingConfig             incusosapi.SystemLogging
+		repoGetByName                *provisioning.Server
+		repoGetByNameErr             error
+		clientUpdateSystemLoggingErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:             "success",
+			argName:          "one",
+			argLoggingConfig: incusosapi.SystemLogging{},
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			argName:          "one",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - client.UpdateSystemLogging",
+			argName: "one",
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+			},
+			clientUpdateSystemLoggingErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				UpdateSystemLoggingFunc: func(ctx context.Context, server provisioning.Server, config provisioning.ServerSystemLogging) error {
+					return tc.clientUpdateSystemLoggingErr
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, tls.Certificate{})
+
+			// Run test
+			err := serverSvc.UpdateSystemLogging(t.Context(), tc.argName, tc.argLoggingConfig)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestServerService_SyncCluster(t *testing.T) {
 	s := provisioning.NewServerService(nil, nil, nil, nil, nil, nil, tls.Certificate{})
 	err := s.SyncCluster(t.Context(), "")

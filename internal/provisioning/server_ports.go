@@ -42,6 +42,8 @@ type ServerService interface {
 
 	AddSystemNetworkVLAN(ctx context.Context, name string, vlanConfig ServerSystemNetworkVLAN) error
 	RemoveSystemNetworkVLAN(ctx context.Context, name string, vlanName string) error
+	GetSystemLogging(ctx context.Context, name string) (ServerSystemLogging, error)
+	UpdateSystemLogging(ctx context.Context, name string, loggingConfig ServerSystemLogging) error
 }
 
 type ServerRepo interface {
