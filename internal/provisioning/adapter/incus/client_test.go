@@ -1900,9 +1900,9 @@ func TestClientServer(t *testing.T) {
 			},
 		},
 		{
-			name: "EnableOSServiceLVM",
+			name: "UpdateOSService - config map",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
-				return nil, client.EnableOSService(ctx, target, "lvm", map[string]any{"enabled": true})
+				return nil, client.UpdateOSService(ctx, target, "lvm", map[string]any{"enabled": true})
 			},
 			testCases: []methodTestCase{
 				{
@@ -1919,6 +1919,14 @@ func TestClientServer(t *testing.T) {
 					},
 
 					assertErr: require.NoError,
+					assertBodies: func(t *testing.T, gotBodies []string) {
+						t.Helper()
+						require.JSONEq(t, `{
+  "config": {
+    "enabled": true
+  }
+}`, gotBodies[0])
+					},
 					wantPaths: []string{"PUT /os/1.0/services/lvm"},
 				},
 				{
@@ -1933,6 +1941,59 @@ func TestClientServer(t *testing.T) {
 
 					assertErr: require.Error,
 					wantPaths: []string{"PUT /os/1.0/services/lvm"},
+				},
+			},
+		},
+		{
+			name: "UpdateOSService - service type",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.UpdateOSService(ctx, target, "iscsi", incusosapi.ServiceISCSI{
+					Config: incusosapi.ServiceISCSIConfig{
+						Enabled: true,
+						Targets: []incusosapi.ServiceISCSITarget{
+							{
+								Target:  "target",
+								Address: "address",
+								Port:    1234,
+							},
+						},
+					},
+				})
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertBodies: func(t *testing.T, gotBodies []string) {
+						t.Helper()
+						require.JSONEq(t, `{
+  "config": {
+    "enabled": true,
+    "targets": [
+      {
+        "target": "target",
+        "address": "address",
+        "port": 1234
+      }
+    ]
+  },
+  "state": {
+    "initiator_name": ""
+  }
+}`, gotBodies[0])
+					},
+					wantPaths: []string{"PUT /os/1.0/services/iscsi"},
 				},
 			},
 		},

@@ -609,7 +609,7 @@ func (c client) UpdateSystemLogging(ctx context.Context, server provisioning.Ser
 	return nil
 }
 
-func (c client) EnableOSService(ctx context.Context, server provisioning.Server, name string, config map[string]any) error {
+func (c client) UpdateOSService(ctx context.Context, server provisioning.Server, name string, config any) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {
 		return err
@@ -617,11 +617,17 @@ func (c client) EnableOSService(ctx context.Context, server provisioning.Server,
 
 	nameSanitized := url.PathEscape(name)
 
-	serviceConfig := map[string]any{
-		"config": config,
+	switch t := config.(type) {
+	case map[string]any:
+		_, ok := t["config"]
+		if !ok {
+			config = map[string]any{
+				"config": config,
+			}
+		}
 	}
 
-	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/services/"+nameSanitized, serviceConfig, "")
+	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/services/"+nameSanitized, config, "")
 	if err != nil {
 		return fmt.Errorf("Enable OS service %q on %q (%s) failed: %w", nameSanitized, server.Name, server.ConnectionURL, err)
 	}
