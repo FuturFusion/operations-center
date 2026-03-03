@@ -387,21 +387,30 @@ func importIncusOSISOStorageVolume(t *testing.T, tmpDir string, incusOSPreseeded
 func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 	t.Helper()
 
+	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
+
 	stop := timeTrack(t)
 	defer stop()
 
-	timeoutCtx, cancel := context.WithTimeout(t.Context(), strechedTimeout(20*time.Minute))
+	timeout := 10 * time.Minute
+	if !concurrentSetup {
+		timeout = time.Duration(int(timeout) * len(names))
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(t.Context(), strechedTimeout(timeout))
 	defer cancel()
 
 	errgrp, errgrpctx := errgroup.WithContext(timeoutCtx)
-	ok, _ := strconv.ParseBool(concurrentSetup)
-	if !ok {
+	if !concurrentSetup {
 		errgrp.SetLimit(1)
 	}
 
-	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
-	for _, name := range names {
+	for i, name := range names {
 		errgrp.Go(func() (err error) {
+			// Reduce the load during instance creation, attempt to mitigate the
+			// "Failed to deactivate zvol." issue.
+			time.Sleep(time.Duration(i) * 5 * time.Second)
+
 			stop := timeTrack(t, fmt.Sprintf("createIncusOSInstance %s", name), "false")
 			defer stop()
 
@@ -441,7 +450,7 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 				}
 
 				t.Logf("Waiting for %s to complete installation", name)
-				agentWaitCtx, cancel := context.WithTimeout(errgrpctx, strechedTimeout(3*time.Minute))
+				agentWaitCtx, cancel := context.WithTimeout(errgrpctx, strechedTimeout(5*time.Minute))
 				err = waitAgentRunningWithContext(agentWaitCtx, t, name)
 				cancel()
 				if err != nil {
@@ -474,7 +483,7 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 			}
 
 			t.Logf("Waiting for %s to be ready", name)
-			agentWaitCtx, cancel := context.WithTimeout(errgrpctx, strechedTimeout(3*time.Minute))
+			agentWaitCtx, cancel := context.WithTimeout(errgrpctx, strechedTimeout(5*time.Minute))
 			err = waitAgentRunningWithContext(agentWaitCtx, t, name)
 			cancel()
 			if err != nil {

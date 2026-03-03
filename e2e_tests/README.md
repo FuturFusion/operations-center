@@ -39,7 +39,7 @@ Since the end to end tests use snapshots, it is recommended to use a ZFS storage
 
 ```shell
 incus storage create zfs local-zfs
-incus create images:debian/13 e2e --vm -c limits.cpu=4 -c limits.memory=20GiB
+incus create images:debian/13 e2e --vm -c limits.cpu=8 -c limits.memory=24GiB
 incus config device override e2e root size=50GiB
 incus storage volume create local-zfs zstorage --type=block size=150GiB
 incus storage volume attach local-zfs zstorage e2e
@@ -82,6 +82,8 @@ Enroll the MOK key.
 
 ```shell
 apt install -y curl jq golang git make build-essential systemd-timesyncd unzip
+systemctl enable systemd-timesyncd
+systemctl restart systemd-timesyncd
 curl https://pkgs.zabbly.com/get/incus-stable | sudo sh
 curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
 chmod +x install-opentofu.sh
@@ -93,6 +95,9 @@ Initialize Incus with ZFS storage backend using the ZFS block device:
 
 ```shell
 incus admin init --auto --storage-backend=zfs --storage-create-device=/dev/disk/by-id/$(ls -1 /dev/disk/by-id | grep zstorage)
+# Disable ZFS sync for better performance in ephemeral environments,
+# since the tests are not concerned with data integrity in case of power loss.
+#zfs set sync=disabled default
 ```
 
 Get the source code and build the Operations Center binaries:

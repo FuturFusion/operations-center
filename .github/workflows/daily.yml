@@ -15,9 +15,9 @@ jobs:
     timeout-minutes: 120
     runs-on:
       - self-hosted
-      - cpu-8
-      - mem-20G
-      - disk-200G
+      - cpu-24
+      - mem-32G
+      - disk-250G
       - arch-amd64
       - image-debian-13
     steps:
@@ -32,10 +32,13 @@ jobs:
       - name: Setup Incus
         run: |
           apt install -y curl jq make build-essential systemd-timesyncd unzip
+          systemctl enable systemd-timesyncd
+          systemctl restart systemd-timesyncd
           curl https://pkgs.zabbly.com/get/incus-stable | sudo sh
           sudo chmod 666 /var/lib/incus/unix.socket
-          incus admin init --auto
+          incus admin init --auto --storage-backend=zfs --storage-create-loop=200
           incus remote generate-certificate
+          zfs set sync=disabled default
 
       - name: Install opentofu
         run: |
@@ -56,6 +59,7 @@ jobs:
         env:
           FLAKY_SKIP_ON_FAIL: "true"
           OPERATIONS_CENTER_E2E_TEST: "true"
+          OPERATIONS_CENTER_E2E_TEST_CONCURRENT_SETUP: "true"
         run: |
           set -o pipefail
           go test -v ./e2e_tests -timeout 120m | tee e2e_tests.out
