@@ -292,12 +292,27 @@ func waitAgentRunningWithContext(ctx context.Context, t *testing.T, vm string, a
 	vm = fmt.Sprintf(vm, args...)
 
 	timeoutSeconds := -1 // -1 disables the timeout for incus wait.
+	retries := 1
 	deadline, ok := ctx.Deadline()
 	if ok {
-		timeoutSeconds = int(time.Until(deadline).Truncate(time.Second).Seconds()) - 2 // Add 2 seconds of headroom.
+		retries = 2
+		timeoutSeconds = (int(time.Until(deadline).Truncate(time.Second).Seconds()) - 2) / retries // Add 2 seconds of headroom.
 	}
 
-	resp := runWithContext(ctx, t, `incus wait %s agent --timeout %d`, vm, timeoutSeconds)
+	var resp cmdResponse
+	for range retries {
+		resp = runWithContext(ctx, t, `incus wait %s agent --timeout %d`, vm, timeoutSeconds)
+		if resp.Success() {
+			break
+		}
+
+		t.Logf(`incus wait timeout, try restart for %s`, vm)
+		cmdResp := runWithContext(ctx, t, `incus start %s`, vm)
+		if !cmdResp.Success() {
+			t.Logf(`failed to re-start incus: %v`, cmdResp.Error())
+		}
+	}
+
 	if !resp.Success() {
 		// Use detached context, since ctx may be cancelled at this stage.
 		debugCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)

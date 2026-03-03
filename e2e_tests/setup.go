@@ -392,7 +392,7 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 	stop := timeTrack(t)
 	defer stop()
 
-	timeout := 7 * time.Minute
+	timeout := 10 * time.Minute
 	if !concurrentSetup {
 		timeout = time.Duration(int(timeout) * len(names))
 	}
@@ -405,8 +405,12 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 		errgrp.SetLimit(1)
 	}
 
-	for _, name := range names {
+	for i, name := range names {
 		errgrp.Go(func() (err error) {
+			// Reduce the load during instance creation, attempt to mitigate the
+			// "Failed to deactivate zvol." issue.
+			time.Sleep(time.Duration(i) * 5 * time.Second)
+
 			stop := timeTrack(t, fmt.Sprintf("createIncusOSInstance %s", name), "false")
 			defer stop()
 
@@ -446,7 +450,7 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 				}
 
 				t.Logf("Waiting for %s to complete installation", name)
-				agentWaitCtx, cancel := context.WithTimeout(errgrpctx, strechedTimeout(3*time.Minute))
+				agentWaitCtx, cancel := context.WithTimeout(errgrpctx, strechedTimeout(5*time.Minute))
 				err = waitAgentRunningWithContext(agentWaitCtx, t, name)
 				cancel()
 				if err != nil {
@@ -479,7 +483,7 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 			}
 
 			t.Logf("Waiting for %s to be ready", name)
-			agentWaitCtx, cancel := context.WithTimeout(errgrpctx, strechedTimeout(3*time.Minute))
+			agentWaitCtx, cancel := context.WithTimeout(errgrpctx, strechedTimeout(5*time.Minute))
 			err = waitAgentRunningWithContext(agentWaitCtx, t, name)
 			cancel()
 			if err != nil {
