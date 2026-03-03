@@ -33,6 +33,7 @@ func registerProvisioningClusterHandler(router Router, authorizer *authz.Authori
 	router.HandleFunc("PUT /{name}", response.With(handler.clusterPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{name}", response.With(handler.clusterDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{name}", response.With(handler.clusterPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/:bulk-update", response.With(handler.clusterBulkUpdatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/:resync-inventory", response.With(handler.clusterResyncInventoryPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("PUT /{name}/certificate", response.With(handler.clusterCertificatePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{clusterName}/artifacts", response.With(handler.clusterArtifactsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -528,6 +529,91 @@ func (c *clusterHandler) clusterPost(r *http.Request) response.Response {
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/clusters/"+cluster.Name)
+}
+
+// swagger:operation POST /1.0/provisioning/clusters/{name}/:bulk-update clusters cluster_bulk_update_inventory_post
+//
+//	Bulk update to all cluster members
+//
+//	Apply bulk update to all cluster members.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: cluster_bulk_update_post
+//	    description: Cluster bulk update request with action and arguments.
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/ClusterBulkUpdatePost"
+//	responses:
+//	  "200":
+//	    description: Empty response
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (c *clusterHandler) clusterBulkUpdatePost(r *http.Request) response.Response {
+	ctx := r.Context()
+	name := r.PathValue("name")
+
+	var request api.ClusterBulkUpdatePost
+
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	switch request.Action {
+	case api.ClusterBulkUpdateActionAddSystemNetworkVLAN:
+		var vlanConfig provisioning.ServerSystemNetworkVLAN
+		err = json.Unmarshal(*request.Arguments, &vlanConfig)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.AddServerSystemNetworkVLAN(ctx, name, vlanConfig)
+
+	case api.ClusterBulkUpdateActionRemoveSystemNetworkVLAN:
+		var removeVLAN struct {
+			Name string `json:"name"`
+		}
+		err = json.Unmarshal(*request.Arguments, &removeVLAN)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.RemoveServerSystemNetworkVLAN(ctx, name, removeVLAN.Name)
+	}
+
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to bulk update cluster %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
 }
 
 // swagger:operation POST /1.0/provisioning/clusters/{name}/:resync-inventory clusters cluster_resync_inventory_post
