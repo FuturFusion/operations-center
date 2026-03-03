@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -206,4 +207,24 @@ type ClusterCertificatePut struct {
 	// The new certificate key (X509 PEM encoded) for the cluster.
 	// Example: X509 PEM certificate key
 	ClusterCertificateKey string `json:"cluster_certificate_key" yaml:"cluster_certificate_key"`
+}
+
+type ClusterBulkUpdateAction string
+
+const (
+	ClusterBulkUpdateActionAddSystemNetworkVLAN    ClusterBulkUpdateAction = "add_system_network_vlan"
+	ClusterBulkUpdateActionRemoveSystemNetworkVLAN ClusterBulkUpdateAction = "remove_system_network_vlan"
+)
+
+// ClusterBulkUpdatePost represents a cluster bulk update request containing
+// action and optional arguments.
+//
+// swagger:model
+type ClusterBulkUpdatePost struct {
+	// Action to be executed for this bulk update.
+	Action ClusterBulkUpdateAction `json:"action" yaml:"action"`
+
+	// Arguments for the action, the exact structure depends on the
+	// defined action.
+	Arguments *json.RawMessage `json:"arguments" yaml:"arguments"`
 }
