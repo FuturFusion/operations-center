@@ -24,6 +24,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //
 //		// make and configure a mocked provisioning.ServerService
 //		mockedServerService := &ServerServiceMock{
+//			AddApplicationFunc: func(ctx context.Context, name string, applicationName string) error {
+//				panic("mock out the AddApplication method")
+//			},
 //			AddSystemNetworkVLANFunc: func(ctx context.Context, name string, vlanConfig provisioning.ServerSystemNetworkVLAN) error {
 //				panic("mock out the AddSystemNetworkVLAN method")
 //			},
@@ -130,6 +133,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //
 //	}
 type ServerServiceMock struct {
+	// AddApplicationFunc mocks the AddApplication method.
+	AddApplicationFunc func(ctx context.Context, name string, applicationName string) error
+
 	// AddSystemNetworkVLANFunc mocks the AddSystemNetworkVLAN method.
 	AddSystemNetworkVLANFunc func(ctx context.Context, name string, vlanConfig provisioning.ServerSystemNetworkVLAN) error
 
@@ -231,6 +237,15 @@ type ServerServiceMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// AddApplication holds details about calls to the AddApplication method.
+		AddApplication []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// ApplicationName is the applicationName argument value.
+			ApplicationName string
+		}
 		// AddSystemNetworkVLAN holds details about calls to the AddSystemNetworkVLAN method.
 		AddSystemNetworkVLAN []struct {
 			// Ctx is the ctx argument value.
@@ -487,6 +502,7 @@ type ServerServiceMock struct {
 			UpdateConfig provisioning.ServerSystemUpdate
 		}
 	}
+	lockAddApplication               sync.RWMutex
 	lockAddSystemNetworkVLAN         sync.RWMutex
 	lockCreate                       sync.RWMutex
 	lockDeleteByName                 sync.RWMutex
@@ -520,6 +536,46 @@ type ServerServiceMock struct {
 	lockUpdateSystemProvider         sync.RWMutex
 	lockUpdateSystemStorage          sync.RWMutex
 	lockUpdateSystemUpdate           sync.RWMutex
+}
+
+// AddApplication calls AddApplicationFunc.
+func (mock *ServerServiceMock) AddApplication(ctx context.Context, name string, applicationName string) error {
+	if mock.AddApplicationFunc == nil {
+		panic("ServerServiceMock.AddApplicationFunc: method is nil but ServerService.AddApplication was just called")
+	}
+	callInfo := struct {
+		Ctx             context.Context
+		Name            string
+		ApplicationName string
+	}{
+		Ctx:             ctx,
+		Name:            name,
+		ApplicationName: applicationName,
+	}
+	mock.lockAddApplication.Lock()
+	mock.calls.AddApplication = append(mock.calls.AddApplication, callInfo)
+	mock.lockAddApplication.Unlock()
+	return mock.AddApplicationFunc(ctx, name, applicationName)
+}
+
+// AddApplicationCalls gets all the calls that were made to AddApplication.
+// Check the length with:
+//
+//	len(mockedServerService.AddApplicationCalls())
+func (mock *ServerServiceMock) AddApplicationCalls() []struct {
+	Ctx             context.Context
+	Name            string
+	ApplicationName string
+} {
+	var calls []struct {
+		Ctx             context.Context
+		Name            string
+		ApplicationName string
+	}
+	mock.lockAddApplication.RLock()
+	calls = mock.calls.AddApplication
+	mock.lockAddApplication.RUnlock()
+	return calls
 }
 
 // AddSystemNetworkVLAN calls AddSystemNetworkVLANFunc.

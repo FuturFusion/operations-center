@@ -24,6 +24,9 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //
 //		// make and configure a mocked provisioning.ClusterService
 //		mockedClusterService := &ClusterServiceMock{
+//			AddApplicationFunc: func(ctx context.Context, clusterName string, applicationName string) error {
+//				panic("mock out the AddApplication method")
+//			},
 //			AddServerSystemNetworkVLANFunc: func(ctx context.Context, clusterName string, vlan provisioning.ServerSystemNetworkVLAN) error {
 //				panic("mock out the AddServerSystemNetworkVLAN method")
 //			},
@@ -106,6 +109,9 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //
 //	}
 type ClusterServiceMock struct {
+	// AddApplicationFunc mocks the AddApplication method.
+	AddApplicationFunc func(ctx context.Context, clusterName string, applicationName string) error
+
 	// AddServerSystemNetworkVLANFunc mocks the AddServerSystemNetworkVLAN method.
 	AddServerSystemNetworkVLANFunc func(ctx context.Context, clusterName string, vlan provisioning.ServerSystemNetworkVLAN) error
 
@@ -183,6 +189,15 @@ type ClusterServiceMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// AddApplication holds details about calls to the AddApplication method.
+		AddApplication []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// ApplicationName is the applicationName argument value.
+			ApplicationName string
+		}
 		// AddServerSystemNetworkVLAN holds details about calls to the AddServerSystemNetworkVLAN method.
 		AddServerSystemNetworkVLAN []struct {
 			// Ctx is the ctx argument value.
@@ -379,6 +394,7 @@ type ClusterServiceMock struct {
 			LoggingConfig provisioning.ServerSystemLogging
 		}
 	}
+	lockAddApplication                  sync.RWMutex
 	lockAddServerSystemNetworkVLAN      sync.RWMutex
 	lockCreate                          sync.RWMutex
 	lockDeleteAndFactoryResetByName     sync.RWMutex
@@ -404,6 +420,46 @@ type ClusterServiceMock struct {
 	lockUpdateCertificate               sync.RWMutex
 	lockUpdateSystemKernel              sync.RWMutex
 	lockUpdateSystemLogging             sync.RWMutex
+}
+
+// AddApplication calls AddApplicationFunc.
+func (mock *ClusterServiceMock) AddApplication(ctx context.Context, clusterName string, applicationName string) error {
+	if mock.AddApplicationFunc == nil {
+		panic("ClusterServiceMock.AddApplicationFunc: method is nil but ClusterService.AddApplication was just called")
+	}
+	callInfo := struct {
+		Ctx             context.Context
+		ClusterName     string
+		ApplicationName string
+	}{
+		Ctx:             ctx,
+		ClusterName:     clusterName,
+		ApplicationName: applicationName,
+	}
+	mock.lockAddApplication.Lock()
+	mock.calls.AddApplication = append(mock.calls.AddApplication, callInfo)
+	mock.lockAddApplication.Unlock()
+	return mock.AddApplicationFunc(ctx, clusterName, applicationName)
+}
+
+// AddApplicationCalls gets all the calls that were made to AddApplication.
+// Check the length with:
+//
+//	len(mockedClusterService.AddApplicationCalls())
+func (mock *ClusterServiceMock) AddApplicationCalls() []struct {
+	Ctx             context.Context
+	ClusterName     string
+	ApplicationName string
+} {
+	var calls []struct {
+		Ctx             context.Context
+		ClusterName     string
+		ApplicationName string
+	}
+	mock.lockAddApplication.RLock()
+	calls = mock.calls.AddApplication
+	mock.lockAddApplication.RUnlock()
+	return calls
 }
 
 // AddServerSystemNetworkVLAN calls AddServerSystemNetworkVLANFunc.

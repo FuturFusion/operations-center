@@ -40,6 +40,20 @@ func NewServerServiceWithPrometheus(base provisioning.ServerService, instanceNam
 	}
 }
 
+// AddApplication implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) AddApplication(ctx context.Context, name string, applicationName string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AddApplication", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.AddApplication(ctx, name, applicationName)
+}
+
 // AddSystemNetworkVLAN implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) AddSystemNetworkVLAN(ctx context.Context, name string, vlanConfig provisioning.ServerSystemNetworkVLAN) (err error) {
 	_since := time.Now()

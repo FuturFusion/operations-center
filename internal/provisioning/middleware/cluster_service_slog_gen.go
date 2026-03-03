@@ -42,6 +42,41 @@ func NewClusterServiceWithSlog(base provisioning.ClusterService, opts ...Cluster
 	return this
 }
 
+// AddApplication implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) AddApplication(ctx context.Context, clusterName string, applicationName string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.String("applicationName", applicationName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling AddApplication")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method AddApplication returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method AddApplication returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method AddApplication finished")
+		}
+	}()
+	return _d._base.AddApplication(ctx, clusterName, applicationName)
+}
+
 // AddServerSystemNetworkVLAN implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) AddServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlan provisioning.ServerSystemNetworkVLAN) (err error) {
 	log := slog.With()

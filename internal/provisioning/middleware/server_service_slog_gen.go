@@ -42,6 +42,41 @@ func NewServerServiceWithSlog(base provisioning.ServerService, opts ...ServerSer
 	return this
 }
 
+// AddApplication implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) AddApplication(ctx context.Context, name string, applicationName string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.String("applicationName", applicationName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling AddApplication")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method AddApplication returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method AddApplication returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method AddApplication finished")
+		}
+	}()
+	return _d._base.AddApplication(ctx, name, applicationName)
+}
+
 // AddSystemNetworkVLAN implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) AddSystemNetworkVLAN(ctx context.Context, name string, vlanConfig provisioning.ServerSystemNetworkVLAN) (err error) {
 	log := slog.With()
