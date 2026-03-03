@@ -18,6 +18,7 @@ import (
 	"github.com/expr-lang/expr/vm"
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	"github.com/lxc/incus/v6/shared/revert"
 	"github.com/maniartech/signals"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -909,6 +910,92 @@ func (s clusterService) ResyncInventoryByName(ctx context.Context, name string) 
 			return err
 		}
 	}
+
+	return nil
+}
+
+func (s clusterService) AddServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlanConfig ServerSystemNetworkVLAN) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Add VLAN to cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	cluster, err := s.GetByName(ctx, clusterName)
+	if err != nil {
+		return fmt.Errorf("Failed to get cluster %q: %w", clusterName, err)
+	}
+
+	if cluster.Status != api.ClusterStatusReady {
+		return fmt.Errorf("Cluster %q is not ready: %w", clusterName, domain.ErrOperationNotPermitted)
+	}
+
+	if len(cluster.ServerNames) == 0 {
+		return fmt.Errorf("Cluster %q does not have any servers: %w", clusterName, domain.ErrOperationNotPermitted)
+	}
+
+	// Update the current server states in the DB, serves as a connection test at the same time.
+	err = s.serverSvc.PollServers(ctx, ServerFilter{
+		Cluster: ptr.To(clusterName),
+	}, true)
+	if err != nil {
+		return fmt.Errorf("Polling of cluster members failed: %w", err)
+	}
+
+	servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+		Cluster: ptr.To(clusterName),
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to get server names for cluster %q: %w", clusterName, err)
+	}
+
+	// Ensure all servers are in ready state and online.
+	for _, server := range servers {
+		isReady := server.Status == api.ServerStatusReady &&
+			server.StatusDetail == api.ServerStatusDetailNone &&
+			server.VersionData.InMaintenance != nil &&
+			*server.VersionData.InMaintenance == api.NotInMaintenance
+		if !isReady {
+			return fmt.Errorf("Server %q (%s) is not ready (status: %q, status detail: %q, maintenance: %q): %w", server.Name, server.GetConnectionURL(), server.Status, server.StatusDetail, ptr.From(server.VersionData.InMaintenance), domain.ErrOperationNotPermitted)
+		}
+	}
+
+	// Ensure the VLAN is not yet present on any of the servers.
+	for _, server := range servers {
+		if server.OSData.Network.Config == nil {
+			continue
+		}
+
+		for _, vlan := range server.OSData.Network.Config.VLANs {
+			if vlanConfig.ID == vlan.ID {
+				return domain.NewValidationErrf("Server %q (%s) already has VLAN with ID %d", server.Name, server.GetConnectionURL(), vlanConfig.ID)
+			}
+
+			if vlanConfig.Name == vlan.Name {
+				return domain.NewValidationErrf("Server %q (%s) already has VLAN %q", server.Name, server.GetConnectionURL(), vlanConfig.Name)
+			}
+		}
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		err = s.serverSvc.AddSystemNetworkVLAN(ctx, server.Name, vlanConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to add vlan %q to server %q (%s): %w", vlanConfig.Name, server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			revertErr := s.serverSvc.RemoveSystemNetworkVLAN(ctx, server.Name, vlanConfig.Name)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously add vlan", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.ConnectionURL), slog.String("vlan", vlanConfig.Name), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
 
 	return nil
 }

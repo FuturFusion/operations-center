@@ -33,6 +33,8 @@ type ClusterService interface {
 	GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType ClusterArtifactArchiveType) (_ io.ReadCloser, size int, _ error)
 	GetClusterArtifactFileByName(ctx context.Context, clusterName string, artifactName string, filename string) (*ClusterArtifactFile, error)
 	SetInventorySyncers(inventorySyncers map[domain.ResourceType]InventorySyncer)
+
+	AddServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlan ServerSystemNetworkVLAN) error
 }
 
 type ClusterRepo interface {
