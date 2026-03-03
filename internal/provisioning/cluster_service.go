@@ -1104,6 +1104,28 @@ func (s clusterService) UpdateSystemKernel(ctx context.Context, clusterName stri
 	return nil
 }
 
+func (s clusterService) AddApplication(ctx context.Context, clusterName string, applicationName string) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Add application to cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	for _, server := range servers {
+		err = s.serverSvc.AddApplication(ctx, server.Name, applicationName)
+		if err != nil {
+			return fmt.Errorf("Failed to add application on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+	}
+
+	return nil
+}
+
 func (s clusterService) prepareBulkUpdate(ctx context.Context, clusterName string) (Servers, error) {
 	cluster, err := s.GetByName(ctx, clusterName)
 	if err != nil {

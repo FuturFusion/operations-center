@@ -46,6 +46,7 @@ type ServerService interface {
 	UpdateSystemLogging(ctx context.Context, name string, loggingConfig ServerSystemLogging) error
 	GetSystemKernel(ctx context.Context, name string) (ServerSystemKernel, error)
 	UpdateSystemKernel(ctx context.Context, name string, kernelConfig ServerSystemKernel) error
+	AddApplication(ctx context.Context, name string, applicationName string) error
 }
 
 type ServerRepo interface {

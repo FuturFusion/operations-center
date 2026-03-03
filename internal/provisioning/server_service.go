@@ -1191,6 +1191,20 @@ func (s *serverService) UpdateSystemKernel(ctx context.Context, name string, ker
 	return nil
 }
 
+func (s *serverService) AddApplication(ctx context.Context, name string, applicationName string) error {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	err = s.client.AddApplication(ctx, *server, applicationName)
+	if err != nil {
+		return fmt.Errorf("Failed to add application to server %q: %w", name, err)
+	}
+
+	return nil
+}
+
 // ResyncByName implements the InventorySyncer interface. Since we sync a server
 // resource, the cluster name (2nd argument) is not relevant and we purely
 // rely on the Source.Name attribute from the LifecycleEvent to determine

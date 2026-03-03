@@ -4295,6 +4295,199 @@ func TestClusterService_UpdateSystemKernel(t *testing.T) {
 	}
 }
 
+func TestClusterService_AddApplication(t *testing.T) {
+	tests := []struct {
+		name                      string
+		nameArg                   string
+		applicationNameArg        string
+		repoGetByName             *provisioning.Cluster
+		repoGetByNameErr          error
+		serverSvcPollServersErr   error
+		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
+		serverSvcAddApplication   []queue.Item[struct{}]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:               "success",
+			nameArg:            "one",
+			applicationNameArg: "debug",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcAddApplication: []queue.Item[struct{}]{
+				{},
+				{},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:                    "error - GetByName error",
+			nameArg:                 "one",
+			applicationNameArg:      "debug",
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:               "error - serverSvc.AddApplication",
+			nameArg:            "one",
+			applicationNameArg: "debug",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcAddApplication: []queue.Item[struct{}]{
+				{},
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+				AddApplicationFunc: func(ctx context.Context, name, applicationName string) error {
+					_, err := queue.Pop(t, &tc.serverSvcAddApplication)
+					return err
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
+
+			// Run test
+			err := clusterSvc.AddApplication(context.Background(), tc.nameArg, tc.applicationNameArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.serverSvcAddApplication)
+		})
+	}
+}
+
 func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 	doneChannel := func() chan struct{} {
 		t.Helper()
