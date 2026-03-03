@@ -82,6 +82,8 @@ Enroll the MOK key.
 
 ```shell
 apt install -y curl jq golang git make build-essential systemd-timesyncd unzip
+systemctl enable systemd-timesyncd
+systemctl restart systemd-timesyncd
 curl https://pkgs.zabbly.com/get/incus-stable | sudo sh
 curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
 chmod +x install-opentofu.sh

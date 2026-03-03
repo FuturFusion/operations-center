@@ -32,6 +32,8 @@ jobs:
       - name: Setup Incus
         run: |
           apt install -y curl jq make build-essential systemd-timesyncd unzip
+          systemctl enable systemd-timesyncd
+          systemctl restart systemd-timesyncd
           curl https://pkgs.zabbly.com/get/incus-stable | sudo sh
           sudo chmod 666 /var/lib/incus/unix.socket
           incus admin init --auto --storage-backend=zfs --storage-create-loop=200
