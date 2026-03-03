@@ -921,43 +921,9 @@ func (s clusterService) AddServerSystemNetworkVLAN(ctx context.Context, clusterN
 		}
 	}()
 
-	cluster, err := s.GetByName(ctx, clusterName)
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
 	if err != nil {
-		return fmt.Errorf("Failed to get cluster %q: %w", clusterName, err)
-	}
-
-	if cluster.Status != api.ClusterStatusReady {
-		return fmt.Errorf("Cluster %q is not ready: %w", clusterName, domain.ErrOperationNotPermitted)
-	}
-
-	if len(cluster.ServerNames) == 0 {
-		return fmt.Errorf("Cluster %q does not have any servers: %w", clusterName, domain.ErrOperationNotPermitted)
-	}
-
-	// Update the current server states in the DB, serves as a connection test at the same time.
-	err = s.serverSvc.PollServers(ctx, ServerFilter{
-		Cluster: ptr.To(clusterName),
-	}, true)
-	if err != nil {
-		return fmt.Errorf("Polling of cluster members failed: %w", err)
-	}
-
-	servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
-		Cluster: ptr.To(clusterName),
-	})
-	if err != nil {
-		return fmt.Errorf("Failed to get server names for cluster %q: %w", clusterName, err)
-	}
-
-	// Ensure all servers are in ready state and online.
-	for _, server := range servers {
-		isReady := server.Status == api.ServerStatusReady &&
-			server.StatusDetail == api.ServerStatusDetailNone &&
-			server.VersionData.InMaintenance != nil &&
-			*server.VersionData.InMaintenance == api.NotInMaintenance
-		if !isReady {
-			return fmt.Errorf("Server %q (%s) is not ready (status: %q, status detail: %q, maintenance: %q): %w", server.Name, server.GetConnectionURL(), server.Status, server.StatusDetail, ptr.From(server.VersionData.InMaintenance), domain.ErrOperationNotPermitted)
-		}
+		return err
 	}
 
 	// Ensure the VLAN is not yet present on any of the servers.
@@ -998,6 +964,105 @@ func (s clusterService) AddServerSystemNetworkVLAN(ctx context.Context, clusterN
 	reverter.Success()
 
 	return nil
+}
+
+func (s clusterService) RemoveServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlanName string) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Remove VLAN from cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the VLAN is present on all servers.
+	currentVLANConfig := make(map[string]incusosapi.SystemNetworkVLAN, len(servers))
+	for _, server := range servers {
+		found := false
+		if server.OSData.Network.Config == nil {
+			return domain.NewValidationErrf("Server %q (%s) does not have any network config", server.Name, server.GetConnectionURL())
+		}
+
+		for _, vlan := range server.OSData.Network.Config.VLANs {
+			if vlanName == vlan.Name {
+				found = true
+				currentVLANConfig[server.Name] = vlan
+				break
+			}
+		}
+
+		if !found {
+			return domain.NewValidationErrf("Server %q (%s) does not have VLAN %q", server.Name, server.GetConnectionURL(), vlanName)
+		}
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		err = s.serverSvc.RemoveSystemNetworkVLAN(ctx, server.Name, vlanName)
+		if err != nil {
+			return fmt.Errorf("Failed to remove vlan %q to server %q (%s): %w", vlanName, server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			revertErr := s.serverSvc.AddSystemNetworkVLAN(ctx, server.Name, currentVLANConfig[server.Name])
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously removed vlan", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.ConnectionURL), slog.Any("vlan-config", currentVLANConfig[server.Name]), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+func (s clusterService) prepareBulkUpdate(ctx context.Context, clusterName string) (Servers, error) {
+	cluster, err := s.GetByName(ctx, clusterName)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get cluster %q: %w", clusterName, err)
+	}
+
+	if cluster.Status != api.ClusterStatusReady {
+		return nil, fmt.Errorf("Cluster %q is not ready: %w", clusterName, domain.ErrOperationNotPermitted)
+	}
+
+	// Update the current server states in the DB, serves as a connection test at the same time.
+	err = s.serverSvc.PollServers(ctx, ServerFilter{
+		Cluster: ptr.To(clusterName),
+	}, true)
+	if err != nil {
+		return nil, fmt.Errorf("Polling of cluster members failed: %w", err)
+	}
+
+	servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+		Cluster: ptr.To(clusterName),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get server names for cluster %q: %w", clusterName, err)
+	}
+
+	if len(servers) == 0 {
+		return nil, fmt.Errorf("Cluster %q does not have any servers: %w", clusterName, domain.ErrOperationNotPermitted)
+	}
+
+	// Ensure all servers are in ready state and online.
+	for _, server := range servers {
+		isReady := server.Status == api.ServerStatusReady &&
+			server.StatusDetail == api.ServerStatusDetailNone &&
+			server.VersionData.InMaintenance != nil &&
+			*server.VersionData.InMaintenance == api.NotInMaintenance
+		if !isReady {
+			return nil, fmt.Errorf("Server %q (%s) is not ready (status: %q, status detail: %q, maintenance: %q): %w", server.Name, server.GetConnectionURL(), server.Status, server.StatusDetail, ptr.From(server.VersionData.InMaintenance), domain.ErrOperationNotPermitted)
+		}
+	}
+
+	return servers, nil
 }
 
 func (s clusterService) StartLifecycleEventsMonitor(ctx context.Context) error {

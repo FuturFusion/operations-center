@@ -35,6 +35,7 @@ type ClusterService interface {
 	SetInventorySyncers(inventorySyncers map[domain.ResourceType]InventorySyncer)
 
 	AddServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlan ServerSystemNetworkVLAN) error
+	RemoveServerSystemNetworkVLAN(ctx context.Context, clusterName, vlanName string) error
 }
 
 type ClusterRepo interface {

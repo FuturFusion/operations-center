@@ -3432,6 +3432,297 @@ func TestClusterService_AddServerSystemNetworkVLAN(t *testing.T) {
 			tc.assertLog(t, logBuf)
 			require.Empty(t, tc.serverSvcGetAllWithFilter)
 			require.Empty(t, tc.serverSvcAddSystemNetworkVLAN)
+			require.Empty(t, tc.serverSvcRemoveSystemNetworkVLAN)
+		})
+	}
+}
+
+func TestClusterService_RemoveServerSystemNetworkVLAN(t *testing.T) {
+	tests := []struct {
+		name                             string
+		nameArg                          string
+		vlanNameArg                      string
+		repoGetByName                    *provisioning.Cluster
+		repoGetByNameErr                 error
+		serverSvcPollServersErr          error
+		serverSvcGetAllWithFilter        []queue.Item[provisioning.Servers]
+		serverSvcAddSystemNetworkVLAN    []queue.Item[struct{}]
+		serverSvcRemoveSystemNetworkVLAN []queue.Item[struct{}]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:        "success",
+			nameArg:     "one",
+			vlanNameArg: "first",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcRemoveSystemNetworkVLAN: []queue.Item[struct{}]{
+				{},
+				{},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:                    "error - GetByName error",
+			nameArg:                 "one",
+			vlanNameArg:             "first",
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:        "error - server without network config",
+			nameArg:     "one",
+			vlanNameArg: "first",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: nil, // no network config present
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, `does not have any network config`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:        "error - VLAN not found",
+			nameArg:     "one",
+			vlanNameArg: "first",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{}, // no VLANs configured
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, `does not have VLAN "first"`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:        "error - serverSvc.ReomveSystemNetworkVLAN - revert serverSvc.AddSystemNetworkVLAN",
+			nameArg:     "one",
+			vlanNameArg: "first",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcAddSystemNetworkVLAN: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcRemoveSystemNetworkVLAN: []queue.Item[struct{}]{
+				{},
+				{
+					Err: errors.New("error"),
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously removed vlan.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+				AddSystemNetworkVLANFunc: func(ctx context.Context, name string, vlanConfig provisioning.ServerSystemNetworkVLAN) error {
+					_, err := queue.Pop(t, &tc.serverSvcAddSystemNetworkVLAN)
+					return err
+				},
+				RemoveSystemNetworkVLANFunc: func(ctx context.Context, name, vlanName string) error {
+					_, err := queue.Pop(t, &tc.serverSvcRemoveSystemNetworkVLAN)
+					return err
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.RemoveServerSystemNetworkVLAN(context.Background(), tc.nameArg, tc.vlanNameArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.serverSvcAddSystemNetworkVLAN)
+			require.Empty(t, tc.serverSvcRemoveSystemNetworkVLAN)
 		})
 	}
 }
