@@ -22,8 +22,14 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //
 //		// make and configure a mocked provisioning.ServerClientPort
 //		mockedServerClientPort := &ServerClientPortMock{
+//			AddApplicationFunc: func(ctx context.Context, server provisioning.Server, application string) error {
+//				panic("mock out the AddApplication method")
+//			},
 //			EvacuateFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the Evacuate method")
+//			},
+//			GetNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemNetwork, error) {
+//				panic("mock out the GetNetworkConfig method")
 //			},
 //			GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 //				panic("mock out the GetOSData method")
@@ -36,6 +42,15 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			},
 //			GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
 //				panic("mock out the GetServerType method")
+//			},
+//			GetStorageConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemStorage, error) {
+//				panic("mock out the GetStorageConfig method")
+//			},
+//			GetSystemKernelFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemKernel, error) {
+//				panic("mock out the GetSystemKernel method")
+//			},
+//			GetSystemLoggingFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemLogging, error) {
+//				panic("mock out the GetSystemLogging method")
 //			},
 //			GetUpdateConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemUpdate, error) {
 //				panic("mock out the GetUpdateConfig method")
@@ -67,6 +82,12 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			UpdateStorageConfigFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the UpdateStorageConfig method")
 //			},
+//			UpdateSystemKernelFunc: func(ctx context.Context, server provisioning.Server, config provisioning.ServerSystemKernel) error {
+//				panic("mock out the UpdateSystemKernel method")
+//			},
+//			UpdateSystemLoggingFunc: func(ctx context.Context, server provisioning.Server, config provisioning.ServerSystemLogging) error {
+//				panic("mock out the UpdateSystemLogging method")
+//			},
 //			UpdateUpdateConfigFunc: func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemUpdate) error {
 //				panic("mock out the UpdateUpdateConfig method")
 //			},
@@ -77,8 +98,14 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //
 //	}
 type ServerClientPortMock struct {
+	// AddApplicationFunc mocks the AddApplication method.
+	AddApplicationFunc func(ctx context.Context, server provisioning.Server, application string) error
+
 	// EvacuateFunc mocks the Evacuate method.
 	EvacuateFunc func(ctx context.Context, server provisioning.Server) error
+
+	// GetNetworkConfigFunc mocks the GetNetworkConfig method.
+	GetNetworkConfigFunc func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemNetwork, error)
 
 	// GetOSDataFunc mocks the GetOSData method.
 	GetOSDataFunc func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error)
@@ -91,6 +118,15 @@ type ServerClientPortMock struct {
 
 	// GetServerTypeFunc mocks the GetServerType method.
 	GetServerTypeFunc func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error)
+
+	// GetStorageConfigFunc mocks the GetStorageConfig method.
+	GetStorageConfigFunc func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemStorage, error)
+
+	// GetSystemKernelFunc mocks the GetSystemKernel method.
+	GetSystemKernelFunc func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemKernel, error)
+
+	// GetSystemLoggingFunc mocks the GetSystemLogging method.
+	GetSystemLoggingFunc func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemLogging, error)
 
 	// GetUpdateConfigFunc mocks the GetUpdateConfig method.
 	GetUpdateConfigFunc func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemUpdate, error)
@@ -122,13 +158,35 @@ type ServerClientPortMock struct {
 	// UpdateStorageConfigFunc mocks the UpdateStorageConfig method.
 	UpdateStorageConfigFunc func(ctx context.Context, server provisioning.Server) error
 
+	// UpdateSystemKernelFunc mocks the UpdateSystemKernel method.
+	UpdateSystemKernelFunc func(ctx context.Context, server provisioning.Server, config provisioning.ServerSystemKernel) error
+
+	// UpdateSystemLoggingFunc mocks the UpdateSystemLogging method.
+	UpdateSystemLoggingFunc func(ctx context.Context, server provisioning.Server, config provisioning.ServerSystemLogging) error
+
 	// UpdateUpdateConfigFunc mocks the UpdateUpdateConfig method.
 	UpdateUpdateConfigFunc func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemUpdate) error
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// AddApplication holds details about calls to the AddApplication method.
+		AddApplication []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Application is the application argument value.
+			Application string
+		}
 		// Evacuate holds details about calls to the Evacuate method.
 		Evacuate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
+		// GetNetworkConfig holds details about calls to the GetNetworkConfig method.
+		GetNetworkConfig []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Server is the server argument value.
@@ -161,6 +219,27 @@ type ServerClientPortMock struct {
 			Ctx context.Context
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
+		}
+		// GetStorageConfig holds details about calls to the GetStorageConfig method.
+		GetStorageConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
+		// GetSystemKernel holds details about calls to the GetSystemKernel method.
+		GetSystemKernel []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
+		// GetSystemLogging holds details about calls to the GetSystemLogging method.
+		GetSystemLogging []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
 		}
 		// GetUpdateConfig holds details about calls to the GetUpdateConfig method.
 		GetUpdateConfig []struct {
@@ -234,6 +313,24 @@ type ServerClientPortMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
+		// UpdateSystemKernel holds details about calls to the UpdateSystemKernel method.
+		UpdateSystemKernel []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Config is the config argument value.
+			Config provisioning.ServerSystemKernel
+		}
+		// UpdateSystemLogging holds details about calls to the UpdateSystemLogging method.
+		UpdateSystemLogging []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Config is the config argument value.
+			Config provisioning.ServerSystemLogging
+		}
 		// UpdateUpdateConfig holds details about calls to the UpdateUpdateConfig method.
 		UpdateUpdateConfig []struct {
 			// Ctx is the ctx argument value.
@@ -244,11 +341,16 @@ type ServerClientPortMock struct {
 			ProviderConfig provisioning.ServerSystemUpdate
 		}
 	}
+	lockAddApplication       sync.RWMutex
 	lockEvacuate             sync.RWMutex
+	lockGetNetworkConfig     sync.RWMutex
 	lockGetOSData            sync.RWMutex
 	lockGetProviderConfig    sync.RWMutex
 	lockGetResources         sync.RWMutex
 	lockGetServerType        sync.RWMutex
+	lockGetStorageConfig     sync.RWMutex
+	lockGetSystemKernel      sync.RWMutex
+	lockGetSystemLogging     sync.RWMutex
 	lockGetUpdateConfig      sync.RWMutex
 	lockGetVersionData       sync.RWMutex
 	lockPing                 sync.RWMutex
@@ -259,7 +361,49 @@ type ServerClientPortMock struct {
 	lockUpdateOS             sync.RWMutex
 	lockUpdateProviderConfig sync.RWMutex
 	lockUpdateStorageConfig  sync.RWMutex
+	lockUpdateSystemKernel   sync.RWMutex
+	lockUpdateSystemLogging  sync.RWMutex
 	lockUpdateUpdateConfig   sync.RWMutex
+}
+
+// AddApplication calls AddApplicationFunc.
+func (mock *ServerClientPortMock) AddApplication(ctx context.Context, server provisioning.Server, application string) error {
+	if mock.AddApplicationFunc == nil {
+		panic("ServerClientPortMock.AddApplicationFunc: method is nil but ServerClientPort.AddApplication was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		Server      provisioning.Server
+		Application string
+	}{
+		Ctx:         ctx,
+		Server:      server,
+		Application: application,
+	}
+	mock.lockAddApplication.Lock()
+	mock.calls.AddApplication = append(mock.calls.AddApplication, callInfo)
+	mock.lockAddApplication.Unlock()
+	return mock.AddApplicationFunc(ctx, server, application)
+}
+
+// AddApplicationCalls gets all the calls that were made to AddApplication.
+// Check the length with:
+//
+//	len(mockedServerClientPort.AddApplicationCalls())
+func (mock *ServerClientPortMock) AddApplicationCalls() []struct {
+	Ctx         context.Context
+	Server      provisioning.Server
+	Application string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		Server      provisioning.Server
+		Application string
+	}
+	mock.lockAddApplication.RLock()
+	calls = mock.calls.AddApplication
+	mock.lockAddApplication.RUnlock()
+	return calls
 }
 
 // Evacuate calls EvacuateFunc.
@@ -295,6 +439,42 @@ func (mock *ServerClientPortMock) EvacuateCalls() []struct {
 	mock.lockEvacuate.RLock()
 	calls = mock.calls.Evacuate
 	mock.lockEvacuate.RUnlock()
+	return calls
+}
+
+// GetNetworkConfig calls GetNetworkConfigFunc.
+func (mock *ServerClientPortMock) GetNetworkConfig(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemNetwork, error) {
+	if mock.GetNetworkConfigFunc == nil {
+		panic("ServerClientPortMock.GetNetworkConfigFunc: method is nil but ServerClientPort.GetNetworkConfig was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockGetNetworkConfig.Lock()
+	mock.calls.GetNetworkConfig = append(mock.calls.GetNetworkConfig, callInfo)
+	mock.lockGetNetworkConfig.Unlock()
+	return mock.GetNetworkConfigFunc(ctx, server)
+}
+
+// GetNetworkConfigCalls gets all the calls that were made to GetNetworkConfig.
+// Check the length with:
+//
+//	len(mockedServerClientPort.GetNetworkConfigCalls())
+func (mock *ServerClientPortMock) GetNetworkConfigCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockGetNetworkConfig.RLock()
+	calls = mock.calls.GetNetworkConfig
+	mock.lockGetNetworkConfig.RUnlock()
 	return calls
 }
 
@@ -439,6 +619,114 @@ func (mock *ServerClientPortMock) GetServerTypeCalls() []struct {
 	mock.lockGetServerType.RLock()
 	calls = mock.calls.GetServerType
 	mock.lockGetServerType.RUnlock()
+	return calls
+}
+
+// GetStorageConfig calls GetStorageConfigFunc.
+func (mock *ServerClientPortMock) GetStorageConfig(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemStorage, error) {
+	if mock.GetStorageConfigFunc == nil {
+		panic("ServerClientPortMock.GetStorageConfigFunc: method is nil but ServerClientPort.GetStorageConfig was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockGetStorageConfig.Lock()
+	mock.calls.GetStorageConfig = append(mock.calls.GetStorageConfig, callInfo)
+	mock.lockGetStorageConfig.Unlock()
+	return mock.GetStorageConfigFunc(ctx, server)
+}
+
+// GetStorageConfigCalls gets all the calls that were made to GetStorageConfig.
+// Check the length with:
+//
+//	len(mockedServerClientPort.GetStorageConfigCalls())
+func (mock *ServerClientPortMock) GetStorageConfigCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockGetStorageConfig.RLock()
+	calls = mock.calls.GetStorageConfig
+	mock.lockGetStorageConfig.RUnlock()
+	return calls
+}
+
+// GetSystemKernel calls GetSystemKernelFunc.
+func (mock *ServerClientPortMock) GetSystemKernel(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemKernel, error) {
+	if mock.GetSystemKernelFunc == nil {
+		panic("ServerClientPortMock.GetSystemKernelFunc: method is nil but ServerClientPort.GetSystemKernel was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockGetSystemKernel.Lock()
+	mock.calls.GetSystemKernel = append(mock.calls.GetSystemKernel, callInfo)
+	mock.lockGetSystemKernel.Unlock()
+	return mock.GetSystemKernelFunc(ctx, server)
+}
+
+// GetSystemKernelCalls gets all the calls that were made to GetSystemKernel.
+// Check the length with:
+//
+//	len(mockedServerClientPort.GetSystemKernelCalls())
+func (mock *ServerClientPortMock) GetSystemKernelCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockGetSystemKernel.RLock()
+	calls = mock.calls.GetSystemKernel
+	mock.lockGetSystemKernel.RUnlock()
+	return calls
+}
+
+// GetSystemLogging calls GetSystemLoggingFunc.
+func (mock *ServerClientPortMock) GetSystemLogging(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemLogging, error) {
+	if mock.GetSystemLoggingFunc == nil {
+		panic("ServerClientPortMock.GetSystemLoggingFunc: method is nil but ServerClientPort.GetSystemLogging was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockGetSystemLogging.Lock()
+	mock.calls.GetSystemLogging = append(mock.calls.GetSystemLogging, callInfo)
+	mock.lockGetSystemLogging.Unlock()
+	return mock.GetSystemLoggingFunc(ctx, server)
+}
+
+// GetSystemLoggingCalls gets all the calls that were made to GetSystemLogging.
+// Check the length with:
+//
+//	len(mockedServerClientPort.GetSystemLoggingCalls())
+func (mock *ServerClientPortMock) GetSystemLoggingCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockGetSystemLogging.RLock()
+	calls = mock.calls.GetSystemLogging
+	mock.lockGetSystemLogging.RUnlock()
 	return calls
 }
 
@@ -803,6 +1091,86 @@ func (mock *ServerClientPortMock) UpdateStorageConfigCalls() []struct {
 	mock.lockUpdateStorageConfig.RLock()
 	calls = mock.calls.UpdateStorageConfig
 	mock.lockUpdateStorageConfig.RUnlock()
+	return calls
+}
+
+// UpdateSystemKernel calls UpdateSystemKernelFunc.
+func (mock *ServerClientPortMock) UpdateSystemKernel(ctx context.Context, server provisioning.Server, config provisioning.ServerSystemKernel) error {
+	if mock.UpdateSystemKernelFunc == nil {
+		panic("ServerClientPortMock.UpdateSystemKernelFunc: method is nil but ServerClientPort.UpdateSystemKernel was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Config provisioning.ServerSystemKernel
+	}{
+		Ctx:    ctx,
+		Server: server,
+		Config: config,
+	}
+	mock.lockUpdateSystemKernel.Lock()
+	mock.calls.UpdateSystemKernel = append(mock.calls.UpdateSystemKernel, callInfo)
+	mock.lockUpdateSystemKernel.Unlock()
+	return mock.UpdateSystemKernelFunc(ctx, server, config)
+}
+
+// UpdateSystemKernelCalls gets all the calls that were made to UpdateSystemKernel.
+// Check the length with:
+//
+//	len(mockedServerClientPort.UpdateSystemKernelCalls())
+func (mock *ServerClientPortMock) UpdateSystemKernelCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+	Config provisioning.ServerSystemKernel
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Config provisioning.ServerSystemKernel
+	}
+	mock.lockUpdateSystemKernel.RLock()
+	calls = mock.calls.UpdateSystemKernel
+	mock.lockUpdateSystemKernel.RUnlock()
+	return calls
+}
+
+// UpdateSystemLogging calls UpdateSystemLoggingFunc.
+func (mock *ServerClientPortMock) UpdateSystemLogging(ctx context.Context, server provisioning.Server, config provisioning.ServerSystemLogging) error {
+	if mock.UpdateSystemLoggingFunc == nil {
+		panic("ServerClientPortMock.UpdateSystemLoggingFunc: method is nil but ServerClientPort.UpdateSystemLogging was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Config provisioning.ServerSystemLogging
+	}{
+		Ctx:    ctx,
+		Server: server,
+		Config: config,
+	}
+	mock.lockUpdateSystemLogging.Lock()
+	mock.calls.UpdateSystemLogging = append(mock.calls.UpdateSystemLogging, callInfo)
+	mock.lockUpdateSystemLogging.Unlock()
+	return mock.UpdateSystemLoggingFunc(ctx, server, config)
+}
+
+// UpdateSystemLoggingCalls gets all the calls that were made to UpdateSystemLogging.
+// Check the length with:
+//
+//	len(mockedServerClientPort.UpdateSystemLoggingCalls())
+func (mock *ServerClientPortMock) UpdateSystemLoggingCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+	Config provisioning.ServerSystemLogging
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Config provisioning.ServerSystemLogging
+	}
+	mock.lockUpdateSystemLogging.RLock()
+	calls = mock.calls.UpdateSystemLogging
+	mock.lockUpdateSystemLogging.RUnlock()
 	return calls
 }
 
