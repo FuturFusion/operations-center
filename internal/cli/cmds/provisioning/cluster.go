@@ -2,6 +2,7 @@ package provisioning
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -101,6 +102,13 @@ func (c *CmdCluster) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(clusterUpdateCertificateCmd.Command())
+
+	// Bulk update
+	clusterBulkUpdateCmd := cmdClusterBulkUpdate{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(clusterBulkUpdateCmd.Command())
 
 	// artifact sub-command
 	clusterArtifactCmd := cmdClusterArtifact{
@@ -707,6 +715,68 @@ func (c *cmdClusterUpdateCertificate) run(cmd *cobra.Command, args []string) err
 		ClusterCertificate:    string(certificatePEM),
 		ClusterCertificateKey: string(certificateKeyPEM),
 	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Bulk update cluster.
+type cmdClusterBulkUpdate struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdClusterBulkUpdate) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "bulk-update <name> <bulk-request.json>"
+	cmd.Short = "Update cluster certificate"
+	cmd.Long = `Description:
+  Bulk update for a cluster. Provide the request through a file or through stdin.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdClusterBulkUpdate) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 2)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdClusterBulkUpdate) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	var err error
+	bulkUpdateRequestReader := os.Stdin
+
+	if len(args) > 1 {
+		bulkUpdateRequestFile := args[1]
+
+		bulkUpdateRequestReader, err = os.Open(bulkUpdateRequestFile)
+		if err != nil {
+			return fmt.Errorf("Failed to read file %q: %w", bulkUpdateRequestFile, err)
+		}
+
+		defer func() {
+			_ = bulkUpdateRequestReader.Close()
+		}()
+	}
+
+	var bulkUpdateRequest api.ClusterBulkUpdatePost
+	err = json.NewDecoder(bulkUpdateRequestReader).Decode(&bulkUpdateRequest)
+	if err != nil {
+		return fmt.Errorf("Failed to decode bulk update request: %w", err)
+	}
+
+	err = c.ocClient.BulkUpdateCluster(cmd.Context(), name, bulkUpdateRequest)
 	if err != nil {
 		return err
 	}
