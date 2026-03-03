@@ -166,6 +166,20 @@ func (_d ServerServiceWithPrometheus) GetByName(ctx context.Context, name string
 	return _d.base.GetByName(ctx, name)
 }
 
+// GetSystemLogging implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) GetSystemLogging(ctx context.Context, name string) (v provisioning.ServerSystemLogging, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetSystemLogging", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetSystemLogging(ctx, name)
+}
+
 // GetSystemProvider implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) GetSystemProvider(ctx context.Context, name string) (v provisioning.ServerSystemProvider, err error) {
 	_since := time.Now()
@@ -384,6 +398,20 @@ func (_d ServerServiceWithPrometheus) UpdateSystemByName(ctx context.Context, na
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSystemByName", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.UpdateSystemByName(ctx, name, updateRequest)
+}
+
+// UpdateSystemLogging implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) UpdateSystemLogging(ctx context.Context, name string, loggingConfig provisioning.ServerSystemLogging) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSystemLogging", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateSystemLogging(ctx, name, loggingConfig)
 }
 
 // UpdateSystemNetwork implements provisioning.ServerService.

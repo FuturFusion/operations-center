@@ -93,6 +93,9 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			UpdateCertificateFunc: func(ctx context.Context, name string, certificatePEM string, keyPEM string) error {
 //				panic("mock out the UpdateCertificate method")
 //			},
+//			UpdateSystemLoggingFunc: func(ctx context.Context, clusterName string, loggingConfig provisioning.ServerSystemLogging) error {
+//				panic("mock out the UpdateSystemLogging method")
+//			},
 //		}
 //
 //		// use mockedClusterService in code that requires provisioning.ClusterService
@@ -168,6 +171,9 @@ type ClusterServiceMock struct {
 
 	// UpdateCertificateFunc mocks the UpdateCertificate method.
 	UpdateCertificateFunc func(ctx context.Context, name string, certificatePEM string, keyPEM string) error
+
+	// UpdateSystemLoggingFunc mocks the UpdateSystemLogging method.
+	UpdateSystemLoggingFunc func(ctx context.Context, clusterName string, loggingConfig provisioning.ServerSystemLogging) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -348,6 +354,15 @@ type ClusterServiceMock struct {
 			// KeyPEM is the keyPEM argument value.
 			KeyPEM string
 		}
+		// UpdateSystemLogging holds details about calls to the UpdateSystemLogging method.
+		UpdateSystemLogging []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// LoggingConfig is the loggingConfig argument value.
+			LoggingConfig provisioning.ServerSystemLogging
+		}
 	}
 	lockAddServerSystemNetworkVLAN      sync.RWMutex
 	lockCreate                          sync.RWMutex
@@ -372,6 +387,7 @@ type ClusterServiceMock struct {
 	lockStartLifecycleEventsMonitor     sync.RWMutex
 	lockUpdate                          sync.RWMutex
 	lockUpdateCertificate               sync.RWMutex
+	lockUpdateSystemLogging             sync.RWMutex
 }
 
 // AddServerSystemNetworkVLAN calls AddServerSystemNetworkVLANFunc.
@@ -1231,5 +1247,45 @@ func (mock *ClusterServiceMock) UpdateCertificateCalls() []struct {
 	mock.lockUpdateCertificate.RLock()
 	calls = mock.calls.UpdateCertificate
 	mock.lockUpdateCertificate.RUnlock()
+	return calls
+}
+
+// UpdateSystemLogging calls UpdateSystemLoggingFunc.
+func (mock *ClusterServiceMock) UpdateSystemLogging(ctx context.Context, clusterName string, loggingConfig provisioning.ServerSystemLogging) error {
+	if mock.UpdateSystemLoggingFunc == nil {
+		panic("ClusterServiceMock.UpdateSystemLoggingFunc: method is nil but ClusterService.UpdateSystemLogging was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ClusterName   string
+		LoggingConfig provisioning.ServerSystemLogging
+	}{
+		Ctx:           ctx,
+		ClusterName:   clusterName,
+		LoggingConfig: loggingConfig,
+	}
+	mock.lockUpdateSystemLogging.Lock()
+	mock.calls.UpdateSystemLogging = append(mock.calls.UpdateSystemLogging, callInfo)
+	mock.lockUpdateSystemLogging.Unlock()
+	return mock.UpdateSystemLoggingFunc(ctx, clusterName, loggingConfig)
+}
+
+// UpdateSystemLoggingCalls gets all the calls that were made to UpdateSystemLogging.
+// Check the length with:
+//
+//	len(mockedClusterService.UpdateSystemLoggingCalls())
+func (mock *ClusterServiceMock) UpdateSystemLoggingCalls() []struct {
+	Ctx           context.Context
+	ClusterName   string
+	LoggingConfig provisioning.ServerSystemLogging
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ClusterName   string
+		LoggingConfig provisioning.ServerSystemLogging
+	}
+	mock.lockUpdateSystemLogging.RLock()
+	calls = mock.calls.UpdateSystemLogging
+	mock.lockUpdateSystemLogging.RUnlock()
 	return calls
 }

@@ -828,3 +828,38 @@ func (_d ClusterServiceWithSlog) UpdateCertificate(ctx context.Context, name str
 	}()
 	return _d._base.UpdateCertificate(ctx, name, certificatePEM, keyPEM)
 }
+
+// UpdateSystemLogging implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) UpdateSystemLogging(ctx context.Context, clusterName string, loggingConfig provisioning.ServerSystemLogging) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.Any("loggingConfig", loggingConfig),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateSystemLogging")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateSystemLogging returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateSystemLogging returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateSystemLogging finished")
+		}
+	}()
+	return _d._base.UpdateSystemLogging(ctx, clusterName, loggingConfig)
+}

@@ -357,3 +357,17 @@ func (_d ClusterServiceWithPrometheus) UpdateCertificate(ctx context.Context, na
 	}()
 	return _d.base.UpdateCertificate(ctx, name, certificatePEM, keyPEM)
 }
+
+// UpdateSystemLogging implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) UpdateSystemLogging(ctx context.Context, clusterName string, loggingConfig provisioning.ServerSystemLogging) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSystemLogging", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateSystemLogging(ctx, clusterName, loggingConfig)
+}
