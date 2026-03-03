@@ -67,7 +67,7 @@ type InventorySyncer interface {
 
 type ClusterClientPort interface {
 	Ping(ctx context.Context, endpoint Endpoint) error
-	EnableOSService(ctx context.Context, server Server, name string, config map[string]any) error
+	UpdateOSService(ctx context.Context, server Server, name string, config any) error
 	SetServerConfig(ctx context.Context, endpoint Endpoint, config map[string]string) error
 	EnableCluster(ctx context.Context, server Server) (clusterCertificate string, _ error)
 	GetClusterNodeNames(ctx context.Context, endpoint Endpoint) (nodeNames []string, _ error)

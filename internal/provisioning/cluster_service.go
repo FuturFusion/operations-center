@@ -242,7 +242,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 				}
 			}
 
-			err = s.client.EnableOSService(ctx, server, service, cfg)
+			err = s.client.UpdateOSService(ctx, server, service, cfg)
 			if err != nil {
 				return newCluster, fmt.Errorf("Failed to enable OS service %q on %q: %w", service, server.Name, err)
 			}

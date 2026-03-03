@@ -46,7 +46,7 @@ func TestClusterService_Create(t *testing.T) {
 		repoUpdateErr                                     error
 		localArtifactRepoCreateClusterArtifactFromPathErr error
 		clientPingErr                                     error
-		clientEnableOSServiceErr                          error
+		clientUpdateOSServiceErr                          error
 		clientSetServerConfig                             []queue.Item[struct{}]
 		clientEnableClusterCertificate                    string
 		clientEnableClusterErr                            error
@@ -489,7 +489,7 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - client.EnableOSService",
+			name: "error - client.UpdateOSService",
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -518,7 +518,7 @@ func TestClusterService_Create(t *testing.T) {
 					},
 				},
 			},
-			clientEnableOSServiceErr: boom.Error,
+			clientUpdateOSServiceErr: boom.Error,
 
 			assertErr:     boom.ErrorIs,
 			signalHandler: requireNoCallSignalHandler,
@@ -1527,8 +1527,8 @@ func TestClusterService_Create(t *testing.T) {
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					return tc.clientPingErr
 				},
-				EnableOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config map[string]any) error {
-					return tc.clientEnableOSServiceErr
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					return tc.clientUpdateOSServiceErr
 				},
 				SetServerConfigFunc: func(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) error {
 					_, err := queue.Pop(t, &tc.clientSetServerConfig)
