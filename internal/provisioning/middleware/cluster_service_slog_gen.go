@@ -829,6 +829,41 @@ func (_d ClusterServiceWithSlog) UpdateCertificate(ctx context.Context, name str
 	return _d._base.UpdateCertificate(ctx, name, certificatePEM, keyPEM)
 }
 
+// UpdateSystemKernel implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) UpdateSystemKernel(ctx context.Context, clusterName string, kerneConfig provisioning.ServerSystemKernel) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.Any("kerneConfig", kerneConfig),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateSystemKernel")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateSystemKernel returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateSystemKernel returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateSystemKernel finished")
+		}
+	}()
+	return _d._base.UpdateSystemKernel(ctx, clusterName, kerneConfig)
+}
+
 // UpdateSystemLogging implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) UpdateSystemLogging(ctx context.Context, clusterName string, loggingConfig provisioning.ServerSystemLogging) (err error) {
 	log := slog.With()

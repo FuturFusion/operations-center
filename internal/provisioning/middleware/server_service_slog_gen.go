@@ -354,6 +354,41 @@ func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (ser
 	return _d._base.GetByName(ctx, name)
 }
 
+// GetSystemKernel implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) GetSystemKernel(ctx context.Context, name string) (v provisioning.ServerSystemKernel, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetSystemKernel")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("v", v),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetSystemKernel returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetSystemKernel returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetSystemKernel finished")
+		}
+	}()
+	return _d._base.GetSystemKernel(ctx, name)
+}
+
 // GetSystemLogging implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetSystemLogging(ctx context.Context, name string) (v provisioning.ServerSystemLogging, err error) {
 	log := slog.With()
@@ -923,6 +958,41 @@ func (_d ServerServiceWithSlog) UpdateSystemByName(ctx context.Context, name str
 		}
 	}()
 	return _d._base.UpdateSystemByName(ctx, name, updateRequest)
+}
+
+// UpdateSystemKernel implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) UpdateSystemKernel(ctx context.Context, name string, kernelConfig provisioning.ServerSystemKernel) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Any("kernelConfig", kernelConfig),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateSystemKernel")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateSystemKernel returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateSystemKernel returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateSystemKernel finished")
+		}
+	}()
+	return _d._base.UpdateSystemKernel(ctx, name, kernelConfig)
 }
 
 // UpdateSystemLogging implements provisioning.ServerService.

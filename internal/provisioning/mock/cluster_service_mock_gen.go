@@ -93,6 +93,9 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			UpdateCertificateFunc: func(ctx context.Context, name string, certificatePEM string, keyPEM string) error {
 //				panic("mock out the UpdateCertificate method")
 //			},
+//			UpdateSystemKernelFunc: func(ctx context.Context, clusterName string, kerneConfig provisioning.ServerSystemKernel) error {
+//				panic("mock out the UpdateSystemKernel method")
+//			},
 //			UpdateSystemLoggingFunc: func(ctx context.Context, clusterName string, loggingConfig provisioning.ServerSystemLogging) error {
 //				panic("mock out the UpdateSystemLogging method")
 //			},
@@ -171,6 +174,9 @@ type ClusterServiceMock struct {
 
 	// UpdateCertificateFunc mocks the UpdateCertificate method.
 	UpdateCertificateFunc func(ctx context.Context, name string, certificatePEM string, keyPEM string) error
+
+	// UpdateSystemKernelFunc mocks the UpdateSystemKernel method.
+	UpdateSystemKernelFunc func(ctx context.Context, clusterName string, kerneConfig provisioning.ServerSystemKernel) error
 
 	// UpdateSystemLoggingFunc mocks the UpdateSystemLogging method.
 	UpdateSystemLoggingFunc func(ctx context.Context, clusterName string, loggingConfig provisioning.ServerSystemLogging) error
@@ -354,6 +360,15 @@ type ClusterServiceMock struct {
 			// KeyPEM is the keyPEM argument value.
 			KeyPEM string
 		}
+		// UpdateSystemKernel holds details about calls to the UpdateSystemKernel method.
+		UpdateSystemKernel []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// KerneConfig is the kerneConfig argument value.
+			KerneConfig provisioning.ServerSystemKernel
+		}
 		// UpdateSystemLogging holds details about calls to the UpdateSystemLogging method.
 		UpdateSystemLogging []struct {
 			// Ctx is the ctx argument value.
@@ -387,6 +402,7 @@ type ClusterServiceMock struct {
 	lockStartLifecycleEventsMonitor     sync.RWMutex
 	lockUpdate                          sync.RWMutex
 	lockUpdateCertificate               sync.RWMutex
+	lockUpdateSystemKernel              sync.RWMutex
 	lockUpdateSystemLogging             sync.RWMutex
 }
 
@@ -1247,6 +1263,46 @@ func (mock *ClusterServiceMock) UpdateCertificateCalls() []struct {
 	mock.lockUpdateCertificate.RLock()
 	calls = mock.calls.UpdateCertificate
 	mock.lockUpdateCertificate.RUnlock()
+	return calls
+}
+
+// UpdateSystemKernel calls UpdateSystemKernelFunc.
+func (mock *ClusterServiceMock) UpdateSystemKernel(ctx context.Context, clusterName string, kerneConfig provisioning.ServerSystemKernel) error {
+	if mock.UpdateSystemKernelFunc == nil {
+		panic("ClusterServiceMock.UpdateSystemKernelFunc: method is nil but ClusterService.UpdateSystemKernel was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ClusterName string
+		KerneConfig provisioning.ServerSystemKernel
+	}{
+		Ctx:         ctx,
+		ClusterName: clusterName,
+		KerneConfig: kerneConfig,
+	}
+	mock.lockUpdateSystemKernel.Lock()
+	mock.calls.UpdateSystemKernel = append(mock.calls.UpdateSystemKernel, callInfo)
+	mock.lockUpdateSystemKernel.Unlock()
+	return mock.UpdateSystemKernelFunc(ctx, clusterName, kerneConfig)
+}
+
+// UpdateSystemKernelCalls gets all the calls that were made to UpdateSystemKernel.
+// Check the length with:
+//
+//	len(mockedClusterService.UpdateSystemKernelCalls())
+func (mock *ClusterServiceMock) UpdateSystemKernelCalls() []struct {
+	Ctx         context.Context
+	ClusterName string
+	KerneConfig provisioning.ServerSystemKernel
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ClusterName string
+		KerneConfig provisioning.ServerSystemKernel
+	}
+	mock.lockUpdateSystemKernel.RLock()
+	calls = mock.calls.UpdateSystemKernel
+	mock.lockUpdateSystemKernel.RUnlock()
 	return calls
 }
 

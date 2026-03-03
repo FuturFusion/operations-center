@@ -51,6 +51,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 //				panic("mock out the GetByName method")
 //			},
+//			GetSystemKernelFunc: func(ctx context.Context, name string) (provisioning.ServerSystemKernel, error) {
+//				panic("mock out the GetSystemKernel method")
+//			},
 //			GetSystemLoggingFunc: func(ctx context.Context, name string) (provisioning.ServerSystemLogging, error) {
 //				panic("mock out the GetSystemLogging method")
 //			},
@@ -102,6 +105,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			UpdateSystemByNameFunc: func(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error {
 //				panic("mock out the UpdateSystemByName method")
 //			},
+//			UpdateSystemKernelFunc: func(ctx context.Context, name string, kernelConfig provisioning.ServerSystemKernel) error {
+//				panic("mock out the UpdateSystemKernel method")
+//			},
 //			UpdateSystemLoggingFunc: func(ctx context.Context, name string, loggingConfig provisioning.ServerSystemLogging) error {
 //				panic("mock out the UpdateSystemLogging method")
 //			},
@@ -150,6 +156,9 @@ type ServerServiceMock struct {
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Server, error)
+
+	// GetSystemKernelFunc mocks the GetSystemKernel method.
+	GetSystemKernelFunc func(ctx context.Context, name string) (provisioning.ServerSystemKernel, error)
 
 	// GetSystemLoggingFunc mocks the GetSystemLogging method.
 	GetSystemLoggingFunc func(ctx context.Context, name string) (provisioning.ServerSystemLogging, error)
@@ -201,6 +210,9 @@ type ServerServiceMock struct {
 
 	// UpdateSystemByNameFunc mocks the UpdateSystemByName method.
 	UpdateSystemByNameFunc func(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error
+
+	// UpdateSystemKernelFunc mocks the UpdateSystemKernel method.
+	UpdateSystemKernelFunc func(ctx context.Context, name string, kernelConfig provisioning.ServerSystemKernel) error
 
 	// UpdateSystemLoggingFunc mocks the UpdateSystemLogging method.
 	UpdateSystemLoggingFunc func(ctx context.Context, name string, loggingConfig provisioning.ServerSystemLogging) error
@@ -277,6 +289,13 @@ type ServerServiceMock struct {
 		}
 		// GetByName holds details about calls to the GetByName method.
 		GetByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
+		// GetSystemKernel holds details about calls to the GetSystemKernel method.
+		GetSystemKernel []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Name is the name argument value.
@@ -413,6 +432,15 @@ type ServerServiceMock struct {
 			// UpdateRequest is the updateRequest argument value.
 			UpdateRequest api.ServerUpdatePost
 		}
+		// UpdateSystemKernel holds details about calls to the UpdateSystemKernel method.
+		UpdateSystemKernel []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// KernelConfig is the kernelConfig argument value.
+			KernelConfig provisioning.ServerSystemKernel
+		}
 		// UpdateSystemLogging holds details about calls to the UpdateSystemLogging method.
 		UpdateSystemLogging []struct {
 			// Ctx is the ctx argument value.
@@ -468,6 +496,7 @@ type ServerServiceMock struct {
 	lockGetAllNamesWithFilter        sync.RWMutex
 	lockGetAllWithFilter             sync.RWMutex
 	lockGetByName                    sync.RWMutex
+	lockGetSystemKernel              sync.RWMutex
 	lockGetSystemLogging             sync.RWMutex
 	lockGetSystemProvider            sync.RWMutex
 	lockGetSystemUpdate              sync.RWMutex
@@ -485,6 +514,7 @@ type ServerServiceMock struct {
 	lockSyncCluster                  sync.RWMutex
 	lockUpdate                       sync.RWMutex
 	lockUpdateSystemByName           sync.RWMutex
+	lockUpdateSystemKernel           sync.RWMutex
 	lockUpdateSystemLogging          sync.RWMutex
 	lockUpdateSystemNetwork          sync.RWMutex
 	lockUpdateSystemProvider         sync.RWMutex
@@ -813,6 +843,42 @@ func (mock *ServerServiceMock) GetByNameCalls() []struct {
 	mock.lockGetByName.RLock()
 	calls = mock.calls.GetByName
 	mock.lockGetByName.RUnlock()
+	return calls
+}
+
+// GetSystemKernel calls GetSystemKernelFunc.
+func (mock *ServerServiceMock) GetSystemKernel(ctx context.Context, name string) (provisioning.ServerSystemKernel, error) {
+	if mock.GetSystemKernelFunc == nil {
+		panic("ServerServiceMock.GetSystemKernelFunc: method is nil but ServerService.GetSystemKernel was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockGetSystemKernel.Lock()
+	mock.calls.GetSystemKernel = append(mock.calls.GetSystemKernel, callInfo)
+	mock.lockGetSystemKernel.Unlock()
+	return mock.GetSystemKernelFunc(ctx, name)
+}
+
+// GetSystemKernelCalls gets all the calls that were made to GetSystemKernel.
+// Check the length with:
+//
+//	len(mockedServerService.GetSystemKernelCalls())
+func (mock *ServerServiceMock) GetSystemKernelCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockGetSystemKernel.RLock()
+	calls = mock.calls.GetSystemKernel
+	mock.lockGetSystemKernel.RUnlock()
 	return calls
 }
 
@@ -1449,6 +1515,46 @@ func (mock *ServerServiceMock) UpdateSystemByNameCalls() []struct {
 	mock.lockUpdateSystemByName.RLock()
 	calls = mock.calls.UpdateSystemByName
 	mock.lockUpdateSystemByName.RUnlock()
+	return calls
+}
+
+// UpdateSystemKernel calls UpdateSystemKernelFunc.
+func (mock *ServerServiceMock) UpdateSystemKernel(ctx context.Context, name string, kernelConfig provisioning.ServerSystemKernel) error {
+	if mock.UpdateSystemKernelFunc == nil {
+		panic("ServerServiceMock.UpdateSystemKernelFunc: method is nil but ServerService.UpdateSystemKernel was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		Name         string
+		KernelConfig provisioning.ServerSystemKernel
+	}{
+		Ctx:          ctx,
+		Name:         name,
+		KernelConfig: kernelConfig,
+	}
+	mock.lockUpdateSystemKernel.Lock()
+	mock.calls.UpdateSystemKernel = append(mock.calls.UpdateSystemKernel, callInfo)
+	mock.lockUpdateSystemKernel.Unlock()
+	return mock.UpdateSystemKernelFunc(ctx, name, kernelConfig)
+}
+
+// UpdateSystemKernelCalls gets all the calls that were made to UpdateSystemKernel.
+// Check the length with:
+//
+//	len(mockedServerService.UpdateSystemKernelCalls())
+func (mock *ServerServiceMock) UpdateSystemKernelCalls() []struct {
+	Ctx          context.Context
+	Name         string
+	KernelConfig provisioning.ServerSystemKernel
+} {
+	var calls []struct {
+		Ctx          context.Context
+		Name         string
+		KernelConfig provisioning.ServerSystemKernel
+	}
+	mock.lockUpdateSystemKernel.RLock()
+	calls = mock.calls.UpdateSystemKernel
+	mock.lockUpdateSystemKernel.RUnlock()
 	return calls
 }
 

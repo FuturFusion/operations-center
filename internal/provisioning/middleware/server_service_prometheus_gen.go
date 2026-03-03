@@ -166,6 +166,20 @@ func (_d ServerServiceWithPrometheus) GetByName(ctx context.Context, name string
 	return _d.base.GetByName(ctx, name)
 }
 
+// GetSystemKernel implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) GetSystemKernel(ctx context.Context, name string) (v provisioning.ServerSystemKernel, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetSystemKernel", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetSystemKernel(ctx, name)
+}
+
 // GetSystemLogging implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) GetSystemLogging(ctx context.Context, name string) (v provisioning.ServerSystemLogging, err error) {
 	_since := time.Now()
@@ -398,6 +412,20 @@ func (_d ServerServiceWithPrometheus) UpdateSystemByName(ctx context.Context, na
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSystemByName", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.UpdateSystemByName(ctx, name, updateRequest)
+}
+
+// UpdateSystemKernel implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) UpdateSystemKernel(ctx context.Context, name string, kernelConfig provisioning.ServerSystemKernel) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSystemKernel", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateSystemKernel(ctx, name, kernelConfig)
 }
 
 // UpdateSystemLogging implements provisioning.ServerService.
