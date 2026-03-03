@@ -607,6 +607,15 @@ func (c *clusterHandler) clusterBulkUpdatePost(r *http.Request) response.Respons
 		}
 
 		err = c.service.RemoveServerSystemNetworkVLAN(ctx, name, removeVLAN.Name)
+
+	case api.ClusterBulkUpdateActionUpdateSystemLogging:
+		var loggingConfig provisioning.ServerSystemLogging
+		err = json.Unmarshal(*request.Arguments, &loggingConfig)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.UpdateSystemLogging(ctx, name, loggingConfig)
 	}
 
 	if err != nil {
