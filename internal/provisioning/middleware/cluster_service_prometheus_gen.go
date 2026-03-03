@@ -250,6 +250,20 @@ func (_d ClusterServiceWithPrometheus) GetEndpoint(ctx context.Context, name str
 	return _d.base.GetEndpoint(ctx, name)
 }
 
+// RemoveServerSystemNetworkVLAN implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) RemoveServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlanName string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveServerSystemNetworkVLAN", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RemoveServerSystemNetworkVLAN(ctx, clusterName, vlanName)
+}
+
 // Rename implements provisioning.ClusterService.
 func (_d ClusterServiceWithPrometheus) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	_since := time.Now()

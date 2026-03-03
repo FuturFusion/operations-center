@@ -69,6 +69,9 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
 //				panic("mock out the GetEndpoint method")
 //			},
+//			RemoveServerSystemNetworkVLANFunc: func(ctx context.Context, clusterName string, vlanName string) error {
+//				panic("mock out the RemoveServerSystemNetworkVLAN method")
+//			},
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
@@ -141,6 +144,9 @@ type ClusterServiceMock struct {
 
 	// GetEndpointFunc mocks the GetEndpoint method.
 	GetEndpointFunc func(ctx context.Context, name string) (provisioning.Endpoint, error)
+
+	// RemoveServerSystemNetworkVLANFunc mocks the RemoveServerSystemNetworkVLAN method.
+	RemoveServerSystemNetworkVLANFunc func(ctx context.Context, clusterName string, vlanName string) error
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
@@ -284,6 +290,15 @@ type ClusterServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// RemoveServerSystemNetworkVLAN holds details about calls to the RemoveServerSystemNetworkVLAN method.
+		RemoveServerSystemNetworkVLAN []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// VlanName is the vlanName argument value.
+			VlanName string
+		}
 		// Rename holds details about calls to the Rename method.
 		Rename []struct {
 			// Ctx is the ctx argument value.
@@ -349,6 +364,7 @@ type ClusterServiceMock struct {
 	lockGetClusterArtifactByName        sync.RWMutex
 	lockGetClusterArtifactFileByName    sync.RWMutex
 	lockGetEndpoint                     sync.RWMutex
+	lockRemoveServerSystemNetworkVLAN   sync.RWMutex
 	lockRename                          sync.RWMutex
 	lockResyncInventory                 sync.RWMutex
 	lockResyncInventoryByName           sync.RWMutex
@@ -923,6 +939,46 @@ func (mock *ClusterServiceMock) GetEndpointCalls() []struct {
 	mock.lockGetEndpoint.RLock()
 	calls = mock.calls.GetEndpoint
 	mock.lockGetEndpoint.RUnlock()
+	return calls
+}
+
+// RemoveServerSystemNetworkVLAN calls RemoveServerSystemNetworkVLANFunc.
+func (mock *ClusterServiceMock) RemoveServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlanName string) error {
+	if mock.RemoveServerSystemNetworkVLANFunc == nil {
+		panic("ClusterServiceMock.RemoveServerSystemNetworkVLANFunc: method is nil but ClusterService.RemoveServerSystemNetworkVLAN was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ClusterName string
+		VlanName    string
+	}{
+		Ctx:         ctx,
+		ClusterName: clusterName,
+		VlanName:    vlanName,
+	}
+	mock.lockRemoveServerSystemNetworkVLAN.Lock()
+	mock.calls.RemoveServerSystemNetworkVLAN = append(mock.calls.RemoveServerSystemNetworkVLAN, callInfo)
+	mock.lockRemoveServerSystemNetworkVLAN.Unlock()
+	return mock.RemoveServerSystemNetworkVLANFunc(ctx, clusterName, vlanName)
+}
+
+// RemoveServerSystemNetworkVLANCalls gets all the calls that were made to RemoveServerSystemNetworkVLAN.
+// Check the length with:
+//
+//	len(mockedClusterService.RemoveServerSystemNetworkVLANCalls())
+func (mock *ClusterServiceMock) RemoveServerSystemNetworkVLANCalls() []struct {
+	Ctx         context.Context
+	ClusterName string
+	VlanName    string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ClusterName string
+		VlanName    string
+	}
+	mock.lockRemoveServerSystemNetworkVLAN.RLock()
+	calls = mock.calls.RemoveServerSystemNetworkVLAN
+	mock.lockRemoveServerSystemNetworkVLAN.RUnlock()
 	return calls
 }
 

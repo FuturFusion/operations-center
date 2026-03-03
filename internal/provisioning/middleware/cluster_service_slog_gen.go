@@ -572,6 +572,41 @@ func (_d ClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (
 	return _d._base.GetEndpoint(ctx, name)
 }
 
+// RemoveServerSystemNetworkVLAN implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) RemoveServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlanName string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.String("vlanName", vlanName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RemoveServerSystemNetworkVLAN")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method RemoveServerSystemNetworkVLAN returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method RemoveServerSystemNetworkVLAN returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method RemoveServerSystemNetworkVLAN finished")
+		}
+	}()
+	return _d._base.RemoveServerSystemNetworkVLAN(ctx, clusterName, vlanName)
+}
+
 // Rename implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	log := slog.With()
