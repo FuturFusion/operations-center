@@ -616,6 +616,15 @@ func (c *clusterHandler) clusterBulkUpdatePost(r *http.Request) response.Respons
 		}
 
 		err = c.service.UpdateSystemLogging(ctx, name, loggingConfig)
+
+	case api.ClusterBulkUpdateActionUpdateSystemKernel:
+		var kernelConfig provisioning.ServerSystemKernel
+		err = json.Unmarshal(*request.Arguments, &kernelConfig)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.UpdateSystemKernel(ctx, name, kernelConfig)
 	}
 
 	if err != nil {

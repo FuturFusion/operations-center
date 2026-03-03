@@ -215,6 +215,7 @@ const (
 	ClusterBulkUpdateActionAddSystemNetworkVLAN    ClusterBulkUpdateAction = "add_system_network_vlan"
 	ClusterBulkUpdateActionRemoveSystemNetworkVLAN ClusterBulkUpdateAction = "remove_system_network_vlan"
 	ClusterBulkUpdateActionUpdateSystemLogging     ClusterBulkUpdateAction = "update_system_logging"
+	ClusterBulkUpdateActionUpdateSystemKernel      ClusterBulkUpdateAction = "update_system_kernel"
 )
 
 // ClusterBulkUpdatePost represents a cluster bulk update request containing
