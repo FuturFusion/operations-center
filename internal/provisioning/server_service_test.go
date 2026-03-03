@@ -4492,6 +4492,348 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 	}
 }
 
+func TestServerService_AddSystemNetworkVLAN(t *testing.T) {
+	tests := []struct {
+		name                         string
+		argName                      string
+		argVLANConfig                provisioning.ServerSystemNetworkVLAN
+		repoGetByName                *provisioning.Server
+		repoGetByNameErr             error
+		clientGetNetworkConfig       provisioning.ServerSystemNetwork
+		clientGetNetworkConfigErr    error
+		clientUpdateNetworkConfigErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:    "success - no pre-existing VLANs",
+			argName: "one",
+			argVLANConfig: incusosapi.SystemNetworkVLAN{
+				ID:   1,
+				Name: "first",
+			},
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "success - with VLANs",
+			argName: "one",
+			argVLANConfig: incusosapi.SystemNetworkVLAN{
+				ID:   2,
+				Name: "second",
+			},
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+				OSData: api.OSData{
+					Network: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							VLANs: []incusosapi.SystemNetworkVLAN{
+								{
+									ID:   1,
+									Name: "one",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: incusosapi.SystemNetwork{
+				Config: &incusosapi.SystemNetworkConfig{
+					VLANs: []incusosapi.SystemNetworkVLAN{
+						{
+							ID:   1,
+							Name: "one",
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "error - GetByName",
+			argName: "",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+			},
+		},
+		{
+			name:    "error - client.GetNetworkConfig",
+			argName: "one",
+			argVLANConfig: incusosapi.SystemNetworkVLAN{
+				ID:   1,
+				Name: "first",
+			},
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+			},
+			clientGetNetworkConfigErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - existing VLAN - same ID",
+			argName: "one",
+			argVLANConfig: incusosapi.SystemNetworkVLAN{
+				ID:   1,
+				Name: "second",
+			},
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+				OSData: api.OSData{
+					Network: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							VLANs: []incusosapi.SystemNetworkVLAN{
+								{
+									ID:   1,
+									Name: "one",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: incusosapi.SystemNetwork{
+				Config: &incusosapi.SystemNetworkConfig{
+					VLANs: []incusosapi.SystemNetworkVLAN{
+						{
+							ID:   1,
+							Name: "one",
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, "already has VLAN with ID 1")
+			},
+		},
+		{
+			name:    "error - existing VLAN - same Name",
+			argName: "one",
+			argVLANConfig: incusosapi.SystemNetworkVLAN{
+				ID:   2,
+				Name: "one",
+			},
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+				OSData: api.OSData{
+					Network: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							VLANs: []incusosapi.SystemNetworkVLAN{
+								{
+									ID:   1,
+									Name: "one",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: incusosapi.SystemNetwork{
+				Config: &incusosapi.SystemNetworkConfig{
+					VLANs: []incusosapi.SystemNetworkVLAN{
+						{
+							ID:   1,
+							Name: "one",
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, `already has VLAN "one"`)
+			},
+		},
+		{
+			name:    "error - client.UpdateNetworkConfig",
+			argName: "one",
+			argVLANConfig: incusosapi.SystemNetworkVLAN{
+				ID:   1,
+				Name: "first",
+			},
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+			},
+			clientUpdateNetworkConfigErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				GetNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemNetwork, error) {
+					return tc.clientGetNetworkConfig, tc.clientGetNetworkConfigErr
+				},
+				UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.clientUpdateNetworkConfigErr
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, tls.Certificate{})
+
+			// Run test
+			err := serverSvc.AddSystemNetworkVLAN(t.Context(), tc.argName, tc.argVLANConfig)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestServerService_RemoveSystemNetworkVLAN(t *testing.T) {
+	tests := []struct {
+		name                         string
+		argName                      string
+		argVLANName                  string
+		repoGetByName                *provisioning.Server
+		repoGetByNameErr             error
+		clientGetNetworkConfig       provisioning.ServerSystemNetwork
+		clientGetNetworkConfigErr    error
+		clientUpdateNetworkConfigErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:        "success",
+			argName:     "one",
+			argVLANName: "first",
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+			},
+			clientGetNetworkConfig: incusosapi.SystemNetwork{
+				Config: &incusosapi.SystemNetworkConfig{
+					VLANs: []incusosapi.SystemNetworkVLAN{
+						{
+							Name: "first",
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "error - GetByName",
+			argName: "",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+			},
+		},
+		{
+			name:        "error - client.GetNetworkConfig",
+			argName:     "one",
+			argVLANName: "first",
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+			},
+			clientGetNetworkConfigErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:        "error - delete non existing VLAN",
+			argName:     "one",
+			argVLANName: "invalid",
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+			},
+			clientGetNetworkConfig: incusosapi.SystemNetwork{
+				Config: &incusosapi.SystemNetworkConfig{
+					VLANs: []incusosapi.SystemNetworkVLAN{
+						{
+							Name: "first",
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotFound)
+				require.ErrorContains(t, err, `Failed to remove vlan "invalid" from network config of server "one"`)
+			},
+		},
+		{
+			name:        "error - client.UpdateNetworkConfig",
+			argName:     "one",
+			argVLANName: "first",
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+			},
+			clientGetNetworkConfig: incusosapi.SystemNetwork{
+				Config: &incusosapi.SystemNetworkConfig{
+					VLANs: []incusosapi.SystemNetworkVLAN{
+						{
+							Name: "first",
+						},
+					},
+				},
+			},
+			clientUpdateNetworkConfigErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				GetNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemNetwork, error) {
+					return tc.clientGetNetworkConfig, tc.clientGetNetworkConfigErr
+				},
+				UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.clientUpdateNetworkConfigErr
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, tls.Certificate{})
+
+			// Run test
+			err := serverSvc.RemoveSystemNetworkVLAN(t.Context(), tc.argName, tc.argVLANName)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestServerService_SyncCluster(t *testing.T) {
 	s := provisioning.NewServerService(nil, nil, nil, nil, nil, nil, tls.Certificate{})
 	err := s.SyncCluster(t.Context(), "")

@@ -863,6 +863,7 @@ func (s *serverService) DeleteByName(ctx context.Context, name string) error {
 //   - Periodic connectivity test for all servers in the inventory.
 //   - Periodic connectivity test for all pending servers in the inventory.
 //   - Periodic update of server configuration data (network, security, resources)
+//   - Executed prior to cluster wide bulk operations to refresh the inventory and as connection test
 func (s *serverService) PollServers(ctx context.Context, serverFilter ServerFilter, updateServerConfiguration bool) error {
 	servers, err := s.repo.GetAllWithFilter(ctx, serverFilter)
 	if err != nil {
@@ -1056,6 +1057,79 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 	})
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (s *serverService) AddSystemNetworkVLAN(ctx context.Context, name string, vlanConfig ServerSystemNetworkVLAN) error {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	networkConfig, err := s.client.GetNetworkConfig(ctx, *server)
+	if err != nil {
+		return fmt.Errorf("Failed to get network config for server %q: %w", name, err)
+	}
+
+	if networkConfig.Config == nil {
+		networkConfig.Config = &incusosapi.SystemNetworkConfig{}
+	}
+
+	for _, vlan := range networkConfig.Config.VLANs {
+		if vlanConfig.ID == vlan.ID {
+			return domain.NewValidationErrf("Server %q (%s) already has VLAN with ID %d", server.Name, server.GetCertificate(), vlanConfig.ID)
+		}
+
+		if vlanConfig.Name == vlan.Name {
+			return domain.NewValidationErrf("Server %q (%s) already has VLAN %q", server.Name, server.GetCertificate(), vlanConfig.Name)
+		}
+	}
+
+	networkConfig.Config.VLANs = append(networkConfig.Config.VLANs, vlanConfig)
+	server.OSData.Network = networkConfig
+
+	err = s.client.UpdateNetworkConfig(ctx, *server)
+	if err != nil {
+		return fmt.Errorf("Failed to update network config for server %q: %w", name, err)
+	}
+
+	return nil
+}
+
+func (s *serverService) RemoveSystemNetworkVLAN(ctx context.Context, name string, vlanName string) error {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	networkConfig, err := s.client.GetNetworkConfig(ctx, *server)
+	if err != nil {
+		return fmt.Errorf("Failed to get network config for server %q: %w", name, err)
+	}
+
+	found := false
+	for i, vlan := range networkConfig.Config.VLANs {
+		if vlanName != vlan.Name {
+			continue
+		}
+
+		found = true
+
+		networkConfig.Config.VLANs = slices.Delete(networkConfig.Config.VLANs, i, i+1)
+		break
+	}
+
+	if !found {
+		return fmt.Errorf("Failed to remove vlan %q from network config of server %q: %w", vlanName, name, domain.ErrNotFound)
+	}
+
+	server.OSData.Network = networkConfig
+
+	err = s.client.UpdateNetworkConfig(ctx, *server)
+	if err != nil {
+		return fmt.Errorf("Failed to update network config for server %q: %w", name, err)
 	}
 
 	return nil
