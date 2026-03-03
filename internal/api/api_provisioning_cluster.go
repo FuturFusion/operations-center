@@ -625,6 +625,20 @@ func (c *clusterHandler) clusterBulkUpdatePost(r *http.Request) response.Respons
 		}
 
 		err = c.service.UpdateSystemKernel(ctx, name, kernelConfig)
+
+	case api.ClusterBulkUpdateActionAddApplication:
+		var addApplication struct {
+			Name string `json:"name"`
+		}
+		err = json.Unmarshal(*request.Arguments, &addApplication)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.AddApplication(ctx, name, addApplication.Name)
+
+	default:
+		return response.BadRequest(fmt.Errorf("Invalid action %q", request.Action))
 	}
 
 	if err != nil {
