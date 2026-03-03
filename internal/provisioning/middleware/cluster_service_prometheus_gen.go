@@ -40,6 +40,20 @@ func NewClusterServiceWithPrometheus(base provisioning.ClusterService, instanceN
 	}
 }
 
+// AddServerSystemNetworkVLAN implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) AddServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlan provisioning.ServerSystemNetworkVLAN) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AddServerSystemNetworkVLAN", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.AddServerSystemNetworkVLAN(ctx, clusterName, vlan)
+}
+
 // Create implements provisioning.ClusterService.
 func (_d ClusterServiceWithPrometheus) Create(ctx context.Context, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
 	_since := time.Now()
