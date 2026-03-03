@@ -27,9 +27,6 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			EnableClusterFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
 //				panic("mock out the EnableCluster method")
 //			},
-//			EnableOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config map[string]any) error {
-//				panic("mock out the EnableOSService method")
-//			},
 //			GetClusterJoinTokenFunc: func(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (string, error) {
 //				panic("mock out the GetClusterJoinToken method")
 //			},
@@ -60,6 +57,9 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			UpdateClusterCertificateFunc: func(ctx context.Context, endpoint provisioning.Endpoint, certificatePEM string, keyPEM string) error {
 //				panic("mock out the UpdateClusterCertificate method")
 //			},
+//			UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+//				panic("mock out the UpdateOSService method")
+//			},
 //			UpdateUpdateConfigFunc: func(ctx context.Context, server provisioning.Server, updateConfig provisioning.ServerSystemUpdate) error {
 //				panic("mock out the UpdateUpdateConfig method")
 //			},
@@ -72,9 +72,6 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 type ClusterClientPortMock struct {
 	// EnableClusterFunc mocks the EnableCluster method.
 	EnableClusterFunc func(ctx context.Context, server provisioning.Server) (string, error)
-
-	// EnableOSServiceFunc mocks the EnableOSService method.
-	EnableOSServiceFunc func(ctx context.Context, server provisioning.Server, name string, config map[string]any) error
 
 	// GetClusterJoinTokenFunc mocks the GetClusterJoinToken method.
 	GetClusterJoinTokenFunc func(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (string, error)
@@ -106,6 +103,9 @@ type ClusterClientPortMock struct {
 	// UpdateClusterCertificateFunc mocks the UpdateClusterCertificate method.
 	UpdateClusterCertificateFunc func(ctx context.Context, endpoint provisioning.Endpoint, certificatePEM string, keyPEM string) error
 
+	// UpdateOSServiceFunc mocks the UpdateOSService method.
+	UpdateOSServiceFunc func(ctx context.Context, server provisioning.Server, name string, config any) error
+
 	// UpdateUpdateConfigFunc mocks the UpdateUpdateConfig method.
 	UpdateUpdateConfigFunc func(ctx context.Context, server provisioning.Server, updateConfig provisioning.ServerSystemUpdate) error
 
@@ -117,17 +117,6 @@ type ClusterClientPortMock struct {
 			Ctx context.Context
 			// Server is the server argument value.
 			Server provisioning.Server
-		}
-		// EnableOSService holds details about calls to the EnableOSService method.
-		EnableOSService []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Server is the server argument value.
-			Server provisioning.Server
-			// Name is the name argument value.
-			Name string
-			// Config is the config argument value.
-			Config map[string]any
 		}
 		// GetClusterJoinToken holds details about calls to the GetClusterJoinToken method.
 		GetClusterJoinToken []struct {
@@ -217,6 +206,17 @@ type ClusterClientPortMock struct {
 			// KeyPEM is the keyPEM argument value.
 			KeyPEM string
 		}
+		// UpdateOSService holds details about calls to the UpdateOSService method.
+		UpdateOSService []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Name is the name argument value.
+			Name string
+			// Config is the config argument value.
+			Config any
+		}
 		// UpdateUpdateConfig holds details about calls to the UpdateUpdateConfig method.
 		UpdateUpdateConfig []struct {
 			// Ctx is the ctx argument value.
@@ -228,7 +228,6 @@ type ClusterClientPortMock struct {
 		}
 	}
 	lockEnableCluster            sync.RWMutex
-	lockEnableOSService          sync.RWMutex
 	lockGetClusterJoinToken      sync.RWMutex
 	lockGetClusterNodeNames      sync.RWMutex
 	lockGetOSData                sync.RWMutex
@@ -239,6 +238,7 @@ type ClusterClientPortMock struct {
 	lockSubscribeLifecycleEvents sync.RWMutex
 	lockSystemFactoryReset       sync.RWMutex
 	lockUpdateClusterCertificate sync.RWMutex
+	lockUpdateOSService          sync.RWMutex
 	lockUpdateUpdateConfig       sync.RWMutex
 }
 
@@ -275,50 +275,6 @@ func (mock *ClusterClientPortMock) EnableClusterCalls() []struct {
 	mock.lockEnableCluster.RLock()
 	calls = mock.calls.EnableCluster
 	mock.lockEnableCluster.RUnlock()
-	return calls
-}
-
-// EnableOSService calls EnableOSServiceFunc.
-func (mock *ClusterClientPortMock) EnableOSService(ctx context.Context, server provisioning.Server, name string, config map[string]any) error {
-	if mock.EnableOSServiceFunc == nil {
-		panic("ClusterClientPortMock.EnableOSServiceFunc: method is nil but ClusterClientPort.EnableOSService was just called")
-	}
-	callInfo := struct {
-		Ctx    context.Context
-		Server provisioning.Server
-		Name   string
-		Config map[string]any
-	}{
-		Ctx:    ctx,
-		Server: server,
-		Name:   name,
-		Config: config,
-	}
-	mock.lockEnableOSService.Lock()
-	mock.calls.EnableOSService = append(mock.calls.EnableOSService, callInfo)
-	mock.lockEnableOSService.Unlock()
-	return mock.EnableOSServiceFunc(ctx, server, name, config)
-}
-
-// EnableOSServiceCalls gets all the calls that were made to EnableOSService.
-// Check the length with:
-//
-//	len(mockedClusterClientPort.EnableOSServiceCalls())
-func (mock *ClusterClientPortMock) EnableOSServiceCalls() []struct {
-	Ctx    context.Context
-	Server provisioning.Server
-	Name   string
-	Config map[string]any
-} {
-	var calls []struct {
-		Ctx    context.Context
-		Server provisioning.Server
-		Name   string
-		Config map[string]any
-	}
-	mock.lockEnableOSService.RLock()
-	calls = mock.calls.EnableOSService
-	mock.lockEnableOSService.RUnlock()
 	return calls
 }
 
@@ -715,6 +671,50 @@ func (mock *ClusterClientPortMock) UpdateClusterCertificateCalls() []struct {
 	mock.lockUpdateClusterCertificate.RLock()
 	calls = mock.calls.UpdateClusterCertificate
 	mock.lockUpdateClusterCertificate.RUnlock()
+	return calls
+}
+
+// UpdateOSService calls UpdateOSServiceFunc.
+func (mock *ClusterClientPortMock) UpdateOSService(ctx context.Context, server provisioning.Server, name string, config any) error {
+	if mock.UpdateOSServiceFunc == nil {
+		panic("ClusterClientPortMock.UpdateOSServiceFunc: method is nil but ClusterClientPort.UpdateOSService was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Name   string
+		Config any
+	}{
+		Ctx:    ctx,
+		Server: server,
+		Name:   name,
+		Config: config,
+	}
+	mock.lockUpdateOSService.Lock()
+	mock.calls.UpdateOSService = append(mock.calls.UpdateOSService, callInfo)
+	mock.lockUpdateOSService.Unlock()
+	return mock.UpdateOSServiceFunc(ctx, server, name, config)
+}
+
+// UpdateOSServiceCalls gets all the calls that were made to UpdateOSService.
+// Check the length with:
+//
+//	len(mockedClusterClientPort.UpdateOSServiceCalls())
+func (mock *ClusterClientPortMock) UpdateOSServiceCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+	Name   string
+	Config any
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Name   string
+		Config any
+	}
+	mock.lockUpdateOSService.RLock()
+	calls = mock.calls.UpdateOSService
+	mock.lockUpdateOSService.RUnlock()
 	return calls
 }
 

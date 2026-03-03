@@ -629,7 +629,7 @@ func (c client) UpdateOSService(ctx context.Context, server provisioning.Server,
 
 	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/services/"+nameSanitized, config, "")
 	if err != nil {
-		return fmt.Errorf("Enable OS service %q on %q (%s) failed: %w", nameSanitized, server.Name, server.ConnectionURL, err)
+		return fmt.Errorf("Update OS service %q on %q (%s) failed: %w", nameSanitized, server.Name, server.ConnectionURL, err)
 	}
 
 	return nil

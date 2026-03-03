@@ -77,42 +77,6 @@ func (_d ClusterClientPortWithSlog) EnableCluster(ctx context.Context, server pr
 	return _d._base.EnableCluster(ctx, server)
 }
 
-// EnableOSService implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) EnableOSService(ctx context.Context, server provisioning.Server, name string, config map[string]any) (err error) {
-	log := slog.With()
-	if slog.Default().Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.Any("server", server),
-			slog.String("name", name),
-			slog.Any("config", config),
-		)
-	}
-	log.DebugContext(ctx, "=> calling EnableOSService")
-	defer func() {
-		log := slog.With()
-		if slog.Default().Enabled(ctx, logger.LevelTrace) {
-			log = slog.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = slog.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method EnableOSService returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method EnableOSService returned an error")
-			}
-		} else {
-			log.DebugContext(ctx, "<= method EnableOSService finished")
-		}
-	}()
-	return _d._base.EnableOSService(ctx, server, name, config)
-}
-
 // GetClusterJoinToken implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetClusterJoinToken(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (joinToken string, err error) {
 	log := slog.With()
@@ -466,6 +430,42 @@ func (_d ClusterClientPortWithSlog) UpdateClusterCertificate(ctx context.Context
 		}
 	}()
 	return _d._base.UpdateClusterCertificate(ctx, endpoint, certificatePEM, keyPEM)
+}
+
+// UpdateOSService implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) UpdateOSService(ctx context.Context, server provisioning.Server, name string, config any) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.String("name", name),
+			slog.Any("config", config),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateOSService")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateOSService returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateOSService returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateOSService finished")
+		}
+	}()
+	return _d._base.UpdateOSService(ctx, server, name, config)
 }
 
 // UpdateUpdateConfig implements provisioning.ClusterClientPort.

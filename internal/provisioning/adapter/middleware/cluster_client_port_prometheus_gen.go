@@ -54,20 +54,6 @@ func (_d ClusterClientPortWithPrometheus) EnableCluster(ctx context.Context, ser
 	return _d.base.EnableCluster(ctx, server)
 }
 
-// EnableOSService implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) EnableOSService(ctx context.Context, server provisioning.Server, name string, config map[string]any) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "EnableOSService", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.EnableOSService(ctx, server, name, config)
-}
-
 // GetClusterJoinToken implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithPrometheus) GetClusterJoinToken(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (joinToken string, err error) {
 	_since := time.Now()
@@ -206,6 +192,20 @@ func (_d ClusterClientPortWithPrometheus) UpdateClusterCertificate(ctx context.C
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateClusterCertificate", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.UpdateClusterCertificate(ctx, endpoint, certificatePEM, keyPEM)
+}
+
+// UpdateOSService implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) UpdateOSService(ctx context.Context, server provisioning.Server, name string, config any) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateOSService", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateOSService(ctx, server, name, config)
 }
 
 // UpdateUpdateConfig implements provisioning.ClusterClientPort.
