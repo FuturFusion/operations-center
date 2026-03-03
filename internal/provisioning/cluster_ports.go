@@ -37,6 +37,7 @@ type ClusterService interface {
 	AddServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlan ServerSystemNetworkVLAN) error
 	RemoveServerSystemNetworkVLAN(ctx context.Context, clusterName, vlanName string) error
 	UpdateSystemLogging(ctx context.Context, clusterName string, loggingConfig ServerSystemLogging) error
+	UpdateSystemKernel(ctx context.Context, clusterName string, kerneConfig ServerSystemKernel) error
 }
 
 type ClusterRepo interface {

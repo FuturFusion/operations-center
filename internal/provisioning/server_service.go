@@ -1163,6 +1163,34 @@ func (s *serverService) UpdateSystemLogging(ctx context.Context, name string, lo
 	return nil
 }
 
+func (s *serverService) GetSystemKernel(ctx context.Context, name string) (ServerSystemKernel, error) {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return ServerSystemKernel{}, fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	kernelConfig, err := s.client.GetSystemKernel(ctx, *server)
+	if err != nil {
+		return ServerSystemKernel{}, fmt.Errorf("Failed to get kernel config for server %q: %w", name, err)
+	}
+
+	return kernelConfig, nil
+}
+
+func (s *serverService) UpdateSystemKernel(ctx context.Context, name string, kernelConfig ServerSystemKernel) error {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	err = s.client.UpdateSystemKernel(ctx, *server, kernelConfig)
+	if err != nil {
+		return fmt.Errorf("Failed to update kernel config for server %q: %w", name, err)
+	}
+
+	return nil
+}
+
 // ResyncByName implements the InventorySyncer interface. Since we sync a server
 // resource, the cluster name (2nd argument) is not relevant and we purely
 // rely on the Source.Name attribute from the LifecycleEvent to determine

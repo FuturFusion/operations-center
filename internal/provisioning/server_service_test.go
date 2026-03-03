@@ -4993,6 +4993,161 @@ func TestServerService_UpdateSystemLogging(t *testing.T) {
 	}
 }
 
+func TestServerService_GetSystemKernel(t *testing.T) {
+	tests := []struct {
+		name                     string
+		argName                  string
+		repoGetByName            *provisioning.Server
+		repoGetByNameErr         error
+		clientGetSystemKernel    provisioning.ServerSystemKernel
+		clientGetSystemKernelErr error
+
+		assertErr        require.ErrorAssertionFunc
+		wantKernelConfig provisioning.ServerSystemKernel
+	}{
+		{
+			name:    "success",
+			argName: "one",
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+			},
+			clientGetSystemKernel: incusosapi.SystemKernel{
+				Config: incusosapi.SystemKernelConfig{
+					BlacklistModules: []string{"foobar"},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantKernelConfig: incusosapi.SystemKernel{
+				Config: incusosapi.SystemKernelConfig{
+					BlacklistModules: []string{"foobar"},
+				},
+			},
+		},
+		{
+			name:             "error - repo.GetByName",
+			argName:          "one",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - client.GetSystemKernel",
+			argName: "one",
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+			},
+			clientGetSystemKernelErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				GetSystemKernelFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemKernel, error) {
+					return tc.clientGetSystemKernel, tc.clientGetSystemKernelErr
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, tls.Certificate{})
+
+			// Run test
+			kernelConfig, err := serverSvc.GetSystemKernel(t.Context(), tc.argName)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantKernelConfig, kernelConfig)
+		})
+	}
+}
+
+func TestServerService_UpdateSystemKernel(t *testing.T) {
+	tests := []struct {
+		name                        string
+		argName                     string
+		argKernelConfig             incusosapi.SystemKernel
+		repoGetByName               *provisioning.Server
+		repoGetByNameErr            error
+		clientUpdateSystemKernelErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:            "success",
+			argName:         "one",
+			argKernelConfig: incusosapi.SystemKernel{},
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			argName:          "one",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - client.UpdateSystemKernel",
+			argName: "one",
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+			},
+			clientUpdateSystemKernelErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				UpdateSystemKernelFunc: func(ctx context.Context, server provisioning.Server, config provisioning.ServerSystemKernel) error {
+					return tc.clientUpdateSystemKernelErr
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, tls.Certificate{})
+
+			// Run test
+			err := serverSvc.UpdateSystemKernel(t.Context(), tc.argName, tc.argKernelConfig)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestServerService_SyncCluster(t *testing.T) {
 	s := provisioning.NewServerService(nil, nil, nil, nil, nil, nil, tls.Certificate{})
 	err := s.SyncCluster(t.Context(), "")
