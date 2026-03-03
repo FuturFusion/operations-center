@@ -432,7 +432,12 @@ func mustWaitUpdatesReady(t *testing.T) {
 func mustWaitIncusOSReady(t *testing.T, names []string) {
 	t.Helper()
 
-	timeoutCtx, cancel := context.WithTimeout(t.Context(), strechedTimeout(5*time.Minute))
+	timeout := 5 * time.Minute
+	if !concurrentSetup {
+		timeout = time.Duration(int(timeout) * len(names))
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(t.Context(), strechedTimeout(timeout))
 	defer cancel()
 
 	errgrp, errgrpctx := errgroup.WithContext(timeoutCtx)
@@ -495,7 +500,12 @@ func mustWaitIncusOSReady(t *testing.T, names []string) {
 func mustWaitInventoryReady(t *testing.T, names []string) {
 	t.Helper()
 
-	timeoutCtx, cancel := context.WithTimeout(t.Context(), strechedTimeout(3*time.Minute))
+	timeout := 3 * time.Minute
+	if !concurrentSetup {
+		timeout = time.Duration(int(timeout) * len(names))
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(t.Context(), strechedTimeout(timeout))
 	defer cancel()
 
 	errgrp, errgrpctx := errgroup.WithContext(timeoutCtx)
