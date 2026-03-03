@@ -532,12 +532,6 @@ func (c *cmdClusterRename) validateArgsAndFlags(cmd *cobra.Command, args []strin
 }
 
 func (c *cmdClusterRename) run(cmd *cobra.Command, args []string) error {
-	// Quick checks.
-	exit, err := validate.Args(cmd, args, 2, 2)
-	if exit {
-		return err
-	}
-
 	name := args[0]
 	newName := args[1]
 
@@ -545,7 +539,7 @@ func (c *cmdClusterRename) run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Rename failed, name and new name are equal")
 	}
 
-	err = c.ocClient.RenameCluster(cmd.Context(), name, newName)
+	err := c.ocClient.RenameCluster(cmd.Context(), name, newName)
 	if err != nil {
 		return err
 	}
@@ -583,12 +577,6 @@ func (c *cmdClusterShow) validateArgsAndFlags(cmd *cobra.Command, args []string)
 }
 
 func (c *cmdClusterShow) run(cmd *cobra.Command, args []string) error {
-	// Quick checks.
-	exit, err := validate.Args(cmd, args, 1, 1)
-	if exit {
-		return err
-	}
-
 	name := args[0]
 
 	cluster, err := c.ocClient.GetCluster(cmd.Context(), name)
@@ -656,15 +644,9 @@ func (c *cmdClusterResync) validateArgsAndFlags(cmd *cobra.Command, args []strin
 }
 
 func (c *cmdClusterResync) run(cmd *cobra.Command, args []string) error {
-	// Quick checks.
-	exit, err := validate.Args(cmd, args, 1, 1)
-	if exit {
-		return err
-	}
-
 	name := args[0]
 
-	err = c.ocClient.ResyncCluster(cmd.Context(), name)
+	err := c.ocClient.ResyncCluster(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
@@ -702,12 +684,6 @@ func (c *cmdClusterUpdateCertificate) validateArgsAndFlags(cmd *cobra.Command, a
 }
 
 func (c *cmdClusterUpdateCertificate) run(cmd *cobra.Command, args []string) error {
-	// Quick checks.
-	exit, err := validate.Args(cmd, args, 3, 3)
-	if exit {
-		return err
-	}
-
 	name := args[0]
 	certificateFilename := args[1]
 	certificateKeyFilename := args[2]
