@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net"
 	"net/url"
+	"slices"
 	"sync"
 	"time"
 
@@ -1122,6 +1123,136 @@ func (s clusterService) AddApplication(ctx context.Context, clusterName string, 
 			return fmt.Errorf("Failed to add application on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 		}
 	}
+
+	return nil
+}
+
+func (s clusterService) AddStorageTargetISCSI(ctx context.Context, clusterName string, target incusosapi.ServiceISCSITarget) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Add iscsi storage target to cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the service is enabled and target is not yet present on all servers.
+	iscsiConfigs := make(map[string]incusosapi.ServiceISCSI, len(servers))
+	for _, server := range servers {
+		var iscsiConfig incusosapi.ServiceISCSI
+		iscsiConfig, err = s.client.GetOSServiceISCSI(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get iscsi service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		if !iscsiConfig.Config.Enabled {
+			return fmt.Errorf("Service iscsi is not enabled on server %q (%s): %w", server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		if slices.Contains(iscsiConfig.Config.Targets, target) {
+			return fmt.Errorf("Service iscsi target %q (%s:%d) already defined on server %q (%s): %w", target.Target, target.Address, target.Port, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		iscsiConfigs[server.Name] = iscsiConfig
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		currentISCSIConfig := iscsiConfigs[server.Name]
+
+		updatedISCSIConfig := incusosapi.ServiceISCSI{
+			Config: incusosapi.ServiceISCSIConfig{
+				Enabled: true,
+				Targets: append(currentISCSIConfig.Config.Targets, target),
+			},
+		}
+
+		err = s.client.UpdateOSService(ctx, server, "iscsi", updatedISCSIConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to update iscsi service config on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			revertErr := s.client.UpdateOSService(ctx, server, "iscsi", currentISCSIConfig)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously updated iscsi service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentISCSIConfig), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+func (s clusterService) RemoveStorageTargetISCSI(ctx context.Context, clusterName string, target incusosapi.ServiceISCSITarget) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Remove iscsi storage target from cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the service is enabled and target is present on all servers.
+	iscsiConfigs := make(map[string]incusosapi.ServiceISCSI, len(servers))
+	for _, server := range servers {
+		var iscsiConfig incusosapi.ServiceISCSI
+		iscsiConfig, err = s.client.GetOSServiceISCSI(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get iscsi service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		if !iscsiConfig.Config.Enabled {
+			return fmt.Errorf("Service iscsi is not enabled on server %q (%s): %w", server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		if !slices.Contains(iscsiConfig.Config.Targets, target) {
+			return fmt.Errorf("Service iscsi target %q (%s:%d) does not exist on server %q (%s): %w", target.Target, target.Address, target.Port, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		iscsiConfigs[server.Name] = iscsiConfig
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		currentISCSIConfig := iscsiConfigs[server.Name]
+
+		updatedISCSIConfig := incusosapi.ServiceISCSI{
+			Config: incusosapi.ServiceISCSIConfig{
+				Enabled: true,
+				Targets: slices.DeleteFunc(currentISCSIConfig.Config.Targets, func(t incusosapi.ServiceISCSITarget) bool {
+					return t == target
+				}),
+			},
+		}
+
+		err = s.client.UpdateOSService(ctx, server, "iscsi", updatedISCSIConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to update iscsi service config on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			revertErr := s.client.UpdateOSService(ctx, server, "iscsi", currentISCSIConfig)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously updated iscsi service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentISCSIConfig), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
 
 	return nil
 }

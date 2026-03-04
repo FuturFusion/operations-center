@@ -4488,6 +4488,800 @@ func TestClusterService_AddApplication(t *testing.T) {
 	}
 }
 
+func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
+	tests := []struct {
+		name                       string
+		nameArg                    string
+		targetArg                  incusosapi.ServiceISCSITarget
+		repoGetByName              *provisioning.Cluster
+		repoGetByNameErr           error
+		clientGetOSServiceISCSIErr []queue.Item[incusosapi.ServiceISCSI]
+		clientUpdateOSServiceErr   []queue.Item[struct{}]
+		serverSvcPollServersErr    error
+		serverSvcGetAllWithFilter  []queue.Item[provisioning.Servers]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{},
+						},
+					},
+				},
+			},
+			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+				{},
+				{},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:    "error - GetByName error",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - client.GetOSServiceISCSI",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - iscsi service not enabled",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: false, // not enabled
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "Service iscsi is not enabled on server")
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - iscsi service target already present",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{
+								{
+									Target:  "target",
+									Address: "address",
+									Port:    1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Service iscsi target "target" (address:1234) already defined on server`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - client.UpdateOSService - revert client.UpdateOSService",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{},
+						},
+					},
+				},
+			},
+			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+				// First update successful.
+				{},
+				// Second update error.
+				{
+					Err: errors.New("error"),
+				},
+				// Revert of first update error.
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously updated iscsi service config.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				GetOSServiceISCSIFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceISCSI, error) {
+					config, err := queue.Pop(t, &tc.clientGetOSServiceISCSIErr)
+					return config, err
+				},
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					_, err := queue.Pop(t, &tc.clientUpdateOSServiceErr)
+					return err
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.AddStorageTargetISCSI(context.Background(), tc.nameArg, tc.targetArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.clientGetOSServiceISCSIErr)
+			require.Empty(t, tc.clientUpdateOSServiceErr)
+		})
+	}
+}
+
+func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
+	tests := []struct {
+		name                       string
+		nameArg                    string
+		targetArg                  incusosapi.ServiceISCSITarget
+		repoGetByName              *provisioning.Cluster
+		repoGetByNameErr           error
+		clientGetOSServiceISCSIErr []queue.Item[incusosapi.ServiceISCSI]
+		clientUpdateOSServiceErr   []queue.Item[struct{}]
+		serverSvcPollServersErr    error
+		serverSvcGetAllWithFilter  []queue.Item[provisioning.Servers]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{
+								{
+									Target:  "target",
+									Address: "address",
+									Port:    1234,
+								},
+								{
+									Target:  "keep",
+									Address: "keep",
+									Port:    1234,
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{
+								{
+									Target:  "target",
+									Address: "address",
+									Port:    1234,
+								},
+								{
+									Target:  "keep",
+									Address: "keep",
+									Port:    1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+				{},
+				{},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:    "error - GetByName error",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - client.GetOSServiceISCSI",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - iscsi service not enabled",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: false, // not enabled
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "Service iscsi is not enabled on server")
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - iscsi service target missing",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{}, // target missing
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Service iscsi target "target" (address:1234) does not exist on server`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - client.UpdateOSService - revert client.UpdateOSService",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{
+								{
+									Target:  "target",
+									Address: "address",
+									Port:    1234,
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{
+								{
+									Target:  "target",
+									Address: "address",
+									Port:    1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+				// First update successful.
+				{},
+				// Second update error.
+				{
+					Err: errors.New("error"),
+				},
+				// Revert of first update error.
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously updated iscsi service config.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				GetOSServiceISCSIFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceISCSI, error) {
+					config, err := queue.Pop(t, &tc.clientGetOSServiceISCSIErr)
+					return config, err
+				},
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					_, err := queue.Pop(t, &tc.clientUpdateOSServiceErr)
+					return err
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.RemoveStorageTargetISCSI(context.Background(), tc.nameArg, tc.targetArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.clientGetOSServiceISCSIErr)
+			require.Empty(t, tc.clientUpdateOSServiceErr)
+		})
+	}
+}
+
 func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 	doneChannel := func() chan struct{} {
 		t.Helper()

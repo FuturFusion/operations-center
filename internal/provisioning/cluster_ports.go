@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/google/uuid"
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -39,6 +40,8 @@ type ClusterService interface {
 	UpdateSystemLogging(ctx context.Context, clusterName string, loggingConfig ServerSystemLogging) error
 	UpdateSystemKernel(ctx context.Context, clusterName string, kerneConfig ServerSystemKernel) error
 	AddApplication(ctx context.Context, clusterName string, applicationName string) error
+	AddStorageTargetISCSI(ctx context.Context, clusterName string, target incusosapi.ServiceISCSITarget) error
+	RemoveStorageTargetISCSI(ctx context.Context, clusterName string, target incusosapi.ServiceISCSITarget) error
 }
 
 type ClusterRepo interface {
@@ -67,6 +70,7 @@ type InventorySyncer interface {
 
 type ClusterClientPort interface {
 	Ping(ctx context.Context, endpoint Endpoint) error
+	GetOSServiceISCSI(ctx context.Context, server Server) (incusosapi.ServiceISCSI, error)
 	UpdateOSService(ctx context.Context, server Server, name string, config any) error
 	SetServerConfig(ctx context.Context, endpoint Endpoint, config map[string]string) error
 	EnableCluster(ctx context.Context, server Server) (clusterCertificate string, _ error)
