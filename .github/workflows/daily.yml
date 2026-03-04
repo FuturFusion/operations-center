@@ -33,6 +33,7 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
+          apt install -y linux-headers-$(uname -r)
           apt install -y curl jq make build-essential systemd-timesyncd unzip zfsutils-linux
           systemctl enable systemd-timesyncd
           systemctl restart systemd-timesyncd
