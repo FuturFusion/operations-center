@@ -83,6 +83,34 @@ func (_d ClusterServiceWithPrometheus) AddStorageTargetISCSI(ctx context.Context
 	return _d.base.AddStorageTargetISCSI(ctx, clusterName, target)
 }
 
+// AddStorageTargetMultipath implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) AddStorageTargetMultipath(ctx context.Context, clusterName string, target string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AddStorageTargetMultipath", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.AddStorageTargetMultipath(ctx, clusterName, target)
+}
+
+// AddStorageTargetNVME implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) AddStorageTargetNVME(ctx context.Context, clusterName string, target api.ServiceNVMETarget) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AddStorageTargetNVME", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.AddStorageTargetNVME(ctx, clusterName, target)
+}
+
 // Create implements provisioning.ClusterService.
 func (_d ClusterServiceWithPrometheus) Create(ctx context.Context, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
 	_since := time.Now()
@@ -305,6 +333,34 @@ func (_d ClusterServiceWithPrometheus) RemoveStorageTargetISCSI(ctx context.Cont
 		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveStorageTargetISCSI", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.RemoveStorageTargetISCSI(ctx, clusterName, target)
+}
+
+// RemoveStorageTargetMultipath implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) RemoveStorageTargetMultipath(ctx context.Context, clusterName string, target string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveStorageTargetMultipath", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RemoveStorageTargetMultipath(ctx, clusterName, target)
+}
+
+// RemoveStorageTargetNVME implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) RemoveStorageTargetNVME(ctx context.Context, clusterName string, target api.ServiceNVMETarget) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveStorageTargetNVME", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RemoveStorageTargetNVME(ctx, clusterName, target)
 }
 
 // Rename implements provisioning.ClusterService.

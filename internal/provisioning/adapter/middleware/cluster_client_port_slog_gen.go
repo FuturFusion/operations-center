@@ -184,42 +184,6 @@ func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, endpoint prov
 	return _d._base.GetOSData(ctx, endpoint)
 }
 
-// GetOSService implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) GetOSService(ctx context.Context, server provisioning.Server, name string) (stringToV map[string]any, err error) {
-	log := slog.With()
-	if slog.Default().Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.Any("server", server),
-			slog.String("name", name),
-		)
-	}
-	log.DebugContext(ctx, "=> calling GetOSService")
-	defer func() {
-		log := slog.With()
-		if slog.Default().Enabled(ctx, logger.LevelTrace) {
-			log = slog.With(
-				slog.Any("stringToV", stringToV),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = slog.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetOSService returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetOSService returned an error")
-			}
-		} else {
-			log.DebugContext(ctx, "<= method GetOSService finished")
-		}
-	}()
-	return _d._base.GetOSService(ctx, server, name)
-}
-
 // GetOSServiceISCSI implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetOSServiceISCSI(ctx context.Context, server provisioning.Server) (serviceISCSI api0.ServiceISCSI, err error) {
 	log := slog.With()
@@ -253,6 +217,76 @@ func (_d ClusterClientPortWithSlog) GetOSServiceISCSI(ctx context.Context, serve
 		}
 	}()
 	return _d._base.GetOSServiceISCSI(ctx, server)
+}
+
+// GetOSServiceMultipath implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) GetOSServiceMultipath(ctx context.Context, server provisioning.Server) (serviceMultipath api0.ServiceMultipath, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetOSServiceMultipath")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("serviceMultipath", serviceMultipath),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetOSServiceMultipath returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetOSServiceMultipath returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetOSServiceMultipath finished")
+		}
+	}()
+	return _d._base.GetOSServiceMultipath(ctx, server)
+}
+
+// GetOSServiceNVME implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) GetOSServiceNVME(ctx context.Context, server provisioning.Server) (serviceNVME api0.ServiceNVME, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetOSServiceNVME")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("serviceNVME", serviceNVME),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetOSServiceNVME returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetOSServiceNVME returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetOSServiceNVME finished")
+		}
+	}()
+	return _d._base.GetOSServiceNVME(ctx, server)
 }
 
 // GetRemoteCertificate implements provisioning.ClusterClientPort.

@@ -97,20 +97,6 @@ func (_d ClusterClientPortWithPrometheus) GetOSData(ctx context.Context, endpoin
 	return _d.base.GetOSData(ctx, endpoint)
 }
 
-// GetOSService implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) GetOSService(ctx context.Context, server provisioning.Server, name string) (stringToV map[string]any, err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSService", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.GetOSService(ctx, server, name)
-}
-
 // GetOSServiceISCSI implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithPrometheus) GetOSServiceISCSI(ctx context.Context, server provisioning.Server) (serviceISCSI api0.ServiceISCSI, err error) {
 	_since := time.Now()
@@ -123,6 +109,34 @@ func (_d ClusterClientPortWithPrometheus) GetOSServiceISCSI(ctx context.Context,
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSServiceISCSI", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetOSServiceISCSI(ctx, server)
+}
+
+// GetOSServiceMultipath implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) GetOSServiceMultipath(ctx context.Context, server provisioning.Server) (serviceMultipath api0.ServiceMultipath, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSServiceMultipath", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetOSServiceMultipath(ctx, server)
+}
+
+// GetOSServiceNVME implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) GetOSServiceNVME(ctx context.Context, server provisioning.Server) (serviceNVME api0.ServiceNVME, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSServiceNVME", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetOSServiceNVME(ctx, server)
 }
 
 // GetRemoteCertificate implements provisioning.ClusterClientPort.
