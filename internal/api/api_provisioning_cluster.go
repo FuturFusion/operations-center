@@ -656,6 +656,46 @@ func (c *clusterHandler) clusterBulkUpdatePost(r *http.Request) response.Respons
 
 		err = c.service.RemoveStorageTargetISCSI(ctx, name, iscsiTarget)
 
+	case api.ClusterBulkUpdateActionAddMultipathStorageTarget:
+		var multipathTarget struct {
+			Name string `json:"name"`
+		}
+		err = json.Unmarshal(*request.Arguments, &multipathTarget)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.AddStorageTargetMultipath(ctx, name, multipathTarget.Name)
+
+	case api.ClusterBulkUpdateActionRemoveMultipathStorageTarget:
+		var multipathTarget struct {
+			Name string `json:"name"`
+		}
+		err = json.Unmarshal(*request.Arguments, &multipathTarget)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.RemoveStorageTargetMultipath(ctx, name, multipathTarget.Name)
+
+	case api.ClusterBulkUpdateActionAddNVMEStorageTarget:
+		var nvmeTarget incusosapi.ServiceNVMETarget
+		err = json.Unmarshal(*request.Arguments, &nvmeTarget)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.AddStorageTargetNVME(ctx, name, nvmeTarget)
+
+	case api.ClusterBulkUpdateActionRemoveNVMEStorageTarget:
+		var nvmeTarget incusosapi.ServiceNVMETarget
+		err = json.Unmarshal(*request.Arguments, &nvmeTarget)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.RemoveStorageTargetNVME(ctx, name, nvmeTarget)
+
 	default:
 		return response.BadRequest(fmt.Errorf("Invalid action %q", request.Action))
 	}
