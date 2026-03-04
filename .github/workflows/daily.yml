@@ -30,14 +30,18 @@ jobs:
           go-version: 'oldstable'
 
       - name: Setup Incus
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
-          apt install -y curl jq make build-essential systemd-timesyncd unzip
+          apt install -y curl jq make build-essential systemd-timesyncd unzip zfsutils-linux
           systemctl enable systemd-timesyncd
           systemctl restart systemd-timesyncd
           curl https://pkgs.zabbly.com/get/incus-stable | sudo sh
           sudo chmod 666 /var/lib/incus/unix.socket
+          echo "initializing incus with zfs backend and 200MB loop device"
           incus admin init --auto --storage-backend=zfs --storage-create-loop=200
           incus remote generate-certificate
+          echo "setting zfs sync to disabled for better performance in CI environment"
           zfs set sync=disabled default
 
       - name: Install opentofu
