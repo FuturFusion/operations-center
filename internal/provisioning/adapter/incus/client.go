@@ -609,6 +609,50 @@ func (c client) UpdateSystemLogging(ctx context.Context, server provisioning.Ser
 	return nil
 }
 
+func (c client) GetOSService(ctx context.Context, server provisioning.Server, name string) (map[string]any, error) {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return nil, err
+	}
+
+	nameSanitized := url.PathEscape(name)
+
+	resp, _, err := client.RawQuery(http.MethodGet, "/os/1.0/services/"+nameSanitized, http.NoBody, "")
+	if err != nil {
+		return nil, fmt.Errorf("Get OS service %q on %q (%s) failed: %w", nameSanitized, server.Name, server.ConnectionURL, err)
+	}
+
+	serviceConfig := map[string]any{}
+
+	err = json.Unmarshal(resp.Metadata, &serviceConfig)
+	if err != nil {
+		return nil, fmt.Errorf("Unexpected response metadata while fetching OS service %q configuration from %q (%s): %w", name, server.Name, server.GetConnectionURL(), err)
+	}
+
+	return serviceConfig, nil
+}
+
+func (c client) GetOSServiceISCSI(ctx context.Context, server provisioning.Server) (incusosapi.ServiceISCSI, error) {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return incusosapi.ServiceISCSI{}, err
+	}
+
+	resp, _, err := client.RawQuery(http.MethodGet, "/os/1.0/services/iscsi", http.NoBody, "")
+	if err != nil {
+		return incusosapi.ServiceISCSI{}, fmt.Errorf(`Get OS service "iscsi" on %q (%s) failed: %w`, server.Name, server.ConnectionURL, err)
+	}
+
+	serviceConfig := incusosapi.ServiceISCSI{}
+
+	err = json.Unmarshal(resp.Metadata, &serviceConfig)
+	if err != nil {
+		return incusosapi.ServiceISCSI{}, fmt.Errorf(`Unexpected response metadata while fetching OS service "iscsi" configuration from %q (%s): %w`, server.Name, server.GetConnectionURL(), err)
+	}
+
+	return serviceConfig, nil
+}
+
 func (c client) UpdateOSService(ctx context.Context, server provisioning.Server, name string, config any) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {

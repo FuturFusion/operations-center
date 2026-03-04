@@ -1900,6 +1900,168 @@ func TestClientServer(t *testing.T) {
 			},
 		},
 		{
+			name: "GetOSService",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetOSService(ctx, target, "lvm")
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "enabled": true,
+      "system_id": 15
+    },
+    "state": {}
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantOSService := map[string]any{
+							"config": map[string]any{
+								"enabled":   true,
+								"system_id": 15.0,
+							},
+							"state": map[string]any{},
+						}
+
+						require.Equal(t, wantOSService, res)
+					},
+					wantPaths: []string{"GET /os/1.0/services/lvm"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/lvm"},
+				},
+				{
+					name: "error - iscsi service config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/services/lvm
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/lvm"},
+				},
+			},
+		},
+		{
+			name: "GetOSServiceISCSI",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetOSServiceISCSI(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "enabled": true,
+      "targets": [
+        {
+          "target": "target",
+          "address": "address",
+          "port": 1234
+        }
+      ]
+    },
+    "state": {}
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantOSService := incusosapi.ServiceISCSI{
+							Config: incusosapi.ServiceISCSIConfig{
+								Enabled: true,
+								Targets: []incusosapi.ServiceISCSITarget{
+									{
+										Target:  "target",
+										Address: "address",
+										Port:    1234,
+									},
+								},
+							},
+							State: incusosapi.ServiceISCSIState{},
+						}
+
+						require.Equal(t, wantOSService, res)
+					},
+					wantPaths: []string{"GET /os/1.0/services/iscsi"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/iscsi"},
+				},
+				{
+					name: "error - iscsi service config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/services/iscsi
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/iscsi"},
+				},
+			},
+		},
+		{
 			name: "UpdateOSService - config map",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
 				return nil, client.UpdateOSService(ctx, target, "lvm", map[string]any{"enabled": true})
