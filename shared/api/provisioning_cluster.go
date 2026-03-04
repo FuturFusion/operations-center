@@ -212,12 +212,14 @@ type ClusterCertificatePut struct {
 type ClusterBulkUpdateAction string
 
 const (
-	ClusterBulkUpdateActionInvalid                 ClusterBulkUpdateAction = ""
-	ClusterBulkUpdateActionAddSystemNetworkVLAN    ClusterBulkUpdateAction = "add_system_network_vlan"
-	ClusterBulkUpdateActionRemoveSystemNetworkVLAN ClusterBulkUpdateAction = "remove_system_network_vlan"
-	ClusterBulkUpdateActionUpdateSystemLogging     ClusterBulkUpdateAction = "update_system_logging"
-	ClusterBulkUpdateActionUpdateSystemKernel      ClusterBulkUpdateAction = "update_system_kernel"
-	ClusterBulkUpdateActionAddApplication          ClusterBulkUpdateAction = "add_application"
+	ClusterBulkUpdateActionInvalid                  ClusterBulkUpdateAction = ""
+	ClusterBulkUpdateActionAddSystemNetworkVLAN     ClusterBulkUpdateAction = "add_system_network_vlan"
+	ClusterBulkUpdateActionRemoveSystemNetworkVLAN  ClusterBulkUpdateAction = "remove_system_network_vlan"
+	ClusterBulkUpdateActionUpdateSystemLogging      ClusterBulkUpdateAction = "update_system_logging"
+	ClusterBulkUpdateActionUpdateSystemKernel       ClusterBulkUpdateAction = "update_system_kernel"
+	ClusterBulkUpdateActionAddApplication           ClusterBulkUpdateAction = "add_application"
+	ClusterBulkUpdateActionAddISCSIStorageTarget    ClusterBulkUpdateAction = "add_iscsi_storage_target"
+	ClusterBulkUpdateActionRemoveISCSIStorageTarget ClusterBulkUpdateAction = "remove_iscsi_storage_target"
 )
 
 // ClusterBulkUpdatePost represents a cluster bulk update request containing

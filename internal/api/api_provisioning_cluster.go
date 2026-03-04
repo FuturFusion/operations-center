@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
@@ -636,6 +637,24 @@ func (c *clusterHandler) clusterBulkUpdatePost(r *http.Request) response.Respons
 		}
 
 		err = c.service.AddApplication(ctx, name, addApplication.Name)
+
+	case api.ClusterBulkUpdateActionAddISCSIStorageTarget:
+		var iscsiTarget incusosapi.ServiceISCSITarget
+		err = json.Unmarshal(*request.Arguments, &iscsiTarget)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.AddStorageTargetISCSI(ctx, name, iscsiTarget)
+
+	case api.ClusterBulkUpdateActionRemoveISCSIStorageTarget:
+		var iscsiTarget incusosapi.ServiceISCSITarget
+		err = json.Unmarshal(*request.Arguments, &iscsiTarget)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.RemoveStorageTargetISCSI(ctx, name, iscsiTarget)
 
 	default:
 		return response.BadRequest(fmt.Errorf("Invalid action %q", request.Action))
