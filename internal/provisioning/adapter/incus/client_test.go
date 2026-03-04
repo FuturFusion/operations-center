@@ -33,6 +33,14 @@ import (
 type clientPort interface {
 	provisioning.ServerClientPort
 	provisioning.ClusterClientPort
+
+	GetOSService(ctx context.Context, server provisioning.Server, name string) (map[string]any, error)
+	GetOSServiceCeph(ctx context.Context, server provisioning.Server) (incusosapi.ServiceCeph, error)
+	GetOSServiceLinstor(ctx context.Context, server provisioning.Server) (incusosapi.ServiceLinstor, error)
+	GetOSServiceLVM(ctx context.Context, server provisioning.Server) (incusosapi.ServiceLVM, error)
+	GetOSServiceOVN(ctx context.Context, server provisioning.Server) (incusosapi.ServiceOVN, error)
+	GetOSServiceTailscale(ctx context.Context, server provisioning.Server) (incusosapi.ServiceTailscale, error)
+	GetOSServiceUSBIP(ctx context.Context, server provisioning.Server) (incusosapi.ServiceUSBIP, error)
 }
 
 type methodTestSetEndpoint struct {
@@ -1975,6 +1983,89 @@ func TestClientServer(t *testing.T) {
 			},
 		},
 		{
+			name: "GetOSServiceCeph",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetOSServiceCeph(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "enabled": true,
+      "clusters": {
+        "one": {
+          "fsid": "1"
+        }
+      }
+    },
+    "state": {}
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantOSService := incusosapi.ServiceCeph{
+							Config: incusosapi.ServiceCephConfig{
+								Enabled: true,
+								Clusters: map[string]incusosapi.ServiceCephCluster{
+									"one": {
+										FSID: "1",
+									},
+								},
+							},
+							State: incusosapi.ServiceCephState{},
+						}
+
+						require.Equal(t, wantOSService, res)
+					},
+					wantPaths: []string{"GET /os/1.0/services/ceph"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/ceph"},
+				},
+				{
+					name: "error - ceph service config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/services/ceph
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/ceph"},
+				},
+			},
+		},
+		{
 			name: "GetOSServiceISCSI",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
 				return client.GetOSServiceISCSI(ctx, target)
@@ -2061,6 +2152,559 @@ func TestClientServer(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "GetOSServiceLinstor",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetOSServiceLinstor(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "enabled": true,
+      "listen_address": "address"
+    },
+    "state": {}
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantOSService := incusosapi.ServiceLinstor{
+							Config: incusosapi.ServiceLinstorConfig{
+								Enabled:       true,
+								ListenAddress: "address",
+							},
+							State: incusosapi.ServiceLinstorState{},
+						}
+
+						require.Equal(t, wantOSService, res)
+					},
+					wantPaths: []string{"GET /os/1.0/services/linstor"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/linstor"},
+				},
+				{
+					name: "error - linstor service config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/services/linstor
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/linstor"},
+				},
+			},
+		},
+		{
+			name: "GetOSServiceLVM",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetOSServiceLVM(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "enabled": true,
+      "system_id": 1
+    },
+    "state": {}
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantOSService := incusosapi.ServiceLVM{
+							Config: incusosapi.ServiceLVMConfig{
+								Enabled:  true,
+								SystemID: 1.0,
+							},
+							State: incusosapi.ServiceLVMState{},
+						}
+
+						require.Equal(t, wantOSService, res)
+					},
+					wantPaths: []string{"GET /os/1.0/services/lvm"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/lvm"},
+				},
+				{
+					name: "error - lvm service config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/services/lvm
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/lvm"},
+				},
+			},
+		},
+		{
+			name: "GetOSServiceMultipath",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetOSServiceMultipath(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "enabled": true,
+      "wwns": [ "one" ]
+    },
+    "state": {}
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantOSService := incusosapi.ServiceMultipath{
+							Config: incusosapi.ServiceMultipathConfig{
+								Enabled: true,
+								WWNs:    []string{"one"},
+							},
+							State: incusosapi.ServiceMultipathState{},
+						}
+
+						require.Equal(t, wantOSService, res)
+					},
+					wantPaths: []string{"GET /os/1.0/services/multipath"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/multipath"},
+				},
+				{
+					name: "error - multipath service config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/services/multipath
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/multipath"},
+				},
+			},
+		},
+		{
+			name: "GetOSServiceNVME",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetOSServiceNVME(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "enabled": true,
+      "targets": [
+        {
+          "transport": "transport",
+          "address": "address",
+          "port": 1234
+        }
+      ]
+    },
+    "state": {}
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantOSService := incusosapi.ServiceNVME{
+							Config: incusosapi.ServiceNVMEConfig{
+								Enabled: true,
+								Targets: []incusosapi.ServiceNVMETarget{
+									{
+										Transport: "transport",
+										Address:   "address",
+										Port:      1234,
+									},
+								},
+							},
+							State: incusosapi.ServiceNVMEState{},
+						}
+
+						require.Equal(t, wantOSService, res)
+					},
+					wantPaths: []string{"GET /os/1.0/services/nvme"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/nvme"},
+				},
+				{
+					name: "error - nvme service config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/services/nvme
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/nvme"},
+				},
+			},
+		},
+		{
+			name: "GetOSServiceOVN",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetOSServiceOVN(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "enabled": true,
+      "ic_chassis": true
+    },
+    "state": {}
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantOSService := incusosapi.ServiceOVN{
+							Config: incusosapi.ServiceOVNConfig{
+								Enabled:   true,
+								ICChassis: true,
+							},
+							State: incusosapi.ServiceOVNState{},
+						}
+
+						require.Equal(t, wantOSService, res)
+					},
+					wantPaths: []string{"GET /os/1.0/services/ovn"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/ovn"},
+				},
+				{
+					name: "error - ovn service config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/services/ovn
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/ovn"},
+				},
+			},
+		},
+		{
+			name: "GetOSServiceTailscale",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetOSServiceTailscale(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "enabled": true,
+      "login_server": "server"
+    },
+    "state": {}
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantOSService := incusosapi.ServiceTailscale{
+							Config: struct {
+								Enabled          bool     `json:"enabled"           yaml:"enabled"`
+								LoginServer      string   `json:"login_server"      yaml:"login_server"`
+								AuthKey          string   `json:"auth_key"          yaml:"auth_key"`
+								AcceptRoutes     bool     `json:"accept_routes"     yaml:"accept_routes"`
+								AdvertisedRoutes []string `json:"advertised_routes" yaml:"advertised_routes"`
+								ServeEnabled     bool     `json:"serve_enabled"     yaml:"serve_enabled"`
+								ServePort        int      `json:"serve_port"        yaml:"serve_port"`
+							}{
+								Enabled:     true,
+								LoginServer: "server",
+							},
+							State: struct{}{},
+						}
+
+						require.Equal(t, wantOSService, res)
+					},
+					wantPaths: []string{"GET /os/1.0/services/tailscale"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/tailscale"},
+				},
+				{
+					name: "error - tailscale service config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/services/tailscale
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/tailscale"},
+				},
+			},
+		},
+		{
+			name: "GetOSServiceUSBIP",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetOSServiceUSBIP(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "enabled": true,
+      "targets": [
+        {
+          "address": "address"
+        }
+      ]
+    },
+    "state": {}
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantOSService := incusosapi.ServiceUSBIP{
+							Config: incusosapi.ServiceUSBIPConfig{
+								Targets: []incusosapi.ServiceUSBIPTarget{
+									{
+										Address: "address",
+									},
+								},
+							},
+							State: incusosapi.ServiceUSBIPState{},
+						}
+
+						require.Equal(t, wantOSService, res)
+					},
+					wantPaths: []string{"GET /os/1.0/services/usbip"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/usbip"},
+				},
+				{
+					name: "error - usbip service config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/services/usbip
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/services/usbip"},
+				},
+			},
+		},
+
 		{
 			name: "UpdateOSService - config map",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
