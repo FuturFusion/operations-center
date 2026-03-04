@@ -11,6 +11,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
+	api0 "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -94,6 +95,34 @@ func (_d ClusterClientPortWithPrometheus) GetOSData(ctx context.Context, endpoin
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSData", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetOSData(ctx, endpoint)
+}
+
+// GetOSService implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) GetOSService(ctx context.Context, server provisioning.Server, name string) (stringToV map[string]any, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSService", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetOSService(ctx, server, name)
+}
+
+// GetOSServiceISCSI implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) GetOSServiceISCSI(ctx context.Context, server provisioning.Server) (serviceISCSI api0.ServiceISCSI, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSServiceISCSI", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetOSServiceISCSI(ctx, server)
 }
 
 // GetRemoteCertificate implements provisioning.ClusterClientPort.

@@ -12,6 +12,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
+	api0 "github.com/lxc/incus-os/incus-osd/api"
 )
 
 // ClusterClientPortWithSlog implements provisioning.ClusterClientPort that is instrumented with slog logger.
@@ -181,6 +182,77 @@ func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, endpoint prov
 		}
 	}()
 	return _d._base.GetOSData(ctx, endpoint)
+}
+
+// GetOSService implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) GetOSService(ctx context.Context, server provisioning.Server, name string) (stringToV map[string]any, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetOSService")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("stringToV", stringToV),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetOSService returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetOSService returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetOSService finished")
+		}
+	}()
+	return _d._base.GetOSService(ctx, server, name)
+}
+
+// GetOSServiceISCSI implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) GetOSServiceISCSI(ctx context.Context, server provisioning.Server) (serviceISCSI api0.ServiceISCSI, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetOSServiceISCSI")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("serviceISCSI", serviceISCSI),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetOSServiceISCSI returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetOSServiceISCSI returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetOSServiceISCSI finished")
+		}
+	}()
+	return _d._base.GetOSServiceISCSI(ctx, server)
 }
 
 // GetRemoteCertificate implements provisioning.ClusterClientPort.

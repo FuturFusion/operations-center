@@ -12,6 +12,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api"
 )
 
 // ClusterServiceWithSlog implements provisioning.ClusterService that is instrumented with slog logger.
@@ -110,6 +111,41 @@ func (_d ClusterServiceWithSlog) AddServerSystemNetworkVLAN(ctx context.Context,
 		}
 	}()
 	return _d._base.AddServerSystemNetworkVLAN(ctx, clusterName, vlan)
+}
+
+// AddStorageTargetISCSI implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) AddStorageTargetISCSI(ctx context.Context, clusterName string, target api.ServiceISCSITarget) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.Any("target", target),
+		)
+	}
+	log.DebugContext(ctx, "=> calling AddStorageTargetISCSI")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method AddStorageTargetISCSI returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method AddStorageTargetISCSI returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method AddStorageTargetISCSI finished")
+		}
+	}()
+	return _d._base.AddStorageTargetISCSI(ctx, clusterName, target)
 }
 
 // Create implements provisioning.ClusterService.
@@ -640,6 +676,41 @@ func (_d ClusterServiceWithSlog) RemoveServerSystemNetworkVLAN(ctx context.Conte
 		}
 	}()
 	return _d._base.RemoveServerSystemNetworkVLAN(ctx, clusterName, vlanName)
+}
+
+// RemoveStorageTargetISCSI implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) RemoveStorageTargetISCSI(ctx context.Context, clusterName string, target api.ServiceISCSITarget) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.Any("target", target),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RemoveStorageTargetISCSI")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method RemoveStorageTargetISCSI returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method RemoveStorageTargetISCSI returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method RemoveStorageTargetISCSI finished")
+		}
+	}()
+	return _d._base.RemoveStorageTargetISCSI(ctx, clusterName, target)
 }
 
 // Rename implements provisioning.ClusterService.

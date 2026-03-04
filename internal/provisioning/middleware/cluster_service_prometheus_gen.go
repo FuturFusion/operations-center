@@ -11,6 +11,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -66,6 +67,20 @@ func (_d ClusterServiceWithPrometheus) AddServerSystemNetworkVLAN(ctx context.Co
 		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AddServerSystemNetworkVLAN", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.AddServerSystemNetworkVLAN(ctx, clusterName, vlan)
+}
+
+// AddStorageTargetISCSI implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) AddStorageTargetISCSI(ctx context.Context, clusterName string, target api.ServiceISCSITarget) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AddStorageTargetISCSI", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.AddStorageTargetISCSI(ctx, clusterName, target)
 }
 
 // Create implements provisioning.ClusterService.
@@ -276,6 +291,20 @@ func (_d ClusterServiceWithPrometheus) RemoveServerSystemNetworkVLAN(ctx context
 		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveServerSystemNetworkVLAN", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.RemoveServerSystemNetworkVLAN(ctx, clusterName, vlanName)
+}
+
+// RemoveStorageTargetISCSI implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) RemoveStorageTargetISCSI(ctx context.Context, clusterName string, target api.ServiceISCSITarget) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveStorageTargetISCSI", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RemoveStorageTargetISCSI(ctx, clusterName, target)
 }
 
 // Rename implements provisioning.ClusterService.

@@ -12,6 +12,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api"
 )
 
 // Ensure that ClusterServiceMock does implement provisioning.ClusterService.
@@ -29,6 +30,9 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			},
 //			AddServerSystemNetworkVLANFunc: func(ctx context.Context, clusterName string, vlan provisioning.ServerSystemNetworkVLAN) error {
 //				panic("mock out the AddServerSystemNetworkVLAN method")
+//			},
+//			AddStorageTargetISCSIFunc: func(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error {
+//				panic("mock out the AddStorageTargetISCSI method")
 //			},
 //			CreateFunc: func(ctx context.Context, cluster provisioning.Cluster) (provisioning.Cluster, error) {
 //				panic("mock out the Create method")
@@ -75,6 +79,9 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			RemoveServerSystemNetworkVLANFunc: func(ctx context.Context, clusterName string, vlanName string) error {
 //				panic("mock out the RemoveServerSystemNetworkVLAN method")
 //			},
+//			RemoveStorageTargetISCSIFunc: func(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error {
+//				panic("mock out the RemoveStorageTargetISCSI method")
+//			},
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
@@ -114,6 +121,9 @@ type ClusterServiceMock struct {
 
 	// AddServerSystemNetworkVLANFunc mocks the AddServerSystemNetworkVLAN method.
 	AddServerSystemNetworkVLANFunc func(ctx context.Context, clusterName string, vlan provisioning.ServerSystemNetworkVLAN) error
+
+	// AddStorageTargetISCSIFunc mocks the AddStorageTargetISCSI method.
+	AddStorageTargetISCSIFunc func(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error
 
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, cluster provisioning.Cluster) (provisioning.Cluster, error)
@@ -159,6 +169,9 @@ type ClusterServiceMock struct {
 
 	// RemoveServerSystemNetworkVLANFunc mocks the RemoveServerSystemNetworkVLAN method.
 	RemoveServerSystemNetworkVLANFunc func(ctx context.Context, clusterName string, vlanName string) error
+
+	// RemoveStorageTargetISCSIFunc mocks the RemoveStorageTargetISCSI method.
+	RemoveStorageTargetISCSIFunc func(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
@@ -206,6 +219,15 @@ type ClusterServiceMock struct {
 			ClusterName string
 			// Vlan is the vlan argument value.
 			Vlan provisioning.ServerSystemNetworkVLAN
+		}
+		// AddStorageTargetISCSI holds details about calls to the AddStorageTargetISCSI method.
+		AddStorageTargetISCSI []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// Target is the target argument value.
+			Target api.ServiceISCSITarget
 		}
 		// Create holds details about calls to the Create method.
 		Create []struct {
@@ -326,6 +348,15 @@ type ClusterServiceMock struct {
 			// VlanName is the vlanName argument value.
 			VlanName string
 		}
+		// RemoveStorageTargetISCSI holds details about calls to the RemoveStorageTargetISCSI method.
+		RemoveStorageTargetISCSI []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// Target is the target argument value.
+			Target api.ServiceISCSITarget
+		}
 		// Rename holds details about calls to the Rename method.
 		Rename []struct {
 			// Ctx is the ctx argument value.
@@ -396,6 +427,7 @@ type ClusterServiceMock struct {
 	}
 	lockAddApplication                  sync.RWMutex
 	lockAddServerSystemNetworkVLAN      sync.RWMutex
+	lockAddStorageTargetISCSI           sync.RWMutex
 	lockCreate                          sync.RWMutex
 	lockDeleteAndFactoryResetByName     sync.RWMutex
 	lockDeleteByName                    sync.RWMutex
@@ -411,6 +443,7 @@ type ClusterServiceMock struct {
 	lockGetClusterArtifactFileByName    sync.RWMutex
 	lockGetEndpoint                     sync.RWMutex
 	lockRemoveServerSystemNetworkVLAN   sync.RWMutex
+	lockRemoveStorageTargetISCSI        sync.RWMutex
 	lockRename                          sync.RWMutex
 	lockResyncInventory                 sync.RWMutex
 	lockResyncInventoryByName           sync.RWMutex
@@ -499,6 +532,46 @@ func (mock *ClusterServiceMock) AddServerSystemNetworkVLANCalls() []struct {
 	mock.lockAddServerSystemNetworkVLAN.RLock()
 	calls = mock.calls.AddServerSystemNetworkVLAN
 	mock.lockAddServerSystemNetworkVLAN.RUnlock()
+	return calls
+}
+
+// AddStorageTargetISCSI calls AddStorageTargetISCSIFunc.
+func (mock *ClusterServiceMock) AddStorageTargetISCSI(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error {
+	if mock.AddStorageTargetISCSIFunc == nil {
+		panic("ClusterServiceMock.AddStorageTargetISCSIFunc: method is nil but ClusterService.AddStorageTargetISCSI was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ClusterName string
+		Target      api.ServiceISCSITarget
+	}{
+		Ctx:         ctx,
+		ClusterName: clusterName,
+		Target:      target,
+	}
+	mock.lockAddStorageTargetISCSI.Lock()
+	mock.calls.AddStorageTargetISCSI = append(mock.calls.AddStorageTargetISCSI, callInfo)
+	mock.lockAddStorageTargetISCSI.Unlock()
+	return mock.AddStorageTargetISCSIFunc(ctx, clusterName, target)
+}
+
+// AddStorageTargetISCSICalls gets all the calls that were made to AddStorageTargetISCSI.
+// Check the length with:
+//
+//	len(mockedClusterService.AddStorageTargetISCSICalls())
+func (mock *ClusterServiceMock) AddStorageTargetISCSICalls() []struct {
+	Ctx         context.Context
+	ClusterName string
+	Target      api.ServiceISCSITarget
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ClusterName string
+		Target      api.ServiceISCSITarget
+	}
+	mock.lockAddStorageTargetISCSI.RLock()
+	calls = mock.calls.AddStorageTargetISCSI
+	mock.lockAddStorageTargetISCSI.RUnlock()
 	return calls
 }
 
@@ -1067,6 +1140,46 @@ func (mock *ClusterServiceMock) RemoveServerSystemNetworkVLANCalls() []struct {
 	mock.lockRemoveServerSystemNetworkVLAN.RLock()
 	calls = mock.calls.RemoveServerSystemNetworkVLAN
 	mock.lockRemoveServerSystemNetworkVLAN.RUnlock()
+	return calls
+}
+
+// RemoveStorageTargetISCSI calls RemoveStorageTargetISCSIFunc.
+func (mock *ClusterServiceMock) RemoveStorageTargetISCSI(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error {
+	if mock.RemoveStorageTargetISCSIFunc == nil {
+		panic("ClusterServiceMock.RemoveStorageTargetISCSIFunc: method is nil but ClusterService.RemoveStorageTargetISCSI was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ClusterName string
+		Target      api.ServiceISCSITarget
+	}{
+		Ctx:         ctx,
+		ClusterName: clusterName,
+		Target:      target,
+	}
+	mock.lockRemoveStorageTargetISCSI.Lock()
+	mock.calls.RemoveStorageTargetISCSI = append(mock.calls.RemoveStorageTargetISCSI, callInfo)
+	mock.lockRemoveStorageTargetISCSI.Unlock()
+	return mock.RemoveStorageTargetISCSIFunc(ctx, clusterName, target)
+}
+
+// RemoveStorageTargetISCSICalls gets all the calls that were made to RemoveStorageTargetISCSI.
+// Check the length with:
+//
+//	len(mockedClusterService.RemoveStorageTargetISCSICalls())
+func (mock *ClusterServiceMock) RemoveStorageTargetISCSICalls() []struct {
+	Ctx         context.Context
+	ClusterName string
+	Target      api.ServiceISCSITarget
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ClusterName string
+		Target      api.ServiceISCSITarget
+	}
+	mock.lockRemoveStorageTargetISCSI.RLock()
+	calls = mock.calls.RemoveStorageTargetISCSI
+	mock.lockRemoveStorageTargetISCSI.RUnlock()
 	return calls
 }
 
