@@ -42,6 +42,10 @@ type ClusterService interface {
 	AddApplication(ctx context.Context, clusterName string, applicationName string) error
 	AddStorageTargetISCSI(ctx context.Context, clusterName string, target incusosapi.ServiceISCSITarget) error
 	RemoveStorageTargetISCSI(ctx context.Context, clusterName string, target incusosapi.ServiceISCSITarget) error
+	AddStorageTargetMultipath(ctx context.Context, clusterName string, target string) error
+	RemoveStorageTargetMultipath(ctx context.Context, clusterName string, target string) error
+	AddStorageTargetNVME(ctx context.Context, clusterName string, target incusosapi.ServiceNVMETarget) error
+	RemoveStorageTargetNVME(ctx context.Context, clusterName string, target incusosapi.ServiceNVMETarget) error
 }
 
 type ClusterRepo interface {
@@ -71,6 +75,8 @@ type InventorySyncer interface {
 type ClusterClientPort interface {
 	Ping(ctx context.Context, endpoint Endpoint) error
 	GetOSServiceISCSI(ctx context.Context, server Server) (incusosapi.ServiceISCSI, error)
+	GetOSServiceMultipath(ctx context.Context, server Server) (incusosapi.ServiceMultipath, error)
+	GetOSServiceNVME(ctx context.Context, server Server) (incusosapi.ServiceNVME, error)
 	UpdateOSService(ctx context.Context, server Server, name string, config any) error
 	SetServerConfig(ctx context.Context, endpoint Endpoint, config map[string]string) error
 	EnableCluster(ctx context.Context, server Server) (clusterCertificate string, _ error)

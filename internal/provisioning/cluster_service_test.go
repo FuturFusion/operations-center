@@ -5282,6 +5282,1506 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 	}
 }
 
+func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
+	tests := []struct {
+		name                           string
+		nameArg                        string
+		targetArg                      string
+		repoGetByName                  *provisioning.Cluster
+		repoGetByNameErr               error
+		clientGetOSServiceMultipathErr []queue.Item[incusosapi.ServiceMultipath]
+		clientUpdateOSServiceErr       []queue.Item[struct{}]
+		serverSvcPollServersErr        error
+		serverSvcGetAllWithFilter      []queue.Item[provisioning.Servers]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:      "success",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{},
+						},
+					},
+				},
+			},
+			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+				{},
+				{},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:                    "error - GetByName error",
+			nameArg:                 "one",
+			targetArg:               "target",
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:      "error - client.GetOSServiceMultipath",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:      "error - multipath service not enabled",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: false, // not enabled
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "Service multipath is not enabled on server")
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:      "error - multipath service target already present",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"target"},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Service multipath target "target" already defined on server`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:      "error - client.UpdateOSService - revert client.UpdateOSService",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{},
+						},
+					},
+				},
+			},
+			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+				// First update successful.
+				{},
+				// Second update error.
+				{
+					Err: errors.New("error"),
+				},
+				// Revert of first update error.
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously updated multipath service config.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				GetOSServiceMultipathFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceMultipath, error) {
+					config, err := queue.Pop(t, &tc.clientGetOSServiceMultipathErr)
+					return config, err
+				},
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					_, err := queue.Pop(t, &tc.clientUpdateOSServiceErr)
+					return err
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.AddStorageTargetMultipath(context.Background(), tc.nameArg, tc.targetArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.clientGetOSServiceMultipathErr)
+			require.Empty(t, tc.clientUpdateOSServiceErr)
+		})
+	}
+}
+
+func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
+	tests := []struct {
+		name                           string
+		nameArg                        string
+		targetArg                      string
+		repoGetByName                  *provisioning.Cluster
+		repoGetByNameErr               error
+		clientGetOSServiceMultipathErr []queue.Item[incusosapi.ServiceMultipath]
+		clientUpdateOSServiceErr       []queue.Item[struct{}]
+		serverSvcPollServersErr        error
+		serverSvcGetAllWithFilter      []queue.Item[provisioning.Servers]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:      "success",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"target", "keep"},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"target", "keep"},
+						},
+					},
+				},
+			},
+			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+				{},
+				{},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:                    "error - GetByName error",
+			nameArg:                 "one",
+			targetArg:               "target",
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:      "error - client.GetOSServiceMultipath",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:      "error - multipath service not enabled",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: false, // not enabled
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "Service multipath is not enabled on server")
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:      "error - multipath service target missing",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{}, // target missing
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Service multipath target "target" does not exist on server`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:      "error - client.UpdateOSService - revert client.UpdateOSService",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"target"},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"target"},
+						},
+					},
+				},
+			},
+			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+				// First update successful.
+				{},
+				// Second update error.
+				{
+					Err: errors.New("error"),
+				},
+				// Revert of first update error.
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously updated multipath service config.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				GetOSServiceMultipathFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceMultipath, error) {
+					config, err := queue.Pop(t, &tc.clientGetOSServiceMultipathErr)
+					return config, err
+				},
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					_, err := queue.Pop(t, &tc.clientUpdateOSServiceErr)
+					return err
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.RemoveStorageTargetMultipath(context.Background(), tc.nameArg, tc.targetArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.clientGetOSServiceMultipathErr)
+			require.Empty(t, tc.clientUpdateOSServiceErr)
+		})
+	}
+}
+
+func TestClusterService_AddStorageTargetNVME(t *testing.T) {
+	tests := []struct {
+		name                      string
+		nameArg                   string
+		targetArg                 incusosapi.ServiceNVMETarget
+		repoGetByName             *provisioning.Cluster
+		repoGetByNameErr          error
+		clientGetOSServiceNVMEErr []queue.Item[incusosapi.ServiceNVME]
+		clientUpdateOSServiceErr  []queue.Item[struct{}]
+		serverSvcPollServersErr   error
+		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{},
+						},
+					},
+				},
+			},
+			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+				{},
+				{},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:    "error - GetByName error",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - client.GetOSServiceNVME",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - nvme service not enabled",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: false, // not enabled
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "Service nvme is not enabled on server")
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - nvme service target already present",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "target",
+									Address:   "address",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Service nvme transport "target" (address:1234) already defined on server`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - client.UpdateOSService - revert client.UpdateOSService",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{},
+						},
+					},
+				},
+			},
+			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+				// First update successful.
+				{},
+				// Second update error.
+				{
+					Err: errors.New("error"),
+				},
+				// Revert of first update error.
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously updated nvme service config.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				GetOSServiceNVMEFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceNVME, error) {
+					config, err := queue.Pop(t, &tc.clientGetOSServiceNVMEErr)
+					return config, err
+				},
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					_, err := queue.Pop(t, &tc.clientUpdateOSServiceErr)
+					return err
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.AddStorageTargetNVME(context.Background(), tc.nameArg, tc.targetArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.clientGetOSServiceNVMEErr)
+			require.Empty(t, tc.clientUpdateOSServiceErr)
+		})
+	}
+}
+
+func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
+	tests := []struct {
+		name                      string
+		nameArg                   string
+		targetArg                 incusosapi.ServiceNVMETarget
+		repoGetByName             *provisioning.Cluster
+		repoGetByNameErr          error
+		clientGetOSServiceNVMEErr []queue.Item[incusosapi.ServiceNVME]
+		clientUpdateOSServiceErr  []queue.Item[struct{}]
+		serverSvcPollServersErr   error
+		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "target",
+									Address:   "address",
+									Port:      1234,
+								},
+								{
+									Transport: "keep",
+									Address:   "keep",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "target",
+									Address:   "address",
+									Port:      1234,
+								},
+								{
+									Transport: "keep",
+									Address:   "keep",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+				{},
+				{},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:    "error - GetByName error",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - client.GetOSServiceNVME",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - nvme service not enabled",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: false, // not enabled
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "Service nvme is not enabled on server")
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - nvme service target missing",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{}, // target missing
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Service nvme transport "target" (address:1234) does not exist on server`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - client.UpdateOSService - revert client.UpdateOSService",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "target",
+									Address:   "address",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "target",
+									Address:   "address",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+				// First update successful.
+				{},
+				// Second update error.
+				{
+					Err: errors.New("error"),
+				},
+				// Revert of first update error.
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously updated nvme service config.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				GetOSServiceNVMEFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceNVME, error) {
+					config, err := queue.Pop(t, &tc.clientGetOSServiceNVMEErr)
+					return config, err
+				},
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					_, err := queue.Pop(t, &tc.clientUpdateOSServiceErr)
+					return err
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.RemoveStorageTargetNVME(context.Background(), tc.nameArg, tc.targetArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.clientGetOSServiceNVMEErr)
+			require.Empty(t, tc.clientUpdateOSServiceErr)
+		})
+	}
+}
+
 func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 	doneChannel := func() chan struct{} {
 		t.Helper()

@@ -1257,6 +1257,266 @@ func (s clusterService) RemoveStorageTargetISCSI(ctx context.Context, clusterNam
 	return nil
 }
 
+func (s clusterService) AddStorageTargetMultipath(ctx context.Context, clusterName string, target string) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Add multipath storage target to cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the service is enabled and target is not yet present on all servers.
+	multipathConfigs := make(map[string]incusosapi.ServiceMultipath, len(servers))
+	for _, server := range servers {
+		var multipathConfig incusosapi.ServiceMultipath
+		multipathConfig, err = s.client.GetOSServiceMultipath(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get multipath service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		if !multipathConfig.Config.Enabled {
+			return fmt.Errorf("Service multipath is not enabled on server %q (%s): %w", server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		if slices.Contains(multipathConfig.Config.WWNs, target) {
+			return fmt.Errorf("Service multipath target %q already defined on server %q (%s): %w", target, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		multipathConfigs[server.Name] = multipathConfig
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		currentMultipathConfig := multipathConfigs[server.Name]
+
+		updatedMultipathConfig := incusosapi.ServiceMultipath{
+			Config: incusosapi.ServiceMultipathConfig{
+				Enabled: true,
+				WWNs:    append(currentMultipathConfig.Config.WWNs, target),
+			},
+		}
+
+		err = s.client.UpdateOSService(ctx, server, "multipath", updatedMultipathConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to update multipath service config on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			revertErr := s.client.UpdateOSService(ctx, server, "multipath", currentMultipathConfig)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously updated multipath service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentMultipathConfig), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+func (s clusterService) RemoveStorageTargetMultipath(ctx context.Context, clusterName string, target string) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Remove multipath storage target from cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the service is enabled and target is present on all servers.
+	multipathConfigs := make(map[string]incusosapi.ServiceMultipath, len(servers))
+	for _, server := range servers {
+		var multipathConfig incusosapi.ServiceMultipath
+		multipathConfig, err = s.client.GetOSServiceMultipath(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get multipath service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		if !multipathConfig.Config.Enabled {
+			return fmt.Errorf("Service multipath is not enabled on server %q (%s): %w", server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		if !slices.Contains(multipathConfig.Config.WWNs, target) {
+			return fmt.Errorf("Service multipath target %q does not exist on server %q (%s): %w", target, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		multipathConfigs[server.Name] = multipathConfig
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		currentMultipathConfig := multipathConfigs[server.Name]
+
+		updatedMultipathConfig := incusosapi.ServiceMultipath{
+			Config: incusosapi.ServiceMultipathConfig{
+				Enabled: true,
+				WWNs: slices.DeleteFunc(currentMultipathConfig.Config.WWNs, func(t string) bool {
+					return t == target
+				}),
+			},
+		}
+
+		err = s.client.UpdateOSService(ctx, server, "multipath", updatedMultipathConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to update multipath service config on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			revertErr := s.client.UpdateOSService(ctx, server, "multipath", currentMultipathConfig)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously updated multipath service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentMultipathConfig), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+func (s clusterService) AddStorageTargetNVME(ctx context.Context, clusterName string, target incusosapi.ServiceNVMETarget) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Add nvme storage target to cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the service is enabled and target is not yet present on all servers.
+	nvmeConfigs := make(map[string]incusosapi.ServiceNVME, len(servers))
+	for _, server := range servers {
+		var nvmeConfig incusosapi.ServiceNVME
+		nvmeConfig, err = s.client.GetOSServiceNVME(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get nvme service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		if !nvmeConfig.Config.Enabled {
+			return fmt.Errorf("Service nvme is not enabled on server %q (%s): %w", server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		if slices.Contains(nvmeConfig.Config.Targets, target) {
+			return fmt.Errorf("Service nvme transport %q (%s:%d) already defined on server %q (%s): %w", target.Transport, target.Address, target.Port, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		nvmeConfigs[server.Name] = nvmeConfig
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		currentNVMEConfig := nvmeConfigs[server.Name]
+
+		updatedNVMEConfig := incusosapi.ServiceNVME{
+			Config: incusosapi.ServiceNVMEConfig{
+				Enabled: true,
+				Targets: append(currentNVMEConfig.Config.Targets, target),
+			},
+		}
+
+		err = s.client.UpdateOSService(ctx, server, "nvme", updatedNVMEConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to update nvme service config on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			revertErr := s.client.UpdateOSService(ctx, server, "nvme", currentNVMEConfig)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously updated nvme service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentNVMEConfig), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+func (s clusterService) RemoveStorageTargetNVME(ctx context.Context, clusterName string, target incusosapi.ServiceNVMETarget) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Remove nvme storage target from cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the service is enabled and target is present on all servers.
+	nvmeConfigs := make(map[string]incusosapi.ServiceNVME, len(servers))
+	for _, server := range servers {
+		var nvmeConfig incusosapi.ServiceNVME
+		nvmeConfig, err = s.client.GetOSServiceNVME(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get nvme service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		if !nvmeConfig.Config.Enabled {
+			return fmt.Errorf("Service nvme is not enabled on server %q (%s): %w", server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		if !slices.Contains(nvmeConfig.Config.Targets, target) {
+			return fmt.Errorf("Service nvme transport %q (%s:%d) does not exist on server %q (%s): %w", target.Transport, target.Address, target.Port, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		nvmeConfigs[server.Name] = nvmeConfig
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		currentNVMEConfig := nvmeConfigs[server.Name]
+
+		updatedNVMEConfig := incusosapi.ServiceNVME{
+			Config: incusosapi.ServiceNVMEConfig{
+				Enabled: true,
+				Targets: slices.DeleteFunc(currentNVMEConfig.Config.Targets, func(t incusosapi.ServiceNVMETarget) bool {
+					return t == target
+				}),
+			},
+		}
+
+		err = s.client.UpdateOSService(ctx, server, "nvme", updatedNVMEConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to update nvme service config on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			revertErr := s.client.UpdateOSService(ctx, server, "nvme", currentNVMEConfig)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously updated nvme service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentNVMEConfig), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
 func (s clusterService) prepareBulkUpdate(ctx context.Context, clusterName string) (Servers, error) {
 	cluster, err := s.GetByName(ctx, clusterName)
 	if err != nil {
