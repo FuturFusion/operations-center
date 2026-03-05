@@ -658,25 +658,25 @@ func (c *clusterHandler) clusterBulkUpdatePost(r *http.Request) response.Respons
 
 	case api.ClusterBulkUpdateActionAddMultipathStorageTarget:
 		var multipathTarget struct {
-			Name string `json:"name"`
+			WWN string `json:"wwn"`
 		}
 		err = json.Unmarshal(*request.Arguments, &multipathTarget)
 		if err != nil {
 			return response.BadRequest(err)
 		}
 
-		err = c.service.AddStorageTargetMultipath(ctx, name, multipathTarget.Name)
+		err = c.service.AddStorageTargetMultipath(ctx, name, multipathTarget.WWN)
 
 	case api.ClusterBulkUpdateActionRemoveMultipathStorageTarget:
 		var multipathTarget struct {
-			Name string `json:"name"`
+			WWN string `json:"wwn"`
 		}
 		err = json.Unmarshal(*request.Arguments, &multipathTarget)
 		if err != nil {
 			return response.BadRequest(err)
 		}
 
-		err = c.service.RemoveStorageTargetMultipath(ctx, name, multipathTarget.Name)
+		err = c.service.RemoveStorageTargetMultipath(ctx, name, multipathTarget.WWN)
 
 	case api.ClusterBulkUpdateActionAddNVMEStorageTarget:
 		var nvmeTarget incusosapi.ServiceNVMETarget
