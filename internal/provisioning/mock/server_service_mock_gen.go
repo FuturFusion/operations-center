@@ -27,9 +27,6 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			AddApplicationFunc: func(ctx context.Context, name string, applicationName string) error {
 //				panic("mock out the AddApplication method")
 //			},
-//			AddSystemNetworkVLANFunc: func(ctx context.Context, name string, vlanConfig provisioning.ServerSystemNetworkVLAN) error {
-//				panic("mock out the AddSystemNetworkVLAN method")
-//			},
 //			CreateFunc: func(ctx context.Context, token uuid.UUID, server provisioning.Server) (provisioning.Server, error) {
 //				panic("mock out the Create method")
 //			},
@@ -77,9 +74,6 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			},
 //			RebootSystemByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the RebootSystemByName method")
-//			},
-//			RemoveSystemNetworkVLANFunc: func(ctx context.Context, name string, vlanName string) error {
-//				panic("mock out the RemoveSystemNetworkVLAN method")
 //			},
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
@@ -136,9 +130,6 @@ type ServerServiceMock struct {
 	// AddApplicationFunc mocks the AddApplication method.
 	AddApplicationFunc func(ctx context.Context, name string, applicationName string) error
 
-	// AddSystemNetworkVLANFunc mocks the AddSystemNetworkVLAN method.
-	AddSystemNetworkVLANFunc func(ctx context.Context, name string, vlanConfig provisioning.ServerSystemNetworkVLAN) error
-
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, token uuid.UUID, server provisioning.Server) (provisioning.Server, error)
 
@@ -186,9 +177,6 @@ type ServerServiceMock struct {
 
 	// RebootSystemByNameFunc mocks the RebootSystemByName method.
 	RebootSystemByNameFunc func(ctx context.Context, name string) error
-
-	// RemoveSystemNetworkVLANFunc mocks the RemoveSystemNetworkVLAN method.
-	RemoveSystemNetworkVLANFunc func(ctx context.Context, name string, vlanName string) error
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
@@ -245,15 +233,6 @@ type ServerServiceMock struct {
 			Name string
 			// ApplicationName is the applicationName argument value.
 			ApplicationName string
-		}
-		// AddSystemNetworkVLAN holds details about calls to the AddSystemNetworkVLAN method.
-		AddSystemNetworkVLAN []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Name is the name argument value.
-			Name string
-			// VlanConfig is the vlanConfig argument value.
-			VlanConfig provisioning.ServerSystemNetworkVLAN
 		}
 		// Create holds details about calls to the Create method.
 		Create []struct {
@@ -368,15 +347,6 @@ type ServerServiceMock struct {
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
-		}
-		// RemoveSystemNetworkVLAN holds details about calls to the RemoveSystemNetworkVLAN method.
-		RemoveSystemNetworkVLAN []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Name is the name argument value.
-			Name string
-			// VlanName is the vlanName argument value.
-			VlanName string
 		}
 		// Rename holds details about calls to the Rename method.
 		Rename []struct {
@@ -503,7 +473,6 @@ type ServerServiceMock struct {
 		}
 	}
 	lockAddApplication               sync.RWMutex
-	lockAddSystemNetworkVLAN         sync.RWMutex
 	lockCreate                       sync.RWMutex
 	lockDeleteByName                 sync.RWMutex
 	lockEvacuateSystemByName         sync.RWMutex
@@ -520,7 +489,6 @@ type ServerServiceMock struct {
 	lockPollServers                  sync.RWMutex
 	lockPoweroffSystemByName         sync.RWMutex
 	lockRebootSystemByName           sync.RWMutex
-	lockRemoveSystemNetworkVLAN      sync.RWMutex
 	lockRename                       sync.RWMutex
 	lockRestoreSystemByName          sync.RWMutex
 	lockResyncByName                 sync.RWMutex
@@ -575,46 +543,6 @@ func (mock *ServerServiceMock) AddApplicationCalls() []struct {
 	mock.lockAddApplication.RLock()
 	calls = mock.calls.AddApplication
 	mock.lockAddApplication.RUnlock()
-	return calls
-}
-
-// AddSystemNetworkVLAN calls AddSystemNetworkVLANFunc.
-func (mock *ServerServiceMock) AddSystemNetworkVLAN(ctx context.Context, name string, vlanConfig provisioning.ServerSystemNetworkVLAN) error {
-	if mock.AddSystemNetworkVLANFunc == nil {
-		panic("ServerServiceMock.AddSystemNetworkVLANFunc: method is nil but ServerService.AddSystemNetworkVLAN was just called")
-	}
-	callInfo := struct {
-		Ctx        context.Context
-		Name       string
-		VlanConfig provisioning.ServerSystemNetworkVLAN
-	}{
-		Ctx:        ctx,
-		Name:       name,
-		VlanConfig: vlanConfig,
-	}
-	mock.lockAddSystemNetworkVLAN.Lock()
-	mock.calls.AddSystemNetworkVLAN = append(mock.calls.AddSystemNetworkVLAN, callInfo)
-	mock.lockAddSystemNetworkVLAN.Unlock()
-	return mock.AddSystemNetworkVLANFunc(ctx, name, vlanConfig)
-}
-
-// AddSystemNetworkVLANCalls gets all the calls that were made to AddSystemNetworkVLAN.
-// Check the length with:
-//
-//	len(mockedServerService.AddSystemNetworkVLANCalls())
-func (mock *ServerServiceMock) AddSystemNetworkVLANCalls() []struct {
-	Ctx        context.Context
-	Name       string
-	VlanConfig provisioning.ServerSystemNetworkVLAN
-} {
-	var calls []struct {
-		Ctx        context.Context
-		Name       string
-		VlanConfig provisioning.ServerSystemNetworkVLAN
-	}
-	mock.lockAddSystemNetworkVLAN.RLock()
-	calls = mock.calls.AddSystemNetworkVLAN
-	mock.lockAddSystemNetworkVLAN.RUnlock()
 	return calls
 }
 
@@ -1195,46 +1123,6 @@ func (mock *ServerServiceMock) RebootSystemByNameCalls() []struct {
 	mock.lockRebootSystemByName.RLock()
 	calls = mock.calls.RebootSystemByName
 	mock.lockRebootSystemByName.RUnlock()
-	return calls
-}
-
-// RemoveSystemNetworkVLAN calls RemoveSystemNetworkVLANFunc.
-func (mock *ServerServiceMock) RemoveSystemNetworkVLAN(ctx context.Context, name string, vlanName string) error {
-	if mock.RemoveSystemNetworkVLANFunc == nil {
-		panic("ServerServiceMock.RemoveSystemNetworkVLANFunc: method is nil but ServerService.RemoveSystemNetworkVLAN was just called")
-	}
-	callInfo := struct {
-		Ctx      context.Context
-		Name     string
-		VlanName string
-	}{
-		Ctx:      ctx,
-		Name:     name,
-		VlanName: vlanName,
-	}
-	mock.lockRemoveSystemNetworkVLAN.Lock()
-	mock.calls.RemoveSystemNetworkVLAN = append(mock.calls.RemoveSystemNetworkVLAN, callInfo)
-	mock.lockRemoveSystemNetworkVLAN.Unlock()
-	return mock.RemoveSystemNetworkVLANFunc(ctx, name, vlanName)
-}
-
-// RemoveSystemNetworkVLANCalls gets all the calls that were made to RemoveSystemNetworkVLAN.
-// Check the length with:
-//
-//	len(mockedServerService.RemoveSystemNetworkVLANCalls())
-func (mock *ServerServiceMock) RemoveSystemNetworkVLANCalls() []struct {
-	Ctx      context.Context
-	Name     string
-	VlanName string
-} {
-	var calls []struct {
-		Ctx      context.Context
-		Name     string
-		VlanName string
-	}
-	mock.lockRemoveSystemNetworkVLAN.RLock()
-	calls = mock.calls.RemoveSystemNetworkVLAN
-	mock.lockRemoveSystemNetworkVLAN.RUnlock()
 	return calls
 }
 

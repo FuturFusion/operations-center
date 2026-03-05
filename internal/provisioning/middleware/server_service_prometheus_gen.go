@@ -54,20 +54,6 @@ func (_d ServerServiceWithPrometheus) AddApplication(ctx context.Context, name s
 	return _d.base.AddApplication(ctx, name, applicationName)
 }
 
-// AddSystemNetworkVLAN implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) AddSystemNetworkVLAN(ctx context.Context, name string, vlanConfig provisioning.ServerSystemNetworkVLAN) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AddSystemNetworkVLAN", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.AddSystemNetworkVLAN(ctx, name, vlanConfig)
-}
-
 // Create implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) Create(ctx context.Context, token uuid.UUID, server provisioning.Server) (server1 provisioning.Server, err error) {
 	_since := time.Now()
@@ -290,20 +276,6 @@ func (_d ServerServiceWithPrometheus) RebootSystemByName(ctx context.Context, na
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RebootSystemByName", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.RebootSystemByName(ctx, name)
-}
-
-// RemoveSystemNetworkVLAN implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) RemoveSystemNetworkVLAN(ctx context.Context, name string, vlanName string) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveSystemNetworkVLAN", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.RemoveSystemNetworkVLAN(ctx, name, vlanName)
 }
 
 // Rename implements provisioning.ServerService.

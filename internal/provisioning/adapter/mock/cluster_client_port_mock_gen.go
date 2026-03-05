@@ -67,6 +67,9 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			UpdateClusterCertificateFunc: func(ctx context.Context, endpoint provisioning.Endpoint, certificatePEM string, keyPEM string) error {
 //				panic("mock out the UpdateClusterCertificate method")
 //			},
+//			UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
+//				panic("mock out the UpdateNetworkConfig method")
+//			},
 //			UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
 //				panic("mock out the UpdateOSService method")
 //			},
@@ -121,6 +124,9 @@ type ClusterClientPortMock struct {
 
 	// UpdateClusterCertificateFunc mocks the UpdateClusterCertificate method.
 	UpdateClusterCertificateFunc func(ctx context.Context, endpoint provisioning.Endpoint, certificatePEM string, keyPEM string) error
+
+	// UpdateNetworkConfigFunc mocks the UpdateNetworkConfig method.
+	UpdateNetworkConfigFunc func(ctx context.Context, server provisioning.Server) error
 
 	// UpdateOSServiceFunc mocks the UpdateOSService method.
 	UpdateOSServiceFunc func(ctx context.Context, server provisioning.Server, name string, config any) error
@@ -246,6 +252,13 @@ type ClusterClientPortMock struct {
 			// KeyPEM is the keyPEM argument value.
 			KeyPEM string
 		}
+		// UpdateNetworkConfig holds details about calls to the UpdateNetworkConfig method.
+		UpdateNetworkConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// UpdateOSService holds details about calls to the UpdateOSService method.
 		UpdateOSService []struct {
 			// Ctx is the ctx argument value.
@@ -281,6 +294,7 @@ type ClusterClientPortMock struct {
 	lockSubscribeLifecycleEvents sync.RWMutex
 	lockSystemFactoryReset       sync.RWMutex
 	lockUpdateClusterCertificate sync.RWMutex
+	lockUpdateNetworkConfig      sync.RWMutex
 	lockUpdateOSService          sync.RWMutex
 	lockUpdateUpdateConfig       sync.RWMutex
 }
@@ -822,6 +836,42 @@ func (mock *ClusterClientPortMock) UpdateClusterCertificateCalls() []struct {
 	mock.lockUpdateClusterCertificate.RLock()
 	calls = mock.calls.UpdateClusterCertificate
 	mock.lockUpdateClusterCertificate.RUnlock()
+	return calls
+}
+
+// UpdateNetworkConfig calls UpdateNetworkConfigFunc.
+func (mock *ClusterClientPortMock) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) error {
+	if mock.UpdateNetworkConfigFunc == nil {
+		panic("ClusterClientPortMock.UpdateNetworkConfigFunc: method is nil but ClusterClientPort.UpdateNetworkConfig was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockUpdateNetworkConfig.Lock()
+	mock.calls.UpdateNetworkConfig = append(mock.calls.UpdateNetworkConfig, callInfo)
+	mock.lockUpdateNetworkConfig.Unlock()
+	return mock.UpdateNetworkConfigFunc(ctx, server)
+}
+
+// UpdateNetworkConfigCalls gets all the calls that were made to UpdateNetworkConfig.
+// Check the length with:
+//
+//	len(mockedClusterClientPort.UpdateNetworkConfigCalls())
+func (mock *ClusterClientPortMock) UpdateNetworkConfigCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockUpdateNetworkConfig.RLock()
+	calls = mock.calls.UpdateNetworkConfig
+	mock.lockUpdateNetworkConfig.RUnlock()
 	return calls
 }
 

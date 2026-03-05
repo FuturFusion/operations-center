@@ -28,8 +28,8 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			AddApplicationFunc: func(ctx context.Context, clusterName string, applicationName string) error {
 //				panic("mock out the AddApplication method")
 //			},
-//			AddServerSystemNetworkVLANFunc: func(ctx context.Context, clusterName string, vlan provisioning.ServerSystemNetworkVLAN) error {
-//				panic("mock out the AddServerSystemNetworkVLAN method")
+//			AddServerSystemNetworkVLANTagsFunc: func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error {
+//				panic("mock out the AddServerSystemNetworkVLANTags method")
 //			},
 //			AddStorageTargetISCSIFunc: func(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error {
 //				panic("mock out the AddStorageTargetISCSI method")
@@ -82,8 +82,8 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
 //				panic("mock out the GetEndpoint method")
 //			},
-//			RemoveServerSystemNetworkVLANFunc: func(ctx context.Context, clusterName string, vlanName string) error {
-//				panic("mock out the RemoveServerSystemNetworkVLAN method")
+//			RemoveServerSystemNetworkVLANTagsFunc: func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error {
+//				panic("mock out the RemoveServerSystemNetworkVLANTags method")
 //			},
 //			RemoveStorageTargetISCSIFunc: func(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error {
 //				panic("mock out the RemoveStorageTargetISCSI method")
@@ -131,8 +131,8 @@ type ClusterServiceMock struct {
 	// AddApplicationFunc mocks the AddApplication method.
 	AddApplicationFunc func(ctx context.Context, clusterName string, applicationName string) error
 
-	// AddServerSystemNetworkVLANFunc mocks the AddServerSystemNetworkVLAN method.
-	AddServerSystemNetworkVLANFunc func(ctx context.Context, clusterName string, vlan provisioning.ServerSystemNetworkVLAN) error
+	// AddServerSystemNetworkVLANTagsFunc mocks the AddServerSystemNetworkVLANTags method.
+	AddServerSystemNetworkVLANTagsFunc func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error
 
 	// AddStorageTargetISCSIFunc mocks the AddStorageTargetISCSI method.
 	AddStorageTargetISCSIFunc func(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error
@@ -185,8 +185,8 @@ type ClusterServiceMock struct {
 	// GetEndpointFunc mocks the GetEndpoint method.
 	GetEndpointFunc func(ctx context.Context, name string) (provisioning.Endpoint, error)
 
-	// RemoveServerSystemNetworkVLANFunc mocks the RemoveServerSystemNetworkVLAN method.
-	RemoveServerSystemNetworkVLANFunc func(ctx context.Context, clusterName string, vlanName string) error
+	// RemoveServerSystemNetworkVLANTagsFunc mocks the RemoveServerSystemNetworkVLANTags method.
+	RemoveServerSystemNetworkVLANTagsFunc func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error
 
 	// RemoveStorageTargetISCSIFunc mocks the RemoveStorageTargetISCSI method.
 	RemoveStorageTargetISCSIFunc func(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error
@@ -235,14 +235,16 @@ type ClusterServiceMock struct {
 			// ApplicationName is the applicationName argument value.
 			ApplicationName string
 		}
-		// AddServerSystemNetworkVLAN holds details about calls to the AddServerSystemNetworkVLAN method.
-		AddServerSystemNetworkVLAN []struct {
+		// AddServerSystemNetworkVLANTags holds details about calls to the AddServerSystemNetworkVLANTags method.
+		AddServerSystemNetworkVLANTags []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ClusterName is the clusterName argument value.
 			ClusterName string
-			// Vlan is the vlan argument value.
-			Vlan provisioning.ServerSystemNetworkVLAN
+			// InterfaceName is the interfaceName argument value.
+			InterfaceName string
+			// VlanTags is the vlanTags argument value.
+			VlanTags []int
 		}
 		// AddStorageTargetISCSI holds details about calls to the AddStorageTargetISCSI method.
 		AddStorageTargetISCSI []struct {
@@ -381,14 +383,16 @@ type ClusterServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
-		// RemoveServerSystemNetworkVLAN holds details about calls to the RemoveServerSystemNetworkVLAN method.
-		RemoveServerSystemNetworkVLAN []struct {
+		// RemoveServerSystemNetworkVLANTags holds details about calls to the RemoveServerSystemNetworkVLANTags method.
+		RemoveServerSystemNetworkVLANTags []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ClusterName is the clusterName argument value.
 			ClusterName string
-			// VlanName is the vlanName argument value.
-			VlanName string
+			// InterfaceName is the interfaceName argument value.
+			InterfaceName string
+			// VlanTags is the vlanTags argument value.
+			VlanTags []int
 		}
 		// RemoveStorageTargetISCSI holds details about calls to the RemoveStorageTargetISCSI method.
 		RemoveStorageTargetISCSI []struct {
@@ -485,38 +489,38 @@ type ClusterServiceMock struct {
 			LoggingConfig provisioning.ServerSystemLogging
 		}
 	}
-	lockAddApplication                  sync.RWMutex
-	lockAddServerSystemNetworkVLAN      sync.RWMutex
-	lockAddStorageTargetISCSI           sync.RWMutex
-	lockAddStorageTargetMultipath       sync.RWMutex
-	lockAddStorageTargetNVME            sync.RWMutex
-	lockCreate                          sync.RWMutex
-	lockDeleteAndFactoryResetByName     sync.RWMutex
-	lockDeleteByName                    sync.RWMutex
-	lockGetAll                          sync.RWMutex
-	lockGetAllNames                     sync.RWMutex
-	lockGetAllNamesWithFilter           sync.RWMutex
-	lockGetAllWithFilter                sync.RWMutex
-	lockGetByName                       sync.RWMutex
-	lockGetClusterArtifactAll           sync.RWMutex
-	lockGetClusterArtifactAllNames      sync.RWMutex
-	lockGetClusterArtifactArchiveByName sync.RWMutex
-	lockGetClusterArtifactByName        sync.RWMutex
-	lockGetClusterArtifactFileByName    sync.RWMutex
-	lockGetEndpoint                     sync.RWMutex
-	lockRemoveServerSystemNetworkVLAN   sync.RWMutex
-	lockRemoveStorageTargetISCSI        sync.RWMutex
-	lockRemoveStorageTargetMultipath    sync.RWMutex
-	lockRemoveStorageTargetNVME         sync.RWMutex
-	lockRename                          sync.RWMutex
-	lockResyncInventory                 sync.RWMutex
-	lockResyncInventoryByName           sync.RWMutex
-	lockSetInventorySyncers             sync.RWMutex
-	lockStartLifecycleEventsMonitor     sync.RWMutex
-	lockUpdate                          sync.RWMutex
-	lockUpdateCertificate               sync.RWMutex
-	lockUpdateSystemKernel              sync.RWMutex
-	lockUpdateSystemLogging             sync.RWMutex
+	lockAddApplication                    sync.RWMutex
+	lockAddServerSystemNetworkVLANTags    sync.RWMutex
+	lockAddStorageTargetISCSI             sync.RWMutex
+	lockAddStorageTargetMultipath         sync.RWMutex
+	lockAddStorageTargetNVME              sync.RWMutex
+	lockCreate                            sync.RWMutex
+	lockDeleteAndFactoryResetByName       sync.RWMutex
+	lockDeleteByName                      sync.RWMutex
+	lockGetAll                            sync.RWMutex
+	lockGetAllNames                       sync.RWMutex
+	lockGetAllNamesWithFilter             sync.RWMutex
+	lockGetAllWithFilter                  sync.RWMutex
+	lockGetByName                         sync.RWMutex
+	lockGetClusterArtifactAll             sync.RWMutex
+	lockGetClusterArtifactAllNames        sync.RWMutex
+	lockGetClusterArtifactArchiveByName   sync.RWMutex
+	lockGetClusterArtifactByName          sync.RWMutex
+	lockGetClusterArtifactFileByName      sync.RWMutex
+	lockGetEndpoint                       sync.RWMutex
+	lockRemoveServerSystemNetworkVLANTags sync.RWMutex
+	lockRemoveStorageTargetISCSI          sync.RWMutex
+	lockRemoveStorageTargetMultipath      sync.RWMutex
+	lockRemoveStorageTargetNVME           sync.RWMutex
+	lockRename                            sync.RWMutex
+	lockResyncInventory                   sync.RWMutex
+	lockResyncInventoryByName             sync.RWMutex
+	lockSetInventorySyncers               sync.RWMutex
+	lockStartLifecycleEventsMonitor       sync.RWMutex
+	lockUpdate                            sync.RWMutex
+	lockUpdateCertificate                 sync.RWMutex
+	lockUpdateSystemKernel                sync.RWMutex
+	lockUpdateSystemLogging               sync.RWMutex
 }
 
 // AddApplication calls AddApplicationFunc.
@@ -559,43 +563,47 @@ func (mock *ClusterServiceMock) AddApplicationCalls() []struct {
 	return calls
 }
 
-// AddServerSystemNetworkVLAN calls AddServerSystemNetworkVLANFunc.
-func (mock *ClusterServiceMock) AddServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlan provisioning.ServerSystemNetworkVLAN) error {
-	if mock.AddServerSystemNetworkVLANFunc == nil {
-		panic("ClusterServiceMock.AddServerSystemNetworkVLANFunc: method is nil but ClusterService.AddServerSystemNetworkVLAN was just called")
+// AddServerSystemNetworkVLANTags calls AddServerSystemNetworkVLANTagsFunc.
+func (mock *ClusterServiceMock) AddServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error {
+	if mock.AddServerSystemNetworkVLANTagsFunc == nil {
+		panic("ClusterServiceMock.AddServerSystemNetworkVLANTagsFunc: method is nil but ClusterService.AddServerSystemNetworkVLANTags was just called")
 	}
 	callInfo := struct {
-		Ctx         context.Context
-		ClusterName string
-		Vlan        provisioning.ServerSystemNetworkVLAN
+		Ctx           context.Context
+		ClusterName   string
+		InterfaceName string
+		VlanTags      []int
 	}{
-		Ctx:         ctx,
-		ClusterName: clusterName,
-		Vlan:        vlan,
+		Ctx:           ctx,
+		ClusterName:   clusterName,
+		InterfaceName: interfaceName,
+		VlanTags:      vlanTags,
 	}
-	mock.lockAddServerSystemNetworkVLAN.Lock()
-	mock.calls.AddServerSystemNetworkVLAN = append(mock.calls.AddServerSystemNetworkVLAN, callInfo)
-	mock.lockAddServerSystemNetworkVLAN.Unlock()
-	return mock.AddServerSystemNetworkVLANFunc(ctx, clusterName, vlan)
+	mock.lockAddServerSystemNetworkVLANTags.Lock()
+	mock.calls.AddServerSystemNetworkVLANTags = append(mock.calls.AddServerSystemNetworkVLANTags, callInfo)
+	mock.lockAddServerSystemNetworkVLANTags.Unlock()
+	return mock.AddServerSystemNetworkVLANTagsFunc(ctx, clusterName, interfaceName, vlanTags)
 }
 
-// AddServerSystemNetworkVLANCalls gets all the calls that were made to AddServerSystemNetworkVLAN.
+// AddServerSystemNetworkVLANTagsCalls gets all the calls that were made to AddServerSystemNetworkVLANTags.
 // Check the length with:
 //
-//	len(mockedClusterService.AddServerSystemNetworkVLANCalls())
-func (mock *ClusterServiceMock) AddServerSystemNetworkVLANCalls() []struct {
-	Ctx         context.Context
-	ClusterName string
-	Vlan        provisioning.ServerSystemNetworkVLAN
+//	len(mockedClusterService.AddServerSystemNetworkVLANTagsCalls())
+func (mock *ClusterServiceMock) AddServerSystemNetworkVLANTagsCalls() []struct {
+	Ctx           context.Context
+	ClusterName   string
+	InterfaceName string
+	VlanTags      []int
 } {
 	var calls []struct {
-		Ctx         context.Context
-		ClusterName string
-		Vlan        provisioning.ServerSystemNetworkVLAN
+		Ctx           context.Context
+		ClusterName   string
+		InterfaceName string
+		VlanTags      []int
 	}
-	mock.lockAddServerSystemNetworkVLAN.RLock()
-	calls = mock.calls.AddServerSystemNetworkVLAN
-	mock.lockAddServerSystemNetworkVLAN.RUnlock()
+	mock.lockAddServerSystemNetworkVLANTags.RLock()
+	calls = mock.calls.AddServerSystemNetworkVLANTags
+	mock.lockAddServerSystemNetworkVLANTags.RUnlock()
 	return calls
 }
 
@@ -1247,43 +1255,47 @@ func (mock *ClusterServiceMock) GetEndpointCalls() []struct {
 	return calls
 }
 
-// RemoveServerSystemNetworkVLAN calls RemoveServerSystemNetworkVLANFunc.
-func (mock *ClusterServiceMock) RemoveServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlanName string) error {
-	if mock.RemoveServerSystemNetworkVLANFunc == nil {
-		panic("ClusterServiceMock.RemoveServerSystemNetworkVLANFunc: method is nil but ClusterService.RemoveServerSystemNetworkVLAN was just called")
+// RemoveServerSystemNetworkVLANTags calls RemoveServerSystemNetworkVLANTagsFunc.
+func (mock *ClusterServiceMock) RemoveServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error {
+	if mock.RemoveServerSystemNetworkVLANTagsFunc == nil {
+		panic("ClusterServiceMock.RemoveServerSystemNetworkVLANTagsFunc: method is nil but ClusterService.RemoveServerSystemNetworkVLANTags was just called")
 	}
 	callInfo := struct {
-		Ctx         context.Context
-		ClusterName string
-		VlanName    string
+		Ctx           context.Context
+		ClusterName   string
+		InterfaceName string
+		VlanTags      []int
 	}{
-		Ctx:         ctx,
-		ClusterName: clusterName,
-		VlanName:    vlanName,
+		Ctx:           ctx,
+		ClusterName:   clusterName,
+		InterfaceName: interfaceName,
+		VlanTags:      vlanTags,
 	}
-	mock.lockRemoveServerSystemNetworkVLAN.Lock()
-	mock.calls.RemoveServerSystemNetworkVLAN = append(mock.calls.RemoveServerSystemNetworkVLAN, callInfo)
-	mock.lockRemoveServerSystemNetworkVLAN.Unlock()
-	return mock.RemoveServerSystemNetworkVLANFunc(ctx, clusterName, vlanName)
+	mock.lockRemoveServerSystemNetworkVLANTags.Lock()
+	mock.calls.RemoveServerSystemNetworkVLANTags = append(mock.calls.RemoveServerSystemNetworkVLANTags, callInfo)
+	mock.lockRemoveServerSystemNetworkVLANTags.Unlock()
+	return mock.RemoveServerSystemNetworkVLANTagsFunc(ctx, clusterName, interfaceName, vlanTags)
 }
 
-// RemoveServerSystemNetworkVLANCalls gets all the calls that were made to RemoveServerSystemNetworkVLAN.
+// RemoveServerSystemNetworkVLANTagsCalls gets all the calls that were made to RemoveServerSystemNetworkVLANTags.
 // Check the length with:
 //
-//	len(mockedClusterService.RemoveServerSystemNetworkVLANCalls())
-func (mock *ClusterServiceMock) RemoveServerSystemNetworkVLANCalls() []struct {
-	Ctx         context.Context
-	ClusterName string
-	VlanName    string
+//	len(mockedClusterService.RemoveServerSystemNetworkVLANTagsCalls())
+func (mock *ClusterServiceMock) RemoveServerSystemNetworkVLANTagsCalls() []struct {
+	Ctx           context.Context
+	ClusterName   string
+	InterfaceName string
+	VlanTags      []int
 } {
 	var calls []struct {
-		Ctx         context.Context
-		ClusterName string
-		VlanName    string
+		Ctx           context.Context
+		ClusterName   string
+		InterfaceName string
+		VlanTags      []int
 	}
-	mock.lockRemoveServerSystemNetworkVLAN.RLock()
-	calls = mock.calls.RemoveServerSystemNetworkVLAN
-	mock.lockRemoveServerSystemNetworkVLAN.RUnlock()
+	mock.lockRemoveServerSystemNetworkVLANTags.RLock()
+	calls = mock.calls.RemoveServerSystemNetworkVLANTags
+	mock.lockRemoveServerSystemNetworkVLANTags.RUnlock()
 	return calls
 }
 

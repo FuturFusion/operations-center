@@ -78,17 +78,18 @@ func (_d ClusterServiceWithSlog) AddApplication(ctx context.Context, clusterName
 	return _d._base.AddApplication(ctx, clusterName, applicationName)
 }
 
-// AddServerSystemNetworkVLAN implements provisioning.ClusterService.
-func (_d ClusterServiceWithSlog) AddServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlan provisioning.ServerSystemNetworkVLAN) (err error) {
+// AddServerSystemNetworkVLANTags implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) AddServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
-			slog.Any("vlan", vlan),
+			slog.String("interfaceName", interfaceName),
+			slog.Any("vlanTags", vlanTags),
 		)
 	}
-	log.DebugContext(ctx, "=> calling AddServerSystemNetworkVLAN")
+	log.DebugContext(ctx, "=> calling AddServerSystemNetworkVLANTags")
 	defer func() {
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
@@ -102,15 +103,15 @@ func (_d ClusterServiceWithSlog) AddServerSystemNetworkVLAN(ctx context.Context,
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method AddServerSystemNetworkVLAN returned an informative error")
+				log.DebugContext(ctx, "<= method AddServerSystemNetworkVLANTags returned an informative error")
 			} else {
-				log.ErrorContext(ctx, "<= method AddServerSystemNetworkVLAN returned an error")
+				log.ErrorContext(ctx, "<= method AddServerSystemNetworkVLANTags returned an error")
 			}
 		} else {
-			log.DebugContext(ctx, "<= method AddServerSystemNetworkVLAN finished")
+			log.DebugContext(ctx, "<= method AddServerSystemNetworkVLANTags finished")
 		}
 	}()
-	return _d._base.AddServerSystemNetworkVLAN(ctx, clusterName, vlan)
+	return _d._base.AddServerSystemNetworkVLANTags(ctx, clusterName, interfaceName, vlanTags)
 }
 
 // AddStorageTargetISCSI implements provisioning.ClusterService.
@@ -713,17 +714,18 @@ func (_d ClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (
 	return _d._base.GetEndpoint(ctx, name)
 }
 
-// RemoveServerSystemNetworkVLAN implements provisioning.ClusterService.
-func (_d ClusterServiceWithSlog) RemoveServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlanName string) (err error) {
+// RemoveServerSystemNetworkVLANTags implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) RemoveServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("clusterName", clusterName),
-			slog.String("vlanName", vlanName),
+			slog.String("interfaceName", interfaceName),
+			slog.Any("vlanTags", vlanTags),
 		)
 	}
-	log.DebugContext(ctx, "=> calling RemoveServerSystemNetworkVLAN")
+	log.DebugContext(ctx, "=> calling RemoveServerSystemNetworkVLANTags")
 	defer func() {
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
@@ -737,15 +739,15 @@ func (_d ClusterServiceWithSlog) RemoveServerSystemNetworkVLAN(ctx context.Conte
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method RemoveServerSystemNetworkVLAN returned an informative error")
+				log.DebugContext(ctx, "<= method RemoveServerSystemNetworkVLANTags returned an informative error")
 			} else {
-				log.ErrorContext(ctx, "<= method RemoveServerSystemNetworkVLAN returned an error")
+				log.ErrorContext(ctx, "<= method RemoveServerSystemNetworkVLANTags returned an error")
 			}
 		} else {
-			log.DebugContext(ctx, "<= method RemoveServerSystemNetworkVLAN finished")
+			log.DebugContext(ctx, "<= method RemoveServerSystemNetworkVLANTags finished")
 		}
 	}()
-	return _d._base.RemoveServerSystemNetworkVLAN(ctx, clusterName, vlanName)
+	return _d._base.RemoveServerSystemNetworkVLANTags(ctx, clusterName, interfaceName, vlanTags)
 }
 
 // RemoveStorageTargetISCSI implements provisioning.ClusterService.

@@ -237,6 +237,20 @@ func (_d ClusterClientPortWithPrometheus) UpdateClusterCertificate(ctx context.C
 	return _d.base.UpdateClusterCertificate(ctx, endpoint, certificatePEM, keyPEM)
 }
 
+// UpdateNetworkConfig implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateNetworkConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateNetworkConfig(ctx, server)
+}
+
 // UpdateOSService implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithPrometheus) UpdateOSService(ctx context.Context, server provisioning.Server, name string, config any) (err error) {
 	_since := time.Now()

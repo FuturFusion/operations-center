@@ -55,8 +55,8 @@ func (_d ClusterServiceWithPrometheus) AddApplication(ctx context.Context, clust
 	return _d.base.AddApplication(ctx, clusterName, applicationName)
 }
 
-// AddServerSystemNetworkVLAN implements provisioning.ClusterService.
-func (_d ClusterServiceWithPrometheus) AddServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlan provisioning.ServerSystemNetworkVLAN) (err error) {
+// AddServerSystemNetworkVLANTags implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) AddServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -64,9 +64,9 @@ func (_d ClusterServiceWithPrometheus) AddServerSystemNetworkVLAN(ctx context.Co
 			result = "error"
 		}
 
-		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AddServerSystemNetworkVLAN", result).Observe(time.Since(_since).Seconds())
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AddServerSystemNetworkVLANTags", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.AddServerSystemNetworkVLAN(ctx, clusterName, vlan)
+	return _d.base.AddServerSystemNetworkVLANTags(ctx, clusterName, interfaceName, vlanTags)
 }
 
 // AddStorageTargetISCSI implements provisioning.ClusterService.
@@ -307,8 +307,8 @@ func (_d ClusterServiceWithPrometheus) GetEndpoint(ctx context.Context, name str
 	return _d.base.GetEndpoint(ctx, name)
 }
 
-// RemoveServerSystemNetworkVLAN implements provisioning.ClusterService.
-func (_d ClusterServiceWithPrometheus) RemoveServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlanName string) (err error) {
+// RemoveServerSystemNetworkVLANTags implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) RemoveServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -316,9 +316,9 @@ func (_d ClusterServiceWithPrometheus) RemoveServerSystemNetworkVLAN(ctx context
 			result = "error"
 		}
 
-		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveServerSystemNetworkVLAN", result).Observe(time.Since(_since).Seconds())
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveServerSystemNetworkVLANTags", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.RemoveServerSystemNetworkVLAN(ctx, clusterName, vlanName)
+	return _d.base.RemoveServerSystemNetworkVLANTags(ctx, clusterName, interfaceName, vlanTags)
 }
 
 // RemoveStorageTargetISCSI implements provisioning.ClusterService.

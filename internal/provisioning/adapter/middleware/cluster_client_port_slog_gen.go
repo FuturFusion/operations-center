@@ -538,6 +538,40 @@ func (_d ClusterClientPortWithSlog) UpdateClusterCertificate(ctx context.Context
 	return _d._base.UpdateClusterCertificate(ctx, endpoint, certificatePEM, keyPEM)
 }
 
+// UpdateNetworkConfig implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateNetworkConfig")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateNetworkConfig returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateNetworkConfig returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateNetworkConfig finished")
+		}
+	}()
+	return _d._base.UpdateNetworkConfig(ctx, server)
+}
+
 // UpdateOSService implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) UpdateOSService(ctx context.Context, server provisioning.Server, name string, config any) (err error) {
 	log := slog.With()

@@ -77,41 +77,6 @@ func (_d ServerServiceWithSlog) AddApplication(ctx context.Context, name string,
 	return _d._base.AddApplication(ctx, name, applicationName)
 }
 
-// AddSystemNetworkVLAN implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) AddSystemNetworkVLAN(ctx context.Context, name string, vlanConfig provisioning.ServerSystemNetworkVLAN) (err error) {
-	log := slog.With()
-	if slog.Default().Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.String("name", name),
-			slog.Any("vlanConfig", vlanConfig),
-		)
-	}
-	log.DebugContext(ctx, "=> calling AddSystemNetworkVLAN")
-	defer func() {
-		log := slog.With()
-		if slog.Default().Enabled(ctx, logger.LevelTrace) {
-			log = slog.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = slog.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method AddSystemNetworkVLAN returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method AddSystemNetworkVLAN returned an error")
-			}
-		} else {
-			log.DebugContext(ctx, "<= method AddSystemNetworkVLAN finished")
-		}
-	}()
-	return _d._base.AddSystemNetworkVLAN(ctx, name, vlanConfig)
-}
-
 // Create implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) Create(ctx context.Context, token uuid.UUID, server provisioning.Server) (server1 provisioning.Server, err error) {
 	log := slog.With()
@@ -665,41 +630,6 @@ func (_d ServerServiceWithSlog) RebootSystemByName(ctx context.Context, name str
 		}
 	}()
 	return _d._base.RebootSystemByName(ctx, name)
-}
-
-// RemoveSystemNetworkVLAN implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) RemoveSystemNetworkVLAN(ctx context.Context, name string, vlanName string) (err error) {
-	log := slog.With()
-	if slog.Default().Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.String("name", name),
-			slog.String("vlanName", vlanName),
-		)
-	}
-	log.DebugContext(ctx, "=> calling RemoveSystemNetworkVLAN")
-	defer func() {
-		log := slog.With()
-		if slog.Default().Enabled(ctx, logger.LevelTrace) {
-			log = slog.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = slog.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method RemoveSystemNetworkVLAN returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method RemoveSystemNetworkVLAN returned an error")
-			}
-		} else {
-			log.DebugContext(ctx, "<= method RemoveSystemNetworkVLAN finished")
-		}
-	}()
-	return _d._base.RemoveSystemNetworkVLAN(ctx, name, vlanName)
 }
 
 // Rename implements provisioning.ServerService.
