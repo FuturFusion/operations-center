@@ -9,6 +9,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func assertOperationsCenterSelfRegistration(t *testing.T) {
+	t.Helper()
+
+	t.Log("Assert operations-center is self-registered")
+
+	resp := run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.name == "operations-center") ] | length == 1'`, cpuArch)
+	require.NoError(t, resp.err, "expect operations-center to be self registered")
+	if !resp.Success() {
+		t.Errorf("expect operations-center to be self registered")
+		fmt.Println("====[ Server List ]====")
+		resp := mustRun(t, "../bin/operations-center.linux.%s provisioning server list", cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	require.True(t, resp.Success(), "failed to assert self registration of operations-center")
+}
+
 func assertIncusRemote(t *testing.T, clusterName string, clusterIP string) {
 	t.Helper()
 

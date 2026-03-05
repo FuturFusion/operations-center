@@ -48,16 +48,6 @@ func TestE2E_WithToken_FactoryResetCluster(t *testing.T) {
 	)
 }
 
-// TODO: does not work right now, produces the following error in IncusOS:
-//
-//	INFO Initializing application name=incus version=202602230420
-//	ERROR json: unknown field "certificates"
-//
-// The root cause for this error is assumed to be related to the introduction of
-// json.DisallowUnknownFields() in IncusOS JSON handling in order to improve
-// the validation of the provided JSON preseeds.
-// See: https://discuss.linuxcontainers.org/t/specify-certificate-using-seed-tar/26148
-// Fixed by: https://github.com/lxc/incus/pull/2968
 func TestE2E_WithToken_FactoryResetClusterWithTokenSeed(t *testing.T) {
 	runE2ETest(
 		t,
