@@ -56,6 +56,20 @@ var updates = map[int]update{
 	26: updateFromV25,
 	27: updateFromV26,
 	28: updateFromV27,
+	29: updateFromV28,
+}
+
+func updateFromV28(ctx context.Context, tx *sql.Tx) error {
+	// v28..v29 add description and custom properties to clusters and servers
+	stmt := `
+ALTER TABLE clusters ADD COLUMN description TEXT NOT NULL DEFAULT '';
+ALTER TABLE clusters ADD COLUMN properties TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE servers ADD COLUMN description TEXT NOT NULL DEFAULT '';
+ALTER TABLE servers ADD COLUMN properties TEXT NOT NULL DEFAULT '';
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV27(ctx context.Context, tx *sql.Tx) error {
