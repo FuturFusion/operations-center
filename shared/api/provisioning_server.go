@@ -563,6 +563,17 @@ type ServerPut struct {
 	// Channel the server is following for updates.
 	// Example: stable
 	Channel string `json:"channel" yaml:"channel"`
+
+	// Description of the server.
+	// Example: Lab server with limited resources.
+	Description string `json:"description" yaml:"description"`
+
+	// Properties contains properties of the server as key/value pairs.
+	// Example (in YAML notation for readability):
+	//   properties:
+	//     arch: x86_64
+	//     os: linux
+	Properties ConfigMap `json:"properties" yaml:"properties"`
 }
 
 // Server defines a server running Hypervisor OS.
