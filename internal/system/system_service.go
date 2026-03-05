@@ -152,7 +152,7 @@ func (s *systemService) UpdateNetworkConfig(ctx context.Context, newConfig api.S
 	}
 
 	err = config.ValidateNetworkConfig(api.SystemNetwork{
-		SystemNetworkPut: newConfig,
+		NetworkPut: newConfig,
 	})
 	if err != nil {
 		return err
