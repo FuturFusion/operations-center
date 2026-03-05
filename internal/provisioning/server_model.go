@@ -30,6 +30,8 @@ type Server struct {
 	Channel              string                 `json:"channel"                db:"join=channels.name"`
 	Status               api.ServerStatus       `json:"status"`
 	StatusDetail         api.ServerStatusDetail `json:"status_detail"`
+	Description          string                 `json:"description"`
+	Properties           api.ConfigMap          `json:"properties"`
 	LastUpdated          time.Time              `json:"last_updated"           db:"update_timestamp"`
 	LastSeen             time.Time              `json:"last_seen"`
 }
