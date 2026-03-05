@@ -8,7 +8,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 func TestChannelService_validateUpdatesConfig(t *testing.T) {
@@ -95,8 +95,8 @@ func TestChannelService_validateUpdatesConfig(t *testing.T) {
 
 			channelSvc := NewChannelService(repo, nil)
 
-			err := channelSvc.validateUpdatesConfig(t.Context(), api.SystemUpdates{
-				SystemUpdatesPut: api.SystemUpdatesPut{
+			err := channelSvc.validateUpdatesConfig(t.Context(), system.Updates{
+				UpdatesPut: system.UpdatesPut{
 					UpdatesDefaultChannel: tc.updatesDefaultChannel,
 					ServerDefaultChannel:  tc.serverDefaultChannel,
 				},
