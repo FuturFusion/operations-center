@@ -321,12 +321,30 @@ func UpdateUpdates(ctx context.Context, cfg api.SystemUpdatesPut) error {
 }
 
 func validateAndSave(cfg config) error {
+	applyDefaults(&cfg)
 	err := validate(cfg)
 	if err != nil {
 		return fmt.Errorf("Failed to validate configuration: %w", err)
 	}
 
 	return saveFunc(cfg)
+}
+
+func applyDefaults(cfg *config) {
+	// Only apply ACME defaults if the mandatory settings are provided.
+	if cfg.Security.ACME.Domain != "" && cfg.Security.ACME.Email != "" && cfg.Security.ACME.AgreeTOS {
+		if cfg.Security.ACME.Challenge == "" {
+			cfg.Security.ACME.Challenge = "HTTP-01"
+		}
+
+		if cfg.Security.ACME.Address == "" {
+			cfg.Security.ACME.Address = ":8080"
+		}
+
+		if cfg.Security.ACME.CAURL == "" {
+			cfg.Security.ACME.CAURL = "https://acme-v02.api.letsencrypt.org/directory"
+		}
+	}
 }
 
 func saveToDisk(cfg config) error {

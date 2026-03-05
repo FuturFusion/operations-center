@@ -38,7 +38,7 @@ security:
     challenge: HTTP-01
     domain: ""
     email: ""
-    http_challenge_address: ":80"
+    http_challenge_address: ":8080"
     provider: ""
     provider_environment: []
     provider_resolvers: []
