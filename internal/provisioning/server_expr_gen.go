@@ -279,6 +279,7 @@ type ExprOsapiSystemStorageDrive struct {
 	Bus             string                            `json:"bus"                    yaml:"bus" expr:"bus"`
 	CapacityInBytes int                               `json:"capacity_in_bytes"      yaml:"capacity_in_bytes" expr:"capacity_in_bytes"`
 	Boot            bool                              `json:"boot"                   yaml:"boot" expr:"boot"`
+	Multipath       bool                              `json:"multipath"              yaml:"multipath" expr:"multipath"`
 	Removable       bool                              `json:"removable"              yaml:"removable" expr:"removable"`
 	Remote          bool                              `json:"remote"                 yaml:"remote" expr:"remote"`
 	WWN             string                            `json:"wwn,omitempty"          yaml:"wwn,omitempty" expr:"wwn"`
@@ -698,6 +699,7 @@ func ToExprOsapiSystemStorageDrive(s osapi.SystemStorageDrive) ExprOsapiSystemSt
 		Bus:             s.Bus,
 		CapacityInBytes: s.CapacityInBytes,
 		Boot:            s.Boot,
+		Multipath:       s.Multipath,
 		Removable:       s.Removable,
 		Remote:          s.Remote,
 		WWN:             s.WWN,

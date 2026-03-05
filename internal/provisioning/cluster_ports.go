@@ -35,8 +35,8 @@ type ClusterService interface {
 	GetClusterArtifactFileByName(ctx context.Context, clusterName string, artifactName string, filename string) (*ClusterArtifactFile, error)
 	SetInventorySyncers(inventorySyncers map[domain.ResourceType]InventorySyncer)
 
-	AddServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlan ServerSystemNetworkVLAN) error
-	RemoveServerSystemNetworkVLAN(ctx context.Context, clusterName, vlanName string) error
+	AddServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error
+	RemoveServerSystemNetworkVLANTags(ctx context.Context, clusterName, interfaceName string, vlanTags []int) error
 	UpdateSystemLogging(ctx context.Context, clusterName string, loggingConfig ServerSystemLogging) error
 	UpdateSystemKernel(ctx context.Context, clusterName string, kerneConfig ServerSystemKernel) error
 	AddApplication(ctx context.Context, clusterName string, applicationName string) error
@@ -78,6 +78,7 @@ type ClusterClientPort interface {
 	GetOSServiceMultipath(ctx context.Context, server Server) (incusosapi.ServiceMultipath, error)
 	GetOSServiceNVME(ctx context.Context, server Server) (incusosapi.ServiceNVME, error)
 	UpdateOSService(ctx context.Context, server Server, name string, config any) error
+	UpdateNetworkConfig(ctx context.Context, server Server) error
 	SetServerConfig(ctx context.Context, endpoint Endpoint, config map[string]string) error
 	EnableCluster(ctx context.Context, server Server) (clusterCertificate string, _ error)
 	GetClusterNodeNames(ctx context.Context, endpoint Endpoint) (nodeNames []string, _ error)

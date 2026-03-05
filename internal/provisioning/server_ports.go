@@ -40,8 +40,6 @@ type ServerService interface {
 	RestoreSystemByName(ctx context.Context, name string) error
 	UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error
 
-	AddSystemNetworkVLAN(ctx context.Context, name string, vlanConfig ServerSystemNetworkVLAN) error
-	RemoveSystemNetworkVLAN(ctx context.Context, name string, vlanName string) error
 	GetSystemLogging(ctx context.Context, name string) (ServerSystemLogging, error)
 	UpdateSystemLogging(ctx context.Context, name string, loggingConfig ServerSystemLogging) error
 	GetSystemKernel(ctx context.Context, name string) (ServerSystemKernel, error)

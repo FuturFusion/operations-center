@@ -27,6 +27,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/util/structs"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -915,10 +916,10 @@ func (s clusterService) ResyncInventoryByName(ctx context.Context, name string) 
 	return nil
 }
 
-func (s clusterService) AddServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlanConfig ServerSystemNetworkVLAN) (err error) {
+func (s clusterService) AddServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("Add VLAN to cluster members for %q failed: %w", clusterName, err)
+			err = fmt.Errorf("Add VLAN tags to interface %q on cluster members for %q failed: %w", interfaceName, clusterName, err)
 		}
 	}()
 
@@ -927,20 +928,43 @@ func (s clusterService) AddServerSystemNetworkVLAN(ctx context.Context, clusterN
 		return err
 	}
 
-	// Ensure the VLAN is not yet present on any of the servers.
-	for _, server := range servers {
+	// Ensure the interface is present on all of the servers and prepare
+	// the updated interface config.
+	currentNetworkConfig := make(map[string]*incusosapi.SystemNetworkConfig, len(servers))
+	for serverIdx, server := range servers {
+		found := false
 		if server.OSData.Network.Config == nil {
-			continue
+			return domain.NewValidationErrf("Server %q (%s) does not have any network config", server.Name, server.GetConnectionURL())
 		}
 
-		for _, vlan := range server.OSData.Network.Config.VLANs {
-			if vlanConfig.ID == vlan.ID {
-				return domain.NewValidationErrf("Server %q (%s) already has VLAN with ID %d", server.Name, server.GetConnectionURL(), vlanConfig.ID)
+		ifaceIdx := 0
+		for i, iface := range server.OSData.Network.Config.Interfaces {
+			if iface.Name == interfaceName {
+				found = true
+
+				networkConfig := &incusosapi.SystemNetworkConfig{}
+				_ = structs.DeepCopy(server.OSData.Network.Config, networkConfig)
+				// Ignore the error, DeepCopy would fail, if source or dest are nil
+				// which is ensured already before.
+
+				currentNetworkConfig[server.Name] = networkConfig
+				ifaceIdx = i
+
+				break
+			}
+		}
+
+		if !found {
+			return domain.NewValidationErrf("Server %q (%s) does not have interface %q", server.Name, server.GetConnectionURL(), interfaceName)
+		}
+
+		// Append vlan tag if not yet present.
+		for _, vlanTag := range vlanTags {
+			if slices.Contains(server.OSData.Network.Config.Interfaces[ifaceIdx].VLANTags, vlanTag) {
+				continue
 			}
 
-			if vlanConfig.Name == vlan.Name {
-				return domain.NewValidationErrf("Server %q (%s) already has VLAN %q", server.Name, server.GetConnectionURL(), vlanConfig.Name)
-			}
+			servers[serverIdx].OSData.Network.Config.Interfaces[ifaceIdx].VLANTags = append(servers[serverIdx].OSData.Network.Config.Interfaces[ifaceIdx].VLANTags, vlanTag)
 		}
 	}
 
@@ -949,15 +973,16 @@ func (s clusterService) AddServerSystemNetworkVLAN(ctx context.Context, clusterN
 	defer reverter.Fail()
 
 	for _, server := range servers {
-		err = s.serverSvc.AddSystemNetworkVLAN(ctx, server.Name, vlanConfig)
+		err = s.client.UpdateNetworkConfig(ctx, server)
 		if err != nil {
-			return fmt.Errorf("Failed to add vlan %q to server %q (%s): %w", vlanConfig.Name, server.Name, server.GetConnectionURL(), err)
+			return fmt.Errorf("Failed to update network configuration for server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 		}
 
 		reverter.Add(func() {
-			revertErr := s.serverSvc.RemoveSystemNetworkVLAN(ctx, server.Name, vlanConfig.Name)
+			server.OSData.Network.Config = currentNetworkConfig[server.Name]
+			revertErr := s.client.UpdateNetworkConfig(ctx, server)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously add vlan", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.ConnectionURL), slog.String("vlan", vlanConfig.Name), slog.Any("root-cause", err))
+				slog.ErrorContext(ctx, "Failed to revert previously updated network configuration", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.ConnectionURL), slog.Any("vlan-tags", vlanTags), slog.Any("root-cause", err))
 			}
 		})
 	}
@@ -967,10 +992,10 @@ func (s clusterService) AddServerSystemNetworkVLAN(ctx context.Context, clusterN
 	return nil
 }
 
-func (s clusterService) RemoveServerSystemNetworkVLAN(ctx context.Context, clusterName string, vlanName string) (err error) {
+func (s clusterService) RemoveServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("Remove VLAN from cluster members for %q failed: %w", clusterName, err)
+			err = fmt.Errorf("Remove VLAN tags from interface %q on cluster members for %q failed: %w", interfaceName, clusterName, err)
 		}
 	}()
 
@@ -979,25 +1004,43 @@ func (s clusterService) RemoveServerSystemNetworkVLAN(ctx context.Context, clust
 		return err
 	}
 
-	// Ensure the VLAN is present on all servers.
-	currentVLANConfig := make(map[string]incusosapi.SystemNetworkVLAN, len(servers))
-	for _, server := range servers {
+	// Ensure the interface is present on all of the servers and prepare
+	// the updated interface config.
+	currentNetworkConfig := make(map[string]*incusosapi.SystemNetworkConfig, len(servers))
+	for serverIdx, server := range servers {
 		found := false
 		if server.OSData.Network.Config == nil {
 			return domain.NewValidationErrf("Server %q (%s) does not have any network config", server.Name, server.GetConnectionURL())
 		}
 
-		for _, vlan := range server.OSData.Network.Config.VLANs {
-			if vlanName == vlan.Name {
+		ifaceIdx := 0
+		for i, iface := range server.OSData.Network.Config.Interfaces {
+			if iface.Name == interfaceName {
 				found = true
-				currentVLANConfig[server.Name] = vlan
+
+				networkConfig := &incusosapi.SystemNetworkConfig{}
+				// Ignore the error, DeepCopy would fail, if source or dest are nil
+				// which is ensured already before.
+				_ = structs.DeepCopy(server.OSData.Network.Config, networkConfig)
+
+				currentNetworkConfig[server.Name] = networkConfig
+				ifaceIdx = i
+
 				break
 			}
 		}
 
 		if !found {
-			return domain.NewValidationErrf("Server %q (%s) does not have VLAN %q", server.Name, server.GetConnectionURL(), vlanName)
+			return domain.NewValidationErrf("Server %q (%s) does not have interface %q", server.Name, server.GetConnectionURL(), interfaceName)
 		}
+
+		// Remove vlan tag if present.
+		servers[serverIdx].OSData.Network.Config.Interfaces[ifaceIdx].VLANTags = slices.DeleteFunc(
+			servers[serverIdx].OSData.Network.Config.Interfaces[ifaceIdx].VLANTags,
+			func(vlanTag int) bool {
+				return slices.Contains(vlanTags, vlanTag)
+			},
+		)
 	}
 
 	// Perform change on all servers.
@@ -1005,15 +1048,16 @@ func (s clusterService) RemoveServerSystemNetworkVLAN(ctx context.Context, clust
 	defer reverter.Fail()
 
 	for _, server := range servers {
-		err = s.serverSvc.RemoveSystemNetworkVLAN(ctx, server.Name, vlanName)
+		err = s.client.UpdateNetworkConfig(ctx, server)
 		if err != nil {
-			return fmt.Errorf("Failed to remove vlan %q to server %q (%s): %w", vlanName, server.Name, server.GetConnectionURL(), err)
+			return fmt.Errorf("Failed to update network configuration for server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 		}
 
 		reverter.Add(func() {
-			revertErr := s.serverSvc.AddSystemNetworkVLAN(ctx, server.Name, currentVLANConfig[server.Name])
+			server.OSData.Network.Config = currentNetworkConfig[server.Name]
+			revertErr := s.client.UpdateNetworkConfig(ctx, server)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously removed vlan", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.ConnectionURL), slog.Any("vlan-config", currentVLANConfig[server.Name]), slog.Any("root-cause", err))
+				slog.ErrorContext(ctx, "Failed to revert previously updated network configuration", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.ConnectionURL), slog.Any("vlan-tags", vlanTags), slog.Any("root-cause", err))
 			}
 		})
 	}
