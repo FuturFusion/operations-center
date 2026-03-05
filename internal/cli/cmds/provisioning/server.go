@@ -168,7 +168,7 @@ func (c *cmdServerList) run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Cluster", "Name", "Connection URL", "Public Connection URL", "Certificate Fingerprint", "Type", "Channel", "Status", "Update Status", "Last Updated", "Last Seen", "Recommended Action"}
+	header := []string{"Cluster", "Name", "Connection URL", "Description", "Public Connection URL", "Certificate Fingerprint", "Type", "Channel", "Status", "Update Status", "Last Updated", "Last Seen", "Recommended Action"}
 	data := [][]string{}
 
 	for _, server := range servers {
@@ -176,6 +176,7 @@ func (c *cmdServerList) run(cmd *cobra.Command, args []string) error {
 			server.Cluster,
 			server.Name,
 			server.ConnectionURL,
+			server.Description,
 			server.PublicConnectionURL,
 			server.Fingerprint[:min(len(server.Fingerprint), 12)],
 			server.Type.String(),
@@ -212,7 +213,7 @@ func (c *cmdServerEdit) Command() *cobra.Command {
 	return cmd
 }
 
-// helpTemplate returns a sample YAML configuration and guidelines for editing token seed configurations.
+// helpTemplate returns a sample YAML configuration and guidelines for editing server configurations.
 func (c *cmdServerEdit) helpTemplate() string {
 	return `### This is a YAML representation of the configuration.
 ### Any line starting with a '# will be ignored.
@@ -220,6 +221,9 @@ func (c *cmdServerEdit) helpTemplate() string {
 ### A sample configuration looks like:
 ###
 ### public_connection_url: ""
+### channel: stable
+### description: ""
+### properties: {}
 `
 }
 
@@ -257,7 +261,7 @@ func (c *cmdServerEdit) run(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	tokenSeedConfig, err := c.ocClient.GetServer(cmd.Context(), name)
+	serverConfig, err := c.ocClient.GetServer(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
@@ -265,7 +269,7 @@ func (c *cmdServerEdit) run(cmd *cobra.Command, args []string) error {
 	b := &bytes.Buffer{}
 	encoder := yaml.NewEncoder(b)
 	encoder.SetIndent(2)
-	err = encoder.Encode(tokenSeedConfig.ServerPut)
+	err = encoder.Encode(serverConfig.ServerPut)
 	if err != nil {
 		return err
 	}
@@ -442,6 +446,7 @@ func (c *cmdServerResync) run(cmd *cobra.Command, args []string) error {
 type cmdServerShow struct {
 	ocClient *client.OperationsCenterClient
 
+	flagShowProperties  bool
 	flagShowResources   bool
 	flagShowOSData      bool
 	flagShowVersionData bool
@@ -455,6 +460,7 @@ func (c *cmdServerShow) Command() *cobra.Command {
   Show information about a server.
 `
 
+	cmd.Flags().BoolVar(&c.flagShowProperties, "properties", false, "show server properties")
 	cmd.Flags().BoolVar(&c.flagShowResources, "resources", false, "show server resource details")
 	cmd.Flags().BoolVar(&c.flagShowOSData, "os-data", false, "show server OS data")
 	cmd.Flags().BoolVar(&c.flagShowVersionData, "version-data", false, "show server version data")
@@ -486,6 +492,7 @@ func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Cluster: %s\n", server.Cluster)
 	fmt.Printf("Name: %s\n", server.Name)
 	fmt.Printf("Connection URL: %s\n", server.ConnectionURL)
+	fmt.Printf("Description: %s\n", server.Description)
 	fmt.Printf("Public Connection URL: %s\n", server.PublicConnectionURL)
 	fmt.Printf("Certificate:\n%s", indent("  ", strings.TrimSpace(server.Certificate)))
 	fmt.Printf("Certificate Fingerprint: %s\n", server.Fingerprint)
@@ -496,6 +503,15 @@ func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Last Updated: %s\n", server.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Last Seen: %s\n", server.LastSeen.Truncate(time.Second).String())
 	fmt.Printf("Recommended Action: %v\n", server.RecommendedAction())
+
+	if c.flagShowProperties {
+		propertiesYAML, err := yaml.Marshal(server.Properties)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Properties:\n%s\n", render.Indent(4, string(propertiesYAML)))
+	}
 
 	if c.flagShowResources {
 		hardwareDataJSON, err := json.MarshalIndent(server.HardwareData, "", "  ")

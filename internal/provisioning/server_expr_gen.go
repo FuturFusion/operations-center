@@ -357,6 +357,8 @@ type ExprServer struct {
 	Channel              string                   `json:"channel"                db:"join=channels.name" expr:"channel"`
 	Status               api.ServerStatus         `json:"status" expr:"status"`
 	StatusDetail         api.ServerStatusDetail   `json:"status_detail" expr:"status_detail"`
+	Description          string                   `json:"description" expr:"description"`
+	Properties           api.ConfigMap            `json:"properties" expr:"properties"`
 	LastUpdated          time.Time                `json:"last_updated"           db:"update_timestamp" expr:"last_updated"`
 	LastSeen             time.Time                `json:"last_seen" expr:"last_seen"`
 }
@@ -788,6 +790,8 @@ func ToExprServer(s Server) ExprServer {
 		Channel:              s.Channel,
 		Status:               s.Status,
 		StatusDetail:         s.StatusDetail,
+		Description:          s.Description,
+		Properties:           s.Properties,
 		LastUpdated:          s.LastUpdated,
 		LastSeen:             s.LastSeen,
 	}

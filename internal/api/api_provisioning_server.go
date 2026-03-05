@@ -217,6 +217,8 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 					ServerPut: api.ServerPut{
 						PublicConnectionURL: server.PublicConnectionURL,
 						Channel:             server.Channel,
+						Description:         server.Description,
+						Properties:          server.Properties,
 					},
 				},
 				Certificate:          server.Certificate,
@@ -398,6 +400,8 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 				ServerPut: api.ServerPut{
 					PublicConnectionURL: server.PublicConnectionURL,
 					Channel:             server.Channel,
+					Description:         server.Description,
+					Properties:          server.Properties,
 				},
 			},
 			Certificate:          server.Certificate,
@@ -476,6 +480,8 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 	}
 
 	currentServer.PublicConnectionURL = server.PublicConnectionURL
+	currentServer.Description = server.Description
+	currentServer.Properties = server.Properties
 
 	// Only allow changing of Channel, if server is not clustered. Otherwise
 	// the change of the channel needs to happen through the cluster.

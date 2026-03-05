@@ -32,6 +32,8 @@ type Cluster struct {
 	ServicesConfig        map[string]any           `json:"services_config"         db:"ignore"`
 	ApplicationSeedConfig map[string]any           `json:"application_seed_config" db:"ignore"`
 	Channel               string                   `json:"channel"                 db:"join=channels.name"`
+	Description           string                   `json:"description"`
+	Properties            api.ConfigMap            `json:"properties"`
 	LastUpdated           time.Time                `json:"last_updated"            db:"update_timestamp"`
 }
 

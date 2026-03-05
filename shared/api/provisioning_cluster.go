@@ -122,6 +122,16 @@ type ClusterPut struct {
 	// Channel the cluster is following for updates.
 	// Example: stable
 	Channel string `json:"channel" yaml:"channel"`
+
+	// Description of the cluster.
+	// Example: Lab cluster with limited resources.
+	Description string `json:"description" yaml:"description"`
+
+	// Properties contains properties of the cluster as key/value pairs.
+	// Example (in YAML notation for readability):
+	//   properties:
+	//     env: lab
+	Properties ConfigMap `json:"properties" yaml:"properties"`
 }
 
 // Cluster defines a cluster of servers running Hypervisor OS.

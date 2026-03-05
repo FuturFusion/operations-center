@@ -158,6 +158,8 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 				ClusterPut: api.ClusterPut{
 					ConnectionURL: cluster.ConnectionURL,
 					Channel:       cluster.Channel,
+					Description:   cluster.Description,
+					Properties:    cluster.Properties,
 				},
 				Certificate:  ptr.From(cluster.Certificate),
 				Fingerprint:  cluster.Fingerprint,
@@ -234,6 +236,8 @@ func (c *clusterHandler) clustersPost(r *http.Request) response.Response {
 		ServicesConfig:        cluster.ServicesConfig,
 		ApplicationSeedConfig: cluster.ApplicationSeedConfig,
 		Channel:               cluster.Channel,
+		Description:           cluster.Description,
+		Properties:            cluster.Properties,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed creating cluster: %w", err))
@@ -291,6 +295,8 @@ func (c *clusterHandler) clusterGet(r *http.Request) response.Response {
 			ClusterPut: api.ClusterPut{
 				ConnectionURL: cluster.ConnectionURL,
 				Channel:       cluster.Channel,
+				Description:   cluster.Description,
+				Properties:    cluster.Properties,
 			},
 			Certificate:  ptr.From(cluster.Certificate),
 			Fingerprint:  cluster.Fingerprint,
@@ -362,6 +368,8 @@ func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 
 	currentCluster.ConnectionURL = cluster.ConnectionURL
 	currentCluster.Channel = cluster.Channel
+	currentCluster.Description = cluster.Description
+	currentCluster.Properties = cluster.Properties
 
 	err = c.service.Update(ctx, *currentCluster)
 	if err != nil {
