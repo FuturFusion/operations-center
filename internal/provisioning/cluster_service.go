@@ -1192,10 +1192,6 @@ func (s clusterService) AddStorageTargetISCSI(ctx context.Context, clusterName s
 			return fmt.Errorf("Failed to get iscsi service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 		}
 
-		if !iscsiConfig.Config.Enabled {
-			return fmt.Errorf("Service iscsi is not enabled on server %q (%s): %w", server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
-		}
-
 		if slices.Contains(iscsiConfig.Config.Targets, target) {
 			return fmt.Errorf("Service iscsi target %q (%s:%d) already defined on server %q (%s): %w", target.Target, target.Address, target.Port, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
 		}
@@ -1254,10 +1250,6 @@ func (s clusterService) RemoveStorageTargetISCSI(ctx context.Context, clusterNam
 		iscsiConfig, err = s.client.GetOSServiceISCSI(ctx, server)
 		if err != nil {
 			return fmt.Errorf("Failed to get iscsi service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
-		}
-
-		if !iscsiConfig.Config.Enabled {
-			return fmt.Errorf("Service iscsi is not enabled on server %q (%s): %w", server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
 		}
 
 		if !slices.Contains(iscsiConfig.Config.Targets, target) {
@@ -1322,10 +1314,6 @@ func (s clusterService) AddStorageTargetMultipath(ctx context.Context, clusterNa
 			return fmt.Errorf("Failed to get multipath service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 		}
 
-		if !multipathConfig.Config.Enabled {
-			return fmt.Errorf("Service multipath is not enabled on server %q (%s): %w", server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
-		}
-
 		if slices.Contains(multipathConfig.Config.WWNs, target) {
 			return fmt.Errorf("Service multipath target %q already defined on server %q (%s): %w", target, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
 		}
@@ -1384,10 +1372,6 @@ func (s clusterService) RemoveStorageTargetMultipath(ctx context.Context, cluste
 		multipathConfig, err = s.client.GetOSServiceMultipath(ctx, server)
 		if err != nil {
 			return fmt.Errorf("Failed to get multipath service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
-		}
-
-		if !multipathConfig.Config.Enabled {
-			return fmt.Errorf("Service multipath is not enabled on server %q (%s): %w", server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
 		}
 
 		if !slices.Contains(multipathConfig.Config.WWNs, target) {
@@ -1452,10 +1436,6 @@ func (s clusterService) AddStorageTargetNVME(ctx context.Context, clusterName st
 			return fmt.Errorf("Failed to get nvme service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 		}
 
-		if !nvmeConfig.Config.Enabled {
-			return fmt.Errorf("Service nvme is not enabled on server %q (%s): %w", server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
-		}
-
 		if slices.Contains(nvmeConfig.Config.Targets, target) {
 			return fmt.Errorf("Service nvme transport %q (%s:%d) already defined on server %q (%s): %w", target.Transport, target.Address, target.Port, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
 		}
@@ -1514,10 +1494,6 @@ func (s clusterService) RemoveStorageTargetNVME(ctx context.Context, clusterName
 		nvmeConfig, err = s.client.GetOSServiceNVME(ctx, server)
 		if err != nil {
 			return fmt.Errorf("Failed to get nvme service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
-		}
-
-		if !nvmeConfig.Config.Enabled {
-			return fmt.Errorf("Service nvme is not enabled on server %q (%s): %w", server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
 		}
 
 		if !slices.Contains(nvmeConfig.Config.Targets, target) {

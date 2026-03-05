@@ -4566,15 +4566,15 @@ func TestClusterService_AddApplication(t *testing.T) {
 
 func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 	tests := []struct {
-		name                       string
-		nameArg                    string
-		targetArg                  incusosapi.ServiceISCSITarget
-		repoGetByName              *provisioning.Cluster
-		repoGetByNameErr           error
-		clientGetOSServiceISCSIErr []queue.Item[incusosapi.ServiceISCSI]
-		clientUpdateOSServiceErr   []queue.Item[struct{}]
-		serverSvcPollServersErr    error
-		serverSvcGetAllWithFilter  []queue.Item[provisioning.Servers]
+		name                      string
+		nameArg                   string
+		targetArg                 incusosapi.ServiceISCSITarget
+		repoGetByName             *provisioning.Cluster
+		repoGetByNameErr          error
+		clientGetOSServiceISCSI   []queue.Item[incusosapi.ServiceISCSI]
+		clientUpdateOSService     []queue.Item[bool] // bool is the expected value for the enabled flag of the service.
+		serverSvcPollServersErr   error
+		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
 
 		assertErr require.ErrorAssertionFunc
 		assertLog func(t *testing.T, logBuf *bytes.Buffer)
@@ -4591,11 +4591,11 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
 				{
 					Value: incusosapi.ServiceISCSI{
 						Config: incusosapi.ServiceISCSIConfig{
-							Enabled: true,
+							Enabled: false, // false on purpose
 							Targets: []incusosapi.ServiceISCSITarget{},
 						},
 					},
@@ -4609,9 +4609,13 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 					},
 				},
 			},
-			clientUpdateOSServiceErr: []queue.Item[struct{}]{
-				{},
-				{},
+			clientUpdateOSService: []queue.Item[bool]{
+				{
+					Value: true,
+				},
+				{
+					Value: true,
+				},
 			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
 				// GetByName
@@ -4671,7 +4675,7 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
 				{
 					Err: boom.Error,
 				},
@@ -4708,61 +4712,6 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 			assertLog: log.Empty,
 		},
 		{
-			name:    "error - iscsi service not enabled",
-			nameArg: "one",
-			targetArg: incusosapi.ServiceISCSITarget{
-				Target:  "target",
-				Address: "address",
-				Port:    1234,
-			},
-			repoGetByName: &provisioning.Cluster{
-				Name:   "one",
-				Status: api.ClusterStatusReady,
-			},
-			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
-				{
-					Value: incusosapi.ServiceISCSI{
-						Config: incusosapi.ServiceISCSIConfig{
-							Enabled: false, // not enabled
-						},
-					},
-				},
-			},
-			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
-				// GetByName
-				{},
-				// serverSvc.GetAllWithFilter
-				{
-					Value: provisioning.Servers{
-						{
-							Name:         "one",
-							Cluster:      ptr.To("one"),
-							Status:       api.ServerStatusReady,
-							StatusDetail: api.ServerStatusDetailNone,
-							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
-							},
-						},
-						{
-							Name:         "two",
-							Cluster:      ptr.To("one"),
-							Status:       api.ServerStatusReady,
-							StatusDetail: api.ServerStatusDetailNone,
-							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
-							},
-						},
-					},
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "Service iscsi is not enabled on server")
-			},
-			assertLog: log.Empty,
-		},
-		{
 			name:    "error - iscsi service target already present",
 			nameArg: "one",
 			targetArg: incusosapi.ServiceISCSITarget{
@@ -4774,7 +4723,7 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
 				{
 					Value: incusosapi.ServiceISCSI{
 						Config: incusosapi.ServiceISCSIConfig{
@@ -4836,11 +4785,11 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
 				{
 					Value: incusosapi.ServiceISCSI{
 						Config: incusosapi.ServiceISCSIConfig{
-							Enabled: true,
+							Enabled: false, // false on purpose
 							Targets: []incusosapi.ServiceISCSITarget{},
 						},
 					},
@@ -4854,16 +4803,20 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 					},
 				},
 			},
-			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+			clientUpdateOSService: []queue.Item[bool]{
 				// First update successful.
-				{},
+				{
+					Value: true,
+				},
 				// Second update error.
 				{
-					Err: errors.New("error"),
+					Value: true,
+					Err:   errors.New("error"),
 				},
 				// Revert of first update error.
 				{
-					Err: boom.Error,
+					Value: false,
+					Err:   boom.Error,
 				},
 			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
@@ -4914,11 +4867,12 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 
 			client := &adapterMock.ClusterClientPortMock{
 				GetOSServiceISCSIFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceISCSI, error) {
-					config, err := queue.Pop(t, &tc.clientGetOSServiceISCSIErr)
+					config, err := queue.Pop(t, &tc.clientGetOSServiceISCSI)
 					return config, err
 				},
 				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
-					_, err := queue.Pop(t, &tc.clientUpdateOSServiceErr)
+					wantEnabled, err := queue.Pop(t, &tc.clientUpdateOSService)
+					require.Equal(t, wantEnabled, config.(incusosapi.ServiceISCSI).Config.Enabled)
 					return err
 				},
 			}
@@ -4941,23 +4895,23 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 			tc.assertErr(t, err)
 			tc.assertLog(t, logBuf)
 			require.Empty(t, tc.serverSvcGetAllWithFilter)
-			require.Empty(t, tc.clientGetOSServiceISCSIErr)
-			require.Empty(t, tc.clientUpdateOSServiceErr)
+			require.Empty(t, tc.clientGetOSServiceISCSI)
+			require.Empty(t, tc.clientUpdateOSService)
 		})
 	}
 }
 
 func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 	tests := []struct {
-		name                       string
-		nameArg                    string
-		targetArg                  incusosapi.ServiceISCSITarget
-		repoGetByName              *provisioning.Cluster
-		repoGetByNameErr           error
-		clientGetOSServiceISCSIErr []queue.Item[incusosapi.ServiceISCSI]
-		clientUpdateOSServiceErr   []queue.Item[struct{}]
-		serverSvcPollServersErr    error
-		serverSvcGetAllWithFilter  []queue.Item[provisioning.Servers]
+		name                      string
+		nameArg                   string
+		targetArg                 incusosapi.ServiceISCSITarget
+		repoGetByName             *provisioning.Cluster
+		repoGetByNameErr          error
+		clientGetOSServiceISCSI   []queue.Item[incusosapi.ServiceISCSI]
+		clientUpdateOSService     []queue.Item[bool] // bool is the expected value for the enabled flag of the service.
+		serverSvcPollServersErr   error
+		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
 
 		assertErr require.ErrorAssertionFunc
 		assertLog func(t *testing.T, logBuf *bytes.Buffer)
@@ -4974,7 +4928,7 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
 				{
 					Value: incusosapi.ServiceISCSI{
 						Config: incusosapi.ServiceISCSIConfig{
@@ -5014,9 +4968,13 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 					},
 				},
 			},
-			clientUpdateOSServiceErr: []queue.Item[struct{}]{
-				{},
-				{},
+			clientUpdateOSService: []queue.Item[bool]{
+				{
+					Value: true,
+				},
+				{
+					Value: true,
+				},
 			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
 				// GetByName
@@ -5076,7 +5034,7 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
 				{
 					Err: boom.Error,
 				},
@@ -5113,61 +5071,6 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 			assertLog: log.Empty,
 		},
 		{
-			name:    "error - iscsi service not enabled",
-			nameArg: "one",
-			targetArg: incusosapi.ServiceISCSITarget{
-				Target:  "target",
-				Address: "address",
-				Port:    1234,
-			},
-			repoGetByName: &provisioning.Cluster{
-				Name:   "one",
-				Status: api.ClusterStatusReady,
-			},
-			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
-				{
-					Value: incusosapi.ServiceISCSI{
-						Config: incusosapi.ServiceISCSIConfig{
-							Enabled: false, // not enabled
-						},
-					},
-				},
-			},
-			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
-				// GetByName
-				{},
-				// serverSvc.GetAllWithFilter
-				{
-					Value: provisioning.Servers{
-						{
-							Name:         "one",
-							Cluster:      ptr.To("one"),
-							Status:       api.ServerStatusReady,
-							StatusDetail: api.ServerStatusDetailNone,
-							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
-							},
-						},
-						{
-							Name:         "two",
-							Cluster:      ptr.To("one"),
-							Status:       api.ServerStatusReady,
-							StatusDetail: api.ServerStatusDetailNone,
-							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
-							},
-						},
-					},
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "Service iscsi is not enabled on server")
-			},
-			assertLog: log.Empty,
-		},
-		{
 			name:    "error - iscsi service target missing",
 			nameArg: "one",
 			targetArg: incusosapi.ServiceISCSITarget{
@@ -5179,7 +5082,7 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
 				{
 					Value: incusosapi.ServiceISCSI{
 						Config: incusosapi.ServiceISCSIConfig{
@@ -5235,7 +5138,7 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceISCSIErr: []queue.Item[incusosapi.ServiceISCSI]{
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
 				{
 					Value: incusosapi.ServiceISCSI{
 						Config: incusosapi.ServiceISCSIConfig{
@@ -5265,16 +5168,20 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 					},
 				},
 			},
-			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+			clientUpdateOSService: []queue.Item[bool]{
 				// First update successful.
-				{},
+				{
+					Value: true,
+				},
 				// Second update error.
 				{
-					Err: errors.New("error"),
+					Value: true,
+					Err:   errors.New("error"),
 				},
 				// Revert of first update error.
 				{
-					Err: boom.Error,
+					Value: true,
+					Err:   boom.Error,
 				},
 			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
@@ -5325,11 +5232,12 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 
 			client := &adapterMock.ClusterClientPortMock{
 				GetOSServiceISCSIFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceISCSI, error) {
-					config, err := queue.Pop(t, &tc.clientGetOSServiceISCSIErr)
+					config, err := queue.Pop(t, &tc.clientGetOSServiceISCSI)
 					return config, err
 				},
 				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
-					_, err := queue.Pop(t, &tc.clientUpdateOSServiceErr)
+					wantEnabled, err := queue.Pop(t, &tc.clientUpdateOSService)
+					require.Equal(t, wantEnabled, config.(incusosapi.ServiceISCSI).Config.Enabled)
 					return err
 				},
 			}
@@ -5352,23 +5260,23 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 			tc.assertErr(t, err)
 			tc.assertLog(t, logBuf)
 			require.Empty(t, tc.serverSvcGetAllWithFilter)
-			require.Empty(t, tc.clientGetOSServiceISCSIErr)
-			require.Empty(t, tc.clientUpdateOSServiceErr)
+			require.Empty(t, tc.clientGetOSServiceISCSI)
+			require.Empty(t, tc.clientUpdateOSService)
 		})
 	}
 }
 
 func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 	tests := []struct {
-		name                           string
-		nameArg                        string
-		targetArg                      string
-		repoGetByName                  *provisioning.Cluster
-		repoGetByNameErr               error
-		clientGetOSServiceMultipathErr []queue.Item[incusosapi.ServiceMultipath]
-		clientUpdateOSServiceErr       []queue.Item[struct{}]
-		serverSvcPollServersErr        error
-		serverSvcGetAllWithFilter      []queue.Item[provisioning.Servers]
+		name                        string
+		nameArg                     string
+		targetArg                   string
+		repoGetByName               *provisioning.Cluster
+		repoGetByNameErr            error
+		clientGetOSServiceMultipath []queue.Item[incusosapi.ServiceMultipath]
+		clientUpdateOSService       []queue.Item[bool] // bool is the expected value for the enabled flag of the service.
+		serverSvcPollServersErr     error
+		serverSvcGetAllWithFilter   []queue.Item[provisioning.Servers]
 
 		assertErr require.ErrorAssertionFunc
 		assertLog func(t *testing.T, logBuf *bytes.Buffer)
@@ -5381,11 +5289,11 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
 				{
 					Value: incusosapi.ServiceMultipath{
 						Config: incusosapi.ServiceMultipathConfig{
-							Enabled: true,
+							Enabled: false, // false on purpose
 							WWNs:    []string{},
 						},
 					},
@@ -5399,9 +5307,13 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 					},
 				},
 			},
-			clientUpdateOSServiceErr: []queue.Item[struct{}]{
-				{},
-				{},
+			clientUpdateOSService: []queue.Item[bool]{
+				{
+					Value: true,
+				},
+				{
+					Value: true,
+				},
 			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
 				// GetByName
@@ -5453,7 +5365,7 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
 				{
 					Err: boom.Error,
 				},
@@ -5490,57 +5402,6 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 			assertLog: log.Empty,
 		},
 		{
-			name:      "error - multipath service not enabled",
-			nameArg:   "one",
-			targetArg: "target",
-			repoGetByName: &provisioning.Cluster{
-				Name:   "one",
-				Status: api.ClusterStatusReady,
-			},
-			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
-				{
-					Value: incusosapi.ServiceMultipath{
-						Config: incusosapi.ServiceMultipathConfig{
-							Enabled: false, // not enabled
-						},
-					},
-				},
-			},
-			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
-				// GetByName
-				{},
-				// serverSvc.GetAllWithFilter
-				{
-					Value: provisioning.Servers{
-						{
-							Name:         "one",
-							Cluster:      ptr.To("one"),
-							Status:       api.ServerStatusReady,
-							StatusDetail: api.ServerStatusDetailNone,
-							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
-							},
-						},
-						{
-							Name:         "two",
-							Cluster:      ptr.To("one"),
-							Status:       api.ServerStatusReady,
-							StatusDetail: api.ServerStatusDetailNone,
-							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
-							},
-						},
-					},
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "Service multipath is not enabled on server")
-			},
-			assertLog: log.Empty,
-		},
-		{
 			name:      "error - multipath service target already present",
 			nameArg:   "one",
 			targetArg: "target",
@@ -5548,7 +5409,7 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
 				{
 					Value: incusosapi.ServiceMultipath{
 						Config: incusosapi.ServiceMultipathConfig{
@@ -5600,11 +5461,11 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
 				{
 					Value: incusosapi.ServiceMultipath{
 						Config: incusosapi.ServiceMultipathConfig{
-							Enabled: true,
+							Enabled: false, // false on purpose
 							WWNs:    []string{},
 						},
 					},
@@ -5618,16 +5479,20 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 					},
 				},
 			},
-			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+			clientUpdateOSService: []queue.Item[bool]{
 				// First update successful.
-				{},
+				{
+					Value: true,
+				},
 				// Second update error.
 				{
-					Err: errors.New("error"),
+					Value: true,
+					Err:   errors.New("error"),
 				},
 				// Revert of first update error.
 				{
-					Err: boom.Error,
+					Value: false,
+					Err:   boom.Error,
 				},
 			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
@@ -5678,11 +5543,12 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 
 			client := &adapterMock.ClusterClientPortMock{
 				GetOSServiceMultipathFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceMultipath, error) {
-					config, err := queue.Pop(t, &tc.clientGetOSServiceMultipathErr)
+					config, err := queue.Pop(t, &tc.clientGetOSServiceMultipath)
 					return config, err
 				},
 				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
-					_, err := queue.Pop(t, &tc.clientUpdateOSServiceErr)
+					wantEnabled, err := queue.Pop(t, &tc.clientUpdateOSService)
+					require.Equal(t, wantEnabled, config.(incusosapi.ServiceMultipath).Config.Enabled)
 					return err
 				},
 			}
@@ -5705,23 +5571,23 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 			tc.assertErr(t, err)
 			tc.assertLog(t, logBuf)
 			require.Empty(t, tc.serverSvcGetAllWithFilter)
-			require.Empty(t, tc.clientGetOSServiceMultipathErr)
-			require.Empty(t, tc.clientUpdateOSServiceErr)
+			require.Empty(t, tc.clientGetOSServiceMultipath)
+			require.Empty(t, tc.clientUpdateOSService)
 		})
 	}
 }
 
 func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 	tests := []struct {
-		name                           string
-		nameArg                        string
-		targetArg                      string
-		repoGetByName                  *provisioning.Cluster
-		repoGetByNameErr               error
-		clientGetOSServiceMultipathErr []queue.Item[incusosapi.ServiceMultipath]
-		clientUpdateOSServiceErr       []queue.Item[struct{}]
-		serverSvcPollServersErr        error
-		serverSvcGetAllWithFilter      []queue.Item[provisioning.Servers]
+		name                        string
+		nameArg                     string
+		targetArg                   string
+		repoGetByName               *provisioning.Cluster
+		repoGetByNameErr            error
+		clientGetOSServiceMultipath []queue.Item[incusosapi.ServiceMultipath]
+		clientUpdateOSService       []queue.Item[bool] // bool is the expected value for the enabled flag of the service.
+		serverSvcPollServersErr     error
+		serverSvcGetAllWithFilter   []queue.Item[provisioning.Servers]
 
 		assertErr require.ErrorAssertionFunc
 		assertLog func(t *testing.T, logBuf *bytes.Buffer)
@@ -5734,11 +5600,11 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
 				{
 					Value: incusosapi.ServiceMultipath{
 						Config: incusosapi.ServiceMultipathConfig{
-							Enabled: true,
+							Enabled: false, // false on purpose
 							WWNs:    []string{"target", "keep"},
 						},
 					},
@@ -5752,9 +5618,13 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 					},
 				},
 			},
-			clientUpdateOSServiceErr: []queue.Item[struct{}]{
-				{},
-				{},
+			clientUpdateOSService: []queue.Item[bool]{
+				{
+					Value: true,
+				},
+				{
+					Value: true,
+				},
 			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
 				// GetByName
@@ -5806,7 +5676,7 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
 				{
 					Err: boom.Error,
 				},
@@ -5843,57 +5713,6 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 			assertLog: log.Empty,
 		},
 		{
-			name:      "error - multipath service not enabled",
-			nameArg:   "one",
-			targetArg: "target",
-			repoGetByName: &provisioning.Cluster{
-				Name:   "one",
-				Status: api.ClusterStatusReady,
-			},
-			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
-				{
-					Value: incusosapi.ServiceMultipath{
-						Config: incusosapi.ServiceMultipathConfig{
-							Enabled: false, // not enabled
-						},
-					},
-				},
-			},
-			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
-				// GetByName
-				{},
-				// serverSvc.GetAllWithFilter
-				{
-					Value: provisioning.Servers{
-						{
-							Name:         "one",
-							Cluster:      ptr.To("one"),
-							Status:       api.ServerStatusReady,
-							StatusDetail: api.ServerStatusDetailNone,
-							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
-							},
-						},
-						{
-							Name:         "two",
-							Cluster:      ptr.To("one"),
-							Status:       api.ServerStatusReady,
-							StatusDetail: api.ServerStatusDetailNone,
-							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
-							},
-						},
-					},
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "Service multipath is not enabled on server")
-			},
-			assertLog: log.Empty,
-		},
-		{
 			name:      "error - multipath service target missing",
 			nameArg:   "one",
 			targetArg: "target",
@@ -5901,7 +5720,7 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
 				{
 					Value: incusosapi.ServiceMultipath{
 						Config: incusosapi.ServiceMultipathConfig{
@@ -5953,11 +5772,11 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceMultipathErr: []queue.Item[incusosapi.ServiceMultipath]{
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
 				{
 					Value: incusosapi.ServiceMultipath{
 						Config: incusosapi.ServiceMultipathConfig{
-							Enabled: true,
+							Enabled: false, // false on purpose
 							WWNs:    []string{"target"},
 						},
 					},
@@ -5971,16 +5790,20 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 					},
 				},
 			},
-			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+			clientUpdateOSService: []queue.Item[bool]{
 				// First update successful.
-				{},
+				{
+					Value: true,
+				},
 				// Second update error.
 				{
-					Err: errors.New("error"),
+					Value: true,
+					Err:   errors.New("error"),
 				},
 				// Revert of first update error.
 				{
-					Err: boom.Error,
+					Value: false,
+					Err:   boom.Error,
 				},
 			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
@@ -6031,11 +5854,12 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 
 			client := &adapterMock.ClusterClientPortMock{
 				GetOSServiceMultipathFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceMultipath, error) {
-					config, err := queue.Pop(t, &tc.clientGetOSServiceMultipathErr)
+					config, err := queue.Pop(t, &tc.clientGetOSServiceMultipath)
 					return config, err
 				},
 				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
-					_, err := queue.Pop(t, &tc.clientUpdateOSServiceErr)
+					wantEnabled, err := queue.Pop(t, &tc.clientUpdateOSService)
+					require.Equal(t, wantEnabled, config.(incusosapi.ServiceMultipath).Config.Enabled)
 					return err
 				},
 			}
@@ -6058,8 +5882,8 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 			tc.assertErr(t, err)
 			tc.assertLog(t, logBuf)
 			require.Empty(t, tc.serverSvcGetAllWithFilter)
-			require.Empty(t, tc.clientGetOSServiceMultipathErr)
-			require.Empty(t, tc.clientUpdateOSServiceErr)
+			require.Empty(t, tc.clientGetOSServiceMultipath)
+			require.Empty(t, tc.clientUpdateOSService)
 		})
 	}
 }
@@ -6071,8 +5895,8 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 		targetArg                 incusosapi.ServiceNVMETarget
 		repoGetByName             *provisioning.Cluster
 		repoGetByNameErr          error
-		clientGetOSServiceNVMEErr []queue.Item[incusosapi.ServiceNVME]
-		clientUpdateOSServiceErr  []queue.Item[struct{}]
+		clientGetOSServiceNVM     []queue.Item[incusosapi.ServiceNVME]
+		clientUpdateOSService     []queue.Item[bool] // bool is the expected value for the enabled flag of the service.
 		serverSvcPollServersErr   error
 		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
 
@@ -6091,11 +5915,11 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+			clientGetOSServiceNVM: []queue.Item[incusosapi.ServiceNVME]{
 				{
 					Value: incusosapi.ServiceNVME{
 						Config: incusosapi.ServiceNVMEConfig{
-							Enabled: true,
+							Enabled: false, // false on purpose
 							Targets: []incusosapi.ServiceNVMETarget{},
 						},
 					},
@@ -6109,9 +5933,13 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 					},
 				},
 			},
-			clientUpdateOSServiceErr: []queue.Item[struct{}]{
-				{},
-				{},
+			clientUpdateOSService: []queue.Item[bool]{
+				{
+					Value: true,
+				},
+				{
+					Value: true,
+				},
 			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
 				// GetByName
@@ -6171,7 +5999,7 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+			clientGetOSServiceNVM: []queue.Item[incusosapi.ServiceNVME]{
 				{
 					Err: boom.Error,
 				},
@@ -6208,61 +6036,6 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 			assertLog: log.Empty,
 		},
 		{
-			name:    "error - nvme service not enabled",
-			nameArg: "one",
-			targetArg: incusosapi.ServiceNVMETarget{
-				Transport: "target",
-				Address:   "address",
-				Port:      1234,
-			},
-			repoGetByName: &provisioning.Cluster{
-				Name:   "one",
-				Status: api.ClusterStatusReady,
-			},
-			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
-				{
-					Value: incusosapi.ServiceNVME{
-						Config: incusosapi.ServiceNVMEConfig{
-							Enabled: false, // not enabled
-						},
-					},
-				},
-			},
-			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
-				// GetByName
-				{},
-				// serverSvc.GetAllWithFilter
-				{
-					Value: provisioning.Servers{
-						{
-							Name:         "one",
-							Cluster:      ptr.To("one"),
-							Status:       api.ServerStatusReady,
-							StatusDetail: api.ServerStatusDetailNone,
-							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
-							},
-						},
-						{
-							Name:         "two",
-							Cluster:      ptr.To("one"),
-							Status:       api.ServerStatusReady,
-							StatusDetail: api.ServerStatusDetailNone,
-							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
-							},
-						},
-					},
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "Service nvme is not enabled on server")
-			},
-			assertLog: log.Empty,
-		},
-		{
 			name:    "error - nvme service target already present",
 			nameArg: "one",
 			targetArg: incusosapi.ServiceNVMETarget{
@@ -6274,7 +6047,7 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+			clientGetOSServiceNVM: []queue.Item[incusosapi.ServiceNVME]{
 				{
 					Value: incusosapi.ServiceNVME{
 						Config: incusosapi.ServiceNVMEConfig{
@@ -6336,11 +6109,11 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+			clientGetOSServiceNVM: []queue.Item[incusosapi.ServiceNVME]{
 				{
 					Value: incusosapi.ServiceNVME{
 						Config: incusosapi.ServiceNVMEConfig{
-							Enabled: true,
+							Enabled: false, // false on purpose
 							Targets: []incusosapi.ServiceNVMETarget{},
 						},
 					},
@@ -6354,16 +6127,20 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 					},
 				},
 			},
-			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+			clientUpdateOSService: []queue.Item[bool]{
 				// First update successful.
-				{},
+				{
+					Value: true,
+				},
 				// Second update error.
 				{
-					Err: errors.New("error"),
+					Value: true,
+					Err:   errors.New("error"),
 				},
 				// Revert of first update error.
 				{
-					Err: boom.Error,
+					Value: false,
+					Err:   boom.Error,
 				},
 			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
@@ -6414,11 +6191,12 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 
 			client := &adapterMock.ClusterClientPortMock{
 				GetOSServiceNVMEFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceNVME, error) {
-					config, err := queue.Pop(t, &tc.clientGetOSServiceNVMEErr)
+					config, err := queue.Pop(t, &tc.clientGetOSServiceNVM)
 					return config, err
 				},
 				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
-					_, err := queue.Pop(t, &tc.clientUpdateOSServiceErr)
+					wantEnabled, err := queue.Pop(t, &tc.clientUpdateOSService)
+					require.Equal(t, wantEnabled, config.(incusosapi.ServiceNVME).Config.Enabled)
 					return err
 				},
 			}
@@ -6441,8 +6219,8 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 			tc.assertErr(t, err)
 			tc.assertLog(t, logBuf)
 			require.Empty(t, tc.serverSvcGetAllWithFilter)
-			require.Empty(t, tc.clientGetOSServiceNVMEErr)
-			require.Empty(t, tc.clientUpdateOSServiceErr)
+			require.Empty(t, tc.clientGetOSServiceNVM)
+			require.Empty(t, tc.clientUpdateOSService)
 		})
 	}
 }
@@ -6454,8 +6232,8 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 		targetArg                 incusosapi.ServiceNVMETarget
 		repoGetByName             *provisioning.Cluster
 		repoGetByNameErr          error
-		clientGetOSServiceNVMEErr []queue.Item[incusosapi.ServiceNVME]
-		clientUpdateOSServiceErr  []queue.Item[struct{}]
+		clientGetOSServiceNVME    []queue.Item[incusosapi.ServiceNVME]
+		clientUpdateOSService     []queue.Item[bool] // bool is the expected value for the enabled flag of the service.
 		serverSvcPollServersErr   error
 		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
 
@@ -6474,11 +6252,11 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
 				{
 					Value: incusosapi.ServiceNVME{
 						Config: incusosapi.ServiceNVMEConfig{
-							Enabled: true,
+							Enabled: false, // false on purpose
 							Targets: []incusosapi.ServiceNVMETarget{
 								{
 									Transport: "target",
@@ -6514,9 +6292,13 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 					},
 				},
 			},
-			clientUpdateOSServiceErr: []queue.Item[struct{}]{
-				{},
-				{},
+			clientUpdateOSService: []queue.Item[bool]{
+				{
+					Value: true,
+				},
+				{
+					Value: true,
+				},
 			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
 				// GetByName
@@ -6576,7 +6358,7 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
 				{
 					Err: boom.Error,
 				},
@@ -6613,61 +6395,6 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 			assertLog: log.Empty,
 		},
 		{
-			name:    "error - nvme service not enabled",
-			nameArg: "one",
-			targetArg: incusosapi.ServiceNVMETarget{
-				Transport: "target",
-				Address:   "address",
-				Port:      1234,
-			},
-			repoGetByName: &provisioning.Cluster{
-				Name:   "one",
-				Status: api.ClusterStatusReady,
-			},
-			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
-				{
-					Value: incusosapi.ServiceNVME{
-						Config: incusosapi.ServiceNVMEConfig{
-							Enabled: false, // not enabled
-						},
-					},
-				},
-			},
-			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
-				// GetByName
-				{},
-				// serverSvc.GetAllWithFilter
-				{
-					Value: provisioning.Servers{
-						{
-							Name:         "one",
-							Cluster:      ptr.To("one"),
-							Status:       api.ServerStatusReady,
-							StatusDetail: api.ServerStatusDetailNone,
-							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
-							},
-						},
-						{
-							Name:         "two",
-							Cluster:      ptr.To("one"),
-							Status:       api.ServerStatusReady,
-							StatusDetail: api.ServerStatusDetailNone,
-							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
-							},
-						},
-					},
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "Service nvme is not enabled on server")
-			},
-			assertLog: log.Empty,
-		},
-		{
 			name:    "error - nvme service target missing",
 			nameArg: "one",
 			targetArg: incusosapi.ServiceNVMETarget{
@@ -6679,7 +6406,7 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
 				{
 					Value: incusosapi.ServiceNVME{
 						Config: incusosapi.ServiceNVMEConfig{
@@ -6735,11 +6462,11 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 				Name:   "one",
 				Status: api.ClusterStatusReady,
 			},
-			clientGetOSServiceNVMEErr: []queue.Item[incusosapi.ServiceNVME]{
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
 				{
 					Value: incusosapi.ServiceNVME{
 						Config: incusosapi.ServiceNVMEConfig{
-							Enabled: true,
+							Enabled: false, // false on purpose
 							Targets: []incusosapi.ServiceNVMETarget{
 								{
 									Transport: "target",
@@ -6765,16 +6492,20 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 					},
 				},
 			},
-			clientUpdateOSServiceErr: []queue.Item[struct{}]{
+			clientUpdateOSService: []queue.Item[bool]{
 				// First update successful.
-				{},
+				{
+					Value: true,
+				},
 				// Second update error.
 				{
-					Err: errors.New("error"),
+					Value: true,
+					Err:   errors.New("error"),
 				},
 				// Revert of first update error.
 				{
-					Err: boom.Error,
+					Value: false,
+					Err:   boom.Error,
 				},
 			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
@@ -6825,11 +6556,12 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 
 			client := &adapterMock.ClusterClientPortMock{
 				GetOSServiceNVMEFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceNVME, error) {
-					config, err := queue.Pop(t, &tc.clientGetOSServiceNVMEErr)
+					config, err := queue.Pop(t, &tc.clientGetOSServiceNVME)
 					return config, err
 				},
 				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
-					_, err := queue.Pop(t, &tc.clientUpdateOSServiceErr)
+					wantEnabled, err := queue.Pop(t, &tc.clientUpdateOSService)
+					require.Equal(t, wantEnabled, config.(incusosapi.ServiceNVME).Config.Enabled)
 					return err
 				},
 			}
@@ -6852,8 +6584,8 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 			tc.assertErr(t, err)
 			tc.assertLog(t, logBuf)
 			require.Empty(t, tc.serverSvcGetAllWithFilter)
-			require.Empty(t, tc.clientGetOSServiceNVMEErr)
-			require.Empty(t, tc.clientUpdateOSServiceErr)
+			require.Empty(t, tc.clientGetOSServiceNVME)
+			require.Empty(t, tc.clientUpdateOSService)
 		})
 	}
 }
