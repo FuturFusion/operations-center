@@ -42,6 +42,8 @@ func setupOperationsCenter(t *testing.T, tmpDir string) {
 
 	setupLocalOperationsCenterConfig(t)
 
+	assertOperationsCenterSelfRegistration(t)
+
 	mustWaitUpdatesReady(t)
 }
 
