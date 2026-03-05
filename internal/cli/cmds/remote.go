@@ -96,7 +96,8 @@ type cmdRemoteAdd struct {
 	env   environment
 	asker asker
 
-	authType string
+	flagAuthType           string
+	flagAllowUntrustedCert bool
 }
 
 func (c *cmdRemoteAdd) Command() *cobra.Command {
@@ -109,7 +110,8 @@ func (c *cmdRemoteAdd) Command() *cobra.Command {
   Adds a new remote operations center.
 `
 
-	cmd.Flags().StringVar(&c.authType, "auth-type", "tls", "Server authentication type (tls or oidc)")
+	cmd.Flags().StringVar(&c.flagAuthType, "auth-type", "tls", "Server authentication type (tls or oidc)")
+	cmd.Flags().BoolVar(&c.flagAllowUntrustedCert, "allow-untrusted-cert", false, "Auto accept untrusted remote certificate (skip certificate fingerprint check)")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -144,8 +146,12 @@ func (c *cmdRemoteAdd) validateArgsAndFlags(cmd *cobra.Command, args []string) e
 		return fmt.Errorf(`Provided URL %q is not valid: protocol scheme needs to be https`, addr)
 	}
 
-	if config.AuthType(c.authType) != config.AuthTypeTLS && config.AuthType(c.authType) != config.AuthTypeOIDC {
+	if config.AuthType(c.flagAuthType) != config.AuthTypeTLS && config.AuthType(c.flagAuthType) != config.AuthTypeOIDC {
 		return fmt.Errorf(`Value for flag "--auth-type" needs to be %q or %q`, config.AuthTypeTLS, config.AuthTypeOIDC)
+	}
+
+	if config.AuthType(c.flagAuthType) != config.AuthTypeTLS && c.flagAllowUntrustedCert {
+		return fmt.Errorf(`Flag "--allow-untrusted-cert" can only be used with "--auth-type tls"`)
 	}
 
 	return nil
@@ -155,7 +161,7 @@ func (c *cmdRemoteAdd) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 	remote := config.Remote{
 		Addr:     args[1],
-		AuthType: config.AuthType(c.authType),
+		AuthType: config.AuthType(c.flagAuthType),
 	}
 
 	cfg := config.Config{}
@@ -175,7 +181,7 @@ func (c *cmdRemoteAdd) run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(`Remote with name %q already exists`, name)
 	}
 
-	err = c.checkRemoteConnectivity(cmd.Context(), name, &remote, cfg.CertInfo)
+	err = c.checkRemoteConnectivity(cmd.Context(), name, &remote, cfg.CertInfo, c.flagAllowUntrustedCert)
 	if err != nil {
 		return err
 	}
@@ -194,7 +200,7 @@ func (c *cmdRemoteAdd) run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (c *cmdRemoteAdd) checkRemoteConnectivity(ctx context.Context, name string, remote *config.Remote, clientCertInfo *localtls.CertInfo) error {
+func (c *cmdRemoteAdd) checkRemoteConnectivity(ctx context.Context, name string, remote *config.Remote, clientCertInfo *localtls.CertInfo, skipCertificateValidation bool) error {
 	// Setup an operations center client with the newly provided remote configuration.
 	opts := []client.Option{}
 	opts = append(opts, client.WithClientCertificate(clientCertInfo))
@@ -219,7 +225,7 @@ func (c *cmdRemoteAdd) checkRemoteConnectivity(ctx context.Context, name string,
 		return err
 	}
 
-	if !ok {
+	if !ok && !skipCertificateValidation {
 		// asker to verify fingerprint
 		trustedCert, err := c.asker.AskBool(fmt.Sprintf("Server presented an untrusted TLS certificate with SHA256 fingerprint %s. Is this the correct fingerprint? (yes/no) [default=no]: ", localtls.CertFingerprint(serverCert.Certificate)), "no")
 		if err != nil {
@@ -230,6 +236,10 @@ func (c *cmdRemoteAdd) checkRemoteConnectivity(ctx context.Context, name string,
 			return fmt.Errorf("Aborting due to untrusted server TLS certificate")
 		}
 
+		remote.ServerCert = serverCert
+	}
+
+	if skipCertificateValidation {
 		remote.ServerCert = serverCert
 	}
 
