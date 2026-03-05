@@ -589,25 +589,29 @@ func (c *clusterHandler) clusterBulkUpdatePost(r *http.Request) response.Respons
 	}
 
 	switch request.Action {
-	case api.ClusterBulkUpdateActionAddSystemNetworkVLAN:
-		var vlanConfig provisioning.ServerSystemNetworkVLAN
+	case api.ClusterBulkUpdateActionAddNetworkInterfaceVLANTags:
+		var vlanConfig struct {
+			Interface string `json:"interface_name"`
+			VLANTags  []int  `json:"vlan_tags"`
+		}
 		err = json.Unmarshal(*request.Arguments, &vlanConfig)
 		if err != nil {
 			return response.BadRequest(err)
 		}
 
-		err = c.service.AddServerSystemNetworkVLAN(ctx, name, vlanConfig)
+		err = c.service.AddServerSystemNetworkVLANTags(ctx, name, vlanConfig.Interface, vlanConfig.VLANTags)
 
-	case api.ClusterBulkUpdateActionRemoveSystemNetworkVLAN:
+	case api.ClusterBulkUpdateActionRemoveNetworkInterfaceVLANTags:
 		var removeVLAN struct {
-			Name string `json:"name"`
+			Interface string `json:"interface_name"`
+			VLANTags  []int  `json:"vlan_tags"`
 		}
 		err = json.Unmarshal(*request.Arguments, &removeVLAN)
 		if err != nil {
 			return response.BadRequest(err)
 		}
 
-		err = c.service.RemoveServerSystemNetworkVLAN(ctx, name, removeVLAN.Name)
+		err = c.service.RemoveServerSystemNetworkVLANTags(ctx, name, removeVLAN.Interface, removeVLAN.VLANTags)
 
 	case api.ClusterBulkUpdateActionUpdateSystemLogging:
 		var loggingConfig provisioning.ServerSystemLogging
