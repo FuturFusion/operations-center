@@ -8,7 +8,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 func Test_validate(t *testing.T) {
@@ -34,8 +34,8 @@ func Test_validate(t *testing.T) {
 		{
 			name: "require network.rest_server_address to be not empty on IncusOS",
 			oldCfg: &config{
-				Network: api.SystemNetwork{
-					SystemNetworkPut: api.SystemNetworkPut{
+				Network: system.Network{
+					NetworkPut: system.NetworkPut{
 						RestServerAddress:       "127.0.0.1:7443",
 						OperationsCenterAddress: "http://localhost:7443",
 					},
@@ -43,8 +43,8 @@ func Test_validate(t *testing.T) {
 				Updates: defaultUpdates,
 			},
 			cfg: config{
-				Network: api.SystemNetwork{
-					SystemNetworkPut: api.SystemNetworkPut{
+				Network: system.Network{
+					NetworkPut: system.NetworkPut{
 						RestServerAddress:       "", // empty not allowed on IncusOS
 						OperationsCenterAddress: "http://localhost:7443",
 					},
@@ -60,8 +60,8 @@ func Test_validate(t *testing.T) {
 		{
 			name: "require network.rest_server_address to be valid - multiple single colons",
 			cfg: config{
-				Network: api.SystemNetwork{
-					SystemNetworkPut: api.SystemNetworkPut{
+				Network: system.Network{
+					NetworkPut: system.NetworkPut{
 						RestServerAddress:       "127.0.0.1:0:7443", // invalid multiple single colons
 						OperationsCenterAddress: "http://localhost:7443",
 					},
@@ -76,8 +76,8 @@ func Test_validate(t *testing.T) {
 		{
 			name: "require network.rest_server_address to be valid - not an ip",
 			cfg: config{
-				Network: api.SystemNetwork{
-					SystemNetworkPut: api.SystemNetworkPut{
+				Network: system.Network{
+					NetworkPut: system.NetworkPut{
 						RestServerAddress:       "localhost:7443", // invalid not an ip
 						OperationsCenterAddress: "http://localhost:7443",
 					},
@@ -92,8 +92,8 @@ func Test_validate(t *testing.T) {
 		{
 			name: "require network.rest_server_address to be valid - invalid port",
 			cfg: config{
-				Network: api.SystemNetwork{
-					SystemNetworkPut: api.SystemNetworkPut{
+				Network: system.Network{
+					NetworkPut: system.NetworkPut{
 						RestServerAddress:       "127.0.0.1:abc", // invalid port
 						OperationsCenterAddress: "http://localhost:7443",
 					},
@@ -108,8 +108,8 @@ func Test_validate(t *testing.T) {
 		{
 			name: "require network.rest_server_address to be valid - port out of range",
 			cfg: config{
-				Network: api.SystemNetwork{
-					SystemNetworkPut: api.SystemNetworkPut{
+				Network: system.Network{
+					NetworkPut: system.NetworkPut{
 						RestServerAddress:       "127.0.0.1:0", // invalid port out of range
 						OperationsCenterAddress: "http://localhost:7443",
 					},
@@ -124,8 +124,8 @@ func Test_validate(t *testing.T) {
 		{
 			name: "require network.rest_server_address to be valid - port out of range",
 			cfg: config{
-				Network: api.SystemNetwork{
-					SystemNetworkPut: api.SystemNetworkPut{
+				Network: system.Network{
+					NetworkPut: system.NetworkPut{
 						RestServerAddress:       "127.0.0.1:70000", // invalid port out of range
 						OperationsCenterAddress: "http://localhost:7443",
 					},
@@ -140,8 +140,8 @@ func Test_validate(t *testing.T) {
 		{
 			name: "require network.rest_server_address if network.address is set",
 			cfg: config{
-				Network: api.SystemNetwork{
-					SystemNetworkPut: api.SystemNetworkPut{
+				Network: system.Network{
+					NetworkPut: system.NetworkPut{
 						OperationsCenterAddress: "http://localhost:7443",
 					},
 				},
@@ -155,8 +155,8 @@ func Test_validate(t *testing.T) {
 		{
 			name: "require network.address if network.rest_server_address is set",
 			cfg: config{
-				Network: api.SystemNetwork{
-					SystemNetworkPut: api.SystemNetworkPut{
+				Network: system.Network{
+					NetworkPut: system.NetworkPut{
 						RestServerAddress: "127.0.0.1:7443",
 					},
 				},
@@ -170,8 +170,8 @@ func Test_validate(t *testing.T) {
 		{
 			name: "invalid network.address",
 			cfg: config{
-				Network: api.SystemNetwork{
-					SystemNetworkPut: api.SystemNetworkPut{
+				Network: system.Network{
+					NetworkPut: system.NetworkPut{
 						RestServerAddress:       "127.0.0.1:7443",
 						OperationsCenterAddress: ":|\\", // invalid
 					},
@@ -188,8 +188,8 @@ func Test_validate(t *testing.T) {
 		{
 			name: "invalid updates.source",
 			cfg: config{
-				Updates: api.SystemUpdates{
-					SystemUpdatesPut: api.SystemUpdatesPut{
+				Updates: system.Updates{
+					UpdatesPut: system.UpdatesPut{
 						Source:                      ":|\\", // invalid
 						SignatureVerificationRootCA: signatureVerificationRootCA,
 					},
@@ -201,8 +201,8 @@ func Test_validate(t *testing.T) {
 		{
 			name: "empty updates.signature_verification_root_ca",
 			cfg: config{
-				Updates: api.SystemUpdates{
-					SystemUpdatesPut: api.SystemUpdatesPut{
+				Updates: system.Updates{
+					UpdatesPut: system.UpdatesPut{
 						SignatureVerificationRootCA: ``, // empty
 					},
 				},
@@ -213,8 +213,8 @@ func Test_validate(t *testing.T) {
 		{
 			name: "invalid updates.signature_verification_root_ca",
 			cfg: config{
-				Updates: api.SystemUpdates{
-					SystemUpdatesPut: api.SystemUpdatesPut{
+				Updates: system.Updates{
+					UpdatesPut: system.UpdatesPut{
 						SignatureVerificationRootCA: `invalid`, // invalid
 					},
 				},
@@ -225,8 +225,8 @@ func Test_validate(t *testing.T) {
 		{
 			name: "update validation signal error",
 			cfg: config{
-				Updates: api.SystemUpdates{
-					SystemUpdatesPut: api.SystemUpdatesPut{
+				Updates: system.Updates{
+					UpdatesPut: system.UpdatesPut{
 						SignatureVerificationRootCA: signatureVerificationRootCA,
 						FilterExpression:            `invalid`, // invalid
 						UpdatesDefaultChannel:       "stable",
@@ -243,9 +243,9 @@ func Test_validate(t *testing.T) {
 		{
 			name: "invalid security.oidc.issuer",
 			cfg: config{
-				Security: api.SystemSecurity{
-					SystemSecurityPut: api.SystemSecurityPut{
-						OIDC: api.SystemSecurityOIDC{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						OIDC: system.SecurityOIDC{
 							Issuer: ":|\\", // invalid
 						},
 					},
@@ -258,9 +258,9 @@ func Test_validate(t *testing.T) {
 		{
 			name: "invalid security.openfga.api_url",
 			cfg: config{
-				Security: api.SystemSecurity{
-					SystemSecurityPut: api.SystemSecurityPut{
-						OpenFGA: api.SystemSecurityOpenFGA{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						OpenFGA: system.SecurityOpenFGA{
 							APIURL: ":|\\", // invalid
 						},
 					},
@@ -273,9 +273,9 @@ func Test_validate(t *testing.T) {
 		{
 			name: "invalid security.acme config",
 			cfg: config{
-				Security: api.SystemSecurity{
-					SystemSecurityPut: api.SystemSecurityPut{
-						ACME: api.SystemSecurityACME{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						ACME: system.SecurityACME{
 							CAURL: ":|\\", // invalid
 						},
 					},
@@ -288,8 +288,8 @@ func Test_validate(t *testing.T) {
 		{
 			name: "invalid security.trusted_https_proxies config",
 			cfg: config{
-				Security: api.SystemSecurity{
-					SystemSecurityPut: api.SystemSecurityPut{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
 						TrustedHTTPSProxies: []string{
 							":|\\", // invalid
 						},
@@ -303,16 +303,16 @@ func Test_validate(t *testing.T) {
 		{
 			name: "empty security.trusted_tls_client_cert_fingerprints",
 			oldCfg: &config{
-				Security: api.SystemSecurity{
-					SystemSecurityPut: api.SystemSecurityPut{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertFingerprints: []string{"fingerprint"},
 					},
 				},
 				Updates: defaultUpdates,
 			},
 			cfg: config{
-				Security: api.SystemSecurity{
-					SystemSecurityPut: api.SystemSecurityPut{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertFingerprints: []string{}, // empty
 					},
 				},
@@ -325,16 +325,16 @@ func Test_validate(t *testing.T) {
 		{
 			name: "empty security.trusted_tls_client_cert_fingerprints on IncusOS",
 			oldCfg: &config{
-				Security: api.SystemSecurity{
-					SystemSecurityPut: api.SystemSecurityPut{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertFingerprints: []string{"fingerprint"},
 					},
 				},
 				Updates: defaultUpdates,
 			},
 			cfg: config{
-				Security: api.SystemSecurity{
-					SystemSecurityPut: api.SystemSecurityPut{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
 						TrustedTLSClientCertFingerprints: []string{}, // empty
 					},
 				},
@@ -349,8 +349,8 @@ func Test_validate(t *testing.T) {
 		{
 			name: "invalid log level",
 			cfg: config{
-				Settings: api.SystemSettings{
-					SystemSettingsPut: api.SystemSettingsPut{
+				Settings: system.Settings{
+					SettingsPut: system.SettingsPut{
 						LogLevel: "invalid", // invalid log level.
 					},
 				},
@@ -371,22 +371,22 @@ func Test_validate(t *testing.T) {
 			}
 
 			InitTest(t, env, nil)
-			UpdatesValidateSignal.AddListenerWithErr(func(ctx context.Context, su api.SystemUpdates) error {
+			UpdatesValidateSignal.AddListenerWithErr(func(ctx context.Context, su system.Updates) error {
 				return tc.updateValidateSignalListenerErr
 			}, tc.name)
 			defer UpdatesValidateSignal.RemoveListener(tc.name)
 
 			if tc.oldCfg != nil {
-				err := UpdateNetwork(t.Context(), tc.oldCfg.Network.SystemNetworkPut)
+				err := UpdateNetwork(t.Context(), tc.oldCfg.Network.NetworkPut)
 				require.NoError(t, err)
 
-				err = UpdateSecurity(t.Context(), tc.oldCfg.Security.SystemSecurityPut)
+				err = UpdateSecurity(t.Context(), tc.oldCfg.Security.SecurityPut)
 				require.NoError(t, err)
 
-				err = UpdateSettings(t.Context(), tc.oldCfg.Settings.SystemSettingsPut)
+				err = UpdateSettings(t.Context(), tc.oldCfg.Settings.SettingsPut)
 				require.NoError(t, err)
 
-				err = UpdateUpdates(t.Context(), tc.oldCfg.Updates.SystemUpdatesPut)
+				err = UpdateUpdates(t.Context(), tc.oldCfg.Updates.UpdatesPut)
 				require.NoError(t, err)
 			}
 
@@ -397,8 +397,8 @@ func Test_validate(t *testing.T) {
 	}
 }
 
-var defaultUpdates = api.SystemUpdates{
-	SystemUpdatesPut: api.SystemUpdatesPut{
+var defaultUpdates = system.Updates{
+	UpdatesPut: system.UpdatesPut{
 		SignatureVerificationRootCA: signatureVerificationRootCA,
 		UpdatesDefaultChannel:       "stable",
 		ServerDefaultChannel:        "stable",

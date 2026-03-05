@@ -22,17 +22,17 @@ import (
 	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/security/acme"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 type config struct {
-	Network api.SystemNetwork `json:"network" yaml:"network"`
+	Network system.Network `json:"network" yaml:"network"`
 
-	Security api.SystemSecurity `json:"security" yaml:"security"`
+	Security system.Security `json:"security" yaml:"security"`
 
-	Settings api.SystemSettings `json:"settings" yaml:"settings"`
+	Settings system.Settings `json:"settings" yaml:"settings"`
 
-	Updates api.SystemUpdates `json:"updates" yaml:"updates"`
+	Updates system.Updates `json:"updates" yaml:"updates"`
 }
 
 type InternalConfig struct {
@@ -56,12 +56,12 @@ var (
 	env enver = environment.New(ApplicationName, ApplicationEnvPrefix)
 
 	ServerCertificateUpdateSignal           = signals.NewSync[tls.Certificate]()
-	NetworkUpdateSignal                     = signals.NewSync[api.SystemNetwork]()
-	SecurityUpdateSignal                    = signals.NewSync[api.SystemSecurity]()
+	NetworkUpdateSignal                     = signals.NewSync[system.Network]()
+	SecurityUpdateSignal                    = signals.NewSync[system.Security]()
 	SecurityTrustedHTTPSProxiesUpdateSignal = signals.NewSync[[]string]()
-	SecurityACMEUpdateSignal                = signals.NewSync[api.SystemSecurityACME]()
-	UpdatesValidateSignal                   = signals.NewSync[api.SystemUpdates]()
-	UpdatesUpdateSignal                     = signals.NewSync[api.SystemUpdates]()
+	SecurityACMEUpdateSignal                = signals.NewSync[system.SecurityACME]()
+	UpdatesValidateSignal                   = signals.NewSync[system.Updates]()
+	UpdatesUpdateSignal                     = signals.NewSync[system.Updates]()
 )
 
 func Init(vardir enver) error {
@@ -123,7 +123,7 @@ func loadConfig() error {
 		return fmt.Errorf("Failed to unmarshal config %q: %w", filename, err)
 	}
 
-	cfg.Network.SystemNetworkPut, err = NetworkSetDefaults(cfg.Network.SystemNetworkPut)
+	cfg.Network.NetworkPut, err = NetworkSetDefaults(cfg.Network.NetworkPut)
 	if err != nil {
 		return fmt.Errorf("Invalid network config: %w", err)
 	}
@@ -138,14 +138,14 @@ func loadConfig() error {
 	return nil
 }
 
-func GetNetwork() api.SystemNetwork {
+func GetNetwork() system.Network {
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
 
 	return globalConfigInstance.Network
 }
 
-func UpdateNetwork(ctx context.Context, cfg api.SystemNetworkPut) error {
+func UpdateNetwork(ctx context.Context, cfg system.NetworkPut) error {
 	globalConfigInstanceMu.Lock()
 	unlock := unlockOnce(&globalConfigInstanceMu)
 	defer unlock()
@@ -153,7 +153,7 @@ func UpdateNetwork(ctx context.Context, cfg api.SystemNetworkPut) error {
 	var err error
 
 	newCfg := globalConfigInstance
-	newCfg.Network.SystemNetworkPut, err = NetworkSetDefaults(cfg)
+	newCfg.Network.NetworkPut, err = NetworkSetDefaults(cfg)
 	if err != nil {
 		return err
 	}
@@ -165,14 +165,14 @@ func UpdateNetwork(ctx context.Context, cfg api.SystemNetworkPut) error {
 
 	unlock()
 
-	NetworkUpdateSignal.Emit(ctx, api.SystemNetwork{
-		SystemNetworkPut: cfg,
+	NetworkUpdateSignal.Emit(ctx, system.Network{
+		NetworkPut: cfg,
 	})
 
 	return nil
 }
 
-func NetworkSetDefaults(cfg api.SystemNetworkPut) (api.SystemNetworkPut, error) {
+func NetworkSetDefaults(cfg system.NetworkPut) (system.NetworkPut, error) {
 	newCfg := cfg
 	parseIP := func(addr string) (net.IP, error) {
 		if strings.HasPrefix(addr, "[") && strings.HasSuffix(addr, "]") && len(addr) > 2 {
@@ -192,7 +192,7 @@ func NetworkSetDefaults(cfg api.SystemNetworkPut) (api.SystemNetworkPut, error) 
 		if err != nil {
 			ip, err := parseIP(cfg.RestServerAddress)
 			if err != nil {
-				return api.SystemNetworkPut{}, err
+				return system.NetworkPut{}, err
 			}
 
 			newCfg.RestServerAddress = net.JoinHostPort(ip.String(), DefaultRestServerPort)
@@ -205,7 +205,7 @@ func NetworkSetDefaults(cfg api.SystemNetworkPut) (api.SystemNetworkPut, error) 
 
 		_, err = parseIP(host)
 		if err != nil {
-			return api.SystemNetworkPut{}, err
+			return system.NetworkPut{}, err
 		}
 
 		if port == "" {
@@ -218,16 +218,16 @@ func NetworkSetDefaults(cfg api.SystemNetworkPut) (api.SystemNetworkPut, error) 
 	return newCfg, nil
 }
 
-func GetSecurity() api.SystemSecurity {
+func GetSecurity() system.Security {
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
 
 	return globalConfigInstance.Security
 }
 
-func UpdateSecurity(ctx context.Context, cfg api.SystemSecurityPut) error {
+func UpdateSecurity(ctx context.Context, cfg system.SecurityPut) error {
 	newCfg := globalConfigInstance
-	newCfg.Security.SystemSecurityPut = cfg
+	newCfg.Security.SecurityPut = cfg
 
 	currentCfg := GetSecurity()
 
@@ -244,8 +244,8 @@ func UpdateSecurity(ctx context.Context, cfg api.SystemSecurityPut) error {
 	}
 
 	if isSecurityConfigChanged {
-		SecurityUpdateSignal.Emit(ctx, api.SystemSecurity{
-			SystemSecurityPut: cfg,
+		SecurityUpdateSignal.Emit(ctx, system.Security{
+			SecurityPut: cfg,
 		})
 	}
 
@@ -260,19 +260,19 @@ func UpdateSecurity(ctx context.Context, cfg api.SystemSecurityPut) error {
 	return nil
 }
 
-func GetSettings() api.SystemSettings {
+func GetSettings() system.Settings {
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
 
 	return globalConfigInstance.Settings
 }
 
-func UpdateSettings(ctx context.Context, cfg api.SystemSettingsPut) error {
+func UpdateSettings(ctx context.Context, cfg system.SettingsPut) error {
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
 
 	newCfg := globalConfigInstance
-	newCfg.Settings.SystemSettingsPut = cfg
+	newCfg.Settings.SettingsPut = cfg
 
 	isLogLevelChanged := globalConfigInstance.Settings.LogLevel != newCfg.Settings.LogLevel
 
@@ -291,20 +291,20 @@ func UpdateSettings(ctx context.Context, cfg api.SystemSettingsPut) error {
 	return nil
 }
 
-func GetUpdates() api.SystemUpdates {
+func GetUpdates() system.Updates {
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
 
 	return globalConfigInstance.Updates
 }
 
-func UpdateUpdates(ctx context.Context, cfg api.SystemUpdatesPut) error {
+func UpdateUpdates(ctx context.Context, cfg system.UpdatesPut) error {
 	globalConfigInstanceMu.Lock()
 	unlock := unlockOnce(&globalConfigInstanceMu)
 	defer unlock()
 
 	newCfg := globalConfigInstance
-	newCfg.Updates.SystemUpdatesPut = cfg
+	newCfg.Updates.UpdatesPut = cfg
 
 	err := validateAndSave(newCfg)
 	if err != nil {
@@ -313,8 +313,8 @@ func UpdateUpdates(ctx context.Context, cfg api.SystemUpdatesPut) error {
 
 	unlock()
 
-	UpdatesUpdateSignal.Emit(ctx, api.SystemUpdates{
-		SystemUpdatesPut: cfg,
+	UpdatesUpdateSignal.Emit(ctx, system.Updates{
+		UpdatesPut: cfg,
 	})
 
 	return nil
@@ -428,7 +428,7 @@ func validate(cfg config) error {
 	return nil
 }
 
-func ValidateNetworkConfig(cfg api.SystemNetwork) error {
+func ValidateNetworkConfig(cfg system.Network) error {
 	isRestServerAddressChanged := globalConfigInstance.Network.RestServerAddress != cfg.RestServerAddress
 	if env.IsIncusOS() && isRestServerAddressChanged && cfg.RestServerAddress == "" {
 		return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" can not be empty when running on IncusOS`)
