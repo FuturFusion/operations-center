@@ -21,6 +21,7 @@ Incus
 IncusOS
 InitLocalPreseed
 IPv
+iSCSI
 JSON
 Keychain
 keypair
@@ -28,6 +29,7 @@ lang
 linuxcontainers
 LVM
 MacOS
+multipath
 nvme
 OIDC
 OpenFGA
@@ -49,5 +51,6 @@ TLS
 toolchain
 UI
 UUID
+vlan
 VM
 YAML

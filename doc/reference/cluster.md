@@ -89,3 +89,152 @@ SOME_VARIABLE: "the value"
 A_BOOLEAN_VARIABLE: true
 A_NUMERIC_VARIABLE: 42
 ```
+
+## Cluster Bulk Operations
+
+Operations Center allows to perform bulk operations on clusters, which are then
+applied to all members of the cluster. Operations Center supports the following
+bulk operations:
+
+* Adding or removing a vlan tags from network interfaces
+* Adding or removing a storage target for iSCSI/NVME/multipath services
+* Deploying of secondary application
+* Updating of system settings:
+   * Kernel
+   * Logging
+
+In order to execute a bulk operation, the action and its arguments need to be
+provided.
+
+### Cluster Bulk Operations Payload Reference
+
+`add_network_interface_vlan_tags`:
+
+```json
+{
+  "interface_name": "eth0",
+  "vlan_tags": [100, 200]
+}
+```
+
+`remove_network_interface_vlan_tags`:
+
+```json
+{
+  "interface_name": "eth0",
+  "vlan_tags": [100, 200]
+}
+```
+
+`update_system_logging`:
+
+```json
+{
+  "config": {
+    "syslog": {
+      "address": "127.0.0.1",
+      "log_format": "",
+      "protocol": "tcp"
+    }
+  }
+}
+```
+
+see [Update System Logging](https://linuxcontainers.org/incus-os/docs/main/reference/api/#/system/system_put_logging)
+for the full list of accepted parameters.
+
+`update_system_kernel`:
+
+```json
+{
+  "config": {
+    "blacklist_modules": [
+      "bad-module"
+    ],
+    "network": {
+      "buffer_size": 33554432,
+      "queuing_discipline": "fq",
+      "tcp_congestion_algorithm": "bbr"
+    },
+    "pci": {
+      "passthrough": [
+        {
+          "pci_address": "0000:04:00.0",
+          "product_id": "1050",
+          "vendor_id": "1af4"
+        }
+      ]
+    }
+  }
+}
+```
+
+see [Update System Kernel](https://linuxcontainers.org/incus-os/docs/main/reference/api/#/system/system_put_kernel)
+for the full list of accepted parameters.
+
+`add_application`:
+
+```json
+{
+  "name": "debug"
+}
+```
+
+see [Non-primary applications](https://linuxcontainers.org/incus-os/docs/main/reference/applications/non-primary/)
+for the list of supported applications.
+
+`add_iscsi_storage_target`:
+
+```json
+{
+  "target": "",
+  "address": "",
+  "port": 1234
+}
+```
+
+`remove_iscsi_storage_target`:
+
+```json
+{
+  "target": "",
+  "address": "",
+  "port": 1234
+}
+```
+
+`add_multipath_storage_target`:
+
+```json
+{
+  "wwn": ""
+}
+```
+
+`remove_multipath_storage_target`:
+
+```json
+{
+  "wwn": ""
+}
+```
+
+`add_nvme_storage_target`:
+
+```json
+{
+  "transport": "tcp",
+  "address": "",
+  "port": 1234
+}
+```
+
+`remove_nvme_storage_target`:
+
+```json
+{
+  "transport": "tcp",
+  "address": "",
+  "port": 1234
+}
+```
