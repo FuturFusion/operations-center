@@ -32,16 +32,6 @@ var (
 }
 `)
 
-	operationsCenterConfigYAMLTemplate = []byte(`---
-default_remote: test
-remotes:
-  test:
-    addr: https://$OPERATIONS_CENTER_IPADDRESS$:8443/
-    auth_type: tls
-    server_cert: |
-$OPERATIONS_CENTER_CERTIFICATE$
-`)
-
 	incusOSSeedFileYAMLTemplate = []byte(`---
 applications:
   version: "1"

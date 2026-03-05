@@ -284,25 +284,21 @@ func setupLocalOperationsCenterConfig(t *testing.T) {
 
 	operationsCenterIPAddress := strings.TrimSpace(operationsCenterIPAddressResp.Output())
 
-	var operationsCenterCetificate string
+	// FIXME: replace with a Go based connection test
 	for {
 		operationsCenterCetificateResp := runWithTimeout(t, `/usr/bin/openssl s_client -connect %s:8443 </dev/null 2>/dev/null | openssl x509 -outform PEM`, 30*time.Second, operationsCenterIPAddress)
 		require.NoError(t, operationsCenterCetificateResp.err)
 		if strings.Contains(operationsCenterCetificateResp.Output(), "-----BEGIN CERTIFICATE-----") {
-			operationsCenterCetificate = indent(operationsCenterCetificateResp.Output(), strings.Repeat(" ", 6))
 			break
 		}
 	}
 
-	operationsCenterConfigYAML := replacePlaceholders(operationsCenterConfigYAMLTemplate,
-		map[string]string{
-			"$OPERATIONS_CENTER_IPADDRESS$":   operationsCenterIPAddress,
-			"$OPERATIONS_CENTER_CERTIFICATE$": operationsCenterCetificate,
-		},
-	)
+	mustRun(t, `../bin/operations-center.linux.%s remote add --allow-untrusted-cert e2e-test https://%s:8443/`, cpuArch, operationsCenterIPAddress)
 
-	err = os.WriteFile(filepath.Join(homeDir, ".config/operations-center/config.yml"), operationsCenterConfigYAML, 0o600)
-	require.NoError(t, err)
+	resp := mustRun(t, `../bin/operations-center.linux.%s remote list`, cpuArch)
+	fmt.Println(resp.Output())
+
+	mustRun(t, `../bin/operations-center.linux.%s remote switch e2e-test`, cpuArch)
 }
 
 func createProvisioningToken(t *testing.T) string {
