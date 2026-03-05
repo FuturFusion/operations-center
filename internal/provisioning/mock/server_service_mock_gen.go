@@ -24,6 +24,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //
 //		// make and configure a mocked provisioning.ServerService
 //		mockedServerService := &ServerServiceMock{
+//			AddApplicationFunc: func(ctx context.Context, name string, applicationName string) error {
+//				panic("mock out the AddApplication method")
+//			},
 //			CreateFunc: func(ctx context.Context, token uuid.UUID, server provisioning.Server) (provisioning.Server, error) {
 //				panic("mock out the Create method")
 //			},
@@ -47,6 +50,12 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			},
 //			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 //				panic("mock out the GetByName method")
+//			},
+//			GetSystemKernelFunc: func(ctx context.Context, name string) (provisioning.ServerSystemKernel, error) {
+//				panic("mock out the GetSystemKernel method")
+//			},
+//			GetSystemLoggingFunc: func(ctx context.Context, name string) (provisioning.ServerSystemLogging, error) {
+//				panic("mock out the GetSystemLogging method")
 //			},
 //			GetSystemProviderFunc: func(ctx context.Context, name string) (provisioning.ServerSystemProvider, error) {
 //				panic("mock out the GetSystemProvider method")
@@ -93,6 +102,12 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			UpdateSystemByNameFunc: func(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error {
 //				panic("mock out the UpdateSystemByName method")
 //			},
+//			UpdateSystemKernelFunc: func(ctx context.Context, name string, kernelConfig provisioning.ServerSystemKernel) error {
+//				panic("mock out the UpdateSystemKernel method")
+//			},
+//			UpdateSystemLoggingFunc: func(ctx context.Context, name string, loggingConfig provisioning.ServerSystemLogging) error {
+//				panic("mock out the UpdateSystemLogging method")
+//			},
 //			UpdateSystemNetworkFunc: func(ctx context.Context, name string, networkConfig provisioning.ServerSystemNetwork) error {
 //				panic("mock out the UpdateSystemNetwork method")
 //			},
@@ -112,6 +127,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //
 //	}
 type ServerServiceMock struct {
+	// AddApplicationFunc mocks the AddApplication method.
+	AddApplicationFunc func(ctx context.Context, name string, applicationName string) error
+
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, token uuid.UUID, server provisioning.Server) (provisioning.Server, error)
 
@@ -135,6 +153,12 @@ type ServerServiceMock struct {
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Server, error)
+
+	// GetSystemKernelFunc mocks the GetSystemKernel method.
+	GetSystemKernelFunc func(ctx context.Context, name string) (provisioning.ServerSystemKernel, error)
+
+	// GetSystemLoggingFunc mocks the GetSystemLogging method.
+	GetSystemLoggingFunc func(ctx context.Context, name string) (provisioning.ServerSystemLogging, error)
 
 	// GetSystemProviderFunc mocks the GetSystemProvider method.
 	GetSystemProviderFunc func(ctx context.Context, name string) (provisioning.ServerSystemProvider, error)
@@ -181,6 +205,12 @@ type ServerServiceMock struct {
 	// UpdateSystemByNameFunc mocks the UpdateSystemByName method.
 	UpdateSystemByNameFunc func(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error
 
+	// UpdateSystemKernelFunc mocks the UpdateSystemKernel method.
+	UpdateSystemKernelFunc func(ctx context.Context, name string, kernelConfig provisioning.ServerSystemKernel) error
+
+	// UpdateSystemLoggingFunc mocks the UpdateSystemLogging method.
+	UpdateSystemLoggingFunc func(ctx context.Context, name string, loggingConfig provisioning.ServerSystemLogging) error
+
 	// UpdateSystemNetworkFunc mocks the UpdateSystemNetwork method.
 	UpdateSystemNetworkFunc func(ctx context.Context, name string, networkConfig provisioning.ServerSystemNetwork) error
 
@@ -195,6 +225,15 @@ type ServerServiceMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// AddApplication holds details about calls to the AddApplication method.
+		AddApplication []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// ApplicationName is the applicationName argument value.
+			ApplicationName string
+		}
 		// Create holds details about calls to the Create method.
 		Create []struct {
 			// Ctx is the ctx argument value.
@@ -244,6 +283,20 @@ type ServerServiceMock struct {
 		}
 		// GetByName holds details about calls to the GetByName method.
 		GetByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
+		// GetSystemKernel holds details about calls to the GetSystemKernel method.
+		GetSystemKernel []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
+		// GetSystemLogging holds details about calls to the GetSystemLogging method.
+		GetSystemLogging []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Name is the name argument value.
@@ -364,6 +417,24 @@ type ServerServiceMock struct {
 			// UpdateRequest is the updateRequest argument value.
 			UpdateRequest api.ServerUpdatePost
 		}
+		// UpdateSystemKernel holds details about calls to the UpdateSystemKernel method.
+		UpdateSystemKernel []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// KernelConfig is the kernelConfig argument value.
+			KernelConfig provisioning.ServerSystemKernel
+		}
+		// UpdateSystemLogging holds details about calls to the UpdateSystemLogging method.
+		UpdateSystemLogging []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// LoggingConfig is the loggingConfig argument value.
+			LoggingConfig provisioning.ServerSystemLogging
+		}
 		// UpdateSystemNetwork holds details about calls to the UpdateSystemNetwork method.
 		UpdateSystemNetwork []struct {
 			// Ctx is the ctx argument value.
@@ -401,6 +472,7 @@ type ServerServiceMock struct {
 			UpdateConfig provisioning.ServerSystemUpdate
 		}
 	}
+	lockAddApplication               sync.RWMutex
 	lockCreate                       sync.RWMutex
 	lockDeleteByName                 sync.RWMutex
 	lockEvacuateSystemByName         sync.RWMutex
@@ -409,6 +481,8 @@ type ServerServiceMock struct {
 	lockGetAllNamesWithFilter        sync.RWMutex
 	lockGetAllWithFilter             sync.RWMutex
 	lockGetByName                    sync.RWMutex
+	lockGetSystemKernel              sync.RWMutex
+	lockGetSystemLogging             sync.RWMutex
 	lockGetSystemProvider            sync.RWMutex
 	lockGetSystemUpdate              sync.RWMutex
 	lockPollServer                   sync.RWMutex
@@ -424,10 +498,52 @@ type ServerServiceMock struct {
 	lockSyncCluster                  sync.RWMutex
 	lockUpdate                       sync.RWMutex
 	lockUpdateSystemByName           sync.RWMutex
+	lockUpdateSystemKernel           sync.RWMutex
+	lockUpdateSystemLogging          sync.RWMutex
 	lockUpdateSystemNetwork          sync.RWMutex
 	lockUpdateSystemProvider         sync.RWMutex
 	lockUpdateSystemStorage          sync.RWMutex
 	lockUpdateSystemUpdate           sync.RWMutex
+}
+
+// AddApplication calls AddApplicationFunc.
+func (mock *ServerServiceMock) AddApplication(ctx context.Context, name string, applicationName string) error {
+	if mock.AddApplicationFunc == nil {
+		panic("ServerServiceMock.AddApplicationFunc: method is nil but ServerService.AddApplication was just called")
+	}
+	callInfo := struct {
+		Ctx             context.Context
+		Name            string
+		ApplicationName string
+	}{
+		Ctx:             ctx,
+		Name:            name,
+		ApplicationName: applicationName,
+	}
+	mock.lockAddApplication.Lock()
+	mock.calls.AddApplication = append(mock.calls.AddApplication, callInfo)
+	mock.lockAddApplication.Unlock()
+	return mock.AddApplicationFunc(ctx, name, applicationName)
+}
+
+// AddApplicationCalls gets all the calls that were made to AddApplication.
+// Check the length with:
+//
+//	len(mockedServerService.AddApplicationCalls())
+func (mock *ServerServiceMock) AddApplicationCalls() []struct {
+	Ctx             context.Context
+	Name            string
+	ApplicationName string
+} {
+	var calls []struct {
+		Ctx             context.Context
+		Name            string
+		ApplicationName string
+	}
+	mock.lockAddApplication.RLock()
+	calls = mock.calls.AddApplication
+	mock.lockAddApplication.RUnlock()
+	return calls
 }
 
 // Create calls CreateFunc.
@@ -711,6 +827,78 @@ func (mock *ServerServiceMock) GetByNameCalls() []struct {
 	mock.lockGetByName.RLock()
 	calls = mock.calls.GetByName
 	mock.lockGetByName.RUnlock()
+	return calls
+}
+
+// GetSystemKernel calls GetSystemKernelFunc.
+func (mock *ServerServiceMock) GetSystemKernel(ctx context.Context, name string) (provisioning.ServerSystemKernel, error) {
+	if mock.GetSystemKernelFunc == nil {
+		panic("ServerServiceMock.GetSystemKernelFunc: method is nil but ServerService.GetSystemKernel was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockGetSystemKernel.Lock()
+	mock.calls.GetSystemKernel = append(mock.calls.GetSystemKernel, callInfo)
+	mock.lockGetSystemKernel.Unlock()
+	return mock.GetSystemKernelFunc(ctx, name)
+}
+
+// GetSystemKernelCalls gets all the calls that were made to GetSystemKernel.
+// Check the length with:
+//
+//	len(mockedServerService.GetSystemKernelCalls())
+func (mock *ServerServiceMock) GetSystemKernelCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockGetSystemKernel.RLock()
+	calls = mock.calls.GetSystemKernel
+	mock.lockGetSystemKernel.RUnlock()
+	return calls
+}
+
+// GetSystemLogging calls GetSystemLoggingFunc.
+func (mock *ServerServiceMock) GetSystemLogging(ctx context.Context, name string) (provisioning.ServerSystemLogging, error) {
+	if mock.GetSystemLoggingFunc == nil {
+		panic("ServerServiceMock.GetSystemLoggingFunc: method is nil but ServerService.GetSystemLogging was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockGetSystemLogging.Lock()
+	mock.calls.GetSystemLogging = append(mock.calls.GetSystemLogging, callInfo)
+	mock.lockGetSystemLogging.Unlock()
+	return mock.GetSystemLoggingFunc(ctx, name)
+}
+
+// GetSystemLoggingCalls gets all the calls that were made to GetSystemLogging.
+// Check the length with:
+//
+//	len(mockedServerService.GetSystemLoggingCalls())
+func (mock *ServerServiceMock) GetSystemLoggingCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockGetSystemLogging.RLock()
+	calls = mock.calls.GetSystemLogging
+	mock.lockGetSystemLogging.RUnlock()
 	return calls
 }
 
@@ -1271,6 +1459,86 @@ func (mock *ServerServiceMock) UpdateSystemByNameCalls() []struct {
 	mock.lockUpdateSystemByName.RLock()
 	calls = mock.calls.UpdateSystemByName
 	mock.lockUpdateSystemByName.RUnlock()
+	return calls
+}
+
+// UpdateSystemKernel calls UpdateSystemKernelFunc.
+func (mock *ServerServiceMock) UpdateSystemKernel(ctx context.Context, name string, kernelConfig provisioning.ServerSystemKernel) error {
+	if mock.UpdateSystemKernelFunc == nil {
+		panic("ServerServiceMock.UpdateSystemKernelFunc: method is nil but ServerService.UpdateSystemKernel was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		Name         string
+		KernelConfig provisioning.ServerSystemKernel
+	}{
+		Ctx:          ctx,
+		Name:         name,
+		KernelConfig: kernelConfig,
+	}
+	mock.lockUpdateSystemKernel.Lock()
+	mock.calls.UpdateSystemKernel = append(mock.calls.UpdateSystemKernel, callInfo)
+	mock.lockUpdateSystemKernel.Unlock()
+	return mock.UpdateSystemKernelFunc(ctx, name, kernelConfig)
+}
+
+// UpdateSystemKernelCalls gets all the calls that were made to UpdateSystemKernel.
+// Check the length with:
+//
+//	len(mockedServerService.UpdateSystemKernelCalls())
+func (mock *ServerServiceMock) UpdateSystemKernelCalls() []struct {
+	Ctx          context.Context
+	Name         string
+	KernelConfig provisioning.ServerSystemKernel
+} {
+	var calls []struct {
+		Ctx          context.Context
+		Name         string
+		KernelConfig provisioning.ServerSystemKernel
+	}
+	mock.lockUpdateSystemKernel.RLock()
+	calls = mock.calls.UpdateSystemKernel
+	mock.lockUpdateSystemKernel.RUnlock()
+	return calls
+}
+
+// UpdateSystemLogging calls UpdateSystemLoggingFunc.
+func (mock *ServerServiceMock) UpdateSystemLogging(ctx context.Context, name string, loggingConfig provisioning.ServerSystemLogging) error {
+	if mock.UpdateSystemLoggingFunc == nil {
+		panic("ServerServiceMock.UpdateSystemLoggingFunc: method is nil but ServerService.UpdateSystemLogging was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		Name          string
+		LoggingConfig provisioning.ServerSystemLogging
+	}{
+		Ctx:           ctx,
+		Name:          name,
+		LoggingConfig: loggingConfig,
+	}
+	mock.lockUpdateSystemLogging.Lock()
+	mock.calls.UpdateSystemLogging = append(mock.calls.UpdateSystemLogging, callInfo)
+	mock.lockUpdateSystemLogging.Unlock()
+	return mock.UpdateSystemLoggingFunc(ctx, name, loggingConfig)
+}
+
+// UpdateSystemLoggingCalls gets all the calls that were made to UpdateSystemLogging.
+// Check the length with:
+//
+//	len(mockedServerService.UpdateSystemLoggingCalls())
+func (mock *ServerServiceMock) UpdateSystemLoggingCalls() []struct {
+	Ctx           context.Context
+	Name          string
+	LoggingConfig provisioning.ServerSystemLogging
+} {
+	var calls []struct {
+		Ctx           context.Context
+		Name          string
+		LoggingConfig provisioning.ServerSystemLogging
+	}
+	mock.lockUpdateSystemLogging.RLock()
+	calls = mock.calls.UpdateSystemLogging
+	mock.lockUpdateSystemLogging.RUnlock()
 	return calls
 }
 

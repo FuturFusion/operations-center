@@ -12,6 +12,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
+	api0 "github.com/lxc/incus-os/incus-osd/api"
 )
 
 // ClusterClientPortWithSlog implements provisioning.ClusterClientPort that is instrumented with slog logger.
@@ -75,42 +76,6 @@ func (_d ClusterClientPortWithSlog) EnableCluster(ctx context.Context, server pr
 		}
 	}()
 	return _d._base.EnableCluster(ctx, server)
-}
-
-// EnableOSService implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) EnableOSService(ctx context.Context, server provisioning.Server, name string, config map[string]any) (err error) {
-	log := slog.With()
-	if slog.Default().Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.Any("server", server),
-			slog.String("name", name),
-			slog.Any("config", config),
-		)
-	}
-	log.DebugContext(ctx, "=> calling EnableOSService")
-	defer func() {
-		log := slog.With()
-		if slog.Default().Enabled(ctx, logger.LevelTrace) {
-			log = slog.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = slog.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method EnableOSService returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method EnableOSService returned an error")
-			}
-		} else {
-			log.DebugContext(ctx, "<= method EnableOSService finished")
-		}
-	}()
-	return _d._base.EnableOSService(ctx, server, name, config)
 }
 
 // GetClusterJoinToken implements provisioning.ClusterClientPort.
@@ -217,6 +182,111 @@ func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, endpoint prov
 		}
 	}()
 	return _d._base.GetOSData(ctx, endpoint)
+}
+
+// GetOSServiceISCSI implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) GetOSServiceISCSI(ctx context.Context, server provisioning.Server) (serviceISCSI api0.ServiceISCSI, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetOSServiceISCSI")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("serviceISCSI", serviceISCSI),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetOSServiceISCSI returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetOSServiceISCSI returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetOSServiceISCSI finished")
+		}
+	}()
+	return _d._base.GetOSServiceISCSI(ctx, server)
+}
+
+// GetOSServiceMultipath implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) GetOSServiceMultipath(ctx context.Context, server provisioning.Server) (serviceMultipath api0.ServiceMultipath, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetOSServiceMultipath")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("serviceMultipath", serviceMultipath),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetOSServiceMultipath returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetOSServiceMultipath returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetOSServiceMultipath finished")
+		}
+	}()
+	return _d._base.GetOSServiceMultipath(ctx, server)
+}
+
+// GetOSServiceNVME implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) GetOSServiceNVME(ctx context.Context, server provisioning.Server) (serviceNVME api0.ServiceNVME, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetOSServiceNVME")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("serviceNVME", serviceNVME),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetOSServiceNVME returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetOSServiceNVME returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetOSServiceNVME finished")
+		}
+	}()
+	return _d._base.GetOSServiceNVME(ctx, server)
 }
 
 // GetRemoteCertificate implements provisioning.ClusterClientPort.
@@ -466,6 +536,76 @@ func (_d ClusterClientPortWithSlog) UpdateClusterCertificate(ctx context.Context
 		}
 	}()
 	return _d._base.UpdateClusterCertificate(ctx, endpoint, certificatePEM, keyPEM)
+}
+
+// UpdateNetworkConfig implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateNetworkConfig")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateNetworkConfig returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateNetworkConfig returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateNetworkConfig finished")
+		}
+	}()
+	return _d._base.UpdateNetworkConfig(ctx, server)
+}
+
+// UpdateOSService implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) UpdateOSService(ctx context.Context, server provisioning.Server, name string, config any) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.String("name", name),
+			slog.Any("config", config),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateOSService")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateOSService returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateOSService returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateOSService finished")
+		}
+	}()
+	return _d._base.UpdateOSService(ctx, server, name, config)
 }
 
 // UpdateUpdateConfig implements provisioning.ClusterClientPort.

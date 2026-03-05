@@ -11,6 +11,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
+	api0 "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -54,20 +55,6 @@ func (_d ClusterClientPortWithPrometheus) EnableCluster(ctx context.Context, ser
 	return _d.base.EnableCluster(ctx, server)
 }
 
-// EnableOSService implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) EnableOSService(ctx context.Context, server provisioning.Server, name string, config map[string]any) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "EnableOSService", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.EnableOSService(ctx, server, name, config)
-}
-
 // GetClusterJoinToken implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithPrometheus) GetClusterJoinToken(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (joinToken string, err error) {
 	_since := time.Now()
@@ -108,6 +95,48 @@ func (_d ClusterClientPortWithPrometheus) GetOSData(ctx context.Context, endpoin
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSData", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetOSData(ctx, endpoint)
+}
+
+// GetOSServiceISCSI implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) GetOSServiceISCSI(ctx context.Context, server provisioning.Server) (serviceISCSI api0.ServiceISCSI, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSServiceISCSI", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetOSServiceISCSI(ctx, server)
+}
+
+// GetOSServiceMultipath implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) GetOSServiceMultipath(ctx context.Context, server provisioning.Server) (serviceMultipath api0.ServiceMultipath, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSServiceMultipath", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetOSServiceMultipath(ctx, server)
+}
+
+// GetOSServiceNVME implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) GetOSServiceNVME(ctx context.Context, server provisioning.Server) (serviceNVME api0.ServiceNVME, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSServiceNVME", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetOSServiceNVME(ctx, server)
 }
 
 // GetRemoteCertificate implements provisioning.ClusterClientPort.
@@ -206,6 +235,34 @@ func (_d ClusterClientPortWithPrometheus) UpdateClusterCertificate(ctx context.C
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateClusterCertificate", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.UpdateClusterCertificate(ctx, endpoint, certificatePEM, keyPEM)
+}
+
+// UpdateNetworkConfig implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateNetworkConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateNetworkConfig(ctx, server)
+}
+
+// UpdateOSService implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) UpdateOSService(ctx context.Context, server provisioning.Server, name string, config any) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateOSService", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateOSService(ctx, server, name, config)
 }
 
 // UpdateUpdateConfig implements provisioning.ClusterClientPort.

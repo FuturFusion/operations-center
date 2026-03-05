@@ -99,7 +99,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 			return nil
 		},
-		EnableOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config map[string]any) error {
+		UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
 			return nil
 		},
 		SetServerConfigFunc: func(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) error {

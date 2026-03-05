@@ -136,12 +136,6 @@ func (c *cmdServerList) validateArgsAndFlags(cmd *cobra.Command, args []string) 
 }
 
 func (c *cmdServerList) run(cmd *cobra.Command, args []string) error {
-	// Quick checks.
-	exit, err := validate.Args(cmd, args, 0, 0)
-	if exit {
-		return err
-	}
-
 	var filter provisioning.ServerFilter
 
 	if c.flagFilterCluster != "" {
@@ -150,7 +144,7 @@ func (c *cmdServerList) run(cmd *cobra.Command, args []string) error {
 
 	if c.flagFilterStatus != "" {
 		var status api.ServerStatus
-		err = status.UnmarshalText([]byte(c.flagFilterStatus))
+		err := status.UnmarshalText([]byte(c.flagFilterStatus))
 		if err != nil {
 			return fmt.Errorf("Invalid value for status: %v", err)
 		}

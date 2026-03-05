@@ -3,6 +3,7 @@ package provisioning
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -105,6 +106,13 @@ func (c *CmdCluster) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(clusterUpdateCertificateCmd.Command())
+
+	// Bulk update
+	clusterBulkUpdateCmd := cmdClusterBulkUpdate{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(clusterBulkUpdateCmd.Command())
 
 	// artifact sub-command
 	clusterArtifactCmd := cmdClusterArtifact{
@@ -620,12 +628,6 @@ func (c *cmdClusterRename) validateArgsAndFlags(cmd *cobra.Command, args []strin
 }
 
 func (c *cmdClusterRename) run(cmd *cobra.Command, args []string) error {
-	// Quick checks.
-	exit, err := validate.Args(cmd, args, 2, 2)
-	if exit {
-		return err
-	}
-
 	name := args[0]
 	newName := args[1]
 
@@ -633,7 +635,7 @@ func (c *cmdClusterRename) run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Rename failed, name and new name are equal")
 	}
 
-	err = c.ocClient.RenameCluster(cmd.Context(), name, newName)
+	err := c.ocClient.RenameCluster(cmd.Context(), name, newName)
 	if err != nil {
 		return err
 	}
@@ -675,12 +677,6 @@ func (c *cmdClusterShow) validateArgsAndFlags(cmd *cobra.Command, args []string)
 }
 
 func (c *cmdClusterShow) run(cmd *cobra.Command, args []string) error {
-	// Quick checks.
-	exit, err := validate.Args(cmd, args, 1, 1)
-	if exit {
-		return err
-	}
-
 	name := args[0]
 
 	cluster, err := c.ocClient.GetCluster(cmd.Context(), name)
@@ -758,15 +754,9 @@ func (c *cmdClusterResync) validateArgsAndFlags(cmd *cobra.Command, args []strin
 }
 
 func (c *cmdClusterResync) run(cmd *cobra.Command, args []string) error {
-	// Quick checks.
-	exit, err := validate.Args(cmd, args, 1, 1)
-	if exit {
-		return err
-	}
-
 	name := args[0]
 
-	err = c.ocClient.ResyncCluster(cmd.Context(), name)
+	err := c.ocClient.ResyncCluster(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
@@ -804,12 +794,6 @@ func (c *cmdClusterUpdateCertificate) validateArgsAndFlags(cmd *cobra.Command, a
 }
 
 func (c *cmdClusterUpdateCertificate) run(cmd *cobra.Command, args []string) error {
-	// Quick checks.
-	exit, err := validate.Args(cmd, args, 3, 3)
-	if exit {
-		return err
-	}
-
 	name := args[0]
 	certificateFilename := args[1]
 	certificateKeyFilename := args[2]
@@ -833,6 +817,68 @@ func (c *cmdClusterUpdateCertificate) run(cmd *cobra.Command, args []string) err
 		ClusterCertificate:    string(certificatePEM),
 		ClusterCertificateKey: string(certificateKeyPEM),
 	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Bulk update cluster.
+type cmdClusterBulkUpdate struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdClusterBulkUpdate) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "bulk-update <name> <bulk-request.json>"
+	cmd.Short = "Update cluster certificate"
+	cmd.Long = `Description:
+  Bulk update for a cluster. Provide the request through a file or through stdin.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdClusterBulkUpdate) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 2)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdClusterBulkUpdate) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	var err error
+	bulkUpdateRequestReader := os.Stdin
+
+	if len(args) > 1 {
+		bulkUpdateRequestFile := args[1]
+
+		bulkUpdateRequestReader, err = os.Open(bulkUpdateRequestFile)
+		if err != nil {
+			return fmt.Errorf("Failed to read file %q: %w", bulkUpdateRequestFile, err)
+		}
+
+		defer func() {
+			_ = bulkUpdateRequestReader.Close()
+		}()
+	}
+
+	var bulkUpdateRequest api.ClusterBulkUpdatePost
+	err = json.NewDecoder(bulkUpdateRequestReader).Decode(&bulkUpdateRequest)
+	if err != nil {
+		return fmt.Errorf("Failed to decode bulk update request: %w", err)
+	}
+
+	err = c.ocClient.BulkUpdateCluster(cmd.Context(), name, bulkUpdateRequest)
 	if err != nil {
 		return err
 	}

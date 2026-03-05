@@ -39,6 +39,12 @@ type ServerService interface {
 	RebootSystemByName(ctx context.Context, name string) error
 	RestoreSystemByName(ctx context.Context, name string) error
 	UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error
+
+	GetSystemLogging(ctx context.Context, name string) (ServerSystemLogging, error)
+	UpdateSystemLogging(ctx context.Context, name string, loggingConfig ServerSystemLogging) error
+	GetSystemKernel(ctx context.Context, name string) (ServerSystemKernel, error)
+	UpdateSystemKernel(ctx context.Context, name string, kernelConfig ServerSystemKernel) error
+	AddApplication(ctx context.Context, name string, applicationName string) error
 }
 
 type ServerRepo interface {
@@ -60,7 +66,9 @@ type ServerClientPort interface {
 	GetOSData(ctx context.Context, endpoint Endpoint) (api.OSData, error)
 	GetVersionData(ctx context.Context, server Server) (api.ServerVersionData, error)
 	GetServerType(ctx context.Context, endpoint Endpoint) (api.ServerType, error)
+	GetNetworkConfig(ctx context.Context, server Server) (ServerSystemNetwork, error)
 	UpdateNetworkConfig(ctx context.Context, server Server) error
+	GetStorageConfig(ctx context.Context, server Server) (ServerSystemStorage, error)
 	UpdateStorageConfig(ctx context.Context, server Server) error
 	GetProviderConfig(ctx context.Context, server Server) (ServerSystemProvider, error)
 	UpdateProviderConfig(ctx context.Context, server Server, providerConfig ServerSystemProvider) error
@@ -71,4 +79,9 @@ type ServerClientPort interface {
 	Reboot(ctx context.Context, server Server) error
 	Restore(ctx context.Context, server Server) error
 	UpdateOS(ctx context.Context, server Server) error
+	AddApplication(ctx context.Context, server Server, application string) error
+	GetSystemKernel(ctx context.Context, server Server) (ServerSystemKernel, error)
+	UpdateSystemKernel(ctx context.Context, server Server, config ServerSystemKernel) error
+	GetSystemLogging(ctx context.Context, server Server) (ServerSystemLogging, error)
+	UpdateSystemLogging(ctx context.Context, server Server, config ServerSystemLogging) error
 }

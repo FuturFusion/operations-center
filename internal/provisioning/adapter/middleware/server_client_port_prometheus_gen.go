@@ -38,6 +38,20 @@ func NewServerClientPortWithPrometheus(base provisioning.ServerClientPort, insta
 	}
 }
 
+// AddApplication implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) AddApplication(ctx context.Context, server provisioning.Server, application string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "AddApplication", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.AddApplication(ctx, server, application)
+}
+
 // Evacuate implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithPrometheus) Evacuate(ctx context.Context, server provisioning.Server) (err error) {
 	_since := time.Now()
@@ -50,6 +64,20 @@ func (_d ServerClientPortWithPrometheus) Evacuate(ctx context.Context, server pr
 		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Evacuate", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.Evacuate(ctx, server)
+}
+
+// GetNetworkConfig implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) GetNetworkConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemNetwork, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetNetworkConfig(ctx, server)
 }
 
 // GetOSData implements provisioning.ServerClientPort.
@@ -106,6 +134,48 @@ func (_d ServerClientPortWithPrometheus) GetServerType(ctx context.Context, endp
 		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetServerType", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetServerType(ctx, endpoint)
+}
+
+// GetStorageConfig implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) GetStorageConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemStorage, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetStorageConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetStorageConfig(ctx, server)
+}
+
+// GetSystemKernel implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) GetSystemKernel(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemKernel, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetSystemKernel", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetSystemKernel(ctx, server)
+}
+
+// GetSystemLogging implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) GetSystemLogging(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemLogging, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetSystemLogging", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetSystemLogging(ctx, server)
 }
 
 // GetUpdateConfig implements provisioning.ServerClientPort.
@@ -246,6 +316,34 @@ func (_d ServerClientPortWithPrometheus) UpdateStorageConfig(ctx context.Context
 		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateStorageConfig", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.UpdateStorageConfig(ctx, server)
+}
+
+// UpdateSystemKernel implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) UpdateSystemKernel(ctx context.Context, server provisioning.Server, config provisioning.ServerSystemKernel) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSystemKernel", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateSystemKernel(ctx, server, config)
+}
+
+// UpdateSystemLogging implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) UpdateSystemLogging(ctx context.Context, server provisioning.Server, config provisioning.ServerSystemLogging) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSystemLogging", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateSystemLogging(ctx, server, config)
 }
 
 // UpdateUpdateConfig implements provisioning.ServerClientPort.

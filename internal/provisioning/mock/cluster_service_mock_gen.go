@@ -12,6 +12,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api"
 )
 
 // Ensure that ClusterServiceMock does implement provisioning.ClusterService.
@@ -24,6 +25,21 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //
 //		// make and configure a mocked provisioning.ClusterService
 //		mockedClusterService := &ClusterServiceMock{
+//			AddApplicationFunc: func(ctx context.Context, clusterName string, applicationName string) error {
+//				panic("mock out the AddApplication method")
+//			},
+//			AddServerSystemNetworkVLANTagsFunc: func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error {
+//				panic("mock out the AddServerSystemNetworkVLANTags method")
+//			},
+//			AddStorageTargetISCSIFunc: func(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error {
+//				panic("mock out the AddStorageTargetISCSI method")
+//			},
+//			AddStorageTargetMultipathFunc: func(ctx context.Context, clusterName string, target string) error {
+//				panic("mock out the AddStorageTargetMultipath method")
+//			},
+//			AddStorageTargetNVMEFunc: func(ctx context.Context, clusterName string, target api.ServiceNVMETarget) error {
+//				panic("mock out the AddStorageTargetNVME method")
+//			},
 //			CreateFunc: func(ctx context.Context, cluster provisioning.Cluster) (provisioning.Cluster, error) {
 //				panic("mock out the Create method")
 //			},
@@ -66,6 +82,18 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
 //				panic("mock out the GetEndpoint method")
 //			},
+//			RemoveServerSystemNetworkVLANTagsFunc: func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error {
+//				panic("mock out the RemoveServerSystemNetworkVLANTags method")
+//			},
+//			RemoveStorageTargetISCSIFunc: func(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error {
+//				panic("mock out the RemoveStorageTargetISCSI method")
+//			},
+//			RemoveStorageTargetMultipathFunc: func(ctx context.Context, clusterName string, target string) error {
+//				panic("mock out the RemoveStorageTargetMultipath method")
+//			},
+//			RemoveStorageTargetNVMEFunc: func(ctx context.Context, clusterName string, target api.ServiceNVMETarget) error {
+//				panic("mock out the RemoveStorageTargetNVME method")
+//			},
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
@@ -87,6 +115,12 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			UpdateCertificateFunc: func(ctx context.Context, name string, certificatePEM string, keyPEM string) error {
 //				panic("mock out the UpdateCertificate method")
 //			},
+//			UpdateSystemKernelFunc: func(ctx context.Context, clusterName string, kerneConfig provisioning.ServerSystemKernel) error {
+//				panic("mock out the UpdateSystemKernel method")
+//			},
+//			UpdateSystemLoggingFunc: func(ctx context.Context, clusterName string, loggingConfig provisioning.ServerSystemLogging) error {
+//				panic("mock out the UpdateSystemLogging method")
+//			},
 //		}
 //
 //		// use mockedClusterService in code that requires provisioning.ClusterService
@@ -94,6 +128,21 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //
 //	}
 type ClusterServiceMock struct {
+	// AddApplicationFunc mocks the AddApplication method.
+	AddApplicationFunc func(ctx context.Context, clusterName string, applicationName string) error
+
+	// AddServerSystemNetworkVLANTagsFunc mocks the AddServerSystemNetworkVLANTags method.
+	AddServerSystemNetworkVLANTagsFunc func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error
+
+	// AddStorageTargetISCSIFunc mocks the AddStorageTargetISCSI method.
+	AddStorageTargetISCSIFunc func(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error
+
+	// AddStorageTargetMultipathFunc mocks the AddStorageTargetMultipath method.
+	AddStorageTargetMultipathFunc func(ctx context.Context, clusterName string, target string) error
+
+	// AddStorageTargetNVMEFunc mocks the AddStorageTargetNVME method.
+	AddStorageTargetNVMEFunc func(ctx context.Context, clusterName string, target api.ServiceNVMETarget) error
+
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, cluster provisioning.Cluster) (provisioning.Cluster, error)
 
@@ -136,6 +185,18 @@ type ClusterServiceMock struct {
 	// GetEndpointFunc mocks the GetEndpoint method.
 	GetEndpointFunc func(ctx context.Context, name string) (provisioning.Endpoint, error)
 
+	// RemoveServerSystemNetworkVLANTagsFunc mocks the RemoveServerSystemNetworkVLANTags method.
+	RemoveServerSystemNetworkVLANTagsFunc func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error
+
+	// RemoveStorageTargetISCSIFunc mocks the RemoveStorageTargetISCSI method.
+	RemoveStorageTargetISCSIFunc func(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error
+
+	// RemoveStorageTargetMultipathFunc mocks the RemoveStorageTargetMultipath method.
+	RemoveStorageTargetMultipathFunc func(ctx context.Context, clusterName string, target string) error
+
+	// RemoveStorageTargetNVMEFunc mocks the RemoveStorageTargetNVME method.
+	RemoveStorageTargetNVMEFunc func(ctx context.Context, clusterName string, target api.ServiceNVMETarget) error
+
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
 
@@ -157,8 +218,61 @@ type ClusterServiceMock struct {
 	// UpdateCertificateFunc mocks the UpdateCertificate method.
 	UpdateCertificateFunc func(ctx context.Context, name string, certificatePEM string, keyPEM string) error
 
+	// UpdateSystemKernelFunc mocks the UpdateSystemKernel method.
+	UpdateSystemKernelFunc func(ctx context.Context, clusterName string, kerneConfig provisioning.ServerSystemKernel) error
+
+	// UpdateSystemLoggingFunc mocks the UpdateSystemLogging method.
+	UpdateSystemLoggingFunc func(ctx context.Context, clusterName string, loggingConfig provisioning.ServerSystemLogging) error
+
 	// calls tracks calls to the methods.
 	calls struct {
+		// AddApplication holds details about calls to the AddApplication method.
+		AddApplication []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// ApplicationName is the applicationName argument value.
+			ApplicationName string
+		}
+		// AddServerSystemNetworkVLANTags holds details about calls to the AddServerSystemNetworkVLANTags method.
+		AddServerSystemNetworkVLANTags []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// InterfaceName is the interfaceName argument value.
+			InterfaceName string
+			// VlanTags is the vlanTags argument value.
+			VlanTags []int
+		}
+		// AddStorageTargetISCSI holds details about calls to the AddStorageTargetISCSI method.
+		AddStorageTargetISCSI []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// Target is the target argument value.
+			Target api.ServiceISCSITarget
+		}
+		// AddStorageTargetMultipath holds details about calls to the AddStorageTargetMultipath method.
+		AddStorageTargetMultipath []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// Target is the target argument value.
+			Target string
+		}
+		// AddStorageTargetNVME holds details about calls to the AddStorageTargetNVME method.
+		AddStorageTargetNVME []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// Target is the target argument value.
+			Target api.ServiceNVMETarget
+		}
 		// Create holds details about calls to the Create method.
 		Create []struct {
 			// Ctx is the ctx argument value.
@@ -269,6 +383,44 @@ type ClusterServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// RemoveServerSystemNetworkVLANTags holds details about calls to the RemoveServerSystemNetworkVLANTags method.
+		RemoveServerSystemNetworkVLANTags []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// InterfaceName is the interfaceName argument value.
+			InterfaceName string
+			// VlanTags is the vlanTags argument value.
+			VlanTags []int
+		}
+		// RemoveStorageTargetISCSI holds details about calls to the RemoveStorageTargetISCSI method.
+		RemoveStorageTargetISCSI []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// Target is the target argument value.
+			Target api.ServiceISCSITarget
+		}
+		// RemoveStorageTargetMultipath holds details about calls to the RemoveStorageTargetMultipath method.
+		RemoveStorageTargetMultipath []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// Target is the target argument value.
+			Target string
+		}
+		// RemoveStorageTargetNVME holds details about calls to the RemoveStorageTargetNVME method.
+		RemoveStorageTargetNVME []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// Target is the target argument value.
+			Target api.ServiceNVMETarget
+		}
 		// Rename holds details about calls to the Rename method.
 		Rename []struct {
 			// Ctx is the ctx argument value.
@@ -318,28 +470,261 @@ type ClusterServiceMock struct {
 			// KeyPEM is the keyPEM argument value.
 			KeyPEM string
 		}
+		// UpdateSystemKernel holds details about calls to the UpdateSystemKernel method.
+		UpdateSystemKernel []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// KerneConfig is the kerneConfig argument value.
+			KerneConfig provisioning.ServerSystemKernel
+		}
+		// UpdateSystemLogging holds details about calls to the UpdateSystemLogging method.
+		UpdateSystemLogging []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// LoggingConfig is the loggingConfig argument value.
+			LoggingConfig provisioning.ServerSystemLogging
+		}
 	}
-	lockCreate                          sync.RWMutex
-	lockDeleteAndFactoryResetByName     sync.RWMutex
-	lockDeleteByName                    sync.RWMutex
-	lockGetAll                          sync.RWMutex
-	lockGetAllNames                     sync.RWMutex
-	lockGetAllNamesWithFilter           sync.RWMutex
-	lockGetAllWithFilter                sync.RWMutex
-	lockGetByName                       sync.RWMutex
-	lockGetClusterArtifactAll           sync.RWMutex
-	lockGetClusterArtifactAllNames      sync.RWMutex
-	lockGetClusterArtifactArchiveByName sync.RWMutex
-	lockGetClusterArtifactByName        sync.RWMutex
-	lockGetClusterArtifactFileByName    sync.RWMutex
-	lockGetEndpoint                     sync.RWMutex
-	lockRename                          sync.RWMutex
-	lockResyncInventory                 sync.RWMutex
-	lockResyncInventoryByName           sync.RWMutex
-	lockSetInventorySyncers             sync.RWMutex
-	lockStartLifecycleEventsMonitor     sync.RWMutex
-	lockUpdate                          sync.RWMutex
-	lockUpdateCertificate               sync.RWMutex
+	lockAddApplication                    sync.RWMutex
+	lockAddServerSystemNetworkVLANTags    sync.RWMutex
+	lockAddStorageTargetISCSI             sync.RWMutex
+	lockAddStorageTargetMultipath         sync.RWMutex
+	lockAddStorageTargetNVME              sync.RWMutex
+	lockCreate                            sync.RWMutex
+	lockDeleteAndFactoryResetByName       sync.RWMutex
+	lockDeleteByName                      sync.RWMutex
+	lockGetAll                            sync.RWMutex
+	lockGetAllNames                       sync.RWMutex
+	lockGetAllNamesWithFilter             sync.RWMutex
+	lockGetAllWithFilter                  sync.RWMutex
+	lockGetByName                         sync.RWMutex
+	lockGetClusterArtifactAll             sync.RWMutex
+	lockGetClusterArtifactAllNames        sync.RWMutex
+	lockGetClusterArtifactArchiveByName   sync.RWMutex
+	lockGetClusterArtifactByName          sync.RWMutex
+	lockGetClusterArtifactFileByName      sync.RWMutex
+	lockGetEndpoint                       sync.RWMutex
+	lockRemoveServerSystemNetworkVLANTags sync.RWMutex
+	lockRemoveStorageTargetISCSI          sync.RWMutex
+	lockRemoveStorageTargetMultipath      sync.RWMutex
+	lockRemoveStorageTargetNVME           sync.RWMutex
+	lockRename                            sync.RWMutex
+	lockResyncInventory                   sync.RWMutex
+	lockResyncInventoryByName             sync.RWMutex
+	lockSetInventorySyncers               sync.RWMutex
+	lockStartLifecycleEventsMonitor       sync.RWMutex
+	lockUpdate                            sync.RWMutex
+	lockUpdateCertificate                 sync.RWMutex
+	lockUpdateSystemKernel                sync.RWMutex
+	lockUpdateSystemLogging               sync.RWMutex
+}
+
+// AddApplication calls AddApplicationFunc.
+func (mock *ClusterServiceMock) AddApplication(ctx context.Context, clusterName string, applicationName string) error {
+	if mock.AddApplicationFunc == nil {
+		panic("ClusterServiceMock.AddApplicationFunc: method is nil but ClusterService.AddApplication was just called")
+	}
+	callInfo := struct {
+		Ctx             context.Context
+		ClusterName     string
+		ApplicationName string
+	}{
+		Ctx:             ctx,
+		ClusterName:     clusterName,
+		ApplicationName: applicationName,
+	}
+	mock.lockAddApplication.Lock()
+	mock.calls.AddApplication = append(mock.calls.AddApplication, callInfo)
+	mock.lockAddApplication.Unlock()
+	return mock.AddApplicationFunc(ctx, clusterName, applicationName)
+}
+
+// AddApplicationCalls gets all the calls that were made to AddApplication.
+// Check the length with:
+//
+//	len(mockedClusterService.AddApplicationCalls())
+func (mock *ClusterServiceMock) AddApplicationCalls() []struct {
+	Ctx             context.Context
+	ClusterName     string
+	ApplicationName string
+} {
+	var calls []struct {
+		Ctx             context.Context
+		ClusterName     string
+		ApplicationName string
+	}
+	mock.lockAddApplication.RLock()
+	calls = mock.calls.AddApplication
+	mock.lockAddApplication.RUnlock()
+	return calls
+}
+
+// AddServerSystemNetworkVLANTags calls AddServerSystemNetworkVLANTagsFunc.
+func (mock *ClusterServiceMock) AddServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error {
+	if mock.AddServerSystemNetworkVLANTagsFunc == nil {
+		panic("ClusterServiceMock.AddServerSystemNetworkVLANTagsFunc: method is nil but ClusterService.AddServerSystemNetworkVLANTags was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ClusterName   string
+		InterfaceName string
+		VlanTags      []int
+	}{
+		Ctx:           ctx,
+		ClusterName:   clusterName,
+		InterfaceName: interfaceName,
+		VlanTags:      vlanTags,
+	}
+	mock.lockAddServerSystemNetworkVLANTags.Lock()
+	mock.calls.AddServerSystemNetworkVLANTags = append(mock.calls.AddServerSystemNetworkVLANTags, callInfo)
+	mock.lockAddServerSystemNetworkVLANTags.Unlock()
+	return mock.AddServerSystemNetworkVLANTagsFunc(ctx, clusterName, interfaceName, vlanTags)
+}
+
+// AddServerSystemNetworkVLANTagsCalls gets all the calls that were made to AddServerSystemNetworkVLANTags.
+// Check the length with:
+//
+//	len(mockedClusterService.AddServerSystemNetworkVLANTagsCalls())
+func (mock *ClusterServiceMock) AddServerSystemNetworkVLANTagsCalls() []struct {
+	Ctx           context.Context
+	ClusterName   string
+	InterfaceName string
+	VlanTags      []int
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ClusterName   string
+		InterfaceName string
+		VlanTags      []int
+	}
+	mock.lockAddServerSystemNetworkVLANTags.RLock()
+	calls = mock.calls.AddServerSystemNetworkVLANTags
+	mock.lockAddServerSystemNetworkVLANTags.RUnlock()
+	return calls
+}
+
+// AddStorageTargetISCSI calls AddStorageTargetISCSIFunc.
+func (mock *ClusterServiceMock) AddStorageTargetISCSI(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error {
+	if mock.AddStorageTargetISCSIFunc == nil {
+		panic("ClusterServiceMock.AddStorageTargetISCSIFunc: method is nil but ClusterService.AddStorageTargetISCSI was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ClusterName string
+		Target      api.ServiceISCSITarget
+	}{
+		Ctx:         ctx,
+		ClusterName: clusterName,
+		Target:      target,
+	}
+	mock.lockAddStorageTargetISCSI.Lock()
+	mock.calls.AddStorageTargetISCSI = append(mock.calls.AddStorageTargetISCSI, callInfo)
+	mock.lockAddStorageTargetISCSI.Unlock()
+	return mock.AddStorageTargetISCSIFunc(ctx, clusterName, target)
+}
+
+// AddStorageTargetISCSICalls gets all the calls that were made to AddStorageTargetISCSI.
+// Check the length with:
+//
+//	len(mockedClusterService.AddStorageTargetISCSICalls())
+func (mock *ClusterServiceMock) AddStorageTargetISCSICalls() []struct {
+	Ctx         context.Context
+	ClusterName string
+	Target      api.ServiceISCSITarget
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ClusterName string
+		Target      api.ServiceISCSITarget
+	}
+	mock.lockAddStorageTargetISCSI.RLock()
+	calls = mock.calls.AddStorageTargetISCSI
+	mock.lockAddStorageTargetISCSI.RUnlock()
+	return calls
+}
+
+// AddStorageTargetMultipath calls AddStorageTargetMultipathFunc.
+func (mock *ClusterServiceMock) AddStorageTargetMultipath(ctx context.Context, clusterName string, target string) error {
+	if mock.AddStorageTargetMultipathFunc == nil {
+		panic("ClusterServiceMock.AddStorageTargetMultipathFunc: method is nil but ClusterService.AddStorageTargetMultipath was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ClusterName string
+		Target      string
+	}{
+		Ctx:         ctx,
+		ClusterName: clusterName,
+		Target:      target,
+	}
+	mock.lockAddStorageTargetMultipath.Lock()
+	mock.calls.AddStorageTargetMultipath = append(mock.calls.AddStorageTargetMultipath, callInfo)
+	mock.lockAddStorageTargetMultipath.Unlock()
+	return mock.AddStorageTargetMultipathFunc(ctx, clusterName, target)
+}
+
+// AddStorageTargetMultipathCalls gets all the calls that were made to AddStorageTargetMultipath.
+// Check the length with:
+//
+//	len(mockedClusterService.AddStorageTargetMultipathCalls())
+func (mock *ClusterServiceMock) AddStorageTargetMultipathCalls() []struct {
+	Ctx         context.Context
+	ClusterName string
+	Target      string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ClusterName string
+		Target      string
+	}
+	mock.lockAddStorageTargetMultipath.RLock()
+	calls = mock.calls.AddStorageTargetMultipath
+	mock.lockAddStorageTargetMultipath.RUnlock()
+	return calls
+}
+
+// AddStorageTargetNVME calls AddStorageTargetNVMEFunc.
+func (mock *ClusterServiceMock) AddStorageTargetNVME(ctx context.Context, clusterName string, target api.ServiceNVMETarget) error {
+	if mock.AddStorageTargetNVMEFunc == nil {
+		panic("ClusterServiceMock.AddStorageTargetNVMEFunc: method is nil but ClusterService.AddStorageTargetNVME was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ClusterName string
+		Target      api.ServiceNVMETarget
+	}{
+		Ctx:         ctx,
+		ClusterName: clusterName,
+		Target:      target,
+	}
+	mock.lockAddStorageTargetNVME.Lock()
+	mock.calls.AddStorageTargetNVME = append(mock.calls.AddStorageTargetNVME, callInfo)
+	mock.lockAddStorageTargetNVME.Unlock()
+	return mock.AddStorageTargetNVMEFunc(ctx, clusterName, target)
+}
+
+// AddStorageTargetNVMECalls gets all the calls that were made to AddStorageTargetNVME.
+// Check the length with:
+//
+//	len(mockedClusterService.AddStorageTargetNVMECalls())
+func (mock *ClusterServiceMock) AddStorageTargetNVMECalls() []struct {
+	Ctx         context.Context
+	ClusterName string
+	Target      api.ServiceNVMETarget
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ClusterName string
+		Target      api.ServiceNVMETarget
+	}
+	mock.lockAddStorageTargetNVME.RLock()
+	calls = mock.calls.AddStorageTargetNVME
+	mock.lockAddStorageTargetNVME.RUnlock()
+	return calls
 }
 
 // Create calls CreateFunc.
@@ -870,6 +1255,170 @@ func (mock *ClusterServiceMock) GetEndpointCalls() []struct {
 	return calls
 }
 
+// RemoveServerSystemNetworkVLANTags calls RemoveServerSystemNetworkVLANTagsFunc.
+func (mock *ClusterServiceMock) RemoveServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error {
+	if mock.RemoveServerSystemNetworkVLANTagsFunc == nil {
+		panic("ClusterServiceMock.RemoveServerSystemNetworkVLANTagsFunc: method is nil but ClusterService.RemoveServerSystemNetworkVLANTags was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ClusterName   string
+		InterfaceName string
+		VlanTags      []int
+	}{
+		Ctx:           ctx,
+		ClusterName:   clusterName,
+		InterfaceName: interfaceName,
+		VlanTags:      vlanTags,
+	}
+	mock.lockRemoveServerSystemNetworkVLANTags.Lock()
+	mock.calls.RemoveServerSystemNetworkVLANTags = append(mock.calls.RemoveServerSystemNetworkVLANTags, callInfo)
+	mock.lockRemoveServerSystemNetworkVLANTags.Unlock()
+	return mock.RemoveServerSystemNetworkVLANTagsFunc(ctx, clusterName, interfaceName, vlanTags)
+}
+
+// RemoveServerSystemNetworkVLANTagsCalls gets all the calls that were made to RemoveServerSystemNetworkVLANTags.
+// Check the length with:
+//
+//	len(mockedClusterService.RemoveServerSystemNetworkVLANTagsCalls())
+func (mock *ClusterServiceMock) RemoveServerSystemNetworkVLANTagsCalls() []struct {
+	Ctx           context.Context
+	ClusterName   string
+	InterfaceName string
+	VlanTags      []int
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ClusterName   string
+		InterfaceName string
+		VlanTags      []int
+	}
+	mock.lockRemoveServerSystemNetworkVLANTags.RLock()
+	calls = mock.calls.RemoveServerSystemNetworkVLANTags
+	mock.lockRemoveServerSystemNetworkVLANTags.RUnlock()
+	return calls
+}
+
+// RemoveStorageTargetISCSI calls RemoveStorageTargetISCSIFunc.
+func (mock *ClusterServiceMock) RemoveStorageTargetISCSI(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error {
+	if mock.RemoveStorageTargetISCSIFunc == nil {
+		panic("ClusterServiceMock.RemoveStorageTargetISCSIFunc: method is nil but ClusterService.RemoveStorageTargetISCSI was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ClusterName string
+		Target      api.ServiceISCSITarget
+	}{
+		Ctx:         ctx,
+		ClusterName: clusterName,
+		Target:      target,
+	}
+	mock.lockRemoveStorageTargetISCSI.Lock()
+	mock.calls.RemoveStorageTargetISCSI = append(mock.calls.RemoveStorageTargetISCSI, callInfo)
+	mock.lockRemoveStorageTargetISCSI.Unlock()
+	return mock.RemoveStorageTargetISCSIFunc(ctx, clusterName, target)
+}
+
+// RemoveStorageTargetISCSICalls gets all the calls that were made to RemoveStorageTargetISCSI.
+// Check the length with:
+//
+//	len(mockedClusterService.RemoveStorageTargetISCSICalls())
+func (mock *ClusterServiceMock) RemoveStorageTargetISCSICalls() []struct {
+	Ctx         context.Context
+	ClusterName string
+	Target      api.ServiceISCSITarget
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ClusterName string
+		Target      api.ServiceISCSITarget
+	}
+	mock.lockRemoveStorageTargetISCSI.RLock()
+	calls = mock.calls.RemoveStorageTargetISCSI
+	mock.lockRemoveStorageTargetISCSI.RUnlock()
+	return calls
+}
+
+// RemoveStorageTargetMultipath calls RemoveStorageTargetMultipathFunc.
+func (mock *ClusterServiceMock) RemoveStorageTargetMultipath(ctx context.Context, clusterName string, target string) error {
+	if mock.RemoveStorageTargetMultipathFunc == nil {
+		panic("ClusterServiceMock.RemoveStorageTargetMultipathFunc: method is nil but ClusterService.RemoveStorageTargetMultipath was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ClusterName string
+		Target      string
+	}{
+		Ctx:         ctx,
+		ClusterName: clusterName,
+		Target:      target,
+	}
+	mock.lockRemoveStorageTargetMultipath.Lock()
+	mock.calls.RemoveStorageTargetMultipath = append(mock.calls.RemoveStorageTargetMultipath, callInfo)
+	mock.lockRemoveStorageTargetMultipath.Unlock()
+	return mock.RemoveStorageTargetMultipathFunc(ctx, clusterName, target)
+}
+
+// RemoveStorageTargetMultipathCalls gets all the calls that were made to RemoveStorageTargetMultipath.
+// Check the length with:
+//
+//	len(mockedClusterService.RemoveStorageTargetMultipathCalls())
+func (mock *ClusterServiceMock) RemoveStorageTargetMultipathCalls() []struct {
+	Ctx         context.Context
+	ClusterName string
+	Target      string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ClusterName string
+		Target      string
+	}
+	mock.lockRemoveStorageTargetMultipath.RLock()
+	calls = mock.calls.RemoveStorageTargetMultipath
+	mock.lockRemoveStorageTargetMultipath.RUnlock()
+	return calls
+}
+
+// RemoveStorageTargetNVME calls RemoveStorageTargetNVMEFunc.
+func (mock *ClusterServiceMock) RemoveStorageTargetNVME(ctx context.Context, clusterName string, target api.ServiceNVMETarget) error {
+	if mock.RemoveStorageTargetNVMEFunc == nil {
+		panic("ClusterServiceMock.RemoveStorageTargetNVMEFunc: method is nil but ClusterService.RemoveStorageTargetNVME was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ClusterName string
+		Target      api.ServiceNVMETarget
+	}{
+		Ctx:         ctx,
+		ClusterName: clusterName,
+		Target:      target,
+	}
+	mock.lockRemoveStorageTargetNVME.Lock()
+	mock.calls.RemoveStorageTargetNVME = append(mock.calls.RemoveStorageTargetNVME, callInfo)
+	mock.lockRemoveStorageTargetNVME.Unlock()
+	return mock.RemoveStorageTargetNVMEFunc(ctx, clusterName, target)
+}
+
+// RemoveStorageTargetNVMECalls gets all the calls that were made to RemoveStorageTargetNVME.
+// Check the length with:
+//
+//	len(mockedClusterService.RemoveStorageTargetNVMECalls())
+func (mock *ClusterServiceMock) RemoveStorageTargetNVMECalls() []struct {
+	Ctx         context.Context
+	ClusterName string
+	Target      api.ServiceNVMETarget
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ClusterName string
+		Target      api.ServiceNVMETarget
+	}
+	mock.lockRemoveStorageTargetNVME.RLock()
+	calls = mock.calls.RemoveStorageTargetNVME
+	mock.lockRemoveStorageTargetNVME.RUnlock()
+	return calls
+}
+
 // Rename calls RenameFunc.
 func (mock *ClusterServiceMock) Rename(ctx context.Context, oldName string, newName string) error {
 	if mock.RenameFunc == nil {
@@ -1119,5 +1668,85 @@ func (mock *ClusterServiceMock) UpdateCertificateCalls() []struct {
 	mock.lockUpdateCertificate.RLock()
 	calls = mock.calls.UpdateCertificate
 	mock.lockUpdateCertificate.RUnlock()
+	return calls
+}
+
+// UpdateSystemKernel calls UpdateSystemKernelFunc.
+func (mock *ClusterServiceMock) UpdateSystemKernel(ctx context.Context, clusterName string, kerneConfig provisioning.ServerSystemKernel) error {
+	if mock.UpdateSystemKernelFunc == nil {
+		panic("ClusterServiceMock.UpdateSystemKernelFunc: method is nil but ClusterService.UpdateSystemKernel was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ClusterName string
+		KerneConfig provisioning.ServerSystemKernel
+	}{
+		Ctx:         ctx,
+		ClusterName: clusterName,
+		KerneConfig: kerneConfig,
+	}
+	mock.lockUpdateSystemKernel.Lock()
+	mock.calls.UpdateSystemKernel = append(mock.calls.UpdateSystemKernel, callInfo)
+	mock.lockUpdateSystemKernel.Unlock()
+	return mock.UpdateSystemKernelFunc(ctx, clusterName, kerneConfig)
+}
+
+// UpdateSystemKernelCalls gets all the calls that were made to UpdateSystemKernel.
+// Check the length with:
+//
+//	len(mockedClusterService.UpdateSystemKernelCalls())
+func (mock *ClusterServiceMock) UpdateSystemKernelCalls() []struct {
+	Ctx         context.Context
+	ClusterName string
+	KerneConfig provisioning.ServerSystemKernel
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ClusterName string
+		KerneConfig provisioning.ServerSystemKernel
+	}
+	mock.lockUpdateSystemKernel.RLock()
+	calls = mock.calls.UpdateSystemKernel
+	mock.lockUpdateSystemKernel.RUnlock()
+	return calls
+}
+
+// UpdateSystemLogging calls UpdateSystemLoggingFunc.
+func (mock *ClusterServiceMock) UpdateSystemLogging(ctx context.Context, clusterName string, loggingConfig provisioning.ServerSystemLogging) error {
+	if mock.UpdateSystemLoggingFunc == nil {
+		panic("ClusterServiceMock.UpdateSystemLoggingFunc: method is nil but ClusterService.UpdateSystemLogging was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ClusterName   string
+		LoggingConfig provisioning.ServerSystemLogging
+	}{
+		Ctx:           ctx,
+		ClusterName:   clusterName,
+		LoggingConfig: loggingConfig,
+	}
+	mock.lockUpdateSystemLogging.Lock()
+	mock.calls.UpdateSystemLogging = append(mock.calls.UpdateSystemLogging, callInfo)
+	mock.lockUpdateSystemLogging.Unlock()
+	return mock.UpdateSystemLoggingFunc(ctx, clusterName, loggingConfig)
+}
+
+// UpdateSystemLoggingCalls gets all the calls that were made to UpdateSystemLogging.
+// Check the length with:
+//
+//	len(mockedClusterService.UpdateSystemLoggingCalls())
+func (mock *ClusterServiceMock) UpdateSystemLoggingCalls() []struct {
+	Ctx           context.Context
+	ClusterName   string
+	LoggingConfig provisioning.ServerSystemLogging
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ClusterName   string
+		LoggingConfig provisioning.ServerSystemLogging
+	}
+	mock.lockUpdateSystemLogging.RLock()
+	calls = mock.calls.UpdateSystemLogging
+	mock.lockUpdateSystemLogging.RUnlock()
 	return calls
 }

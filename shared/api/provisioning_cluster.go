@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -216,4 +217,34 @@ type ClusterCertificatePut struct {
 	// The new certificate key (X509 PEM encoded) for the cluster.
 	// Example: X509 PEM certificate key
 	ClusterCertificateKey string `json:"cluster_certificate_key" yaml:"cluster_certificate_key"`
+}
+
+type ClusterBulkUpdateAction string
+
+const (
+	ClusterBulkUpdateActionInvalid                        ClusterBulkUpdateAction = ""
+	ClusterBulkUpdateActionAddNetworkInterfaceVLANTags    ClusterBulkUpdateAction = "add_network_interface_vlan_tags"
+	ClusterBulkUpdateActionRemoveNetworkInterfaceVLANTags ClusterBulkUpdateAction = "remove_network_interface_vlan_tags"
+	ClusterBulkUpdateActionUpdateSystemLogging            ClusterBulkUpdateAction = "update_system_logging"
+	ClusterBulkUpdateActionUpdateSystemKernel             ClusterBulkUpdateAction = "update_system_kernel"
+	ClusterBulkUpdateActionAddApplication                 ClusterBulkUpdateAction = "add_application"
+	ClusterBulkUpdateActionAddISCSIStorageTarget          ClusterBulkUpdateAction = "add_iscsi_storage_target"
+	ClusterBulkUpdateActionRemoveISCSIStorageTarget       ClusterBulkUpdateAction = "remove_iscsi_storage_target"
+	ClusterBulkUpdateActionAddMultipathStorageTarget      ClusterBulkUpdateAction = "add_multipath_storage_target"
+	ClusterBulkUpdateActionRemoveMultipathStorageTarget   ClusterBulkUpdateAction = "remove_multipath_storage_target"
+	ClusterBulkUpdateActionAddNVMEStorageTarget           ClusterBulkUpdateAction = "add_nvme_storage_target"
+	ClusterBulkUpdateActionRemoveNVMEStorageTarget        ClusterBulkUpdateAction = "remove_nvme_storage_target"
+)
+
+// ClusterBulkUpdatePost represents a cluster bulk update request containing
+// action and optional arguments.
+//
+// swagger:model
+type ClusterBulkUpdatePost struct {
+	// Action to be executed for this bulk update.
+	Action ClusterBulkUpdateAction `json:"action" yaml:"action"`
+
+	// Arguments for the action, the exact structure depends on the
+	// defined action.
+	Arguments *json.RawMessage `json:"arguments" yaml:"arguments"`
 }

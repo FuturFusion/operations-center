@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
@@ -33,6 +34,7 @@ func registerProvisioningClusterHandler(router Router, authorizer *authz.Authori
 	router.HandleFunc("PUT /{name}", response.With(handler.clusterPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{name}", response.With(handler.clusterDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{name}", response.With(handler.clusterPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/:bulk-update", response.With(handler.clusterBulkUpdatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/:resync-inventory", response.With(handler.clusterResyncInventoryPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("PUT /{name}/certificate", response.With(handler.clusterCertificatePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{clusterName}/artifacts", response.With(handler.clusterArtifactsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -536,6 +538,185 @@ func (c *clusterHandler) clusterPost(r *http.Request) response.Response {
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/clusters/"+cluster.Name)
+}
+
+// swagger:operation POST /1.0/provisioning/clusters/{name}/:bulk-update clusters cluster_bulk_update_inventory_post
+//
+//	Bulk update to all cluster members
+//
+//	Apply bulk update to all cluster members.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: cluster_bulk_update_post
+//	    description: Cluster bulk update request with action and arguments.
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/ClusterBulkUpdatePost"
+//	responses:
+//	  "200":
+//	    description: Empty response
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (c *clusterHandler) clusterBulkUpdatePost(r *http.Request) response.Response {
+	ctx := r.Context()
+	name := r.PathValue("name")
+
+	var request api.ClusterBulkUpdatePost
+
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	switch request.Action {
+	case api.ClusterBulkUpdateActionAddNetworkInterfaceVLANTags:
+		var vlanConfig struct {
+			Interface string `json:"interface_name"`
+			VLANTags  []int  `json:"vlan_tags"`
+		}
+		err = json.Unmarshal(*request.Arguments, &vlanConfig)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.AddServerSystemNetworkVLANTags(ctx, name, vlanConfig.Interface, vlanConfig.VLANTags)
+
+	case api.ClusterBulkUpdateActionRemoveNetworkInterfaceVLANTags:
+		var removeVLAN struct {
+			Interface string `json:"interface_name"`
+			VLANTags  []int  `json:"vlan_tags"`
+		}
+		err = json.Unmarshal(*request.Arguments, &removeVLAN)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.RemoveServerSystemNetworkVLANTags(ctx, name, removeVLAN.Interface, removeVLAN.VLANTags)
+
+	case api.ClusterBulkUpdateActionUpdateSystemLogging:
+		var loggingConfig provisioning.ServerSystemLogging
+		err = json.Unmarshal(*request.Arguments, &loggingConfig)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.UpdateSystemLogging(ctx, name, loggingConfig)
+
+	case api.ClusterBulkUpdateActionUpdateSystemKernel:
+		var kernelConfig provisioning.ServerSystemKernel
+		err = json.Unmarshal(*request.Arguments, &kernelConfig)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.UpdateSystemKernel(ctx, name, kernelConfig)
+
+	case api.ClusterBulkUpdateActionAddApplication:
+		var addApplication struct {
+			Name string `json:"name"`
+		}
+		err = json.Unmarshal(*request.Arguments, &addApplication)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.AddApplication(ctx, name, addApplication.Name)
+
+	case api.ClusterBulkUpdateActionAddISCSIStorageTarget:
+		var iscsiTarget incusosapi.ServiceISCSITarget
+		err = json.Unmarshal(*request.Arguments, &iscsiTarget)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.AddStorageTargetISCSI(ctx, name, iscsiTarget)
+
+	case api.ClusterBulkUpdateActionRemoveISCSIStorageTarget:
+		var iscsiTarget incusosapi.ServiceISCSITarget
+		err = json.Unmarshal(*request.Arguments, &iscsiTarget)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.RemoveStorageTargetISCSI(ctx, name, iscsiTarget)
+
+	case api.ClusterBulkUpdateActionAddMultipathStorageTarget:
+		var multipathTarget struct {
+			WWN string `json:"wwn"`
+		}
+		err = json.Unmarshal(*request.Arguments, &multipathTarget)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.AddStorageTargetMultipath(ctx, name, multipathTarget.WWN)
+
+	case api.ClusterBulkUpdateActionRemoveMultipathStorageTarget:
+		var multipathTarget struct {
+			WWN string `json:"wwn"`
+		}
+		err = json.Unmarshal(*request.Arguments, &multipathTarget)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.RemoveStorageTargetMultipath(ctx, name, multipathTarget.WWN)
+
+	case api.ClusterBulkUpdateActionAddNVMEStorageTarget:
+		var nvmeTarget incusosapi.ServiceNVMETarget
+		err = json.Unmarshal(*request.Arguments, &nvmeTarget)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.AddStorageTargetNVME(ctx, name, nvmeTarget)
+
+	case api.ClusterBulkUpdateActionRemoveNVMEStorageTarget:
+		var nvmeTarget incusosapi.ServiceNVMETarget
+		err = json.Unmarshal(*request.Arguments, &nvmeTarget)
+		if err != nil {
+			return response.BadRequest(err)
+		}
+
+		err = c.service.RemoveStorageTargetNVME(ctx, name, nvmeTarget)
+
+	default:
+		return response.BadRequest(fmt.Errorf("Invalid action %q", request.Action))
+	}
+
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to bulk update cluster %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
 }
 
 // swagger:operation POST /1.0/provisioning/clusters/{name}/:resync-inventory clusters cluster_resync_inventory_post

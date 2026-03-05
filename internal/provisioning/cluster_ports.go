@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/google/uuid"
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -33,6 +34,18 @@ type ClusterService interface {
 	GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType ClusterArtifactArchiveType) (_ io.ReadCloser, size int, _ error)
 	GetClusterArtifactFileByName(ctx context.Context, clusterName string, artifactName string, filename string) (*ClusterArtifactFile, error)
 	SetInventorySyncers(inventorySyncers map[domain.ResourceType]InventorySyncer)
+
+	AddServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error
+	RemoveServerSystemNetworkVLANTags(ctx context.Context, clusterName, interfaceName string, vlanTags []int) error
+	UpdateSystemLogging(ctx context.Context, clusterName string, loggingConfig ServerSystemLogging) error
+	UpdateSystemKernel(ctx context.Context, clusterName string, kerneConfig ServerSystemKernel) error
+	AddApplication(ctx context.Context, clusterName string, applicationName string) error
+	AddStorageTargetISCSI(ctx context.Context, clusterName string, target incusosapi.ServiceISCSITarget) error
+	RemoveStorageTargetISCSI(ctx context.Context, clusterName string, target incusosapi.ServiceISCSITarget) error
+	AddStorageTargetMultipath(ctx context.Context, clusterName string, target string) error
+	RemoveStorageTargetMultipath(ctx context.Context, clusterName string, target string) error
+	AddStorageTargetNVME(ctx context.Context, clusterName string, target incusosapi.ServiceNVMETarget) error
+	RemoveStorageTargetNVME(ctx context.Context, clusterName string, target incusosapi.ServiceNVMETarget) error
 }
 
 type ClusterRepo interface {
@@ -61,7 +74,11 @@ type InventorySyncer interface {
 
 type ClusterClientPort interface {
 	Ping(ctx context.Context, endpoint Endpoint) error
-	EnableOSService(ctx context.Context, server Server, name string, config map[string]any) error
+	GetOSServiceISCSI(ctx context.Context, server Server) (incusosapi.ServiceISCSI, error)
+	GetOSServiceMultipath(ctx context.Context, server Server) (incusosapi.ServiceMultipath, error)
+	GetOSServiceNVME(ctx context.Context, server Server) (incusosapi.ServiceNVME, error)
+	UpdateOSService(ctx context.Context, server Server, name string, config any) error
+	UpdateNetworkConfig(ctx context.Context, server Server) error
 	SetServerConfig(ctx context.Context, endpoint Endpoint, config map[string]string) error
 	EnableCluster(ctx context.Context, server Server) (clusterCertificate string, _ error)
 	GetClusterNodeNames(ctx context.Context, endpoint Endpoint) (nodeNames []string, _ error)

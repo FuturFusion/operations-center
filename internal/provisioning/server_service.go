@@ -863,6 +863,7 @@ func (s *serverService) DeleteByName(ctx context.Context, name string) error {
 //   - Periodic connectivity test for all servers in the inventory.
 //   - Periodic connectivity test for all pending servers in the inventory.
 //   - Periodic update of server configuration data (network, security, resources)
+//   - Executed prior to cluster wide bulk operations to refresh the inventory and as connection test
 func (s *serverService) PollServers(ctx context.Context, serverFilter ServerFilter, updateServerConfiguration bool) error {
 	servers, err := s.repo.GetAllWithFilter(ctx, serverFilter)
 	if err != nil {
@@ -1056,6 +1057,76 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 	})
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (s *serverService) GetSystemLogging(ctx context.Context, name string) (ServerSystemLogging, error) {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return ServerSystemLogging{}, fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	loggingConfig, err := s.client.GetSystemLogging(ctx, *server)
+	if err != nil {
+		return ServerSystemLogging{}, fmt.Errorf("Failed to get logging config for server %q: %w", name, err)
+	}
+
+	return loggingConfig, nil
+}
+
+func (s *serverService) UpdateSystemLogging(ctx context.Context, name string, loggingConfig ServerSystemLogging) error {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	err = s.client.UpdateSystemLogging(ctx, *server, loggingConfig)
+	if err != nil {
+		return fmt.Errorf("Failed to update logging config for server %q: %w", name, err)
+	}
+
+	return nil
+}
+
+func (s *serverService) GetSystemKernel(ctx context.Context, name string) (ServerSystemKernel, error) {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return ServerSystemKernel{}, fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	kernelConfig, err := s.client.GetSystemKernel(ctx, *server)
+	if err != nil {
+		return ServerSystemKernel{}, fmt.Errorf("Failed to get kernel config for server %q: %w", name, err)
+	}
+
+	return kernelConfig, nil
+}
+
+func (s *serverService) UpdateSystemKernel(ctx context.Context, name string, kernelConfig ServerSystemKernel) error {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	err = s.client.UpdateSystemKernel(ctx, *server, kernelConfig)
+	if err != nil {
+		return fmt.Errorf("Failed to update kernel config for server %q: %w", name, err)
+	}
+
+	return nil
+}
+
+func (s *serverService) AddApplication(ctx context.Context, name string, applicationName string) error {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	err = s.client.AddApplication(ctx, *server, applicationName)
+	if err != nil {
+		return fmt.Errorf("Failed to add application to server %q: %w", name, err)
 	}
 
 	return nil

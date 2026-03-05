@@ -12,6 +12,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api"
 )
 
 // ClusterServiceWithSlog implements provisioning.ClusterService that is instrumented with slog logger.
@@ -40,6 +41,182 @@ func NewClusterServiceWithSlog(base provisioning.ClusterService, opts ...Cluster
 	}
 
 	return this
+}
+
+// AddApplication implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) AddApplication(ctx context.Context, clusterName string, applicationName string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.String("applicationName", applicationName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling AddApplication")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method AddApplication returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method AddApplication returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method AddApplication finished")
+		}
+	}()
+	return _d._base.AddApplication(ctx, clusterName, applicationName)
+}
+
+// AddServerSystemNetworkVLANTags implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) AddServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.String("interfaceName", interfaceName),
+			slog.Any("vlanTags", vlanTags),
+		)
+	}
+	log.DebugContext(ctx, "=> calling AddServerSystemNetworkVLANTags")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method AddServerSystemNetworkVLANTags returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method AddServerSystemNetworkVLANTags returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method AddServerSystemNetworkVLANTags finished")
+		}
+	}()
+	return _d._base.AddServerSystemNetworkVLANTags(ctx, clusterName, interfaceName, vlanTags)
+}
+
+// AddStorageTargetISCSI implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) AddStorageTargetISCSI(ctx context.Context, clusterName string, target api.ServiceISCSITarget) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.Any("target", target),
+		)
+	}
+	log.DebugContext(ctx, "=> calling AddStorageTargetISCSI")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method AddStorageTargetISCSI returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method AddStorageTargetISCSI returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method AddStorageTargetISCSI finished")
+		}
+	}()
+	return _d._base.AddStorageTargetISCSI(ctx, clusterName, target)
+}
+
+// AddStorageTargetMultipath implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) AddStorageTargetMultipath(ctx context.Context, clusterName string, target string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.String("target", target),
+		)
+	}
+	log.DebugContext(ctx, "=> calling AddStorageTargetMultipath")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method AddStorageTargetMultipath returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method AddStorageTargetMultipath returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method AddStorageTargetMultipath finished")
+		}
+	}()
+	return _d._base.AddStorageTargetMultipath(ctx, clusterName, target)
+}
+
+// AddStorageTargetNVME implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) AddStorageTargetNVME(ctx context.Context, clusterName string, target api.ServiceNVMETarget) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.Any("target", target),
+		)
+	}
+	log.DebugContext(ctx, "=> calling AddStorageTargetNVME")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method AddStorageTargetNVME returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method AddStorageTargetNVME returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method AddStorageTargetNVME finished")
+		}
+	}()
+	return _d._base.AddStorageTargetNVME(ctx, clusterName, target)
 }
 
 // Create implements provisioning.ClusterService.
@@ -537,6 +714,147 @@ func (_d ClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (
 	return _d._base.GetEndpoint(ctx, name)
 }
 
+// RemoveServerSystemNetworkVLANTags implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) RemoveServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.String("interfaceName", interfaceName),
+			slog.Any("vlanTags", vlanTags),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RemoveServerSystemNetworkVLANTags")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method RemoveServerSystemNetworkVLANTags returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method RemoveServerSystemNetworkVLANTags returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method RemoveServerSystemNetworkVLANTags finished")
+		}
+	}()
+	return _d._base.RemoveServerSystemNetworkVLANTags(ctx, clusterName, interfaceName, vlanTags)
+}
+
+// RemoveStorageTargetISCSI implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) RemoveStorageTargetISCSI(ctx context.Context, clusterName string, target api.ServiceISCSITarget) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.Any("target", target),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RemoveStorageTargetISCSI")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method RemoveStorageTargetISCSI returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method RemoveStorageTargetISCSI returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method RemoveStorageTargetISCSI finished")
+		}
+	}()
+	return _d._base.RemoveStorageTargetISCSI(ctx, clusterName, target)
+}
+
+// RemoveStorageTargetMultipath implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) RemoveStorageTargetMultipath(ctx context.Context, clusterName string, target string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.String("target", target),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RemoveStorageTargetMultipath")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method RemoveStorageTargetMultipath returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method RemoveStorageTargetMultipath returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method RemoveStorageTargetMultipath finished")
+		}
+	}()
+	return _d._base.RemoveStorageTargetMultipath(ctx, clusterName, target)
+}
+
+// RemoveStorageTargetNVME implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) RemoveStorageTargetNVME(ctx context.Context, clusterName string, target api.ServiceNVMETarget) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.Any("target", target),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RemoveStorageTargetNVME")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method RemoveStorageTargetNVME returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method RemoveStorageTargetNVME returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method RemoveStorageTargetNVME finished")
+		}
+	}()
+	return _d._base.RemoveStorageTargetNVME(ctx, clusterName, target)
+}
+
 // Rename implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	log := slog.With()
@@ -757,4 +1075,74 @@ func (_d ClusterServiceWithSlog) UpdateCertificate(ctx context.Context, name str
 		}
 	}()
 	return _d._base.UpdateCertificate(ctx, name, certificatePEM, keyPEM)
+}
+
+// UpdateSystemKernel implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) UpdateSystemKernel(ctx context.Context, clusterName string, kerneConfig provisioning.ServerSystemKernel) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.Any("kerneConfig", kerneConfig),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateSystemKernel")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateSystemKernel returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateSystemKernel returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateSystemKernel finished")
+		}
+	}()
+	return _d._base.UpdateSystemKernel(ctx, clusterName, kerneConfig)
+}
+
+// UpdateSystemLogging implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) UpdateSystemLogging(ctx context.Context, clusterName string, loggingConfig provisioning.ServerSystemLogging) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.Any("loggingConfig", loggingConfig),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateSystemLogging")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateSystemLogging returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateSystemLogging returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateSystemLogging finished")
+		}
+	}()
+	return _d._base.UpdateSystemLogging(ctx, clusterName, loggingConfig)
 }

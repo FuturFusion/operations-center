@@ -40,6 +40,41 @@ func NewServerClientPortWithSlog(base provisioning.ServerClientPort, opts ...Ser
 	return this
 }
 
+// AddApplication implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) AddApplication(ctx context.Context, server provisioning.Server, application string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.String("application", application),
+		)
+	}
+	log.DebugContext(ctx, "=> calling AddApplication")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method AddApplication returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method AddApplication returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method AddApplication finished")
+		}
+	}()
+	return _d._base.AddApplication(ctx, server, application)
+}
+
 // Evacuate implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) Evacuate(ctx context.Context, server provisioning.Server) (err error) {
 	log := slog.With()
@@ -72,6 +107,41 @@ func (_d ServerClientPortWithSlog) Evacuate(ctx context.Context, server provisio
 		}
 	}()
 	return _d._base.Evacuate(ctx, server)
+}
+
+// GetNetworkConfig implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) GetNetworkConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemNetwork, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetNetworkConfig")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("v", v),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetNetworkConfig returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetNetworkConfig returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetNetworkConfig finished")
+		}
+	}()
+	return _d._base.GetNetworkConfig(ctx, server)
 }
 
 // GetOSData implements provisioning.ServerClientPort.
@@ -212,6 +282,111 @@ func (_d ServerClientPortWithSlog) GetServerType(ctx context.Context, endpoint p
 		}
 	}()
 	return _d._base.GetServerType(ctx, endpoint)
+}
+
+// GetStorageConfig implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) GetStorageConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemStorage, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetStorageConfig")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("v", v),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetStorageConfig returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetStorageConfig returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetStorageConfig finished")
+		}
+	}()
+	return _d._base.GetStorageConfig(ctx, server)
+}
+
+// GetSystemKernel implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) GetSystemKernel(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemKernel, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetSystemKernel")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("v", v),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetSystemKernel returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetSystemKernel returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetSystemKernel finished")
+		}
+	}()
+	return _d._base.GetSystemKernel(ctx, server)
+}
+
+// GetSystemLogging implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) GetSystemLogging(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemLogging, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetSystemLogging")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("v", v),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetSystemLogging returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetSystemLogging returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetSystemLogging finished")
+		}
+	}()
+	return _d._base.GetSystemLogging(ctx, server)
 }
 
 // GetUpdateConfig implements provisioning.ServerClientPort.
@@ -555,6 +730,76 @@ func (_d ServerClientPortWithSlog) UpdateStorageConfig(ctx context.Context, serv
 		}
 	}()
 	return _d._base.UpdateStorageConfig(ctx, server)
+}
+
+// UpdateSystemKernel implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) UpdateSystemKernel(ctx context.Context, server provisioning.Server, config provisioning.ServerSystemKernel) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.Any("config", config),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateSystemKernel")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateSystemKernel returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateSystemKernel returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateSystemKernel finished")
+		}
+	}()
+	return _d._base.UpdateSystemKernel(ctx, server, config)
+}
+
+// UpdateSystemLogging implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) UpdateSystemLogging(ctx context.Context, server provisioning.Server, config provisioning.ServerSystemLogging) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.Any("config", config),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateSystemLogging")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateSystemLogging returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateSystemLogging returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateSystemLogging finished")
+		}
+	}()
+	return _d._base.UpdateSystemLogging(ctx, server, config)
 }
 
 // UpdateUpdateConfig implements provisioning.ServerClientPort.

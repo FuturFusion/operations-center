@@ -147,6 +147,15 @@ func (c OperationsCenterClient) UpdateClusterCertificate(ctx context.Context, na
 	return nil
 }
 
+func (c OperationsCenterClient) BulkUpdateCluster(ctx context.Context, name string, requestBody api.ClusterBulkUpdatePost) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, ":bulk-update"), nil, requestBody)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) GetClusterArtifacts(ctx context.Context, clusterName string) ([]api.ClusterArtifact, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")

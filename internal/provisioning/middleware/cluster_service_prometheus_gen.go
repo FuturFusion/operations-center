@@ -11,6 +11,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -38,6 +39,76 @@ func NewClusterServiceWithPrometheus(base provisioning.ClusterService, instanceN
 		base:         base,
 		instanceName: instanceName,
 	}
+}
+
+// AddApplication implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) AddApplication(ctx context.Context, clusterName string, applicationName string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AddApplication", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.AddApplication(ctx, clusterName, applicationName)
+}
+
+// AddServerSystemNetworkVLANTags implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) AddServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AddServerSystemNetworkVLANTags", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.AddServerSystemNetworkVLANTags(ctx, clusterName, interfaceName, vlanTags)
+}
+
+// AddStorageTargetISCSI implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) AddStorageTargetISCSI(ctx context.Context, clusterName string, target api.ServiceISCSITarget) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AddStorageTargetISCSI", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.AddStorageTargetISCSI(ctx, clusterName, target)
+}
+
+// AddStorageTargetMultipath implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) AddStorageTargetMultipath(ctx context.Context, clusterName string, target string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AddStorageTargetMultipath", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.AddStorageTargetMultipath(ctx, clusterName, target)
+}
+
+// AddStorageTargetNVME implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) AddStorageTargetNVME(ctx context.Context, clusterName string, target api.ServiceNVMETarget) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AddStorageTargetNVME", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.AddStorageTargetNVME(ctx, clusterName, target)
 }
 
 // Create implements provisioning.ClusterService.
@@ -236,6 +307,62 @@ func (_d ClusterServiceWithPrometheus) GetEndpoint(ctx context.Context, name str
 	return _d.base.GetEndpoint(ctx, name)
 }
 
+// RemoveServerSystemNetworkVLANTags implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) RemoveServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveServerSystemNetworkVLANTags", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RemoveServerSystemNetworkVLANTags(ctx, clusterName, interfaceName, vlanTags)
+}
+
+// RemoveStorageTargetISCSI implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) RemoveStorageTargetISCSI(ctx context.Context, clusterName string, target api.ServiceISCSITarget) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveStorageTargetISCSI", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RemoveStorageTargetISCSI(ctx, clusterName, target)
+}
+
+// RemoveStorageTargetMultipath implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) RemoveStorageTargetMultipath(ctx context.Context, clusterName string, target string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveStorageTargetMultipath", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RemoveStorageTargetMultipath(ctx, clusterName, target)
+}
+
+// RemoveStorageTargetNVME implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) RemoveStorageTargetNVME(ctx context.Context, clusterName string, target api.ServiceNVMETarget) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RemoveStorageTargetNVME", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RemoveStorageTargetNVME(ctx, clusterName, target)
+}
+
 // Rename implements provisioning.ClusterService.
 func (_d ClusterServiceWithPrometheus) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	_since := time.Now()
@@ -328,4 +455,32 @@ func (_d ClusterServiceWithPrometheus) UpdateCertificate(ctx context.Context, na
 		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateCertificate", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.UpdateCertificate(ctx, name, certificatePEM, keyPEM)
+}
+
+// UpdateSystemKernel implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) UpdateSystemKernel(ctx context.Context, clusterName string, kerneConfig provisioning.ServerSystemKernel) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSystemKernel", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateSystemKernel(ctx, clusterName, kerneConfig)
+}
+
+// UpdateSystemLogging implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) UpdateSystemLogging(ctx context.Context, clusterName string, loggingConfig provisioning.ServerSystemLogging) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSystemLogging", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateSystemLogging(ctx, clusterName, loggingConfig)
 }

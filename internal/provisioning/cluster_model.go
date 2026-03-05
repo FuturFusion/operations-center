@@ -138,6 +138,18 @@ func (c ClusterEndpoint) GetServerName() (string, error) {
 	return c[0].GetServerName()
 }
 
+func (c ClusterEndpoint) GetName() string {
+	if len(c) == 0 {
+		return ""
+	}
+
+	if c[0].Cluster == nil {
+		return c[0].Name
+	}
+
+	return *c[0].Cluster
+}
+
 func (c ClusterEndpoint) GetEndpoints() iter.Seq[Endpoint] {
 	return func(yield func(Endpoint) bool) {
 		for _, server := range c {

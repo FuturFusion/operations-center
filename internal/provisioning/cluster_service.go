@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net"
 	"net/url"
+	"slices"
 	"sync"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/expr-lang/expr/vm"
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	"github.com/lxc/incus/v6/shared/revert"
 	"github.com/maniartech/signals"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -25,6 +27,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/util/structs"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -241,7 +244,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 				}
 			}
 
-			err = s.client.EnableOSService(ctx, server, service, cfg)
+			err = s.client.UpdateOSService(ctx, server, service, cfg)
 			if err != nil {
 				return newCluster, fmt.Errorf("Failed to enable OS service %q on %q: %w", service, server.Name, err)
 			}
@@ -911,6 +914,670 @@ func (s clusterService) ResyncInventoryByName(ctx context.Context, name string) 
 	}
 
 	return nil
+}
+
+func (s clusterService) AddServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Add VLAN tags to interface %q on cluster members for %q failed: %w", interfaceName, clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the interface is present on all of the servers and prepare
+	// the updated interface config.
+	currentNetworkConfig := make(map[string]*incusosapi.SystemNetworkConfig, len(servers))
+	for serverIdx, server := range servers {
+		found := false
+		if server.OSData.Network.Config == nil {
+			return domain.NewValidationErrf("Server %q (%s) does not have any network config", server.Name, server.GetConnectionURL())
+		}
+
+		ifaceIdx := 0
+		for i, iface := range server.OSData.Network.Config.Interfaces {
+			if iface.Name == interfaceName {
+				found = true
+
+				networkConfig := &incusosapi.SystemNetworkConfig{}
+				_ = structs.DeepCopy(server.OSData.Network.Config, networkConfig)
+				// Ignore the error, DeepCopy would fail, if source or dest are nil
+				// which is ensured already before.
+
+				currentNetworkConfig[server.Name] = networkConfig
+				ifaceIdx = i
+
+				break
+			}
+		}
+
+		if !found {
+			return domain.NewValidationErrf("Server %q (%s) does not have interface %q", server.Name, server.GetConnectionURL(), interfaceName)
+		}
+
+		// Append vlan tag if not yet present.
+		for _, vlanTag := range vlanTags {
+			if slices.Contains(server.OSData.Network.Config.Interfaces[ifaceIdx].VLANTags, vlanTag) {
+				continue
+			}
+
+			servers[serverIdx].OSData.Network.Config.Interfaces[ifaceIdx].VLANTags = append(servers[serverIdx].OSData.Network.Config.Interfaces[ifaceIdx].VLANTags, vlanTag)
+		}
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		err = s.client.UpdateNetworkConfig(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to update network configuration for server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			server.OSData.Network.Config = currentNetworkConfig[server.Name]
+			revertErr := s.client.UpdateNetworkConfig(ctx, server)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously updated network configuration", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.ConnectionURL), slog.Any("vlan-tags", vlanTags), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+func (s clusterService) RemoveServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Remove VLAN tags from interface %q on cluster members for %q failed: %w", interfaceName, clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the interface is present on all of the servers and prepare
+	// the updated interface config.
+	currentNetworkConfig := make(map[string]*incusosapi.SystemNetworkConfig, len(servers))
+	for serverIdx, server := range servers {
+		found := false
+		if server.OSData.Network.Config == nil {
+			return domain.NewValidationErrf("Server %q (%s) does not have any network config", server.Name, server.GetConnectionURL())
+		}
+
+		ifaceIdx := 0
+		for i, iface := range server.OSData.Network.Config.Interfaces {
+			if iface.Name == interfaceName {
+				found = true
+
+				networkConfig := &incusosapi.SystemNetworkConfig{}
+				// Ignore the error, DeepCopy would fail, if source or dest are nil
+				// which is ensured already before.
+				_ = structs.DeepCopy(server.OSData.Network.Config, networkConfig)
+
+				currentNetworkConfig[server.Name] = networkConfig
+				ifaceIdx = i
+
+				break
+			}
+		}
+
+		if !found {
+			return domain.NewValidationErrf("Server %q (%s) does not have interface %q", server.Name, server.GetConnectionURL(), interfaceName)
+		}
+
+		// Remove vlan tag if present.
+		servers[serverIdx].OSData.Network.Config.Interfaces[ifaceIdx].VLANTags = slices.DeleteFunc(
+			servers[serverIdx].OSData.Network.Config.Interfaces[ifaceIdx].VLANTags,
+			func(vlanTag int) bool {
+				return slices.Contains(vlanTags, vlanTag)
+			},
+		)
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		err = s.client.UpdateNetworkConfig(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to update network configuration for server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			server.OSData.Network.Config = currentNetworkConfig[server.Name]
+			revertErr := s.client.UpdateNetworkConfig(ctx, server)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously updated network configuration", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.ConnectionURL), slog.Any("vlan-tags", vlanTags), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+func (s clusterService) UpdateSystemLogging(ctx context.Context, clusterName string, loggingConfig ServerSystemLogging) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Update logging for cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		var currentLoggingConfig ServerSystemLogging
+		currentLoggingConfig, err = s.serverSvc.GetSystemLogging(ctx, server.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to get current logging config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		err = s.serverSvc.UpdateSystemLogging(ctx, server.Name, loggingConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to update logging config on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			revertErr := s.serverSvc.UpdateSystemLogging(ctx, server.Name, currentLoggingConfig)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously updated logging config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("logging-config", currentLoggingConfig), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+func (s clusterService) UpdateSystemKernel(ctx context.Context, clusterName string, kernelConfig ServerSystemKernel) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Update kernel for cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		var currentKernelConfig ServerSystemKernel
+		currentKernelConfig, err = s.serverSvc.GetSystemKernel(ctx, server.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to get current kernel config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		err = s.serverSvc.UpdateSystemKernel(ctx, server.Name, kernelConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to update kernel config on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			revertErr := s.serverSvc.UpdateSystemKernel(ctx, server.Name, currentKernelConfig)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously updated kernel config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("kernel-config", currentKernelConfig), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+func (s clusterService) AddApplication(ctx context.Context, clusterName string, applicationName string) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Add application to cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	for _, server := range servers {
+		err = s.serverSvc.AddApplication(ctx, server.Name, applicationName)
+		if err != nil {
+			return fmt.Errorf("Failed to add application on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+	}
+
+	return nil
+}
+
+func (s clusterService) AddStorageTargetISCSI(ctx context.Context, clusterName string, target incusosapi.ServiceISCSITarget) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Add iscsi storage target to cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the service is enabled and target is not yet present on all servers.
+	iscsiConfigs := make(map[string]incusosapi.ServiceISCSI, len(servers))
+	for _, server := range servers {
+		var iscsiConfig incusosapi.ServiceISCSI
+		iscsiConfig, err = s.client.GetOSServiceISCSI(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get iscsi service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		if slices.Contains(iscsiConfig.Config.Targets, target) {
+			return fmt.Errorf("Service iscsi target %q (%s:%d) already defined on server %q (%s): %w", target.Target, target.Address, target.Port, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		iscsiConfigs[server.Name] = iscsiConfig
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		currentISCSIConfig := iscsiConfigs[server.Name]
+
+		updatedISCSIConfig := incusosapi.ServiceISCSI{
+			Config: incusosapi.ServiceISCSIConfig{
+				Enabled: true,
+				Targets: append(currentISCSIConfig.Config.Targets, target),
+			},
+		}
+
+		err = s.client.UpdateOSService(ctx, server, "iscsi", updatedISCSIConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to update iscsi service config on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			revertErr := s.client.UpdateOSService(ctx, server, "iscsi", currentISCSIConfig)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously updated iscsi service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentISCSIConfig), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+func (s clusterService) RemoveStorageTargetISCSI(ctx context.Context, clusterName string, target incusosapi.ServiceISCSITarget) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Remove iscsi storage target from cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the service is enabled and target is present on all servers.
+	iscsiConfigs := make(map[string]incusosapi.ServiceISCSI, len(servers))
+	for _, server := range servers {
+		var iscsiConfig incusosapi.ServiceISCSI
+		iscsiConfig, err = s.client.GetOSServiceISCSI(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get iscsi service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		if !slices.Contains(iscsiConfig.Config.Targets, target) {
+			return fmt.Errorf("Service iscsi target %q (%s:%d) does not exist on server %q (%s): %w", target.Target, target.Address, target.Port, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		iscsiConfigs[server.Name] = iscsiConfig
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		currentISCSIConfig := iscsiConfigs[server.Name]
+
+		updatedISCSIConfig := incusosapi.ServiceISCSI{
+			Config: incusosapi.ServiceISCSIConfig{
+				Enabled: true,
+				Targets: slices.DeleteFunc(currentISCSIConfig.Config.Targets, func(t incusosapi.ServiceISCSITarget) bool {
+					return t == target
+				}),
+			},
+		}
+
+		err = s.client.UpdateOSService(ctx, server, "iscsi", updatedISCSIConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to update iscsi service config on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			revertErr := s.client.UpdateOSService(ctx, server, "iscsi", currentISCSIConfig)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously updated iscsi service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentISCSIConfig), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+func (s clusterService) AddStorageTargetMultipath(ctx context.Context, clusterName string, target string) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Add multipath storage target to cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the service is enabled and target is not yet present on all servers.
+	multipathConfigs := make(map[string]incusosapi.ServiceMultipath, len(servers))
+	for _, server := range servers {
+		var multipathConfig incusosapi.ServiceMultipath
+		multipathConfig, err = s.client.GetOSServiceMultipath(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get multipath service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		if slices.Contains(multipathConfig.Config.WWNs, target) {
+			return fmt.Errorf("Service multipath target %q already defined on server %q (%s): %w", target, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		multipathConfigs[server.Name] = multipathConfig
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		currentMultipathConfig := multipathConfigs[server.Name]
+
+		updatedMultipathConfig := incusosapi.ServiceMultipath{
+			Config: incusosapi.ServiceMultipathConfig{
+				Enabled: true,
+				WWNs:    append(currentMultipathConfig.Config.WWNs, target),
+			},
+		}
+
+		err = s.client.UpdateOSService(ctx, server, "multipath", updatedMultipathConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to update multipath service config on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			revertErr := s.client.UpdateOSService(ctx, server, "multipath", currentMultipathConfig)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously updated multipath service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentMultipathConfig), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+func (s clusterService) RemoveStorageTargetMultipath(ctx context.Context, clusterName string, target string) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Remove multipath storage target from cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the service is enabled and target is present on all servers.
+	multipathConfigs := make(map[string]incusosapi.ServiceMultipath, len(servers))
+	for _, server := range servers {
+		var multipathConfig incusosapi.ServiceMultipath
+		multipathConfig, err = s.client.GetOSServiceMultipath(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get multipath service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		if !slices.Contains(multipathConfig.Config.WWNs, target) {
+			return fmt.Errorf("Service multipath target %q does not exist on server %q (%s): %w", target, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		multipathConfigs[server.Name] = multipathConfig
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		currentMultipathConfig := multipathConfigs[server.Name]
+
+		updatedMultipathConfig := incusosapi.ServiceMultipath{
+			Config: incusosapi.ServiceMultipathConfig{
+				Enabled: true,
+				WWNs: slices.DeleteFunc(currentMultipathConfig.Config.WWNs, func(t string) bool {
+					return t == target
+				}),
+			},
+		}
+
+		err = s.client.UpdateOSService(ctx, server, "multipath", updatedMultipathConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to update multipath service config on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			revertErr := s.client.UpdateOSService(ctx, server, "multipath", currentMultipathConfig)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously updated multipath service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentMultipathConfig), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+func (s clusterService) AddStorageTargetNVME(ctx context.Context, clusterName string, target incusosapi.ServiceNVMETarget) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Add nvme storage target to cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the service is enabled and target is not yet present on all servers.
+	nvmeConfigs := make(map[string]incusosapi.ServiceNVME, len(servers))
+	for _, server := range servers {
+		var nvmeConfig incusosapi.ServiceNVME
+		nvmeConfig, err = s.client.GetOSServiceNVME(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get nvme service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		if slices.Contains(nvmeConfig.Config.Targets, target) {
+			return fmt.Errorf("Service nvme transport %q (%s:%d) already defined on server %q (%s): %w", target.Transport, target.Address, target.Port, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		nvmeConfigs[server.Name] = nvmeConfig
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		currentNVMEConfig := nvmeConfigs[server.Name]
+
+		updatedNVMEConfig := incusosapi.ServiceNVME{
+			Config: incusosapi.ServiceNVMEConfig{
+				Enabled: true,
+				Targets: append(currentNVMEConfig.Config.Targets, target),
+			},
+		}
+
+		err = s.client.UpdateOSService(ctx, server, "nvme", updatedNVMEConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to update nvme service config on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			revertErr := s.client.UpdateOSService(ctx, server, "nvme", currentNVMEConfig)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously updated nvme service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentNVMEConfig), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+func (s clusterService) RemoveStorageTargetNVME(ctx context.Context, clusterName string, target incusosapi.ServiceNVMETarget) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Remove nvme storage target from cluster members for %q failed: %w", clusterName, err)
+		}
+	}()
+
+	servers, err := s.prepareBulkUpdate(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the service is enabled and target is present on all servers.
+	nvmeConfigs := make(map[string]incusosapi.ServiceNVME, len(servers))
+	for _, server := range servers {
+		var nvmeConfig incusosapi.ServiceNVME
+		nvmeConfig, err = s.client.GetOSServiceNVME(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get nvme service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		if !slices.Contains(nvmeConfig.Config.Targets, target) {
+			return fmt.Errorf("Service nvme transport %q (%s:%d) does not exist on server %q (%s): %w", target.Transport, target.Address, target.Port, server.Name, server.GetConnectionURL(), domain.ErrOperationNotPermitted)
+		}
+
+		nvmeConfigs[server.Name] = nvmeConfig
+	}
+
+	// Perform change on all servers.
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	for _, server := range servers {
+		currentNVMEConfig := nvmeConfigs[server.Name]
+
+		updatedNVMEConfig := incusosapi.ServiceNVME{
+			Config: incusosapi.ServiceNVMEConfig{
+				Enabled: true,
+				Targets: slices.DeleteFunc(currentNVMEConfig.Config.Targets, func(t incusosapi.ServiceNVMETarget) bool {
+					return t == target
+				}),
+			},
+		}
+
+		err = s.client.UpdateOSService(ctx, server, "nvme", updatedNVMEConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to update nvme service config on server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		reverter.Add(func() {
+			revertErr := s.client.UpdateOSService(ctx, server, "nvme", currentNVMEConfig)
+			if revertErr != nil {
+				slog.ErrorContext(ctx, "Failed to revert previously updated nvme service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentNVMEConfig), slog.Any("root-cause", err))
+			}
+		})
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
+func (s clusterService) prepareBulkUpdate(ctx context.Context, clusterName string) (Servers, error) {
+	cluster, err := s.GetByName(ctx, clusterName)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get cluster %q: %w", clusterName, err)
+	}
+
+	if cluster.Status != api.ClusterStatusReady {
+		return nil, fmt.Errorf("Cluster %q is not ready: %w", clusterName, domain.ErrOperationNotPermitted)
+	}
+
+	// Update the current server states in the DB, serves as a connection test at the same time.
+	err = s.serverSvc.PollServers(ctx, ServerFilter{
+		Cluster: ptr.To(clusterName),
+	}, true)
+	if err != nil {
+		return nil, fmt.Errorf("Polling of cluster members failed: %w", err)
+	}
+
+	servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+		Cluster: ptr.To(clusterName),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get server names for cluster %q: %w", clusterName, err)
+	}
+
+	if len(servers) == 0 {
+		return nil, fmt.Errorf("Cluster %q does not have any servers: %w", clusterName, domain.ErrOperationNotPermitted)
+	}
+
+	// Ensure all servers are in ready state and online.
+	for _, server := range servers {
+		isReady := server.Status == api.ServerStatusReady &&
+			server.StatusDetail == api.ServerStatusDetailNone &&
+			server.VersionData.InMaintenance != nil &&
+			*server.VersionData.InMaintenance == api.NotInMaintenance
+		if !isReady {
+			return nil, fmt.Errorf("Server %q (%s) is not ready (status: %q, status detail: %q, maintenance: %q): %w", server.Name, server.GetConnectionURL(), server.Status, server.StatusDetail, ptr.From(server.VersionData.InMaintenance), domain.ErrOperationNotPermitted)
+		}
+	}
+
+	return servers, nil
 }
 
 func (s clusterService) StartLifecycleEventsMonitor(ctx context.Context) error {

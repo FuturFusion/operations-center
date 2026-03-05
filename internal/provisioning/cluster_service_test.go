@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/x509"
+	"errors"
 	"io"
 	"sync"
 	"testing"
@@ -45,7 +46,7 @@ func TestClusterService_Create(t *testing.T) {
 		repoUpdateErr                                     error
 		localArtifactRepoCreateClusterArtifactFromPathErr error
 		clientPingErr                                     error
-		clientEnableOSServiceErr                          error
+		clientUpdateOSServiceErr                          error
 		clientSetServerConfig                             []queue.Item[struct{}]
 		clientEnableClusterCertificate                    string
 		clientEnableClusterErr                            error
@@ -488,7 +489,7 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - client.EnableOSService",
+			name: "error - client.UpdateOSService",
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -517,7 +518,7 @@ func TestClusterService_Create(t *testing.T) {
 					},
 				},
 			},
-			clientEnableOSServiceErr: boom.Error,
+			clientUpdateOSServiceErr: boom.Error,
 
 			assertErr:     boom.ErrorIs,
 			signalHandler: requireNoCallSignalHandler,
@@ -1526,8 +1527,8 @@ func TestClusterService_Create(t *testing.T) {
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					return tc.clientPingErr
 				},
-				EnableOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config map[string]any) error {
-					return tc.clientEnableOSServiceErr
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					return tc.clientUpdateOSServiceErr
 				},
 				SetServerConfigFunc: func(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) error {
 					_, err := queue.Pop(t, &tc.clientSetServerConfig)
@@ -3002,6 +3003,3589 @@ func TestClusterService_ResyncInventoryByName(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
+	tests := []struct {
+		name                      string
+		nameArg                   string
+		interfaceNameArg          string
+		vlanTagsArg               []int
+		repoGetByName             *provisioning.Cluster
+		repoGetByNameErr          error
+		serverSvcPollServersErr   error
+		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
+		clientUpdateNetworkConfig []queue.Item[*incusosapi.SystemNetworkConfig] // Value is the expected value.
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:             "success",
+			nameArg:          "one",
+			interfaceNameArg: "uplink",
+			vlanTagsArg:      []int{10, 20, 100},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										Interfaces: []incusosapi.SystemNetworkInterface{
+											{
+												Name:     "uplink",
+												VLANTags: []int{10, 50}, // vlan tag 10 already present
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										Interfaces: []incusosapi.SystemNetworkInterface{
+											{
+												Name:     "uplink",
+												VLANTags: []int{10, 50}, // vlan tag 10 already present
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientUpdateNetworkConfig: []queue.Item[*incusosapi.SystemNetworkConfig]{
+				{
+					Value: &incusosapi.SystemNetworkConfig{
+						Interfaces: []incusosapi.SystemNetworkInterface{
+							{
+								Name:     "uplink",
+								VLANTags: []int{10, 50, 20, 100}, // Expect the updated set of VLAN tags.
+							},
+						},
+					},
+				},
+				{
+					Value: &incusosapi.SystemNetworkConfig{
+						Interfaces: []incusosapi.SystemNetworkInterface{
+							{
+								Name:     "uplink",
+								VLANTags: []int{10, 50, 20, 100}, // Expect the updated set of VLAN tags.
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:             "error - GetByName error",
+			nameArg:          "one",
+			interfaceNameArg: "uplink",
+			vlanTagsArg:      []int{10, 20, 100},
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:             "error - cluster Status not ready",
+			nameArg:          "one",
+			interfaceNameArg: "uplink",
+			vlanTagsArg:      []int{10, 20, 100},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusPending, // not ready
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:             "error - serverSvc.PollServers",
+			nameArg:          "one",
+			interfaceNameArg: "uplink",
+			vlanTagsArg:      []int{10, 20, 100},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcPollServersErr: boom.Error,
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:             "error - cluster without members",
+			nameArg:          "one",
+			interfaceNameArg: "uplink",
+			vlanTagsArg:      []int{10, 20, 100},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter - no servers found
+				{},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:             "error - serverSvc.GetAllWithFilter",
+			nameArg:          "one",
+			interfaceNameArg: "uplink",
+			vlanTagsArg:      []int{10, 20, 100},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:             "error - server status not ready",
+			nameArg:          "one",
+			interfaceNameArg: "uplink",
+			vlanTagsArg:      []int{10, 20, 100},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusOffline, // server offline
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:             "error - server without network config",
+			nameArg:          "one",
+			interfaceNameArg: "uplink",
+			vlanTagsArg:      []int{10, 20, 100},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: nil, // no network config present
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, `does not have any network config`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:             "error - network interface missing on server",
+			nameArg:          "one",
+			interfaceNameArg: "uplink",
+			vlanTagsArg:      []int{10, 20, 100},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										Interfaces: []incusosapi.SystemNetworkInterface{}, // no network interfaces
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, `does not have interface "uplink"`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:             "error - serverSvc.AddSystemNetworkVLAN - revert serverSvc.ReomveSystemNetworkVLAN",
+			nameArg:          "one",
+			interfaceNameArg: "uplink",
+			vlanTagsArg:      []int{10, 20, 100},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										Interfaces: []incusosapi.SystemNetworkInterface{
+											{
+												Name:     "uplink",
+												VLANTags: []int{10, 50},
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										Interfaces: []incusosapi.SystemNetworkInterface{
+											{
+												Name:     "uplink",
+												VLANTags: []int{10, 50},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientUpdateNetworkConfig: []queue.Item[*incusosapi.SystemNetworkConfig]{
+				// Update first server.
+				{
+					Value: &incusosapi.SystemNetworkConfig{
+						Interfaces: []incusosapi.SystemNetworkInterface{
+							{
+								Name:     "uplink",
+								VLANTags: []int{10, 50, 20, 100}, // Expect the updated set of VLANTags
+							},
+						},
+					},
+				},
+				// Update second server fails.
+				{
+					Value: &incusosapi.SystemNetworkConfig{
+						Interfaces: []incusosapi.SystemNetworkInterface{
+							{
+								Name:     "uplink",
+								VLANTags: []int{10, 50, 20, 100}, // Expect the updated set of VLANTags
+							},
+						},
+					},
+					Err: errors.New("error"),
+				},
+				// Revert of update on first server fails.
+				{
+					Value: &incusosapi.SystemNetworkConfig{
+						Interfaces: []incusosapi.SystemNetworkInterface{
+							{
+								Name:     "uplink",
+								VLANTags: []int{10, 50}, // Expect only the original set of VLANTags
+							},
+						},
+					},
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously updated network configuration.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
+					wantConfig, err := queue.Pop(t, &tc.clientUpdateNetworkConfig)
+
+					require.Equal(t, wantConfig, server.OSData.Network.Config)
+
+					return err
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.AddServerSystemNetworkVLANTags(context.Background(), tc.nameArg, tc.interfaceNameArg, tc.vlanTagsArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.clientUpdateNetworkConfig)
+		})
+	}
+}
+
+func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
+	tests := []struct {
+		name                      string
+		nameArg                   string
+		interfaceNameArg          string
+		vlanTagsArg               []int
+		repoGetByName             *provisioning.Cluster
+		repoGetByNameErr          error
+		serverSvcPollServersErr   error
+		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
+		clientUpdateNetworkConfig []queue.Item[*incusosapi.SystemNetworkConfig] // Value is the expected value.
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:             "success",
+			nameArg:          "one",
+			interfaceNameArg: "uplink",
+			vlanTagsArg:      []int{10, 30},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										Interfaces: []incusosapi.SystemNetworkInterface{
+											{
+												Name:     "uplink",
+												VLANTags: []int{10, 50},
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										Interfaces: []incusosapi.SystemNetworkInterface{
+											{
+												Name:     "uplink",
+												VLANTags: []int{10, 50},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientUpdateNetworkConfig: []queue.Item[*incusosapi.SystemNetworkConfig]{
+				{
+					Value: &incusosapi.SystemNetworkConfig{
+						Interfaces: []incusosapi.SystemNetworkInterface{
+							{
+								Name:     "uplink",
+								VLANTags: []int{50}, // Expect the updated set of VLAN tags.
+							},
+						},
+					},
+				},
+				{
+					Value: &incusosapi.SystemNetworkConfig{
+						Interfaces: []incusosapi.SystemNetworkInterface{
+							{
+								Name:     "uplink",
+								VLANTags: []int{50}, // Expect the updated set of VLAN tags.
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:                    "error - GetByName error",
+			nameArg:                 "one",
+			interfaceNameArg:        "uplink",
+			vlanTagsArg:             []int{10},
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:             "error - server without network config",
+			nameArg:          "one",
+			interfaceNameArg: "uplink",
+			vlanTagsArg:      []int{10},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: nil, // no network config present
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, `does not have any network config`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:             "error - network interface missing on server",
+			nameArg:          "one",
+			interfaceNameArg: "uplink",
+			vlanTagsArg:      []int{10},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										Interfaces: []incusosapi.SystemNetworkInterface{}, // no network interfaces
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, `does not have interface "uplink"`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:             "error - serverSvc.ReomveSystemNetworkVLAN - revert serverSvc.AddSystemNetworkVLAN",
+			nameArg:          "one",
+			interfaceNameArg: "uplink",
+			vlanTagsArg:      []int{10, 30},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										Interfaces: []incusosapi.SystemNetworkInterface{
+											{
+												Name:     "uplink",
+												VLANTags: []int{10, 50},
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										Interfaces: []incusosapi.SystemNetworkInterface{
+											{
+												Name:     "uplink",
+												VLANTags: []int{10, 50},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientUpdateNetworkConfig: []queue.Item[*incusosapi.SystemNetworkConfig]{
+				// Update on first server.
+				{
+					Value: &incusosapi.SystemNetworkConfig{
+						Interfaces: []incusosapi.SystemNetworkInterface{
+							{
+								Name:     "uplink",
+								VLANTags: []int{50}, // Expect the updated set of VLAN tags.
+							},
+						},
+					},
+				},
+				// Update on second server fails.
+				{
+					Value: &incusosapi.SystemNetworkConfig{
+						Interfaces: []incusosapi.SystemNetworkInterface{
+							{
+								Name:     "uplink",
+								VLANTags: []int{50}, // Expect the updated set of VLAN tags.
+							},
+						},
+					},
+					Err: errors.New("error"),
+				},
+				// Revert on first server fails.
+				{
+					Value: &incusosapi.SystemNetworkConfig{
+						Interfaces: []incusosapi.SystemNetworkInterface{
+							{
+								Name:     "uplink",
+								VLANTags: []int{10, 50}, // Expect the original set of VLAN tags.
+							},
+						},
+					},
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously updated network configuration.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
+					_, err := queue.Pop(t, &tc.clientUpdateNetworkConfig)
+					return err
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.RemoveServerSystemNetworkVLANTags(context.Background(), tc.nameArg, tc.interfaceNameArg, tc.vlanTagsArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.clientUpdateNetworkConfig)
+		})
+	}
+}
+
+func TestClusterService_UpdateSystemLogging(t *testing.T) {
+	tests := []struct {
+		name                         string
+		nameArg                      string
+		loggingConfigArg             provisioning.ServerSystemLogging
+		repoGetByName                *provisioning.Cluster
+		repoGetByNameErr             error
+		serverSvcPollServersErr      error
+		serverSvcGetAllWithFilter    []queue.Item[provisioning.Servers]
+		serverSvcGetSystemLogging    []queue.Item[provisioning.ServerSystemLogging]
+		serverSvcUpdateSystemLogging []queue.Item[struct{}]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:             "success",
+			nameArg:          "one",
+			loggingConfigArg: incusosapi.SystemLogging{},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetSystemLogging: []queue.Item[provisioning.ServerSystemLogging]{
+				{},
+				{},
+			},
+			serverSvcUpdateSystemLogging: []queue.Item[struct{}]{
+				{},
+				{},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:                    "error - GetByName error",
+			nameArg:                 "one",
+			loggingConfigArg:        incusosapi.SystemLogging{},
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:             "error - serverSvc.GetSystemLogging",
+			nameArg:          "one",
+			loggingConfigArg: incusosapi.SystemLogging{},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetSystemLogging: []queue.Item[provisioning.ServerSystemLogging]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:             "error - serverSvc.UpdateSystemLogging - revert",
+			nameArg:          "one",
+			loggingConfigArg: incusosapi.SystemLogging{},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetSystemLogging: []queue.Item[provisioning.ServerSystemLogging]{
+				{},
+				{},
+			},
+			serverSvcUpdateSystemLogging: []queue.Item[struct{}]{
+				// Update server one
+				{},
+				// Update server two
+				{
+					Err: errors.New("error"),
+				},
+				// Revert server one
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously updated logging config.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+				GetSystemLoggingFunc: func(ctx context.Context, name string) (provisioning.ServerSystemLogging, error) {
+					return queue.Pop(t, &tc.serverSvcGetSystemLogging)
+				},
+				UpdateSystemLoggingFunc: func(ctx context.Context, name string, config provisioning.ServerSystemLogging) error {
+					_, err := queue.Pop(t, &tc.serverSvcUpdateSystemLogging)
+					return err
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.UpdateSystemLogging(context.Background(), tc.nameArg, tc.loggingConfigArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.serverSvcGetSystemLogging)
+			require.Empty(t, tc.serverSvcUpdateSystemLogging)
+		})
+	}
+}
+
+func TestClusterService_UpdateSystemKernel(t *testing.T) {
+	tests := []struct {
+		name                        string
+		nameArg                     string
+		kernelConfigArg             provisioning.ServerSystemKernel
+		repoGetByName               *provisioning.Cluster
+		repoGetByNameErr            error
+		serverSvcPollServersErr     error
+		serverSvcGetAllWithFilter   []queue.Item[provisioning.Servers]
+		serverSvcGetSystemKernel    []queue.Item[provisioning.ServerSystemKernel]
+		serverSvcUpdateSystemKernel []queue.Item[struct{}]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:            "success",
+			nameArg:         "one",
+			kernelConfigArg: incusosapi.SystemKernel{},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetSystemKernel: []queue.Item[provisioning.ServerSystemKernel]{
+				{},
+				{},
+			},
+			serverSvcUpdateSystemKernel: []queue.Item[struct{}]{
+				{},
+				{},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:                    "error - GetByName error",
+			nameArg:                 "one",
+			kernelConfigArg:         incusosapi.SystemKernel{},
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:            "error - serverSvc.GetSystemKernel",
+			nameArg:         "one",
+			kernelConfigArg: incusosapi.SystemKernel{},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetSystemKernel: []queue.Item[provisioning.ServerSystemKernel]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:            "error - serverSvc.UpdateSystemKernel - revert",
+			nameArg:         "one",
+			kernelConfigArg: incusosapi.SystemKernel{},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetSystemKernel: []queue.Item[provisioning.ServerSystemKernel]{
+				{},
+				{},
+			},
+			serverSvcUpdateSystemKernel: []queue.Item[struct{}]{
+				// Update server one
+				{},
+				// Update server two
+				{
+					Err: errors.New("error"),
+				},
+				// Revert server one
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously updated kernel config.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+				GetSystemKernelFunc: func(ctx context.Context, name string) (provisioning.ServerSystemKernel, error) {
+					return queue.Pop(t, &tc.serverSvcGetSystemKernel)
+				},
+				UpdateSystemKernelFunc: func(ctx context.Context, name string, config provisioning.ServerSystemKernel) error {
+					_, err := queue.Pop(t, &tc.serverSvcUpdateSystemKernel)
+					return err
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.UpdateSystemKernel(context.Background(), tc.nameArg, tc.kernelConfigArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.serverSvcGetSystemKernel)
+			require.Empty(t, tc.serverSvcUpdateSystemKernel)
+		})
+	}
+}
+
+func TestClusterService_AddApplication(t *testing.T) {
+	tests := []struct {
+		name                      string
+		nameArg                   string
+		applicationNameArg        string
+		repoGetByName             *provisioning.Cluster
+		repoGetByNameErr          error
+		serverSvcPollServersErr   error
+		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
+		serverSvcAddApplication   []queue.Item[struct{}]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:               "success",
+			nameArg:            "one",
+			applicationNameArg: "debug",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcAddApplication: []queue.Item[struct{}]{
+				{},
+				{},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:                    "error - GetByName error",
+			nameArg:                 "one",
+			applicationNameArg:      "debug",
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:               "error - serverSvc.AddApplication",
+			nameArg:            "one",
+			applicationNameArg: "debug",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										VLANs: []incusosapi.SystemNetworkVLAN{
+											{
+												Name: "first",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcAddApplication: []queue.Item[struct{}]{
+				{},
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+				AddApplicationFunc: func(ctx context.Context, name, applicationName string) error {
+					_, err := queue.Pop(t, &tc.serverSvcAddApplication)
+					return err
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
+
+			// Run test
+			err := clusterSvc.AddApplication(context.Background(), tc.nameArg, tc.applicationNameArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.serverSvcAddApplication)
+		})
+	}
+}
+
+func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
+	tests := []struct {
+		name                      string
+		nameArg                   string
+		targetArg                 incusosapi.ServiceISCSITarget
+		repoGetByName             *provisioning.Cluster
+		repoGetByNameErr          error
+		clientGetOSServiceISCSI   []queue.Item[incusosapi.ServiceISCSI]
+		clientUpdateOSService     []queue.Item[bool] // bool is the expected value for the enabled flag of the service.
+		serverSvcPollServersErr   error
+		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: false, // false on purpose
+							Targets: []incusosapi.ServiceISCSITarget{},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{},
+						},
+					},
+				},
+			},
+			clientUpdateOSService: []queue.Item[bool]{
+				{
+					Value: true,
+				},
+				{
+					Value: true,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:    "error - GetByName error",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - client.GetOSServiceISCSI",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - iscsi service target already present",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{
+								{
+									Target:  "target",
+									Address: "address",
+									Port:    1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Service iscsi target "target" (address:1234) already defined on server`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - client.UpdateOSService - revert client.UpdateOSService",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: false, // false on purpose
+							Targets: []incusosapi.ServiceISCSITarget{},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{},
+						},
+					},
+				},
+			},
+			clientUpdateOSService: []queue.Item[bool]{
+				// First update successful.
+				{
+					Value: true,
+				},
+				// Second update error.
+				{
+					Value: true,
+					Err:   errors.New("error"),
+				},
+				// Revert of first update error.
+				{
+					Value: false,
+					Err:   boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously updated iscsi service config.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				GetOSServiceISCSIFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceISCSI, error) {
+					config, err := queue.Pop(t, &tc.clientGetOSServiceISCSI)
+					return config, err
+				},
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					wantEnabled, err := queue.Pop(t, &tc.clientUpdateOSService)
+					require.Equal(t, wantEnabled, config.(incusosapi.ServiceISCSI).Config.Enabled)
+					return err
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.AddStorageTargetISCSI(context.Background(), tc.nameArg, tc.targetArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.clientGetOSServiceISCSI)
+			require.Empty(t, tc.clientUpdateOSService)
+		})
+	}
+}
+
+func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
+	tests := []struct {
+		name                      string
+		nameArg                   string
+		targetArg                 incusosapi.ServiceISCSITarget
+		repoGetByName             *provisioning.Cluster
+		repoGetByNameErr          error
+		clientGetOSServiceISCSI   []queue.Item[incusosapi.ServiceISCSI]
+		clientUpdateOSService     []queue.Item[bool] // bool is the expected value for the enabled flag of the service.
+		serverSvcPollServersErr   error
+		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{
+								{
+									Target:  "target",
+									Address: "address",
+									Port:    1234,
+								},
+								{
+									Target:  "keep",
+									Address: "keep",
+									Port:    1234,
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{
+								{
+									Target:  "target",
+									Address: "address",
+									Port:    1234,
+								},
+								{
+									Target:  "keep",
+									Address: "keep",
+									Port:    1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientUpdateOSService: []queue.Item[bool]{
+				{
+					Value: true,
+				},
+				{
+					Value: true,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:    "error - GetByName error",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - client.GetOSServiceISCSI",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - iscsi service target missing",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{}, // target missing
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Service iscsi target "target" (address:1234) does not exist on server`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - client.UpdateOSService - revert client.UpdateOSService",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceISCSITarget{
+				Target:  "target",
+				Address: "address",
+				Port:    1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{
+								{
+									Target:  "target",
+									Address: "address",
+									Port:    1234,
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceISCSI{
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{
+								{
+									Target:  "target",
+									Address: "address",
+									Port:    1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientUpdateOSService: []queue.Item[bool]{
+				// First update successful.
+				{
+					Value: true,
+				},
+				// Second update error.
+				{
+					Value: true,
+					Err:   errors.New("error"),
+				},
+				// Revert of first update error.
+				{
+					Value: true,
+					Err:   boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously updated iscsi service config.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				GetOSServiceISCSIFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceISCSI, error) {
+					config, err := queue.Pop(t, &tc.clientGetOSServiceISCSI)
+					return config, err
+				},
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					wantEnabled, err := queue.Pop(t, &tc.clientUpdateOSService)
+					require.Equal(t, wantEnabled, config.(incusosapi.ServiceISCSI).Config.Enabled)
+					return err
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.RemoveStorageTargetISCSI(context.Background(), tc.nameArg, tc.targetArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.clientGetOSServiceISCSI)
+			require.Empty(t, tc.clientUpdateOSService)
+		})
+	}
+}
+
+func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
+	tests := []struct {
+		name                        string
+		nameArg                     string
+		targetArg                   string
+		repoGetByName               *provisioning.Cluster
+		repoGetByNameErr            error
+		clientGetOSServiceMultipath []queue.Item[incusosapi.ServiceMultipath]
+		clientUpdateOSService       []queue.Item[bool] // bool is the expected value for the enabled flag of the service.
+		serverSvcPollServersErr     error
+		serverSvcGetAllWithFilter   []queue.Item[provisioning.Servers]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:      "success",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: false, // false on purpose
+							WWNs:    []string{},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{},
+						},
+					},
+				},
+			},
+			clientUpdateOSService: []queue.Item[bool]{
+				{
+					Value: true,
+				},
+				{
+					Value: true,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:                    "error - GetByName error",
+			nameArg:                 "one",
+			targetArg:               "target",
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:      "error - client.GetOSServiceMultipath",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:      "error - multipath service target already present",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"target"},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Service multipath target "target" already defined on server`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:      "error - client.UpdateOSService - revert client.UpdateOSService",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: false, // false on purpose
+							WWNs:    []string{},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{},
+						},
+					},
+				},
+			},
+			clientUpdateOSService: []queue.Item[bool]{
+				// First update successful.
+				{
+					Value: true,
+				},
+				// Second update error.
+				{
+					Value: true,
+					Err:   errors.New("error"),
+				},
+				// Revert of first update error.
+				{
+					Value: false,
+					Err:   boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously updated multipath service config.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				GetOSServiceMultipathFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceMultipath, error) {
+					config, err := queue.Pop(t, &tc.clientGetOSServiceMultipath)
+					return config, err
+				},
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					wantEnabled, err := queue.Pop(t, &tc.clientUpdateOSService)
+					require.Equal(t, wantEnabled, config.(incusosapi.ServiceMultipath).Config.Enabled)
+					return err
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.AddStorageTargetMultipath(context.Background(), tc.nameArg, tc.targetArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.clientGetOSServiceMultipath)
+			require.Empty(t, tc.clientUpdateOSService)
+		})
+	}
+}
+
+func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
+	tests := []struct {
+		name                        string
+		nameArg                     string
+		targetArg                   string
+		repoGetByName               *provisioning.Cluster
+		repoGetByNameErr            error
+		clientGetOSServiceMultipath []queue.Item[incusosapi.ServiceMultipath]
+		clientUpdateOSService       []queue.Item[bool] // bool is the expected value for the enabled flag of the service.
+		serverSvcPollServersErr     error
+		serverSvcGetAllWithFilter   []queue.Item[provisioning.Servers]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:      "success",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: false, // false on purpose
+							WWNs:    []string{"target", "keep"},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"target", "keep"},
+						},
+					},
+				},
+			},
+			clientUpdateOSService: []queue.Item[bool]{
+				{
+					Value: true,
+				},
+				{
+					Value: true,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:                    "error - GetByName error",
+			nameArg:                 "one",
+			targetArg:               "target",
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:      "error - client.GetOSServiceMultipath",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:      "error - multipath service target missing",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{}, // target missing
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Service multipath target "target" does not exist on server`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:      "error - client.UpdateOSService - revert client.UpdateOSService",
+			nameArg:   "one",
+			targetArg: "target",
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: false, // false on purpose
+							WWNs:    []string{"target"},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"target"},
+						},
+					},
+				},
+			},
+			clientUpdateOSService: []queue.Item[bool]{
+				// First update successful.
+				{
+					Value: true,
+				},
+				// Second update error.
+				{
+					Value: true,
+					Err:   errors.New("error"),
+				},
+				// Revert of first update error.
+				{
+					Value: false,
+					Err:   boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously updated multipath service config.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				GetOSServiceMultipathFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceMultipath, error) {
+					config, err := queue.Pop(t, &tc.clientGetOSServiceMultipath)
+					return config, err
+				},
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					wantEnabled, err := queue.Pop(t, &tc.clientUpdateOSService)
+					require.Equal(t, wantEnabled, config.(incusosapi.ServiceMultipath).Config.Enabled)
+					return err
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.RemoveStorageTargetMultipath(context.Background(), tc.nameArg, tc.targetArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.clientGetOSServiceMultipath)
+			require.Empty(t, tc.clientUpdateOSService)
+		})
+	}
+}
+
+func TestClusterService_AddStorageTargetNVME(t *testing.T) {
+	tests := []struct {
+		name                      string
+		nameArg                   string
+		targetArg                 incusosapi.ServiceNVMETarget
+		repoGetByName             *provisioning.Cluster
+		repoGetByNameErr          error
+		clientGetOSServiceNVM     []queue.Item[incusosapi.ServiceNVME]
+		clientUpdateOSService     []queue.Item[bool] // bool is the expected value for the enabled flag of the service.
+		serverSvcPollServersErr   error
+		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVM: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: false, // false on purpose
+							Targets: []incusosapi.ServiceNVMETarget{},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{},
+						},
+					},
+				},
+			},
+			clientUpdateOSService: []queue.Item[bool]{
+				{
+					Value: true,
+				},
+				{
+					Value: true,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:    "error - GetByName error",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - client.GetOSServiceNVME",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVM: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - nvme service target already present",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVM: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "target",
+									Address:   "address",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Service nvme transport "target" (address:1234) already defined on server`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - client.UpdateOSService - revert client.UpdateOSService",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVM: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: false, // false on purpose
+							Targets: []incusosapi.ServiceNVMETarget{},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{},
+						},
+					},
+				},
+			},
+			clientUpdateOSService: []queue.Item[bool]{
+				// First update successful.
+				{
+					Value: true,
+				},
+				// Second update error.
+				{
+					Value: true,
+					Err:   errors.New("error"),
+				},
+				// Revert of first update error.
+				{
+					Value: false,
+					Err:   boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously updated nvme service config.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				GetOSServiceNVMEFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceNVME, error) {
+					config, err := queue.Pop(t, &tc.clientGetOSServiceNVM)
+					return config, err
+				},
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					wantEnabled, err := queue.Pop(t, &tc.clientUpdateOSService)
+					require.Equal(t, wantEnabled, config.(incusosapi.ServiceNVME).Config.Enabled)
+					return err
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.AddStorageTargetNVME(context.Background(), tc.nameArg, tc.targetArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.clientGetOSServiceNVM)
+			require.Empty(t, tc.clientUpdateOSService)
+		})
+	}
+}
+
+func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
+	tests := []struct {
+		name                      string
+		nameArg                   string
+		targetArg                 incusosapi.ServiceNVMETarget
+		repoGetByName             *provisioning.Cluster
+		repoGetByNameErr          error
+		clientGetOSServiceNVME    []queue.Item[incusosapi.ServiceNVME]
+		clientUpdateOSService     []queue.Item[bool] // bool is the expected value for the enabled flag of the service.
+		serverSvcPollServersErr   error
+		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: false, // false on purpose
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "target",
+									Address:   "address",
+									Port:      1234,
+								},
+								{
+									Transport: "keep",
+									Address:   "keep",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "target",
+									Address:   "address",
+									Port:      1234,
+								},
+								{
+									Transport: "keep",
+									Address:   "keep",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientUpdateOSService: []queue.Item[bool]{
+				{
+					Value: true,
+				},
+				{
+					Value: true,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:    "error - GetByName error",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByNameErr:        boom.Error,
+			serverSvcPollServersErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - client.GetOSServiceNVME",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - nvme service target missing",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{}, // target missing
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Service nvme transport "target" (address:1234) does not exist on server`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:    "error - client.UpdateOSService - revert client.UpdateOSService",
+			nameArg: "one",
+			targetArg: incusosapi.ServiceNVMETarget{
+				Transport: "target",
+				Address:   "address",
+				Port:      1234,
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: false, // false on purpose
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "target",
+									Address:   "address",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "target",
+									Address:   "address",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientUpdateOSService: []queue.Item[bool]{
+				// First update successful.
+				{
+					Value: true,
+				},
+				// Second update error.
+				{
+					Value: true,
+					Err:   errors.New("error"),
+				},
+				// Revert of first update error.
+				{
+					Value: false,
+					Err:   boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+						{
+							Name:         "two",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.Error,
+			assertLog: log.Match("Failed to revert previously updated nvme service config.*" + boom.Error.Error()),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				GetOSServiceNVMEFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceNVME, error) {
+					config, err := queue.Pop(t, &tc.clientGetOSServiceNVME)
+					return config, err
+				},
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					wantEnabled, err := queue.Pop(t, &tc.clientUpdateOSService)
+					require.Equal(t, wantEnabled, config.(incusosapi.ServiceNVME).Config.Enabled)
+					return err
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.RemoveStorageTargetNVME(context.Background(), tc.nameArg, tc.targetArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.clientGetOSServiceNVME)
+			require.Empty(t, tc.clientUpdateOSService)
 		})
 	}
 }
