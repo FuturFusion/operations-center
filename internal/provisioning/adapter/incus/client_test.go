@@ -2569,15 +2569,7 @@ func TestClientServer(t *testing.T) {
 						t.Helper()
 
 						wantOSService := incusosapi.ServiceTailscale{
-							Config: struct {
-								Enabled          bool     `json:"enabled"           yaml:"enabled"`
-								LoginServer      string   `json:"login_server"      yaml:"login_server"`
-								AuthKey          string   `json:"auth_key"          yaml:"auth_key"`
-								AcceptRoutes     bool     `json:"accept_routes"     yaml:"accept_routes"`
-								AdvertisedRoutes []string `json:"advertised_routes" yaml:"advertised_routes"`
-								ServeEnabled     bool     `json:"serve_enabled"     yaml:"serve_enabled"`
-								ServePort        int      `json:"serve_port"        yaml:"serve_port"`
-							}{
+							Config: incusosapi.ServiceTailscaleConfig{
 								Enabled:     true,
 								LoginServer: "server",
 							},
@@ -2657,6 +2649,7 @@ func TestClientServer(t *testing.T) {
 
 						wantOSService := incusosapi.ServiceUSBIP{
 							Config: incusosapi.ServiceUSBIPConfig{
+								Enabled: true,
 								Targets: []incusosapi.ServiceUSBIPTarget{
 									{
 										Address: "address",
