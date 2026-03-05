@@ -41,7 +41,7 @@ func NewSystemServiceWithSlog(base system.SystemService, opts ...SystemServiceWi
 }
 
 // GetNetworkConfig implements system.SystemService.
-func (_d SystemServiceWithSlog) GetNetworkConfig(ctx context.Context) (systemNetwork api.SystemNetwork) {
+func (_d SystemServiceWithSlog) GetNetworkConfig(ctx context.Context) (v api.SystemNetwork) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -53,7 +53,7 @@ func (_d SystemServiceWithSlog) GetNetworkConfig(ctx context.Context) (systemNet
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("systemNetwork", systemNetwork),
+				slog.Any("v", v),
 			)
 		} else {
 		}
@@ -63,7 +63,7 @@ func (_d SystemServiceWithSlog) GetNetworkConfig(ctx context.Context) (systemNet
 }
 
 // GetSecurityConfig implements system.SystemService.
-func (_d SystemServiceWithSlog) GetSecurityConfig(ctx context.Context) (systemSecurity api.SystemSecurity) {
+func (_d SystemServiceWithSlog) GetSecurityConfig(ctx context.Context) (v api.SystemSecurity) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -75,7 +75,7 @@ func (_d SystemServiceWithSlog) GetSecurityConfig(ctx context.Context) (systemSe
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("systemSecurity", systemSecurity),
+				slog.Any("v", v),
 			)
 		} else {
 		}
@@ -85,7 +85,7 @@ func (_d SystemServiceWithSlog) GetSecurityConfig(ctx context.Context) (systemSe
 }
 
 // GetSettingsConfig implements system.SystemService.
-func (_d SystemServiceWithSlog) GetSettingsConfig(ctx context.Context) (systemSettings api.SystemSettings) {
+func (_d SystemServiceWithSlog) GetSettingsConfig(ctx context.Context) (v api.SystemSettings) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -97,7 +97,7 @@ func (_d SystemServiceWithSlog) GetSettingsConfig(ctx context.Context) (systemSe
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("systemSettings", systemSettings),
+				slog.Any("v", v),
 			)
 		} else {
 		}
@@ -107,7 +107,7 @@ func (_d SystemServiceWithSlog) GetSettingsConfig(ctx context.Context) (systemSe
 }
 
 // GetUpdatesConfig implements system.SystemService.
-func (_d SystemServiceWithSlog) GetUpdatesConfig(ctx context.Context) (systemUpdates api.SystemUpdates) {
+func (_d SystemServiceWithSlog) GetUpdatesConfig(ctx context.Context) (v api.SystemUpdates) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -119,7 +119,7 @@ func (_d SystemServiceWithSlog) GetUpdatesConfig(ctx context.Context) (systemUpd
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("systemUpdates", systemUpdates),
+				slog.Any("v", v),
 			)
 		} else {
 		}
