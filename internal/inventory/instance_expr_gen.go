@@ -45,6 +45,7 @@ type ExprApiInstancePut struct {
 	Ephemeral    bool           `json:"ephemeral" yaml:"ephemeral" expr:"ephemeral"`
 	Profiles     []string       `json:"profiles" yaml:"profiles" expr:"profiles"`
 	Restore      string         `json:"restore,omitempty" yaml:"restore,omitempty" expr:"restore"`
+	DiskOnly     bool           `json:"disk_only,omitempty" yaml:"disk_only,omitempty" expr:"disk_only"`
 	Stateful     bool           `json:"stateful" yaml:"stateful" expr:"stateful"`
 	Description  string         `json:"description" yaml:"description" expr:"description"`
 }
@@ -195,6 +196,7 @@ func ToExprApiInstancePut(i api.InstancePut) ExprApiInstancePut {
 		Ephemeral:    i.Ephemeral,
 		Profiles:     i.Profiles,
 		Restore:      i.Restore,
+		DiskOnly:     i.DiskOnly,
 		Stateful:     i.Stateful,
 		Description:  i.Description,
 	}
