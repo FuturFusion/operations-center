@@ -1,20 +1,24 @@
 package provisioning
 
 import (
+	"bytes"
 	"crypto/tls"
 	"fmt"
-	"net/url"
+	"io"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus/v6/shared/termios"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/editor"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
@@ -67,12 +71,12 @@ func (c *CmdCluster) Command() *cobra.Command {
 
 	cmd.AddCommand(clusterFactoryResetCmd.Command())
 
-	// Update
-	clusterUpdateCmd := cmdClusterUpdate{
+	// Edit
+	clusterEditCmd := cmdClusterEdit{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(clusterUpdateCmd.Command())
+	cmd.AddCommand(clusterEditCmd.Command())
 
 	// Rename
 	clusterRenameCmd := cmdClusterRename{
@@ -123,6 +127,8 @@ type cmdClusterAdd struct {
 	flagClusterTemplate              string
 	flagClusterTemplateVariablesFile string
 	flagChannel                      string
+	flagDescription                  string
+	flagPropertiesFile               string
 }
 
 func (c *cmdClusterAdd) Command() *cobra.Command {
@@ -145,6 +151,8 @@ func (c *cmdClusterAdd) Command() *cobra.Command {
 	cmd.Flags().StringVar(&c.flagClusterTemplate, "cluster-template", "", "Name of the cluster template to be applied. Mutual exclusive with --services-config and --application-seed-config")
 	cmd.Flags().StringVar(&c.flagClusterTemplateVariablesFile, "cluster-template-variables", "", "Name of the variables.yaml file containing the values to be applied in the cluster template. Required, if --cluster-template is provided")
 	cmd.Flags().StringVar(&c.flagChannel, "channel", "", "Name of the channel, the cluster follows for updates")
+	cmd.Flags().StringVar(&c.flagDescription, "description", "", "Description of the cluster")
+	cmd.Flags().StringVar(&c.flagPropertiesFile, "properties", "", "Filename of the file containing the properties of the cluster")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -232,12 +240,28 @@ func (c *cmdClusterAdd) run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	clusterProperties := api.ConfigMap{}
+
+	if c.flagPropertiesFile != "" {
+		body, err := os.ReadFile(c.flagPropertiesFile)
+		if err != nil {
+			return err
+		}
+
+		err = yaml.Unmarshal(body, &clusterProperties)
+		if err != nil {
+			return err
+		}
+	}
+
 	err = c.ocClient.CreateCluster(cmd.Context(), api.ClusterPost{
 		Cluster: api.Cluster{
 			Name: name,
 			ClusterPut: api.ClusterPut{
 				ConnectionURL: connectionURL,
 				Channel:       c.flagChannel,
+				Description:   c.flagDescription,
+				Properties:    clusterProperties,
 			},
 		},
 		ServerNames:                   c.flagServerNames,
@@ -303,13 +327,14 @@ func (c *cmdClusterList) run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Connection URL", "Certificate Fingerprint", "Channel", "Status", "Update Status", "Last Updated"}
+	header := []string{"Name", "Connection URL", "Description", "Certificate Fingerprint", "Channel", "Status", "Update Status", "Last Updated"}
 	data := [][]string{}
 
 	for _, cluster := range clusters {
 		data = append(data, []string{
 			cluster.Name,
 			cluster.ConnectionURL,
+			cluster.Description,
 			cluster.Fingerprint[:min(len(cluster.Fingerprint), 12)],
 			cluster.Channel,
 			cluster.Status.String(),
@@ -445,25 +470,19 @@ func (c *cmdClusterFactoryReset) run(cmd *cobra.Command, args []string) error {
 }
 
 // Update cluster.
-type cmdClusterUpdate struct {
+type cmdClusterEdit struct {
 	ocClient *client.OperationsCenterClient
-
-	flagConnectionURL string
-	flagChannel       string
 }
 
-func (c *cmdClusterUpdate) Command() *cobra.Command {
+func (c *cmdClusterEdit) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "update <name>"
-	cmd.Short = "Update a cluster"
+	cmd.Use = "edit <name>"
+	cmd.Short = "Edit a cluster"
 	cmd.Long = `Description:
-  Update a cluster
+  Edit a cluster
 
-  Updates a cluster's connection URL.
+  Edits a cluster's connection URL.
 `
-
-	cmd.Flags().StringVar(&c.flagConnectionURL, "connection-url", "", "connection URL of the cluster")
-	cmd.Flags().StringVar(&c.flagChannel, "channel", "", "channel of the cluster")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -471,30 +490,99 @@ func (c *cmdClusterUpdate) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdClusterUpdate) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+// helpTemplate returns a sample YAML configuration and guidelines for editing cluster configurations.
+func (c *cmdClusterEdit) helpTemplate() string {
+	return `### This is a YAML representation of the configuration.
+### Any line starting with a '# will be ignored.
+###
+### A sample configuration looks like:
+###
+### connection_url: ""
+### channel: stable
+### description: ""
+### properties: {}
+`
+}
+
+func (c *cmdClusterEdit) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
-	_, err = url.Parse(c.flagConnectionURL)
-	if err != nil {
-		return fmt.Errorf("Provided Connection URL is not a valid URL: %w", err)
-	}
-
 	return nil
 }
 
-func (c *cmdClusterUpdate) run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterEdit) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	err := c.ocClient.UpdateCluster(cmd.Context(), name, api.ClusterPut{
-		ConnectionURL: c.flagConnectionURL,
-		Channel:       c.flagChannel,
-	})
+	// If stdin isn't a terminal, read text from it.
+	if !termios.IsTerminal(environment.GetStdinFd()) {
+		contents, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+
+		newdata := api.ClusterPut{}
+		err = yaml.Unmarshal(contents, &newdata)
+		if err != nil {
+			return err
+		}
+
+		err = c.ocClient.UpdateCluster(cmd.Context(), name, newdata)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	clusterConfig, err := c.ocClient.GetCluster(cmd.Context(), name)
 	if err != nil {
 		return err
+	}
+
+	b := &bytes.Buffer{}
+	encoder := yaml.NewEncoder(b)
+	encoder.SetIndent(2)
+	err = encoder.Encode(clusterConfig.ClusterPut)
+	if err != nil {
+		return err
+	}
+
+	// Spawn the editor
+	content, err := editor.Spawn("", append([]byte(c.helpTemplate()+"\n\n"), b.Bytes()...))
+	if err != nil {
+		return err
+	}
+
+	for {
+		newdata := api.ClusterPut{}
+		err = yaml.Unmarshal(content, &newdata)
+		if err == nil {
+			err = c.ocClient.UpdateCluster(cmd.Context(), name, newdata)
+		}
+
+		// Respawn the editor
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Config parsing error: %s\n", err)
+			fmt.Println("Press enter to open the editor again or ctrl+c to abort change")
+
+			_, err := os.Stdin.Read(make([]byte, 1))
+			if err != nil {
+				return err
+			}
+
+			content, err = editor.Spawn("", content)
+			if err != nil {
+				return err
+			}
+
+			continue
+		}
+
+		break
 	}
 
 	return nil
@@ -556,6 +644,8 @@ func (c *cmdClusterRename) run(cmd *cobra.Command, args []string) error {
 // Show cluster.
 type cmdClusterShow struct {
 	ocClient *client.OperationsCenterClient
+
+	flagShowProperties bool
 }
 
 func (c *cmdClusterShow) Command() *cobra.Command {
@@ -565,6 +655,8 @@ func (c *cmdClusterShow) Command() *cobra.Command {
 	cmd.Long = `Description:
   Show information about a cluster.
 `
+
+	cmd.Flags().BoolVar(&c.flagShowProperties, "properties", false, "show cluster properties")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -613,6 +705,7 @@ func (c *cmdClusterShow) run(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Name: %s\n", cluster.Name)
 	fmt.Printf("Connection URL: %s\n", cluster.ConnectionURL)
+	fmt.Printf("Description: %s\n", cluster.Description)
 	fmt.Printf("Certificate:\n%s", indent("  ", strings.TrimSpace(cluster.Certificate)))
 	fmt.Printf("Certificate Fingerprint: %s\n", cluster.Fingerprint)
 	fmt.Printf("Channel: %s\n", cluster.Channel)
@@ -622,6 +715,15 @@ func (c *cmdClusterShow) run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  Need Reboot: %s\n", needReboot)
 	fmt.Printf("  In Maintenance: %s\n", inMaintenance)
 	fmt.Printf("Last Updated: %s\n", cluster.LastUpdated.Truncate(time.Second).String())
+
+	if c.flagShowProperties {
+		propertiesYAML, err := yaml.Marshal(cluster.Properties)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Properties:\n%s\n", render.Indent(4, string(propertiesYAML)))
+	}
 
 	return nil
 }
