@@ -12,12 +12,7 @@ definitions:
                 type: string
                 x-go-name: AvailableVersion
             in_maintenance:
-                description: |-
-                    InMaintenance is true, if the application is in maintenance mode (e.g. for
-                    Incus, if it has been evacuated). If false, the system is in normal
-                    operation (also the case, if an Incus restore operation has been executed).
-                type: boolean
-                x-go-name: InMaintenance
+                $ref: '#/definitions/InMaintenanceState'
             name:
                 description: Name of the software component.
                 example: IncusOS
@@ -196,6 +191,24 @@ definitions:
                 type: integer
                 x-go-name: Size
         title: ClusterArtifactFile defines a single file of a cluster artifact.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ClusterBulkUpdateAction:
+        type: string
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ClusterBulkUpdatePost:
+        description: |-
+            ClusterBulkUpdatePost represents a cluster bulk update request containing
+            action and optional arguments.
+        properties:
+            action:
+                $ref: '#/definitions/ClusterBulkUpdateAction'
+            arguments:
+                description: |-
+                    Arguments for the action, the exact structure depends on the
+                    defined action.
+                type: object
+                x-go-name: Arguments
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ClusterCertificatePut:
@@ -475,19 +488,34 @@ definitions:
             ClusterUpdateStatus contains the update status of each server of the cluster
             as well as an aggregated cluster update status.
         properties:
-            applications:
+            in_maintenance:
                 description: |-
-                    Applications holds the lowest state of all the servers of the cluster for
-                    the version information of the installed applications.
+                    InMaintenance holds the list of server names of the servers within the
+                    cluster, which are currently in a maintenance state other than
+                    `NotInMaintenance`. If InMaintenance is empty, all servers are fully
+                    operational and not in maintenance.
                 items:
-                    $ref: '#/definitions/ApplicationVersionData'
+                    type: string
                 type: array
-                x-go-name: Applications
+                x-go-name: InMaintenance
+            needs_reboot:
+                description: |-
+                    NeedsReboot holds the list of server names of the servers within the
+                    cluster, which need to be rebooted. If NeedsReboot is empty, all servers
+                    are up to date and don't require a reboot.
+                items:
+                    type: string
+                type: array
+                x-go-name: NeedsReboot
             needs_update:
-                type: boolean
+                description: |-
+                    NeedsUpdate holds the list of server names of the servers within the
+                    cluster, which need to be updated. If NeedsUpdate is empty, all servers are
+                    up to date.
+                items:
+                    type: string
+                type: array
                 x-go-name: NeedsUpdate
-            os:
-                $ref: '#/definitions/OSVersionData'
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ConfigMap:
@@ -522,6 +550,10 @@ definitions:
             usb:
                 $ref: '#/definitions/ResourcesUSB'
         type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    InMaintenanceState:
+        format: int64
+        type: integer
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     OSData:
         properties:
@@ -1950,12 +1982,27 @@ definitions:
                 type: string
                 x-go-name: Status
                 x-go-type: github.com/FuturFusion/operations-center/shared/api.ServerStatus
+            server_status_detail:
+                description: |-
+                    StatusDetail contains the secondary status, which gives additional details
+                    on the server status.
+                example: rebooting
+                type: string
+                x-go-name: StatusDetail
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.ServerStatusDetail
             server_type:
                 description: Type defines the type of the server, which is normally one of "incus", "migration-manager", "operations-center".
                 example: incus
                 type: string
                 x-go-name: Type
                 x-go-type: github.com/FuturFusion/operations-center/shared/api.ServerType
+            system_state_is_trusted:
+                description: |-
+                    SystemStateIsTrusted is extracted from the OSData. The system state is
+                    trusted, if this value is set to true. Otherwise the system state is not
+                    trusted.
+                type: boolean
+                x-go-name: SystemStateIsTrusted
             version_data:
                 $ref: '#/definitions/ServerVersionData'
         title: Server defines a server running Hypervisor OS.
@@ -2049,6 +2096,12 @@ definitions:
                 readOnly: true
                 type: array
                 x-go-name: AuthMethods
+            server_version:
+                description: Server version number
+                example: 1.0.0
+                readOnly: true
+                type: string
+                x-go-name: ServerVersion
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerUpdateApplication:
@@ -2097,11 +2150,7 @@ definitions:
                 type: array
                 x-go-name: Applications
             in_maintenance:
-                description: |-
-                    InMaintenance is the aggreaged state over OS and all applications indicating
-                    if there is any component currently in maintenance state.
-                type: boolean
-                x-go-name: InMaintenance
+                $ref: '#/definitions/InMaintenanceState'
             needs_reboot:
                 description: |-
                     NeedsReboot is the aggregated state over OS and all applications indicating
@@ -2890,6 +2939,11 @@ definitions:
         x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemSecurityState:
         properties:
+            drive_recovery_keys:
+                additionalProperties:
+                    type: string
+                type: object
+                x-go-name: DriveRecoveryKeys
             encrypted_volumes:
                 items:
                     $ref: '#/definitions/SystemSecurityEncryptedVolume'
@@ -2974,6 +3028,12 @@ definitions:
                 format: int64
                 type: integer
                 x-go-name: CapacityInBytes
+            encrypted:
+                type: boolean
+                x-go-name: Encrypted
+            encrypted_id:
+                type: string
+                x-go-name: EncryptedID
             id:
                 type: string
                 x-go-name: ID
@@ -2986,6 +3046,9 @@ definitions:
             model_name:
                 type: string
                 x-go-name: ModelName
+            multipath:
+                type: boolean
+                x-go-name: Multipath
             remote:
                 type: boolean
                 x-go-name: Remote
@@ -3210,6 +3273,14 @@ definitions:
                 example: '''stable'' in upstream_channels'
                 type: string
                 x-go-name: FilterExpression
+            image_server_authentication_by_query_param:
+                description: |-
+                    ImageServerAuthenticationByQueryParam is a flag that allows to switch from
+                    HTTP header based image server authentication to query parameter instead.
+                    If set to true, authentication is done by `token` query parameter on the
+                    first request, if set to false, authentication is done by HTTP header.
+                type: boolean
+                x-go-name: ImageServerAuthenticationByQueryParam
             server_default_channel:
                 description: |-
                     ServerDefaultChannel is the default channel assigned to new server
@@ -3268,6 +3339,14 @@ definitions:
                 example: '''stable'' in upstream_channels'
                 type: string
                 x-go-name: FilterExpression
+            image_server_authentication_by_query_param:
+                description: |-
+                    ImageServerAuthenticationByQueryParam is a flag that allows to switch from
+                    HTTP header based image server authentication to query parameter instead.
+                    If set to true, authentication is done by `token` query parameter on the
+                    first request, if set to false, authentication is done by HTTP header.
+                type: boolean
+                x-go-name: ImageServerAuthenticationByQueryParam
             server_default_channel:
                 description: |-
                     ServerDefaultChannel is the default channel assigned to new server
@@ -3293,6 +3372,13 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     Token:
         properties:
+            channel:
+                description: |-
+                    Channel, used to seed images as well as which gets assigned to servers
+                    using this token during provisioning.
+                example: '"stable"'
+                type: string
+                x-go-name: Channel
             description:
                 description: Description of this token.
                 example: '"Test Environment"'
@@ -3327,12 +3413,6 @@ definitions:
         properties:
             architecture:
                 $ref: '#/definitions/UpdateFileArchitecture'
-            channel:
-                description: |-
-                    Channel where the most recent software update is taken from to generate the
-                    installation image.
-                type: string
-                x-go-name: Channel
             seeds:
                 $ref: '#/definitions/TokenSeedConfigs'
             type:
@@ -3366,6 +3446,13 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     TokenPut:
         properties:
+            channel:
+                description: |-
+                    Channel, used to seed images as well as which gets assigned to servers
+                    using this token during provisioning.
+                example: '"stable"'
+                type: string
+                x-go-name: Channel
             description:
                 description: Description of this token.
                 example: '"Test Environment"'
@@ -7186,6 +7273,51 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Update the cluster
+            tags:
+                - clusters
+    /1.0/provisioning/clusters/{name}/:bulk-update:
+        post:
+            consumes:
+                - application/json
+            description: Apply bulk update to all cluster members.
+            operationId: cluster_bulk_update_inventory_post
+            parameters:
+                - description: Cluster bulk update request with action and arguments.
+                  in: body
+                  name: cluster_bulk_update_post
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ClusterBulkUpdatePost'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Empty response
+                    schema:
+                        description: Sync response
+                        properties:
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Bulk update to all cluster members
             tags:
                 - clusters
     /1.0/provisioning/clusters/{name}/:resync-inventory:
