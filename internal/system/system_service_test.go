@@ -994,7 +994,7 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 					ACME: api.SystemSecurityACME{
 						CAURL:               "https://acme-v02.api.letsencrypt.org/directory",
 						Challenge:           "HTTP-01",
-						Address:             ":80",
+						Address:             ":8080",
 						ProviderEnvironment: []string{},
 						ProviderResolvers:   []string{},
 					},
