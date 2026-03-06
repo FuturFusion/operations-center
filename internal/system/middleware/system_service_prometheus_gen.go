@@ -39,7 +39,7 @@ func NewSystemServiceWithPrometheus(base system.SystemService, instanceName stri
 }
 
 // GetNetworkConfig implements system.SystemService.
-func (_d SystemServiceWithPrometheus) GetNetworkConfig(ctx context.Context) (systemNetwork api.SystemNetwork) {
+func (_d SystemServiceWithPrometheus) GetNetworkConfig(ctx context.Context) (v api.SystemNetwork) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,7 +49,7 @@ func (_d SystemServiceWithPrometheus) GetNetworkConfig(ctx context.Context) (sys
 }
 
 // GetSecurityConfig implements system.SystemService.
-func (_d SystemServiceWithPrometheus) GetSecurityConfig(ctx context.Context) (systemSecurity api.SystemSecurity) {
+func (_d SystemServiceWithPrometheus) GetSecurityConfig(ctx context.Context) (v api.SystemSecurity) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -59,7 +59,7 @@ func (_d SystemServiceWithPrometheus) GetSecurityConfig(ctx context.Context) (sy
 }
 
 // GetSettingsConfig implements system.SystemService.
-func (_d SystemServiceWithPrometheus) GetSettingsConfig(ctx context.Context) (systemSettings api.SystemSettings) {
+func (_d SystemServiceWithPrometheus) GetSettingsConfig(ctx context.Context) (v api.SystemSettings) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -69,7 +69,7 @@ func (_d SystemServiceWithPrometheus) GetSettingsConfig(ctx context.Context) (sy
 }
 
 // GetUpdatesConfig implements system.SystemService.
-func (_d SystemServiceWithPrometheus) GetUpdatesConfig(ctx context.Context) (systemUpdates api.SystemUpdates) {
+func (_d SystemServiceWithPrometheus) GetUpdatesConfig(ctx context.Context) (v api.SystemUpdates) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
