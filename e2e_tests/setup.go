@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -283,19 +284,20 @@ func setupLocalOperationsCenterConfig(t *testing.T) {
 	operationsCenterIPAddressResp := mustRun(t, `incus list -f json | jq -r '.[] | select(.name == "OperationsCenter") | .state.network | to_entries[] | .value.addresses[]? | select(.family == "inet" and .scope == "global") | .address' | head -n1`)
 
 	operationsCenterIPAddress := strings.TrimSpace(operationsCenterIPAddressResp.Output())
+	operationsCenterHostPort := net.JoinHostPort(operationsCenterIPAddress, "8443")
 
-	// FIXME: replace with a Go based connection test
-	for {
-		operationsCenterCetificateResp := runWithTimeout(t, `/usr/bin/openssl s_client -connect %s:8443 </dev/null 2>/dev/null | openssl x509 -outform PEM`, 30*time.Second, operationsCenterIPAddress)
-		require.NoError(t, operationsCenterCetificateResp.err)
-		if strings.Contains(operationsCenterCetificateResp.Output(), "-----BEGIN CERTIFICATE-----") {
-			break
-		}
+	ctxWithTimeout, cancel := context.WithTimeout(t.Context(), strechedTimeout(60*time.Second))
+	err = waitForTCPPort(ctxWithTimeout, t, operationsCenterHostPort, 1*time.Second)
+	cancel()
+	require.NoError(t, err)
+
+	resp := run(t, `../bin/operations-center.linux.%s remote list -f json | jq -r -e '. | has("e2e-test")'`, cpuArch)
+	require.NoError(t, resp.err)
+	if !resp.Success() {
+		mustRun(t, `../bin/operations-center.linux.%s remote add --allow-untrusted-cert e2e-test https://%s/`, cpuArch, operationsCenterHostPort)
 	}
 
-	mustRun(t, `../bin/operations-center.linux.%s remote add --allow-untrusted-cert e2e-test https://%s:8443/`, cpuArch, operationsCenterIPAddress)
-
-	resp := mustRun(t, `../bin/operations-center.linux.%s remote list`, cpuArch)
+	resp = mustRun(t, `../bin/operations-center.linux.%s remote list`, cpuArch)
 	fmt.Println(resp.Output())
 
 	mustRun(t, `../bin/operations-center.linux.%s remote switch e2e-test`, cpuArch)
