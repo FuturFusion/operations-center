@@ -14,9 +14,9 @@ import (
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/lxc/incus/v6/shared/revert"
-	"github.com/maniartech/signals"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact/entities"
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
@@ -32,7 +32,7 @@ type clusterArtifact struct {
 
 var _ provisioning.ClusterArtifactRepo = &clusterArtifact{}
 
-func New(db sqlite.DBTX, storageDir string, updateSignal signals.Signal[provisioning.ClusterUpdateMessage]) (*clusterArtifact, error) {
+func New(db sqlite.DBTX, storageDir string) (*clusterArtifact, error) {
 	err := os.MkdirAll(storageDir, 0o700)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create directory for local artifact storage: %w", err)
@@ -43,15 +43,15 @@ func New(db sqlite.DBTX, storageDir string, updateSignal signals.Signal[provisio
 		storageDir: storageDir,
 	}
 
-	c.registerUpdateSignalHandler(updateSignal)
+	c.registerUpdateSignalHandler()
 
 	return c, nil
 }
 
-func (c clusterArtifact) registerUpdateSignalHandler(clusterUpdateSignal signals.Signal[provisioning.ClusterUpdateMessage]) {
-	clusterUpdateSignal.AddListener(func(ctx context.Context, cum provisioning.ClusterUpdateMessage) {
+func (c clusterArtifact) registerUpdateSignalHandler() {
+	lifecycle.ClusterUpdateSignal.AddListener(func(ctx context.Context, cum lifecycle.ClusterUpdateMessage) {
 		switch cum.Operation {
-		case provisioning.ClusterUpdateOperationRename:
+		case lifecycle.ClusterUpdateOperationRename:
 			oldPath := filepath.Join(c.storageDir, cum.OldName)
 			newPath := filepath.Join(c.storageDir, cum.Name)
 			if !file.PathExists(oldPath) {
@@ -64,7 +64,7 @@ func (c clusterArtifact) registerUpdateSignalHandler(clusterUpdateSignal signals
 				return
 			}
 
-		case provisioning.ClusterUpdateOperationDelete:
+		case lifecycle.ClusterUpdateOperationDelete:
 			configDir := filepath.Join(c.storageDir, cum.Name)
 			if !file.PathExists(configDir) {
 				return

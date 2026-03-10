@@ -20,10 +20,10 @@ import (
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus/v6/shared/revert"
-	"github.com/maniartech/signals"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
@@ -43,7 +43,6 @@ type clusterService struct {
 	createClusterRetries      int
 	createClusterRetryTimeout time.Duration
 
-	clusterUpdateSignal               signals.Signal[ClusterUpdateMessage]
 	lifecycleEventHandlerBackoffStart time.Duration
 	lifecycleEventHandlerBackoffLimit time.Duration
 }
@@ -58,11 +57,6 @@ func WithClusterServiceCreateClusterRetryTimeout(timeout time.Duration) ClusterS
 	}
 }
 
-func WithClusterServiceUpdateSignal(updateSignal signals.Signal[ClusterUpdateMessage]) ClusterServiceOption {
-	return func(s *clusterService) {
-		s.clusterUpdateSignal = updateSignal
-	}
-}
 
 func NewClusterService(
 	repo ClusterRepo,
@@ -86,7 +80,6 @@ func NewClusterService(
 		createClusterRetries:      6,
 		createClusterRetryTimeout: 200 * time.Millisecond,
 
-		clusterUpdateSignal:               signals.NewSync[ClusterUpdateMessage](),
 		lifecycleEventHandlerBackoffStart: 200 * time.Millisecond,
 		lifecycleEventHandlerBackoffLimit: 60 * time.Second,
 	}
@@ -475,8 +468,8 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 		slog.WarnContext(ctx, "Post cluster creation inventory sync failed", logger.Err(err))
 	}
 
-	s.clusterUpdateSignal.Emit(ctx, ClusterUpdateMessage{
-		Operation: ClusterUpdateOperationCreate,
+	lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{
+		Operation: lifecycle.ClusterUpdateOperationCreate,
 		Name:      newCluster.Name,
 	})
 
@@ -706,8 +699,8 @@ func (s clusterService) Rename(ctx context.Context, oldName string, newName stri
 		return err
 	}
 
-	s.clusterUpdateSignal.Emit(ctx, ClusterUpdateMessage{
-		Operation: ClusterUpdateOperationRename,
+	lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{
+		Operation: lifecycle.ClusterUpdateOperationRename,
 		Name:      newName,
 		OldName:   oldName,
 	})
@@ -727,8 +720,8 @@ func (s clusterService) DeleteByName(ctx context.Context, name string, force boo
 			return fmt.Errorf("Failed to delete cluster: %w", err)
 		}
 
-		s.clusterUpdateSignal.Emit(ctx, ClusterUpdateMessage{
-			Operation: ClusterUpdateOperationDelete,
+		lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{
+			Operation: lifecycle.ClusterUpdateOperationDelete,
 			Name:      name,
 		})
 
@@ -775,8 +768,8 @@ func (s clusterService) DeleteByName(ctx context.Context, name string, force boo
 		return fmt.Errorf("Failed to delete cluster: %w", err)
 	}
 
-	s.clusterUpdateSignal.Emit(ctx, ClusterUpdateMessage{
-		Operation: ClusterUpdateOperationDelete,
+	lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{
+		Operation: lifecycle.ClusterUpdateOperationDelete,
 		Name:      name,
 	})
 
@@ -865,8 +858,8 @@ func (s clusterService) DeleteAndFactoryResetByName(ctx context.Context, name st
 		return fmt.Errorf("Failed to delete cluster: %w", err)
 	}
 
-	s.clusterUpdateSignal.Emit(ctx, ClusterUpdateMessage{
-		Operation: ClusterUpdateOperationDelete,
+	lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{
+		Operation: lifecycle.ClusterUpdateOperationDelete,
 		Name:      name,
 	})
 
@@ -1613,12 +1606,12 @@ func (s clusterService) StartLifecycleEventsMonitor(ctx context.Context) error {
 		lifecycleMonitors[cluster.Name] = cancel
 	}
 
-	s.clusterUpdateSignal.AddListener(func(ctx context.Context, cum ClusterUpdateMessage) {
+	lifecycle.ClusterUpdateSignal.AddListener(func(ctx context.Context, cum lifecycle.ClusterUpdateMessage) {
 		lifecycleMonitorsMu.Lock()
 		defer lifecycleMonitorsMu.Unlock()
 
 		switch cum.Operation {
-		case ClusterUpdateOperationCreate:
+		case lifecycle.ClusterUpdateOperationCreate:
 			cancel, err := s.startLifecycleEventHandler(context.Background(), cum.Name)
 			if err != nil {
 				slog.WarnContext(ctx, "Failed to start lifecycle monitor", slog.String("cluster", cum.Name), logger.Err(err))
@@ -1627,7 +1620,7 @@ func (s clusterService) StartLifecycleEventsMonitor(ctx context.Context) error {
 
 			lifecycleMonitors[cum.Name] = cancel
 
-		case ClusterUpdateOperationDelete:
+		case lifecycle.ClusterUpdateOperationDelete:
 			cancel, ok := lifecycleMonitors[cum.Name]
 			if !ok {
 				return

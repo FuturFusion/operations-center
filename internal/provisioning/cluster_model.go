@@ -172,20 +172,6 @@ type ClusterProvisioningConfig struct {
 	Cluster Cluster
 }
 
-type ClusterUpdateMessage struct {
-	Operation ClusterUpdateOperation
-	Name      string
-	OldName   string
-}
-
-type ClusterUpdateOperation string
-
-const (
-	ClusterUpdateOperationCreate ClusterUpdateOperation = "create"
-	ClusterUpdateOperationDelete ClusterUpdateOperation = "delete"
-	ClusterUpdateOperationRename ClusterUpdateOperation = "rename"
-)
-
 type ClusterArtifact struct {
 	ID          int64
 	Cluster     string `db:"primary=yes&join=clusters.name"`
