@@ -28,6 +28,8 @@ type ClusterService interface {
 	StartLifecycleEventsMonitor(ctx context.Context) error
 	UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) error
 	GetEndpoint(ctx context.Context, name string) (Endpoint, error)
+	IsInstanceLifecycleOperationPermitted(ctx context.Context, name string) bool
+
 	GetClusterArtifactAll(ctx context.Context, clusterName string) (ClusterArtifacts, error)
 	GetClusterArtifactAllNames(ctx context.Context, clusterName string) ([]string, error)
 	GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (*ClusterArtifact, error)

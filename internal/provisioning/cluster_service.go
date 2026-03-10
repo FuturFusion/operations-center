@@ -536,7 +536,7 @@ func (s clusterService) GetAllWithFilter(ctx context.Context, filter ClusterFilt
 		}
 
 		for i := range clusters {
-			clusters[i].UpdateStatus, err = s.getClusterUpdateStatus(ctx, clusters[i].Name)
+			err = s.getClusterUpdateStatus(ctx, clusters[i].Name, &clusters[i].UpdateStatus)
 			if err != nil {
 				return fmt.Errorf("Failed to get cluster update status for %q: %w", clusters[i].Name, err)
 			}
@@ -612,7 +612,7 @@ func (s clusterService) GetByName(ctx context.Context, name string) (*Cluster, e
 			return fmt.Errorf("Failed to get cluster %q by name: %w", name, err)
 		}
 
-		cluster.UpdateStatus, err = s.getClusterUpdateStatus(ctx, name)
+		err = s.getClusterUpdateStatus(ctx, name, &cluster.UpdateStatus)
 		if err != nil {
 			return fmt.Errorf("Failed to get cluster update status for %q: %w", name, err)
 		}
@@ -626,19 +626,17 @@ func (s clusterService) GetByName(ctx context.Context, name string) (*Cluster, e
 	return cluster, nil
 }
 
-func (s clusterService) getClusterUpdateStatus(ctx context.Context, name string) (*api.ClusterUpdateStatus, error) {
+func (s clusterService) getClusterUpdateStatus(ctx context.Context, name string, clusterUpdateStatus *api.ClusterUpdateStatus) error {
 	servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
 		Cluster: ptr.To(name),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get servers for cluster %q: %w", name, err)
+		return fmt.Errorf("Failed to get servers for cluster %q: %w", name, err)
 	}
 
-	clusterUpdateStatus := api.ClusterUpdateStatus{
-		NeedsUpdate:   make([]string, 0, len(servers)),
-		NeedsReboot:   make([]string, 0, len(servers)),
-		InMaintenance: make([]string, 0, len(servers)),
-	}
+	clusterUpdateStatus.NeedsUpdate = make([]string, 0, len(servers))
+	clusterUpdateStatus.NeedsReboot = make([]string, 0, len(servers))
+	clusterUpdateStatus.InMaintenance = make([]string, 0, len(servers))
 
 	for _, server := range servers {
 		if server.VersionData.NeedsUpdate != nil && *server.VersionData.NeedsUpdate {
@@ -654,7 +652,7 @@ func (s clusterService) getClusterUpdateStatus(ctx context.Context, name string)
 		}
 	}
 
-	return &clusterUpdateStatus, nil
+	return nil
 }
 
 func (s clusterService) Update(ctx context.Context, newCluster Cluster) error {
@@ -914,6 +912,19 @@ func (s clusterService) ResyncInventoryByName(ctx context.Context, name string) 
 	}
 
 	return nil
+}
+
+func (s clusterService) IsInstanceLifecycleOperationPermitted(ctx context.Context, name string) bool {
+	if name == "" {
+		return true
+	}
+
+	cluster, err := s.GetByName(ctx, name)
+	if err != nil {
+		return false
+	}
+
+	return !cluster.IsUpdateInProgress()
 }
 
 func (s clusterService) AddServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {

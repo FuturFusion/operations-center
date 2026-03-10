@@ -34,11 +34,11 @@ type ServerService interface {
 	PollServers(ctx context.Context, serverFilter ServerFilter, updateServerConfiguration bool) error
 	PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error
 
-	EvacuateSystemByName(ctx context.Context, name string) error
-	PoweroffSystemByName(ctx context.Context, name string) error
-	RebootSystemByName(ctx context.Context, name string) error
-	RestoreSystemByName(ctx context.Context, name string) error
-	UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error
+	EvacuateSystemByName(ctx context.Context, name string, force bool) error
+	PoweroffSystemByName(ctx context.Context, name string, force bool) error
+	RebootSystemByName(ctx context.Context, name string, force bool) error
+	RestoreSystemByName(ctx context.Context, name string, force bool) error
+	UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error
 
 	GetSystemLogging(ctx context.Context, name string) (ServerSystemLogging, error)
 	UpdateSystemLogging(ctx context.Context, name string, loggingConfig ServerSystemLogging) error

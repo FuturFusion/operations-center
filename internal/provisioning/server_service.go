@@ -882,7 +882,7 @@ func (s *serverService) PollServers(ctx context.Context, serverFilter ServerFilt
 	return errors.Join(errs...)
 }
 
-func (s *serverService) EvacuateSystemByName(ctx context.Context, name string) error {
+func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, force bool) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		server, err := s.GetByName(ctx, name)
 		if err != nil {
@@ -891,6 +891,10 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string) e
 
 		if server.Type != api.ServerTypeIncus {
 			return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
+		}
+
+		if !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
+			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
 
 		for i := range server.VersionData.Applications {
@@ -919,11 +923,15 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string) e
 	return nil
 }
 
-func (s *serverService) PoweroffSystemByName(ctx context.Context, name string) error {
+func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, force bool) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		server, err := s.GetByName(ctx, name)
 		if err != nil {
 			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+		}
+
+		if !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
+			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
 
 		server.Status = api.ServerStatusOffline
@@ -948,11 +956,15 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string) e
 	return nil
 }
 
-func (s *serverService) RebootSystemByName(ctx context.Context, name string) error {
+func (s *serverService) RebootSystemByName(ctx context.Context, name string, force bool) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		server, err := s.GetByName(ctx, name)
 		if err != nil {
 			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+		}
+
+		if !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
+			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
 
 		server.Status = api.ServerStatusOffline
@@ -977,7 +989,7 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string) err
 	return nil
 }
 
-func (s *serverService) RestoreSystemByName(ctx context.Context, name string) error {
+func (s *serverService) RestoreSystemByName(ctx context.Context, name string, force bool) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		server, err := s.GetByName(ctx, name)
 		if err != nil {
@@ -986,6 +998,10 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string) er
 
 		if server.Type != api.ServerTypeIncus {
 			return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
+		}
+
+		if !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
+			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
 
 		for i := range server.VersionData.Applications {
@@ -1014,7 +1030,7 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string) er
 	return nil
 }
 
-func (s *serverService) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error {
+func (s *serverService) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		server, err := s.GetByName(ctx, name)
 		if err != nil {
@@ -1023,6 +1039,10 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 
 		if server.Status != api.ServerStatusReady {
 			return fmt.Errorf("Server is not ready: %w", domain.ErrOperationNotPermitted)
+		}
+
+		if !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
+			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
 
 		server.StatusDetail = api.ServerStatusDetailReadyUpdating
