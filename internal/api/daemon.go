@@ -22,7 +22,6 @@ import (
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
-	"github.com/maniartech/signals"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/operations-center/internal/api/listener"
@@ -32,6 +31,7 @@ import (
 	inventoryEntities "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite/entities"
 	inventoryIncusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
 	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/flasher"
 	provisioningIncusAdapter "github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
@@ -161,7 +161,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// On update of the security configuration, perform reload of the security
 	// related infrastructure.
-	config.SecurityUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemSecurity) {
+	lifecycle.SecurityUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemSecurity) {
 		err := d.securityConfigReload(ctx, cfg)
 		if err != nil {
 			slog.ErrorContext(ctx, "Failed to reload security config", logger.Err(err))
@@ -169,7 +169,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	})
 
 	// On update of ACME configuration, perform renewal of the server certificate.
-	config.SecurityACMEUpdateSignal.AddListener(func(ctx context.Context, ssa api.SystemSecurityACME) {
+	lifecycle.SecurityACMEUpdateSignal.AddListener(func(ctx context.Context, ssa api.SystemSecurityACME) {
 		slog.InfoContext(ctx, "Trigger async ACME renewal after config change")
 
 		go func() {
@@ -241,7 +241,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// If the network configuration changes, we need to reload the API server on TCP.
-	config.NetworkUpdateSignal.AddListener(func(ctx context.Context, sn api.SystemNetwork) {
+	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, sn api.SystemNetwork) {
 		err := d.setupTCPListener(ctx, sn)
 		if err != nil {
 			slog.ErrorContext(ctx, "Failed to reload network config", logger.Err(err))
@@ -427,7 +427,7 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 	}
 
 	// Make sure, the files repository learns about changes to the signature certificate.
-	config.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemUpdates) {
+	lifecycle.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemUpdates) {
 		repoUpdateFiles.UpdateConfig(ctx, cfg.SignatureVerificationRootCA)
 	})
 
@@ -441,15 +441,15 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 		d.env,
 	)
 	listenerKey := uuid.New().String()
-	config.UpdatesValidateSignal.AddListenerWithErr(func(ctx context.Context, su api.SystemUpdates) error {
+	lifecycle.UpdatesValidateSignal.AddListenerWithErr(func(ctx context.Context, su api.SystemUpdates) error {
 		return updateServer.SourceConnectionTest(ctx, su.Source, su.SignatureVerificationRootCA)
 	}, listenerKey)
-	config.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemUpdates) {
+	lifecycle.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemUpdates) {
 		updateServer.UpdateConfig(ctx, cfg.Source, cfg.SignatureVerificationRootCA)
 	}, listenerKey)
 	runtime.AddCleanup(d, func(listenerKey string) {
 		// config.UpdatesValidateSignal.RemoveListener(listenerKey)
-		config.UpdatesUpdateSignal.RemoveListener(listenerKey)
+		lifecycle.UpdatesUpdateSignal.RemoveListener(listenerKey)
 	}, listenerKey)
 
 	updateSvcBase := provisioning.NewUpdateService(
@@ -486,11 +486,11 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 		d.serverCertificate,
 	)
 	// Image flasher needs to learn about updates to the server certificate.
-	config.ServerCertificateUpdateSignal.AddListener(func(_ context.Context, cert tls.Certificate) {
+	lifecycle.ServerCertificateUpdateSignal.AddListener(func(_ context.Context, cert tls.Certificate) {
 		imageFlasher.UpdateCertificate(cert)
 	})
 	// Image flasher needs to learn about updates the public Operations Center address.
-	config.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemNetwork) {
+	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemNetwork) {
 		imageFlasher.UpdateServerURL(cfg.OperationsCenterAddress)
 	})
 
@@ -534,7 +534,7 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 
 	// Server service needs to learn about updates of the public Operations Center
 	// address.
-	config.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemNetwork) {
+	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemNetwork) {
 		// Update operations center server record with updated network config.
 		err := serverSvc.SelfRegisterOperationsCenter(ctx)
 		if err != nil {
@@ -543,7 +543,7 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 	})
 
 	// Server service needs to learn about updates of the server certificate.
-	config.ServerCertificateUpdateSignal.AddListener(func(ctx context.Context, c tls.Certificate) {
+	lifecycle.ServerCertificateUpdateSignal.AddListener(func(ctx context.Context, c tls.Certificate) {
 		err := serverSvc.UpdateServerCertificate(ctx, c)
 		if err != nil {
 			slog.WarnContext(ctx, "failed to update server URL", logger.Err(err))
@@ -556,9 +556,7 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 }
 
 func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.ServerService, tokenSvc provisioning.TokenService) (provisioning.ClusterService, error) {
-	updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
-
-	localClusterArtifactRepo, err := provisioningClusterArtifactRepo.New(db, filepath.Join(d.env.VarDir(), "artifacts"), updateSignal)
+	localClusterArtifactRepo, err := provisioningClusterArtifactRepo.New(db, filepath.Join(d.env.VarDir(), "artifacts"))
 	if err != nil {
 		return nil, err
 	}
@@ -601,7 +599,6 @@ func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.Se
 			tokenSvc,
 			nil,
 			terraformProvisioner,
-			provisioning.WithClusterServiceUpdateSignal(updateSignal),
 		),
 	), nil
 }
@@ -907,8 +904,8 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg api.SystemNetwork) er
 			}
 		}
 
-		config.ServerCertificateUpdateSignal.RemoveListener("fancyListener")
-		config.SecurityTrustedHTTPSProxiesUpdateSignal.RemoveListener("fancyListener")
+		lifecycle.ServerCertificateUpdateSignal.RemoveListener("fancyListener")
+		lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.RemoveListener("fancyListener")
 
 		if cfg.RestServerAddress == "" {
 			d.configReloadMu.Lock()
@@ -941,7 +938,7 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg api.SystemNetwork) er
 			slog.WarnContext(ctx, "Failed to set trusted HTTPS proxies during server startup", logger.Err(err))
 		}
 
-		config.ServerCertificateUpdateSignal.AddListener(func(_ context.Context, cert tls.Certificate) {
+		lifecycle.ServerCertificateUpdateSignal.AddListener(func(_ context.Context, cert tls.Certificate) {
 			d.configReloadMu.Lock()
 			defer d.configReloadMu.Unlock()
 
@@ -949,7 +946,7 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg api.SystemNetwork) er
 			d.listener.Config(cert)
 		}, "fancyListener")
 
-		config.SecurityTrustedHTTPSProxiesUpdateSignal.AddListener(func(_ context.Context, trustedHTTPSProxies []string) {
+		lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.AddListener(func(_ context.Context, trustedHTTPSProxies []string) {
 			d.configReloadMu.Lock()
 			defer d.configReloadMu.Unlock()
 
