@@ -167,7 +167,7 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 				Fingerprint:  cluster.Fingerprint,
 				Status:       cluster.Status,
 				LastUpdated:  cluster.LastUpdated,
-				UpdateStatus: *cluster.UpdateStatus,
+				UpdateStatus: cluster.UpdateStatus,
 			})
 		}
 
@@ -304,7 +304,7 @@ func (c *clusterHandler) clusterGet(r *http.Request) response.Response {
 			Fingerprint:  cluster.Fingerprint,
 			Status:       cluster.Status,
 			LastUpdated:  cluster.LastUpdated,
-			UpdateStatus: *cluster.UpdateStatus,
+			UpdateStatus: cluster.UpdateStatus,
 		},
 		cluster,
 	)
