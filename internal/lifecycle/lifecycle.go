@@ -22,7 +22,7 @@ var (
 
 	ClusterUpdateSignal = signals.NewSync[ClusterUpdateMessage]()
 
-	ServerLifecycleSignal = signals.New[]()
+	ServerLifecycleSignal = signals.NewSync[ServerLifecycleMessage]()
 )
 
 type ClusterUpdateMessage struct {
@@ -38,3 +38,9 @@ const (
 	ClusterUpdateOperationDelete ClusterUpdateOperation = "delete"
 	ClusterUpdateOperationRename ClusterUpdateOperation = "rename"
 )
+
+type ServerLifecycleMessage struct {
+	Server            string
+	Cluster           *string
+	ServerUpdateState api.ServerUpdateState
+}
