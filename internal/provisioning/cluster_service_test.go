@@ -2096,7 +2096,7 @@ func TestClusterService_GetByName(t *testing.T) {
 				Name:          "one",
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
-				UpdateStatus: &api.ClusterUpdateStatus{
+				UpdateStatus: api.ClusterUpdateStatus{
 					NeedsUpdate:   []string{},
 					NeedsReboot:   []string{},
 					InMaintenance: []string{},
@@ -2151,7 +2151,7 @@ func TestClusterService_GetByName(t *testing.T) {
 				Name:          "one",
 				ServerNames:   []string{"server1", "server2", "server3", "server4"},
 				ConnectionURL: "http://one/",
-				UpdateStatus: &api.ClusterUpdateStatus{
+				UpdateStatus: api.ClusterUpdateStatus{
 					NeedsUpdate:   []string{"server1"},
 					NeedsReboot:   []string{"server2"},
 					InMaintenance: []string{"server3", "server4"},
@@ -3003,6 +3003,87 @@ func TestClusterService_ResyncInventoryByName(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestClusterService_IsInstanceLifecycleOperationPermitted(t *testing.T) {
+	tests := []struct {
+		name                      string
+		argName                   string
+		repoGetByName             *provisioning.Cluster
+		repoGetByNameErr          error
+		serverSvcPollServersErr   error
+		serverSvcGetAllWithFilter provisioning.Servers
+
+		want bool
+	}{
+		{
+			name:    "success - not clustered",
+			argName: "", // no cluster name, therefore not clustered
+
+			want: true,
+		},
+		{
+			name:          "success - no update in progress",
+			argName:       "one",
+			repoGetByName: &provisioning.Cluster{},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+			},
+
+			want: true,
+		},
+		{
+			name:    "success - update in progress",
+			argName: "one",
+			repoGetByName: &provisioning.Cluster{
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressRollingRestart,
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+			},
+
+			want: false,
+		},
+		{
+			name:             "error - repo.GetByName",
+			argName:          "one",
+			repoGetByNameErr: boom.Error,
+
+			want: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServersErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.serverSvcGetAllWithFilter, nil
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
+
+			// Run test
+			got := clusterSvc.IsInstanceLifecycleOperationPermitted(t.Context(), tc.argName)
+
+			// Assert
+			require.Equal(t, tc.want, got)
 		})
 	}
 }

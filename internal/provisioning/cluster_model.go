@@ -20,21 +20,21 @@ import (
 //generate-expr: Cluster
 
 type Cluster struct {
-	ID                    int64                    `json:"-"`
-	Name                  string                   `json:"name"                    db:"primary=yes"`
-	ConnectionURL         string                   `json:"connection_url"`
-	Certificate           *string                  `json:"certificate"`
-	Fingerprint           string                   `json:"fingerprint"             db:"ignore"`
-	Status                api.ClusterStatus        `json:"status"`
-	UpdateStatus          *api.ClusterUpdateStatus `json:"update_status"           db:"ignore"`
-	ServerNames           []string                 `json:"server_names"            db:"ignore"`
-	ServerType            api.ServerType           `json:"server_type"             db:"ignore"`
-	ServicesConfig        map[string]any           `json:"services_config"         db:"ignore"`
-	ApplicationSeedConfig map[string]any           `json:"application_seed_config" db:"ignore"`
-	Channel               string                   `json:"channel"                 db:"join=channels.name"`
-	Description           string                   `json:"description"`
-	Properties            api.ConfigMap            `json:"properties"`
-	LastUpdated           time.Time                `json:"last_updated"            db:"update_timestamp"`
+	ID                    int64                   `json:"-"`
+	Name                  string                  `json:"name"                    db:"primary=yes"`
+	ConnectionURL         string                  `json:"connection_url"`
+	Certificate           *string                 `json:"certificate"`
+	Fingerprint           string                  `json:"fingerprint"             db:"ignore"`
+	Status                api.ClusterStatus       `json:"status"`
+	UpdateStatus          api.ClusterUpdateStatus `json:"update_status"`
+	ServerNames           []string                `json:"server_names"            db:"ignore"`
+	ServerType            api.ServerType          `json:"server_type"             db:"ignore"`
+	ServicesConfig        map[string]any          `json:"services_config"         db:"ignore"`
+	ApplicationSeedConfig map[string]any          `json:"application_seed_config" db:"ignore"`
+	Channel               string                  `json:"channel"                 db:"join=channels.name"`
+	Description           string                  `json:"description"`
+	Properties            api.ConfigMap           `json:"properties"`
+	LastUpdated           time.Time               `json:"last_updated"            db:"update_timestamp"`
 }
 
 const nameProhibitedCharacters = `\/:*?"<>|`
@@ -91,6 +91,10 @@ func (c Cluster) ValidateCreate() error {
 	}
 
 	return nil
+}
+
+func (c Cluster) IsUpdateInProgress() bool {
+	return c.UpdateStatus.InProgressStatus.InProgress != api.ClusterUpdateInProgressInactive
 }
 
 type Clusters []Cluster
