@@ -21,8 +21,6 @@ var (
 	UpdatesUpdateSignal   = signals.NewSync[api.SystemUpdates]()
 
 	ClusterUpdateSignal = signals.NewSync[ClusterUpdateMessage]()
-
-	ServerLifecycleSignal = signals.New[]()
 )
 
 type ClusterUpdateMessage struct {
