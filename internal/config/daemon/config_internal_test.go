@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -371,10 +372,10 @@ func Test_validate(t *testing.T) {
 			}
 
 			InitTest(t, env, nil)
-			UpdatesValidateSignal.AddListenerWithErr(func(ctx context.Context, su system.Updates) error {
+			lifecycle.UpdatesValidateSignal.AddListenerWithErr(func(ctx context.Context, su system.Updates) error {
 				return tc.updateValidateSignalListenerErr
 			}, tc.name)
-			defer UpdatesValidateSignal.RemoveListener(tc.name)
+			defer lifecycle.UpdatesValidateSignal.RemoveListener(tc.name)
 
 			if tc.oldCfg != nil {
 				err := UpdateNetwork(t.Context(), tc.oldCfg.Network.NetworkPut)
