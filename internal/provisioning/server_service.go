@@ -883,8 +883,11 @@ func (s *serverService) PollServers(ctx context.Context, serverFilter ServerFilt
 }
 
 func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, force bool) error {
+	var server *Server
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		server, err := s.GetByName(ctx, name)
+		var err error
+
+		server, err = s.GetByName(ctx, name)
 		if err != nil {
 			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 		}
@@ -920,12 +923,18 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, f
 		return err
 	}
 
+	server.signalLifecycleEvent(ctx)
+
 	return nil
 }
 
 func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, force bool) error {
+	var server *Server
+
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		server, err := s.GetByName(ctx, name)
+		var err error
+
+		server, err = s.GetByName(ctx, name)
 		if err != nil {
 			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 		}
@@ -953,12 +962,18 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 		return err
 	}
 
+	server.signalLifecycleEvent(ctx)
+
 	return nil
 }
 
 func (s *serverService) RebootSystemByName(ctx context.Context, name string, force bool) error {
+	var server *Server
+
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		server, err := s.GetByName(ctx, name)
+		var err error
+
+		server, err = s.GetByName(ctx, name)
 		if err != nil {
 			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 		}
@@ -986,12 +1001,18 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 		return err
 	}
 
+	server.signalLifecycleEvent(ctx)
+
 	return nil
 }
 
 func (s *serverService) RestoreSystemByName(ctx context.Context, name string, force bool) error {
+	var server *Server
+
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		server, err := s.GetByName(ctx, name)
+		var err error
+
+		server, err = s.GetByName(ctx, name)
 		if err != nil {
 			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 		}
@@ -1027,12 +1048,18 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, fo
 		return err
 	}
 
+	server.signalLifecycleEvent(ctx)
+
 	return nil
 }
 
 func (s *serverService) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error {
+	var server *Server
+
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		server, err := s.GetByName(ctx, name)
+		var err error
+
+		server, err = s.GetByName(ctx, name)
 		if err != nil {
 			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 		}
@@ -1078,6 +1105,8 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 	if err != nil {
 		return err
 	}
+
+	server.signalLifecycleEvent(ctx)
 
 	return nil
 }
@@ -1207,20 +1236,25 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 	log := slog.With(slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 
 	var err error
+	signalLifecycle := false
 
 	updatedServerCertificate, connTestErr := s.connectionTestWithCertificateUpdate(ctx, server, log)
 	if connTestErr != nil {
 		var retryableErr domain.ErrRetryable
 		if errors.As(connTestErr, &retryableErr) {
 			// Query the server again for updating in a transaction.
+			var updateServer *Server
+
 			err = transaction.Do(ctx, func(ctx context.Context) error {
-				server, err := s.repo.GetByName(ctx, server.Name)
+				var err error
+
+				updateServer, err = s.repo.GetByName(ctx, server.Name)
 				if err != nil {
 					return err
 				}
 
-				log = log.With(logger.Err(err), slog.Any("status", server.Status))
-				switch server.Status {
+				log = log.With(slog.Any("status", server.Status))
+				switch updateServer.Status {
 				case api.ServerStatusUnknown:
 					log.WarnContext(ctx, "Server connection test failed")
 
@@ -1232,16 +1266,18 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 				case api.ServerStatusReady:
 					log.WarnContext(ctx, "Server connection test failed")
 
-					server.Status = api.ServerStatusOffline
-					server.StatusDetail = api.ServerStatusDetailOfflineUnresponsive
-					err = s.repo.Update(ctx, *server)
+					updateServer.Status = api.ServerStatusOffline
+					updateServer.StatusDetail = api.ServerStatusDetailOfflineUnresponsive
+					err = s.repo.Update(ctx, *updateServer)
 					if err != nil {
 						return err
 					}
 
+					signalLifecycle = true
+
 				case api.ServerStatusOffline:
-					log = log.With(slog.Any("status_detail", server.StatusDetail))
-					switch server.StatusDetail {
+					log = log.With(slog.Any("status_detail", updateServer.StatusDetail))
+					switch updateServer.StatusDetail {
 					case api.ServerStatusDetailOfflineRebooting:
 						return fmt.Errorf("still rebooting: %w", connTestErr)
 
@@ -1257,6 +1293,10 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 			})
 			if err != nil {
 				return err
+			}
+
+			if signalLifecycle {
+				updateServer.signalLifecycleEvent(ctx)
 			}
 
 			return nil
@@ -1300,7 +1340,7 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 	// Perform the update of the server in a transaction in order to respect
 	// potential updates, that happened since we queried for the list of servers
 	// in pending state.
-	return transaction.Do(ctx, func(ctx context.Context) error {
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		server, err := s.repo.GetByName(ctx, server.Name)
 		if err != nil {
 			return err
@@ -1316,6 +1356,7 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 		// of reboot or reconfiguration.
 		if server.Status != api.ServerStatusReady {
 			server.StatusDetail = api.ServerStatusDetailNone
+			signalLifecycle = true
 		}
 
 		server.Status = api.ServerStatusReady
@@ -1342,6 +1383,15 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 
 		return s.repo.Update(ctx, *server)
 	})
+	if err != nil {
+		return err
+	}
+
+	if signalLifecycle {
+		server.signalLifecycleEvent(ctx)
+	}
+
+	return nil
 }
 
 func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context, server Server, log *slog.Logger) (updatedServerCertificate string, _ error) {

@@ -3098,6 +3098,629 @@ func TestClusterService_IsInstanceLifecycleOperationPermitted(t *testing.T) {
 	}
 }
 
+func TestClusterService_LaunchClusterUpdate(t *testing.T) {
+	tests := []struct {
+		name                            string
+		repoGetByName                   *provisioning.Cluster
+		repoGetByNameErr                error
+		repoUpdateErrs                  queue.Errs
+		tamperContext                   func(ctx context.Context, t *testing.T) context.Context
+		serverSvcPollServers            error
+		serverSvcGetAllWithFilter       []queue.Item[provisioning.Servers]
+		serverSvcUpdateSystemByNameErrs queue.Errs
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - server already up to date",
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// Update
+				{},
+				// GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "A",
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								OS: api.OSVersionData{
+									Version:          "1",
+									VersionNext:      "1",
+									AvailableVersion: ptr.To("1"),
+									NeedsReboot:      false,
+								},
+								NeedsUpdate:   ptr.To(false),
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - update servers",
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// Update
+				{},
+				// GetAllWithFilter, needs update
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "A",
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								OS: api.OSVersionData{
+									Version:          "1",
+									VersionNext:      "1",
+									AvailableVersion: ptr.To("2"),
+									NeedsReboot:      false,
+								},
+								Applications: []api.ApplicationVersionData{
+									{
+										Name:             "incus",
+										Version:          "1",
+										AvailableVersion: ptr.To("2"),
+										NeedsUpdate:      ptr.To(true),
+									},
+								},
+								NeedsUpdate:   ptr.To(true),
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+				// GetAllWithFilter, currently updating
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "A",
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailReadyUpdating,
+							VersionData: api.ServerVersionData{
+								OS: api.OSVersionData{
+									Version:          "1",
+									VersionNext:      "1",
+									AvailableVersion: ptr.To("2"),
+									NeedsReboot:      false,
+								},
+								Applications: []api.ApplicationVersionData{
+									{
+										Name:             "incus",
+										Version:          "1",
+										AvailableVersion: ptr.To("2"),
+										NeedsUpdate:      ptr.To(true),
+									},
+								},
+								NeedsUpdate:   ptr.To(true),
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+				// GetAllWithFilter, update done
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "A",
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								OS: api.OSVersionData{
+									Version:          "1",
+									VersionNext:      "2",
+									AvailableVersion: ptr.To("2"),
+									NeedsReboot:      true,
+								},
+								Applications: []api.ApplicationVersionData{
+									{
+										Name:             "incus",
+										Version:          "2",
+										AvailableVersion: ptr.To("2"),
+										NeedsUpdate:      ptr.To(false),
+									},
+								},
+								NeedsUpdate:   ptr.To(false),
+								NeedsReboot:   ptr.To(true),
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+
+		{
+			name: "error - GetByName",
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcPollServers: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - cluster update already in progress",
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressRollingRestart,
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+			},
+			serverSvcPollServers: boom.Error,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
+			name: "error - Update - apply update",
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// Update
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - context cancelled",
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// Update
+				{},
+			},
+			tamperContext: func(ctx context.Context, t *testing.T) context.Context {
+				t.Helper()
+
+				ctx, cancel := context.WithCancel(ctx)
+				cancel()
+
+				return ctx
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, context.Canceled, a...)
+			},
+		},
+		{
+			name: "error - serverSvc.PollServers",
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// Update
+				{},
+			},
+			serverSvcPollServers: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - serverSvc.GetAllWithFilter does not return any servers",
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// Update
+				{},
+				// GetAllWithFilter, needs update
+				{
+					Value: nil, // No servers found.
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotFound, a...)
+			},
+		},
+		{
+			name: "error - serverSvc.GetAllWithFilter",
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// Update
+				{},
+				// GetAllWithFilter, needs update
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - server not ready",
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// Update
+				{},
+				// GetAllWithFilter, needs update
+				{
+					Value: provisioning.Servers{
+						{
+							Name:   "A",
+							Status: api.ServerStatusOffline,
+							VersionData: api.ServerVersionData{
+								OS: api.OSVersionData{
+									Version:          "1",
+									VersionNext:      "1",
+									AvailableVersion: ptr.To("1"),
+									NeedsReboot:      false,
+								},
+								NeedsUpdate:   ptr.To(false),
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, `is in state`)
+			},
+		},
+		{
+			name: "error - server in maintenance",
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// Update
+				{},
+				// GetAllWithFilter, needs update
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "A",
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								OS: api.OSVersionData{
+									Version:          "1",
+									VersionNext:      "1",
+									AvailableVersion: ptr.To("1"),
+									NeedsReboot:      false,
+								},
+								NeedsUpdate:   ptr.To(false),
+								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, `is in maintenance state`)
+			},
+		},
+		{
+			name: "error - update servers - serverSvc.UpdateSystemByName",
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// Update
+				{},
+				// GetAllWithFilter, needs update
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "A",
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								OS: api.OSVersionData{
+									Version:          "1",
+									VersionNext:      "1",
+									AvailableVersion: ptr.To("2"),
+									NeedsReboot:      false,
+								},
+								NeedsUpdate:   ptr.To(true),
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+			serverSvcUpdateSystemByNameErrs: queue.Errs{
+				boom.Error,
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.Update - after update",
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// Update
+				{},
+				// GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "A",
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								OS: api.OSVersionData{
+									Version:          "1",
+									VersionNext:      "1",
+									AvailableVersion: ptr.To("1"),
+									NeedsReboot:      false,
+								},
+								NeedsUpdate:   ptr.To(false),
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+						},
+					},
+				},
+			},
+			repoUpdateErrs: queue.Errs{
+				nil,
+				boom.Error,
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	fixedTime := time.Date(2026, 3, 12, 8, 54, 35, 123, time.UTC)
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
+					require.Equal(t, fixedTime, cluster.UpdateStatus.InProgressStatus.LastUpdated)
+					require.True(t, cluster.IsUpdateInProgress())
+					return tc.repoUpdateErrs.PopOrNil(t)
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
+					return tc.serverSvcPollServers
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
+				},
+				UpdateSystemByNameFunc: func(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error {
+					return tc.serverSvcUpdateSystemByNameErrs.PopOrNil(t)
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil,
+				provisioning.WithClusterServiceNow(func() time.Time {
+					return fixedTime
+				}),
+				provisioning.WithClusterServicePendingUpdateRecheckInterval(0),
+			)
+
+			// Run test
+			ctx := t.Context()
+			if tc.tamperContext != nil {
+				ctx = tc.tamperContext(ctx, t)
+			}
+
+			err := clusterSvc.LaunchClusterUpdate(ctx, "one")
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestClusterService_AbortClusterUpdate(t *testing.T) {
+	tests := []struct {
+		name             string
+		repoGetByName    *provisioning.Cluster
+		repoGetByNameErr error
+		repoUpdateErr    error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:          "success",
+			repoGetByName: &provisioning.Cluster{},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:          "error - repo.GetByName",
+			repoGetByName: &provisioning.Cluster{},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	fixedTime := time.Date(2026, 3, 12, 8, 54, 35, 123, time.UTC)
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
+					require.Equal(t, fixedTime, cluster.UpdateStatus.InProgressStatus.LastUpdated)
+					require.False(t, cluster.IsUpdateInProgress())
+					return tc.repoUpdateErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil,
+				provisioning.WithClusterServiceNow(func() time.Time {
+					return fixedTime
+				}),
+			)
+
+			// Run test
+			err := clusterSvc.AbortClusterUpdate(t.Context(), "one")
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 	tests := []struct {
 		name                      string

@@ -1,12 +1,17 @@
 package provisioning
 
 import (
+	"context"
 	"crypto/x509"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -122,6 +127,27 @@ func (s Server) Validate() error {
 	}
 
 	return nil
+}
+
+func (s Server) UpdateState() api.ServerUpdateState {
+	return api.Server{
+		Cluster:      ptr.From(s.Cluster),
+		Status:       s.Status,
+		StatusDetail: s.StatusDetail,
+		VersionData:  s.VersionData,
+	}.UpdateState()
+}
+
+func (s Server) signalLifecycleEvent(ctx context.Context) {
+	slm := lifecycle.ServerLifecycleMessage{
+		Server:            s.Name,
+		Cluster:           s.Cluster,
+		ServerUpdateState: s.UpdateState(),
+	}
+	err := lifecycle.ServerLifecycleSignal.TryEmit(ctx, slm)
+	if err != nil {
+		slog.ErrorContext(ctx, "Signal lifecycle event failed", logger.Err(err), slog.Any("server_lifecycle_message", slm))
+	}
 }
 
 type Servers []Server
