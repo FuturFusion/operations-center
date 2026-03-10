@@ -6,6 +6,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Prevent functions from being seen as unused.
+var _ = runWithTimeout
+
 func Test_cmd(t *testing.T) {
 	tests := []struct {
 		name string

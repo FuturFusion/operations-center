@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net"
 	"os"
 	"os/exec"
 	"regexp"
@@ -574,6 +575,27 @@ func mustWaitInventoryReady(t *testing.T, names []string) {
 
 	err := errgrp.Wait()
 	require.NoError(t, err, "Failed to create IncusOS VMs for e2e test")
+}
+
+func waitForTCPPort(ctx context.Context, t *testing.T, hostPort string, interval time.Duration) error {
+	t.Helper()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timeout reached while waiting for %s: %w", hostPort, ctx.Err())
+
+		default:
+			conn, err := net.DialTimeout("tcp", hostPort, interval)
+			if err == nil {
+				_ = conn.Close()
+
+				return nil
+			}
+
+			time.Sleep(interval)
+		}
+	}
 }
 
 // fmtRunErr takes the cmdResponse and the error of a run function
