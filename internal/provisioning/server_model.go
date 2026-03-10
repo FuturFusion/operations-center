@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -122,6 +123,15 @@ func (s Server) Validate() error {
 	}
 
 	return nil
+}
+
+func (s Server) UpdateState() api.ServerUpdateState {
+	return api.Server{
+		Cluster:      ptr.From(s.Cluster),
+		Status:       s.Status,
+		StatusDetail: s.StatusDetail,
+		VersionData:  s.VersionData,
+	}.UpdateState()
 }
 
 type Servers []Server

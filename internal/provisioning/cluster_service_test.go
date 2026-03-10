@@ -3098,6 +3098,67 @@ func TestClusterService_IsInstanceLifecycleOperationPermitted(t *testing.T) {
 	}
 }
 
+func TestClusterService_AbortClusterUpdate(t *testing.T) {
+	tests := []struct {
+		name             string
+		repoGetByName    *provisioning.Cluster
+		repoGetByNameErr error
+		repoUpdateErr    error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:          "success",
+			repoGetByName: &provisioning.Cluster{},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:          "error - repo.GetByName",
+			repoGetByName: &provisioning.Cluster{},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	fixedTime := time.Date(2026, 3, 12, 8, 54, 35, 123, time.UTC)
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
+					require.Equal(t, fixedTime, cluster.UpdateStatus.InProgressStatus.LastUpdated)
+					require.False(t, cluster.IsUpdateInProgress())
+					return tc.repoUpdateErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil,
+				provisioning.WithClusterServiceNow(func() time.Time {
+					return fixedTime
+				}),
+			)
+
+			// Run test
+			err := clusterSvc.AbortClusterUpdate(t.Context(), "one")
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 	tests := []struct {
 		name                      string

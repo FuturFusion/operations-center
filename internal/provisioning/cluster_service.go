@@ -43,8 +43,12 @@ type clusterService struct {
 	createClusterRetries      int
 	createClusterRetryTimeout time.Duration
 
+	now func() time.Time
+
 	lifecycleEventHandlerBackoffStart time.Duration
 	lifecycleEventHandlerBackoffLimit time.Duration
+
+	clusterUpdatePendingUpdateRecheckInterval time.Duration
 }
 
 var _ ClusterService = &clusterService{}
@@ -57,6 +61,17 @@ func WithClusterServiceCreateClusterRetryTimeout(timeout time.Duration) ClusterS
 	}
 }
 
+func WithClusterServiceNow(nowFunc func() time.Time) ClusterServiceOption {
+	return func(s *clusterService) {
+		s.now = nowFunc
+	}
+}
+
+func WithClusterServicePendingUpdateRecheckInterval(d time.Duration) ClusterServiceOption {
+	return func(s *clusterService) {
+		s.clusterUpdatePendingUpdateRecheckInterval = d
+	}
+}
 
 func NewClusterService(
 	repo ClusterRepo,
@@ -80,13 +95,24 @@ func NewClusterService(
 		createClusterRetries:      6,
 		createClusterRetryTimeout: 200 * time.Millisecond,
 
+		now: time.Now,
+
 		lifecycleEventHandlerBackoffStart: 200 * time.Millisecond,
 		lifecycleEventHandlerBackoffLimit: 60 * time.Second,
+
+		clusterUpdatePendingUpdateRecheckInterval: 60 * time.Second,
 	}
 
 	for _, opt := range opts {
 		opt(clusterSvc)
 	}
+
+	// lifecycle.ServerLifecycleSignal.AddListener(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) {
+	// 	err := clusterSvc.handleServerUpdateEvent(ctx, slm)
+	// 	if err != nil {
+	// 		slog.ErrorContext(ctx, "Failed to handle server lifecycle event: %w", logger.Err(err), slog.String("server", slm.Server), slog.String("cluster", slm.Cluster), slog.String("update-state", slm.ServerUpdateState.String()))
+	// 	}
+	// })
 
 	return clusterSvc
 }
@@ -168,7 +194,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 			}
 
 			if ptr.From(server.VersionData.NeedsUpdate) || ptr.From(server.VersionData.NeedsReboot) || ptr.From(server.VersionData.InMaintenance) != api.NotInMaintenance {
-				return fmt.Errorf("Server %q not ready to be clustered (needs update: %t, needs reboot: %t, in maintenance: %v): %w", server.Name, ptr.From(server.VersionData.NeedsUpdate), ptr.From(server.VersionData.NeedsReboot), ptr.From(server.VersionData.InMaintenance), domain.ErrOperationNotPermitted)
+				return fmt.Errorf("Server %q not ready to be clustered (needs update: %t, needs reboot: %t, in maintenance: %v): %w", server.Name, ptr.From(server.VersionData.NeedsUpdate), ptr.From(server.VersionData.NeedsReboot), server.VersionData.InMaintenance.String(), domain.ErrOperationNotPermitted)
 			}
 
 			servers = append(servers, *server)
@@ -645,6 +671,10 @@ func (s clusterService) getClusterUpdateStatus(ctx context.Context, name string,
 		}
 	}
 
+	if clusterUpdateStatus.InProgressStatus.InProgress {
+		clusterUpdateStatus.InProgressStatus.StatusDescription = ptr.To(clusterUpdateState(servers))
+	}
+
 	return nil
 }
 
@@ -918,6 +948,392 @@ func (s clusterService) IsInstanceLifecycleOperationPermitted(ctx context.Contex
 	}
 
 	return !cluster.IsUpdateInProgress()
+}
+
+func (s clusterService) LaunchClusterUpdate(ctx context.Context, name string) error {
+	// Check, that no update is in progress for this cluster and set cluster
+	// update status to "in progress".
+	var cluster *Cluster
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+
+		cluster, err = s.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get cluster %q: %w", name, err)
+		}
+
+		if cluster.IsUpdateInProgress() {
+			return fmt.Errorf("Update for cluster %q already in progress: %w", name, domain.ErrOperationNotPermitted)
+		}
+
+		cluster.UpdateStatus.InProgressStatus.InProgress = true
+		cluster.UpdateStatus.InProgressStatus.LastUpdated = s.now()
+
+		err = s.Update(ctx, *cluster)
+		if err != nil {
+			return fmt.Errorf("Failed to update cluster %q: %w", name, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	var allEqual bool
+	var servers Servers
+	for {
+		if ctx.Err() != nil {
+			return fmt.Errorf("Failed to update servers: %w", ctx.Err())
+		}
+
+		// Refresh all status information for all servers.
+		err = s.serverSvc.PollServers(ctx, ServerFilter{
+			Cluster: ptr.To(name),
+		}, true)
+		if err != nil {
+			return fmt.Errorf("Failed to refresh server state information for cluster %q: %w", name, err)
+		}
+
+		// Make sure, cluster is ready for a rolling update. This is the case if:
+		//   * All servers are in ready state with no update currently running.
+		//   * None of the servers is in maintenance.
+		servers, err = s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+			Cluster: ptr.To(name),
+		})
+		if err == nil && len(servers) == 0 {
+			err = domain.ErrNotFound
+		}
+
+		if err != nil {
+			return fmt.Errorf("Failed to get server details for cluster %q: %w", name, err)
+		}
+
+		for _, server := range servers {
+			if server.Status != api.ServerStatusReady {
+				return fmt.Errorf("Cluster update can not be launched for %q: Server %q (%s) is in state %q (%s)", name, server.Name, server.ConnectionURL, server.Status, server.StatusDetail)
+			}
+
+			if server.VersionData.InMaintenance == nil || *server.VersionData.InMaintenance != api.NotInMaintenance {
+				return fmt.Errorf("Cluster update can not be launched for %q: Server %q (%s) is in maintenance state %q", name, server.Name, server.ConnectionURL, server.VersionData.InMaintenance.String())
+			}
+		}
+
+		// Trigger update on each server, applications get updated immediately,
+		// OS is prepared for update on next reboot.
+		// Also verify, that none of the servers is still updating or has pending
+		// updates for the applications and the next OS.
+		allEqual = true
+		for _, server := range servers {
+			if !ptr.From(server.VersionData.NeedsUpdate) {
+				continue
+			}
+
+			allEqual = false
+
+			if server.StatusDetail == api.ServerStatusDetailReadyUpdating {
+				allEqual = false
+				continue
+			}
+
+			applicationUpdate := make([]api.ServerUpdateApplication, 0, len(server.VersionData.Applications))
+			for _, app := range server.VersionData.Applications {
+				if ptr.From(app.NeedsUpdate) {
+					applicationUpdate = append(applicationUpdate, api.ServerUpdateApplication{
+						Name:          app.Name,
+						TriggerUpdate: true,
+					})
+				}
+			}
+
+			err = s.serverSvc.UpdateSystemByName(ctx, server.Name, api.ServerUpdatePost{
+				OS: api.ServerUpdateApplication{
+					Name:          "os",
+					TriggerUpdate: true,
+				},
+				Applications: applicationUpdate,
+			}, true)
+			if err != nil {
+				return fmt.Errorf("Failed to trigger server update on %q (%s): %w", server.Name, server.ConnectionURL, err)
+			}
+		}
+
+		if allEqual {
+			break
+		}
+
+		time.Sleep(s.clusterUpdatePendingUpdateRecheckInterval)
+	}
+
+	if !allEqual {
+		return fmt.Errorf("Failed to get cluster %q into consistent state for update", name)
+	}
+
+	// Set target version for cluster update.
+	cluster.UpdateStatus.InProgressStatus = api.ClusterUpdateInProgressStatus{
+		InProgress:    true,
+		TargetVersion: *servers[0].VersionData.OS.AvailableVersion,
+		LastUpdated:   s.now(),
+	}
+
+	err = s.repo.Update(ctx, *cluster)
+	if err != nil {
+		return fmt.Errorf("Failed to update cluster %q: %w", cluster.Name, err)
+	}
+
+	return nil
+}
+
+func (s clusterService) ClusterUpdateControlLoop(ctx context.Context) error {
+	clusters, err := s.GetAllWithFilter(ctx, ClusterFilter{
+		Expression: ptr.To("update_status.in_progress_status.in_progress"),
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to get clusters for update control loop: %w", err)
+	}
+
+	var errs []error
+	for _, cluster := range clusters {
+		// Refresh all status information for all servers.
+		err = s.serverSvc.PollServers(ctx, ServerFilter{
+			Cluster: &cluster.Name,
+		}, true)
+		if err != nil {
+			var retryableErr domain.ErrRetryable
+			if !errors.As(err, &retryableErr) {
+				return fmt.Errorf("Failed to refresh server state information for cluster %q: %w", cluster.Name, err)
+			}
+		}
+
+		// Get updated server state information.
+		servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+			Cluster: &cluster.Name,
+		})
+		if err == nil && len(servers) == 0 {
+			err = domain.ErrNotFound
+		}
+
+		if err != nil {
+			return fmt.Errorf("Failed to get server details for cluster %q: %w", cluster.Name, err)
+		}
+
+		err = s.executeRollingUpdateNextStep(ctx, cluster, servers)
+		if err != nil {
+			var retryableErr domain.ErrRetryable
+			if errors.Is(err, &retryableErr) {
+				slog.WarnContext(ctx, "Execution of rolling update next step failed for cluster %q with retryable error: %w", cluster.Name, err)
+				continue
+			}
+
+			errs = append(errs, fmt.Errorf("Failed to execute next step for rolling update of cluster %q: %w", cluster.Name, err))
+			continue
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+func (s clusterService) executeRollingUpdateNextStep(ctx context.Context, cluster Cluster, servers Servers) error {
+	// Calculate, if we are done based on the current state of all servers and the desired target state and
+	// calculate next action if we are not done yet.
+	var err error
+	var nextAction func(context.Context) error
+
+	for _, server := range servers {
+		if nextAction == nil {
+			switch server.UpdateState() {
+			case api.ServerUpdateStateUndefined:
+				return fmt.Errorf("Server update state for %q (%s) is undefined", server.Name, server.ConnectionURL)
+
+			case api.ServerUpdateStateUpToDate:
+				continue
+
+			case api.ServerUpdateStateUpdatePending:
+				return fmt.Errorf("Server %q has a pending update while a cluster wide rolling reboot cycle is ongoing", server.Name)
+
+			case api.ServerUpdateStateUpdating:
+				return fmt.Errorf("Server %q is updating while a cluster wide rolling reboot cycle is ongoing", server.Name)
+
+			case api.ServerUpdateStateEvacuationPending:
+				nextAction = func(ctx context.Context) error {
+					return s.serverSvc.EvacuateSystemByName(ctx, server.Name, true)
+				}
+
+			case api.ServerUpdateStateEvacuating:
+				nextAction = func(ctx context.Context) error {
+					return nil
+				}
+
+			case api.ServerUpdateStateInMaintenanceRebootPending:
+				nextAction = func(ctx context.Context) error {
+					return s.serverSvc.RebootSystemByName(ctx, server.Name, true)
+				}
+
+			case api.ServerUpdateStateInMaintenanceRebooting:
+				nextAction = func(ctx context.Context) error {
+					return nil
+				}
+
+			case api.ServerUpdateStateInMaintenanceRestorePending:
+				nextAction = func(ctx context.Context) error {
+					return s.serverSvc.RestoreSystemByName(ctx, server.Name, true)
+				}
+
+			case api.ServerUpdateStateInMaintenanceRestoring:
+				nextAction = func(ctx context.Context) error {
+					return nil
+				}
+
+			default:
+				return fmt.Errorf("Server update state %q for %q (%s) is not supported", server.UpdateState(), server.Name, server.ConnectionURL)
+			}
+
+			continue
+		}
+
+		// We know the next action so we need to determine, if we are allowed
+		// to perform this action as well as the number of steps, that are pending.
+		switch server.UpdateState() {
+		case api.ServerUpdateStateUpToDate,
+			api.ServerUpdateStateEvacuationPending:
+			continue
+
+		case api.ServerUpdateStateUndefined:
+			return fmt.Errorf("Rolling update blocked, server %q (%s) is in unknown state", server.Name, server.ConnectionURL)
+
+		case api.ServerUpdateStateUpdatePending:
+			return fmt.Errorf("Server %q has a pending update while a cluster wide rolling reboot cycle is ongoing", server.Name)
+
+		case api.ServerUpdateStateUpdating:
+			return fmt.Errorf("Server %q is updating while a cluster wide rolling reboot cycle is ongoing", server.Name)
+
+		case api.ServerUpdateStateEvacuating,
+			api.ServerUpdateStateInMaintenanceRebootPending,
+			api.ServerUpdateStateInMaintenanceRebooting,
+			api.ServerUpdateStateInMaintenanceRestorePending,
+			api.ServerUpdateStateInMaintenanceRestoring,
+			api.ServerUpdateStateRebootPending,
+			api.ServerUpdateStateRebooting:
+
+			return fmt.Errorf("Rolling update blocked, out of order update for server %q (%s) is ongoing, state %v", server.Name, server.ConnectionURL, server.UpdateState())
+		}
+	}
+
+	done := nextAction == nil
+	if !done {
+		// Trigger next update action on the target server
+		err = nextAction(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to trigger next action for rolling update of cluster %q: %w", cluster.Name, err)
+		}
+	}
+
+	// Update the cluster update status in the DB, if we are done with the update.
+	if nextAction == nil {
+		err = transaction.Do(ctx, func(ctx context.Context) error {
+			updateCluster, err := s.repo.GetByName(ctx, cluster.Name)
+			if err != nil {
+				return fmt.Errorf("Failed to get cluster %q: %w", cluster.Name, err)
+			}
+
+			updateCluster.UpdateStatus.InProgressStatus = api.ClusterUpdateInProgressStatus{
+				LastUpdated: s.now(),
+			}
+
+			err = s.repo.Update(ctx, *updateCluster)
+			if err != nil {
+				return fmt.Errorf("Failed to update cluster %q: %w", cluster.Name, err)
+			}
+
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	updateState := clusterUpdateState(servers)
+	if updateState != "" {
+		slog.DebugContext(ctx, updateState)
+	}
+
+	return nil
+}
+
+func clusterUpdateState(servers Servers) string {
+	totalSteps := 0
+	pendingSteps := 0
+	currentStep := ""
+	currentServer := ""
+
+	for _, server := range servers {
+		totalSteps += 6
+
+		switch server.UpdateState() {
+		case api.ServerUpdateStateEvacuationPending:
+			pendingSteps += 6
+			if currentServer == "" {
+				currentStep = server.UpdateState().String()
+				currentServer = server.Name
+			}
+
+		case api.ServerUpdateStateEvacuating:
+			pendingSteps += 5
+			currentStep = server.UpdateState().String()
+			currentServer = server.Name
+
+		case api.ServerUpdateStateInMaintenanceRebootPending:
+			pendingSteps += 4
+			currentStep = server.UpdateState().String()
+			currentServer = server.Name
+
+		case api.ServerUpdateStateInMaintenanceRebooting:
+			pendingSteps += 3
+			currentStep = server.UpdateState().String()
+			currentServer = server.Name
+
+		case api.ServerUpdateStateInMaintenanceRestorePending:
+			pendingSteps += 2
+			currentStep = server.UpdateState().String()
+			currentServer = server.Name
+
+		case api.ServerUpdateStateInMaintenanceRestoring:
+			pendingSteps += 1
+			currentStep = server.UpdateState().String()
+			currentServer = server.Name
+		}
+	}
+
+	if pendingSteps > 0 {
+		return fmt.Sprintf("[%d/%d] %s server %q", totalSteps-pendingSteps+1, totalSteps, currentStep, currentServer)
+	}
+
+	return ""
+}
+
+func (s clusterService) AbortClusterUpdate(ctx context.Context, name string) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		cluster, err := s.repo.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get cluster %q: %w", name, err)
+		}
+
+		cluster.UpdateStatus.InProgressStatus = api.ClusterUpdateInProgressStatus{
+			LastUpdated: s.now(),
+		}
+
+		err = s.repo.Update(ctx, *cluster)
+		if err != nil {
+			return fmt.Errorf("Failed to update cluster %q: %w", name, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s clusterService) AddServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
