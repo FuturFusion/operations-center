@@ -14,6 +14,7 @@ import (
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/system"
 	"github.com/FuturFusion/operations-center/internal/system/mock"
@@ -428,14 +429,14 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			tc.setupEnv(t, env.VarDir())
 
 			listenerID := uuid.New()
-			config.ServerCertificateUpdateSignal.AddListener(func(ctx context.Context, cert tls.Certificate) {
+			lifecycle.ServerCertificateUpdateSignal.AddListener(func(ctx context.Context, cert tls.Certificate) {
 				wantCertificateFingerprint, _ := queue.Pop(t, &tc.wantServerCertificateUpdateEmit)
 
 				certFingerprint := incustls.CertFingerprint(cert.Leaf)
 				require.Equal(t, wantCertificateFingerprint, certFingerprint)
 			}, listenerID.String())
 			t.Cleanup(func() {
-				config.ServerCertificateUpdateSignal.RemoveListener(listenerID.String())
+				lifecycle.ServerCertificateUpdateSignal.RemoveListener(listenerID.String())
 			})
 
 			serverSvc := &mock.ProvisioningServerServiceMock{
