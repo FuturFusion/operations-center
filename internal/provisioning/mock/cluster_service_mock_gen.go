@@ -25,6 +25,9 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //
 //		// make and configure a mocked provisioning.ClusterService
 //		mockedClusterService := &ClusterServiceMock{
+//			AbortClusterUpdateFunc: func(ctx context.Context, name string) error {
+//				panic("mock out the AbortClusterUpdate method")
+//			},
 //			AddApplicationFunc: func(ctx context.Context, clusterName string, applicationName string) error {
 //				panic("mock out the AddApplication method")
 //			},
@@ -39,6 +42,9 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			},
 //			AddStorageTargetNVMEFunc: func(ctx context.Context, clusterName string, target api.ServiceNVMETarget) error {
 //				panic("mock out the AddStorageTargetNVME method")
+//			},
+//			ClusterUpdateControlLoopFunc: func(ctx context.Context, clusterNameFilter *string) error {
+//				panic("mock out the ClusterUpdateControlLoop method")
 //			},
 //			CreateFunc: func(ctx context.Context, cluster provisioning.Cluster) (provisioning.Cluster, error) {
 //				panic("mock out the Create method")
@@ -81,6 +87,12 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			},
 //			GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
 //				panic("mock out the GetEndpoint method")
+//			},
+//			IsInstanceLifecycleOperationPermittedFunc: func(ctx context.Context, name string) bool {
+//				panic("mock out the IsInstanceLifecycleOperationPermitted method")
+//			},
+//			LaunchClusterUpdateFunc: func(ctx context.Context, name string) error {
+//				panic("mock out the LaunchClusterUpdate method")
 //			},
 //			RemoveServerSystemNetworkVLANTagsFunc: func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error {
 //				panic("mock out the RemoveServerSystemNetworkVLANTags method")
@@ -128,6 +140,9 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //
 //	}
 type ClusterServiceMock struct {
+	// AbortClusterUpdateFunc mocks the AbortClusterUpdate method.
+	AbortClusterUpdateFunc func(ctx context.Context, name string) error
+
 	// AddApplicationFunc mocks the AddApplication method.
 	AddApplicationFunc func(ctx context.Context, clusterName string, applicationName string) error
 
@@ -142,6 +157,9 @@ type ClusterServiceMock struct {
 
 	// AddStorageTargetNVMEFunc mocks the AddStorageTargetNVME method.
 	AddStorageTargetNVMEFunc func(ctx context.Context, clusterName string, target api.ServiceNVMETarget) error
+
+	// ClusterUpdateControlLoopFunc mocks the ClusterUpdateControlLoop method.
+	ClusterUpdateControlLoopFunc func(ctx context.Context, clusterNameFilter *string) error
 
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, cluster provisioning.Cluster) (provisioning.Cluster, error)
@@ -185,6 +203,12 @@ type ClusterServiceMock struct {
 	// GetEndpointFunc mocks the GetEndpoint method.
 	GetEndpointFunc func(ctx context.Context, name string) (provisioning.Endpoint, error)
 
+	// IsInstanceLifecycleOperationPermittedFunc mocks the IsInstanceLifecycleOperationPermitted method.
+	IsInstanceLifecycleOperationPermittedFunc func(ctx context.Context, name string) bool
+
+	// LaunchClusterUpdateFunc mocks the LaunchClusterUpdate method.
+	LaunchClusterUpdateFunc func(ctx context.Context, name string) error
+
 	// RemoveServerSystemNetworkVLANTagsFunc mocks the RemoveServerSystemNetworkVLANTags method.
 	RemoveServerSystemNetworkVLANTagsFunc func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error
 
@@ -226,6 +250,13 @@ type ClusterServiceMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// AbortClusterUpdate holds details about calls to the AbortClusterUpdate method.
+		AbortClusterUpdate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
 		// AddApplication holds details about calls to the AddApplication method.
 		AddApplication []struct {
 			// Ctx is the ctx argument value.
@@ -272,6 +303,13 @@ type ClusterServiceMock struct {
 			ClusterName string
 			// Target is the target argument value.
 			Target api.ServiceNVMETarget
+		}
+		// ClusterUpdateControlLoop holds details about calls to the ClusterUpdateControlLoop method.
+		ClusterUpdateControlLoop []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterNameFilter is the clusterNameFilter argument value.
+			ClusterNameFilter *string
 		}
 		// Create holds details about calls to the Create method.
 		Create []struct {
@@ -383,6 +421,20 @@ type ClusterServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// IsInstanceLifecycleOperationPermitted holds details about calls to the IsInstanceLifecycleOperationPermitted method.
+		IsInstanceLifecycleOperationPermitted []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
+		// LaunchClusterUpdate holds details about calls to the LaunchClusterUpdate method.
+		LaunchClusterUpdate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
 		// RemoveServerSystemNetworkVLANTags holds details about calls to the RemoveServerSystemNetworkVLANTags method.
 		RemoveServerSystemNetworkVLANTags []struct {
 			// Ctx is the ctx argument value.
@@ -489,38 +541,78 @@ type ClusterServiceMock struct {
 			LoggingConfig provisioning.ServerSystemLogging
 		}
 	}
-	lockAddApplication                    sync.RWMutex
-	lockAddServerSystemNetworkVLANTags    sync.RWMutex
-	lockAddStorageTargetISCSI             sync.RWMutex
-	lockAddStorageTargetMultipath         sync.RWMutex
-	lockAddStorageTargetNVME              sync.RWMutex
-	lockCreate                            sync.RWMutex
-	lockDeleteAndFactoryResetByName       sync.RWMutex
-	lockDeleteByName                      sync.RWMutex
-	lockGetAll                            sync.RWMutex
-	lockGetAllNames                       sync.RWMutex
-	lockGetAllNamesWithFilter             sync.RWMutex
-	lockGetAllWithFilter                  sync.RWMutex
-	lockGetByName                         sync.RWMutex
-	lockGetClusterArtifactAll             sync.RWMutex
-	lockGetClusterArtifactAllNames        sync.RWMutex
-	lockGetClusterArtifactArchiveByName   sync.RWMutex
-	lockGetClusterArtifactByName          sync.RWMutex
-	lockGetClusterArtifactFileByName      sync.RWMutex
-	lockGetEndpoint                       sync.RWMutex
-	lockRemoveServerSystemNetworkVLANTags sync.RWMutex
-	lockRemoveStorageTargetISCSI          sync.RWMutex
-	lockRemoveStorageTargetMultipath      sync.RWMutex
-	lockRemoveStorageTargetNVME           sync.RWMutex
-	lockRename                            sync.RWMutex
-	lockResyncInventory                   sync.RWMutex
-	lockResyncInventoryByName             sync.RWMutex
-	lockSetInventorySyncers               sync.RWMutex
-	lockStartLifecycleEventsMonitor       sync.RWMutex
-	lockUpdate                            sync.RWMutex
-	lockUpdateCertificate                 sync.RWMutex
-	lockUpdateSystemKernel                sync.RWMutex
-	lockUpdateSystemLogging               sync.RWMutex
+	lockAbortClusterUpdate                    sync.RWMutex
+	lockAddApplication                        sync.RWMutex
+	lockAddServerSystemNetworkVLANTags        sync.RWMutex
+	lockAddStorageTargetISCSI                 sync.RWMutex
+	lockAddStorageTargetMultipath             sync.RWMutex
+	lockAddStorageTargetNVME                  sync.RWMutex
+	lockClusterUpdateControlLoop              sync.RWMutex
+	lockCreate                                sync.RWMutex
+	lockDeleteAndFactoryResetByName           sync.RWMutex
+	lockDeleteByName                          sync.RWMutex
+	lockGetAll                                sync.RWMutex
+	lockGetAllNames                           sync.RWMutex
+	lockGetAllNamesWithFilter                 sync.RWMutex
+	lockGetAllWithFilter                      sync.RWMutex
+	lockGetByName                             sync.RWMutex
+	lockGetClusterArtifactAll                 sync.RWMutex
+	lockGetClusterArtifactAllNames            sync.RWMutex
+	lockGetClusterArtifactArchiveByName       sync.RWMutex
+	lockGetClusterArtifactByName              sync.RWMutex
+	lockGetClusterArtifactFileByName          sync.RWMutex
+	lockGetEndpoint                           sync.RWMutex
+	lockIsInstanceLifecycleOperationPermitted sync.RWMutex
+	lockLaunchClusterUpdate                   sync.RWMutex
+	lockRemoveServerSystemNetworkVLANTags     sync.RWMutex
+	lockRemoveStorageTargetISCSI              sync.RWMutex
+	lockRemoveStorageTargetMultipath          sync.RWMutex
+	lockRemoveStorageTargetNVME               sync.RWMutex
+	lockRename                                sync.RWMutex
+	lockResyncInventory                       sync.RWMutex
+	lockResyncInventoryByName                 sync.RWMutex
+	lockSetInventorySyncers                   sync.RWMutex
+	lockStartLifecycleEventsMonitor           sync.RWMutex
+	lockUpdate                                sync.RWMutex
+	lockUpdateCertificate                     sync.RWMutex
+	lockUpdateSystemKernel                    sync.RWMutex
+	lockUpdateSystemLogging                   sync.RWMutex
+}
+
+// AbortClusterUpdate calls AbortClusterUpdateFunc.
+func (mock *ClusterServiceMock) AbortClusterUpdate(ctx context.Context, name string) error {
+	if mock.AbortClusterUpdateFunc == nil {
+		panic("ClusterServiceMock.AbortClusterUpdateFunc: method is nil but ClusterService.AbortClusterUpdate was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockAbortClusterUpdate.Lock()
+	mock.calls.AbortClusterUpdate = append(mock.calls.AbortClusterUpdate, callInfo)
+	mock.lockAbortClusterUpdate.Unlock()
+	return mock.AbortClusterUpdateFunc(ctx, name)
+}
+
+// AbortClusterUpdateCalls gets all the calls that were made to AbortClusterUpdate.
+// Check the length with:
+//
+//	len(mockedClusterService.AbortClusterUpdateCalls())
+func (mock *ClusterServiceMock) AbortClusterUpdateCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockAbortClusterUpdate.RLock()
+	calls = mock.calls.AbortClusterUpdate
+	mock.lockAbortClusterUpdate.RUnlock()
+	return calls
 }
 
 // AddApplication calls AddApplicationFunc.
@@ -724,6 +816,42 @@ func (mock *ClusterServiceMock) AddStorageTargetNVMECalls() []struct {
 	mock.lockAddStorageTargetNVME.RLock()
 	calls = mock.calls.AddStorageTargetNVME
 	mock.lockAddStorageTargetNVME.RUnlock()
+	return calls
+}
+
+// ClusterUpdateControlLoop calls ClusterUpdateControlLoopFunc.
+func (mock *ClusterServiceMock) ClusterUpdateControlLoop(ctx context.Context, clusterNameFilter *string) error {
+	if mock.ClusterUpdateControlLoopFunc == nil {
+		panic("ClusterServiceMock.ClusterUpdateControlLoopFunc: method is nil but ClusterService.ClusterUpdateControlLoop was just called")
+	}
+	callInfo := struct {
+		Ctx               context.Context
+		ClusterNameFilter *string
+	}{
+		Ctx:               ctx,
+		ClusterNameFilter: clusterNameFilter,
+	}
+	mock.lockClusterUpdateControlLoop.Lock()
+	mock.calls.ClusterUpdateControlLoop = append(mock.calls.ClusterUpdateControlLoop, callInfo)
+	mock.lockClusterUpdateControlLoop.Unlock()
+	return mock.ClusterUpdateControlLoopFunc(ctx, clusterNameFilter)
+}
+
+// ClusterUpdateControlLoopCalls gets all the calls that were made to ClusterUpdateControlLoop.
+// Check the length with:
+//
+//	len(mockedClusterService.ClusterUpdateControlLoopCalls())
+func (mock *ClusterServiceMock) ClusterUpdateControlLoopCalls() []struct {
+	Ctx               context.Context
+	ClusterNameFilter *string
+} {
+	var calls []struct {
+		Ctx               context.Context
+		ClusterNameFilter *string
+	}
+	mock.lockClusterUpdateControlLoop.RLock()
+	calls = mock.calls.ClusterUpdateControlLoop
+	mock.lockClusterUpdateControlLoop.RUnlock()
 	return calls
 }
 
@@ -1252,6 +1380,78 @@ func (mock *ClusterServiceMock) GetEndpointCalls() []struct {
 	mock.lockGetEndpoint.RLock()
 	calls = mock.calls.GetEndpoint
 	mock.lockGetEndpoint.RUnlock()
+	return calls
+}
+
+// IsInstanceLifecycleOperationPermitted calls IsInstanceLifecycleOperationPermittedFunc.
+func (mock *ClusterServiceMock) IsInstanceLifecycleOperationPermitted(ctx context.Context, name string) bool {
+	if mock.IsInstanceLifecycleOperationPermittedFunc == nil {
+		panic("ClusterServiceMock.IsInstanceLifecycleOperationPermittedFunc: method is nil but ClusterService.IsInstanceLifecycleOperationPermitted was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockIsInstanceLifecycleOperationPermitted.Lock()
+	mock.calls.IsInstanceLifecycleOperationPermitted = append(mock.calls.IsInstanceLifecycleOperationPermitted, callInfo)
+	mock.lockIsInstanceLifecycleOperationPermitted.Unlock()
+	return mock.IsInstanceLifecycleOperationPermittedFunc(ctx, name)
+}
+
+// IsInstanceLifecycleOperationPermittedCalls gets all the calls that were made to IsInstanceLifecycleOperationPermitted.
+// Check the length with:
+//
+//	len(mockedClusterService.IsInstanceLifecycleOperationPermittedCalls())
+func (mock *ClusterServiceMock) IsInstanceLifecycleOperationPermittedCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockIsInstanceLifecycleOperationPermitted.RLock()
+	calls = mock.calls.IsInstanceLifecycleOperationPermitted
+	mock.lockIsInstanceLifecycleOperationPermitted.RUnlock()
+	return calls
+}
+
+// LaunchClusterUpdate calls LaunchClusterUpdateFunc.
+func (mock *ClusterServiceMock) LaunchClusterUpdate(ctx context.Context, name string) error {
+	if mock.LaunchClusterUpdateFunc == nil {
+		panic("ClusterServiceMock.LaunchClusterUpdateFunc: method is nil but ClusterService.LaunchClusterUpdate was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockLaunchClusterUpdate.Lock()
+	mock.calls.LaunchClusterUpdate = append(mock.calls.LaunchClusterUpdate, callInfo)
+	mock.lockLaunchClusterUpdate.Unlock()
+	return mock.LaunchClusterUpdateFunc(ctx, name)
+}
+
+// LaunchClusterUpdateCalls gets all the calls that were made to LaunchClusterUpdate.
+// Check the length with:
+//
+//	len(mockedClusterService.LaunchClusterUpdateCalls())
+func (mock *ClusterServiceMock) LaunchClusterUpdateCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockLaunchClusterUpdate.RLock()
+	calls = mock.calls.LaunchClusterUpdate
+	mock.lockLaunchClusterUpdate.RUnlock()
 	return calls
 }
 
