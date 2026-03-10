@@ -41,6 +41,20 @@ func NewClusterServiceWithPrometheus(base provisioning.ClusterService, instanceN
 	}
 }
 
+// AbortClusterUpdate implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) AbortClusterUpdate(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AbortClusterUpdate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.AbortClusterUpdate(ctx, name)
+}
+
 // AddApplication implements provisioning.ClusterService.
 func (_d ClusterServiceWithPrometheus) AddApplication(ctx context.Context, clusterName string, applicationName string) (err error) {
 	_since := time.Now()
@@ -109,6 +123,20 @@ func (_d ClusterServiceWithPrometheus) AddStorageTargetNVME(ctx context.Context,
 		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AddStorageTargetNVME", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.AddStorageTargetNVME(ctx, clusterName, target)
+}
+
+// ClusterUpdateControlLoop implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) ClusterUpdateControlLoop(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ClusterUpdateControlLoop", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ClusterUpdateControlLoop(ctx)
 }
 
 // Create implements provisioning.ClusterService.
@@ -305,6 +333,30 @@ func (_d ClusterServiceWithPrometheus) GetEndpoint(ctx context.Context, name str
 		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetEndpoint", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetEndpoint(ctx, name)
+}
+
+// IsInstanceLifecycleOperationPermitted implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) IsInstanceLifecycleOperationPermitted(ctx context.Context, name string) (b bool) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "IsInstanceLifecycleOperationPermitted", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.IsInstanceLifecycleOperationPermitted(ctx, name)
+}
+
+// LaunchClusterUpdate implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) LaunchClusterUpdate(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "LaunchClusterUpdate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.LaunchClusterUpdate(ctx, name)
 }
 
 // RemoveServerSystemNetworkVLANTags implements provisioning.ClusterService.
