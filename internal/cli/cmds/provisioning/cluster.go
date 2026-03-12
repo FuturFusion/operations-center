@@ -108,11 +108,18 @@ func (c *CmdCluster) Command() *cobra.Command {
 	cmd.AddCommand(clusterUpdateCertificateCmd.Command())
 
 	// Bulk update
-	clusterBulkUpdateCmd := cmdClusterBulkUpdate{
+	clusterWideUpdateCmd := cmdClusterBulkUpdate{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(clusterBulkUpdateCmd.Command())
+	cmd.AddCommand(clusterWideUpdateCmd.Command())
+
+	// Cluster wide update
+	clusterUpdateCmd := cmdClusterUpdate{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(clusterUpdateCmd.Command())
 
 	// artifact sub-command
 	clusterArtifactCmd := cmdClusterArtifact{
@@ -879,6 +886,46 @@ func (c *cmdClusterBulkUpdate) run(cmd *cobra.Command, args []string) error {
 	}
 
 	err = c.ocClient.BulkUpdateCluster(cmd.Context(), name, bulkUpdateRequest)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Cluster wide update.
+type cmdClusterUpdate struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdClusterUpdate) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "update <name>"
+	cmd.Short = "Launch cluster wide update for all servers"
+	cmd.Long = `Description:
+  Perform a cluster wide update of all servers.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdClusterUpdate) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdClusterUpdate) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.LaunchClusterWideUpdate(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
