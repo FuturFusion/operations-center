@@ -20,6 +20,7 @@ import (
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -73,9 +74,9 @@ func NewUpdateService(repo UpdateRepo, filesRepo UpdateFilesRepo, source UpdateS
 	// The way through signals is chosen here to prevent a dependency cycle
 	// between the config and the provisioning package.
 	listenerKey := uuid.New().String()
-	config.UpdatesValidateSignal.AddListenerWithErr(service.validateUpdatesConfig, listenerKey)
+	lifecycle.UpdatesValidateSignal.AddListenerWithErr(service.validateUpdatesConfig, listenerKey)
 	runtime.AddCleanup(service, func(listenerKey string) {
-		config.UpdatesValidateSignal.RemoveListener(listenerKey)
+		lifecycle.UpdatesValidateSignal.RemoveListener(listenerKey)
 	}, listenerKey)
 
 	return service

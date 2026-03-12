@@ -99,6 +99,10 @@ func (c cmdResponse) Output() string {
 	return c.output.String()
 }
 
+func (c cmdResponse) OutputTrimmed() string {
+	return strings.TrimSpace(c.output.String())
+}
+
 func (c cmdResponse) Success() bool {
 	return c.err == nil && c.exitCode == 0
 }
@@ -422,7 +426,7 @@ func mustWaitUpdatesReady(t *testing.T) {
 
 	count := 0
 	for {
-		resp := mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r '[ .[] | select(.update_status == "ready") | true ] | length > 0'`, cpuArch)
+		resp := mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r '[ .[] | select(.update_status == "ready") | true ] | length > 1'`, cpuArch)
 		foundReady, _ := strconv.ParseBool(strings.TrimSpace(resp.Output()))
 		if foundReady {
 			break

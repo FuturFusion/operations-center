@@ -36,6 +36,7 @@ func registerProvisioningClusterHandler(router Router, authorizer *authz.Authori
 	router.HandleFunc("POST /{name}", response.With(handler.clusterPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/:bulk-update", response.With(handler.clusterBulkUpdatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/:resync-inventory", response.With(handler.clusterResyncInventoryPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/:update", response.With(handler.clusterUpdatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("PUT /{name}/certificate", response.With(handler.clusterCertificatePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{clusterName}/artifacts", response.With(handler.clusterArtifactsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{clusterName}/artifacts/{artifactName}", response.With(handler.clusterArtifactGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -167,7 +168,7 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 				Fingerprint:  cluster.Fingerprint,
 				Status:       cluster.Status,
 				LastUpdated:  cluster.LastUpdated,
-				UpdateStatus: *cluster.UpdateStatus,
+				UpdateStatus: cluster.UpdateStatus,
 			})
 		}
 
@@ -304,7 +305,7 @@ func (c *clusterHandler) clusterGet(r *http.Request) response.Response {
 			Fingerprint:  cluster.Fingerprint,
 			Status:       cluster.Status,
 			LastUpdated:  cluster.LastUpdated,
-			UpdateStatus: *cluster.UpdateStatus,
+			UpdateStatus: cluster.UpdateStatus,
 		},
 		cluster,
 	)
@@ -757,6 +758,49 @@ func (c *clusterHandler) clusterResyncInventoryPost(r *http.Request) response.Re
 	err := c.service.ResyncInventoryByName(r.Context(), name)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync inventory for cluster: %w", err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/clusters/{name}/:update clusters cluster_update_post
+//
+//	Perform cluster wide update of servers
+//
+//	Perform a cluster wide update of OS and applications on all servers of the cluster.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Empty response
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (c *clusterHandler) clusterUpdatePost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	err := c.service.LaunchClusterUpdate(r.Context(), name)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to launch cluster wide update: %w", err))
 	}
 
 	return response.EmptySyncResponse

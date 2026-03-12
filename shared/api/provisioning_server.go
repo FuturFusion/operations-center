@@ -336,8 +336,12 @@ const (
 	InMaintenanceRestoring  InMaintenanceState = 3
 )
 
-func (m InMaintenanceState) String() string {
-	switch m {
+func (m *InMaintenanceState) String() string {
+	if m == nil {
+		return "not in maintenance"
+	}
+
+	switch *m {
 	case NotInMaintenance:
 		return "not in maintenance"
 

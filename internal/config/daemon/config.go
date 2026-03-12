@@ -2,7 +2,6 @@ package config
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -15,11 +14,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/maniartech/signals"
 	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/environment"
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/security/acme"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -54,14 +53,6 @@ var (
 	saveFunc = saveToDisk
 
 	env enver = environment.New(ApplicationName, ApplicationEnvPrefix)
-
-	ServerCertificateUpdateSignal           = signals.NewSync[tls.Certificate]()
-	NetworkUpdateSignal                     = signals.NewSync[api.SystemNetwork]()
-	SecurityUpdateSignal                    = signals.NewSync[api.SystemSecurity]()
-	SecurityTrustedHTTPSProxiesUpdateSignal = signals.NewSync[[]string]()
-	SecurityACMEUpdateSignal                = signals.NewSync[api.SystemSecurityACME]()
-	UpdatesValidateSignal                   = signals.NewSync[api.SystemUpdates]()
-	UpdatesUpdateSignal                     = signals.NewSync[api.SystemUpdates]()
 )
 
 func Init(vardir enver) error {
@@ -165,7 +156,7 @@ func UpdateNetwork(ctx context.Context, cfg api.SystemNetworkPut) error {
 
 	unlock()
 
-	NetworkUpdateSignal.Emit(ctx, api.SystemNetwork{
+	lifecycle.NetworkUpdateSignal.Emit(ctx, api.SystemNetwork{
 		SystemNetworkPut: cfg,
 	})
 
@@ -244,17 +235,17 @@ func UpdateSecurity(ctx context.Context, cfg api.SystemSecurityPut) error {
 	}
 
 	if isSecurityConfigChanged {
-		SecurityUpdateSignal.Emit(ctx, api.SystemSecurity{
+		lifecycle.SecurityUpdateSignal.Emit(ctx, api.SystemSecurity{
 			SystemSecurityPut: cfg,
 		})
 	}
 
 	if isTrustedHTTPSProxiesChanged {
-		SecurityTrustedHTTPSProxiesUpdateSignal.Emit(ctx, cfg.TrustedHTTPSProxies)
+		lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.Emit(ctx, cfg.TrustedHTTPSProxies)
 	}
 
 	if isACMEChanged {
-		SecurityACMEUpdateSignal.Emit(ctx, cfg.ACME)
+		lifecycle.SecurityACMEUpdateSignal.Emit(ctx, cfg.ACME)
 	}
 
 	return nil
@@ -313,7 +304,7 @@ func UpdateUpdates(ctx context.Context, cfg api.SystemUpdatesPut) error {
 
 	unlock()
 
-	UpdatesUpdateSignal.Emit(ctx, api.SystemUpdates{
+	lifecycle.UpdatesUpdateSignal.Emit(ctx, api.SystemUpdates{
 		SystemUpdatesPut: cfg,
 	})
 
@@ -400,7 +391,7 @@ func validate(cfg config) error {
 
 	// This is not ideal, but we can not have a direct dependency from the config
 	// onto the provisioning package, because we get a dependency cycle otherwise.
-	err = UpdatesValidateSignal.TryEmit(context.Background(), cfg.Updates)
+	err = lifecycle.UpdatesValidateSignal.TryEmit(context.Background(), cfg.Updates)
 	if err != nil {
 		return err
 	}

@@ -88,24 +88,90 @@ func (s ClusterDeleteMode) String() string {
 	return string(s)
 }
 
+type ClusterUpdateInProgressStatus struct {
+	// InProgress is true, if a cluster wide update is on going and false
+	// otherwise.
+	// Example: true
+	InProgress bool `json:"in_progress" yaml:"in_progress"`
+
+	// TargetVersion string.
+	// Example: 202512250102
+	TargetVersion string `json:"target_version" yaml:"target_version"`
+
+	// StatusDescription contains progress information for the user in plain text
+	// form.
+	// Example: [3/20] Evacuating server xyz
+	StatusDescription *string `json:"status_description.omitempty" yaml:"status_description"`
+
+	// LastUpdated is the time, when this information has been updated for the
+	// last time in RFC3339 format.
+	// Example: 2024-11-12T16:15:00Z
+	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
+}
+
 // ClusterUpdateStatus contains the update status of each server of the cluster
 // as well as an aggregated cluster update status.
 type ClusterUpdateStatus struct {
 	// NeedsUpdate holds the list of server names of the servers within the
 	// cluster, which need to be updated. If NeedsUpdate is empty, all servers are
 	// up to date.
-	NeedsUpdate []string `json:"needs_update"`
+	NeedsUpdate []string `json:"needs_update,omitempty" yaml:"needs_update"`
 
 	// NeedsReboot holds the list of server names of the servers within the
 	// cluster, which need to be rebooted. If NeedsReboot is empty, all servers
 	// are up to date and don't require a reboot.
-	NeedsReboot []string `json:"needs_reboot"`
+	NeedsReboot []string `json:"needs_reboot,omitempty" yaml:"needs_reboot"`
 
 	// InMaintenance holds the list of server names of the servers within the
 	// cluster, which are currently in a maintenance state other than
 	// `NotInMaintenance`. If InMaintenance is empty, all servers are fully
 	// operational and not in maintenance.
-	InMaintenance []string `json:"in_maintenance"`
+	InMaintenance []string `json:"in_maintenance,omitempty" yaml:"in_maintenance"`
+
+	// InProgressStatus holds the status information about an ongoing cluster
+	// update, if any.
+	InProgressStatus ClusterUpdateInProgressStatus `json:"in_progress_status" yaml:"in_progress_status"`
+}
+
+// Value implements the sql driver.Valuer interface.
+func (c ClusterUpdateStatus) Value() (driver.Value, error) {
+	// Don't persist calculated fields in the DB.
+	clusterUpdateStatus := c
+
+	clusterUpdateStatus.NeedsUpdate = nil
+	clusterUpdateStatus.NeedsReboot = nil
+	clusterUpdateStatus.InMaintenance = nil
+	clusterUpdateStatus.InProgressStatus.StatusDescription = nil
+
+	return json.Marshal(clusterUpdateStatus)
+}
+
+// Scan implements the sql.Scanner interface.
+func (c *ClusterUpdateStatus) Scan(value any) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid cluster update in progress status")
+	}
+
+	switch v := value.(type) {
+	case string:
+		if len(v) == 0 {
+			*c = ClusterUpdateStatus{}
+			return nil
+		}
+
+		return json.Unmarshal([]byte(v), c)
+
+	case []byte:
+		if len(v) == 0 {
+			*c = ClusterUpdateStatus{}
+			return nil
+		}
+
+		return json.Unmarshal(v, c)
+
+	default:
+		return fmt.Errorf("type %T is not supported for cluster update in progress status", value)
+	}
 }
 
 // ClusterPut defines the updateable part of a cluster of servers running
@@ -163,6 +229,9 @@ type Cluster struct {
 
 	// UpdateStatus contains the aggregated update state for the cluster,
 	// which consists of the lowest state of all the servers of the cluster.
+	//
+	// Additionally, it contains details about an ongoing cluster wide update
+	// process if any.
 	UpdateStatus ClusterUpdateStatus `json:"update_status" yaml:"update_status"`
 
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.

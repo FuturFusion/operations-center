@@ -34,6 +34,7 @@ CREATE TABLE clusters (
   channel_id INTEGER NOT NULL DEFAULT 0,
   description TEXT NOT NULL DEFAULT '',
   properties TEXT NOT NULL DEFAULT '',
+  update_status TEXT NOT NULL DEFAULT '',
   UNIQUE (name),
   UNIQUE (certificate),
   CHECK (name <> ''),
@@ -406,4 +407,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (29, strftime("%s"));
+INSERT INTO schema (version, updated_at) VALUES (30, strftime("%s"));
