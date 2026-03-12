@@ -294,7 +294,7 @@ func setupLocalOperationsCenterConfig(t *testing.T) {
 	resp := run(t, `../bin/operations-center.linux.%s remote list -f json | jq -r -e '. | has("e2e-test")'`, cpuArch)
 	require.NoError(t, resp.err)
 	if !resp.Success() {
-		mustRun(t, `../bin/operations-center.linux.%s remote add --allow-untrusted-cert e2e-test https://%s/`, cpuArch, operationsCenterHostPort)
+		mustRun(t, `../bin/operations-center.linux.%s remote add --accept-certificate e2e-test https://%s/`, cpuArch, operationsCenterHostPort)
 	}
 
 	resp = mustRun(t, `../bin/operations-center.linux.%s remote list`, cpuArch)
