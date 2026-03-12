@@ -156,6 +156,15 @@ func (c OperationsCenterClient) BulkUpdateCluster(ctx context.Context, name stri
 	return nil
 }
 
+func (c OperationsCenterClient) LaunchClusterWideUpdate(ctx context.Context, name string) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, ":update"), nil, http.NoBody)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) GetClusterArtifacts(ctx context.Context, clusterName string) ([]api.ClusterArtifact, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
