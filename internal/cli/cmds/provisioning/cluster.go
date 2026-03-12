@@ -108,11 +108,18 @@ func (c *CmdCluster) Command() *cobra.Command {
 	cmd.AddCommand(clusterUpdateCertificateCmd.Command())
 
 	// Bulk update
-	clusterBulkUpdateCmd := cmdClusterBulkUpdate{
+	clusterWideUpdateCmd := cmdClusterBulkUpdate{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(clusterBulkUpdateCmd.Command())
+	cmd.AddCommand(clusterWideUpdateCmd.Command())
+
+	// Cluster wide update
+	clusterUpdateCmd := cmdClusterUpdate{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(clusterUpdateCmd.Command())
 
 	// artifact sub-command
 	clusterArtifactCmd := cmdClusterArtifact{
@@ -339,6 +346,11 @@ func (c *cmdClusterList) run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, cluster := range clusters {
+		updateStatusDescription := ""
+		if cluster.UpdateStatus.InProgressStatus.StatusDescription != nil {
+			updateStatusDescription = fmt.Sprintf(" (%s)", *cluster.UpdateStatus.InProgressStatus.StatusDescription)
+		}
+
 		data = append(data, []string{
 			cluster.Name,
 			cluster.ConnectionURL,
@@ -346,7 +358,7 @@ func (c *cmdClusterList) run(cmd *cobra.Command, args []string) error {
 			cluster.Fingerprint[:min(len(cluster.Fingerprint), 12)],
 			cluster.Channel,
 			cluster.Status.String(),
-			fmt.Sprintf("%d / %d / %d", len(cluster.UpdateStatus.NeedsUpdate), len(cluster.UpdateStatus.NeedsReboot), len(cluster.UpdateStatus.InMaintenance)),
+			fmt.Sprintf("%d / %d / %d%s", len(cluster.UpdateStatus.NeedsUpdate), len(cluster.UpdateStatus.NeedsReboot), len(cluster.UpdateStatus.InMaintenance), updateStatusDescription),
 			cluster.LastUpdated.Truncate(time.Second).String(),
 		})
 	}
@@ -879,6 +891,46 @@ func (c *cmdClusterBulkUpdate) run(cmd *cobra.Command, args []string) error {
 	}
 
 	err = c.ocClient.BulkUpdateCluster(cmd.Context(), name, bulkUpdateRequest)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Cluster wide update.
+type cmdClusterUpdate struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdClusterUpdate) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "update <name>"
+	cmd.Short = "Launch cluster wide update for all servers"
+	cmd.Long = `Description:
+  Perform a cluster wide update of all servers.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdClusterUpdate) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdClusterUpdate) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.LaunchClusterWideUpdate(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
