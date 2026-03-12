@@ -139,7 +139,7 @@ func patchRenameChannelsToUpstreamChannels(ctx context.Context, name string) err
 	updatesCfg := config.GetUpdates()
 
 	updatesCfg.FilterExpression = strings.ReplaceAll(updatesCfg.FilterExpression, "channels", "upstream_channels")
-	return config.UpdateUpdates(ctx, updatesCfg.SystemUpdatesPut)
+	return config.UpdateUpdates(ctx, updatesCfg.UpdatesPut)
 }
 
 func patchRemoveVarLibOperationCenterTerraformDirs(ctx context.Context, name string) error {

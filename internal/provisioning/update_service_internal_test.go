@@ -12,6 +12,7 @@ import (
 	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
@@ -546,8 +547,8 @@ func TestUpdateService_validateUpdatesConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			updateSvc := NewUpdateService(nil, nil, nil)
 
-			err := updateSvc.validateUpdatesConfig(t.Context(), api.SystemUpdates{
-				SystemUpdatesPut: api.SystemUpdatesPut{
+			err := updateSvc.validateUpdatesConfig(t.Context(), system.Updates{
+				UpdatesPut: system.UpdatesPut{
 					FilterExpression:     tc.filterExpression,
 					FileFilterExpression: tc.fileFilterExpression,
 				},

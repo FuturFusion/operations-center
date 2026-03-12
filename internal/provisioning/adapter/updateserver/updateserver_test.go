@@ -166,7 +166,7 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 			config.InitTest(t, envMock, nil)
 			updatesConfig := config.GetUpdates()
 			updatesConfig.ImageServerAuthenticationByQueryParam = tc.queryParameterAuthentication
-			err := config.UpdateUpdates(t.Context(), updatesConfig.SystemUpdatesPut)
+			err := config.UpdateUpdates(t.Context(), updatesConfig.UpdatesPut)
 			require.NoError(t, err)
 
 			caCert, cert, key := signaturetest.GenerateCertChain(t)
