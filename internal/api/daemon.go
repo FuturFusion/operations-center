@@ -761,6 +761,33 @@ func (d *Daemon) setupBackgroundTasks(
 		return updateSourceTaskStop(deadlineFrom(ctx, 60*time.Second))
 	})
 
+	// Start background task for cluster update control loop.
+	clusterUpdateControlLoop := func(ctx context.Context) {
+		slog.InfoContext(ctx, "Cluster update control loop triggered")
+		err := clusterSvc.ClusterUpdateControlLoop(ctx, nil)
+		if err != nil {
+			slog.ErrorContext(ctx, "Cluster update control loop failed", logger.Err(err))
+			return
+		}
+
+		slog.InfoContext(ctx, "Cluster update control loop completed")
+	}
+
+	clusterUpdateControlLoopStop, _ := task.Start(ctx, clusterUpdateControlLoop, task.Every(config.PendingServerPollInterval))
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return clusterUpdateControlLoopStop(deadlineFrom(ctx, 5*time.Second))
+	})
+
+	// Trigger ClusterUpdateControlLoop also from server lifecycle events.
+	lifecycle.ServerLifecycleSignal.AddListenerWithErr(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) error {
+		err := clusterSvc.ClusterUpdateControlLoop(ctx, slm.Cluster)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to handle server lifecycle event", logger.Err(err), slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update-state", slm.ServerUpdateState.String()))
+		}
+
+		return err
+	})
+
 	// Start background task to poll servers in pending, updating or rebooting state to become available.
 	pollPendingServersTask := func(ctx context.Context) {
 		slog.InfoContext(ctx, "Polling for pending, updating and rebooting servers triggered")
