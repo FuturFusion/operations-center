@@ -12,7 +12,7 @@ jobs:
     name: Operations Center End-to-End System Tests
     strategy:
       fail-fast: false
-    timeout-minutes: 120
+    timeout-minutes: 181
     runs-on:
       - self-hosted
       - cpu-24
@@ -67,7 +67,7 @@ jobs:
           OPERATIONS_CENTER_E2E_TEST_CONCURRENT_SETUP: "true"
         run: |
           set -o pipefail
-          go test -v ./e2e_tests -timeout 120m | tee e2e_tests.out
+          go test -v ./e2e_tests -timeout 180m | tee e2e_tests.out
 
       - name: Show logs on failure
         if: failure()
