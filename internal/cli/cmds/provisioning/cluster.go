@@ -901,6 +901,8 @@ func (c *cmdClusterBulkUpdate) run(cmd *cobra.Command, args []string) error {
 // Cluster wide update.
 type cmdClusterUpdate struct {
 	ocClient *client.OperationsCenterClient
+
+	flagReboot bool
 }
 
 func (c *cmdClusterUpdate) Command() *cobra.Command {
@@ -910,6 +912,8 @@ func (c *cmdClusterUpdate) Command() *cobra.Command {
 	cmd.Long = `Description:
   Perform a cluster wide update of all servers.
 `
+
+	cmd.Flags().BoolVar(&c.flagReboot, "reboot", false, "perform rolling reboot after applying the update")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -930,7 +934,7 @@ func (c *cmdClusterUpdate) validateArgsAndFlags(cmd *cobra.Command, args []strin
 func (c *cmdClusterUpdate) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	err := c.ocClient.LaunchClusterWideUpdate(cmd.Context(), name)
+	err := c.ocClient.LaunchClusterWideUpdate(cmd.Context(), name, c.flagReboot)
 	if err != nil {
 		return err
 	}
