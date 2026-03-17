@@ -3101,10 +3101,9 @@ func TestClusterService_IsInstanceLifecycleOperationPermitted(t *testing.T) {
 func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 	tests := []struct {
 		name                            string
-		argReboot                       bool
 		repoGetByName                   *provisioning.Cluster
 		repoGetByNameErr                error
-		repoUpdateErrs                  queue.Errs
+		repoUpdate                      []queue.Item[api.ClusterUpdateInProgressStatus] // api.ClusterUpdateInProgressStatus used for assertions in repo.Update
 		tamperContext                   func(ctx context.Context, t *testing.T) context.Context
 		serverSvcPollServers            error
 		serverSvcGetAllWithFilter       []queue.Item[provisioning.Servers]
@@ -3120,6 +3119,18 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 
 				UpdateStatus: api.ClusterUpdateStatus{
 					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			repoUpdate: []queue.Item[api.ClusterUpdateInProgressStatus]{
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressApplyUpdate,
+					},
+				},
+				{
+					Value: api.ClusterUpdateInProgressStatus{
 						InProgress: api.ClusterUpdateInProgressInactive,
 					},
 				},
@@ -3161,6 +3172,18 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 
 				UpdateStatus: api.ClusterUpdateStatus{
 					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			repoUpdate: []queue.Item[api.ClusterUpdateInProgressStatus]{
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressApplyUpdate,
+					},
+				},
+				{
+					Value: api.ClusterUpdateInProgressStatus{
 						InProgress: api.ClusterUpdateInProgressInactive,
 					},
 				},
@@ -3259,6 +3282,62 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 
 			assertErr: require.NoError,
 		},
+		{
+			name: "success - server in maintenance - evacuated manually",
+			repoGetByName: &provisioning.Cluster{
+				Name:    "one",
+				Channel: "stable",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			repoUpdate: []queue.Item[api.ClusterUpdateInProgressStatus]{
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressApplyUpdate,
+					},
+				},
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress:      api.ClusterUpdateInProgressInactive,
+						EvacuatedBefore: []string{"A"},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// Update
+				{},
+				// GetAllWithFilter, needs update
+				{
+					Value: provisioning.Servers{
+						{
+							Name:          "A",
+							ConnectionURL: "https://a:8443/",
+							Status:        api.ServerStatusReady,
+							StatusDetail:  api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								OS: api.OSVersionData{
+									Version:          "1",
+									VersionNext:      "2",
+									AvailableVersion: ptr.To("2"),
+									NeedsReboot:      true,
+								},
+								NeedsUpdate:   ptr.To(false),
+								NeedsReboot:   ptr.To(true),
+								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
 
 		{
 			name: "error - GetByName",
@@ -3316,6 +3395,13 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 					},
 				},
 			},
+			repoUpdate: []queue.Item[api.ClusterUpdateInProgressStatus]{
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressApplyUpdate,
+					},
+				},
+			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
 				// GetByName
 				{},
@@ -3336,6 +3422,13 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 				UpdateStatus: api.ClusterUpdateStatus{
 					InProgressStatus: api.ClusterUpdateInProgressStatus{
 						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			repoUpdate: []queue.Item[api.ClusterUpdateInProgressStatus]{
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressApplyUpdate,
 					},
 				},
 			},
@@ -3370,6 +3463,13 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 					},
 				},
 			},
+			repoUpdate: []queue.Item[api.ClusterUpdateInProgressStatus]{
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressApplyUpdate,
+					},
+				},
+			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
 				// GetByName
 				{},
@@ -3389,6 +3489,13 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 				UpdateStatus: api.ClusterUpdateStatus{
 					InProgressStatus: api.ClusterUpdateInProgressStatus{
 						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			repoUpdate: []queue.Item[api.ClusterUpdateInProgressStatus]{
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressApplyUpdate,
 					},
 				},
 			},
@@ -3419,6 +3526,13 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 					},
 				},
 			},
+			repoUpdate: []queue.Item[api.ClusterUpdateInProgressStatus]{
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressApplyUpdate,
+					},
+				},
+			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
 				// GetByName
 				{},
@@ -3441,6 +3555,13 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 				UpdateStatus: api.ClusterUpdateStatus{
 					InProgressStatus: api.ClusterUpdateInProgressStatus{
 						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			repoUpdate: []queue.Item[api.ClusterUpdateInProgressStatus]{
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressApplyUpdate,
 					},
 				},
 			},
@@ -3477,7 +3598,7 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 			},
 		},
 		{
-			name: "error - server in maintenance",
+			name: "error - server in maintenance - evacuating",
 			repoGetByName: &provisioning.Cluster{
 				Name:    "one",
 				Channel: "stable",
@@ -3485,6 +3606,13 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 				UpdateStatus: api.ClusterUpdateStatus{
 					InProgressStatus: api.ClusterUpdateInProgressStatus{
 						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			repoUpdate: []queue.Item[api.ClusterUpdateInProgressStatus]{
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressApplyUpdate,
 					},
 				},
 			},
@@ -3497,9 +3625,10 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 				{
 					Value: provisioning.Servers{
 						{
-							Name:         "A",
-							Status:       api.ServerStatusReady,
-							StatusDetail: api.ServerStatusDetailNone,
+							Name:          "A",
+							ConnectionURL: "https://a:8443/",
+							Status:        api.ServerStatusReady,
+							StatusDetail:  api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
 								OS: api.OSVersionData{
 									Version:          "1",
@@ -3508,7 +3637,7 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 									NeedsReboot:      false,
 								},
 								NeedsUpdate:   ptr.To(false),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								InMaintenance: ptr.To(api.InMaintenanceEvacuating),
 							},
 						},
 					},
@@ -3518,7 +3647,7 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(t, err, `is in maintenance state`)
+				require.ErrorContains(t, err, `Server "A" (https://a:8443/) is in maintenance state "evacuating"`)
 			},
 		},
 		{
@@ -3530,6 +3659,13 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 				UpdateStatus: api.ClusterUpdateStatus{
 					InProgressStatus: api.ClusterUpdateInProgressStatus{
 						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+			repoUpdate: []queue.Item[api.ClusterUpdateInProgressStatus]{
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressApplyUpdate,
 					},
 				},
 			},
@@ -3577,6 +3713,19 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 					},
 				},
 			},
+			repoUpdate: []queue.Item[api.ClusterUpdateInProgressStatus]{
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressApplyUpdate,
+					},
+				},
+				{
+					Value: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+					Err: boom.Error,
+				},
+			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
 				// GetByName
 				{},
@@ -3603,10 +3752,6 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 					},
 				},
 			},
-			repoUpdateErrs: queue.Errs{
-				nil,
-				boom.Error,
-			},
 
 			assertErr: boom.ErrorIs,
 		},
@@ -3622,9 +3767,12 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 					return tc.repoGetByName, tc.repoGetByNameErr
 				},
 				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
+					inProgressStatus, err := queue.Pop(t, &tc.repoUpdate)
+
 					require.Equal(t, fixedTime, cluster.UpdateStatus.InProgressStatus.LastUpdated)
-					require.True(t, cluster.UpdateStatus.InProgressStatus.InProgress == api.ClusterUpdateInProgressApplyUpdate || tc.argReboot == cluster.IsUpdateInProgress(), `for the first update call "apply updates" is expected, for the second the same as "reboot" argument`)
-					return tc.repoUpdateErrs.PopOrNil(t)
+					require.Equal(t, inProgressStatus.InProgress, cluster.UpdateStatus.InProgressStatus.InProgress)
+					require.ElementsMatch(t, cluster.UpdateStatus.InProgressStatus.EvacuatedBefore, inProgressStatus.EvacuatedBefore)
+					return err
 				},
 			}
 
@@ -3653,10 +3801,12 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 				ctx = tc.tamperContext(ctx, t)
 			}
 
-			err := clusterSvc.LaunchClusterUpdate(ctx, "one", tc.argReboot)
+			err := clusterSvc.LaunchClusterUpdate(ctx, "one", false)
 
 			// Assert
 			tc.assertErr(t, err)
+			require.Empty(t, tc.repoUpdate)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
 		})
 	}
 }

@@ -895,7 +895,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 	log.Contains(`[12/12] restoring server \"two\"`)(t, logBuf)
 }
 
-func TestClusterService_ClusterUpdateControlLoop_Errors(t *testing.T) {
+func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 	tests := []struct {
 		name                           string
 		repoGetAll                     []queue.Item[provisioning.Clusters]
@@ -911,6 +911,86 @@ func TestClusterService_ClusterUpdateControlLoop_Errors(t *testing.T) {
 			name: "success - no clusters with in progress update",
 			repoGetAll: []queue.Item[provisioning.Clusters]{
 				{},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - executeRollingUpdateNextStep - 1st and 3rd server manually evacuated before",
+			repoGetAll: []queue.Item[provisioning.Clusters]{
+				{
+					Value: provisioning.Clusters{
+						{
+							Name: "one",
+							UpdateStatus: api.ClusterUpdateStatus{
+								InProgressStatus: api.ClusterUpdateInProgressStatus{
+									InProgress:      api.ClusterUpdateInProgressRollingRestart,
+									EvacuatedBefore: []string{"server1", "server3"},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// cluster GetAllWithFilter
+				{},
+				// GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:          "server1",
+							ConnectionURL: "https://server1:8443",
+							Cluster:       ptr.To("cluster"),
+							Status:        api.ServerStatusReady,
+							StatusDetail:  api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								NeedsUpdate:   ptr.To(false),
+								NeedsReboot:   ptr.To(false),
+								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								Applications: []api.ApplicationVersionData{
+									{
+										Name: "incus",
+									},
+								},
+							},
+						},
+						{
+							Name:          "server2",
+							ConnectionURL: "https://server1:8443",
+							Cluster:       ptr.To("cluster"),
+							Status:        api.ServerStatusReady,
+							StatusDetail:  api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								NeedsUpdate:   ptr.To(false),
+								NeedsReboot:   ptr.To(true),
+								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								Applications: []api.ApplicationVersionData{
+									{
+										Name: "incus",
+									},
+								},
+							},
+						},
+						{
+							Name:          "server3",
+							ConnectionURL: "https://server2:8443",
+							Cluster:       ptr.To("cluster"),
+							Status:        api.ServerStatusReady,
+							StatusDetail:  api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								NeedsUpdate:   ptr.To(false),
+								NeedsReboot:   ptr.To(true),
+								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								Applications: []api.ApplicationVersionData{
+									{
+										Name: "incus",
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 
 			assertErr: require.NoError,
@@ -1215,7 +1295,7 @@ func TestClusterService_ClusterUpdateControlLoop_Errors(t *testing.T) {
 				{
 					Value: provisioning.Servers{
 						{
-							Name:         "server",
+							Name:         "server1",
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
@@ -1225,7 +1305,7 @@ func TestClusterService_ClusterUpdateControlLoop_Errors(t *testing.T) {
 							},
 						},
 						{
-							Name:   "server",
+							Name:   "server2",
 							Status: api.ServerStatusReady,
 							VersionData: api.ServerVersionData{
 								NeedsUpdate: ptr.To(true),
@@ -1236,7 +1316,7 @@ func TestClusterService_ClusterUpdateControlLoop_Errors(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Server "server" has a pending update while a cluster wide rolling reboot cycle is ongoing`)
+				require.ErrorContains(tt, err, `Server "server2" has a pending update while a cluster wide rolling reboot cycle is ongoing`)
 			},
 		},
 		{
@@ -1262,7 +1342,7 @@ func TestClusterService_ClusterUpdateControlLoop_Errors(t *testing.T) {
 				{
 					Value: provisioning.Servers{
 						{
-							Name:         "server",
+							Name:         "server1",
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
@@ -1272,7 +1352,7 @@ func TestClusterService_ClusterUpdateControlLoop_Errors(t *testing.T) {
 							},
 						},
 						{
-							Name:         "server",
+							Name:         "server2",
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailReadyUpdating,
 						},
@@ -1281,11 +1361,11 @@ func TestClusterService_ClusterUpdateControlLoop_Errors(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Server "server" is updating while a cluster wide rolling reboot cycle is ongoing`)
+				require.ErrorContains(tt, err, `Server "server2" is updating while a cluster wide rolling reboot cycle is ongoing`)
 			},
 		},
 		{
-			name: "error - executeRollingUpdateNextStep - 2nd server evacuating",
+			name: "error - executeRollingUpdateNextStep - 2nd server evacuated",
 			repoGetAll: []queue.Item[provisioning.Clusters]{
 				{
 					Value: provisioning.Clusters{
@@ -1307,7 +1387,7 @@ func TestClusterService_ClusterUpdateControlLoop_Errors(t *testing.T) {
 				{
 					Value: provisioning.Servers{
 						{
-							Name:         "server",
+							Name:         "server1",
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
@@ -1317,14 +1397,14 @@ func TestClusterService_ClusterUpdateControlLoop_Errors(t *testing.T) {
 							},
 						},
 						{
-							Name:          "server",
-							ConnectionURL: "https://server:8443",
+							Name:          "server2",
+							ConnectionURL: "https://server2:8443",
 							Status:        api.ServerStatusReady,
 							StatusDetail:  api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
 								NeedsUpdate:   ptr.To(false),
 								NeedsReboot:   ptr.To(false),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuating),
+								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
 								Applications: []api.ApplicationVersionData{
 									{
 										Name: "incus",
@@ -1337,7 +1417,7 @@ func TestClusterService_ClusterUpdateControlLoop_Errors(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Rolling update blocked, out of order update for server "server" (https://server:8443) is ongoing, state evacuating`)
+				require.ErrorContains(tt, err, `Rolling update blocked, out of order update for server "server2" (https://server2:8443) is ongoing, state in maintenance, restore pending`)
 			},
 		},
 		{
@@ -1464,9 +1544,6 @@ func TestClusterService_ClusterUpdateControlLoop_Errors(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// if tc.name != "error - executeRollingUpdateNextStep - update done - repo.GetByName" {
-			// 	return
-			// }
 			// Setup
 			repo := &mock.ClusterRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
@@ -1489,6 +1566,9 @@ func TestClusterService_ClusterUpdateControlLoop_Errors(t *testing.T) {
 				},
 				RebootSystemByNameFunc: func(ctx context.Context, name string, force bool) error {
 					return tc.serverSvcRebootSystemByNameErr
+				},
+				RestoreSystemByNameFunc: func(ctx context.Context, name string, force bool) error {
+					return nil
 				},
 			}
 

@@ -11,6 +11,7 @@ import (
 type ExprApiClusterUpdateInProgressStatus struct {
 	InProgress        api.ClusterUpdateInProgress `json:"in_progress" yaml:"in_progress" expr:"in_progress"`
 	StatusDescription *string                     `json:"status_description,omitempty" yaml:"status_description" expr:"status_description"`
+	EvacuatedBefore   []string                    `json:"evacuated_before" yaml:"evacuated_before" expr:"evacuated_before"`
 	LastUpdated       time.Time                   `json:"last_updated" yaml:"last_updated" expr:"last_updated"`
 }
 
@@ -43,6 +44,7 @@ func ToExprApiClusterUpdateInProgressStatus(c api.ClusterUpdateInProgressStatus)
 	return ExprApiClusterUpdateInProgressStatus{
 		InProgress:        c.InProgress,
 		StatusDescription: c.StatusDescription,
+		EvacuatedBefore:   c.EvacuatedBefore,
 		LastUpdated:       c.LastUpdated,
 	}
 }

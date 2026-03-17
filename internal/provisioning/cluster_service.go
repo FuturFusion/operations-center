@@ -974,6 +974,7 @@ func (s clusterService) LaunchClusterUpdate(ctx context.Context, name string, re
 	}
 
 	var servers Servers
+	var evacuatedBefore []string
 	for {
 		if ctx.Err() != nil {
 			return fmt.Errorf("Failed to get cluster %q into consistent state for update: %w", name, ctx.Err())
@@ -1006,8 +1007,12 @@ func (s clusterService) LaunchClusterUpdate(ctx context.Context, name string, re
 				return domain.NewValidationErrf("Cluster update can not be launched for %q: Server %q (%s) is in state %q (%s)", name, server.Name, server.ConnectionURL, server.Status, server.StatusDetail)
 			}
 
-			if server.VersionData.InMaintenance == nil || *server.VersionData.InMaintenance != api.NotInMaintenance {
+			if server.VersionData.InMaintenance == nil || *server.VersionData.InMaintenance == api.InMaintenanceEvacuating || *server.VersionData.InMaintenance == api.InMaintenanceRestoring {
 				return domain.NewValidationErrf("Cluster update can not be launched for %q: Server %q (%s) is in maintenance state %q", name, server.Name, server.ConnectionURL, server.VersionData.InMaintenance.String())
+			}
+
+			if ptr.From(server.VersionData.InMaintenance) == api.InMaintenanceEvacuated {
+				evacuatedBefore = append(evacuatedBefore, server.Name)
 			}
 		}
 
@@ -1068,8 +1073,9 @@ func (s clusterService) LaunchClusterUpdate(ctx context.Context, name string, re
 	}
 
 	cluster.UpdateStatus.InProgressStatus = api.ClusterUpdateInProgressStatus{
-		InProgress:  nextInProgressState,
-		LastUpdated: s.now(),
+		InProgress:      nextInProgressState,
+		EvacuatedBefore: evacuatedBefore,
+		LastUpdated:     s.now(),
 	}
 
 	err = s.repo.Update(ctx, *cluster)
@@ -1172,6 +1178,12 @@ func (s clusterService) executeRollingUpdateNextStep(ctx context.Context, cluste
 				}
 
 			case api.ServerUpdateStateInMaintenanceRestorePending:
+				// Servers, which have been in evacuated state before the update was
+				// triggered, are kept in this state.
+				if slices.Contains(cluster.UpdateStatus.InProgressStatus.EvacuatedBefore, server.Name) {
+					continue
+				}
+
 				nextAction = func(ctx context.Context) error {
 					return s.serverSvc.RestoreSystemByName(ctx, server.Name, true)
 				}
@@ -1204,10 +1216,18 @@ func (s clusterService) executeRollingUpdateNextStep(ctx context.Context, cluste
 		case api.ServerUpdateStateUpdating:
 			return fmt.Errorf("Server %q is updating while a cluster wide rolling reboot cycle is ongoing", server.Name)
 
+		case api.ServerUpdateStateInMaintenanceRebootPending,
+			api.ServerUpdateStateInMaintenanceRestorePending:
+			// Servers, which have been in evacuated state before the update was
+			// triggered, are kept in this state.
+			if slices.Contains(cluster.UpdateStatus.InProgressStatus.EvacuatedBefore, server.Name) {
+				continue
+			}
+
+			fallthrough
+
 		case api.ServerUpdateStateEvacuating,
-			api.ServerUpdateStateInMaintenanceRebootPending,
 			api.ServerUpdateStateInMaintenanceRebooting,
-			api.ServerUpdateStateInMaintenanceRestorePending,
 			api.ServerUpdateStateInMaintenanceRestoring,
 			api.ServerUpdateStateRebootPending,
 			api.ServerUpdateStateRebooting:
