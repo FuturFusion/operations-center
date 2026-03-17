@@ -99,6 +99,11 @@ type ClusterUpdateInProgressStatus struct {
 	// Example: [3/20] Evacuating server xyz
 	StatusDescription *string `json:"status_description,omitempty" yaml:"status_description"`
 
+	// EvacuatedBefore contains the list of server names of the servers, that have
+	// been manually evacuated already before the rolling update has been
+	// triggered.
+	EvacuatedBefore []string `json:"evacuated_before" yaml:"evacuated_before"`
+
 	// LastUpdated is the time, when this information has been updated for the
 	// last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
