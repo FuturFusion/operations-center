@@ -3101,6 +3101,7 @@ func TestClusterService_IsInstanceLifecycleOperationPermitted(t *testing.T) {
 func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 	tests := []struct {
 		name                            string
+		argReboot                       bool
 		repoGetByName                   *provisioning.Cluster
 		repoGetByNameErr                error
 		repoUpdateErrs                  queue.Errs
@@ -3622,7 +3623,7 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 				},
 				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
 					require.Equal(t, fixedTime, cluster.UpdateStatus.InProgressStatus.LastUpdated)
-					require.True(t, cluster.IsUpdateInProgress())
+					require.True(t, cluster.UpdateStatus.InProgressStatus.InProgress == api.ClusterUpdateInProgressApplyUpdate || tc.argReboot == cluster.IsUpdateInProgress(), `for the first update call "apply updates" is expected, for the second the same as "reboot" argument`)
 					return tc.repoUpdateErrs.PopOrNil(t)
 				},
 			}
@@ -3652,7 +3653,7 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 				ctx = tc.tamperContext(ctx, t)
 			}
 
-			err := clusterSvc.LaunchClusterUpdate(ctx, "one")
+			err := clusterSvc.LaunchClusterUpdate(ctx, "one", tc.argReboot)
 
 			// Assert
 			tc.assertErr(t, err)

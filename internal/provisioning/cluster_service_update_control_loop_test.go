@@ -409,7 +409,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 	})
 
 	// Run test
-	err = clusterSvc.LaunchClusterUpdate(ctx, "clusterA")
+	err = clusterSvc.LaunchClusterUpdate(ctx, "clusterA", true)
 	require.NoError(t, err)
 
 	success := false
@@ -862,7 +862,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 	})
 
 	// Run test
-	err = clusterSvc.LaunchClusterUpdate(ctx, "clusterA")
+	err = clusterSvc.LaunchClusterUpdate(ctx, "clusterA", true)
 	require.NoError(t, err)
 
 	success := false

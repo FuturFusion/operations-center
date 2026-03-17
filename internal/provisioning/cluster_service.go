@@ -943,7 +943,7 @@ func (s clusterService) IsInstanceLifecycleOperationPermitted(ctx context.Contex
 	return !cluster.IsUpdateInProgress()
 }
 
-func (s clusterService) LaunchClusterUpdate(ctx context.Context, name string) error {
+func (s clusterService) LaunchClusterUpdate(ctx context.Context, name string, reboot bool) error {
 	// Check, that no update is in progress for this cluster and set cluster
 	// update status to "in progress".
 	var cluster *Cluster
@@ -1058,8 +1058,13 @@ func (s clusterService) LaunchClusterUpdate(ctx context.Context, name string) er
 	}
 
 	// Set target version for cluster update.
+	nextInProgressState := api.ClusterUpdateInProgressInactive
+	if reboot {
+		nextInProgressState = api.ClusterUpdateInProgressRollingRestart
+	}
+
 	cluster.UpdateStatus.InProgressStatus = api.ClusterUpdateInProgressStatus{
-		InProgress:  api.ClusterUpdateInProgressRollingRestart,
+		InProgress:  nextInProgressState,
 		LastUpdated: s.now(),
 	}
 

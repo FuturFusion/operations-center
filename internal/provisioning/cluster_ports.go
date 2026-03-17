@@ -29,7 +29,7 @@ type ClusterService interface {
 	UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) error
 	GetEndpoint(ctx context.Context, name string) (Endpoint, error)
 	IsInstanceLifecycleOperationPermitted(ctx context.Context, name string) bool
-	LaunchClusterUpdate(ctx context.Context, name string) error
+	LaunchClusterUpdate(ctx context.Context, name string, reboot bool) error
 	ClusterUpdateControlLoop(ctx context.Context, clusterNameFilter *string) error
 	AbortClusterUpdate(ctx context.Context, name string) error
 
