@@ -1024,8 +1024,9 @@ func (s clusterService) LaunchClusterUpdate(ctx context.Context, name string, re
 			allEqual = false
 
 			if server.StatusDetail == api.ServerStatusDetailReadyUpdating {
-				allEqual = false
-				continue
+				// Update servers one by one, one server already updating, so we have
+				// to wait.
+				break
 			}
 
 			applicationUpdate := make([]api.ServerUpdateApplication, 0, len(server.VersionData.Applications))
@@ -1048,6 +1049,9 @@ func (s clusterService) LaunchClusterUpdate(ctx context.Context, name string, re
 			if err != nil {
 				return fmt.Errorf("Failed to trigger server update on %q (%s): %w", server.Name, server.ConnectionURL, err)
 			}
+
+			// Update servers one by one, so we have to wait.
+			break
 		}
 
 		if allEqual {
