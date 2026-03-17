@@ -156,8 +156,13 @@ func (c OperationsCenterClient) BulkUpdateCluster(ctx context.Context, name stri
 	return nil
 }
 
-func (c OperationsCenterClient) LaunchClusterWideUpdate(ctx context.Context, name string) error {
-	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, ":update"), nil, http.NoBody)
+func (c OperationsCenterClient) LaunchClusterWideUpdate(ctx context.Context, name string, reboot bool) error {
+	query := url.Values{}
+	if reboot {
+		query.Add("reboot", "1")
+	}
+
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, ":update"), query, http.NoBody)
 	if err != nil {
 		return err
 	}
