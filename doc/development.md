@@ -5,5 +5,6 @@ development of Operations Center.
 
 ```{toctree}
 :maxdepth: 1
+Cluster Rolling Update </development/cluster-rolling-update>
 Server Status </development/server-status>
 ```
