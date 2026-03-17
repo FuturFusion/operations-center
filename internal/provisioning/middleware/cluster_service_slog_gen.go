@@ -806,12 +806,13 @@ func (_d ClusterServiceWithSlog) IsInstanceLifecycleOperationPermitted(ctx conte
 }
 
 // LaunchClusterUpdate implements provisioning.ClusterService.
-func (_d ClusterServiceWithSlog) LaunchClusterUpdate(ctx context.Context, name string) (err error) {
+func (_d ClusterServiceWithSlog) LaunchClusterUpdate(ctx context.Context, name string, reboot bool) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
+			slog.Bool("reboot", reboot),
 		)
 	}
 	log.DebugContext(ctx, "=> calling LaunchClusterUpdate")
@@ -836,7 +837,7 @@ func (_d ClusterServiceWithSlog) LaunchClusterUpdate(ctx context.Context, name s
 			log.DebugContext(ctx, "<= method LaunchClusterUpdate finished")
 		}
 	}()
-	return _d._base.LaunchClusterUpdate(ctx, name)
+	return _d._base.LaunchClusterUpdate(ctx, name, reboot)
 }
 
 // RemoveServerSystemNetworkVLANTags implements provisioning.ClusterService.

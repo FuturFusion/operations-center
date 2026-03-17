@@ -91,7 +91,7 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			IsInstanceLifecycleOperationPermittedFunc: func(ctx context.Context, name string) bool {
 //				panic("mock out the IsInstanceLifecycleOperationPermitted method")
 //			},
-//			LaunchClusterUpdateFunc: func(ctx context.Context, name string) error {
+//			LaunchClusterUpdateFunc: func(ctx context.Context, name string, reboot bool) error {
 //				panic("mock out the LaunchClusterUpdate method")
 //			},
 //			RemoveServerSystemNetworkVLANTagsFunc: func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error {
@@ -207,7 +207,7 @@ type ClusterServiceMock struct {
 	IsInstanceLifecycleOperationPermittedFunc func(ctx context.Context, name string) bool
 
 	// LaunchClusterUpdateFunc mocks the LaunchClusterUpdate method.
-	LaunchClusterUpdateFunc func(ctx context.Context, name string) error
+	LaunchClusterUpdateFunc func(ctx context.Context, name string, reboot bool) error
 
 	// RemoveServerSystemNetworkVLANTagsFunc mocks the RemoveServerSystemNetworkVLANTags method.
 	RemoveServerSystemNetworkVLANTagsFunc func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error
@@ -434,6 +434,8 @@ type ClusterServiceMock struct {
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+			// Reboot is the reboot argument value.
+			Reboot bool
 		}
 		// RemoveServerSystemNetworkVLANTags holds details about calls to the RemoveServerSystemNetworkVLANTags method.
 		RemoveServerSystemNetworkVLANTags []struct {
@@ -1420,21 +1422,23 @@ func (mock *ClusterServiceMock) IsInstanceLifecycleOperationPermittedCalls() []s
 }
 
 // LaunchClusterUpdate calls LaunchClusterUpdateFunc.
-func (mock *ClusterServiceMock) LaunchClusterUpdate(ctx context.Context, name string) error {
+func (mock *ClusterServiceMock) LaunchClusterUpdate(ctx context.Context, name string, reboot bool) error {
 	if mock.LaunchClusterUpdateFunc == nil {
 		panic("ClusterServiceMock.LaunchClusterUpdateFunc: method is nil but ClusterService.LaunchClusterUpdate was just called")
 	}
 	callInfo := struct {
-		Ctx  context.Context
-		Name string
+		Ctx    context.Context
+		Name   string
+		Reboot bool
 	}{
-		Ctx:  ctx,
-		Name: name,
+		Ctx:    ctx,
+		Name:   name,
+		Reboot: reboot,
 	}
 	mock.lockLaunchClusterUpdate.Lock()
 	mock.calls.LaunchClusterUpdate = append(mock.calls.LaunchClusterUpdate, callInfo)
 	mock.lockLaunchClusterUpdate.Unlock()
-	return mock.LaunchClusterUpdateFunc(ctx, name)
+	return mock.LaunchClusterUpdateFunc(ctx, name, reboot)
 }
 
 // LaunchClusterUpdateCalls gets all the calls that were made to LaunchClusterUpdate.
@@ -1442,12 +1446,14 @@ func (mock *ClusterServiceMock) LaunchClusterUpdate(ctx context.Context, name st
 //
 //	len(mockedClusterService.LaunchClusterUpdateCalls())
 func (mock *ClusterServiceMock) LaunchClusterUpdateCalls() []struct {
-	Ctx  context.Context
-	Name string
+	Ctx    context.Context
+	Name   string
+	Reboot bool
 } {
 	var calls []struct {
-		Ctx  context.Context
-		Name string
+		Ctx    context.Context
+		Name   string
+		Reboot bool
 	}
 	mock.lockLaunchClusterUpdate.RLock()
 	calls = mock.calls.LaunchClusterUpdate

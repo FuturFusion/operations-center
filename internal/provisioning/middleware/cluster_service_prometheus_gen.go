@@ -346,7 +346,7 @@ func (_d ClusterServiceWithPrometheus) IsInstanceLifecycleOperationPermitted(ctx
 }
 
 // LaunchClusterUpdate implements provisioning.ClusterService.
-func (_d ClusterServiceWithPrometheus) LaunchClusterUpdate(ctx context.Context, name string) (err error) {
+func (_d ClusterServiceWithPrometheus) LaunchClusterUpdate(ctx context.Context, name string, reboot bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -356,7 +356,7 @@ func (_d ClusterServiceWithPrometheus) LaunchClusterUpdate(ctx context.Context, 
 
 		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "LaunchClusterUpdate", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.LaunchClusterUpdate(ctx, name)
+	return _d.base.LaunchClusterUpdate(ctx, name, reboot)
 }
 
 // RemoveServerSystemNetworkVLANTags implements provisioning.ClusterService.
