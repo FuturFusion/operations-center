@@ -1073,6 +1073,12 @@ func (s clusterService) LaunchClusterUpdate(ctx context.Context, name string, re
 		return fmt.Errorf("Failed to update cluster %q: %w", cluster.Name, err)
 	}
 
+	if reboot {
+		lifecycle.ServerLifecycleSignal.Emit(ctx, lifecycle.ServerLifecycleMessage{
+			Cluster: &cluster.Name,
+		})
+	}
+
 	return nil
 }
 
