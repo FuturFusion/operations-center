@@ -10,7 +10,7 @@ import (
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/util/response"
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 type wellKnownHandler struct{}
@@ -23,7 +23,7 @@ func registerWellKnownHandler(router Router) {
 
 func (w *wellKnownHandler) acmeProvideChallenge(r *http.Request) response.Response {
 	acmeCfg := config.GetSecurity().ACME
-	if acmeCfg.Challenge != api.ACMEChallengeHTTP {
+	if acmeCfg.Challenge != system.ACMEChallengeHTTP {
 		return response.NotFound(nil)
 	}
 
