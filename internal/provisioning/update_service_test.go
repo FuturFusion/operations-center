@@ -3,16 +3,20 @@ package provisioning_test
 import (
 	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/json"
 	"encoding/pem"
 	"io"
 	"os"
 	"testing"
+	"testing/iotest"
 	"time"
 
 	"github.com/expr-lang/expr"
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
+	"github.com/lxc/incus-os/incus-osd/manifests"
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
 
@@ -23,8 +27,10 @@ import (
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -885,6 +891,844 @@ func TestUpdateService_Update(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestUpdateService_GetChangelog(t *testing.T) {
+	updateV1UUID := uuidgen.FromPattern(t, "1")
+	updateV2UUID := uuidgen.FromPattern(t, "2")
+
+	manifestAsGZReadCloser := func(t *testing.T, m any) io.ReadCloser {
+		t.Helper()
+
+		manifestJSON, err := json.Marshal(m)
+		require.NoError(t, err)
+
+		buf := bytes.NewBuffer(nil)
+
+		writer := gzip.NewWriter(buf)
+		_, err = writer.Write(manifestJSON)
+		require.NoError(t, err)
+		err = writer.Close()
+		require.NoError(t, err)
+
+		return io.NopCloser(buf)
+	}
+
+	tests := []struct {
+		name               string
+		currentIDArg       uuid.UUID
+		priorIDArg         uuid.UUID
+		architectureArg    images.UpdateFileArchitecture
+		repoGetByUUID      []queue.Item[*provisioning.Update]
+		repoUpdateFilesGet []queue.Item[io.ReadCloser]
+
+		assertErr     require.ErrorAssertionFunc
+		assertLog     func(t *testing.T, logBuf *bytes.Buffer)
+		wantChangelog api.UpdateChangelog
+	}{
+		{
+			name:            "success - same UUID",
+			currentIDArg:    updateV1UUID,
+			priorIDArg:      updateV1UUID,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+		{
+			name:            "success",
+			currentIDArg:    updateV2UUID,
+			priorIDArg:      updateV1UUID,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				// current
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV2UUID,
+						Version: "2",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_2.manifest.json.gz",
+							},
+							{
+								Type:     images.UpdateFileTypeImageRaw, // not image manifest
+								Filename: "file_2.gz",
+							},
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "file_2.manifest.json.gz", // skip filename without architecture
+							},
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "aarch64/file_2.manifest.json.gz", // architecture missmatch
+							},
+						},
+					},
+				},
+				// prior
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV1UUID,
+						Version: "1",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_1.manifest.json.gz",
+							},
+						},
+					},
+				},
+			},
+			repoUpdateFilesGet: []queue.Item[io.ReadCloser]{
+				// current
+				{
+					Value: manifestAsGZReadCloser(t, manifests.IncusOSManifest{
+						Artifacts: []manifests.IncusOSArtifacts{
+							{
+								Name:    "foo",
+								Version: "2",
+							},
+						},
+					}),
+				},
+				// prior
+				{
+					Value: manifestAsGZReadCloser(t, manifests.IncusOSManifest{
+						Artifacts: []manifests.IncusOSArtifacts{
+							{
+								Name:    "foo",
+								Version: "1",
+							},
+						},
+					}),
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+			wantChangelog: images.Changelog{
+				CurrentVersion: "2",
+				PriorVersion:   "1",
+				Components: map[string]images.ChangelogEntries{
+					"file": {
+						Updated: []string{"foo version 1 to version 2"},
+					},
+				},
+			},
+		},
+		{
+			name:            "success - no prior",
+			currentIDArg:    updateV2UUID,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				// current
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV2UUID,
+						Version: "2",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_2.manifest.json.gz",
+							},
+						},
+					},
+				},
+			},
+			repoUpdateFilesGet: []queue.Item[io.ReadCloser]{
+				// current
+				{
+					Value: manifestAsGZReadCloser(t, manifests.IncusOSManifest{
+						Artifacts: []manifests.IncusOSArtifacts{
+							{
+								Name:    "foo",
+								Version: "2",
+							},
+						},
+					}),
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+			wantChangelog: images.Changelog{
+				CurrentVersion: "2",
+				Components: map[string]images.ChangelogEntries{
+					"file": {
+						Added: []string{"foo version 2"},
+					},
+				},
+			},
+		},
+
+		{
+			name:            "error - GetByUUID - current",
+			currentIDArg:    updateV2UUID,
+			priorIDArg:      updateV1UUID,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				// current
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:            "error - GetByUUID - prior",
+			currentIDArg:    updateV2UUID,
+			priorIDArg:      updateV1UUID,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				// current
+				{
+					Value: &provisioning.Update{},
+				},
+				// prior
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:            "error - current version not after prior version",
+			currentIDArg:    updateV1UUID,
+			priorIDArg:      updateV2UUID,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				// current
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV1UUID,
+						Version: "1",
+					},
+				},
+				// prior
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV2UUID,
+						Version: "2",
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, `Version of current update "11111111-1111-1111-1111-111111111111" (1) is not after version of prior update "22222222-2222-2222-2222-222222222222" (2)`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:            "error - repoUpdateFilesGet",
+			currentIDArg:    updateV2UUID,
+			priorIDArg:      updateV1UUID,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				// current
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV2UUID,
+						Version: "2",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_2.manifest.json.gz",
+							},
+						},
+					},
+				},
+				// prior
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV1UUID,
+						Version: "1",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_1.manifest.json.gz",
+							},
+						},
+					},
+				},
+			},
+			repoUpdateFilesGet: []queue.Item[io.ReadCloser]{
+				// current
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:            "error - read current manifest",
+			currentIDArg:    updateV2UUID,
+			priorIDArg:      updateV1UUID,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				// current
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV2UUID,
+						Version: "2",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_2.manifest.json.gz",
+							},
+						},
+					},
+				},
+				// prior
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV1UUID,
+						Version: "1",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_1.manifest.json.gz",
+							},
+						},
+					},
+				},
+			},
+			repoUpdateFilesGet: []queue.Item[io.ReadCloser]{
+				// current
+				{
+					Value: io.NopCloser(iotest.ErrReader(boom.Error)), // error reader
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:            "error - unmarshal current manifest",
+			currentIDArg:    updateV2UUID,
+			priorIDArg:      updateV1UUID,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				// current
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV2UUID,
+						Version: "2",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_2.manifest.json.gz",
+							},
+						},
+					},
+				},
+				// prior
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV1UUID,
+						Version: "1",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_1.manifest.json.gz",
+							},
+						},
+					},
+				},
+			},
+			repoUpdateFilesGet: []queue.Item[io.ReadCloser]{
+				// current
+				{
+					Value: manifestAsGZReadCloser(t, []string{}), // fails to unmarshal to manifests.IncusOSManifest
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(t, err, "json: cannot unmarshal")
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name:            "prior - repoUpdateFilesGet",
+			currentIDArg:    updateV2UUID,
+			priorIDArg:      updateV1UUID,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				// current
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV2UUID,
+						Version: "2",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_2.manifest.json.gz",
+							},
+						},
+					},
+				},
+				// prior
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV1UUID,
+						Version: "1",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_1.manifest.json.gz",
+							},
+						},
+					},
+				},
+			},
+			repoUpdateFilesGet: []queue.Item[io.ReadCloser]{
+				// current
+				{
+					Value: manifestAsGZReadCloser(t, manifests.IncusOSManifest{
+						Artifacts: []manifests.IncusOSArtifacts{
+							{
+								Name:    "foo",
+								Version: "2",
+							},
+						},
+					}),
+				},
+				// prior
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Contains(boom.Error.Error()),
+			wantChangelog: images.Changelog{
+				CurrentVersion: "2",
+				PriorVersion:   "1",
+				Components: map[string]images.ChangelogEntries{
+					"file": {
+						Added: []string{"foo version 2"},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &repoMock.UpdateRepoMock{
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
+					return queue.Pop(t, &tc.repoGetByUUID)
+				},
+			}
+
+			repoUpdateFiles := &repoMock.UpdateFilesRepoMock{
+				GetFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+					rc, err := queue.Pop(t, &tc.repoUpdateFilesGet)
+					return rc, 0, err
+				},
+			}
+
+			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
+
+			// Run test
+			changelog, err := updateSvc.GetChangelog(t.Context(), tc.currentIDArg, tc.priorIDArg, tc.architectureArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Equal(t, tc.wantChangelog, changelog)
+
+			require.Empty(t, tc.repoGetByUUID)
+			require.Empty(t, tc.repoUpdateFilesGet)
+		})
+	}
+}
+
+func TestUpdateService_GetChangelogByChannel(t *testing.T) {
+	updateV1UUID := uuidgen.FromPattern(t, "1")
+	updateV2UUID := uuidgen.FromPattern(t, "2")
+
+	manifestAsGZReadCloser := func(t *testing.T, m any) io.ReadCloser {
+		t.Helper()
+
+		manifestJSON, err := json.Marshal(m)
+		require.NoError(t, err)
+
+		buf := bytes.NewBuffer(nil)
+
+		writer := gzip.NewWriter(buf)
+		_, err = writer.Write(manifestJSON)
+		require.NoError(t, err)
+		err = writer.Close()
+		require.NoError(t, err)
+
+		return io.NopCloser(buf)
+	}
+
+	tests := []struct {
+		name               string
+		currentIDArg       uuid.UUID
+		channelNameArg     string
+		upstreamArg        bool
+		architectureArg    images.UpdateFileArchitecture
+		repoGetAll         []queue.Item[provisioning.Updates]
+		repoGetByUUID      []queue.Item[*provisioning.Update]
+		repoUpdateFilesGet []queue.Item[io.ReadCloser]
+
+		assertErr     require.ErrorAssertionFunc
+		wantChangelog api.UpdateChangelog
+	}{
+		{
+			name:            "success - not upstream",
+			currentIDArg:    updateV2UUID,
+			channelNameArg:  "stable",
+			upstreamArg:     false,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetAll: []queue.Item[provisioning.Updates]{
+				{
+					Value: provisioning.Updates{
+						{
+							UUID:     updateV2UUID,
+							Version:  "2",
+							Channels: []string{"stable"},
+						},
+						{
+							UUID:     updateV1UUID,
+							Version:  "1",
+							Channels: []string{"stable"},
+						},
+					},
+				},
+			},
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				// current
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV2UUID,
+						Version: "2",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_2.manifest.json.gz",
+							},
+						},
+					},
+				},
+				// prior
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV1UUID,
+						Version: "1",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_1.manifest.json.gz",
+							},
+						},
+					},
+				},
+			},
+			repoUpdateFilesGet: []queue.Item[io.ReadCloser]{
+				// current
+				{
+					Value: manifestAsGZReadCloser(t, manifests.IncusOSManifest{
+						Artifacts: []manifests.IncusOSArtifacts{
+							{
+								Name:    "foo",
+								Version: "2",
+							},
+						},
+					}),
+				},
+				// prior
+				{
+					Value: manifestAsGZReadCloser(t, manifests.IncusOSManifest{
+						Artifacts: []manifests.IncusOSArtifacts{
+							{
+								Name:    "foo",
+								Version: "1",
+							},
+						},
+					}),
+				},
+			},
+
+			assertErr: require.NoError,
+			wantChangelog: images.Changelog{
+				CurrentVersion: "2",
+				PriorVersion:   "1",
+				Channel:        "stable",
+				Components: map[string]images.ChangelogEntries{
+					"file": {
+						Updated: []string{"foo version 1 to version 2"},
+					},
+				},
+			},
+		},
+		{
+			name:            "success - not upstream and no prior",
+			currentIDArg:    updateV2UUID,
+			channelNameArg:  "stable",
+			upstreamArg:     false,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetAll: []queue.Item[provisioning.Updates]{
+				{
+					Value: provisioning.Updates{
+						{
+							UUID:     updateV2UUID,
+							Version:  "2",
+							Channels: []string{"stable"},
+						},
+						// prior missing
+					},
+				},
+			},
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				// current
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV2UUID,
+						Version: "2",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_2.manifest.json.gz",
+							},
+						},
+					},
+				},
+			},
+			repoUpdateFilesGet: []queue.Item[io.ReadCloser]{
+				// current
+				{
+					Value: manifestAsGZReadCloser(t, manifests.IncusOSManifest{
+						Artifacts: []manifests.IncusOSArtifacts{
+							{
+								Name:    "foo",
+								Version: "2",
+							},
+						},
+					}),
+				},
+			},
+
+			assertErr: require.NoError,
+			wantChangelog: images.Changelog{
+				CurrentVersion: "2",
+				Channel:        "stable",
+				Components: map[string]images.ChangelogEntries{
+					"file": {
+						Added: []string{"foo version 2"},
+					},
+				},
+			},
+		},
+		{
+			name:            "success - upstream",
+			currentIDArg:    updateV2UUID,
+			channelNameArg:  "stable",
+			upstreamArg:     true,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetAll: []queue.Item[provisioning.Updates]{
+				{
+					Value: provisioning.Updates{
+						{
+							UUID:             updateV2UUID,
+							Version:          "2",
+							UpstreamChannels: []string{"stable"},
+						},
+						{
+							UUID:             updateV1UUID,
+							Version:          "1",
+							UpstreamChannels: []string{"stable"},
+						},
+					},
+				},
+			},
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				// current
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV2UUID,
+						Version: "2",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_2.manifest.json.gz",
+							},
+						},
+					},
+				},
+				// prior
+				{
+					Value: &provisioning.Update{
+						UUID:    updateV1UUID,
+						Version: "1",
+						Files: provisioning.UpdateFiles{
+							{
+								Type:     images.UpdateFileTypeImageManifest,
+								Filename: "x86_64/file_1.manifest.json.gz",
+							},
+						},
+					},
+				},
+			},
+			repoUpdateFilesGet: []queue.Item[io.ReadCloser]{
+				// current
+				{
+					Value: manifestAsGZReadCloser(t, manifests.IncusOSManifest{
+						Artifacts: []manifests.IncusOSArtifacts{
+							{
+								Name:    "foo",
+								Version: "2",
+							},
+						},
+					}),
+				},
+				// prior
+				{
+					Value: manifestAsGZReadCloser(t, manifests.IncusOSManifest{
+						Artifacts: []manifests.IncusOSArtifacts{
+							{
+								Name:    "foo",
+								Version: "1",
+							},
+						},
+					}),
+				},
+			},
+
+			assertErr: require.NoError,
+			wantChangelog: images.Changelog{
+				CurrentVersion: "2",
+				PriorVersion:   "1",
+				Channel:        "stable",
+				Components: map[string]images.ChangelogEntries{
+					"file": {
+						Updated: []string{"foo version 1 to version 2"},
+					},
+				},
+			},
+		},
+		{
+			name:            "error - GetAllWithFilter",
+			currentIDArg:    updateV2UUID,
+			channelNameArg:  "stable",
+			upstreamArg:     false,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetAll: []queue.Item[provisioning.Updates]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:            "error - currrent not found",
+			currentIDArg:    updateV2UUID,
+			channelNameArg:  "stable",
+			upstreamArg:     false,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetAll: []queue.Item[provisioning.Updates]{
+				{
+					Value: provisioning.Updates{
+						// updateV2UUID missing
+						{
+							UUID:     updateV1UUID,
+							Version:  "1",
+							Channels: []string{"stable"},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotFound)
+			},
+		},
+		{
+			name:            "error - Changelog",
+			currentIDArg:    updateV2UUID,
+			channelNameArg:  "stable",
+			upstreamArg:     false,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			repoGetAll: []queue.Item[provisioning.Updates]{
+				{
+					Value: provisioning.Updates{
+						{
+							UUID:     updateV2UUID,
+							Version:  "2",
+							Channels: []string{"stable"},
+						},
+						{
+							UUID:     updateV1UUID,
+							Version:  "1",
+							Channels: []string{"stable"},
+						},
+					},
+				},
+			},
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				// current
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.UpdateRepoMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
+					return queue.Pop(t, &tc.repoGetAll)
+				},
+				GetUpdatesByAssignedChannelNameFunc: func(ctx context.Context, name string, filter ...provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return queue.Pop(t, &tc.repoGetAll)
+				},
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
+					return queue.Pop(t, &tc.repoGetByUUID)
+				},
+			}
+
+			repoUpdateFiles := &repoMock.UpdateFilesRepoMock{
+				GetFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+					rc, err := queue.Pop(t, &tc.repoUpdateFilesGet)
+					return rc, 0, err
+				},
+			}
+
+			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
+
+			// Run test
+			changelog, err := updateSvc.GetChangelogByChannel(t.Context(), tc.currentIDArg, tc.channelNameArg, tc.upstreamArg, tc.architectureArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantChangelog, changelog)
+
+			require.Empty(t, tc.repoGetAll)
+			require.Empty(t, tc.repoGetByUUID)
+			require.Empty(t, tc.repoUpdateFilesGet)
 		})
 	}
 }
