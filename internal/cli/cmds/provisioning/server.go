@@ -84,6 +84,13 @@ func (c *CmdServer) Command() *cobra.Command {
 
 	cmd.AddCommand(serverShowCmd.Command())
 
+	// Changelog
+	serverChangelogCmd := cmdServerChangelog{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(serverChangelogCmd.Command())
+
 	// System
 	serverSystemCmd := cmdServerSystem{
 		ocClient: c.OCClient,
@@ -533,6 +540,53 @@ func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 
 		fmt.Printf("Version Data:\n%s\n", render.Indent(4, string(versionDataJSON)))
 	}
+
+	return nil
+}
+
+// Changelog server.
+type cmdServerChangelog struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdServerChangelog) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "changelog <name>"
+	cmd.Short = "Changelog information about a server"
+	cmd.Long = `Description:
+  Changelog information about a server.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerChangelog) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdServerChangelog) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	changelog, err := c.ocClient.GetServerChangelog(cmd.Context(), name)
+	if err != nil {
+		return err
+	}
+
+	changelogYAML, err := yaml.Marshal(changelog)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Changelog:\n%s\n", render.Indent(4, string(changelogYAML)))
 
 	return nil
 }
