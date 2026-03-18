@@ -2,6 +2,10 @@ package provisioning
 
 import (
 	"context"
+
+	"github.com/lxc/incus-os/incus-osd/api/images"
+
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type ChannelService interface {
@@ -13,6 +17,7 @@ type ChannelService interface {
 	GetByName(ctx context.Context, name string) (*Channel, error)
 	Update(ctx context.Context, newChannel Channel) error
 	DeleteByName(ctx context.Context, name string) error
+	GetChangelogByName(ctx context.Context, name string, architecture images.UpdateFileArchitecture) (api.UpdateChangelogs, error)
 }
 
 type ChannelRepo interface {
