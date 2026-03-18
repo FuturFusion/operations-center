@@ -6,6 +6,7 @@ import { fetchServer } from "api/server";
 import { formatDate } from "util/date";
 import type { ServerTypeKey } from "util/server";
 import { ServerTypeString } from "util/server";
+import { Badge } from "react-bootstrap";
 
 type FieldState = {
   hw: boolean;
@@ -65,6 +66,22 @@ const ServerOverview = () => {
       <div className="row">
         <div className="col-2 detail-table-header">Name</div>
         <div className="col-10 detail-table-cell">{server?.name}</div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Description</div>
+        <div className="col-10 detail-table-cell">{server?.description}</div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Properties</div>
+        <div className="col-10 detail-table-cell">
+          {server?.properties &&
+            Object.entries(server?.properties).map(([key, value]) => [
+              <Badge bg="primary">
+                {key}:{value}
+              </Badge>,
+              <span> </span>,
+            ])}
+        </div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Connection URL</div>
