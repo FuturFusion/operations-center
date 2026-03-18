@@ -16,34 +16,34 @@ import (
 )
 
 var updateObjects = RegisterStmt(`
-SELECT updates.id, updates.uuid, updates.origin, updates.version, updates.published_at, updates.severity, updates.upstream_channels, updates.changelog, updates.files, updates.url, updates.status, updates.last_updated
+SELECT updates.id, updates.uuid, updates.origin, updates.version, updates.published_at, updates.severity, updates.upstream_channels, updates.files, updates.url, updates.status, updates.last_updated
   FROM updates
   ORDER BY updates.uuid
 `)
 
 var updateObjectsByUUID = RegisterStmt(`
-SELECT updates.id, updates.uuid, updates.origin, updates.version, updates.published_at, updates.severity, updates.upstream_channels, updates.changelog, updates.files, updates.url, updates.status, updates.last_updated
+SELECT updates.id, updates.uuid, updates.origin, updates.version, updates.published_at, updates.severity, updates.upstream_channels, updates.files, updates.url, updates.status, updates.last_updated
   FROM updates
   WHERE ( updates.uuid = ? )
   ORDER BY updates.uuid
 `)
 
 var updateObjectsByOrigin = RegisterStmt(`
-SELECT updates.id, updates.uuid, updates.origin, updates.version, updates.published_at, updates.severity, updates.upstream_channels, updates.changelog, updates.files, updates.url, updates.status, updates.last_updated
+SELECT updates.id, updates.uuid, updates.origin, updates.version, updates.published_at, updates.severity, updates.upstream_channels, updates.files, updates.url, updates.status, updates.last_updated
   FROM updates
   WHERE ( updates.origin = ? )
   ORDER BY updates.uuid
 `)
 
 var updateObjectsByOriginAndStatus = RegisterStmt(`
-SELECT updates.id, updates.uuid, updates.origin, updates.version, updates.published_at, updates.severity, updates.upstream_channels, updates.changelog, updates.files, updates.url, updates.status, updates.last_updated
+SELECT updates.id, updates.uuid, updates.origin, updates.version, updates.published_at, updates.severity, updates.upstream_channels, updates.files, updates.url, updates.status, updates.last_updated
   FROM updates
   WHERE ( updates.origin = ? AND updates.status = ? )
   ORDER BY updates.uuid
 `)
 
 var updateObjectsByStatus = RegisterStmt(`
-SELECT updates.id, updates.uuid, updates.origin, updates.version, updates.published_at, updates.severity, updates.upstream_channels, updates.changelog, updates.files, updates.url, updates.status, updates.last_updated
+SELECT updates.id, updates.uuid, updates.origin, updates.version, updates.published_at, updates.severity, updates.upstream_channels, updates.files, updates.url, updates.status, updates.last_updated
   FROM updates
   WHERE ( updates.status = ? )
   ORDER BY updates.uuid
@@ -82,13 +82,13 @@ SELECT updates.id FROM updates
 `)
 
 var updateCreate = RegisterStmt(`
-INSERT INTO updates (uuid, origin, version, published_at, severity, upstream_channels, changelog, files, url, status, last_updated)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO updates (uuid, origin, version, published_at, severity, upstream_channels, files, url, status, last_updated)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
 var updateUpdate = RegisterStmt(`
 UPDATE updates
-  SET uuid = ?, origin = ?, version = ?, published_at = ?, severity = ?, upstream_channels = ?, changelog = ?, files = ?, url = ?, status = ?, last_updated = ?
+  SET uuid = ?, origin = ?, version = ?, published_at = ?, severity = ?, upstream_channels = ?, files = ?, url = ?, status = ?, last_updated = ?
  WHERE id = ?
 `)
 
@@ -176,7 +176,7 @@ func GetUpdate(ctx context.Context, db dbtx, uuid uuid.UUID) (_ *provisioning.Up
 // updateColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the Update entity.
 func updateColumns() string {
-	return "updates.id, updates.uuid, updates.origin, updates.version, updates.published_at, updates.severity, updates.upstream_channels, updates.changelog, updates.files, updates.url, updates.status, updates.last_updated"
+	return "updates.id, updates.uuid, updates.origin, updates.version, updates.published_at, updates.severity, updates.upstream_channels, updates.files, updates.url, updates.status, updates.last_updated"
 }
 
 // getUpdates can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -185,7 +185,7 @@ func getUpdates(ctx context.Context, stmt *sql.Stmt, args ...any) ([]provisionin
 
 	dest := func(scan func(dest ...any) error) error {
 		u := provisioning.Update{}
-		err := scan(&u.ID, &u.UUID, &u.Origin, &u.Version, &u.PublishedAt, &u.Severity, &u.UpstreamChannels, &u.Changelog, &u.Files, &u.URL, &u.Status, &u.LastUpdated)
+		err := scan(&u.ID, &u.UUID, &u.Origin, &u.Version, &u.PublishedAt, &u.Severity, &u.UpstreamChannels, &u.Files, &u.URL, &u.Status, &u.LastUpdated)
 		if err != nil {
 			return err
 		}
@@ -209,7 +209,7 @@ func getUpdatesRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]pro
 
 	dest := func(scan func(dest ...any) error) error {
 		u := provisioning.Update{}
-		err := scan(&u.ID, &u.UUID, &u.Origin, &u.Version, &u.PublishedAt, &u.Severity, &u.UpstreamChannels, &u.Changelog, &u.Files, &u.URL, &u.Status, &u.LastUpdated)
+		err := scan(&u.ID, &u.UUID, &u.Origin, &u.Version, &u.PublishedAt, &u.Severity, &u.UpstreamChannels, &u.Files, &u.URL, &u.Status, &u.LastUpdated)
 		if err != nil {
 			return err
 		}
@@ -513,7 +513,7 @@ func CreateUpdate(ctx context.Context, db dbtx, object provisioning.Update) (_ i
 		_err = mapErr(_err, "Update")
 	}()
 
-	args := make([]any, 11)
+	args := make([]any, 10)
 
 	// Populate the statement arguments.
 	args[0] = object.UUID
@@ -522,11 +522,10 @@ func CreateUpdate(ctx context.Context, db dbtx, object provisioning.Update) (_ i
 	args[3] = object.PublishedAt
 	args[4] = object.Severity
 	args[5] = object.UpstreamChannels
-	args[6] = object.Changelog
-	args[7] = object.Files
-	args[8] = object.URL
-	args[9] = object.Status
-	args[10] = time.Now().UTC().Format(time.RFC3339)
+	args[6] = object.Files
+	args[7] = object.URL
+	args[8] = object.Status
+	args[9] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, updateCreate)
@@ -569,7 +568,7 @@ func UpdateUpdate(ctx context.Context, db tx, uuid uuid.UUID, object provisionin
 		return fmt.Errorf("Failed to get \"updateUpdate\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(object.UUID, object.Origin, object.Version, object.PublishedAt, object.Severity, object.UpstreamChannels, object.Changelog, object.Files, object.URL, object.Status, time.Now().UTC().Format(time.RFC3339), id)
+	result, err := stmt.Exec(object.UUID, object.Origin, object.Version, object.PublishedAt, object.Severity, object.UpstreamChannels, object.Files, object.URL, object.Status, time.Now().UTC().Format(time.RFC3339), id)
 	if err != nil {
 		return fmt.Errorf("Update \"updates\" entry failed: %w", err)
 	}

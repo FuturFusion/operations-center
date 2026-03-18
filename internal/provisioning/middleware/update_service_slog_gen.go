@@ -11,7 +11,9 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 )
 
 // UpdateServiceWithSlog implements provisioning.UpdateService that is instrumented with slog logger.
@@ -281,6 +283,81 @@ func (_d UpdateServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (up
 		}
 	}()
 	return _d._base.GetByUUID(ctx, id)
+}
+
+// GetChangelog implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) GetChangelog(ctx context.Context, currentID uuid.UUID, priorID uuid.UUID, architecture images.UpdateFileArchitecture) (v api.UpdateChangelog, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("currentID", currentID),
+			slog.Any("priorID", priorID),
+			slog.Any("architecture", architecture),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetChangelog")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("v", v),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetChangelog returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetChangelog returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetChangelog finished")
+		}
+	}()
+	return _d._base.GetChangelog(ctx, currentID, priorID, architecture)
+}
+
+// GetChangelogByChannel implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) GetChangelogByChannel(ctx context.Context, UUID uuid.UUID, channelName string, upstream bool, architecture images.UpdateFileArchitecture) (v api.UpdateChangelog, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("UUID", UUID),
+			slog.String("channelName", channelName),
+			slog.Bool("upstream", upstream),
+			slog.Any("architecture", architecture),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetChangelogByChannel")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("v", v),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetChangelogByChannel returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetChangelogByChannel returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetChangelogByChannel finished")
+		}
+	}()
+	return _d._base.GetChangelogByChannel(ctx, UUID, channelName, upstream, architecture)
 }
 
 // GetUpdateAllFiles implements provisioning.UpdateService.
