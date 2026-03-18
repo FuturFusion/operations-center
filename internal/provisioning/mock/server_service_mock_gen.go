@@ -51,6 +51,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 //				panic("mock out the GetByName method")
 //			},
+//			GetChangelogByNameFunc: func(ctx context.Context, name string) (api.UpdateChangelog, error) {
+//				panic("mock out the GetChangelogByName method")
+//			},
 //			GetSystemKernelFunc: func(ctx context.Context, name string) (provisioning.ServerSystemKernel, error) {
 //				panic("mock out the GetSystemKernel method")
 //			},
@@ -153,6 +156,9 @@ type ServerServiceMock struct {
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Server, error)
+
+	// GetChangelogByNameFunc mocks the GetChangelogByName method.
+	GetChangelogByNameFunc func(ctx context.Context, name string) (api.UpdateChangelog, error)
 
 	// GetSystemKernelFunc mocks the GetSystemKernel method.
 	GetSystemKernelFunc func(ctx context.Context, name string) (provisioning.ServerSystemKernel, error)
@@ -285,6 +291,13 @@ type ServerServiceMock struct {
 		}
 		// GetByName holds details about calls to the GetByName method.
 		GetByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
+		// GetChangelogByName holds details about calls to the GetChangelogByName method.
+		GetChangelogByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Name is the name argument value.
@@ -493,6 +506,7 @@ type ServerServiceMock struct {
 	lockGetAllNamesWithFilter        sync.RWMutex
 	lockGetAllWithFilter             sync.RWMutex
 	lockGetByName                    sync.RWMutex
+	lockGetChangelogByName           sync.RWMutex
 	lockGetSystemKernel              sync.RWMutex
 	lockGetSystemLogging             sync.RWMutex
 	lockGetSystemProvider            sync.RWMutex
@@ -843,6 +857,42 @@ func (mock *ServerServiceMock) GetByNameCalls() []struct {
 	mock.lockGetByName.RLock()
 	calls = mock.calls.GetByName
 	mock.lockGetByName.RUnlock()
+	return calls
+}
+
+// GetChangelogByName calls GetChangelogByNameFunc.
+func (mock *ServerServiceMock) GetChangelogByName(ctx context.Context, name string) (api.UpdateChangelog, error) {
+	if mock.GetChangelogByNameFunc == nil {
+		panic("ServerServiceMock.GetChangelogByNameFunc: method is nil but ServerService.GetChangelogByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockGetChangelogByName.Lock()
+	mock.calls.GetChangelogByName = append(mock.calls.GetChangelogByName, callInfo)
+	mock.lockGetChangelogByName.Unlock()
+	return mock.GetChangelogByNameFunc(ctx, name)
+}
+
+// GetChangelogByNameCalls gets all the calls that were made to GetChangelogByName.
+// Check the length with:
+//
+//	len(mockedServerService.GetChangelogByNameCalls())
+func (mock *ServerServiceMock) GetChangelogByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockGetChangelogByName.RLock()
+	calls = mock.calls.GetChangelogByName
+	mock.lockGetChangelogByName.RUnlock()
 	return calls
 }
 
