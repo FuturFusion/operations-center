@@ -154,3 +154,8 @@ type UpdateFile struct {
 //
 // swagger:model
 type UpdateChangelog = images.Changelog
+
+// UpdateChangelogs represents a series of changelogs, e.g. for all the updates of a channel.
+//
+// swagger:model
+type UpdateChangelogs []UpdateChangelog
