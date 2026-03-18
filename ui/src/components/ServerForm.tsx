@@ -26,6 +26,7 @@ const ServerForm: FC<Props> = ({
     name: server?.name || "",
     public_connection_url: server?.public_connection_url || "",
     channel: server?.channel || "",
+    description: server?.description || "",
     network_configuration: YAML.stringify(systemNetwork, null, 2),
     storage_configuration: YAML.stringify(systemStorage, null, 2),
   };
@@ -65,6 +66,17 @@ const ServerForm: FC<Props> = ({
                 Rename
               </Button>
             </div>
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="description">
+            <Form.Label>Description</Form.Label>
+            <Form.Control
+              type="text"
+              name="description"
+              value={formik.values.description}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              disabled={formik.isSubmitting}
+            />
           </Form.Group>
           <Form.Group className="mb-3" controlId="public_connection_url">
             <Form.Label>Connection URL</Form.Label>

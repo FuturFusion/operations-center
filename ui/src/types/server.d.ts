@@ -41,6 +41,7 @@ export interface ServerFormValues {
   name: string;
   public_connection_url: string;
   channel: string;
+  description: string;
   network_configuration: string;
   storage_configuration: string;
 }

@@ -89,6 +89,7 @@ const ServerConfiguration = () => {
       values.name,
       JSON.stringify(
         {
+          description: values.description,
           public_connection_url: values.public_connection_url,
           channel: values.channel,
         },
