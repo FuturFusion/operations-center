@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
@@ -51,6 +53,13 @@ func (c *CmdUpdate) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(updateShowCmd.Command())
+
+	// Changelog
+	updateChangelogCmd := cmdUpdateChangelog{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updateChangelogCmd.Command())
 
 	// Add
 	updateAddCmd := cmdUpdateAdd{
@@ -198,9 +207,9 @@ type cmdUpdateShow struct {
 func (c *cmdUpdateShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid>"
-	cmd.Short = "Show information about a update"
+	cmd.Short = "Show information about an update"
 	cmd.Long = `Description:
-  Show information about a update.
+  Show information about an update.
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -240,12 +249,66 @@ func (c *cmdUpdateShow) run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Published At: %s\n", update.PublishedAt.Truncate(time.Second).String())
 	fmt.Printf("Severity: %s\n", update.Severity.String())
 	fmt.Printf("Status: %s\n", update.Status.String())
-	fmt.Printf("Changelog:\n%s", indent("  ", strings.TrimSpace(update.Changelog)))
 	fmt.Println("Files:")
 
 	for _, updateFile := range updateFiles {
 		fmt.Printf("- %s (%s)\n", updateFile.Filename, humanize.Bytes(uint64(updateFile.Size)))
 	}
+
+	return nil
+}
+
+// Changelog update.
+type cmdUpdateChangelog struct {
+	ocClient *client.OperationsCenterClient
+
+	flagArchitecture string
+	flagChannel      string
+	flagUpstream     bool
+}
+
+func (c *cmdUpdateChangelog) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "changelog <uuid>"
+	cmd.Short = "Changelog information about an update"
+	cmd.Long = `Description:
+  Changelog information about a update.
+`
+
+	cmd.Flags().StringVar(&c.flagArchitecture, "architecture", string(images.UpdateFileArchitecture64BitX86), "architecture the changelog should be shown for")
+	cmd.Flags().StringVar(&c.flagChannel, "channel", "stable", "Channel the changelog should be shown for")
+	cmd.Flags().BoolVar(&c.flagUpstream, "upstream", false, "if set, channel is an upstream channel, otherwise an update channel")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdUpdateChangelog) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdUpdateChangelog) run(cmd *cobra.Command, args []string) error {
+	id := args[0]
+
+	changelog, err := c.ocClient.GetUpdateChangelog(cmd.Context(), id, c.flagChannel, c.flagUpstream, c.flagArchitecture)
+	if err != nil {
+		return err
+	}
+
+	changelogYAML, err := yaml.Marshal(changelog)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Changelog:\n%s\n", render.Indent(4, string(changelogYAML)))
 
 	return nil
 }
