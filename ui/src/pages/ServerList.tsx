@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Container } from "react-bootstrap";
+import { Badge, Container } from "react-bootstrap";
 import { Link, useSearchParams } from "react-router";
 import { fetchServers } from "api/server";
 import ExtendedDataTable from "components/ExtendedDataTable";
@@ -9,6 +9,7 @@ import ServerStatus from "components/ServerStatus";
 import type { Server } from "types/server";
 import type { ServerTypeKey } from "util/server";
 import { ServerTypeString } from "util/server";
+import { BsLink45Deg } from "react-icons/bs";
 
 const Server = () => {
   const [searchParams] = useSearchParams();
@@ -31,42 +32,52 @@ const Server = () => {
 
   const headers = [
     "Name",
+    "Description / Properties",
     "Cluster",
-    "Connection URL",
     "Type",
     "Status",
     "Actions",
   ];
   const rows = servers.map((item) => {
-    const connectionURL = item.public_connection_url || item.connection_url;
-
     return [
       {
-        content: (
+        content: [
           <Link
             to={`/ui/provisioning/servers/${item.name}`}
             className="data-table-link"
+            title="Server details"
           >
             {item.name}
-          </Link>
-        ),
+          </Link>,
+          <Link
+            to={item.public_connection_url || item.connection_url}
+            target="_blank"
+            className="data-table-link"
+            title="Access server through external URL"
+          >
+            <BsLink45Deg color="grey" size={25} />
+          </Link>,
+        ],
         sortKey: item.name,
+      },
+      {
+        content: (
+          <>
+            {item.description}
+            <br />
+            {item.properties &&
+              Object.entries(item.properties).map(([key, value]) => [
+                <Badge bg="primary">
+                  {key}:{value}
+                </Badge>,
+                <span> </span>,
+              ])}
+          </>
+        ),
       },
       {
         content: item.cluster,
         sortKey: item.cluster,
-      },
-      {
-        content: (
-          <Link
-            to={`${connectionURL}`}
-            target="_blank"
-            className="data-table-link"
-          >
-            {connectionURL}
-          </Link>
-        ),
-        sortKey: connectionURL,
       },
       {
         content: ServerTypeString[item.server_type as ServerTypeKey],

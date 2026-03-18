@@ -12,11 +12,17 @@ export interface ServerVersionData {
   in_maintenance: number;
 }
 
+export interface ServerProperty {
+  [key: string]: string;
+}
+
 export interface Server {
   name: string;
   cluster: string;
   connection_url: string;
   channel: string;
+  description: string;
+  properties: ServerProperty;
   public_connection_url: string;
   server_type: string;
   server_status: string;
