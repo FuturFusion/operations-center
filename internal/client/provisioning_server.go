@@ -96,6 +96,21 @@ func (c OperationsCenterClient) ResyncServer(ctx context.Context, name string) e
 	return nil
 }
 
+func (c OperationsCenterClient) GetServerChangelog(ctx context.Context, name string) (api.UpdateChangelog, error) {
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name, "changelog"), nil, nil)
+	if err != nil {
+		return api.UpdateChangelog{}, err
+	}
+
+	changelog := api.UpdateChangelog{}
+	err = json.Unmarshal(response.Metadata, &changelog)
+	if err != nil {
+		return api.UpdateChangelog{}, err
+	}
+
+	return changelog, nil
+}
+
 func (c OperationsCenterClient) EvacuateServerSystem(ctx context.Context, name string) error {
 	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:evacuate"), nil, nil)
 	if err != nil {
