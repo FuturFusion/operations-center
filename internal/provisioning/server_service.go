@@ -1232,6 +1232,53 @@ func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *Ser
 	return s.repo.Update(ctx, *server)
 }
 
+func (s *serverService) GetChangelogByName(ctx context.Context, name string) (api.UpdateChangelog, error) {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return api.UpdateChangelog{}, fmt.Errorf("Failed to get server %q: %w", name, err)
+	}
+
+	if server.VersionData.OS.AvailableVersion == nil || *server.VersionData.OS.AvailableVersion == "" || *server.VersionData.OS.AvailableVersion == server.VersionData.OS.Version {
+		return api.UpdateChangelog{}, nil
+	}
+
+	updates, err := s.updateSvc.GetAllWithFilter(ctx, UpdateFilter{
+		Channel: ptr.To(server.Channel),
+	})
+	if err != nil {
+		return api.UpdateChangelog{}, fmt.Errorf("Failed to get updates for channel %q: %w", server.Channel, err)
+	}
+
+	var (
+		availableUpdateID uuid.UUID
+		currentUpdateID   uuid.UUID
+	)
+	for _, update := range updates {
+		if update.Version == server.VersionData.OS.Version {
+			currentUpdateID = update.UUID
+		}
+
+		if update.Version == *server.VersionData.OS.AvailableVersion {
+			availableUpdateID = update.UUID
+		}
+	}
+
+	architecture := images.UpdateFileArchitecture(server.HardwareData.CPU.Architecture)
+	_, ok := images.UpdateFileArchitectures[architecture]
+	if !ok || architecture == images.UpdateFileArchitectureUndefined {
+		architecture = images.UpdateFileArchitecture64BitX86
+	}
+
+	changelog, err := s.updateSvc.GetChangelog(ctx, availableUpdateID, currentUpdateID, architecture)
+	if err != nil {
+		return api.UpdateChangelog{}, fmt.Errorf("Failed to get changelog for update %s: %w", updates[0].UUID.String(), err)
+	}
+
+	changelog.Channel = server.Channel
+
+	return changelog, nil
+}
+
 func (s *serverService) PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error {
 	log := slog.With(slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 

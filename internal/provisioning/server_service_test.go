@@ -32,6 +32,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
+	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -3889,6 +3890,384 @@ func TestServerService_ResyncByName(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestServerService_GetChangelogByName(t *testing.T) {
+	updateV1UUID := uuidgen.FromPattern(t, "1")
+	updateV2UUID := uuidgen.FromPattern(t, "2")
+
+	tests := []struct {
+		name                      string
+		nameArg                   string
+		repoGetByName             []queue.Item[*provisioning.Server]
+		updateSvcGetAllWithFilter []queue.Item[provisioning.Updates]
+		updateSvcGetChangelog     api.UpdateChangelog
+		updateSvcGetChangelogErr  error
+
+		assertErr     require.ErrorAssertionFunc
+		wantChangelog api.UpdateChangelog
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			updateSvcGetAllWithFilter: []queue.Item[provisioning.Updates]{
+				// GetByName
+				{
+					Value: provisioning.Updates{
+						{
+							UUID:     updateV2UUID,
+							Version:  "2",
+							Channels: []string{"stable"},
+							Files: provisioning.UpdateFiles{
+								{
+									Component: images.UpdateFileComponentOS,
+								},
+								{
+									Component: images.UpdateFileComponentIncus,
+								},
+							},
+						},
+						{
+							UUID:     updateV1UUID,
+							Version:  "1",
+							Channels: []string{"stable"},
+							Files: provisioning.UpdateFiles{
+								{
+									Component: images.UpdateFileComponentOS,
+								},
+								{
+									Component: images.UpdateFileComponentIncus,
+								},
+							},
+						},
+					},
+				},
+				// updateSvc.GetAllWithFilter
+				{
+					Value: provisioning.Updates{
+						{
+							UUID:     updateV2UUID,
+							Version:  "2",
+							Channels: []string{"stable"},
+							Files: provisioning.UpdateFiles{
+								{
+									Component: images.UpdateFileComponentOS,
+								},
+								{
+									Component: images.UpdateFileComponentIncus,
+								},
+							},
+						},
+						{
+							UUID:     updateV1UUID,
+							Version:  "1",
+							Channels: []string{"stable"},
+							Files: provisioning.UpdateFiles{
+								{
+									Component: images.UpdateFileComponentOS,
+								},
+								{
+									Component: images.UpdateFileComponentIncus,
+								},
+							},
+						},
+					},
+				},
+			},
+			updateSvcGetChangelog: api.UpdateChangelog{
+				CurrentVersion: "2",
+				PriorVersion:   "1",
+				Components: map[string]images.ChangelogEntries{
+					"os": {
+						Updated: []string{"file version 1 to version 2"},
+					},
+					"incus": {
+						Updated: []string{"file version 1 to version 2"},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantChangelog: images.Changelog{
+				CurrentVersion: "2",
+				PriorVersion:   "1",
+				Channel:        "stable",
+				Components: map[string]images.ChangelogEntries{
+					"os": {
+						Updated: []string{"file version 1 to version 2"},
+					},
+					"incus": {
+						Updated: []string{"file version 1 to version 2"},
+					},
+				},
+			},
+		},
+		{
+			name:    "success - no update available",
+			nameArg: "one",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			updateSvcGetAllWithFilter: []queue.Item[provisioning.Updates]{
+				// GetByName
+				{
+					Value: provisioning.Updates{
+						// No update available.
+						{
+							UUID:     updateV1UUID,
+							Version:  "1",
+							Channels: []string{"stable"},
+							Files: provisioning.UpdateFiles{
+								{
+									Component: images.UpdateFileComponentOS,
+								},
+								{
+									Component: images.UpdateFileComponentIncus,
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+
+		{
+			name:    "error - GetByName",
+			nameArg: "one",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - updateSvc.GetAllWithFitler",
+			nameArg: "one",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			updateSvcGetAllWithFilter: []queue.Item[provisioning.Updates]{
+				// GetByName
+				{
+					Value: provisioning.Updates{
+						{
+							UUID:     updateV2UUID,
+							Version:  "2",
+							Channels: []string{"stable"},
+							Files: provisioning.UpdateFiles{
+								{
+									Component: images.UpdateFileComponentOS,
+								},
+								{
+									Component: images.UpdateFileComponentIncus,
+								},
+							},
+						},
+						{
+							UUID:     updateV1UUID,
+							Version:  "1",
+							Channels: []string{"stable"},
+							Files: provisioning.UpdateFiles{
+								{
+									Component: images.UpdateFileComponentOS,
+								},
+								{
+									Component: images.UpdateFileComponentIncus,
+								},
+							},
+						},
+					},
+				},
+				// updateSvc.GetAllWithFilter
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - updateSvc.GetChangelog",
+			nameArg: "one",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			updateSvcGetAllWithFilter: []queue.Item[provisioning.Updates]{
+				// GetByName
+				{
+					Value: provisioning.Updates{
+						{
+							UUID:     updateV2UUID,
+							Version:  "2",
+							Channels: []string{"stable"},
+							Files: provisioning.UpdateFiles{
+								{
+									Component: images.UpdateFileComponentOS,
+								},
+								{
+									Component: images.UpdateFileComponentIncus,
+								},
+							},
+						},
+						{
+							UUID:     updateV1UUID,
+							Version:  "1",
+							Channels: []string{"stable"},
+							Files: provisioning.UpdateFiles{
+								{
+									Component: images.UpdateFileComponentOS,
+								},
+								{
+									Component: images.UpdateFileComponentIncus,
+								},
+							},
+						},
+					},
+				},
+				// updateSvc.GetAllWithFilter
+				{
+					Value: provisioning.Updates{
+						{
+							UUID:     updateV2UUID,
+							Version:  "2",
+							Channels: []string{"stable"},
+							Files: provisioning.UpdateFiles{
+								{
+									Component: images.UpdateFileComponentOS,
+								},
+								{
+									Component: images.UpdateFileComponentIncus,
+								},
+							},
+						},
+						{
+							UUID:     updateV1UUID,
+							Version:  "1",
+							Channels: []string{"stable"},
+							Files: provisioning.UpdateFiles{
+								{
+									Component: images.UpdateFileComponentOS,
+								},
+								{
+									Component: images.UpdateFileComponentIncus,
+								},
+							},
+						},
+					},
+				},
+			},
+			updateSvcGetChangelogErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return queue.Pop(t, &tc.repoGetByName)
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return queue.Pop(t, &tc.updateSvcGetAllWithFilter)
+				},
+				GetChangelogFunc: func(ctx context.Context, currentID, priorID uuid.UUID, architecture images.UpdateFileArchitecture) (api.UpdateChangelog, error) {
+					require.Equal(t, updateV2UUID, currentID)
+					require.Equal(t, updateV1UUID, priorID)
+					return tc.updateSvcGetChangelog, tc.updateSvcGetChangelogErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, nil, updateSvc, tls.Certificate{})
+
+			// Run test
+			changelog, err := serverSvc.GetChangelogByName(t.Context(), tc.nameArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantChangelog, changelog)
+			require.Empty(t, tc.repoGetByName)
 		})
 	}
 }
