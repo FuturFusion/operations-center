@@ -36,6 +36,7 @@ type updateService struct {
 	repo               UpdateRepo
 	filesRepo          UpdateFilesRepo
 	source             UpdateSourcePort
+	serverSvc          ServerService
 	latestLimit        int
 	pendingGracePeriod time.Duration
 }
@@ -56,11 +57,16 @@ func UpdateServiceWithPendingGracePeriod(pendingGracePeriod time.Duration) Updat
 	}
 }
 
-func NewUpdateService(repo UpdateRepo, filesRepo UpdateFilesRepo, source UpdateSourcePort, opts ...UpdateServiceOption) *updateService {
+func (s *updateService) SetServerService(serverSvc ServerService) {
+	s.serverSvc = serverSvc
+}
+
+func NewUpdateService(repo UpdateRepo, filesRepo UpdateFilesRepo, source UpdateSourcePort, serverSvc ServerService, opts ...UpdateServiceOption) *updateService {
 	service := &updateService{
 		repo:               repo,
 		filesRepo:          filesRepo,
 		source:             source,
+		serverSvc:          serverSvc,
 		latestLimit:        defaultLatestLimit,
 		pendingGracePeriod: defaultPendingGraceTime,
 	}
@@ -379,7 +385,8 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 //     At least the most recent update for the default channel currently available in the DB is kept.
 //     Select the n most recent updates for each channel from the merged list, such that for each component and channel
 //     at least n updates are kept in the DB. n is defined by the parameter `latestLimit`.
-//     Supernumerary updates from origin are ignored (not downloaded). Supernumerary updates from the DB are marked
+//     Check the update against the set of all versions currently in use. If an update is still used, keep it.
+//   - Supernumerary updates from origin are ignored (not downloaded). Supernumerary updates from the DB are marked
 //     for removal.
 //   - Remove the updates, which are marked for removal.
 //   - Download the updates, that are part of the resulting state and not yet present on the system.
@@ -408,13 +415,23 @@ func (s updateService) Refresh(ctx context.Context) error {
 
 	toDownloadUpdates := make([]Update, 0, len(originUpdates))
 	err = transaction.Do(ctx, func(ctx context.Context) error {
+		servers, err := s.serverSvc.GetAll(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to get all servers: %w", err)
+		}
+
+		updateVersionsInUse := make(map[string]bool, len(servers))
+		for _, server := range servers {
+			updateVersionsInUse[server.VersionData.OS.Version] = true
+		}
+
 		dbUpdates, err := s.repo.GetAll(ctx)
 		if err != nil {
 			return fmt.Errorf("Failed to get all updates from repository: %w", err)
 		}
 
 		var toDeleteUpdates []Update
-		toDeleteUpdates, toDownloadUpdates = s.determineToDeleteAndToDownloadUpdates(dbUpdates, originUpdates)
+		toDeleteUpdates, toDownloadUpdates = s.determineToDeleteAndToDownloadUpdates(dbUpdates, originUpdates, updateVersionsInUse)
 
 		// Remove updates marked for removal.
 		for _, update := range toDeleteUpdates {
@@ -691,7 +708,7 @@ func (s updateService) filterUpdateFileByFilterExpression(updates Updates) (Upda
 // upstream as well as the list of updates, that are to be removed from the DB.
 //
 // This implements the logic described in the function description of the Refresh method.
-func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []Update, originUpdates []Update) (toDeleteUpdates []Update, toDownloadUpdates []Update) {
+func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []Update, originUpdates []Update, updateVersionsInUse map[string]bool) (toDeleteUpdates []Update, toDownloadUpdates []Update) {
 	// Merge dbUpdates and originUpdates to the desired end state.
 	mergedUpdates := make([]Update, 0, len(dbUpdates)+len(originUpdates))
 	mergedUpdates = append(mergedUpdates, dbUpdates...)
@@ -752,8 +769,12 @@ func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []Update,
 			if !providesMissingComponentsForChannels(requiredComponents, update) {
 				// For all the channels and components, that is provided by this update
 				// the latestLimit (minimum expected number of updates) is already met.
-				// Therefore, this update is marked for removal.
-				toDeleteUpdates = append(toDeleteUpdates, update)
+				// Check, that the update is not currently in use by any server.
+				// If this is not the case, this update is marked for removal.
+				if !updateVersionsInUse[update.Version] {
+					toDeleteUpdates = append(toDeleteUpdates, update)
+				}
+
 				continue
 			}
 

@@ -151,7 +151,7 @@ func TestServerDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	cannelSvc := provisioning.NewChannelService(sqlite.NewChannel(tx), nil)
-	updateSvc := provisioning.NewUpdateService(sqlite.NewUpdate(tx), nil, nil)
+	updateSvc := provisioning.NewUpdateService(sqlite.NewUpdate(tx), nil, nil, nil)
 
 	server := sqlite.NewServer(tx)
 	serverSvc := provisioning.NewServerService(server, serverClient, nil, nil, cannelSvc, updateSvc, tls.Certificate{})

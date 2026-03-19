@@ -30,9 +30,10 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		dbUpdates     Updates
-		originUpdates Updates
+		name                string
+		dbUpdates           Updates
+		originUpdates       Updates
+		updateVersionsInUse map[string]bool
 
 		wantToDeleteIDs   []string
 		wantToDownloadIDs []string
@@ -96,6 +97,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 					allComponents,
 				),
 			},
+			updateVersionsInUse: map[string]bool{},
 
 			wantToDeleteIDs: []string{
 				"01",
@@ -156,9 +158,75 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 					allComponents,
 				),
 			},
+			updateVersionsInUse: map[string]bool{},
 
 			wantToDeleteIDs: []string{
 				"01",
+				"02",
+			},
+			wantToDownloadIDs: []string{
+				"05",
+				"06",
+			},
+		},
+		{
+			name: "all updates from origin are newer - one update is in use",
+			dbUpdates: Updates{
+				// Update is in use by a server and therefore kept.
+				makeUpdate(t,
+					"01",
+					dateTime1,
+					api.UpdateStatusReady,
+					[]string{"stable"},
+					allComponents,
+				),
+				makeUpdate(t,
+					"02",
+					dateTime2,
+					api.UpdateStatusReady,
+					[]string{"stable"},
+					allComponents,
+				),
+				// Even though update 4 is newer, we always keep the most recent
+				// update from DB.
+				makeUpdate(t,
+					"03",
+					dateTime3,
+					api.UpdateStatusReady,
+					[]string{"stable"},
+					allComponents,
+				),
+			},
+			originUpdates: Updates{
+				// Even though update 4 is newer than update 3, we always keep 1 update
+				// from DB and therefore update 4 is not downloaded.
+				makeUpdate(t,
+					"04",
+					dateTime4,
+					api.UpdateStatusUnknown,
+					[]string{"stable"},
+					allComponents,
+				),
+				makeUpdate(t,
+					"05",
+					dateTime5,
+					api.UpdateStatusUnknown,
+					[]string{"stable"},
+					allComponents,
+				),
+				makeUpdate(t,
+					"06",
+					dateTime6,
+					api.UpdateStatusUnknown,
+					[]string{"stable"},
+					allComponents,
+				),
+			},
+			updateVersionsInUse: map[string]bool{
+				"01": true,
+			},
+
+			wantToDeleteIDs: []string{
 				"02",
 			},
 			wantToDownloadIDs: []string{
@@ -214,6 +282,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 					allComponents,
 				),
 			},
+			updateVersionsInUse: map[string]bool{},
 
 			wantToDeleteIDs:   []string{},
 			wantToDownloadIDs: []string{},
@@ -236,7 +305,8 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 					allComponents,
 				),
 			},
-			originUpdates: Updates{},
+			originUpdates:       Updates{},
+			updateVersionsInUse: map[string]bool{},
 
 			wantToDeleteIDs: []string{
 				"02",
@@ -261,7 +331,8 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 					allComponents,
 				),
 			},
-			originUpdates: Updates{},
+			originUpdates:       Updates{},
+			updateVersionsInUse: map[string]bool{},
 
 			wantToDeleteIDs:   []string{},
 			wantToDownloadIDs: []string{},
@@ -340,6 +411,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 					allComponents,
 				),
 			},
+			updateVersionsInUse: map[string]bool{},
 
 			wantToDeleteIDs: []string{
 				"01", // supernumerary update, only used by channel "prod".
@@ -419,6 +491,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 					allComponents,
 				),
 			},
+			updateVersionsInUse: map[string]bool{},
 
 			wantToDeleteIDs: []string{
 				"01", // supernumerary update
@@ -454,7 +527,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 			}
 
 			// Run test
-			toDeleteUpdates, toDownloadUpdates := updateSvc.determineToDeleteAndToDownloadUpdates(tc.dbUpdates, tc.originUpdates)
+			toDeleteUpdates, toDownloadUpdates := updateSvc.determineToDeleteAndToDownloadUpdates(tc.dbUpdates, tc.originUpdates, tc.updateVersionsInUse)
 
 			toDeleteUpdateIDs := make([]uuid.UUID, 0, len(toDeleteUpdates))
 			for _, update := range toDeleteUpdates {
@@ -487,6 +560,7 @@ func makeUpdate(
 	update := Update{
 		UUID:        uuidgen.FromPattern(t, uuidPattern),
 		PublishedAt: publishedAndUpdatedAt,
+		Version:     uuidPattern,
 		LastUpdated: publishedAndUpdatedAt,
 		Status:      status,
 		Channels:    channels,
@@ -545,7 +619,7 @@ func TestUpdateService_validateUpdatesConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			updateSvc := NewUpdateService(nil, nil, nil)
+			updateSvc := NewUpdateService(nil, nil, nil, nil)
 
 			err := updateSvc.validateUpdatesConfig(t.Context(), system.Updates{
 				UpdatesPut: system.UpdatesPut{

@@ -456,6 +456,23 @@ func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) (err error) {
 	return _d._base.Refresh(ctx)
 }
 
+// SetServerService implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) SetServerService(serverSvc provisioning.ServerService) {
+	ctx := context.Background()
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("serverSvc", serverSvc),
+		)
+	}
+	log.DebugContext(ctx, "=> calling SetServerService")
+	defer func() {
+		log := slog.With()
+		log.DebugContext(ctx, "<= method SetServerService finished")
+	}()
+	_d._base.SetServerService(serverSvc)
+}
+
 // Update implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) Update(ctx context.Context, update provisioning.Update) (err error) {
 	log := slog.With()
