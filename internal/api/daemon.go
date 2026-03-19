@@ -200,6 +200,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
+	updateSvc.SetServerService(serverSvc)
 	channelSvc.SetServerService(serverSvc)
 	serverSvc.SetClusterService(clusterSvc)
 	clusterTemplateSvc := d.setupClusterTemplateService(dbWithTransaction)
@@ -467,6 +468,7 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 		provisioningAdapterMiddleware.NewUpdateSourcePortWithSlog(
 			updateServer,
 		),
+		nil,
 		updateServiceOptions...,
 	)
 
