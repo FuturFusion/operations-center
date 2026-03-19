@@ -186,19 +186,19 @@ func (s storageVolumeService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 			return err
 		}
 
-		storageVolume.Server = ptr.To(retrievedStorageVolume.Location)
-		storageVolume.ProjectName = firstNonEmpty(retrievedStorageVolume.Project, storageVolume.ProjectName, "default")
-		storageVolume.Type = retrievedStorageVolume.Type
-		storageVolume.Object = IncusStorageVolumeFullWrapper{retrievedStorageVolume}
-		storageVolume.LastUpdated = s.now()
-		storageVolume.DeriveUUID()
-
 		// NOTE: This log intends to find resources, where project is not properly populated by Incus.
 		// Remove once all the affected resources have been identified.
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		if firstNonEmpty(retrievedStorageVolume.Project, storageVolume.ProjectName, "not found") == "not found" {
 			slog.WarnContext(ctx, "expected project missing in ResyncByUUID", slog.String("resource-type", "storage_volume"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
 		}
+
+		storageVolume.Server = ptr.To(retrievedStorageVolume.Location)
+		storageVolume.ProjectName = firstNonEmpty(retrievedStorageVolume.Project, storageVolume.ProjectName, "default")
+		storageVolume.Type = retrievedStorageVolume.Type
+		storageVolume.Object = IncusStorageVolumeFullWrapper{retrievedStorageVolume}
+		storageVolume.LastUpdated = s.now()
+		storageVolume.DeriveUUID()
 
 		err = storageVolume.Validate()
 		if err != nil {
@@ -265,6 +265,13 @@ func (s storageVolumeService) handleCreateEvent(ctx context.Context, clusterName
 		return err
 	}
 
+	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
+	// Remove once all the affected resources have been identified.
+	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+	if firstNonEmpty(retrievedStorageVolume.Project, event.Source.ProjectName, "not found") == "not found" {
+		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "storage_volume"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
+	}
+
 	storageVolume := StorageVolume{
 		Cluster:         clusterName,
 		Server:          ptr.To(retrievedStorageVolume.Location),
@@ -277,13 +284,6 @@ func (s storageVolumeService) handleCreateEvent(ctx context.Context, clusterName
 	}
 
 	storageVolume.DeriveUUID()
-
-	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
-	// Remove once all the affected resources have been identified.
-	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
-	if firstNonEmpty(retrievedStorageVolume.Project, event.Source.ProjectName, "not found") == "not found" {
-		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "storage_volume"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
-	}
 
 	if s.clusterSyncFilterFunc(storageVolume) {
 		return nil

@@ -171,17 +171,17 @@ func (s imageService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		image.ProjectName = firstNonEmpty(retrievedImage.Project, image.ProjectName, "default")
-		image.Object = IncusImageWrapper{retrievedImage}
-		image.LastUpdated = s.now()
-		image.DeriveUUID()
-
 		// NOTE: This log intends to find resources, where project is not properly populated by Incus.
 		// Remove once all the affected resources have been identified.
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		if firstNonEmpty(retrievedImage.Project, image.ProjectName, "not found") == "not found" {
 			slog.WarnContext(ctx, "expected project missing in ResyncByUUID", slog.String("resource-type", "image"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
 		}
+
+		image.ProjectName = firstNonEmpty(retrievedImage.Project, image.ProjectName, "default")
+		image.Object = IncusImageWrapper{retrievedImage}
+		image.LastUpdated = s.now()
+		image.DeriveUUID()
 
 		err = image.Validate()
 		if err != nil {
@@ -248,6 +248,13 @@ func (s imageService) handleCreateEvent(ctx context.Context, clusterName string,
 		return err
 	}
 
+	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
+	// Remove once all the affected resources have been identified.
+	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+	if firstNonEmpty(retrievedImage.Project, event.Source.ProjectName, "not found") == "not found" {
+		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "image"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
+	}
+
 	image := Image{
 		Cluster:     clusterName,
 		ProjectName: firstNonEmpty(retrievedImage.Project, event.Source.ProjectName, "default"),
@@ -257,13 +264,6 @@ func (s imageService) handleCreateEvent(ctx context.Context, clusterName string,
 	}
 
 	image.DeriveUUID()
-
-	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
-	// Remove once all the affected resources have been identified.
-	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
-	if firstNonEmpty(retrievedImage.Project, event.Source.ProjectName, "not found") == "not found" {
-		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "image"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
-	}
 
 	if s.clusterSyncFilterFunc(image) {
 		return nil

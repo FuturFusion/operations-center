@@ -342,6 +342,31 @@ func TestNetworkPeerService_ResyncByUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 		},
+		// NOTE: This test covers the additional log intended to find resources,
+		// where project is not properly populated by Incus.
+		// Remove once all the affected resources have been identified.
+		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+		{
+			name: "success - missing project",
+			repoGetByUUIDNetworkPeer: inventory.NetworkPeer{
+				UUID:        uuidgen.FromPattern(t, "1"),
+				Cluster:     "one",
+				Name:        "one",
+				NetworkName: "network",
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			networkPeerClientGetNetworkPeerByName: incusapi.NetworkPeer{
+				Name: "networkPeer one",
+			},
+
+			assertErr: require.NoError,
+		},
 		{
 			name:             "error - networkPeer get by UUID",
 			repoGetByUUIDErr: boom.Error,
@@ -514,7 +539,8 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 		repoGetByUUIDErr                         error
 		repoDeleteByUUIDErr                      error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr   require.ErrorAssertionFunc
+		wantProject string
 	}{
 		{
 			name:           "success - not responsible",
@@ -551,7 +577,8 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 				Name: "network_peer",
 			},
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
 		},
 		{
 			name:           "success - delete existing",
@@ -600,7 +627,8 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 				Name: "network_peer-new",
 			},
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
 		},
 		{
 			name:           "success - update of non existing element",
@@ -633,7 +661,8 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 				}),
 			},
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
 		},
 		{
 			name:           "success - update existing",
@@ -670,7 +699,36 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 				Name: "network_peer",
 			},
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
+		},
+		{
+			name:           "success - missing project",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-peer",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_peer",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkPeerClientGetNetworkPeerByName: incusapi.NetworkPeer{
+				Name: "network_peer",
+			},
+
+			assertErr:   require.NoError,
+			wantProject: "default",
 		},
 		{
 			name:           "error - invalid lifecycle operation",
@@ -698,7 +756,8 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - create - client.GetNetworkPeerByName",
@@ -723,7 +782,8 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 			},
 			networkPeerClientGetNetworkPeerByNameErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - create - validate",
@@ -754,6 +814,7 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+			wantProject: "project",
 		},
 		{
 			name:           "error - create - repo.Create",
@@ -781,7 +842,8 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 			},
 			repoCreateErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - delete - repo.GetAllUUIDsWithFilter",
@@ -797,7 +859,8 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 			},
 			repoGetAllUUIDsWithFilterErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - delete - repo.GetAllUUIDsWithFilter - not found",
@@ -813,7 +876,8 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 			},
 			repoGetAllUUIDsWithFilterErr: domain.ErrNotFound,
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
 		},
 		{
 			name:           "error - delete - DeleteByUUID",
@@ -832,7 +896,8 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 			},
 			repoDeleteByUUIDErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - rename - delete",
@@ -864,7 +929,8 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 			},
 			repoDeleteByUUIDErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - rename - create",
@@ -896,7 +962,8 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 			},
 			repoCreateErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - update - repo.GetAllUUIDsWithFilter",
@@ -931,7 +998,8 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 			},
 			repoGetByUUIDErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 	}
 
@@ -948,7 +1016,7 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 				},
 				CreateFunc: func(ctx context.Context, networkPeer inventory.NetworkPeer) (inventory.NetworkPeer, error) {
 					require.Equal(t, tc.argClusterName, networkPeer.Cluster)
-					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, networkPeer.ProjectName)
+					require.Equal(t, tc.wantProject, networkPeer.ProjectName)
 					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, networkPeer.NetworkName)
 					require.Equal(t, tc.argLifecycleEvent.Source.Name, networkPeer.Name)
 					return inventory.NetworkPeer{}, tc.repoCreateErr

@@ -343,6 +343,33 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 		},
+		// NOTE: This test covers the additional log intended to find resources,
+		// where project is not properly populated by Incus.
+		// Remove once all the affected resources have been identified.
+		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+		{
+			name: "success - missing project",
+			repoGetByUUIDInstance: inventory.Instance{
+				UUID:    uuidgen.FromPattern(t, "1"),
+				Cluster: "one",
+				Name:    "one",
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			instanceClientGetInstanceByName: incusapi.InstanceFull{
+				Instance: incusapi.Instance{
+					Name:     "instance one",
+					Location: "one",
+				},
+			},
+
+			assertErr: require.NoError,
+		},
 		{
 			name:             "error - instance get by UUID",
 			repoGetByUUIDErr: boom.Error,
@@ -517,7 +544,8 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 		repoGetByUUIDErr                   error
 		repoDeleteByUUIDErr                error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr   require.ErrorAssertionFunc
+		wantProject string
 	}{
 		{
 			name:           "success - not responsible",
@@ -557,7 +585,8 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 				},
 			},
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
 		},
 		{
 			name:           "success - delete existing",
@@ -608,7 +637,8 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 				},
 			},
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
 		},
 		{
 			name:           "success - update of non existing element",
@@ -644,7 +674,8 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 				}),
 			},
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
 		},
 		{
 			name:           "success - update existing",
@@ -683,7 +714,38 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 				},
 			},
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
+		},
+		{
+			name:           "success - missing project",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "instance",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					Name: "instance",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			instanceClientGetInstanceByName: incusapi.InstanceFull{
+				Instance: incusapi.Instance{
+					Name:     "instance",
+					Location: "server01",
+				},
+			},
+
+			assertErr:   require.NoError,
+			wantProject: "default",
 		},
 		{
 			name:           "error - invalid lifecycle operation",
@@ -710,7 +772,8 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - create - client.GetInstanceByName",
@@ -734,7 +797,8 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 			},
 			instanceClientGetInstanceByNameErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - create - validate",
@@ -768,6 +832,7 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+			wantProject: "project",
 		},
 		{
 			name:           "error - create - repo.Create",
@@ -798,7 +863,8 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 			},
 			repoCreateErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - delete - repo.GetAllUUIDsWithFilter",
@@ -813,7 +879,8 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 			},
 			repoGetAllUUIDsWithFilterErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - delete - repo.GetAllUUIDsWithFilter - not found",
@@ -828,7 +895,8 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 			},
 			repoGetAllUUIDsWithFilterErr: domain.ErrNotFound,
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
 		},
 		{
 			name:           "error - delete - DeleteByUUID",
@@ -846,7 +914,8 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 			},
 			repoDeleteByUUIDErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - rename - delete",
@@ -881,7 +950,8 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 			},
 			repoDeleteByUUIDErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - rename - create",
@@ -916,7 +986,8 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 			},
 			repoCreateErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - update - repo.GetAllUUIDsWithFilter",
@@ -949,7 +1020,8 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 			},
 			repoGetByUUIDErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 	}
 
@@ -965,7 +1037,7 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 				},
 				CreateFunc: func(ctx context.Context, instance inventory.Instance) (inventory.Instance, error) {
 					require.Equal(t, tc.argClusterName, instance.Cluster)
-					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, instance.ProjectName)
+					require.Equal(t, tc.wantProject, instance.ProjectName)
 					require.Equal(t, tc.argLifecycleEvent.Source.Name, instance.Name)
 					return inventory.Instance{}, tc.repoCreateErr
 				},

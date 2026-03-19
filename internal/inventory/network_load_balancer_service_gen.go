@@ -185,17 +185,17 @@ func (s networkLoadBalancerService) ResyncByUUID(ctx context.Context, id uuid.UU
 			return err
 		}
 
-		networkLoadBalancer.ProjectName = firstNonEmpty(networkLoadBalancer.ProjectName, "default")
-		networkLoadBalancer.Object = IncusNetworkLoadBalancerWrapper{retrievedNetworkLoadBalancer}
-		networkLoadBalancer.LastUpdated = s.now()
-		networkLoadBalancer.DeriveUUID()
-
 		// NOTE: This log intends to find resources, where project is not properly populated by Incus.
 		// Remove once all the affected resources have been identified.
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		if firstNonEmpty(networkLoadBalancer.ProjectName, "not found") == "not found" {
 			slog.WarnContext(ctx, "expected project missing in ResyncByUUID", slog.String("resource-type", "network_load_balancer"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
 		}
+
+		networkLoadBalancer.ProjectName = firstNonEmpty(networkLoadBalancer.ProjectName, "default")
+		networkLoadBalancer.Object = IncusNetworkLoadBalancerWrapper{retrievedNetworkLoadBalancer}
+		networkLoadBalancer.LastUpdated = s.now()
+		networkLoadBalancer.DeriveUUID()
 
 		err = networkLoadBalancer.Validate()
 		if err != nil {
@@ -262,6 +262,13 @@ func (s networkLoadBalancerService) handleCreateEvent(ctx context.Context, clust
 		return err
 	}
 
+	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
+	// Remove once all the affected resources have been identified.
+	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+	if firstNonEmpty(event.Source.ProjectName, "not found") == "not found" {
+		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "network_load_balancer"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
+	}
+
 	networkLoadBalancer := NetworkLoadBalancer{
 		Cluster:     clusterName,
 		ProjectName: firstNonEmpty(event.Source.ProjectName, "default"),
@@ -272,13 +279,6 @@ func (s networkLoadBalancerService) handleCreateEvent(ctx context.Context, clust
 	}
 
 	networkLoadBalancer.DeriveUUID()
-
-	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
-	// Remove once all the affected resources have been identified.
-	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
-	if firstNonEmpty(event.Source.ProjectName, "not found") == "not found" {
-		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "network_load_balancer"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
-	}
 
 	if s.clusterSyncFilterFunc(networkLoadBalancer) {
 		return nil

@@ -171,17 +171,17 @@ func (s profileService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		profile.ProjectName = firstNonEmpty(retrievedProfile.Project, profile.ProjectName, "default")
-		profile.Object = IncusProfileWrapper{retrievedProfile}
-		profile.LastUpdated = s.now()
-		profile.DeriveUUID()
-
 		// NOTE: This log intends to find resources, where project is not properly populated by Incus.
 		// Remove once all the affected resources have been identified.
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		if firstNonEmpty(retrievedProfile.Project, profile.ProjectName, "not found") == "not found" {
 			slog.WarnContext(ctx, "expected project missing in ResyncByUUID", slog.String("resource-type", "profile"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
 		}
+
+		profile.ProjectName = firstNonEmpty(retrievedProfile.Project, profile.ProjectName, "default")
+		profile.Object = IncusProfileWrapper{retrievedProfile}
+		profile.LastUpdated = s.now()
+		profile.DeriveUUID()
 
 		err = profile.Validate()
 		if err != nil {
@@ -248,6 +248,13 @@ func (s profileService) handleCreateEvent(ctx context.Context, clusterName strin
 		return err
 	}
 
+	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
+	// Remove once all the affected resources have been identified.
+	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+	if firstNonEmpty(retrievedProfile.Project, event.Source.ProjectName, "not found") == "not found" {
+		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "profile"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
+	}
+
 	profile := Profile{
 		Cluster:     clusterName,
 		ProjectName: firstNonEmpty(retrievedProfile.Project, event.Source.ProjectName, "default"),
@@ -257,13 +264,6 @@ func (s profileService) handleCreateEvent(ctx context.Context, clusterName strin
 	}
 
 	profile.DeriveUUID()
-
-	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
-	// Remove once all the affected resources have been identified.
-	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
-	if firstNonEmpty(retrievedProfile.Project, event.Source.ProjectName, "not found") == "not found" {
-		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "profile"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
-	}
 
 	if s.clusterSyncFilterFunc(profile) {
 		return nil

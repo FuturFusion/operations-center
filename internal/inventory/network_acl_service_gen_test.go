@@ -342,6 +342,32 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 		},
+		// NOTE: This test covers the additional log intended to find resources,
+		// where project is not properly populated by Incus.
+		// Remove once all the affected resources have been identified.
+		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+		{
+			name: "success - missing project",
+			repoGetByUUIDNetworkACL: inventory.NetworkACL{
+				UUID:    uuidgen.FromPattern(t, "1"),
+				Cluster: "one",
+				Name:    "one",
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			networkACLClientGetNetworkACLByName: incusapi.NetworkACL{
+				NetworkACLPost: incusapi.NetworkACLPost{
+					Name: "networkACL one",
+				},
+			},
+
+			assertErr: require.NoError,
+		},
 		{
 			name:             "error - networkACL get by UUID",
 			repoGetByUUIDErr: boom.Error,
@@ -514,7 +540,8 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 		repoGetByUUIDErr                       error
 		repoDeleteByUUIDErr                    error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr   require.ErrorAssertionFunc
+		wantProject string
 	}{
 		{
 			name:           "success - not responsible",
@@ -553,7 +580,8 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 				Project: "project",
 			},
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
 		},
 		{
 			name:           "success - delete existing",
@@ -603,7 +631,8 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 				Project: "project",
 			},
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
 		},
 		{
 			name:           "success - update of non existing element",
@@ -638,7 +667,8 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 				}),
 			},
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
 		},
 		{
 			name:           "success - update existing",
@@ -676,7 +706,37 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 				Project: "project",
 			},
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
+		},
+		{
+			name:           "success - missing project",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-acl",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					Name: "network_acl",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkACLClientGetNetworkACLByName: incusapi.NetworkACL{
+				NetworkACLPost: incusapi.NetworkACLPost{
+					Name: "network_acl",
+				},
+			},
+
+			assertErr:   require.NoError,
+			wantProject: "default",
 		},
 		{
 			name:           "error - invalid lifecycle operation",
@@ -703,7 +763,8 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - create - client.GetNetworkACLByName",
@@ -727,7 +788,8 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 			},
 			networkACLClientGetNetworkACLByNameErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - create - validate",
@@ -760,6 +822,7 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+			wantProject: "project",
 		},
 		{
 			name:           "error - create - repo.Create",
@@ -789,7 +852,8 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 			},
 			repoCreateErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - delete - repo.GetAllUUIDsWithFilter",
@@ -804,7 +868,8 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 			},
 			repoGetAllUUIDsWithFilterErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - delete - repo.GetAllUUIDsWithFilter - not found",
@@ -819,7 +884,8 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 			},
 			repoGetAllUUIDsWithFilterErr: domain.ErrNotFound,
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
 		},
 		{
 			name:           "error - delete - DeleteByUUID",
@@ -837,7 +903,8 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 			},
 			repoDeleteByUUIDErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - rename - delete",
@@ -871,7 +938,8 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 			},
 			repoDeleteByUUIDErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - rename - create",
@@ -905,7 +973,8 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 			},
 			repoCreateErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - update - repo.GetAllUUIDsWithFilter",
@@ -938,7 +1007,8 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 			},
 			repoGetByUUIDErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 	}
 
@@ -954,7 +1024,7 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 				},
 				CreateFunc: func(ctx context.Context, networkACL inventory.NetworkACL) (inventory.NetworkACL, error) {
 					require.Equal(t, tc.argClusterName, networkACL.Cluster)
-					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, networkACL.ProjectName)
+					require.Equal(t, tc.wantProject, networkACL.ProjectName)
 					require.Equal(t, tc.argLifecycleEvent.Source.Name, networkACL.Name)
 					return inventory.NetworkACL{}, tc.repoCreateErr
 				},

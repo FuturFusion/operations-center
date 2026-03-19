@@ -186,18 +186,18 @@ func (s storageBucketService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 			return err
 		}
 
-		storageBucket.Server = ptr.To(retrievedStorageBucket.Location)
-		storageBucket.ProjectName = firstNonEmpty(retrievedStorageBucket.Project, storageBucket.ProjectName, "default")
-		storageBucket.Object = IncusStorageBucketFullWrapper{retrievedStorageBucket}
-		storageBucket.LastUpdated = s.now()
-		storageBucket.DeriveUUID()
-
 		// NOTE: This log intends to find resources, where project is not properly populated by Incus.
 		// Remove once all the affected resources have been identified.
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		if firstNonEmpty(retrievedStorageBucket.Project, storageBucket.ProjectName, "not found") == "not found" {
 			slog.WarnContext(ctx, "expected project missing in ResyncByUUID", slog.String("resource-type", "storage_bucket"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
 		}
+
+		storageBucket.Server = ptr.To(retrievedStorageBucket.Location)
+		storageBucket.ProjectName = firstNonEmpty(retrievedStorageBucket.Project, storageBucket.ProjectName, "default")
+		storageBucket.Object = IncusStorageBucketFullWrapper{retrievedStorageBucket}
+		storageBucket.LastUpdated = s.now()
+		storageBucket.DeriveUUID()
 
 		err = storageBucket.Validate()
 		if err != nil {
@@ -264,6 +264,13 @@ func (s storageBucketService) handleCreateEvent(ctx context.Context, clusterName
 		return err
 	}
 
+	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
+	// Remove once all the affected resources have been identified.
+	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+	if firstNonEmpty(retrievedStorageBucket.Project, event.Source.ProjectName, "not found") == "not found" {
+		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "storage_bucket"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
+	}
+
 	storageBucket := StorageBucket{
 		Cluster:         clusterName,
 		Server:          ptr.To(retrievedStorageBucket.Location),
@@ -275,13 +282,6 @@ func (s storageBucketService) handleCreateEvent(ctx context.Context, clusterName
 	}
 
 	storageBucket.DeriveUUID()
-
-	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
-	// Remove once all the affected resources have been identified.
-	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
-	if firstNonEmpty(retrievedStorageBucket.Project, event.Source.ProjectName, "not found") == "not found" {
-		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "storage_bucket"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
-	}
 
 	if s.clusterSyncFilterFunc(storageBucket) {
 		return nil

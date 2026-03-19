@@ -171,17 +171,17 @@ func (s networkAddressSetService) ResyncByUUID(ctx context.Context, id uuid.UUID
 			return err
 		}
 
-		networkAddressSet.ProjectName = firstNonEmpty(retrievedNetworkAddressSet.Project, networkAddressSet.ProjectName, "default")
-		networkAddressSet.Object = IncusNetworkAddressSetWrapper{retrievedNetworkAddressSet}
-		networkAddressSet.LastUpdated = s.now()
-		networkAddressSet.DeriveUUID()
-
 		// NOTE: This log intends to find resources, where project is not properly populated by Incus.
 		// Remove once all the affected resources have been identified.
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		if firstNonEmpty(retrievedNetworkAddressSet.Project, networkAddressSet.ProjectName, "not found") == "not found" {
 			slog.WarnContext(ctx, "expected project missing in ResyncByUUID", slog.String("resource-type", "network_address_set"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
 		}
+
+		networkAddressSet.ProjectName = firstNonEmpty(retrievedNetworkAddressSet.Project, networkAddressSet.ProjectName, "default")
+		networkAddressSet.Object = IncusNetworkAddressSetWrapper{retrievedNetworkAddressSet}
+		networkAddressSet.LastUpdated = s.now()
+		networkAddressSet.DeriveUUID()
 
 		err = networkAddressSet.Validate()
 		if err != nil {
@@ -248,6 +248,13 @@ func (s networkAddressSetService) handleCreateEvent(ctx context.Context, cluster
 		return err
 	}
 
+	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
+	// Remove once all the affected resources have been identified.
+	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+	if firstNonEmpty(retrievedNetworkAddressSet.Project, event.Source.ProjectName, "not found") == "not found" {
+		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "network_address_set"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
+	}
+
 	networkAddressSet := NetworkAddressSet{
 		Cluster:     clusterName,
 		ProjectName: firstNonEmpty(retrievedNetworkAddressSet.Project, event.Source.ProjectName, "default"),
@@ -257,13 +264,6 @@ func (s networkAddressSetService) handleCreateEvent(ctx context.Context, cluster
 	}
 
 	networkAddressSet.DeriveUUID()
-
-	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
-	// Remove once all the affected resources have been identified.
-	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
-	if firstNonEmpty(retrievedNetworkAddressSet.Project, event.Source.ProjectName, "not found") == "not found" {
-		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "network_address_set"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
-	}
 
 	if s.clusterSyncFilterFunc(networkAddressSet) {
 		return nil
