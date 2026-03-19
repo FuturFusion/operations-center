@@ -1006,7 +1006,7 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 	return nil
 }
 
-func (s *serverService) RestoreSystemByName(ctx context.Context, name string, force bool) error {
+func (s *serverService) RestoreSystemByName(ctx context.Context, name string, force bool, restoreModeSkip bool) error {
 	var server *Server
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
@@ -1037,7 +1037,7 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, fo
 			return fmt.Errorf("Failed put server %q in restoring: %w", name, err)
 		}
 
-		err = s.client.Restore(ctx, *server)
+		err = s.client.Restore(ctx, *server, restoreModeSkip)
 		if err != nil {
 			return fmt.Errorf("Failed to restore server %q by name: %w", name, err)
 		}

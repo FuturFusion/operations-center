@@ -122,6 +122,46 @@ func TestCluster_ValidateCreate(t *testing.T) {
 			},
 		},
 		{
+			name: "error - negative cluster config rolling restart post restore delay",
+			cluster: provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
+				ServerType:    api.ServerTypeIncus,
+				Channel:       "stable",
+				Config: api.ClusterConfig{
+					RollingRestart: api.ClusterConfigRollingRestart{
+						PostRestoreDelay: -1, // negative
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - invalid cluster config rolling restart restore mode",
+			cluster: provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
+				ServerType:    api.ServerTypeIncus,
+				Channel:       "stable",
+				Config: api.ClusterConfig{
+					RollingRestart: api.ClusterConfigRollingRestart{
+						RestoreMode: "invalid", // invalid
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
 			name: "error - application seed config marshal",
 			cluster: provisioning.Cluster{
 				Name:          "one",

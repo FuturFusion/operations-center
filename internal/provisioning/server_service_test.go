@@ -4342,6 +4342,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 	tests := []struct {
 		name                                            string
 		argForce                                        bool
+		argRestoreModeSkip                              bool
 		repoGetByName                                   provisioning.Server
 		repoGetByNameErr                                error
 		repoUpdateErr                                   error
@@ -4480,7 +4481,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			}
 
 			client := &adapterMock.ServerClientPortMock{
-				RestoreFunc: func(ctx context.Context, server provisioning.Server) error {
+				RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool) error {
 					return tc.clientRestoreErr
 				},
 			}
@@ -4500,7 +4501,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			serverSvc := provisioning.NewServerService(repo, client, nil, clusterSvc, nil, updateSvc, tls.Certificate{})
 
 			// Run test
-			err := serverSvc.RestoreSystemByName(t.Context(), "one", tc.argForce)
+			err := serverSvc.RestoreSystemByName(t.Context(), "one", tc.argForce, tc.argRestoreModeSkip)
 
 			// Assert
 			tc.assertErr(t, err)

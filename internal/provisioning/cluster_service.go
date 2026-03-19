@@ -1142,6 +1142,10 @@ func (s clusterService) executeRollingUpdateNextStep(ctx context.Context, cluste
 	var err error
 	var nextAction func(context.Context) error
 
+	noop := func(ctx context.Context) error {
+		return nil
+	}
+
 	for _, server := range servers {
 		if nextAction == nil {
 			switch server.UpdateState() {
@@ -1163,9 +1167,7 @@ func (s clusterService) executeRollingUpdateNextStep(ctx context.Context, cluste
 				}
 
 			case api.ServerUpdateStateEvacuating:
-				nextAction = func(ctx context.Context) error {
-					return nil
-				}
+				nextAction = noop
 
 			case api.ServerUpdateStateInMaintenanceRebootPending:
 				nextAction = func(ctx context.Context) error {
@@ -1173,9 +1175,7 @@ func (s clusterService) executeRollingUpdateNextStep(ctx context.Context, cluste
 				}
 
 			case api.ServerUpdateStateInMaintenanceRebooting:
-				nextAction = func(ctx context.Context) error {
-					return nil
-				}
+				nextAction = noop
 
 			case api.ServerUpdateStateInMaintenanceRestorePending:
 				// Servers, which have been in evacuated state before the update was
@@ -1184,14 +1184,18 @@ func (s clusterService) executeRollingUpdateNextStep(ctx context.Context, cluste
 					continue
 				}
 
-				nextAction = func(ctx context.Context) error {
-					return s.serverSvc.RestoreSystemByName(ctx, server.Name, true)
+				// Check if the post restore delay has passed.
+				if cluster.UpdateStatus.InProgressStatus.LastUpdated.Add(cluster.Config.RollingRestart.PostRestoreDelay).Before(s.now()) {
+					restoreModeSkip := cluster.Config.RollingRestart.RestoreMode == "skip"
+					nextAction = func(ctx context.Context) error {
+						return s.serverSvc.RestoreSystemByName(ctx, server.Name, true, restoreModeSkip)
+					}
+				} else {
+					nextAction = noop
 				}
 
 			case api.ServerUpdateStateInMaintenanceRestoring:
-				nextAction = func(ctx context.Context) error {
-					return nil
-				}
+				nextAction = noop
 
 			default:
 				return fmt.Errorf("Server update state %q for %q (%s) is not supported", server.UpdateState(), server.Name, server.ConnectionURL)

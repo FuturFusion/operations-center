@@ -57,6 +57,11 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 		Status:        api.ClusterStatusReady,
 		ServerNames:   []string{"serverA"},
 		Channel:       "stable",
+		Config: api.ClusterConfig{
+			RollingRestart: api.ClusterConfigRollingRestart{
+				PostRestoreDelay: 200 * time.Millisecond,
+			},
+		},
 	}
 
 	serverA := provisioning.Server{
@@ -340,7 +345,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 
 			return nil
 		},
-		RestoreFunc: func(ctx context.Context, server provisioning.Server) error {
+		RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool) error {
 			go func() {
 				time.Sleep(asyncActionsDelay)
 
@@ -793,7 +798,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 
 			return nil
 		},
-		RestoreFunc: func(ctx context.Context, server provisioning.Server) error {
+		RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool) error {
 			go func() {
 				time.Sleep(asyncActionsDelay)
 
@@ -1567,7 +1572,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 				RebootSystemByNameFunc: func(ctx context.Context, name string, force bool) error {
 					return tc.serverSvcRebootSystemByNameErr
 				},
-				RestoreSystemByNameFunc: func(ctx context.Context, name string, force bool) error {
+				RestoreSystemByNameFunc: func(ctx context.Context, name string, force bool, restoreModeSkip bool) error {
 					return nil
 				},
 			}

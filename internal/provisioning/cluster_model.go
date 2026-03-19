@@ -34,6 +34,7 @@ type Cluster struct {
 	Channel               string                  `json:"channel"                 db:"join=channels.name"`
 	Description           string                  `json:"description"`
 	Properties            api.ConfigMap           `json:"properties"`
+	Config                api.ClusterConfig       `json:"config"`
 	LastUpdated           time.Time               `json:"last_updated"            db:"update_timestamp"`
 }
 
@@ -55,6 +56,14 @@ func (c Cluster) Validate() error {
 
 	if c.Channel == "" {
 		return domain.NewValidationErrf("Invalid cluster, channel can not be empty")
+	}
+
+	if c.Config.RollingRestart.PostRestoreDelay < 0 {
+		return domain.NewValidationErrf("Invalid cluster, cluster config for rolling restart post restore delay needs to be non negative")
+	}
+
+	if c.Config.RollingRestart.RestoreMode != "" && c.Config.RollingRestart.RestoreMode != "skip" {
+		return domain.NewValidationErrf(`Invalid cluster, cluster config for rolling restart restore mode is invalid, only "" and "skip" are supported.`)
 	}
 
 	return nil
