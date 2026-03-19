@@ -135,25 +135,25 @@ type TokenProviderConfig struct {
 
 type TokenSeedConfigs struct {
 	// Applications represents the applications configuration (applications.yaml) to be included in the pre-seeded image.
-	Applications map[string]any `json:"applications" yaml:"applications"`
+	Applications SeedApplications `json:"applications" yaml:"applications"`
 
 	// Incus represents the incus preseed configuration (incus.yaml) fo be included in the pre-seeded image.
-	Incus map[string]any `json:"incus" yaml:"incus"`
+	Incus SeedIncus `json:"incus" yaml:"incus"`
 
 	// Install represents the install configuration (install.yaml) to be included in the pre-seeded image.
-	Install map[string]any `json:"install" yaml:"install"`
+	Install SeedInstall `json:"install" yaml:"install"`
 
 	// MigrationManager represents the seed configuration for migration manager (migration-manager.yaml) to be included in the pre-seeded image.
-	MigrationManager map[string]any `json:"migration_manager" yaml:"migration_manager"`
+	MigrationManager SeedMigrationManager `json:"migration_manager" yaml:"migration_manager"`
 
 	// Network represents the network configuration (network.yaml) to be included in the pre-seeded image.
-	Network map[string]any `json:"network" yaml:"network"`
+	Network SeedNetwork `json:"network" yaml:"network"`
 
 	// OperationsCenter represents the seed configuration for operations center (operations-center.yaml) to be included in the pre-seeded image.
-	OperationsCenter map[string]any `json:"operations_center" yaml:"operations_center"`
+	OperationsCenter SeedOperationsCenter `json:"operations_center" yaml:"operations_center"`
 
 	// Update represents the seed configuration for updates (update.yaml) to be included in the pre-seeded image.
-	Update map[string]any `json:"update" yaml:"update"`
+	Update SeedUpdate `json:"update" yaml:"update"`
 }
 
 // TokenSeedPost defines a named token seed configuration, for which a
