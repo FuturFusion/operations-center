@@ -78,7 +78,7 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
-//			RestoreSystemByNameFunc: func(ctx context.Context, name string, force bool) error {
+//			RestoreSystemByNameFunc: func(ctx context.Context, name string, force bool, restoreModeSkip bool) error {
 //				panic("mock out the RestoreSystemByName method")
 //			},
 //			ResyncByNameFunc: func(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
@@ -182,7 +182,7 @@ type ServerServiceMock struct {
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
 
 	// RestoreSystemByNameFunc mocks the RestoreSystemByName method.
-	RestoreSystemByNameFunc func(ctx context.Context, name string, force bool) error
+	RestoreSystemByNameFunc func(ctx context.Context, name string, force bool, restoreModeSkip bool) error
 
 	// ResyncByNameFunc mocks the ResyncByName method.
 	ResyncByNameFunc func(ctx context.Context, clusterName string, event domain.LifecycleEvent) error
@@ -371,6 +371,8 @@ type ServerServiceMock struct {
 			Name string
 			// Force is the force argument value.
 			Force bool
+			// RestoreModeSkip is the restoreModeSkip argument value.
+			RestoreModeSkip bool
 		}
 		// ResyncByName holds details about calls to the ResyncByName method.
 		ResyncByName []struct {
@@ -1189,23 +1191,25 @@ func (mock *ServerServiceMock) RenameCalls() []struct {
 }
 
 // RestoreSystemByName calls RestoreSystemByNameFunc.
-func (mock *ServerServiceMock) RestoreSystemByName(ctx context.Context, name string, force bool) error {
+func (mock *ServerServiceMock) RestoreSystemByName(ctx context.Context, name string, force bool, restoreModeSkip bool) error {
 	if mock.RestoreSystemByNameFunc == nil {
 		panic("ServerServiceMock.RestoreSystemByNameFunc: method is nil but ServerService.RestoreSystemByName was just called")
 	}
 	callInfo := struct {
-		Ctx   context.Context
-		Name  string
-		Force bool
+		Ctx             context.Context
+		Name            string
+		Force           bool
+		RestoreModeSkip bool
 	}{
-		Ctx:   ctx,
-		Name:  name,
-		Force: force,
+		Ctx:             ctx,
+		Name:            name,
+		Force:           force,
+		RestoreModeSkip: restoreModeSkip,
 	}
 	mock.lockRestoreSystemByName.Lock()
 	mock.calls.RestoreSystemByName = append(mock.calls.RestoreSystemByName, callInfo)
 	mock.lockRestoreSystemByName.Unlock()
-	return mock.RestoreSystemByNameFunc(ctx, name, force)
+	return mock.RestoreSystemByNameFunc(ctx, name, force, restoreModeSkip)
 }
 
 // RestoreSystemByNameCalls gets all the calls that were made to RestoreSystemByName.
@@ -1213,14 +1217,16 @@ func (mock *ServerServiceMock) RestoreSystemByName(ctx context.Context, name str
 //
 //	len(mockedServerService.RestoreSystemByNameCalls())
 func (mock *ServerServiceMock) RestoreSystemByNameCalls() []struct {
-	Ctx   context.Context
-	Name  string
-	Force bool
+	Ctx             context.Context
+	Name            string
+	Force           bool
+	RestoreModeSkip bool
 } {
 	var calls []struct {
-		Ctx   context.Context
-		Name  string
-		Force bool
+		Ctx             context.Context
+		Name            string
+		Force           bool
+		RestoreModeSkip bool
 	}
 	mock.lockRestoreSystemByName.RLock()
 	calls = mock.calls.RestoreSystemByName

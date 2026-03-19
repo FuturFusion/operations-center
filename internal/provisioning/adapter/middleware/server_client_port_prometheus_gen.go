@@ -249,7 +249,7 @@ func (_d ServerClientPortWithPrometheus) Reboot(ctx context.Context, server prov
 }
 
 // Restore implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithPrometheus) Restore(ctx context.Context, server provisioning.Server) (err error) {
+func (_d ServerClientPortWithPrometheus) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -259,7 +259,7 @@ func (_d ServerClientPortWithPrometheus) Restore(ctx context.Context, server pro
 
 		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Restore", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.Restore(ctx, server)
+	return _d.base.Restore(ctx, server, restoreModeSkip)
 }
 
 // UpdateNetworkConfig implements provisioning.ServerClientPort.

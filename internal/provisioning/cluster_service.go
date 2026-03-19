@@ -1240,6 +1240,13 @@ func (s clusterService) executeRollingUpdateNextStep(ctx context.Context, cluste
 		}
 	}
 
+	// To get a consistent debug log, print the current state before triggering the next action, since
+	// it will likely update the state.
+	updateState := clusterUpdateState(servers)
+	if updateState != "" {
+		slog.DebugContext(ctx, "rolling update next step", slog.String("cluster_update_state", updateState))
+	}
+
 	done := nextAction == nil
 	if !done {
 		// Trigger next update action on the target server
@@ -1271,11 +1278,6 @@ func (s clusterService) executeRollingUpdateNextStep(ctx context.Context, cluste
 		if err != nil {
 			return err
 		}
-	}
-
-	updateState := clusterUpdateState(servers)
-	if updateState != "" {
-		slog.DebugContext(ctx, "rolling update next step", slog.String("cluster_update_state", updateState))
 	}
 
 	return nil

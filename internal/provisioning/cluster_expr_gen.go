@@ -8,6 +8,15 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+type ExprApiClusterConfig struct {
+	RollingRestart ExprApiClusterConfigRollingRestart `json:"rolling_restart" yaml:"rolling_restart" expr:"rolling_restart"`
+}
+
+type ExprApiClusterConfigRollingRestart struct {
+	PostRestoreDelay time.Duration `json:"post_restore_delay" yaml:"post_restore_delay" expr:"post_restore_delay"`
+	RestoreMode      string        `json:"restore_mode" yaml:"restore_mode" expr:"restore_mode"`
+}
+
 type ExprApiClusterUpdateInProgressStatus struct {
 	InProgress        api.ClusterUpdateInProgress `json:"in_progress" yaml:"in_progress" expr:"in_progress"`
 	StatusDescription *string                     `json:"status_description,omitempty" yaml:"status_description" expr:"status_description"`
@@ -37,7 +46,21 @@ type ExprCluster struct {
 	Channel               string                     `json:"channel"                 db:"join=channels.name" expr:"channel"`
 	Description           string                     `json:"description" expr:"description"`
 	Properties            api.ConfigMap              `json:"properties" expr:"properties"`
+	Config                ExprApiClusterConfig       `json:"config" expr:"config"`
 	LastUpdated           time.Time                  `json:"last_updated"            db:"update_timestamp" expr:"last_updated"`
+}
+
+func ToExprApiClusterConfig(c api.ClusterConfig) ExprApiClusterConfig {
+	return ExprApiClusterConfig{
+		RollingRestart: ToExprApiClusterConfigRollingRestart(c.RollingRestart),
+	}
+}
+
+func ToExprApiClusterConfigRollingRestart(c api.ClusterConfigRollingRestart) ExprApiClusterConfigRollingRestart {
+	return ExprApiClusterConfigRollingRestart{
+		PostRestoreDelay: c.PostRestoreDelay,
+		RestoreMode:      c.RestoreMode,
+	}
 }
 
 func ToExprApiClusterUpdateInProgressStatus(c api.ClusterUpdateInProgressStatus) ExprApiClusterUpdateInProgressStatus {
@@ -74,6 +97,7 @@ func ToExprCluster(c Cluster) ExprCluster {
 		Channel:               c.Channel,
 		Description:           c.Description,
 		Properties:            c.Properties,
+		Config:                ToExprApiClusterConfig(c.Config),
 		LastUpdated:           c.LastUpdated,
 	}
 }

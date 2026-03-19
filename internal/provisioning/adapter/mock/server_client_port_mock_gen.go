@@ -67,7 +67,7 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			RebootFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the Reboot method")
 //			},
-//			RestoreFunc: func(ctx context.Context, server provisioning.Server) error {
+//			RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool) error {
 //				panic("mock out the Restore method")
 //			},
 //			UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
@@ -144,7 +144,7 @@ type ServerClientPortMock struct {
 	RebootFunc func(ctx context.Context, server provisioning.Server) error
 
 	// RestoreFunc mocks the Restore method.
-	RestoreFunc func(ctx context.Context, server provisioning.Server) error
+	RestoreFunc func(ctx context.Context, server provisioning.Server, restoreModeSkip bool) error
 
 	// UpdateNetworkConfigFunc mocks the UpdateNetworkConfig method.
 	UpdateNetworkConfigFunc func(ctx context.Context, server provisioning.Server) error
@@ -282,6 +282,8 @@ type ServerClientPortMock struct {
 			Ctx context.Context
 			// Server is the server argument value.
 			Server provisioning.Server
+			// RestoreModeSkip is the restoreModeSkip argument value.
+			RestoreModeSkip bool
 		}
 		// UpdateNetworkConfig holds details about calls to the UpdateNetworkConfig method.
 		UpdateNetworkConfig []struct {
@@ -911,21 +913,23 @@ func (mock *ServerClientPortMock) RebootCalls() []struct {
 }
 
 // Restore calls RestoreFunc.
-func (mock *ServerClientPortMock) Restore(ctx context.Context, server provisioning.Server) error {
+func (mock *ServerClientPortMock) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool) error {
 	if mock.RestoreFunc == nil {
 		panic("ServerClientPortMock.RestoreFunc: method is nil but ServerClientPort.Restore was just called")
 	}
 	callInfo := struct {
-		Ctx    context.Context
-		Server provisioning.Server
+		Ctx             context.Context
+		Server          provisioning.Server
+		RestoreModeSkip bool
 	}{
-		Ctx:    ctx,
-		Server: server,
+		Ctx:             ctx,
+		Server:          server,
+		RestoreModeSkip: restoreModeSkip,
 	}
 	mock.lockRestore.Lock()
 	mock.calls.Restore = append(mock.calls.Restore, callInfo)
 	mock.lockRestore.Unlock()
-	return mock.RestoreFunc(ctx, server)
+	return mock.RestoreFunc(ctx, server, restoreModeSkip)
 }
 
 // RestoreCalls gets all the calls that were made to Restore.
@@ -933,12 +937,14 @@ func (mock *ServerClientPortMock) Restore(ctx context.Context, server provisioni
 //
 //	len(mockedServerClientPort.RestoreCalls())
 func (mock *ServerClientPortMock) RestoreCalls() []struct {
-	Ctx    context.Context
-	Server provisioning.Server
+	Ctx             context.Context
+	Server          provisioning.Server
+	RestoreModeSkip bool
 } {
 	var calls []struct {
-		Ctx    context.Context
-		Server provisioning.Server
+		Ctx             context.Context
+		Server          provisioning.Server
+		RestoreModeSkip bool
 	}
 	mock.lockRestore.RLock()
 	calls = mock.calls.Restore
