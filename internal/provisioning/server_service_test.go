@@ -33,6 +33,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 func TestServerService_UpdateCertificate(t *testing.T) {
@@ -2623,7 +2624,7 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 				},
 			}
 
-			err = config.UpdateNetwork(t.Context(), api.SystemNetworkPut{
+			err = config.UpdateNetwork(t.Context(), system.NetworkPut{
 				OperationsCenterAddress: "https://192.168.1.200:8443",
 				RestServerAddress:       "[::]:8443",
 			})

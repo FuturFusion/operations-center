@@ -10,7 +10,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 type channelService struct {
@@ -117,7 +117,7 @@ func (s *channelService) DeleteByName(ctx context.Context, name string) error {
 	})
 }
 
-func (s channelService) validateUpdatesConfig(ctx context.Context, su api.SystemUpdates) error {
+func (s channelService) validateUpdatesConfig(ctx context.Context, su system.Updates) error {
 	if su.UpdatesDefaultChannel == "" {
 		return domain.NewValidationErrf(`Invalid config, "updates.updates_default_channel" can not be empty`)
 	}

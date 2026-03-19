@@ -24,6 +24,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 const (
@@ -554,7 +555,7 @@ func (s updateService) Refresh(ctx context.Context) error {
 	return nil
 }
 
-func (s updateService) validateUpdatesConfig(ctx context.Context, su api.SystemUpdates) error {
+func (s updateService) validateUpdatesConfig(ctx context.Context, su system.Updates) error {
 	if su.FilterExpression != "" {
 		_, err := expr.Compile(su.FilterExpression, expr.Env(ToExprUpdate(Update{})))
 		if err != nil {

@@ -28,6 +28,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 func TestUpdateFileExprEnv_ExprCompileOptions(t *testing.T) {
@@ -2205,7 +2206,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			certPEM, _, err := incustls.GenerateMemCert(true, false)
 			require.NoError(t, err)
 
-			err = config.UpdateUpdates(t.Context(), api.SystemUpdatesPut{
+			err = config.UpdateUpdates(t.Context(), system.UpdatesPut{
 				SignatureVerificationRootCA: string(pem.EncodeToMemory(&pem.Block{
 					Type:  "CERTIFICATE",
 					Bytes: certPEM,

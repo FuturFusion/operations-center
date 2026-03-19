@@ -63,13 +63,14 @@ type ExprOsapiSystemNetworkBond struct {
 }
 
 type ExprOsapiSystemNetworkConfig struct {
-	DNS        *ExprOsapiSystemNetworkDNS        `json:"dns,omitempty"   yaml:"dns,omitempty" expr:"dns"`
-	Time       *ExprOsapiSystemNetworkTime       `json:"time,omitempty"  yaml:"time,omitempty" expr:"time"`
-	Proxy      *ExprOsapiSystemNetworkProxy      `json:"proxy,omitempty" yaml:"proxy,omitempty" expr:"proxy"`
-	Interfaces []ExprOsapiSystemNetworkInterface `json:"interfaces,omitempty" yaml:"interfaces,omitempty" expr:"interfaces"`
-	Bonds      []ExprOsapiSystemNetworkBond      `json:"bonds,omitempty"      yaml:"bonds,omitempty" expr:"bonds"`
-	VLANs      []ExprOsapiSystemNetworkVLAN      `json:"vlans,omitempty"      yaml:"vlans,omitempty" expr:"vlans"`
-	Wireguard  []ExprOsapiSystemNetworkWireguard `json:"wireguard,omitempty"  yaml:"wireguard,omitempty" expr:"wireguard"`
+	ConfirmationTimeout string                            `json:"confirmation_timeout,omitempty" yaml:"confirmation_timeout,omitempty" expr:"confirmation_timeout"`
+	DNS                 *ExprOsapiSystemNetworkDNS        `json:"dns,omitempty"   yaml:"dns,omitempty" expr:"dns"`
+	Time                *ExprOsapiSystemNetworkTime       `json:"time,omitempty"  yaml:"time,omitempty" expr:"time"`
+	Proxy               *ExprOsapiSystemNetworkProxy      `json:"proxy,omitempty" yaml:"proxy,omitempty" expr:"proxy"`
+	Interfaces          []ExprOsapiSystemNetworkInterface `json:"interfaces,omitempty" yaml:"interfaces,omitempty" expr:"interfaces"`
+	Bonds               []ExprOsapiSystemNetworkBond      `json:"bonds,omitempty"      yaml:"bonds,omitempty" expr:"bonds"`
+	VLANs               []ExprOsapiSystemNetworkVLAN      `json:"vlans,omitempty"      yaml:"vlans,omitempty" expr:"vlans"`
+	Wireguard           []ExprOsapiSystemNetworkWireguard `json:"wireguard,omitempty"  yaml:"wireguard,omitempty" expr:"wireguard"`
 }
 
 type ExprOsapiSystemNetworkDNS struct {
@@ -306,15 +307,18 @@ type ExprOsapiSystemStorageDriveSMART struct {
 type ExprOsapiSystemStoragePool struct {
 	Name                      string                                 `json:"name" yaml:"name" expr:"name"`
 	Type                      string                                 `json:"type" yaml:"type" expr:"type"`
-	Devices                   []string                               `json:"devices"         yaml:"devices" expr:"devices"`
-	Cache                     []string                               `json:"cache,omitempty" yaml:"cache,omitempty" expr:"cache"`
-	Log                       []string                               `json:"log,omitempty"   yaml:"log,omitempty" expr:"log"`
+	AllowMixedDevSizes        bool                                   `json:"allow_mixed_dev_sizes,omitempty" yaml:"allow_mixed_dev_sizes,omitempty" expr:"allow_mixed_dev_sizes"`
+	Devices                   []string                               `json:"devices"           yaml:"devices" expr:"devices"`
+	Cache                     []string                               `json:"cache,omitempty"   yaml:"cache,omitempty" expr:"cache"`
+	Log                       []string                               `json:"log,omitempty"     yaml:"log,omitempty" expr:"log"`
+	Special                   *ExprOsapiSystemStoragePoolSpecial     `json:"special,omitempty" yaml:"special" expr:"special"`
 	State                     string                                 `json:"state"                         yaml:"state" expr:"state"`
 	LastScrub                 *ExprOsapiSystemStoragePoolScrubStatus `json:"last_scrub,omitempty"          yaml:"last_scrub,omitempty,omitempty" expr:"last_scrub"`
 	EncryptionKeyStatus       string                                 `json:"encryption_key_status"         yaml:"encryption_key_status" expr:"encryption_key_status"`
 	DevicesDegraded           []string                               `json:"devices_degraded,omitempty"    yaml:"devices_degraded,omitempty" expr:"devices_degraded"`
 	CacheDegraded             []string                               `json:"cache_degraded,omitempty"      yaml:"cache_degraded,omitempty" expr:"cache_degraded"`
 	LogDegraded               []string                               `json:"log_degraded,omitempty"        yaml:"log_degraded,omitempty" expr:"log_degraded"`
+	SpecialDegraded           []string                               `json:"special_degraded,omitempty"    yaml:"special_degraded,omitempty" expr:"special_degraded"`
 	RawPoolSizeInBytes        int                                    `json:"raw_pool_size_in_bytes"        yaml:"raw_pool_size_in_bytes" expr:"raw_pool_size_in_bytes"`
 	UsablePoolSizeInBytes     int                                    `json:"usable_pool_size_in_bytes"     yaml:"usable_pool_size_in_bytes" expr:"usable_pool_size_in_bytes"`
 	PoolAllocatedSpaceInBytes int                                    `json:"pool_allocated_space_in_bytes" yaml:"pool_allocated_space_in_bytes" expr:"pool_allocated_space_in_bytes"`
@@ -327,6 +331,12 @@ type ExprOsapiSystemStoragePoolScrubStatus struct {
 	EndTime   time.Time                         `json:"end_time" expr:"end_time"`
 	Progress  string                            `json:"progress" expr:"progress"`
 	Errors    int                               `json:"errors" expr:"errors"`
+}
+
+type ExprOsapiSystemStoragePoolSpecial struct {
+	Type                       string   `json:"type" yaml:"type" expr:"type"`
+	SpecialSmallBlocksSizeInKB int      `json:"special_small_blocks_size_in_kb" yaml:"special_small_blocks_size_in_kb" expr:"special_small_blocks_size_in_kb"`
+	Devices                    []string `json:"devices" yaml:"devices" expr:"devices"`
 }
 
 type ExprOsapiSystemStoragePoolVolume struct {
@@ -431,13 +441,14 @@ func ToExprOsapiSystemNetworkBond(s osapi.SystemNetworkBond) ExprOsapiSystemNetw
 
 func ToExprOsapiSystemNetworkConfig(s osapi.SystemNetworkConfig) ExprOsapiSystemNetworkConfig {
 	return ExprOsapiSystemNetworkConfig{
-		DNS:        toPtr(ToExprOsapiSystemNetworkDNS(fromPtr(s.DNS))),
-		Time:       toPtr(ToExprOsapiSystemNetworkTime(fromPtr(s.Time))),
-		Proxy:      toPtr(ToExprOsapiSystemNetworkProxy(fromPtr(s.Proxy))),
-		Interfaces: sliceConvert(s.Interfaces, ToExprOsapiSystemNetworkInterface),
-		Bonds:      sliceConvert(s.Bonds, ToExprOsapiSystemNetworkBond),
-		VLANs:      sliceConvert(s.VLANs, ToExprOsapiSystemNetworkVLAN),
-		Wireguard:  sliceConvert(s.Wireguard, ToExprOsapiSystemNetworkWireguard),
+		ConfirmationTimeout: s.ConfirmationTimeout,
+		DNS:                 toPtr(ToExprOsapiSystemNetworkDNS(fromPtr(s.DNS))),
+		Time:                toPtr(ToExprOsapiSystemNetworkTime(fromPtr(s.Time))),
+		Proxy:               toPtr(ToExprOsapiSystemNetworkProxy(fromPtr(s.Proxy))),
+		Interfaces:          sliceConvert(s.Interfaces, ToExprOsapiSystemNetworkInterface),
+		Bonds:               sliceConvert(s.Bonds, ToExprOsapiSystemNetworkBond),
+		VLANs:               sliceConvert(s.VLANs, ToExprOsapiSystemNetworkVLAN),
+		Wireguard:           sliceConvert(s.Wireguard, ToExprOsapiSystemNetworkWireguard),
 	}
 }
 
@@ -732,15 +743,18 @@ func ToExprOsapiSystemStoragePool(s osapi.SystemStoragePool) ExprOsapiSystemStor
 	return ExprOsapiSystemStoragePool{
 		Name:                      s.Name,
 		Type:                      s.Type,
+		AllowMixedDevSizes:        s.AllowMixedDevSizes,
 		Devices:                   s.Devices,
 		Cache:                     s.Cache,
 		Log:                       s.Log,
+		Special:                   toPtr(ToExprOsapiSystemStoragePoolSpecial(fromPtr(s.Special))),
 		State:                     s.State,
 		LastScrub:                 toPtr(ToExprOsapiSystemStoragePoolScrubStatus(fromPtr(s.LastScrub))),
 		EncryptionKeyStatus:       s.EncryptionKeyStatus,
 		DevicesDegraded:           s.DevicesDegraded,
 		CacheDegraded:             s.CacheDegraded,
 		LogDegraded:               s.LogDegraded,
+		SpecialDegraded:           s.SpecialDegraded,
 		RawPoolSizeInBytes:        s.RawPoolSizeInBytes,
 		UsablePoolSizeInBytes:     s.UsablePoolSizeInBytes,
 		PoolAllocatedSpaceInBytes: s.PoolAllocatedSpaceInBytes,
@@ -755,6 +769,14 @@ func ToExprOsapiSystemStoragePoolScrubStatus(s osapi.SystemStoragePoolScrubStatu
 		EndTime:   s.EndTime,
 		Progress:  s.Progress,
 		Errors:    s.Errors,
+	}
+}
+
+func ToExprOsapiSystemStoragePoolSpecial(s osapi.SystemStoragePoolSpecial) ExprOsapiSystemStoragePoolSpecial {
+	return ExprOsapiSystemStoragePoolSpecial{
+		Type:                       s.Type,
+		SpecialSmallBlocksSizeInKB: s.SpecialSmallBlocksSizeInKB,
+		Devices:                    s.Devices,
 	}
 }
 
