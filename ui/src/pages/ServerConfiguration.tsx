@@ -41,6 +41,7 @@ const ServerConfiguration = () => {
       JSON.stringify(
         {
           description: values.description,
+          properties: values.properties,
           public_connection_url: values.public_connection_url,
           channel: values.channel,
         },

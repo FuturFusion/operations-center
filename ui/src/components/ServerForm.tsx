@@ -3,6 +3,7 @@ import { Button, Form } from "react-bootstrap";
 import { useFormik } from "formik";
 import ChannelSelect from "components/ChannelSelect";
 import LoadingButton from "components/LoadingButton";
+import KeyValueWidget from "components/KeyValueWidget";
 import { APIResponse } from "types/response";
 import { Server, ServerFormValues } from "types/server";
 import YAML from "yaml";
@@ -32,6 +33,7 @@ const ServerForm: FC<Props> = ({
     public_connection_url: server?.public_connection_url || "",
     channel: server?.channel || "",
     description: server?.description || "",
+    properties: server?.properties || {},
     network_configuration: YAML.stringify(systemNetwork, null, 2),
     storage_configuration: YAML.stringify(systemStorage, null, 2),
   };
@@ -92,6 +94,13 @@ const ServerForm: FC<Props> = ({
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 disabled={submitting["configuration"]}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="properties">
+              <Form.Label>Properties</Form.Label>
+              <KeyValueWidget
+                value={formik.values.properties}
+                onChange={(value) => formik.setFieldValue("properties", value)}
               />
             </Form.Group>
             <Form.Group className="mb-3" controlId="public_connection_url">
