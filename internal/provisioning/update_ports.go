@@ -25,6 +25,8 @@ type UpdateService interface {
 	CleanupAll(ctx context.Context) error
 	Prune(ctx context.Context) error
 	Refresh(ctx context.Context) error
+
+	SetServerService(serverSvc ServerService)
 }
 
 type UpdateRepo interface {

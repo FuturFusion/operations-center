@@ -21,6 +21,7 @@ import (
 	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
+	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
@@ -173,7 +174,7 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil)
+			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
 
 			// Run test
 			id, err := updateSvc.CreateFromArchive(context.Background(), nil)
@@ -263,7 +264,7 @@ func TestUpdateService_CleanupAll(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil)
+			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
 
 			// Run test
 			err := updateSvc.CleanupAll(context.Background())
@@ -421,7 +422,7 @@ func TestUpdateService_Prune(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil)
+			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
 
 			// Run test
 			err := updateSvc.Prune(context.Background())
@@ -464,7 +465,7 @@ func TestUpdateService_GetAll(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil, nil)
+			updateSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
 
 			// Run test
 			updates, err := updateSvc.GetAll(context.Background())
@@ -569,7 +570,7 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewUpdateService(repo, nil, nil)
+			serverSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
 
 			// Run test
 			server, err := serverSvc.GetAllWithFilter(context.Background(), tc.filter)
@@ -615,7 +616,7 @@ func TestUpdateService_GetAllUUIDs(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil, nil)
+			updateSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
 
 			// Run test
 			updates, err := updateSvc.GetAllUUIDs(context.Background())
@@ -700,7 +701,7 @@ func TestUpdateService_GetAllUUIDsWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewUpdateService(repo, nil, nil)
+			serverSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
 
 			// Run test
 			serverIDs, err := serverSvc.GetAllUUIDsWithFilter(context.Background(), tc.filter)
@@ -754,7 +755,7 @@ func TestUpdateService_GetUpdatesByAssignedChannelName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewUpdateService(repo, nil, nil)
+			serverSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
 
 			// Run test
 			serverIDs, err := serverSvc.GetUpdatesByAssignedChannelName(context.Background(), "stable")
@@ -800,7 +801,7 @@ func TestUpdateService_GetByUUID(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil, nil)
+			updateSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
 
 			// Run test
 			update, err := updateSvc.GetByUUID(context.Background(), tc.idArg)
@@ -876,7 +877,7 @@ func TestUpdateService_Update(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil, nil)
+			updateSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
 
 			// Run test
 			err := updateSvc.Update(t.Context(), tc.updateArg)
@@ -929,7 +930,7 @@ func TestUpdateService_GetUpdateAllFiles(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil, nil)
+			updateSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
 
 			// Run test
 			updateFiles, err := updateSvc.GetUpdateAllFiles(context.Background(), tc.idArg)
@@ -1027,7 +1028,7 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil)
+			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
 
 			// Run test
 			rc, size, err := updateSvc.GetUpdateFileByFilename(context.Background(), tc.idArg, "foo.bar")
@@ -1080,6 +1081,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 			stream io.ReadCloser
 			size   int
 		}]
+
+		serverSvcGetAll    provisioning.Servers
+		serverSvcGetAllErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -1147,6 +1151,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				{
 					UUID:        updateNewUUID,
 					PublishedAt: dateTime2,
+					Version:     "2",
 					Status:      api.UpdateStatusUnknown,
 					Severity:    images.UpdateSeverityNone,
 					UpstreamChannels: provisioning.UpdateUpstreamChannels{
@@ -1171,6 +1176,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				{
 					UUID:        updateNewUUID,
 					PublishedAt: dateTime3,
+					Version:     "3",
 					Status:      api.UpdateStatusUnknown,
 					Severity:    images.UpdateSeverityNone,
 					UpstreamChannels: provisioning.UpdateUpstreamChannels{
@@ -1224,6 +1230,16 @@ func TestUpdateService_Refresh(t *testing.T) {
 			}]{
 				// Finally one file is stored.
 				{},
+			},
+			serverSvcGetAll: provisioning.Servers{
+				{
+					Name: "server1",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+					},
+				},
 			},
 
 			assertErr: require.NoError,
@@ -1386,7 +1402,17 @@ func TestUpdateService_Refresh(t *testing.T) {
 			},
 		},
 		{
-			name:                 "error - repo.GetAllWithFilter",
+			name:                 "error - serverSvc.GetAll",
+			ctx:                  t.Context(),
+			filterExpression:     `true`,
+			fileFilterExpression: `true`,
+
+			serverSvcGetAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                 "error - repo.GetAll",
 			ctx:                  t.Context(),
 			filterExpression:     `true`,
 			fileFilterExpression: `true`,
@@ -2170,6 +2196,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			}
 
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
+					return tc.serverSvcGetAll, tc.serverSvcGetAllErr
+				},
+			}
+
 			certPEM, _, err := incustls.GenerateMemCert(true, false)
 			require.NoError(t, err)
 
@@ -2189,6 +2221,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				repo,
 				repoUpdateFiles,
 				source,
+				serverSvc,
 				provisioning.UpdateServiceWithLatestLimit(1),
 				provisioning.UpdateServiceWithPendingGracePeriod(24*time.Hour),
 			)
