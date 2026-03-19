@@ -303,14 +303,14 @@ func TestClient_Endpoint(t *testing.T) {
 					endpoint,
 					false,
 					provisioning.TokenImageSeedConfigs{
-						Install: map[string]any{
-							"key": "value",
+						Install: api.SeedInstall{
+							Version: "1",
 						},
-						Network: map[string]any{
-							"key": "value",
+						Network: api.SeedNetwork{
+							Version: "1",
 						},
-						Update: map[string]any{
-							"key": "value",
+						Update: api.SeedUpdate{
+							Version: "1",
 						},
 					},
 					api.TokenProviderConfig{},
