@@ -336,6 +336,30 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 		},
+		// NOTE: This test covers the additional log intended to find resources,
+		// where project is not properly populated by Incus.
+		// Remove once all the affected resources have been identified.
+		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+		{
+			name: "success - missing project",
+			repoGetByUUIDNetworkIntegration: inventory.NetworkIntegration{
+				UUID:    uuidgen.FromPattern(t, "1"),
+				Cluster: "one",
+				Name:    "one",
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
+				Name: "networkIntegration one",
+			},
+
+			assertErr: require.NoError,
+		},
 		{
 			name:             "error - networkIntegration get by UUID",
 			repoGetByUUIDErr: boom.Error,
@@ -496,7 +520,8 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 		repoGetByUUIDErr                                       error
 		repoDeleteByUUIDErr                                    error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr   require.ErrorAssertionFunc
+		wantProject string
 	}{
 		{
 			name:           "success - not responsible",
@@ -627,6 +652,32 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 				Cluster: "cluster",
 				Name:    "network_integration",
 			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
+				Name: "network_integration",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - missing project",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-integration",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					Name: "network_integration",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:        "https://server01/",

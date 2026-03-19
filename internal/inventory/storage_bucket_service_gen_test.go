@@ -346,6 +346,34 @@ func TestStorageBucketService_ResyncByUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 		},
+		// NOTE: This test covers the additional log intended to find resources,
+		// where project is not properly populated by Incus.
+		// Remove once all the affected resources have been identified.
+		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+		{
+			name: "success - missing project",
+			repoGetByUUIDStorageBucket: inventory.StorageBucket{
+				UUID:            uuidgen.FromPattern(t, "1"),
+				Cluster:         "one",
+				Name:            "one",
+				StoragePoolName: "storage_pool",
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucketFull{
+				StorageBucket: incusapi.StorageBucket{
+					Name:     "storageBucket one",
+					Location: "one",
+				},
+			},
+
+			assertErr: require.NoError,
+		},
 		{
 			name:             "error - storageBucket get by UUID",
 			repoGetByUUIDErr: boom.Error,
@@ -526,7 +554,8 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 		repoGetByUUIDErr                             error
 		repoDeleteByUUIDErr                          error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr   require.ErrorAssertionFunc
+		wantProject string
 	}{
 		{
 			name:           "success - not responsible",
@@ -567,7 +596,8 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 				},
 			},
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
 		},
 		{
 			name:           "success - delete existing",
@@ -620,7 +650,8 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 				},
 			},
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
 		},
 		{
 			name:           "success - update of non existing element",
@@ -657,7 +688,8 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 				}),
 			},
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
 		},
 		{
 			name:           "success - update existing",
@@ -698,7 +730,39 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 				},
 			},
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
+		},
+		{
+			name:           "success - missing project",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					ParentName: "storage_pool",
+					Name:       "storage_bucket",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucketFull{
+				StorageBucket: incusapi.StorageBucket{
+					Name:     "storage_bucket",
+					Location: "server01",
+				},
+			},
+
+			assertErr:   require.NoError,
+			wantProject: "default",
 		},
 		{
 			name:           "error - invalid lifecycle operation",
@@ -726,7 +790,8 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - create - client.GetStorageBucketByName",
@@ -751,7 +816,8 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 			},
 			storageBucketClientGetStorageBucketByNameErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - create - validate",
@@ -786,6 +852,7 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+			wantProject: "project",
 		},
 		{
 			name:           "error - create - repo.Create",
@@ -817,7 +884,8 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 			},
 			repoCreateErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - delete - repo.GetAllUUIDsWithFilter",
@@ -833,7 +901,8 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 			},
 			repoGetAllUUIDsWithFilterErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - delete - repo.GetAllUUIDsWithFilter - not found",
@@ -849,7 +918,8 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 			},
 			repoGetAllUUIDsWithFilterErr: domain.ErrNotFound,
 
-			assertErr: require.NoError,
+			assertErr:   require.NoError,
+			wantProject: "project",
 		},
 		{
 			name:           "error - delete - DeleteByUUID",
@@ -868,7 +938,8 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 			},
 			repoDeleteByUUIDErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - rename - delete",
@@ -904,7 +975,8 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 			},
 			repoDeleteByUUIDErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - rename - create",
@@ -940,7 +1012,8 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 			},
 			repoCreateErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 		{
 			name:           "error - update - repo.GetAllUUIDsWithFilter",
@@ -975,7 +1048,8 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 			},
 			repoGetByUUIDErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:   boom.ErrorIs,
+			wantProject: "project",
 		},
 	}
 
@@ -992,7 +1066,7 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 				},
 				CreateFunc: func(ctx context.Context, storageBucket inventory.StorageBucket) (inventory.StorageBucket, error) {
 					require.Equal(t, tc.argClusterName, storageBucket.Cluster)
-					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, storageBucket.ProjectName)
+					require.Equal(t, tc.wantProject, storageBucket.ProjectName)
 					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, storageBucket.StoragePoolName)
 					require.Equal(t, tc.argLifecycleEvent.Source.Name, storageBucket.Name)
 					return inventory.StorageBucket{}, tc.repoCreateErr

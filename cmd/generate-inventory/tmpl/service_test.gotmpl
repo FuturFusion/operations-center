@@ -370,6 +370,48 @@ func Test{{ .Name | pascalcase }}Service_ResyncByUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 		},
+		// NOTE: This test covers the additional log intended to find resources,
+		// where project is not properly populated by Incus.
+		// Remove once all the affected resources have been identified.
+		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+		{
+			name: "success - missing project",
+			repoGetByUUID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
+				UUID:     uuidgen.FromPattern(t, "1"),
+				Cluster:  "one",
+				Name:     "one",
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name: "{{ .ParentName }}",
+{{- end }}
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL: "https://server-one/",
+					Certificate: "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+				{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+					{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .UsesEmbeddedPostType }}
+					},
+{{- end }}
+{{- if .ServerIDByLocation }}
+					Location:  "one",
+{{- end }}
+{{- if .ObjectEmbedded }}
+				},
+{{- end }}
+			},
+
+			assertErr: require.NoError,
+		},
 		{
 			name:           "error - {{ .Name | camelcase }} get by UUID",
 			repoGetByUUIDErr: boom.Error,
@@ -602,7 +644,8 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 		repoGetByUUIDErr                             error
 		repoDeleteByUUIDErr                          error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr   require.ErrorAssertionFunc
+		wantProject string
 	}{
 		{
 			name:           "success - not responsible",
@@ -665,8 +708,11 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+{{- if .HasProject }}
+			wantProject: "project",
+{{- end }}
 		},
-    {
+		{
 			name:           "success - delete existing",
 			argClusterName: "cluster",
 			argLifecycleEvent: domain.LifecycleEvent{
@@ -746,6 +792,9 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+{{- if .HasProject }}
+			wantProject: "project",
+{{- end }}
 		},
 		{
 			name:           "success - update of non existing element",
@@ -804,6 +853,9 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+{{- if .HasProject }}
+			wantProject: "project",
+{{- end }}
 		},
 		{
 			name:           "success - update existing",
@@ -873,6 +925,59 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+{{- if .HasProject }}
+			wantProject: "project",
+{{- end }}
+		},
+		{
+			name:           "success - missing project",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+{{- if .HasParent }}
+					ParentName: "{{ .ParentName }}",
+{{- end }}
+					Name: "{{ .Name }}",
+{{- range .ExtraAttributes }}
+					{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+				{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+					{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name }}",
+{{- if .UsesEmbeddedPostType }}
+					},
+{{- end }}
+{{- if .ServerIDByLocation }}
+					Location:  "server01",
+{{- end }}
+{{- if .ObjectEmbedded }}
+				},
+{{- end }}
+			},
+
+			assertErr: require.NoError,
+{{- if .HasProject }}
+			wantProject: "default",
+{{- end }}
 		},
 		{
 			name:           "error - invalid lifecycle operation",
@@ -908,6 +1013,9 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 			clusterSvcGetEndpointErr:       boom.Error,
 
 			assertErr: boom.ErrorIs,
+{{- if .HasProject }}
+			wantProject: "project",
+{{- end }}
 		},
 		{
 			name:           "error - create - client.Get{{ .Name | pascalcase }}ByName",
@@ -940,6 +1048,9 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+{{- if .HasProject }}
+			wantProject: "project",
+{{- end }}
 		},
 		{
 			name:           "error - create - validate",
@@ -995,6 +1106,9 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+{{- if .HasProject }}
+			wantProject: "project",
+{{- end }}
 		},
 		{
 			name:           "error - create - repo.Create",
@@ -1048,6 +1162,9 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 			repoCreateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+{{- if .HasProject }}
+			wantProject: "project",
+{{- end }}
 		},
 		{
 			name:           "error - delete - repo.GetAllUUIDsWithFilter",
@@ -1071,6 +1188,9 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 			repoGetAllUUIDsWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+{{- if .HasProject }}
+			wantProject: "project",
+{{- end }}
 		},
 		{
 			name:           "error - delete - repo.GetAllUUIDsWithFilter - not found",
@@ -1094,6 +1214,9 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 			repoGetAllUUIDsWithFilterErr: domain.ErrNotFound,
 
 			assertErr: require.NoError,
+{{- if .HasProject }}
+			wantProject: "project",
+{{- end }}
 		},
 		{
 			name:           "error - delete - DeleteByUUID",
@@ -1120,6 +1243,9 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 			repoDeleteByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+{{- if .HasProject }}
+			wantProject: "project",
+{{- end }}
 		},
 		{
 			name:           "error - rename - delete",
@@ -1177,6 +1303,9 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 			repoDeleteByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+{{- if .HasProject }}
+			wantProject: "project",
+{{- end }}
 		},
 		{
 			name:           "error - rename - create",
@@ -1234,6 +1363,9 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 			repoCreateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+{{- if .HasProject }}
+			wantProject: "project",
+{{- end }}
 		},
 		{
 			name:           "error - update - repo.GetAllUUIDsWithFilter",
@@ -1283,6 +1415,9 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+{{- if .HasProject }}
+			wantProject: "project",
+{{- end }}
 		},
 	}
 
@@ -1304,7 +1439,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 				CreateFunc: func(ctx context.Context, {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
 					require.Equal(t, tc.argClusterName, {{ .Name | camelcase }}.Cluster)
 {{- if .HasProject }}
-					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, {{ .Name | camelcase }}.ProjectName)
+					require.Equal(t, tc.wantProject, {{ .Name | camelcase }}.ProjectName)
 {{- end }}
 {{- if .HasParent }}
 					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, {{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name)

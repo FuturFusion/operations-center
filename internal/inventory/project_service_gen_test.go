@@ -336,6 +336,30 @@ func TestProjectService_ResyncByUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 		},
+		// NOTE: This test covers the additional log intended to find resources,
+		// where project is not properly populated by Incus.
+		// Remove once all the affected resources have been identified.
+		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+		{
+			name: "success - missing project",
+			repoGetByUUIDProject: inventory.Project{
+				UUID:    uuidgen.FromPattern(t, "1"),
+				Cluster: "one",
+				Name:    "one",
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			projectClientGetProjectByName: incusapi.Project{
+				Name: "project one",
+			},
+
+			assertErr: require.NoError,
+		},
 		{
 			name:             "error - project get by UUID",
 			repoGetByUUIDErr: boom.Error,
@@ -496,7 +520,8 @@ func TestProjectService_ResyncByName(t *testing.T) {
 		repoGetByUUIDErr                 error
 		repoDeleteByUUIDErr              error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr   require.ErrorAssertionFunc
+		wantProject string
 	}{
 		{
 			name:           "success - not responsible",
@@ -627,6 +652,32 @@ func TestProjectService_ResyncByName(t *testing.T) {
 				Cluster: "cluster",
 				Name:    "project",
 			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			projectClientGetProjectByName: incusapi.Project{
+				Name: "project",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - missing project",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "project",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					Name: "project",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:        "https://server01/",

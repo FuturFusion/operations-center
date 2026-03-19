@@ -171,17 +171,17 @@ func (s networkACLService) ResyncByUUID(ctx context.Context, id uuid.UUID) error
 			return err
 		}
 
-		networkACL.ProjectName = firstNonEmpty(retrievedNetworkACL.Project, networkACL.ProjectName, "default")
-		networkACL.Object = IncusNetworkACLWrapper{retrievedNetworkACL}
-		networkACL.LastUpdated = s.now()
-		networkACL.DeriveUUID()
-
 		// NOTE: This log intends to find resources, where project is not properly populated by Incus.
 		// Remove once all the affected resources have been identified.
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		if firstNonEmpty(retrievedNetworkACL.Project, networkACL.ProjectName, "not found") == "not found" {
 			slog.WarnContext(ctx, "expected project missing in ResyncByUUID", slog.String("resource-type", "network_acl"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
 		}
+
+		networkACL.ProjectName = firstNonEmpty(retrievedNetworkACL.Project, networkACL.ProjectName, "default")
+		networkACL.Object = IncusNetworkACLWrapper{retrievedNetworkACL}
+		networkACL.LastUpdated = s.now()
+		networkACL.DeriveUUID()
 
 		err = networkACL.Validate()
 		if err != nil {
@@ -248,6 +248,13 @@ func (s networkACLService) handleCreateEvent(ctx context.Context, clusterName st
 		return err
 	}
 
+	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
+	// Remove once all the affected resources have been identified.
+	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+	if firstNonEmpty(retrievedNetworkACL.Project, event.Source.ProjectName, "not found") == "not found" {
+		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "network_acl"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
+	}
+
 	networkACL := NetworkACL{
 		Cluster:     clusterName,
 		ProjectName: firstNonEmpty(retrievedNetworkACL.Project, event.Source.ProjectName, "default"),
@@ -257,13 +264,6 @@ func (s networkACLService) handleCreateEvent(ctx context.Context, clusterName st
 	}
 
 	networkACL.DeriveUUID()
-
-	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
-	// Remove once all the affected resources have been identified.
-	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
-	if firstNonEmpty(retrievedNetworkACL.Project, event.Source.ProjectName, "not found") == "not found" {
-		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "network_acl"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
-	}
 
 	if s.clusterSyncFilterFunc(networkACL) {
 		return nil

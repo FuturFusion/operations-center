@@ -171,17 +171,17 @@ func (s networkZoneService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 			return err
 		}
 
-		networkZone.ProjectName = firstNonEmpty(retrievedNetworkZone.Project, networkZone.ProjectName, "default")
-		networkZone.Object = IncusNetworkZoneWrapper{retrievedNetworkZone}
-		networkZone.LastUpdated = s.now()
-		networkZone.DeriveUUID()
-
 		// NOTE: This log intends to find resources, where project is not properly populated by Incus.
 		// Remove once all the affected resources have been identified.
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		if firstNonEmpty(retrievedNetworkZone.Project, networkZone.ProjectName, "not found") == "not found" {
 			slog.WarnContext(ctx, "expected project missing in ResyncByUUID", slog.String("resource-type", "network_zone"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
 		}
+
+		networkZone.ProjectName = firstNonEmpty(retrievedNetworkZone.Project, networkZone.ProjectName, "default")
+		networkZone.Object = IncusNetworkZoneWrapper{retrievedNetworkZone}
+		networkZone.LastUpdated = s.now()
+		networkZone.DeriveUUID()
 
 		err = networkZone.Validate()
 		if err != nil {
@@ -248,6 +248,13 @@ func (s networkZoneService) handleCreateEvent(ctx context.Context, clusterName s
 		return err
 	}
 
+	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
+	// Remove once all the affected resources have been identified.
+	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+	if firstNonEmpty(retrievedNetworkZone.Project, event.Source.ProjectName, "not found") == "not found" {
+		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "network_zone"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
+	}
+
 	networkZone := NetworkZone{
 		Cluster:     clusterName,
 		ProjectName: firstNonEmpty(retrievedNetworkZone.Project, event.Source.ProjectName, "default"),
@@ -257,13 +264,6 @@ func (s networkZoneService) handleCreateEvent(ctx context.Context, clusterName s
 	}
 
 	networkZone.DeriveUUID()
-
-	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
-	// Remove once all the affected resources have been identified.
-	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
-	if firstNonEmpty(retrievedNetworkZone.Project, event.Source.ProjectName, "not found") == "not found" {
-		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "network_zone"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
-	}
 
 	if s.clusterSyncFilterFunc(networkZone) {
 		return nil

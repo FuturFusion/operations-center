@@ -185,17 +185,17 @@ func (s networkForwardService) ResyncByUUID(ctx context.Context, id uuid.UUID) e
 			return err
 		}
 
-		networkForward.ProjectName = firstNonEmpty(networkForward.ProjectName, "default")
-		networkForward.Object = IncusNetworkForwardWrapper{retrievedNetworkForward}
-		networkForward.LastUpdated = s.now()
-		networkForward.DeriveUUID()
-
 		// NOTE: This log intends to find resources, where project is not properly populated by Incus.
 		// Remove once all the affected resources have been identified.
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		if firstNonEmpty(networkForward.ProjectName, "not found") == "not found" {
 			slog.WarnContext(ctx, "expected project missing in ResyncByUUID", slog.String("resource-type", "network_forward"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
 		}
+
+		networkForward.ProjectName = firstNonEmpty(networkForward.ProjectName, "default")
+		networkForward.Object = IncusNetworkForwardWrapper{retrievedNetworkForward}
+		networkForward.LastUpdated = s.now()
+		networkForward.DeriveUUID()
 
 		err = networkForward.Validate()
 		if err != nil {
@@ -262,6 +262,13 @@ func (s networkForwardService) handleCreateEvent(ctx context.Context, clusterNam
 		return err
 	}
 
+	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
+	// Remove once all the affected resources have been identified.
+	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+	if firstNonEmpty(event.Source.ProjectName, "not found") == "not found" {
+		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "network_forward"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
+	}
+
 	networkForward := NetworkForward{
 		Cluster:     clusterName,
 		ProjectName: firstNonEmpty(event.Source.ProjectName, "default"),
@@ -272,13 +279,6 @@ func (s networkForwardService) handleCreateEvent(ctx context.Context, clusterNam
 	}
 
 	networkForward.DeriveUUID()
-
-	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
-	// Remove once all the affected resources have been identified.
-	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
-	if firstNonEmpty(event.Source.ProjectName, "not found") == "not found" {
-		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "network_forward"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
-	}
 
 	if s.clusterSyncFilterFunc(networkForward) {
 		return nil
