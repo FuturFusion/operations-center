@@ -18,7 +18,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/api"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
-	shared "github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 // Test PUT /1.0/system/certificate.
@@ -50,7 +50,7 @@ func TestSystemCertificatePut(t *testing.T) {
 		IsBackgroundTasksDisabled: true,
 		SourcePollSkipFirst:       true,
 	})
-	err := config.UpdateNetwork(ctx, shared.SystemNetworkPut{
+	err := config.UpdateNetwork(ctx, system.NetworkPut{
 		OperationsCenterAddress: "https://127.0.0.1:17443",
 		RestServerAddress:       "[::1]:17443",
 	})
@@ -99,7 +99,7 @@ func TestSystemCertificatePut(t *testing.T) {
 	certPEM, keyPEM, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
 
-	systemCertificatePost := shared.SystemCertificatePost{
+	systemCertificatePost := system.CertificatePost{
 		Certificate: string(certPEM),
 		Key:         string(keyPEM),
 	}
