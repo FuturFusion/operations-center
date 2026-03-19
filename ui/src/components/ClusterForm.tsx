@@ -2,6 +2,7 @@ import { FC } from "react";
 import { Button, Form } from "react-bootstrap";
 import { useFormik } from "formik";
 import ChannelSelect from "components/ChannelSelect";
+import KeyValueWidget from "components/KeyValueWidget";
 import { Cluster, ClusterFormValues } from "types/cluster";
 
 interface Props {
@@ -16,6 +17,7 @@ const ClusterForm: FC<Props> = ({ cluster, onRename, onSubmit }) => {
     connection_url: cluster?.connection_url || "",
     channel: cluster?.channel || "",
     description: cluster?.description || "",
+    properties: cluster?.properties || {},
   };
 
   const formik = useFormik({
@@ -61,6 +63,13 @@ const ClusterForm: FC<Props> = ({ cluster, onRename, onSubmit }) => {
               value={formik.values.description}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
+            />
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="properties">
+            <Form.Label>Properties</Form.Label>
+            <KeyValueWidget
+              value={formik.values.properties}
+              onChange={(value) => formik.setFieldValue("properties", value)}
             />
           </Form.Group>
           <Form.Group className="mb-3" controlId="connection_url">

@@ -16,6 +16,7 @@ const ClusterConfiguration = () => {
       JSON.stringify(
         {
           description: values.description,
+          properties: values.properties,
           connection_url: values.connection_url,
           channel: values.channel,
         },
