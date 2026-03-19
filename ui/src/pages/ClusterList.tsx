@@ -1,4 +1,4 @@
-import { Button, Container } from "react-bootstrap";
+import { Badge, Button, Container } from "react-bootstrap";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { fetchClusters } from "api/cluster";
@@ -7,6 +7,7 @@ import ClusterStatus from "components/ClusterStatus";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import type { Cluster } from "types/cluster";
+import { BsLink45Deg } from "react-icons/bs";
 
 const Cluster = () => {
   const navigate = useNavigate();
@@ -28,31 +29,43 @@ const Cluster = () => {
     retry: false,
   });
 
-  const headers = ["Name", "Connection URL", "Status", "Actions"];
+  const headers = ["Name", "Description / Properties", "Status", "Actions"];
   const rows = clusters.map((item) => {
     return [
       {
-        content: (
+        content: [
           <Link
             to={`/ui/provisioning/clusters/${item.name}`}
             className="data-table-link"
+            title="Cluster details"
           >
             {item.name}
-          </Link>
-        ),
+          </Link>,
+          <Link
+            to={item.connection_url}
+            target="_blank"
+            className="data-table-link"
+            title="Access server through external URL"
+          >
+            <BsLink45Deg color="grey" size={25} />
+          </Link>,
+        ],
         sortKey: item.name,
       },
       {
         content: (
-          <Link
-            to={`${item.connection_url}`}
-            target="_blank"
-            className="data-table-link"
-          >
-            {item.connection_url}
-          </Link>
+          <>
+            {item.description}
+            <br />
+            {item.properties &&
+              Object.entries(item.properties).map(([key, value]) => [
+                <Badge bg="primary">
+                  {key}:{value}
+                </Badge>,
+                <span> </span>,
+              ])}
+          </>
         ),
-        sortKey: item.connection_url,
       },
       {
         content: <ClusterStatus cluster={item} />,

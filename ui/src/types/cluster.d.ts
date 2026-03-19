@@ -4,10 +4,16 @@ export interface ClusterUpdateStatus {
   in_maintenance: string[];
 }
 
+export interface ClusterProperty {
+  [key: string]: string;
+}
+
 export interface Cluster {
   name: string;
   connection_url: string;
   channel: string;
+  description: string;
+  properties: ClusterProperty;
   certificate: string;
   fingerprint: string;
   status: string;
