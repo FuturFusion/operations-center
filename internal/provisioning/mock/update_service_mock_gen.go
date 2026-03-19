@@ -60,6 +60,9 @@ var _ provisioning.UpdateService = &UpdateServiceMock{}
 //			RefreshFunc: func(ctx context.Context) error {
 //				panic("mock out the Refresh method")
 //			},
+//			SetServerServiceFunc: func(serverSvc provisioning.ServerService)  {
+//				panic("mock out the SetServerService method")
+//			},
 //			UpdateFunc: func(ctx context.Context, update provisioning.Update) error {
 //				panic("mock out the Update method")
 //			},
@@ -105,6 +108,9 @@ type UpdateServiceMock struct {
 
 	// RefreshFunc mocks the Refresh method.
 	RefreshFunc func(ctx context.Context) error
+
+	// SetServerServiceFunc mocks the SetServerService method.
+	SetServerServiceFunc func(serverSvc provisioning.ServerService)
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, update provisioning.Update) error
@@ -187,6 +193,11 @@ type UpdateServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// SetServerService holds details about calls to the SetServerService method.
+		SetServerService []struct {
+			// ServerSvc is the serverSvc argument value.
+			ServerSvc provisioning.ServerService
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -207,6 +218,7 @@ type UpdateServiceMock struct {
 	lockGetUpdatesByAssignedChannelName sync.RWMutex
 	lockPrune                           sync.RWMutex
 	lockRefresh                         sync.RWMutex
+	lockSetServerService                sync.RWMutex
 	lockUpdate                          sync.RWMutex
 }
 
@@ -623,6 +635,38 @@ func (mock *UpdateServiceMock) RefreshCalls() []struct {
 	mock.lockRefresh.RLock()
 	calls = mock.calls.Refresh
 	mock.lockRefresh.RUnlock()
+	return calls
+}
+
+// SetServerService calls SetServerServiceFunc.
+func (mock *UpdateServiceMock) SetServerService(serverSvc provisioning.ServerService) {
+	if mock.SetServerServiceFunc == nil {
+		panic("UpdateServiceMock.SetServerServiceFunc: method is nil but UpdateService.SetServerService was just called")
+	}
+	callInfo := struct {
+		ServerSvc provisioning.ServerService
+	}{
+		ServerSvc: serverSvc,
+	}
+	mock.lockSetServerService.Lock()
+	mock.calls.SetServerService = append(mock.calls.SetServerService, callInfo)
+	mock.lockSetServerService.Unlock()
+	mock.SetServerServiceFunc(serverSvc)
+}
+
+// SetServerServiceCalls gets all the calls that were made to SetServerService.
+// Check the length with:
+//
+//	len(mockedUpdateService.SetServerServiceCalls())
+func (mock *UpdateServiceMock) SetServerServiceCalls() []struct {
+	ServerSvc provisioning.ServerService
+} {
+	var calls []struct {
+		ServerSvc provisioning.ServerService
+	}
+	mock.lockSetServerService.RLock()
+	calls = mock.calls.SetServerService
+	mock.lockSetServerService.RUnlock()
 	return calls
 }
 

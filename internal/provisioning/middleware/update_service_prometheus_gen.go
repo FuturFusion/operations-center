@@ -208,6 +208,16 @@ func (_d UpdateServiceWithPrometheus) Refresh(ctx context.Context) (err error) {
 	return _d.base.Refresh(ctx)
 }
 
+// SetServerService implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) SetServerService(serverSvc provisioning.ServerService) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SetServerService", result).Observe(time.Since(_since).Seconds())
+	}()
+	_d.base.SetServerService(serverSvc)
+}
+
 // Update implements provisioning.UpdateService.
 func (_d UpdateServiceWithPrometheus) Update(ctx context.Context, update provisioning.Update) (err error) {
 	_since := time.Now()
