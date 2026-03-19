@@ -494,15 +494,20 @@ func (c client) Reboot(ctx context.Context, server provisioning.Server) error {
 	return nil
 }
 
-func (c client) Restore(ctx context.Context, server provisioning.Server) error {
+func (c client) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {
 		return err
 	}
 
+	restoreMode := ""
+	if restoreModeSkip {
+		restoreMode = "skip"
+	}
+
 	_, err = client.UpdateClusterMemberState(server.Name, incusapi.ClusterMemberStatePost{
 		Action: "restore",
-		Mode:   "",
+		Mode:   restoreMode,
 	})
 	if err != nil {
 		return fmt.Errorf("Failed to update cluster member state to evacuated on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
