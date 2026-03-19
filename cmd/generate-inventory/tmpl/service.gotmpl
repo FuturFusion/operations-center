@@ -201,6 +201,15 @@ func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uui
 		if err != nil {
 			return err
 		}
+{{- if .HasProject }}
+
+		// NOTE: This log intends to find resources, where project is not properly populated by Incus.
+		// Remove once all the affected resources have been identified.
+		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+		if firstNonEmpty({{ if .HasProjectDirect }}retrieved{{ .Name | pascalcase }}.Project, {{ end }}{{ .Name | camelcase }}.ProjectName, "not found") == "not found" {
+			slog.WarnContext(ctx, "expected project missing in ResyncByUUID", slog.String("resource-type", "{{ .Name }}"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
+		}
+{{- end }}
 
 {{ if .ServerIDByLocation }}
 	{{- if .IsServerIDOptional }}
@@ -218,15 +227,6 @@ func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uui
 		{{ .Name | camelcase }}.Object = Incus{{ .ObjectType | pascalcase }}Wrapper{retrieved{{ .Name | pascalcase }}}
 		{{ .Name | camelcase }}.LastUpdated = s.now()
 		{{ .Name | camelcase }}.DeriveUUID()
-{{- if .HasProject }}
-
-		// NOTE: This log intends to find resources, where project is not properly populated by Incus.
-		// Remove once all the affected resources have been identified.
-		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
-		if firstNonEmpty({{ if .HasProjectDirect }}retrieved{{ .Name | pascalcase }}.Project, {{ end }}{{ .Name | camelcase }}.ProjectName, "not found") == "not found" {
-			slog.WarnContext(ctx, "expected project missing in ResyncByUUID", slog.String("resource-type", "{{ .Name }}"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
-		}
-{{- end }}
 
 		err = {{ .Name | camelcase }}.Validate()
 		if err != nil {
@@ -292,6 +292,15 @@ func (s {{ .Name | camelcase }}Service) handleCreateEvent(ctx context.Context, c
 	if err != nil {
 		return err
 	}
+{{- if .HasProject }}
+
+	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
+	// Remove once all the affected resources have been identified.
+	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
+	if firstNonEmpty({{ if .HasProjectDirect }}retrieved{{ .Name | pascalcase }}.Project, {{ end }}event.Source.ProjectName, "not found") == "not found" {
+		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "{{ .Name }}"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
+	}
+{{- end }}
 
 	{{ .Name | camelcase }} := {{ .Name | pascalcase }}{
 		Cluster:   clusterName,
@@ -317,15 +326,6 @@ func (s {{ .Name | camelcase }}Service) handleCreateEvent(ctx context.Context, c
 	}
 
 	{{ .Name | camelcase }}.DeriveUUID()
-{{- if .HasProject }}
-
-	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
-	// Remove once all the affected resources have been identified.
-	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
-	if firstNonEmpty({{ if .HasProjectDirect }}retrieved{{ .Name | pascalcase }}.Project, {{ end }}event.Source.ProjectName, "not found") == "not found" {
-		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "{{ .Name }}"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
-	}
-{{- end }}
 
 	if s.clusterSyncFilterFunc({{ .Name | camelcase }}) {
 		return nil
