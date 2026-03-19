@@ -43,6 +43,40 @@ func NewClusterServiceWithSlog(base provisioning.ClusterService, opts ...Cluster
 	return this
 }
 
+// AbortClusterUpdate implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) AbortClusterUpdate(ctx context.Context, name string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling AbortClusterUpdate")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method AbortClusterUpdate returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method AbortClusterUpdate returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method AbortClusterUpdate finished")
+		}
+	}()
+	return _d._base.AbortClusterUpdate(ctx, name)
+}
+
 // AddApplication implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) AddApplication(ctx context.Context, clusterName string, applicationName string) (err error) {
 	log := slog.With()
@@ -217,6 +251,40 @@ func (_d ClusterServiceWithSlog) AddStorageTargetNVME(ctx context.Context, clust
 		}
 	}()
 	return _d._base.AddStorageTargetNVME(ctx, clusterName, target)
+}
+
+// ClusterUpdateControlLoop implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) ClusterUpdateControlLoop(ctx context.Context, clusterNameFilter *string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("clusterNameFilter", clusterNameFilter),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ClusterUpdateControlLoop")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method ClusterUpdateControlLoop returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method ClusterUpdateControlLoop returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method ClusterUpdateControlLoop finished")
+		}
+	}()
+	return _d._base.ClusterUpdateControlLoop(ctx, clusterNameFilter)
 }
 
 // Create implements provisioning.ClusterService.
@@ -712,6 +780,64 @@ func (_d ClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (
 		}
 	}()
 	return _d._base.GetEndpoint(ctx, name)
+}
+
+// IsInstanceLifecycleOperationPermitted implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) IsInstanceLifecycleOperationPermitted(ctx context.Context, name string) (b bool) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling IsInstanceLifecycleOperationPermitted")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Bool("b", b),
+			)
+		} else {
+		}
+		log.DebugContext(ctx, "<= method IsInstanceLifecycleOperationPermitted finished")
+	}()
+	return _d._base.IsInstanceLifecycleOperationPermitted(ctx, name)
+}
+
+// LaunchClusterUpdate implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) LaunchClusterUpdate(ctx context.Context, name string, reboot bool) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Bool("reboot", reboot),
+		)
+	}
+	log.DebugContext(ctx, "=> calling LaunchClusterUpdate")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method LaunchClusterUpdate returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method LaunchClusterUpdate returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method LaunchClusterUpdate finished")
+		}
+	}()
+	return _d._base.LaunchClusterUpdate(ctx, name, reboot)
 }
 
 // RemoveServerSystemNetworkVLANTags implements provisioning.ClusterService.

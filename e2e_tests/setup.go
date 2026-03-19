@@ -68,6 +68,26 @@ func setupIncusOSWithToken(t *testing.T, tmpDir string) {
 	printServerList(t)
 }
 
+func setupIncusOSWithTokenAndUpdateChannel(t *testing.T, tmpDir string) {
+	t.Helper()
+
+	stop := timeTrack(t)
+	defer stop()
+
+	// Register cleanup
+	t.Cleanup(cleanupIncusOS(t))
+
+	token := createProvisioningTokenWithUpdateChannel(t)
+
+	incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
+
+	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
+
+	createIncusOSInstances(t, incusOSPreseededISOFilename)
+
+	printServerList(t)
+}
+
 func cleanupIncusOS(t *testing.T) func() {
 	t.Helper()
 
@@ -306,15 +326,42 @@ func setupLocalOperationsCenterConfig(t *testing.T) {
 func createProvisioningToken(t *testing.T) string {
 	t.Helper()
 
-	tokenResp := mustRun(t, `../bin/operations-center.linux.%s provisioning token list -f json | jq -r '[ .[] | select(.uses_remaining > 20) ]'`, cpuArch)
-	token := gjson.Get(tokenResp.Output(), "0.uuid").String()
+	tokenResp := mustRun(t, `../bin/operations-center.linux.%s provisioning token list -f json | jq -r '[ .[] | select(.channel == "stable" and .uses_remaining > 20) ] | first | .uuid // empty'`, cpuArch)
+	token := tokenResp.OutputTrimmed()
 	if token == "" {
 		stop := timeTrack(t)
 		defer stop()
 
 		mustRun(t, `../bin/operations-center.linux.%s provisioning token add --description "test" --uses 50`, cpuArch)
-		tokenResp := mustRun(t, `../bin/operations-center.linux.%s provisioning token list -f json | jq -r '[ .[] | select(.uses_remaining > 20) ]'`, cpuArch)
-		token = gjson.Get(tokenResp.Output(), "0.uuid").String()
+		tokenResp := mustRun(t, `../bin/operations-center.linux.%s provisioning token list -f json | jq -r '[ .[] | select(.channel == "stable" and .uses_remaining > 20) ] | first | .uuid'`, cpuArch)
+		token = tokenResp.OutputTrimmed()
+	}
+
+	return token
+}
+
+func createProvisioningTokenWithUpdateChannel(t *testing.T) string {
+	t.Helper()
+
+	channelProdResp := run(t, `../bin/operations-center.linux.%s provisioning channel list -f json | jq -e -r '[ .[]| select(.name == "prod") ] | length > 0'`, cpuArch)
+	require.NoError(t, channelProdResp.err)
+	if !channelProdResp.Success() {
+		mustRun(t, `../bin/operations-center.linux.%s provisioning channel add prod`, cpuArch)
+	}
+
+	oldestUpdateUUIDResp := mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r '[ .[] | select(.update_status == "ready") ] | sort_by(.version) | first | .uuid'`, cpuArch)
+
+	mustRun(t, `../bin/operations-center.linux.%s provisioning update assign-channels %s --channel stable,prod`, cpuArch, oldestUpdateUUIDResp.OutputTrimmed())
+
+	tokenResp := mustRun(t, `../bin/operations-center.linux.%s provisioning token list -f json | jq -r '[ .[] | select(.channel == "prod" and .uses_remaining > 20) ] | first | .uuid // empty'`, cpuArch)
+	token := tokenResp.OutputTrimmed()
+	if token == "" {
+		stop := timeTrack(t)
+		defer stop()
+
+		mustRun(t, `../bin/operations-center.linux.%s provisioning token add --description "test" --uses 50 --channel prod`, cpuArch)
+		tokenResp := mustRun(t, `../bin/operations-center.linux.%s provisioning token list -f json | jq -r '[ .[] | select(.channel == "prod" and .uses_remaining > 20) ] | first | .uuid'`, cpuArch)
+		token = tokenResp.OutputTrimmed()
 	}
 
 	return token

@@ -13,6 +13,7 @@ import (
 	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact/entities"
@@ -32,7 +33,7 @@ func TestLocalArtifact_updateSignalHandler(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		operation      provisioning.ClusterUpdateOperation
+		operation      lifecycle.ClusterUpdateOperation
 		clusterName    string
 		oldClusterName string
 
@@ -40,7 +41,7 @@ func TestLocalArtifact_updateSignalHandler(t *testing.T) {
 	}{
 		{
 			name:           "success - rename",
-			operation:      provisioning.ClusterUpdateOperationRename,
+			operation:      lifecycle.ClusterUpdateOperationRename,
 			clusterName:    "new",
 			oldClusterName: clusterName,
 
@@ -48,20 +49,20 @@ func TestLocalArtifact_updateSignalHandler(t *testing.T) {
 		},
 		{
 			name:        "success - delete",
-			operation:   provisioning.ClusterUpdateOperationDelete,
+			operation:   lifecycle.ClusterUpdateOperationDelete,
 			clusterName: clusterName,
 
 			assertLog: log.Noop,
 		},
 		{
 			name:      "skip - create operation",
-			operation: provisioning.ClusterUpdateOperationCreate,
+			operation: lifecycle.ClusterUpdateOperationCreate,
 
 			assertLog: log.Noop,
 		},
 		{
 			name:           "skip - rename - old does not exist",
-			operation:      provisioning.ClusterUpdateOperationRename,
+			operation:      lifecycle.ClusterUpdateOperationRename,
 			clusterName:    "new",
 			oldClusterName: "does_not_exist", // does not exist
 
@@ -69,7 +70,7 @@ func TestLocalArtifact_updateSignalHandler(t *testing.T) {
 		},
 		{
 			name:           "error - rename - new does already exist",
-			operation:      provisioning.ClusterUpdateOperationRename,
+			operation:      lifecycle.ClusterUpdateOperationRename,
 			clusterName:    existingClusterName,
 			oldClusterName: clusterName,
 
@@ -77,7 +78,7 @@ func TestLocalArtifact_updateSignalHandler(t *testing.T) {
 		},
 		{
 			name:        "skip - delete - does not exist",
-			operation:   provisioning.ClusterUpdateOperationDelete,
+			operation:   lifecycle.ClusterUpdateOperationDelete,
 			clusterName: "does_not_exist", // does not exist
 
 			assertLog: log.Noop,
@@ -97,13 +98,17 @@ func TestLocalArtifact_updateSignalHandler(t *testing.T) {
 			err = logger.InitLogger(logBuf, "", false, false)
 			require.NoError(t, err)
 
-			updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
+			oldClusterUpdateSignal := lifecycle.ClusterUpdateSignal
+			lifecycle.ClusterUpdateSignal = signals.NewSync[lifecycle.ClusterUpdateMessage]()
+			defer func() {
+				lifecycle.ClusterUpdateSignal = oldClusterUpdateSignal
+			}()
 
-			_, err = localartifact.New(nil, tmpDir, updateSignal)
+			_, err = localartifact.New(nil, tmpDir)
 			require.NoError(t, err)
 
 			// Run test
-			updateSignal.Emit(t.Context(), provisioning.ClusterUpdateMessage{
+			lifecycle.ClusterUpdateSignal.Emit(t.Context(), lifecycle.ClusterUpdateMessage{
 				Operation: tc.operation,
 				Name:      tc.clusterName,
 				OldName:   tc.oldClusterName,
@@ -185,7 +190,7 @@ func TestLocalArtifactDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add cluster artifact from path
-	artifactRepo, err := localartifact.New(tx, filepath.Join(tmpDir, "artifacts"), signals.NewSync[provisioning.ClusterUpdateMessage]())
+	artifactRepo, err := localartifact.New(tx, filepath.Join(tmpDir, "artifacts"))
 	require.NoError(t, err)
 
 	// Create artifact from directory

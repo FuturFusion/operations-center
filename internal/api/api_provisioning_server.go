@@ -782,7 +782,7 @@ func (s *serverHandler) serverResyncPost(r *http.Request) response.Response {
 func (s *serverHandler) serverSystemEvacuatePost(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	err := s.service.EvacuateSystemByName(r.Context(), name)
+	err := s.service.EvacuateSystemByName(r.Context(), name, false)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to evacuate server %q: %w", name, err))
 	}
@@ -813,7 +813,7 @@ func (s *serverHandler) serverSystemEvacuatePost(r *http.Request) response.Respo
 func (s *serverHandler) serverSystemPoweroffPost(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	err := s.service.PoweroffSystemByName(r.Context(), name)
+	err := s.service.PoweroffSystemByName(r.Context(), name, false)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to poweroff server %q: %w", name, err))
 	}
@@ -844,7 +844,7 @@ func (s *serverHandler) serverSystemPoweroffPost(r *http.Request) response.Respo
 func (s *serverHandler) serverSystemRebootPost(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	err := s.service.RebootSystemByName(r.Context(), name)
+	err := s.service.RebootSystemByName(r.Context(), name, false)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to reboot server %q: %w", name, err))
 	}
@@ -875,7 +875,7 @@ func (s *serverHandler) serverSystemRebootPost(r *http.Request) response.Respons
 func (s *serverHandler) serverSystemRestorePost(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	err := s.service.RestoreSystemByName(r.Context(), name)
+	err := s.service.RestoreSystemByName(r.Context(), name, false, false)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to restore server %q: %w", name, err))
 	}
@@ -913,7 +913,7 @@ func (s *serverHandler) serverSystemUpdatePost(r *http.Request) response.Respons
 		return response.BadRequest(fmt.Errorf("Request decoding: %v", err))
 	}
 
-	err = s.service.UpdateSystemByName(r.Context(), name, updateRequest)
+	err = s.service.UpdateSystemByName(r.Context(), name, updateRequest, false)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to update server %q: %w", name, err))
 	}

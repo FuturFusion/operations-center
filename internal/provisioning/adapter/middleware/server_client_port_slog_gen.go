@@ -562,12 +562,13 @@ func (_d ServerClientPortWithSlog) Reboot(ctx context.Context, server provisioni
 }
 
 // Restore implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) Restore(ctx context.Context, server provisioning.Server) (err error) {
+func (_d ServerClientPortWithSlog) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
+			slog.Bool("restoreModeSkip", restoreModeSkip),
 		)
 	}
 	log.DebugContext(ctx, "=> calling Restore")
@@ -592,7 +593,7 @@ func (_d ServerClientPortWithSlog) Restore(ctx context.Context, server provision
 			log.DebugContext(ctx, "<= method Restore finished")
 		}
 	}()
-	return _d._base.Restore(ctx, server)
+	return _d._base.Restore(ctx, server, restoreModeSkip)
 }
 
 // UpdateNetworkConfig implements provisioning.ServerClientPort.

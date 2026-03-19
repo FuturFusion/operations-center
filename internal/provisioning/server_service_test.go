@@ -3894,16 +3894,37 @@ func TestServerService_ResyncByName(t *testing.T) {
 
 func TestServerService_EvacuateSystemByName(t *testing.T) {
 	tests := []struct {
-		name              string
-		repoGetByName     provisioning.Server
-		repoGetByNameErr  error
-		repoUpdateErr     error
-		clientEvacuateErr error
+		name                                            string
+		argForce                                        bool
+		repoGetByName                                   provisioning.Server
+		repoGetByNameErr                                error
+		repoUpdateErr                                   error
+		clientEvacuateErr                               error
+		clusterSvcIsInstanceLifecycleOperationPermitted bool
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name: "success",
+			name: "success - lifecycle operation permitted",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:     "success - force",
+			argForce: true,
 			repoGetByName: provisioning.Server{
 				Name:   "one",
 				Status: api.ServerStatusReady,
@@ -3938,6 +3959,27 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			},
 		},
 		{
+			name: "error - cluster lifecycle operation not permitted",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: false,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "Lifecycle operation for server")
+			},
+		},
+		{
 			name: "error - repo.Update",
 			repoGetByName: provisioning.Server{
 				Name:   "one",
@@ -3951,6 +3993,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					},
 				},
 			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 			repoUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -3969,6 +4012,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					},
 				},
 			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 			clientEvacuateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -3995,16 +4039,22 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				},
 			}
 
+			clusterSvc := &svcMock.ClusterServiceMock{
+				IsInstanceLifecycleOperationPermittedFunc: func(ctx context.Context, name string) bool {
+					return tc.clusterSvcIsInstanceLifecycleOperationPermitted
+				},
+			}
+
 			updateSvc := &svcMock.UpdateServiceMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
 					return provisioning.Updates{}, nil
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, tls.Certificate{})
+			serverSvc := provisioning.NewServerService(repo, client, nil, clusterSvc, nil, updateSvc, tls.Certificate{})
 
 			// Run test
-			err := serverSvc.EvacuateSystemByName(t.Context(), "one")
+			err := serverSvc.EvacuateSystemByName(t.Context(), "one", tc.argForce)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -4014,16 +4064,33 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 
 func TestServerService_PoweroffSystemByName(t *testing.T) {
 	tests := []struct {
-		name              string
-		repoGetByName     provisioning.Server
-		repoGetByNameErr  error
-		repoUpdateErr     error
-		clientPoweroffErr error
+		name                                            string
+		argForce                                        bool
+		repoGetByName                                   provisioning.Server
+		repoGetByNameErr                                error
+		repoUpdateErr                                   error
+		clientPoweroffErr                               error
+		clusterSvcIsInstanceLifecycleOperationPermitted bool
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name: "success",
+			name: "success - lifecycle operation permitted",
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:     "success - force",
+			argForce: true,
 			repoGetByName: provisioning.Server{
 				Name:          "operations-center",
 				Type:          api.ServerTypeOperationsCenter,
@@ -4042,6 +4109,23 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - cluster lifecycle operation not permitted",
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: false,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "Lifecycle operation for server")
+			},
+		},
+		{
 			name: "error - repo.Update",
 			repoGetByName: provisioning.Server{
 				Name:          "operations-center",
@@ -4051,6 +4135,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				Certificate:   "certificate",
 				Status:        api.ServerStatusReady,
 			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 			repoUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -4065,6 +4150,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				Certificate:   "certificate",
 				Status:        api.ServerStatusReady,
 			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 			clientPoweroffErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -4091,16 +4177,22 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				},
 			}
 
+			clusterSvc := &svcMock.ClusterServiceMock{
+				IsInstanceLifecycleOperationPermittedFunc: func(ctx context.Context, name string) bool {
+					return tc.clusterSvcIsInstanceLifecycleOperationPermitted
+				},
+			}
+
 			updateSvc := &svcMock.UpdateServiceMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
 					return provisioning.Updates{}, nil
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, tls.Certificate{})
+			serverSvc := provisioning.NewServerService(repo, client, nil, clusterSvc, nil, updateSvc, tls.Certificate{})
 
 			// Run test
-			err := serverSvc.PoweroffSystemByName(t.Context(), "one")
+			err := serverSvc.PoweroffSystemByName(t.Context(), "one", tc.argForce)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -4110,16 +4202,33 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 
 func TestServerService_RebootSystemByName(t *testing.T) {
 	tests := []struct {
-		name             string
-		repoGetByName    provisioning.Server
-		repoGetByNameErr error
-		repoUpdateErr    error
-		clientRebootErr  error
+		name                                            string
+		argForce                                        bool
+		repoGetByName                                   provisioning.Server
+		repoGetByNameErr                                error
+		repoUpdateErr                                   error
+		clientRebootErr                                 error
+		clusterSvcIsInstanceLifecycleOperationPermitted bool
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name: "success",
+			name: "success - lifecycle operation permitted",
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:     "success - force",
+			argForce: true,
 			repoGetByName: provisioning.Server{
 				Name:          "operations-center",
 				Type:          api.ServerTypeOperationsCenter,
@@ -4138,6 +4247,23 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - cluster lifecycle operation not permitted",
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: false,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "Lifecycle operation for server")
+			},
+		},
+		{
 			name: "error - repo.Update",
 			repoGetByName: provisioning.Server{
 				Name:          "operations-center",
@@ -4147,6 +4273,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				Certificate:   "certificate",
 				Status:        api.ServerStatusReady,
 			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 			repoUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -4161,6 +4288,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				Certificate:   "certificate",
 				Status:        api.ServerStatusReady,
 			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 			clientRebootErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -4187,16 +4315,22 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				},
 			}
 
+			clusterSvc := &svcMock.ClusterServiceMock{
+				IsInstanceLifecycleOperationPermittedFunc: func(ctx context.Context, name string) bool {
+					return tc.clusterSvcIsInstanceLifecycleOperationPermitted
+				},
+			}
+
 			updateSvc := &svcMock.UpdateServiceMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
 					return provisioning.Updates{}, nil
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, tls.Certificate{})
+			serverSvc := provisioning.NewServerService(repo, client, nil, clusterSvc, nil, updateSvc, tls.Certificate{})
 
 			// Run test
-			err := serverSvc.RebootSystemByName(t.Context(), "one")
+			err := serverSvc.RebootSystemByName(t.Context(), "one", tc.argForce)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -4206,16 +4340,38 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 
 func TestServerService_RestoreSystemByName(t *testing.T) {
 	tests := []struct {
-		name             string
-		repoGetByName    provisioning.Server
-		repoGetByNameErr error
-		repoUpdateErr    error
-		clientRestoreErr error
+		name                                            string
+		argForce                                        bool
+		argRestoreModeSkip                              bool
+		repoGetByName                                   provisioning.Server
+		repoGetByNameErr                                error
+		repoUpdateErr                                   error
+		clientRestoreErr                                error
+		clusterSvcIsInstanceLifecycleOperationPermitted bool
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name: "success",
+			name: "success - lifecycle operation permitted",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:     "success - force",
+			argForce: true,
 			repoGetByName: provisioning.Server{
 				Name:   "one",
 				Status: api.ServerStatusReady,
@@ -4250,6 +4406,27 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			},
 		},
 		{
+			name: "error - cluster lifecycle operation not permitted",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: false,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "Lifecycle operation for server")
+			},
+		},
+		{
 			name: "error - client.Restore",
 			repoGetByName: provisioning.Server{
 				Name:   "one",
@@ -4263,6 +4440,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 					},
 				},
 			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 			repoUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -4281,6 +4459,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 					},
 				},
 			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 			clientRestoreErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -4302,8 +4481,14 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			}
 
 			client := &adapterMock.ServerClientPortMock{
-				RestoreFunc: func(ctx context.Context, server provisioning.Server) error {
+				RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool) error {
 					return tc.clientRestoreErr
+				},
+			}
+
+			clusterSvc := &svcMock.ClusterServiceMock{
+				IsInstanceLifecycleOperationPermittedFunc: func(ctx context.Context, name string) bool {
+					return tc.clusterSvcIsInstanceLifecycleOperationPermitted
 				},
 			}
 
@@ -4313,10 +4498,10 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, updateSvc, tls.Certificate{})
+			serverSvc := provisioning.NewServerService(repo, client, nil, clusterSvc, nil, updateSvc, tls.Certificate{})
 
 			// Run test
-			err := serverSvc.RestoreSystemByName(t.Context(), "one")
+			err := serverSvc.RestoreSystemByName(t.Context(), "one", tc.argForce, tc.argRestoreModeSkip)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -4326,13 +4511,15 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 
 func TestServerService_UpdateSystemByName(t *testing.T) {
 	tests := []struct {
-		name                   string
-		updateRequestArg       api.ServerUpdatePost
-		repoGetByName          provisioning.Server
-		repoGetByNameErr       error
-		repoUpdateErr          error
-		clientUpdateOSErr      error
-		channelSvcGetByNameErr error
+		name                                            string
+		argUpdateRequest                                api.ServerUpdatePost
+		argForce                                        bool
+		repoGetByName                                   provisioning.Server
+		repoGetByNameErr                                error
+		repoUpdateErr                                   error
+		clientUpdateOSErr                               error
+		channelSvcGetByNameErr                          error
+		clusterSvcIsInstanceLifecycleOperationPermitted bool
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -4346,12 +4533,34 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				Certificate:   "certificate",
 				Status:        api.ServerStatusReady,
 			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
 			assertErr: require.NoError,
 		},
 		{
-			name: "success - trigger OS update",
-			updateRequestArg: api.ServerUpdatePost{
+			name: "success - trigger OS update - lifecycle operation permitted",
+			argUpdateRequest: api.ServerUpdatePost{
+				OS: api.ServerUpdateApplication{
+					Name:          "os",
+					TriggerUpdate: true,
+				},
+			},
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:     "success - trigger OS update - force",
+			argForce: true,
+			argUpdateRequest: api.ServerUpdatePost{
 				OS: api.ServerUpdateApplication{
 					Name:          "os",
 					TriggerUpdate: true,
@@ -4390,6 +4599,23 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			},
 		},
 		{
+			name: "error - cluster lifecycle operation not permitted",
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: false,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "Lifecycle operation for server")
+			},
+		},
+		{
 			name: "error - repo.Update",
 			repoGetByName: provisioning.Server{
 				Name:          "operations-center",
@@ -4399,13 +4625,14 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				Certificate:   "certificate",
 				Status:        api.ServerStatusReady,
 			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 			repoUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - UpdateSystemUpdate - channelSvc.GetByName",
-			updateRequestArg: api.ServerUpdatePost{
+			argUpdateRequest: api.ServerUpdatePost{
 				OS: api.ServerUpdateApplication{
 					Name:          "os",
 					TriggerUpdate: true,
@@ -4419,13 +4646,14 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				Certificate:   "certificate",
 				Status:        api.ServerStatusReady,
 			},
-			channelSvcGetByNameErr: boom.Error,
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+			channelSvcGetByNameErr:                          boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - client.UpdateOS",
-			updateRequestArg: api.ServerUpdatePost{
+			argUpdateRequest: api.ServerUpdatePost{
 				OS: api.ServerUpdateApplication{
 					Name:          "os",
 					TriggerUpdate: true,
@@ -4439,6 +4667,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				Certificate:   "certificate",
 				Status:        api.ServerStatusReady,
 			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 			clientUpdateOSErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -4469,6 +4698,12 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				},
 			}
 
+			clusterSvc := &svcMock.ClusterServiceMock{
+				IsInstanceLifecycleOperationPermittedFunc: func(ctx context.Context, name string) bool {
+					return tc.clusterSvcIsInstanceLifecycleOperationPermitted
+				},
+			}
+
 			channelSvc := &svcMock.ChannelServiceMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
 					return &provisioning.Channel{}, tc.channelSvcGetByNameErr
@@ -4481,10 +4716,10 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil, channelSvc, updateSvc, tls.Certificate{})
+			serverSvc := provisioning.NewServerService(repo, client, nil, clusterSvc, channelSvc, updateSvc, tls.Certificate{})
 
 			// Run test
-			err := serverSvc.UpdateSystemByName(t.Context(), "one", tc.updateRequestArg)
+			err := serverSvc.UpdateSystemByName(t.Context(), "one", tc.argUpdateRequest, tc.argForce)
 
 			// Assert
 			tc.assertErr(t, err)

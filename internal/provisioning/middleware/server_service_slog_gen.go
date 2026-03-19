@@ -148,12 +148,13 @@ func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (
 }
 
 // EvacuateSystemByName implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) EvacuateSystemByName(ctx context.Context, name string) (err error) {
+func (_d ServerServiceWithSlog) EvacuateSystemByName(ctx context.Context, name string, force bool) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
+			slog.Bool("force", force),
 		)
 	}
 	log.DebugContext(ctx, "=> calling EvacuateSystemByName")
@@ -178,7 +179,7 @@ func (_d ServerServiceWithSlog) EvacuateSystemByName(ctx context.Context, name s
 			log.DebugContext(ctx, "<= method EvacuateSystemByName finished")
 		}
 	}()
-	return _d._base.EvacuateSystemByName(ctx, name)
+	return _d._base.EvacuateSystemByName(ctx, name, force)
 }
 
 // GetAll implements provisioning.ServerService.
@@ -565,12 +566,13 @@ func (_d ServerServiceWithSlog) PollServers(ctx context.Context, serverFilter pr
 }
 
 // PoweroffSystemByName implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) PoweroffSystemByName(ctx context.Context, name string) (err error) {
+func (_d ServerServiceWithSlog) PoweroffSystemByName(ctx context.Context, name string, force bool) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
+			slog.Bool("force", force),
 		)
 	}
 	log.DebugContext(ctx, "=> calling PoweroffSystemByName")
@@ -595,16 +597,17 @@ func (_d ServerServiceWithSlog) PoweroffSystemByName(ctx context.Context, name s
 			log.DebugContext(ctx, "<= method PoweroffSystemByName finished")
 		}
 	}()
-	return _d._base.PoweroffSystemByName(ctx, name)
+	return _d._base.PoweroffSystemByName(ctx, name, force)
 }
 
 // RebootSystemByName implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) RebootSystemByName(ctx context.Context, name string) (err error) {
+func (_d ServerServiceWithSlog) RebootSystemByName(ctx context.Context, name string, force bool) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
+			slog.Bool("force", force),
 		)
 	}
 	log.DebugContext(ctx, "=> calling RebootSystemByName")
@@ -629,7 +632,7 @@ func (_d ServerServiceWithSlog) RebootSystemByName(ctx context.Context, name str
 			log.DebugContext(ctx, "<= method RebootSystemByName finished")
 		}
 	}()
-	return _d._base.RebootSystemByName(ctx, name)
+	return _d._base.RebootSystemByName(ctx, name, force)
 }
 
 // Rename implements provisioning.ServerService.
@@ -668,12 +671,14 @@ func (_d ServerServiceWithSlog) Rename(ctx context.Context, oldName string, newN
 }
 
 // RestoreSystemByName implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) RestoreSystemByName(ctx context.Context, name string) (err error) {
+func (_d ServerServiceWithSlog) RestoreSystemByName(ctx context.Context, name string, force bool, restoreModeSkip bool) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
+			slog.Bool("force", force),
+			slog.Bool("restoreModeSkip", restoreModeSkip),
 		)
 	}
 	log.DebugContext(ctx, "=> calling RestoreSystemByName")
@@ -698,7 +703,7 @@ func (_d ServerServiceWithSlog) RestoreSystemByName(ctx context.Context, name st
 			log.DebugContext(ctx, "<= method RestoreSystemByName finished")
 		}
 	}()
-	return _d._base.RestoreSystemByName(ctx, name)
+	return _d._base.RestoreSystemByName(ctx, name, force, restoreModeSkip)
 }
 
 // ResyncByName implements provisioning.ServerService.
@@ -891,13 +896,14 @@ func (_d ServerServiceWithSlog) Update(ctx context.Context, server provisioning.
 }
 
 // UpdateSystemByName implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost) (err error) {
+func (_d ServerServiceWithSlog) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
 			slog.Any("updateRequest", updateRequest),
+			slog.Bool("force", force),
 		)
 	}
 	log.DebugContext(ctx, "=> calling UpdateSystemByName")
@@ -922,7 +928,7 @@ func (_d ServerServiceWithSlog) UpdateSystemByName(ctx context.Context, name str
 			log.DebugContext(ctx, "<= method UpdateSystemByName finished")
 		}
 	}()
-	return _d._base.UpdateSystemByName(ctx, name, updateRequest)
+	return _d._base.UpdateSystemByName(ctx, name, updateRequest, force)
 }
 
 // UpdateSystemKernel implements provisioning.ServerService.

@@ -3670,9 +3670,9 @@ func TestClientServer(t *testing.T) {
 			},
 		},
 		{
-			name: "Restore",
+			name: "Restore - normal mode",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
-				return nil, client.Restore(ctx, target)
+				return nil, client.Restore(ctx, target, false)
 			},
 			testCases: []methodTestCase{
 				{
@@ -3696,6 +3696,65 @@ func TestClientServer(t *testing.T) {
 
 					assertErr: require.NoError,
 					wantPaths: []string{"GET /1.0/events", "POST /1.0/cluster/members/server01/state"},
+					assertBodies: func(t *testing.T, gotBodies []string) {
+						t.Helper()
+						require.Contains(t, gotBodies[1], `"mode":""`)
+					},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members/server01/state
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/events", "POST /1.0/cluster/members/server01/state"},
+				},
+			},
+		},
+		{
+			name: "Restore - skip mode",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.Restore(ctx, target, true)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members/server01/state
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata":{}}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0/events", "POST /1.0/cluster/members/server01/state"},
+					assertBodies: func(t *testing.T, gotBodies []string) {
+						t.Helper()
+						require.Contains(t, gotBodies[1], `"mode":"skip"`)
+					},
 				},
 				{
 					name: "error - unexpected http status code",

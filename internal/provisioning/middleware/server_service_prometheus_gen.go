@@ -83,7 +83,7 @@ func (_d ServerServiceWithPrometheus) DeleteByName(ctx context.Context, name str
 }
 
 // EvacuateSystemByName implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) EvacuateSystemByName(ctx context.Context, name string) (err error) {
+func (_d ServerServiceWithPrometheus) EvacuateSystemByName(ctx context.Context, name string, force bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -93,7 +93,7 @@ func (_d ServerServiceWithPrometheus) EvacuateSystemByName(ctx context.Context, 
 
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "EvacuateSystemByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.EvacuateSystemByName(ctx, name)
+	return _d.base.EvacuateSystemByName(ctx, name, force)
 }
 
 // GetAll implements provisioning.ServerService.
@@ -251,7 +251,7 @@ func (_d ServerServiceWithPrometheus) PollServers(ctx context.Context, serverFil
 }
 
 // PoweroffSystemByName implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) PoweroffSystemByName(ctx context.Context, name string) (err error) {
+func (_d ServerServiceWithPrometheus) PoweroffSystemByName(ctx context.Context, name string, force bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -261,11 +261,11 @@ func (_d ServerServiceWithPrometheus) PoweroffSystemByName(ctx context.Context, 
 
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PoweroffSystemByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.PoweroffSystemByName(ctx, name)
+	return _d.base.PoweroffSystemByName(ctx, name, force)
 }
 
 // RebootSystemByName implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) RebootSystemByName(ctx context.Context, name string) (err error) {
+func (_d ServerServiceWithPrometheus) RebootSystemByName(ctx context.Context, name string, force bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -275,7 +275,7 @@ func (_d ServerServiceWithPrometheus) RebootSystemByName(ctx context.Context, na
 
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RebootSystemByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.RebootSystemByName(ctx, name)
+	return _d.base.RebootSystemByName(ctx, name, force)
 }
 
 // Rename implements provisioning.ServerService.
@@ -293,7 +293,7 @@ func (_d ServerServiceWithPrometheus) Rename(ctx context.Context, oldName string
 }
 
 // RestoreSystemByName implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) RestoreSystemByName(ctx context.Context, name string) (err error) {
+func (_d ServerServiceWithPrometheus) RestoreSystemByName(ctx context.Context, name string, force bool, restoreModeSkip bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -303,7 +303,7 @@ func (_d ServerServiceWithPrometheus) RestoreSystemByName(ctx context.Context, n
 
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RestoreSystemByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.RestoreSystemByName(ctx, name)
+	return _d.base.RestoreSystemByName(ctx, name, force, restoreModeSkip)
 }
 
 // ResyncByName implements provisioning.ServerService.
@@ -387,7 +387,7 @@ func (_d ServerServiceWithPrometheus) Update(ctx context.Context, server provisi
 }
 
 // UpdateSystemByName implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost) (err error) {
+func (_d ServerServiceWithPrometheus) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -397,7 +397,7 @@ func (_d ServerServiceWithPrometheus) UpdateSystemByName(ctx context.Context, na
 
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSystemByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateSystemByName(ctx, name, updateRequest)
+	return _d.base.UpdateSystemByName(ctx, name, updateRequest, force)
 }
 
 // UpdateSystemKernel implements provisioning.ServerService.

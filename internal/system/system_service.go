@@ -12,6 +12,7 @@ import (
 	incustls "github.com/lxc/incus/v6/shared/tls"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/security/acme"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -107,9 +108,9 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 	// Notify services about new certificate, which also causes the http listener
 	// to switch to the new certificate, which is necessary for the the provider
 	// updates to be successful.
-	config.ServerCertificateUpdateSignal.Emit(ctx, serverCertificate)
+	lifecycle.ServerCertificateUpdateSignal.Emit(ctx, serverCertificate)
 	reverter.Add(func() {
-		config.ServerCertificateUpdateSignal.Emit(ctx, currentCertificate)
+		lifecycle.ServerCertificateUpdateSignal.Emit(ctx, currentCertificate)
 	})
 
 	err = s.updateProviderConfigAll(ctx, map[string]string{"server_certificate": certificatePEM})

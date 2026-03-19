@@ -8,35 +8,76 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+type ExprApiClusterConfig struct {
+	RollingRestart ExprApiClusterConfigRollingRestart `json:"rolling_restart" yaml:"rolling_restart" expr:"rolling_restart"`
+}
+
+type ExprApiClusterConfigRollingRestart struct {
+	PostRestoreDelay time.Duration `json:"post_restore_delay" yaml:"post_restore_delay" expr:"post_restore_delay"`
+	RestoreMode      string        `json:"restore_mode" yaml:"restore_mode" expr:"restore_mode"`
+}
+
+type ExprApiClusterUpdateInProgressStatus struct {
+	InProgress        api.ClusterUpdateInProgress `json:"in_progress" yaml:"in_progress" expr:"in_progress"`
+	StatusDescription *string                     `json:"status_description,omitempty" yaml:"status_description" expr:"status_description"`
+	EvacuatedBefore   []string                    `json:"evacuated_before" yaml:"evacuated_before" expr:"evacuated_before"`
+	LastUpdated       time.Time                   `json:"last_updated" yaml:"last_updated" expr:"last_updated"`
+}
+
 type ExprApiClusterUpdateStatus struct {
-	NeedsUpdate   []string `json:"needs_update" expr:"needs_update"`
-	NeedsReboot   []string `json:"needs_reboot" expr:"needs_reboot"`
-	InMaintenance []string `json:"in_maintenance" expr:"in_maintenance"`
+	NeedsUpdate      []string                             `json:"needs_update,omitempty" yaml:"needs_update" expr:"needs_update"`
+	NeedsReboot      []string                             `json:"needs_reboot,omitempty" yaml:"needs_reboot" expr:"needs_reboot"`
+	InMaintenance    []string                             `json:"in_maintenance,omitempty" yaml:"in_maintenance" expr:"in_maintenance"`
+	InProgressStatus ExprApiClusterUpdateInProgressStatus `json:"in_progress_status" yaml:"in_progress_status" expr:"in_progress_status"`
 }
 
 type ExprCluster struct {
-	ID                    int64                       `json:"-" expr:"-"`
-	Name                  string                      `json:"name"                    db:"primary=yes" expr:"name"`
-	ConnectionURL         string                      `json:"connection_url" expr:"connection_url"`
-	Certificate           *string                     `json:"certificate" expr:"certificate"`
-	Fingerprint           string                      `json:"fingerprint"             db:"ignore" expr:"fingerprint"`
-	Status                api.ClusterStatus           `json:"status" expr:"status"`
-	UpdateStatus          *ExprApiClusterUpdateStatus `json:"update_status"           db:"ignore" expr:"update_status"`
-	ServerNames           []string                    `json:"server_names"            db:"ignore" expr:"server_names"`
-	ServerType            api.ServerType              `json:"server_type"             db:"ignore" expr:"server_type"`
-	ServicesConfig        map[string]any              `json:"services_config"         db:"ignore" expr:"services_config"`
-	ApplicationSeedConfig map[string]any              `json:"application_seed_config" db:"ignore" expr:"application_seed_config"`
-	Channel               string                      `json:"channel"                 db:"join=channels.name" expr:"channel"`
-	Description           string                      `json:"description" expr:"description"`
-	Properties            api.ConfigMap               `json:"properties" expr:"properties"`
-	LastUpdated           time.Time                   `json:"last_updated"            db:"update_timestamp" expr:"last_updated"`
+	ID                    int64                      `json:"-" expr:"-"`
+	Name                  string                     `json:"name"                    db:"primary=yes" expr:"name"`
+	ConnectionURL         string                     `json:"connection_url" expr:"connection_url"`
+	Certificate           *string                    `json:"certificate" expr:"certificate"`
+	Fingerprint           string                     `json:"fingerprint"             db:"ignore" expr:"fingerprint"`
+	Status                api.ClusterStatus          `json:"status" expr:"status"`
+	UpdateStatus          ExprApiClusterUpdateStatus `json:"update_status" expr:"update_status"`
+	ServerNames           []string                   `json:"server_names"            db:"ignore" expr:"server_names"`
+	ServerType            api.ServerType             `json:"server_type"             db:"ignore" expr:"server_type"`
+	ServicesConfig        map[string]any             `json:"services_config"         db:"ignore" expr:"services_config"`
+	ApplicationSeedConfig map[string]any             `json:"application_seed_config" db:"ignore" expr:"application_seed_config"`
+	Channel               string                     `json:"channel"                 db:"join=channels.name" expr:"channel"`
+	Description           string                     `json:"description" expr:"description"`
+	Properties            api.ConfigMap              `json:"properties" expr:"properties"`
+	Config                ExprApiClusterConfig       `json:"config" expr:"config"`
+	LastUpdated           time.Time                  `json:"last_updated"            db:"update_timestamp" expr:"last_updated"`
+}
+
+func ToExprApiClusterConfig(c api.ClusterConfig) ExprApiClusterConfig {
+	return ExprApiClusterConfig{
+		RollingRestart: ToExprApiClusterConfigRollingRestart(c.RollingRestart),
+	}
+}
+
+func ToExprApiClusterConfigRollingRestart(c api.ClusterConfigRollingRestart) ExprApiClusterConfigRollingRestart {
+	return ExprApiClusterConfigRollingRestart{
+		PostRestoreDelay: c.PostRestoreDelay,
+		RestoreMode:      c.RestoreMode,
+	}
+}
+
+func ToExprApiClusterUpdateInProgressStatus(c api.ClusterUpdateInProgressStatus) ExprApiClusterUpdateInProgressStatus {
+	return ExprApiClusterUpdateInProgressStatus{
+		InProgress:        c.InProgress,
+		StatusDescription: c.StatusDescription,
+		EvacuatedBefore:   c.EvacuatedBefore,
+		LastUpdated:       c.LastUpdated,
+	}
 }
 
 func ToExprApiClusterUpdateStatus(c api.ClusterUpdateStatus) ExprApiClusterUpdateStatus {
 	return ExprApiClusterUpdateStatus{
-		NeedsUpdate:   c.NeedsUpdate,
-		NeedsReboot:   c.NeedsReboot,
-		InMaintenance: c.InMaintenance,
+		NeedsUpdate:      c.NeedsUpdate,
+		NeedsReboot:      c.NeedsReboot,
+		InMaintenance:    c.InMaintenance,
+		InProgressStatus: ToExprApiClusterUpdateInProgressStatus(c.InProgressStatus),
 	}
 }
 
@@ -48,7 +89,7 @@ func ToExprCluster(c Cluster) ExprCluster {
 		Certificate:           c.Certificate,
 		Fingerprint:           c.Fingerprint,
 		Status:                c.Status,
-		UpdateStatus:          toPtr(ToExprApiClusterUpdateStatus(fromPtr(c.UpdateStatus))),
+		UpdateStatus:          ToExprApiClusterUpdateStatus(c.UpdateStatus),
 		ServerNames:           c.ServerNames,
 		ServerType:            c.ServerType,
 		ServicesConfig:        c.ServicesConfig,
@@ -56,6 +97,7 @@ func ToExprCluster(c Cluster) ExprCluster {
 		Channel:               c.Channel,
 		Description:           c.Description,
 		Properties:            c.Properties,
+		Config:                ToExprApiClusterConfig(c.Config),
 		LastUpdated:           c.LastUpdated,
 	}
 }

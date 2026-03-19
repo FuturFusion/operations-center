@@ -2,7 +2,7 @@ definitions:
     ACMEChallengeType:
         title: ACMEChallengeType represents challenge types for ACME configuration.
         type: string
-        x-go-package: github.com/FuturFusion/operations-center/shared/api
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     ApplicationVersionData:
         properties:
             available_version:
@@ -32,6 +32,23 @@ definitions:
         title: ApplicationVersionData defines a single version information for an application.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    CertificatePost:
+        description: |-
+            CertificatePost represents the fields available for an update of the
+            system certificate (server certificate) and key.
+        properties:
+            certificate:
+                description: The new certificate (X509 PEM encoded) for the system (server certificate).
+                example: X509 PEM certificate
+                type: string
+                x-go-name: Certificate
+            key:
+                description: The new certificate key (X509 PEM encoded) for the system (server key).
+                example: X509 PEM certificate key
+                type: string
+                x-go-name: Key
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     Channel:
         properties:
             description:
@@ -89,6 +106,8 @@ definitions:
                 example: stable
                 type: string
                 x-go-name: Channel
+            config:
+                $ref: '#/definitions/ClusterConfig'
             connection_url:
                 description: |-
                     URL, hostname or IP address of the cluster endpoint.
@@ -98,6 +117,11 @@ definitions:
                 example: https://incus.local:6443
                 type: string
                 x-go-name: ConnectionURL
+            description:
+                description: Description of the cluster.
+                example: Lab cluster with limited resources.
+                type: string
+                x-go-name: Description
             fingerprint:
                 description: Fingerprint in SHA256 format of the certificate.
                 example: fd200419b271f1dc2a5591b693cc5774b7f234e1ff8c6b78ad703b6888fe2b69
@@ -114,6 +138,14 @@ definitions:
                 example: MyCluster
                 type: string
                 x-go-name: Name
+            properties:
+                description: |-
+                    Properties contains properties of the cluster as key/value pairs.
+                    Example (in YAML notation for readability):
+                    properties:
+                    env: lab
+                type: object
+                x-go-name: Properties
             status:
                 description: |-
                     Status contains the status the cluster is currently in from the point of view of Operations Center.
@@ -226,6 +258,29 @@ definitions:
         title: ClusterCertificatePut represents the certificate and key pair for all cluster members.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ClusterConfig:
+        description: |-
+            ClusterConfig contains cluster wide configuration used by Operations Center
+            when interacting with the cluster.
+        properties:
+            rolling_restart:
+                $ref: '#/definitions/ClusterConfigRollingRestart'
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ClusterConfigRollingRestart:
+        properties:
+            post_restore_delay:
+                $ref: '#/definitions/Duration'
+            restore_mode:
+                description: |-
+                    RestoreMode is the mode applied dring Incus restore operation. Valid
+                    values are "" (default, move instances back, that have been evacuated
+                    previously) and "skip" (skip moving evacuated instances back).
+                example: skip
+                type: string
+                x-go-name: RestoreMode
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     ClusterPost:
         properties:
             application_seed_config:
@@ -259,6 +314,8 @@ definitions:
                     be applied to the respective placeholders in the cluster template.
                 type: object
                 x-go-name: ClusterTemplateVariableValues
+            config:
+                $ref: '#/definitions/ClusterConfig'
             connection_url:
                 description: |-
                     URL, hostname or IP address of the cluster endpoint.
@@ -268,6 +325,11 @@ definitions:
                 example: https://incus.local:6443
                 type: string
                 x-go-name: ConnectionURL
+            description:
+                description: Description of the cluster.
+                example: Lab cluster with limited resources.
+                type: string
+                x-go-name: Description
             fingerprint:
                 description: Fingerprint in SHA256 format of the certificate.
                 example: fd200419b271f1dc2a5591b693cc5774b7f234e1ff8c6b78ad703b6888fe2b69
@@ -284,6 +346,14 @@ definitions:
                 example: MyCluster
                 type: string
                 x-go-name: Name
+            properties:
+                description: |-
+                    Properties contains properties of the cluster as key/value pairs.
+                    Example (in YAML notation for readability):
+                    properties:
+                    env: lab
+                type: object
+                x-go-name: Properties
             server_names:
                 description: Names of the servers beloning to the cluster.
                 example:
@@ -332,6 +402,8 @@ definitions:
                 example: stable
                 type: string
                 x-go-name: Channel
+            config:
+                $ref: '#/definitions/ClusterConfig'
             connection_url:
                 description: |-
                     URL, hostname or IP address of the cluster endpoint.
@@ -341,6 +413,19 @@ definitions:
                 example: https://incus.local:6443
                 type: string
                 x-go-name: ConnectionURL
+            description:
+                description: Description of the cluster.
+                example: Lab cluster with limited resources.
+                type: string
+                x-go-name: Description
+            properties:
+                description: |-
+                    Properties contains properties of the cluster as key/value pairs.
+                    Example (in YAML notation for readability):
+                    properties:
+                    env: lab
+                type: object
+                x-go-name: Properties
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ClusterTemplate:
@@ -483,6 +568,39 @@ definitions:
             cluster config template.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ClusterUpdateInProgress:
+        type: string
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ClusterUpdateInProgressStatus:
+        properties:
+            evacuated_before:
+                description: |-
+                    EvacuatedBefore contains the list of server names of the servers, that have
+                    been manually evacuated already before the rolling update has been
+                    triggered.
+                items:
+                    type: string
+                type: array
+                x-go-name: EvacuatedBefore
+            in_progress:
+                $ref: '#/definitions/ClusterUpdateInProgress'
+            last_updated:
+                description: |-
+                    LastUpdated is the time, when this information has been updated for the
+                    last time in RFC3339 format.
+                example: "2024-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: LastUpdated
+            status_description:
+                description: |-
+                    StatusDescription contains progress information for the user in plain text
+                    form.
+                example: '[3/20] Evacuating server xyz'
+                type: string
+                x-go-name: StatusDescription
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     ClusterUpdateStatus:
         description: |-
             ClusterUpdateStatus contains the update status of each server of the cluster
@@ -498,6 +616,8 @@ definitions:
                     type: string
                 type: array
                 x-go-name: InMaintenance
+            in_progress_status:
+                $ref: '#/definitions/ClusterUpdateInProgressStatus'
             needs_reboot:
                 description: |-
                     NeedsReboot holds the list of server names of the servers within the
@@ -527,6 +647,14 @@ definitions:
             gracefully handle numbers and bools.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    Duration:
+        description: |-
+            A Duration represents the elapsed time between two instants
+            as an int64 nanosecond count. The representation limits the
+            largest representable duration to approximately 290 years.
+        format: int64
+        type: integer
+        x-go-package: time
     HardwareData:
         properties:
             cpu:
@@ -555,6 +683,34 @@ definitions:
         format: int64
         type: integer
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    Network:
+        properties:
+            address:
+                description: Address of Operations Center which is used by managed servers to connect.
+                type: string
+                x-go-name: OperationsCenterAddress
+            rest_server_address:
+                description: Address and port to bind the REST API to.
+                type: string
+                x-go-name: RestServerAddress
+        title: Network represents the system's network configuration.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    NetworkPut:
+        description: |-
+            NetworkPut represents the fields available for an update of the
+            system's network configuration.
+        properties:
+            address:
+                description: Address of Operations Center which is used by managed servers to connect.
+                type: string
+                x-go-name: OperationsCenterAddress
+            rest_server_address:
+                description: Address and port to bind the REST API to.
+                type: string
+                x-go-name: RestServerAddress
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     OSData:
         properties:
             network:
@@ -1914,6 +2070,142 @@ definitions:
                 x-go-name: SubClassID
         type: object
         x-go-package: github.com/lxc/incus/v6/shared/api
+    Security:
+        properties:
+            acme:
+                $ref: '#/definitions/SecurityACME'
+            oidc:
+                $ref: '#/definitions/SecurityOIDC'
+            openfga:
+                $ref: '#/definitions/SecurityOpenFGA'
+            trusted_https_proxies:
+                description: An array of trusted HTTPS proxy addresses.
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedHTTPSProxies
+            trusted_tls_client_cert_fingerprints:
+                description: An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedTLSClientCertFingerprints
+        title: Security represents the system's security configuration.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    SecurityACME:
+        properties:
+            agree_tos:
+                description: Agree to ACME terms of service.
+                type: boolean
+                x-go-name: AgreeTOS
+            ca_url:
+                description: CAURL holds the URL to the CA directory resource of the ACME service.
+                type: string
+                x-go-name: CAURL
+            challenge:
+                $ref: '#/definitions/ACMEChallengeType'
+            domain:
+                description: Domain for which the certificate is issued.
+                type: string
+                x-go-name: Domain
+            email:
+                description: Email address used for the account registration.
+                type: string
+                x-go-name: Email
+            http_challenge_address:
+                description: Address and interface for HTTP server (used by HTTP-01).
+                type: string
+                x-go-name: Address
+            provider:
+                description: Backend provider for the challenge (used by DNS-01)>
+                type: string
+                x-go-name: Provider
+            provider_environment:
+                description: Environment variables to set during the challenge (used by DNS-01).
+                items:
+                    type: string
+                type: array
+                x-go-name: ProviderEnvironment
+            provider_resolvers:
+                description: List of DNS resolvers (used by DNS-01).
+                items:
+                    type: string
+                type: array
+                x-go-name: ProviderResolvers
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    SecurityOIDC:
+        description: |-
+            SecurityOIDC is the OIDC related part of the system's security
+            configuration.
+        properties:
+            audience:
+                description: Audience the OIDC tokens should be verified against.
+                type: string
+                x-go-name: Audience
+            claim:
+                description: Claim which should be used to identify the user or subject.
+                type: string
+                x-go-name: Claim
+            client_id:
+                description: CLient ID used for communication with the OIDC issuer.
+                type: string
+                x-go-name: ClientID
+            issuer:
+                description: OIDC Issuer.
+                type: string
+                x-go-name: Issuer
+            scopes:
+                description: Scopes to be requested.
+                type: string
+                x-go-name: Scope
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    SecurityOpenFGA:
+        description: |-
+            SecurityOpenFGA is the OpenFGA related part of the system's security
+            configuration.
+        properties:
+            api_token:
+                description: API token used for communication with the OpenFGA system.
+                type: string
+                x-go-name: APIToken
+            api_url:
+                description: URL of the OpenFGA API.
+                type: string
+                x-go-name: APIURL
+            store_id:
+                description: ID of the OpenFGA store.
+                type: string
+                x-go-name: StoreID
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    SecurityPut:
+        description: |-
+            SecurityPut represents the fields available for an update of the
+            system's security configuration.
+        properties:
+            acme:
+                $ref: '#/definitions/SecurityACME'
+            oidc:
+                $ref: '#/definitions/SecurityOIDC'
+            openfga:
+                $ref: '#/definitions/SecurityOpenFGA'
+            trusted_https_proxies:
+                description: An array of trusted HTTPS proxy addresses.
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedHTTPSProxies
+            trusted_tls_client_cert_fingerprints:
+                description: An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedTLSClientCertFingerprints
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     Server:
         properties:
             certificate:
@@ -1937,6 +2229,11 @@ definitions:
                 example: https://incus.local:6443
                 type: string
                 x-go-name: ConnectionURL
+            description:
+                description: Description of the server.
+                example: Lab server with limited resources.
+                type: string
+                x-go-name: Description
             fingerprint:
                 description: Fingerprint in SHA256 format of the certificate.
                 example: fd200419b271f1dc2a5591b693cc5774b7f234e1ff8c6b78ad703b6888fe2b69
@@ -1966,6 +2263,15 @@ definitions:
                 x-go-name: Name
             os_data:
                 $ref: '#/definitions/OSData'
+            properties:
+                description: |-
+                    Properties contains properties of the server as key/value pairs.
+                    Example (in YAML notation for readability):
+                    properties:
+                    arch: x86_64
+                    os: linux
+                type: object
+                x-go-name: Properties
             public_connection_url:
                 description: |-
                     Public URL, hostname or IP address of the server endpoint for user facing
@@ -2022,11 +2328,25 @@ definitions:
                 example: https://incus.local:6443
                 type: string
                 x-go-name: ConnectionURL
+            description:
+                description: Description of the server.
+                example: Lab server with limited resources.
+                type: string
+                x-go-name: Description
             name:
                 description: Name of the server.
                 example: incus.local
                 type: string
                 x-go-name: Name
+            properties:
+                description: |-
+                    Properties contains properties of the server as key/value pairs.
+                    Example (in YAML notation for readability):
+                    properties:
+                    arch: x86_64
+                    os: linux
+                type: object
+                x-go-name: Properties
             public_connection_url:
                 description: |-
                     Public URL, hostname or IP address of the server endpoint for user facing
@@ -2045,6 +2365,20 @@ definitions:
                 example: stable
                 type: string
                 x-go-name: Channel
+            description:
+                description: Description of the server.
+                example: Lab server with limited resources.
+                type: string
+                x-go-name: Description
+            properties:
+                description: |-
+                    Properties contains properties of the server as key/value pairs.
+                    Example (in YAML notation for readability):
+                    properties:
+                    arch: x86_64
+                    os: linux
+                type: object
+                x-go-name: Properties
             public_connection_url:
                 description: |-
                     Public URL, hostname or IP address of the server endpoint for user facing
@@ -2171,23 +2505,26 @@ definitions:
                 x-go-name: UpdateChannel
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
-    SystemCertificatePost:
-        description: |-
-            SystemCertificatePost represents the fields available for an update of the
-            system certificate (server certificate) and key.
+    Settings:
         properties:
-            certificate:
-                description: The new certificate (X509 PEM encoded) for the system (server certificate).
-                example: X509 PEM certificate
+            log_level:
+                description: Daemon log level.
                 type: string
-                x-go-name: Certificate
-            key:
-                description: The new certificate key (X509 PEM encoded) for the system (server key).
-                example: X509 PEM certificate key
-                type: string
-                x-go-name: Key
+                x-go-name: LogLevel
+        title: Settings represents global system settings.
         type: object
-        x-go-package: github.com/FuturFusion/operations-center/shared/api
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    SettingsPut:
+        description: |-
+            SettingsPut represents the fields available for an update of the global
+            system settings.
+        properties:
+            log_level:
+                description: Daemon log level.
+                type: string
+                x-go-name: LogLevel
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     SystemNetwork:
         properties:
             config:
@@ -2557,21 +2894,6 @@ definitions:
         title: SystemNetworkProxyServer defines a proxy server configuration.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
-    SystemNetworkPut:
-        description: |-
-            SystemNetworkPut represents the fields available for an update of the
-            system's network configuration.
-        properties:
-            address:
-                description: Address of Operations Center which is used by managed servers to connect.
-                type: string
-                x-go-name: OperationsCenterAddress
-            rest_server_address:
-                description: Address and port to bind the REST API to.
-                type: string
-                x-go-name: RestServerAddress
-        type: object
-        x-go-package: github.com/FuturFusion/operations-center/shared/api
     SystemNetworkRoute:
         properties:
             to:
@@ -2781,48 +3103,6 @@ definitions:
         title: SystemSecurity defines a struct to hold information about the system's security state.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
-    SystemSecurityACME:
-        properties:
-            agree_tos:
-                description: Agree to ACME terms of service.
-                type: boolean
-                x-go-name: AgreeTOS
-            ca_url:
-                description: CAURL holds the URL to the CA directory resource of the ACME service.
-                type: string
-                x-go-name: CAURL
-            challenge:
-                $ref: '#/definitions/ACMEChallengeType'
-            domain:
-                description: Domain for which the certificate is issued.
-                type: string
-                x-go-name: Domain
-            email:
-                description: Email address used for the account registration.
-                type: string
-                x-go-name: Email
-            http_challenge_address:
-                description: Address and interface for HTTP server (used by HTTP-01).
-                type: string
-                x-go-name: Address
-            provider:
-                description: Backend provider for the challenge (used by DNS-01)>
-                type: string
-                x-go-name: Provider
-            provider_environment:
-                description: Environment variables to set during the challenge (used by DNS-01).
-                items:
-                    type: string
-                type: array
-                x-go-name: ProviderEnvironment
-            provider_resolvers:
-                description: List of DNS resolvers (used by DNS-01).
-                items:
-                    type: string
-                type: array
-                x-go-name: ProviderResolvers
-        type: object
-        x-go-package: github.com/FuturFusion/operations-center/shared/api
     SystemSecurityConfig:
         properties:
             custom_ca_certs:
@@ -2849,77 +3129,6 @@ definitions:
         title: SystemSecurityEncryptedVolume defines a struct that holds basic information about an encrypted volume.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
-    SystemSecurityOIDC:
-        description: |-
-            SystemSecurityOIDC is the OIDC related part of the system's security
-            configuration.
-        properties:
-            audience:
-                description: Audience the OIDC tokens should be verified against.
-                type: string
-                x-go-name: Audience
-            claim:
-                description: Claim which should be used to identify the user or subject.
-                type: string
-                x-go-name: Claim
-            client_id:
-                description: CLient ID used for communication with the OIDC issuer.
-                type: string
-                x-go-name: ClientID
-            issuer:
-                description: OIDC Issuer.
-                type: string
-                x-go-name: Issuer
-            scopes:
-                description: Scopes to be requested.
-                type: string
-                x-go-name: Scope
-        type: object
-        x-go-package: github.com/FuturFusion/operations-center/shared/api
-    SystemSecurityOpenFGA:
-        description: |-
-            SystemSecurityOpenFGA is the OpenFGA related part of the system's security
-            configuration.
-        properties:
-            api_token:
-                description: API token used for communication with the OpenFGA system.
-                type: string
-                x-go-name: APIToken
-            api_url:
-                description: URL of the OpenFGA API.
-                type: string
-                x-go-name: APIURL
-            store_id:
-                description: ID of the OpenFGA store.
-                type: string
-                x-go-name: StoreID
-        type: object
-        x-go-package: github.com/FuturFusion/operations-center/shared/api
-    SystemSecurityPut:
-        description: |-
-            SystemSecurityPut represents the fields available for an update of the
-            system's security configuration.
-        properties:
-            acme:
-                $ref: '#/definitions/SystemSecurityACME'
-            oidc:
-                $ref: '#/definitions/SystemSecurityOIDC'
-            openfga:
-                $ref: '#/definitions/SystemSecurityOpenFGA'
-            trusted_https_proxies:
-                description: An array of trusted HTTPS proxy addresses.
-                items:
-                    type: string
-                type: array
-                x-go-name: TrustedHTTPSProxies
-            trusted_tls_client_cert_fingerprints:
-                description: An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
-                items:
-                    type: string
-                type: array
-                x-go-name: TrustedTLSClientCertFingerprints
-        type: object
-        x-go-package: github.com/FuturFusion/operations-center/shared/api
     SystemSecuritySecureBootCertificate:
         properties:
             fingerprint:
@@ -2974,26 +3183,6 @@ definitions:
         title: SystemSecurityState holds information about the current security state.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
-    SystemSettings:
-        properties:
-            log_level:
-                description: Daemon log level.
-                type: string
-                x-go-name: LogLevel
-        title: SystemSettings represents global system settings.
-        type: object
-        x-go-package: github.com/FuturFusion/operations-center/shared/api
-    SystemSettingsPut:
-        description: |-
-            SystemSettingsPut represents the fields available for an update of the global
-            system settings.
-        properties:
-            log_level:
-                description: Daemon log level.
-                type: string
-                x-go-name: LogLevel
-        type: object
-        x-go-package: github.com/FuturFusion/operations-center/shared/api
     SystemStorage:
         properties:
             config:
@@ -3242,134 +3431,6 @@ definitions:
         title: SystemStorageState represents additional state for the system's local storage.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
-    SystemUpdates:
-        properties:
-            file_filter_expression:
-                description: |-
-                    Filter expression for update files using https://expr-lang.org/ on struct
-                    provisioning.UpdateFile.
-                    If a filter is defined, the filter needs to evaluate to true for the file
-                    being fetched by Operations Center.
-                    Empty filter expression does fallback to the default value defined below.
-                    To disable filtering, set to "true", which causes the filter to allow all
-                    files.
-
-                    For file filter expression, the following helper functions are available:
-                    applies_to_architecture(arch string, expected_arch ...string) bool
-                    Returns true if the 'arch' string matches one of the given
-                    'expected_arch' strings or if 'architecure' is not set.
-                type: string
-                x-go-name: FileFilterExpression
-            filter_expression:
-                default: '''stable'' in upstream_channels'
-                description: |-
-                    Filter expression for updates using https://expr-lang.org/ on struct
-                    provisioning.Update.
-                    If a filter is defined, the filter needs to evaluate to true for the update
-                    being fetched by Operations Center.
-                    Empty filter expression does fallback to the default value defined below.
-                    To disable filtering, set to "true", which causes the filter to allow all
-                    updates.
-                example: '''stable'' in upstream_channels'
-                type: string
-                x-go-name: FilterExpression
-            image_server_authentication_by_query_param:
-                description: |-
-                    ImageServerAuthenticationByQueryParam is a flag that allows to switch from
-                    HTTP header based image server authentication to query parameter instead.
-                    If set to true, authentication is done by `token` query parameter on the
-                    first request, if set to false, authentication is done by HTTP header.
-                type: boolean
-                x-go-name: ImageServerAuthenticationByQueryParam
-            server_default_channel:
-                description: |-
-                    ServerDefaultChannel is the default channel assigned to new server
-                    and cluster instances.
-                type: string
-                x-go-name: ServerDefaultChannel
-            signature_verification_root_ca:
-                description: Root CA certificate used to verify the signature of index.sjson.
-                example: '-----BEGIN CERTIFICATE-----\nMII...\n-----END CERTIFICATE-----'
-                type: string
-                x-go-name: SignatureVerificationRootCA
-            source:
-                description: Source is the URL of the origin, the updates should be fetched from.
-                type: string
-                x-go-name: Source
-            updates_default_channel:
-                description: |-
-                    UpdatesDefaultChannel is the update channel, which is used by default
-                    new updates fetched from upstream.
-                type: string
-                x-go-name: UpdatesDefaultChannel
-        title: SystemUpdates represents the system's updates configuration.
-        type: object
-        x-go-package: github.com/FuturFusion/operations-center/shared/api
-    SystemUpdatesPut:
-        description: |-
-            SystemUpdatesPut represents the fields available for an update of the
-            system's updates configuration.
-        properties:
-            file_filter_expression:
-                description: |-
-                    Filter expression for update files using https://expr-lang.org/ on struct
-                    provisioning.UpdateFile.
-                    If a filter is defined, the filter needs to evaluate to true for the file
-                    being fetched by Operations Center.
-                    Empty filter expression does fallback to the default value defined below.
-                    To disable filtering, set to "true", which causes the filter to allow all
-                    files.
-
-                    For file filter expression, the following helper functions are available:
-                    applies_to_architecture(arch string, expected_arch ...string) bool
-                    Returns true if the 'arch' string matches one of the given
-                    'expected_arch' strings or if 'architecure' is not set.
-                type: string
-                x-go-name: FileFilterExpression
-            filter_expression:
-                default: '''stable'' in upstream_channels'
-                description: |-
-                    Filter expression for updates using https://expr-lang.org/ on struct
-                    provisioning.Update.
-                    If a filter is defined, the filter needs to evaluate to true for the update
-                    being fetched by Operations Center.
-                    Empty filter expression does fallback to the default value defined below.
-                    To disable filtering, set to "true", which causes the filter to allow all
-                    updates.
-                example: '''stable'' in upstream_channels'
-                type: string
-                x-go-name: FilterExpression
-            image_server_authentication_by_query_param:
-                description: |-
-                    ImageServerAuthenticationByQueryParam is a flag that allows to switch from
-                    HTTP header based image server authentication to query parameter instead.
-                    If set to true, authentication is done by `token` query parameter on the
-                    first request, if set to false, authentication is done by HTTP header.
-                type: boolean
-                x-go-name: ImageServerAuthenticationByQueryParam
-            server_default_channel:
-                description: |-
-                    ServerDefaultChannel is the default channel assigned to new server
-                    and cluster instances.
-                type: string
-                x-go-name: ServerDefaultChannel
-            signature_verification_root_ca:
-                description: Root CA certificate used to verify the signature of index.sjson.
-                example: '-----BEGIN CERTIFICATE-----\nMII...\n-----END CERTIFICATE-----'
-                type: string
-                x-go-name: SignatureVerificationRootCA
-            source:
-                description: Source is the URL of the origin, the updates should be fetched from.
-                type: string
-                x-go-name: Source
-            updates_default_channel:
-                description: |-
-                    UpdatesDefaultChannel is the update channel, which is used by default
-                    new updates fetched from upstream.
-                type: string
-                x-go-name: UpdatesDefaultChannel
-        type: object
-        x-go-package: github.com/FuturFusion/operations-center/shared/api
     Token:
         properties:
             channel:
@@ -3731,6 +3792,134 @@ definitions:
         title: UpdateSeverity represents the severity field in an update.
         type: string
         x-go-package: github.com/lxc/incus-os/incus-osd/api/images
+    Updates:
+        properties:
+            file_filter_expression:
+                description: |-
+                    Filter expression for update files using https://expr-lang.org/ on struct
+                    provisioning.UpdateFile.
+                    If a filter is defined, the filter needs to evaluate to true for the file
+                    being fetched by Operations Center.
+                    Empty filter expression does fallback to the default value defined below.
+                    To disable filtering, set to "true", which causes the filter to allow all
+                    files.
+
+                    For file filter expression, the following helper functions are available:
+                    applies_to_architecture(arch string, expected_arch ...string) bool
+                    Returns true if the 'arch' string matches one of the given
+                    'expected_arch' strings or if 'architecure' is not set.
+                type: string
+                x-go-name: FileFilterExpression
+            filter_expression:
+                default: '''stable'' in upstream_channels'
+                description: |-
+                    Filter expression for updates using https://expr-lang.org/ on struct
+                    provisioning.Update.
+                    If a filter is defined, the filter needs to evaluate to true for the update
+                    being fetched by Operations Center.
+                    Empty filter expression does fallback to the default value defined below.
+                    To disable filtering, set to "true", which causes the filter to allow all
+                    updates.
+                example: '''stable'' in upstream_channels'
+                type: string
+                x-go-name: FilterExpression
+            image_server_authentication_by_query_param:
+                description: |-
+                    ImageServerAuthenticationByQueryParam is a flag that allows to switch from
+                    HTTP header based image server authentication to query parameter instead.
+                    If set to true, authentication is done by `token` query parameter on the
+                    first request, if set to false, authentication is done by HTTP header.
+                type: boolean
+                x-go-name: ImageServerAuthenticationByQueryParam
+            server_default_channel:
+                description: |-
+                    ServerDefaultChannel is the default channel assigned to new server
+                    and cluster instances.
+                type: string
+                x-go-name: ServerDefaultChannel
+            signature_verification_root_ca:
+                description: Root CA certificate used to verify the signature of index.sjson.
+                example: '-----BEGIN CERTIFICATE-----\nMII...\n-----END CERTIFICATE-----'
+                type: string
+                x-go-name: SignatureVerificationRootCA
+            source:
+                description: Source is the URL of the origin, the updates should be fetched from.
+                type: string
+                x-go-name: Source
+            updates_default_channel:
+                description: |-
+                    UpdatesDefaultChannel is the update channel, which is used by default
+                    new updates fetched from upstream.
+                type: string
+                x-go-name: UpdatesDefaultChannel
+        title: Updates represents the system's updates configuration.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    UpdatesPut:
+        description: |-
+            UpdatesPut represents the fields available for an update of the
+            system's updates configuration.
+        properties:
+            file_filter_expression:
+                description: |-
+                    Filter expression for update files using https://expr-lang.org/ on struct
+                    provisioning.UpdateFile.
+                    If a filter is defined, the filter needs to evaluate to true for the file
+                    being fetched by Operations Center.
+                    Empty filter expression does fallback to the default value defined below.
+                    To disable filtering, set to "true", which causes the filter to allow all
+                    files.
+
+                    For file filter expression, the following helper functions are available:
+                    applies_to_architecture(arch string, expected_arch ...string) bool
+                    Returns true if the 'arch' string matches one of the given
+                    'expected_arch' strings or if 'architecure' is not set.
+                type: string
+                x-go-name: FileFilterExpression
+            filter_expression:
+                default: '''stable'' in upstream_channels'
+                description: |-
+                    Filter expression for updates using https://expr-lang.org/ on struct
+                    provisioning.Update.
+                    If a filter is defined, the filter needs to evaluate to true for the update
+                    being fetched by Operations Center.
+                    Empty filter expression does fallback to the default value defined below.
+                    To disable filtering, set to "true", which causes the filter to allow all
+                    updates.
+                example: '''stable'' in upstream_channels'
+                type: string
+                x-go-name: FilterExpression
+            image_server_authentication_by_query_param:
+                description: |-
+                    ImageServerAuthenticationByQueryParam is a flag that allows to switch from
+                    HTTP header based image server authentication to query parameter instead.
+                    If set to true, authentication is done by `token` query parameter on the
+                    first request, if set to false, authentication is done by HTTP header.
+                type: boolean
+                x-go-name: ImageServerAuthenticationByQueryParam
+            server_default_channel:
+                description: |-
+                    ServerDefaultChannel is the default channel assigned to new server
+                    and cluster instances.
+                type: string
+                x-go-name: ServerDefaultChannel
+            signature_verification_root_ca:
+                description: Root CA certificate used to verify the signature of index.sjson.
+                example: '-----BEGIN CERTIFICATE-----\nMII...\n-----END CERTIFICATE-----'
+                type: string
+                x-go-name: SignatureVerificationRootCA
+            source:
+                description: Source is the URL of the origin, the updates should be fetched from.
+                type: string
+                x-go-name: Source
+            updates_default_channel:
+                description: |-
+                    UpdatesDefaultChannel is the update channel, which is used by default
+                    new updates fetched from upstream.
+                type: string
+                x-go-name: UpdatesDefaultChannel
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
 paths:
     /:
         get:
@@ -7350,6 +7539,46 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Resync the cluster's inventory
+            tags:
+                - clusters
+    /1.0/provisioning/clusters/{name}/:update:
+        post:
+            description: Perform a cluster wide update of OS and applications on all servers of the cluster.
+            operationId: cluster_update_post
+            parameters:
+                - description: |-
+                    Boolean indicating, if after the update a rolling reboot should be
+                    triggered or not. If the "reboot" is true-ish, a rolling reboot is
+                    triggered after the update, otherwise the rolling reboot is skipped.
+                    Defaults to false (no rolling reboot is triggered).
+                  in: query
+                  name: reboot
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Empty response
+                    schema:
+                        description: Sync response
+                        properties:
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Perform cluster wide update of servers
             tags:
                 - clusters
     /1.0/provisioning/clusters/{name}/certificate:
