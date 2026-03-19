@@ -7,20 +7,20 @@ import (
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 func TestUpdateNetwork(t *testing.T) {
 	tests := []struct {
 		name string
-		cfg  api.SystemNetworkPut
+		cfg  system.NetworkPut
 
 		assertErr require.ErrorAssertionFunc
 		want      string
 	}{
 		{
 			name: "empty",
-			cfg: api.SystemNetworkPut{
+			cfg: system.NetworkPut{
 				RestServerAddress:       "",
 				OperationsCenterAddress: "",
 			},
@@ -29,7 +29,7 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: ":",
-			cfg: api.SystemNetworkPut{
+			cfg: system.NetworkPut{
 				RestServerAddress:       ":",
 				OperationsCenterAddress: "https://localhost:7443",
 			},
@@ -39,7 +39,7 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: ":1234",
-			cfg: api.SystemNetworkPut{
+			cfg: system.NetworkPut{
 				RestServerAddress:       ":1234",
 				OperationsCenterAddress: "https://localhost:7443",
 			},
@@ -49,7 +49,7 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: "ipv4 - 0.0.0.0",
-			cfg: api.SystemNetworkPut{
+			cfg: system.NetworkPut{
 				RestServerAddress:       "0.0.0.0",
 				OperationsCenterAddress: "https://localhost:7443",
 			},
@@ -59,7 +59,7 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: "ipv4 - 0.0.0.0:",
-			cfg: api.SystemNetworkPut{
+			cfg: system.NetworkPut{
 				RestServerAddress:       "0.0.0.0:",
 				OperationsCenterAddress: "https://localhost:7443",
 			},
@@ -69,7 +69,7 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: "ipv6 - ::",
-			cfg: api.SystemNetworkPut{
+			cfg: system.NetworkPut{
 				RestServerAddress:       "::",
 				OperationsCenterAddress: "https://localhost:7443",
 			},
@@ -79,7 +79,7 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: "ipv6 - [::]",
-			cfg: api.SystemNetworkPut{
+			cfg: system.NetworkPut{
 				RestServerAddress:       "[::]",
 				OperationsCenterAddress: "https://localhost:7443",
 			},
@@ -89,7 +89,7 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: "ipv6 - [::]:",
-			cfg: api.SystemNetworkPut{
+			cfg: system.NetworkPut{
 				RestServerAddress:       "[::]:",
 				OperationsCenterAddress: "https://localhost:7443",
 			},
@@ -99,7 +99,7 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: "ipv6 - abcd::0",
-			cfg: api.SystemNetworkPut{
+			cfg: system.NetworkPut{
 				RestServerAddress:       "abcd::0",
 				OperationsCenterAddress: "https://localhost:7443",
 			},
@@ -111,7 +111,7 @@ func TestUpdateNetwork(t *testing.T) {
 		// Errors
 		{
 			name: "error - OperationsCenterAddress not set",
-			cfg: api.SystemNetworkPut{
+			cfg: system.NetworkPut{
 				RestServerAddress:       "127.0.0.1:7443",
 				OperationsCenterAddress: "",
 			},
@@ -121,7 +121,7 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: "error - :0",
-			cfg: api.SystemNetworkPut{
+			cfg: system.NetworkPut{
 				RestServerAddress:       ":0",
 				OperationsCenterAddress: "",
 			},
@@ -131,7 +131,7 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: "error - no ip",
-			cfg: api.SystemNetworkPut{
+			cfg: system.NetworkPut{
 				RestServerAddress:       "a.b.c.d",
 				OperationsCenterAddress: "",
 			},
@@ -141,7 +141,7 @@ func TestUpdateNetwork(t *testing.T) {
 		},
 		{
 			name: "error - no ip with port",
-			cfg: api.SystemNetworkPut{
+			cfg: system.NetworkPut{
 				RestServerAddress:       "a.b.c.d:7443",
 				OperationsCenterAddress: "",
 			},
