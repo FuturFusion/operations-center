@@ -25,6 +25,8 @@ export interface ClusterPost {
   name: string;
   connection_url: string;
   channel: string;
+  description: string;
+  properties: ClusterProperty;
   server_names: string[];
   server_type: string;
   services_config: YamlValue;

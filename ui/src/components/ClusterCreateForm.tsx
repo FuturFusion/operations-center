@@ -3,6 +3,7 @@ import { Form } from "react-bootstrap";
 import { FormikErrors, useFormik } from "formik";
 import ChannelSelect from "components/ChannelSelect";
 import LoadingButton from "components/LoadingButton";
+import KeyValueWidget from "components/KeyValueWidget";
 import { useNotification } from "context/notificationContext";
 import { useServers } from "context/useServers";
 import { useClusterTemplates } from "context/useClusterTemplates";
@@ -53,6 +54,8 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
     name: "",
     connection_url: "",
     channel: "",
+    description: "",
+    properties: {},
     server_names: [],
     server_type: Object.values(ServerType)[0],
     services_config: "",
@@ -93,6 +96,8 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
         name: values.name,
         connection_url: values.connection_url,
         channel: values.channel,
+        description: values.description,
+        properties: values.properties,
         server_names: values.server_names,
         server_type: values.server_type,
         services_config: servicesConfig,
@@ -129,6 +134,24 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
             <Form.Control.Feedback type="invalid">
               {formik.errors.name}
             </Form.Control.Feedback>
+          </Form.Group>
+          <Form.Group className="mb-4" controlId="description">
+            <Form.Label>Description</Form.Label>
+            <Form.Control
+              type="text"
+              name="description"
+              value={formik.values.description}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              disabled={formik.isSubmitting}
+            />
+          </Form.Group>
+          <Form.Group className="mb-4" controlId="properties">
+            <Form.Label>Properties</Form.Label>
+            <KeyValueWidget
+              value={formik.values.properties}
+              onChange={(value) => formik.setFieldValue("properties", value)}
+            />
           </Form.Group>
           <Form.Group className="mb-4" controlId="connectionURL">
             <Form.Label>Connection URL</Form.Label>
