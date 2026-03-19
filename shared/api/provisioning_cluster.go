@@ -183,6 +183,58 @@ func (c *ClusterUpdateStatus) Scan(value any) error {
 	}
 }
 
+type ClusterConfigRollingRestart struct {
+	// PostRestoreDelay holds the time, that is waited between the resore
+	// of a server and the evacuation of the next server. This should be set if
+	// RestoreMode is kept at the default value in order to grant a cluster
+	// enough time to move previously evacuated instances back to their
+	// originating server.
+	PostRestoreDelay time.Duration `json:"post_restore_delay" yaml:"post_restore_delay"`
+
+	// RestoreMode is the mode applied dring Incus restore operation. Valid
+	// values are "" (default, move instances back, that have been evacuated
+	// previously) and "skip" (skip moving evacuated instances back).
+	// Example: skip
+	RestoreMode string `json:"restore_mode" yaml:"restore_mode"`
+}
+
+// ClusterConfig contains cluster wide configuration used by Operations Center
+// when interacting with the cluster.
+type ClusterConfig struct {
+	RollingRestart ClusterConfigRollingRestart `json:"rolling_restart" yaml:"rolling_restart"`
+}
+
+func (c ClusterConfig) Value() (driver.Value, error) {
+	return json.Marshal(c)
+}
+
+func (c *ClusterConfig) Scan(value any) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid cluster config")
+	}
+
+	switch v := value.(type) {
+	case string:
+		if len(v) == 0 {
+			*c = ClusterConfig{}
+			return nil
+		}
+
+		return json.Unmarshal([]byte(v), c)
+
+	case []byte:
+		if len(v) == 0 {
+			*c = ClusterConfig{}
+			return nil
+		}
+
+		return json.Unmarshal(v, c)
+
+	default:
+		return fmt.Errorf("type %T is not supported for cluster config", value)
+	}
+}
+
 // ClusterPut defines the updateable part of a cluster of servers running
 // Hypervisor OS.
 //
@@ -208,6 +260,11 @@ type ClusterPut struct {
 	//   properties:
 	//     env: lab
 	Properties ConfigMap `json:"properties" yaml:"properties"`
+
+	// Config contains cluster wide configuration used by Operations Center
+	// when interacting with the cluster. For example waiting delays during
+	// cluster evacuation and restore, before a subsequent server is processed.
+	Config ClusterConfig `json:"config" yaml:"config"`
 }
 
 // Cluster defines a cluster of servers running Hypervisor OS.
