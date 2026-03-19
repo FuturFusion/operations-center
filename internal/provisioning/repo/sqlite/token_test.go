@@ -16,6 +16,7 @@ import (
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestTokenDatabaseActions(t *testing.T) {
@@ -41,14 +42,14 @@ func TestTokenDatabaseActions(t *testing.T) {
 		Description: "seed config 1",
 		Public:      true,
 		Seeds: provisioning.TokenImageSeedConfigs{
-			Applications: map[string]any{
-				"applications": true,
+			Applications: api.SeedApplications{
+				Version: "1",
 			},
-			Network: map[string]any{
-				"network": true,
+			Network: api.SeedNetwork{
+				Version: "1",
 			},
-			Install: map[string]any{
-				"install": true,
+			Install: api.SeedInstall{
+				Version: "1",
 			},
 		},
 	}
@@ -59,14 +60,14 @@ func TestTokenDatabaseActions(t *testing.T) {
 		Description: "seed config B2",
 		Public:      true,
 		Seeds: provisioning.TokenImageSeedConfigs{
-			Applications: map[string]any{
-				"applications": true,
+			Applications: api.SeedApplications{
+				Version: "1",
 			},
-			Network: map[string]any{
-				"network": true,
+			Network: api.SeedNetwork{
+				Version: "1",
 			},
-			Install: map[string]any{
-				"install": true,
+			Install: api.SeedInstall{
+				Version: "1",
 			},
 		},
 	}

@@ -15,11 +15,11 @@ import (
 	"github.com/lxc/incus/v6/shared/tls"
 	"github.com/lxc/incus/v6/shared/validate"
 
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 // ValidateACMEConfig validates the system ACME configuration. Assumes SetDefaults has been called.
-func ValidateACMEConfig(s api.SystemSecurityACME) error {
+func ValidateACMEConfig(s system.SecurityACME) error {
 	// Skip validation, if config is not initialized.
 	if s.Domain == "" && s.Email == "" && s.CAURL == "" && !s.AgreeTOS {
 		return nil
@@ -65,7 +65,7 @@ func ValidateACMEConfig(s api.SystemSecurityACME) error {
 }
 
 // ACMEConfigChanged returns whether the new config has changed from the old one.
-func ACMEConfigChanged(oldCfg, newCfg api.SystemSecurityACME) bool {
+func ACMEConfigChanged(oldCfg, newCfg system.SecurityACME) bool {
 	if oldCfg.AgreeTOS != newCfg.AgreeTOS ||
 		oldCfg.CAURL != newCfg.CAURL ||
 		oldCfg.Challenge != newCfg.Challenge ||
@@ -88,9 +88,9 @@ func UpdateCertificate(
 		VarDir() string
 		CacheDir() string
 	},
-	cfg api.SystemSecurityACME,
+	cfg system.SecurityACME,
 	force bool,
-) (*api.SystemCertificatePost, error) {
+) (*system.CertificatePost, error) {
 	log := slog.With(slog.String("domain", cfg.Domain), slog.String("caURL", cfg.CAURL), slog.String("challenge", string(cfg.Challenge)))
 	if cfg.Domain == "" || cfg.Email == "" || cfg.CAURL == "" || !cfg.AgreeTOS {
 		return nil, nil
@@ -150,7 +150,7 @@ func UpdateCertificate(
 		return nil, err
 	}
 
-	return &api.SystemCertificatePost{
+	return &system.CertificatePost{
 		Certificate: string(certBytes),
 		Key:         string(keyBytes),
 	}, nil

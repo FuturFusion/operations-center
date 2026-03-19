@@ -27,6 +27,7 @@ import (
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 const oidcCode = `123`
@@ -691,19 +692,19 @@ func TestAuthentication(t *testing.T) {
 		IsBackgroundTasksDisabled: true,
 		SourcePollSkipFirst:       true,
 	})
-	err = config.UpdateNetwork(ctx, api.SystemNetworkPut{
+	err = config.UpdateNetwork(ctx, system.NetworkPut{
 		OperationsCenterAddress: "https://127.0.0.1:17443",
 		RestServerAddress:       "[::1]:17443",
 	})
 	require.NoError(t, err)
-	err = config.UpdateSecurity(ctx, api.SystemSecurityPut{
+	err = config.UpdateSecurity(ctx, system.SecurityPut{
 		TrustedTLSClientCertFingerprints: []string{certFingerprint},
-		OIDC: api.SystemSecurityOIDC{
+		OIDC: system.SecurityOIDC{
 			Issuer:   oidcProvider.Issuer(),
 			ClientID: oidcProvider.ClientID,
 			Scope:    "openid,offline_access,email",
 		},
-		OpenFGA: api.SystemSecurityOpenFGA{
+		OpenFGA: system.SecurityOpenFGA{
 			APIURL:   openFGAEndpoint,
 			APIToken: "dummy",
 			StoreID:  openFGAStoreID,

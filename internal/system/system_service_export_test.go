@@ -3,7 +3,7 @@ package system
 import (
 	"context"
 
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 func WithACMEUpdateCertificateFunc(acmeUpdateCertificateFunc func(
@@ -12,9 +12,9 @@ func WithACMEUpdateCertificateFunc(acmeUpdateCertificateFunc func(
 		VarDir() string
 		CacheDir() string
 	},
-	cfg api.SystemSecurityACME,
+	cfg system.SecurityACME,
 	force bool,
-) (*api.SystemCertificatePost, error),
+) (*system.CertificatePost, error),
 ) SystemServiceOption {
 	return func(s *systemService) {
 		s.acmeUpdateCertificateFunc = acmeUpdateCertificateFunc

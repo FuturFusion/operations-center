@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestToken_Validate(t *testing.T) {
@@ -91,31 +92,31 @@ func TestTokenImageSeedConfigs_Value(t *testing.T) {
 			name: "success",
 
 			tokenImageSeedConfigs: provisioning.TokenImageSeedConfigs{
-				Applications: map[string]any{
-					"applications": true,
+				Applications: api.SeedApplications{
+					Version: "1",
 				},
-				Incus: map[string]any{
-					"incus": true,
+				Incus: api.SeedIncus{
+					Version: "1",
 				},
-				Install: map[string]any{
-					"install": true,
+				Install: api.SeedInstall{
+					Version: "1",
 				},
-				MigrationManager: map[string]any{
-					"migration_manager": true,
+				MigrationManager: api.SeedMigrationManager{
+					Version: "1",
 				},
-				Network: map[string]any{
-					"network": true,
+				Network: api.SeedNetwork{
+					Version: "1",
 				},
-				OperationsCenter: map[string]any{
-					"operations_center": true,
+				OperationsCenter: api.SeedOperationsCenter{
+					Version: "1",
 				},
-				Update: map[string]any{
-					"update": true,
+				Update: api.SeedUpdate{
+					Version: "1",
 				},
 			},
 
 			assertErr: require.NoError,
-			wantValue: []byte(`{"applications":{"applications":true},"incus":{"incus":true},"install":{"install":true},"migration_manager":{"migration_manager":true},"network":{"network":true},"operations_center":{"operations_center":true},"update":{"update":true}}`),
+			wantValue: []byte(`{"applications":{"version":"1","applications":null},"incus":{"version":"1","apply_defaults":false,"preseed":null},"install":{"version":"1","force_install":false,"force_reboot":false,"target":null},"migration_manager":{"version":"1","apply_defaults":false,"preseed":null},"network":{"version":"1"},"operations_center":{"version":"1","apply_defaults":false,"preseed":null},"update":{"auto_reboot":false,"channel":"","check_frequency":"","version":"1"}}`),
 		},
 	}
 
@@ -141,18 +142,18 @@ func TestTokenImageSeeds_Scan(t *testing.T) {
 		{
 			name: "success - []byte",
 
-			value: []byte(`{"applications":{"applications":true},"network":{"network":true},"install":{"install":true}}`),
+			value: []byte(`{"applications":{"version":"1"},"network":{"version":"1"},"install":{"version":"1"}}`),
 
 			assertErr: require.NoError,
 			want: provisioning.TokenImageSeedConfigs{
-				Applications: map[string]any{
-					"applications": true,
+				Applications: api.SeedApplications{
+					Version: "1",
 				},
-				Network: map[string]any{
-					"network": true,
+				Network: api.SeedNetwork{
+					Version: "1",
 				},
-				Install: map[string]any{
-					"install": true,
+				Install: api.SeedInstall{
+					Version: "1",
 				},
 			},
 		},
@@ -167,18 +168,18 @@ func TestTokenImageSeeds_Scan(t *testing.T) {
 		{
 			name: "success - string",
 
-			value: `{"applications":{"applications":true},"network":{"network":true},"install":{"install":true}}`,
+			value: `{"applications":{"version":"1"},"network":{"version":"1"},"install":{"version":"1"}}`,
 
 			assertErr: require.NoError,
 			want: provisioning.TokenImageSeedConfigs{
-				Applications: map[string]any{
-					"applications": true,
+				Applications: api.SeedApplications{
+					Version: "1",
 				},
-				Network: map[string]any{
-					"network": true,
+				Network: api.SeedNetwork{
+					Version: "1",
 				},
-				Install: map[string]any{
-					"install": true,
+				Install: api.SeedInstall{
+					Version: "1",
 				},
 			},
 		},

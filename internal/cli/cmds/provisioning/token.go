@@ -387,16 +387,16 @@ func (c *cmdTokenGetImage) run(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	if len(c.flagApplications) > 0 {
-		applications := make([]any, 0, len(c.flagApplications))
+		applications := make([]api.SeedApplication, 0, len(c.flagApplications))
 		for _, application := range c.flagApplications {
-			applications = append(applications, map[string]any{
-				"name": application,
+			applications = append(applications, api.SeedApplication{
+				Name: application,
 			})
 		}
 
-		preseed.Seeds.Applications = map[string]any{
-			"version":      "1",
-			"applications": applications,
+		preseed.Seeds.Applications = api.SeedApplications{
+			Version:      "1",
+			Applications: applications,
 		}
 	}
 

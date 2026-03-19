@@ -4,24 +4,24 @@ import (
 	"context"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 type SystemService interface {
 	UpdateCertificate(ctx context.Context, certificatePEM string, keyPEM string) error
 	TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, _ error)
 
-	GetNetworkConfig(ctx context.Context) api.SystemNetwork
-	UpdateNetworkConfig(ctx context.Context, cfg api.SystemNetworkPut) error
+	GetNetworkConfig(ctx context.Context) system.Network
+	UpdateNetworkConfig(ctx context.Context, cfg system.NetworkPut) error
 
-	GetSecurityConfig(ctx context.Context) api.SystemSecurity
-	UpdateSecurityConfig(ctx context.Context, cfg api.SystemSecurityPut) error
+	GetSecurityConfig(ctx context.Context) system.Security
+	UpdateSecurityConfig(ctx context.Context, cfg system.SecurityPut) error
 
-	GetSettingsConfig(ctx context.Context) api.SystemSettings
-	UpdateSettingsConfig(ctx context.Context, cfg api.SystemSettingsPut) error
+	GetSettingsConfig(ctx context.Context) system.Settings
+	UpdateSettingsConfig(ctx context.Context, cfg system.SettingsPut) error
 
-	GetUpdatesConfig(ctx context.Context) api.SystemUpdates
-	UpdateUpdatesConfig(ctx context.Context, cfg api.SystemUpdatesPut) error
+	GetUpdatesConfig(ctx context.Context) system.Updates
+	UpdateUpdatesConfig(ctx context.Context, cfg system.UpdatesPut) error
 }
 
 type ProvisioningServerService interface {

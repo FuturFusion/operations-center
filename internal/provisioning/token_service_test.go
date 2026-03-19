@@ -11,9 +11,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
+	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
+	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
@@ -707,8 +710,8 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 
 		assertErr            require.ErrorAssertionFunc
 		wantFilename         string
-		wantApplicationsSeed map[string]any
-		wantIncusSeed        map[string]any
+		wantApplicationsSeed api.SeedApplications
+		wantIncusSeed        api.SeedIncus
 		wantImageCount       int
 	}{
 		{
@@ -756,17 +759,17 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 
 			assertErr:    require.NoError,
 			wantFilename: "pre-seed-22222222-2222-2222-2222-222222222222.iso",
-			wantApplicationsSeed: map[string]any{
-				"version": "1",
-				"applications": []any{
-					map[string]any{
-						"name": "incus",
+			wantApplicationsSeed: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus",
 					},
 				},
 			},
-			wantIncusSeed: map[string]any{
-				"apply_defaults": false,
-				"version":        "1",
+			wantIncusSeed: api.SeedIncus{
+				Version:       "1",
+				ApplyDefaults: false,
 			},
 			wantImageCount: 0,
 		},
@@ -782,21 +785,27 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 					architecture: images.UpdateFileArchitecture64BitX86,
 					channel:      "stable",
 					seedConfig: provisioning.TokenImageSeedConfigs{
-						Applications: map[string]any{
-							"version": "1",
-							"applications": []any{
-								map[string]any{
-									"name": "operations-center",
+						Applications: api.SeedApplications{
+							Version: "1",
+							Applications: []api.SeedApplication{
+								{
+									Name: "operations-center", // TODO: should this be better incus?
 								},
 							},
 						},
-						Incus: map[string]any{
-							"version": "1",
-							"certificates": []any{
-								map[string]any{
-									"name":        "admin",
-									"type":        "client",
-									"certificate": "foobar",
+						Incus: api.SeedIncus{
+							Version: "1",
+							Preseed: &incusapi.InitPreseed{
+								InitLocalPreseed: incusapi.InitLocalPreseed{
+									Certificates: []incusapi.CertificatesPost{
+										{
+											CertificatePut: incusapi.CertificatePut{
+												Name:        "admin",
+												Type:        "client",
+												Certificate: "foobar",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -834,22 +843,28 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 
 			assertErr:    require.NoError,
 			wantFilename: "pre-seed-22222222-2222-2222-2222-222222222222.iso",
-			wantApplicationsSeed: map[string]any{
-				"version": "1",
-				"applications": []any{
-					map[string]any{
-						"name": "operations-center",
+			wantApplicationsSeed: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "operations-center",
 					},
 				},
 			},
-			wantIncusSeed: map[string]any{
-				"apply_defaults": false,
-				"version":        "1",
-				"certificates": []any{
-					map[string]any{
-						"name":        "admin",
-						"type":        "client",
-						"certificate": "foobar",
+			wantIncusSeed: api.SeedIncus{
+				Version:       "1",
+				ApplyDefaults: false,
+				Preseed: &incusapi.InitPreseed{
+					InitLocalPreseed: incusapi.InitLocalPreseed{
+						Certificates: []incusapi.CertificatesPost{
+							{
+								CertificatePut: incusapi.CertificatePut{
+									Name:        "admin",
+									Type:        "client",
+									Certificate: "foobar",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -1115,17 +1130,17 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 			flasherAdapterGenerateSeededImageErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
-			wantApplicationsSeed: map[string]any{
-				"version": "1",
-				"applications": []any{
-					map[string]any{
-						"name": "incus",
+			wantApplicationsSeed: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus",
 					},
 				},
 			},
-			wantIncusSeed: map[string]any{
-				"apply_defaults": false,
-				"version":        "1",
+			wantIncusSeed: api.SeedIncus{
+				Version:       "1",
+				ApplyDefaults: false,
 			},
 			wantImageCount: 1,
 		},
@@ -1667,8 +1682,11 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			architectureArg: images.UpdateFileArchitecture64BitX86,
 			repoGetTokenSeedByName: &provisioning.TokenSeed{
 				Seeds: provisioning.TokenImageSeedConfigs{
-					Update: map[string]any{
-						"channel": "production",
+					Update: api.SeedUpdate{
+						Version: "1",
+						SystemUpdateConfig: api.SeedUpdateConfig{
+							Channel: "production",
+						},
 					},
 				},
 			},
@@ -1834,49 +1852,16 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			wantChannel: "stable", // default value
 		},
 		{
-			name:            "error - update channel invalid",
-			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: images.UpdateFileArchitecture64BitX86,
-			repoGetTokenSeedByName: &provisioning.TokenSeed{
-				Seeds: provisioning.TokenImageSeedConfigs{
-					Update: map[string]any{
-						"channel": 0, // invalid, not a string
-					},
-				},
-			},
-			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID: updateUUID,
-				},
-			},
-			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
-				{
-					Filename:     isoGzFilename,
-					Type:         images.UpdateFileTypeImageISO,
-					Architecture: images.UpdateFileArchitecture64BitX86,
-				},
-			},
-			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
-				f, err := os.Open(isoGzFilename)
-				require.NoError(t, err)
-
-				return f
-			}(),
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
-			wantChannel: "stable", // default value
-		},
-		{
 			name:            "error - update channel not found",
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
 			repoGetTokenSeedByName: &provisioning.TokenSeed{
 				Seeds: provisioning.TokenImageSeedConfigs{
-					Update: map[string]any{
-						"channel": "not found",
+					Update: api.SeedUpdate{
+						Version: "1",
+						SystemUpdateConfig: api.SeedUpdateConfig{
+							Channel: "not found",
+						},
 					},
 				},
 			},
@@ -1936,6 +1921,8 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			config.InitTest(t, &envMock.EnvironmentMock{}, nil)
+
 			repo := &mock.TokenRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
 					return nil, tc.repoGetByUUIDErr

@@ -16,7 +16,7 @@ import (
 	restapi "github.com/FuturFusion/operations-center/internal/api"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 func TestStartAndStop(t *testing.T) {
@@ -146,7 +146,7 @@ func TestStartAndStop(t *testing.T) {
 				IsBackgroundTasksDisabled: true,
 				SourcePollSkipFirst:       true,
 			})
-			err := config.UpdateNetwork(ctx, api.SystemNetworkPut{
+			err := config.UpdateNetwork(ctx, system.NetworkPut{
 				OperationsCenterAddress: "https://127.0.0.1:17443",
 				RestServerAddress:       fmt.Sprintf(":%d", tc.bindPort),
 			})

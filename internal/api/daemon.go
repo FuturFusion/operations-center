@@ -66,6 +66,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/task"
 	"github.com/FuturFusion/operations-center/internal/version"
 	"github.com/FuturFusion/operations-center/shared/api"
+	apisystem "github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 type environment interface {
@@ -161,7 +162,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// On update of the security configuration, perform reload of the security
 	// related infrastructure.
-	lifecycle.SecurityUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemSecurity) {
+	lifecycle.SecurityUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.Security) {
 		err := d.securityConfigReload(ctx, cfg)
 		if err != nil {
 			slog.ErrorContext(ctx, "Failed to reload security config", logger.Err(err))
@@ -169,7 +170,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	})
 
 	// On update of ACME configuration, perform renewal of the server certificate.
-	lifecycle.SecurityACMEUpdateSignal.AddListener(func(ctx context.Context, ssa api.SystemSecurityACME) {
+	lifecycle.SecurityACMEUpdateSignal.AddListener(func(ctx context.Context, ssa apisystem.SecurityACME) {
 		slog.InfoContext(ctx, "Trigger async ACME renewal after config change")
 
 		go func() {
@@ -242,7 +243,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// If the network configuration changes, we need to reload the API server on TCP.
-	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, sn api.SystemNetwork) {
+	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, sn apisystem.Network) {
 		err := d.setupTCPListener(ctx, sn)
 		if err != nil {
 			slog.ErrorContext(ctx, "Failed to reload network config", logger.Err(err))
@@ -353,7 +354,7 @@ func (d *Daemon) initAndLoadServerCert() error {
 	return nil
 }
 
-func (d *Daemon) securityConfigReload(ctx context.Context, cfg api.SystemSecurity) error {
+func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Security) error {
 	d.configReloadMu.Lock()
 	defer d.configReloadMu.Unlock()
 
@@ -428,7 +429,7 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 	}
 
 	// Make sure, the files repository learns about changes to the signature certificate.
-	lifecycle.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemUpdates) {
+	lifecycle.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.Updates) {
 		repoUpdateFiles.UpdateConfig(ctx, cfg.SignatureVerificationRootCA)
 	})
 
@@ -442,10 +443,10 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 		d.env,
 	)
 	listenerKey := uuid.New().String()
-	lifecycle.UpdatesValidateSignal.AddListenerWithErr(func(ctx context.Context, su api.SystemUpdates) error {
+	lifecycle.UpdatesValidateSignal.AddListenerWithErr(func(ctx context.Context, su apisystem.Updates) error {
 		return updateServer.SourceConnectionTest(ctx, su.Source, su.SignatureVerificationRootCA)
 	}, listenerKey)
-	lifecycle.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemUpdates) {
+	lifecycle.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.Updates) {
 		updateServer.UpdateConfig(ctx, cfg.Source, cfg.SignatureVerificationRootCA)
 	}, listenerKey)
 	runtime.AddCleanup(d, func(listenerKey string) {
@@ -492,7 +493,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 		imageFlasher.UpdateCertificate(cert)
 	})
 	// Image flasher needs to learn about updates the public Operations Center address.
-	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemNetwork) {
+	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.Network) {
 		imageFlasher.UpdateServerURL(cfg.OperationsCenterAddress)
 	})
 
@@ -536,7 +537,7 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 
 	// Server service needs to learn about updates of the public Operations Center
 	// address.
-	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemNetwork) {
+	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.Network) {
 		// Update operations center server record with updated network config.
 		err := serverSvc.SelfRegisterOperationsCenter(ctx)
 		if err != nil {
@@ -917,7 +918,7 @@ func (d *Daemon) setupSocketListener(ctx context.Context) {
 	})
 }
 
-func (d *Daemon) setupTCPListener(ctx context.Context, cfg api.SystemNetwork) error {
+func (d *Daemon) setupTCPListener(ctx context.Context, cfg apisystem.Network) error {
 	errCh := make(chan error)
 	d.errgroup.Go(func() error {
 		d.configReloadMu.Lock()

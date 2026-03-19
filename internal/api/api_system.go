@@ -8,7 +8,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/system"
 	"github.com/FuturFusion/operations-center/internal/util/response"
-	"github.com/FuturFusion/operations-center/shared/api"
+	apisystem "github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 type systemHandler struct {
@@ -76,7 +76,7 @@ func registerSystemHandler(router Router, authorizer *authz.Authorizer, service 
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *systemHandler) certificatePost(r *http.Request) response.Response {
-	var request api.SystemCertificatePost
+	var request apisystem.CertificatePost
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
@@ -222,7 +222,7 @@ func (s *systemHandler) networkGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *systemHandler) networkPut(r *http.Request) response.Response {
-	var networkConfig api.SystemNetworkPut
+	var networkConfig apisystem.NetworkPut
 
 	err := json.NewDecoder(r.Body).Decode(&networkConfig)
 	if err != nil {
@@ -325,7 +325,7 @@ func (s *systemHandler) securityGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *systemHandler) securityPut(r *http.Request) response.Response {
-	var securityConfig api.SystemSecurityPut
+	var securityConfig apisystem.SecurityPut
 
 	err := json.NewDecoder(r.Body).Decode(&securityConfig)
 	if err != nil {
@@ -428,7 +428,7 @@ func (s *systemHandler) settingsGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *systemHandler) settingsPut(r *http.Request) response.Response {
-	var settingsConfig api.SystemSettingsPut
+	var settingsConfig apisystem.SettingsPut
 
 	err := json.NewDecoder(r.Body).Decode(&settingsConfig)
 	if err != nil {
@@ -531,7 +531,7 @@ func (s *systemHandler) updatesGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *systemHandler) updatesPut(r *http.Request) response.Response {
-	var updatesConfig api.SystemUpdatesPut
+	var updatesConfig apisystem.UpdatesPut
 
 	err := json.NewDecoder(r.Body).Decode(&updatesConfig)
 	if err != nil {

@@ -1014,11 +1014,11 @@ func (c client) SystemFactoryReset(ctx context.Context, endpoint provisioning.En
 		"provider":     providerSeed,
 	}
 
-	if len(seedConfig.Network) > 0 {
+	if seedConfig.Network.Version != "" {
 		seedData["network"] = seedConfig.Network
 	}
 
-	if len(seedConfig.Update) > 0 {
+	if seedConfig.Update.Version != "" {
 		seedData["update"] = seedConfig.Update
 	}
 

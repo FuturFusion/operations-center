@@ -337,10 +337,12 @@ func TestServer_Filter(t *testing.T) {
 
 func TestServer_Getters(t *testing.T) {
 	server := provisioning.Server{
+		Name:          "server1",
 		ConnectionURL: "http://example.com:443/",
 		Certificate:   "cert",
 	}
 
+	require.Equal(t, server.Name, server.GetName())
 	require.Equal(t, server.Certificate, server.GetCertificate())
 	require.Equal(t, server.ConnectionURL, server.GetConnectionURL())
 
