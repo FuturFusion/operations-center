@@ -17,6 +17,9 @@ var (
       "applications": [
         {
           "name": "operations-center"
+        },
+        {
+          "name": "debug"
         }
       ]
     },
@@ -37,6 +40,7 @@ applications:
   version: "1"
   applications:
     - name: incus
+    - name: debug
 incus:
   version: "1"
   preseed:
