@@ -6,19 +6,20 @@ import (
 	"github.com/maniartech/signals"
 
 	"github.com/FuturFusion/operations-center/shared/api"
+	apisystem "github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 var (
 	ServerCertificateUpdateSignal = signals.NewSync[tls.Certificate]()
 
-	NetworkUpdateSignal = signals.NewSync[api.SystemNetwork]()
+	NetworkUpdateSignal = signals.NewSync[apisystem.Network]()
 
-	SecurityUpdateSignal                    = signals.NewSync[api.SystemSecurity]()
+	SecurityUpdateSignal                    = signals.NewSync[apisystem.Security]()
 	SecurityTrustedHTTPSProxiesUpdateSignal = signals.NewSync[[]string]()
-	SecurityACMEUpdateSignal                = signals.NewSync[api.SystemSecurityACME]()
+	SecurityACMEUpdateSignal                = signals.NewSync[apisystem.SecurityACME]()
 
-	UpdatesValidateSignal = signals.NewSync[api.SystemUpdates]()
-	UpdatesUpdateSignal   = signals.NewSync[api.SystemUpdates]()
+	UpdatesValidateSignal = signals.NewSync[apisystem.Updates]()
+	UpdatesUpdateSignal   = signals.NewSync[apisystem.Updates]()
 
 	ClusterUpdateSignal = signals.NewSync[ClusterUpdateMessage]()
 
