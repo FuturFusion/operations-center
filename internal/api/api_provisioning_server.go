@@ -875,7 +875,7 @@ func (s *serverHandler) serverSystemRebootPost(r *http.Request) response.Respons
 func (s *serverHandler) serverSystemRestorePost(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	err := s.service.RestoreSystemByName(r.Context(), name, false)
+	err := s.service.RestoreSystemByName(r.Context(), name, false, false)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to restore server %q: %w", name, err))
 	}
