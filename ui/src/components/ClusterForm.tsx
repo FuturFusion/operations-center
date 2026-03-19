@@ -15,6 +15,7 @@ const ClusterForm: FC<Props> = ({ cluster, onRename, onSubmit }) => {
     name: cluster?.name || "",
     connection_url: cluster?.connection_url || "",
     channel: cluster?.channel || "",
+    description: cluster?.description || "",
   };
 
   const formik = useFormik({
@@ -51,6 +52,16 @@ const ClusterForm: FC<Props> = ({ cluster, onRename, onSubmit }) => {
                 Rename
               </Button>
             </div>
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="description">
+            <Form.Label>Description</Form.Label>
+            <Form.Control
+              type="text"
+              name="description"
+              value={formik.values.description}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
           </Form.Group>
           <Form.Group className="mb-3" controlId="connection_url">
             <Form.Label>Connection URL</Form.Label>

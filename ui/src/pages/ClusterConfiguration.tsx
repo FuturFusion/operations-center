@@ -14,7 +14,11 @@ const ClusterConfiguration = () => {
     updateCluster(
       values.name,
       JSON.stringify(
-        { connection_url: values.connection_url, channel: values.channel },
+        {
+          description: values.description,
+          connection_url: values.connection_url,
+          channel: values.channel,
+        },
         null,
         2,
       ),

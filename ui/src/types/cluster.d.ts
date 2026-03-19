@@ -37,6 +37,7 @@ export interface ClusterFormValues {
   name: string;
   connection_url: string;
   channel: string;
+  description: string;
 }
 
 export interface ClusterCertFormValues {
