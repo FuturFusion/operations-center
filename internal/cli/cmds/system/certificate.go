@@ -7,7 +7,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 type CmdCertificate struct {
@@ -81,7 +81,7 @@ func (c *cmdCertificateSet) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	certificateRequest := api.SystemCertificatePost{
+	certificateRequest := system.CertificatePost{
 		Certificate: string(certificatePEM),
 		Key:         string(keyPEM),
 	}

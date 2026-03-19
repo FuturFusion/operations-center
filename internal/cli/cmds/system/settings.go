@@ -14,7 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/util/editor"
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 type CmdSettings struct {
@@ -135,7 +135,7 @@ func (c *cmdSettingsEdit) run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		newdata := api.SystemSettingsPut{}
+		newdata := system.SettingsPut{}
 		err = yaml.Unmarshal(contents, &newdata)
 		if err != nil {
 			return err
@@ -169,7 +169,7 @@ func (c *cmdSettingsEdit) run(cmd *cobra.Command, args []string) error {
 	}
 
 	for {
-		newdata := api.SystemSettingsPut{}
+		newdata := system.SettingsPut{}
 		err = yaml.Unmarshal(content, &newdata)
 		if err == nil {
 			err = c.ocClient.UpdateSystemSettingsConfig(cmd.Context(), newdata)
