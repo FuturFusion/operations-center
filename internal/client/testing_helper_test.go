@@ -18,7 +18,7 @@ import (
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
-	shared "github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 func daemonSetup(t *testing.T) (socketClient client.OperationsCenterClient, unauthorizedHTTPClient client.OperationsCenterClient, db *sql.DB) {
@@ -74,13 +74,13 @@ func daemonSetup(t *testing.T) (socketClient client.OperationsCenterClient, unau
 		SourcePollSkipFirst:       true,
 	})
 
-	err = config.UpdateNetwork(ctx, shared.SystemNetworkPut{
+	err = config.UpdateNetwork(ctx, system.NetworkPut{
 		OperationsCenterAddress: "https://127.0.0.1:" + port,
 		RestServerAddress:       "[::1]:" + port,
 	})
 	require.NoError(t, err)
 
-	err = config.UpdateSecurity(ctx, shared.SystemSecurityPut{
+	err = config.UpdateSecurity(ctx, system.SecurityPut{
 		TrustedTLSClientCertFingerprints: []string{cert.Fingerprint()},
 	})
 	require.NoError(t, err)
