@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 var ExpireAtInfinity = time.Date(9999, 12, 31, 23, 59, 59, 999999999, time.UTC)
@@ -45,13 +46,13 @@ func (t Token) Validate() error {
 type Tokens []Token
 
 type TokenImageSeedConfigs struct {
-	Applications     map[string]any `json:"applications"`
-	Incus            map[string]any `json:"incus"`
-	Install          map[string]any `json:"install"`
-	MigrationManager map[string]any `json:"migration_manager"`
-	Network          map[string]any `json:"network"`
-	OperationsCenter map[string]any `json:"operations_center"`
-	Update           map[string]any `json:"update"`
+	Applications     api.SeedApplications     `json:"applications"`
+	Incus            api.SeedIncus            `json:"incus"`
+	Install          api.SeedInstall          `json:"install"`
+	MigrationManager api.SeedMigrationManager `json:"migration_manager"`
+	Network          api.SeedNetwork          `json:"network"`
+	OperationsCenter api.SeedOperationsCenter `json:"operations_center"`
+	Update           api.SeedUpdate           `json:"update"`
 }
 
 // Value implements the sql driver.Valuer interface.

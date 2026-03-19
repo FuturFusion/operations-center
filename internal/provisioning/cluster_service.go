@@ -848,17 +848,17 @@ func (s clusterService) DeleteAndFactoryResetByName(ctx context.Context, name st
 
 	if tokenSeedName == nil {
 		seed = TokenImageSeedConfigs{
-			Applications: map[string]any{
-				"version": "1",
-				"applications": []any{
-					map[string]any{
-						"name": "incus",
+			Applications: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus",
 					},
 				},
 			},
-			Incus: map[string]any{
-				"version":        "1",
-				"apply_defaults": false,
+			Incus: api.SeedIncus{
+				Version:       "1",
+				ApplyDefaults: false,
 			},
 		}
 	}

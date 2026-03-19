@@ -362,34 +362,24 @@ func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageT
 	}
 
 	// Apply defaults to seeds.
-	if len(seeds.Applications) == 0 {
-		seeds.Applications = map[string]any{
-			"version": "1",
-			"applications": []any{
-				map[string]any{
-					"name": "incus",
+	if seeds.Applications.Version == "" {
+		seeds.Applications = api.SeedApplications{
+			Version: "1",
+			Applications: []api.SeedApplication{
+				{
+					Name: "incus",
 				},
 			},
 		}
 	}
 
-	// Enforce incus pre seeds applicable for use with Operations Center.
-	if seeds.Incus == nil {
-		seeds.Incus = map[string]any{}
-	}
+	seeds.Incus.Version = "1"
+	seeds.Incus.ApplyDefaults = false
 
-	seeds.Incus["apply_defaults"] = false
-	seeds.Incus["version"] = "1"
-
-	// Enforce update control through Operations Center.
-	if seeds.Update == nil {
-		seeds.Update = map[string]any{}
-	}
-
-	seeds.Update["version"] = "1"
-	seeds.Update["auto_reboot"] = false
-	seeds.Update["check_frequency"] = "never"
-	seeds.Update["channel"], err = s.ensureChannelName(ctx, seeds.Update, channel)
+	seeds.Update.Version = "1"
+	seeds.Update.AutoReboot = false
+	seeds.Update.CheckFrequency = "never"
+	seeds.Update.Channel, err = s.ensureChannelName(ctx, seeds.Update, channel)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to validate update channel from seed config: %w", err)
 	}
@@ -402,15 +392,10 @@ func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageT
 	return rc, nil
 }
 
-func (s *tokenService) ensureChannelName(ctx context.Context, update map[string]any, channel string) (string, error) {
-	anyChannel, ok := update["channel"]
-	if !ok {
-		anyChannel = channel
-	}
-
-	channel, ok = anyChannel.(string)
-	if !ok {
-		return "", domain.NewValidationErrf(`Invalid type for update channel, "string" expected`)
+func (s *tokenService) ensureChannelName(ctx context.Context, update api.SeedUpdate, defaultChannel string) (string, error) {
+	channel := update.Channel
+	if channel == "" {
+		channel = defaultChannel
 	}
 
 	_, err := s.channelSvc.GetByName(ctx, channel)
