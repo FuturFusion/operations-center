@@ -15,6 +15,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/security/acme"
 	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 type environment interface {
@@ -32,9 +33,9 @@ type systemService struct {
 			VarDir() string
 			CacheDir() string
 		},
-		cfg api.SystemSecurityACME,
+		cfg system.SecurityACME,
 		force bool,
-	) (*api.SystemCertificatePost, error)
+	) (*system.CertificatePost, error)
 }
 
 var _ SystemService = &systemService{}
@@ -141,18 +142,18 @@ func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool)
 	return true, nil
 }
 
-func (s *systemService) GetNetworkConfig(_ context.Context) api.SystemNetwork {
+func (s *systemService) GetNetworkConfig(_ context.Context) system.Network {
 	return config.GetNetwork()
 }
 
-func (s *systemService) UpdateNetworkConfig(ctx context.Context, newConfig api.SystemNetworkPut) error {
+func (s *systemService) UpdateNetworkConfig(ctx context.Context, newConfig system.NetworkPut) error {
 	// Make sure the new config is valid.
 	newConfig, err := config.NetworkSetDefaults(newConfig)
 	if err != nil {
 		return err
 	}
 
-	err = config.ValidateNetworkConfig(api.SystemNetwork{
+	err = config.ValidateNetworkConfig(system.Network{
 		NetworkPut: newConfig,
 	})
 	if err != nil {
@@ -222,11 +223,11 @@ func (s *systemService) updateProviderConfigAll(ctx context.Context, cfg map[str
 	return nil
 }
 
-func (s *systemService) GetSecurityConfig(_ context.Context) api.SystemSecurity {
+func (s *systemService) GetSecurityConfig(_ context.Context) system.Security {
 	return config.GetSecurity()
 }
 
-func (s *systemService) UpdateSecurityConfig(ctx context.Context, newConfig api.SystemSecurityPut) error {
+func (s *systemService) UpdateSecurityConfig(ctx context.Context, newConfig system.SecurityPut) error {
 	err := config.UpdateSecurity(ctx, newConfig)
 	if err != nil {
 		return fmt.Errorf("Failed to update security configuration: %w", err)
@@ -235,11 +236,11 @@ func (s *systemService) UpdateSecurityConfig(ctx context.Context, newConfig api.
 	return nil
 }
 
-func (s *systemService) GetSettingsConfig(_ context.Context) api.SystemSettings {
+func (s *systemService) GetSettingsConfig(_ context.Context) system.Settings {
 	return config.GetSettings()
 }
 
-func (s *systemService) UpdateSettingsConfig(ctx context.Context, newConfig api.SystemSettingsPut) error {
+func (s *systemService) UpdateSettingsConfig(ctx context.Context, newConfig system.SettingsPut) error {
 	err := config.UpdateSettings(ctx, newConfig)
 	if err != nil {
 		return fmt.Errorf("Failed to update security configuration: %w", err)
@@ -248,11 +249,11 @@ func (s *systemService) UpdateSettingsConfig(ctx context.Context, newConfig api.
 	return nil
 }
 
-func (s *systemService) GetUpdatesConfig(_ context.Context) api.SystemUpdates {
+func (s *systemService) GetUpdatesConfig(_ context.Context) system.Updates {
 	return config.GetUpdates()
 }
 
-func (s *systemService) UpdateUpdatesConfig(ctx context.Context, newConfig api.SystemUpdatesPut) error {
+func (s *systemService) UpdateUpdatesConfig(ctx context.Context, newConfig system.UpdatesPut) error {
 	err := config.UpdateUpdates(ctx, newConfig)
 	if err != nil {
 		return fmt.Errorf("Failed to update updates configuration: %w", err)
