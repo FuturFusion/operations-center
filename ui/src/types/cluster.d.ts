@@ -48,6 +48,11 @@ export interface ClusterCertFormValues {
   cluster_certificate_key: string;
 }
 
+export interface ClusterBulkUpdateFormValues {
+  action: string;
+  arguments: YamlValue;
+}
+
 export interface ClusterArtifactFile {
   name: string;
   mime_type: string;

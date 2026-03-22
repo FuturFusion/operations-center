@@ -117,6 +117,21 @@ export const resyncClusterInventory = (
   });
 };
 
+export const bulkClusterAction = (
+  name: string,
+  body: string,
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/clusters/${name}/:bulk-update`, {
+      method: "POST",
+      body: body,
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
 export const updateClusterCert = (
   name: string,
   body: string,
