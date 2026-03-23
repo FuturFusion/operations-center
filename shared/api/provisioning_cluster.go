@@ -383,3 +383,14 @@ type ClusterBulkUpdatePost struct {
 	// defined action.
 	Arguments *json.RawMessage `json:"arguments" yaml:"arguments"`
 }
+
+// ClusterUpdatePost represents a cluster update request.
+//
+// swagger:model
+type ClusterUpdatePost struct {
+	// Reboot indicates ifif after the update a rolling reboot of the servers
+	// should be triggered or not. If reboot is set to true, the servers are
+	// rebooted, otherwise only the updates are applied without reboot (OS updates
+	// will require a reboot at a later stage).
+	Reboot bool `json:"reboot" yaml:"reboot"`
+}
