@@ -378,12 +378,25 @@ func (s networkService) SyncCluster(ctx context.Context, name string) error {
 		return err
 	}
 
+	existingUUIDs := map[uuid.UUID]bool{}
 	err = transaction.Do(ctx, func(ctx context.Context) error {
+		existingNetworks, err := s.repo.GetAllWithFilter(ctx, NetworkFilter{
+			Cluster: &name,
+		})
+		if err != nil {
+			return fmt.Errorf(`Failed to get "networks" for cluster %q: %w`, name, err)
+		}
+
+		existingUUIDs = make(map[uuid.UUID]bool, len(existingNetworks))
+		for _, existingNetwork := range existingNetworks {
+			existingUUIDs[existingNetwork.UUID] = true
+		}
+
 		err = s.repo.DeleteWithFilter(ctx, NetworkFilter{
 			Cluster: &name,
 		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			return fmt.Errorf(`Failed to delete "network" from cluster %q: %w`, name, err)
+			return fmt.Errorf(`Failed to delete "networks" for cluster %q: %w`, name, err)
 		}
 
 		for _, retrievedNetwork := range retrievedNetworks {
@@ -406,6 +419,12 @@ func (s networkService) SyncCluster(ctx context.Context, name string) error {
 				return err
 			}
 
+			if existingUUIDs[network.UUID] {
+				delete(existingUUIDs, network.UUID)
+			} else {
+				slog.WarnContext(ctx, "sync cluster detected missing item in inventory", slog.String("object_type", "network"), slog.Any("uuid", network.UUID))
+			}
+
 			_, err := s.repo.Create(ctx, network)
 			if err != nil {
 				return fmt.Errorf(`Failed to create network %q for cluster %q: %w`, network.UUID.String(), name, err)
@@ -416,6 +435,10 @@ func (s networkService) SyncCluster(ctx context.Context, name string) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	for uuid := range existingUUIDs {
+		slog.WarnContext(ctx, "sync cluster detected supernumerary item in inventory", slog.String("object_type", "network"), slog.Any("uuid", uuid))
 	}
 
 	return nil

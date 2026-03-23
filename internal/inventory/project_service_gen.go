@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -359,12 +360,25 @@ func (s projectService) SyncCluster(ctx context.Context, name string) error {
 		return err
 	}
 
+	existingUUIDs := map[uuid.UUID]bool{}
 	err = transaction.Do(ctx, func(ctx context.Context) error {
+		existingProjects, err := s.repo.GetAllWithFilter(ctx, ProjectFilter{
+			Cluster: &name,
+		})
+		if err != nil {
+			return fmt.Errorf(`Failed to get "projects" for cluster %q: %w`, name, err)
+		}
+
+		existingUUIDs = make(map[uuid.UUID]bool, len(existingProjects))
+		for _, existingProject := range existingProjects {
+			existingUUIDs[existingProject.UUID] = true
+		}
+
 		err = s.repo.DeleteWithFilter(ctx, ProjectFilter{
 			Cluster: &name,
 		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			return fmt.Errorf(`Failed to delete "project" from cluster %q: %w`, name, err)
+			return fmt.Errorf(`Failed to delete "projects" for cluster %q: %w`, name, err)
 		}
 
 		for _, retrievedProject := range retrievedProjects {
@@ -386,6 +400,12 @@ func (s projectService) SyncCluster(ctx context.Context, name string) error {
 				return err
 			}
 
+			if existingUUIDs[project.UUID] {
+				delete(existingUUIDs, project.UUID)
+			} else {
+				slog.WarnContext(ctx, "sync cluster detected missing item in inventory", slog.String("object_type", "project"), slog.Any("uuid", project.UUID))
+			}
+
 			_, err := s.repo.Create(ctx, project)
 			if err != nil {
 				return fmt.Errorf(`Failed to create project %q for cluster %q: %w`, project.UUID.String(), name, err)
@@ -396,6 +416,10 @@ func (s projectService) SyncCluster(ctx context.Context, name string) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	for uuid := range existingUUIDs {
+		slog.WarnContext(ctx, "sync cluster detected supernumerary item in inventory", slog.String("object_type", "project"), slog.Any("uuid", uuid))
 	}
 
 	return nil

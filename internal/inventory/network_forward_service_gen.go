@@ -405,14 +405,29 @@ func (s networkForwardService) SyncCluster(ctx context.Context, name string) err
 			return err
 		}
 
+		existingUUIDs := map[uuid.UUID]bool{}
 		err = transaction.Do(ctx, func(ctx context.Context) error {
+			existingNetworkForwards, err := s.repo.GetAllWithFilter(ctx, NetworkForwardFilter{
+				Cluster:     &name,
+				ProjectName: &network.Project,
+				NetworkName: &network.Name,
+			})
+			if err != nil {
+				return fmt.Errorf(`Failed to get "network_forwards" for cluster %q, project %q, network %q: %w`, name, network.Project, network.Name, err)
+			}
+
+			existingUUIDs = make(map[uuid.UUID]bool, len(existingNetworkForwards))
+			for _, existingNetworkForward := range existingNetworkForwards {
+				existingUUIDs[existingNetworkForward.UUID] = true
+			}
+
 			err = s.repo.DeleteWithFilter(ctx, NetworkForwardFilter{
 				Cluster:     &name,
 				ProjectName: &network.Project,
 				NetworkName: &network.Name,
 			})
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
-				return fmt.Errorf(`Failed to delete "network_forward" from cluster %q, network %q: %w`, name, network.Name, err)
+				return fmt.Errorf(`Failed to delete "network_forwards" for cluster %q, project %q, network %q: %w`, name, network.Project, network.Name, err)
 			}
 
 			for _, retrievedNetworkForward := range retrievedNetworkForwards {
@@ -436,6 +451,12 @@ func (s networkForwardService) SyncCluster(ctx context.Context, name string) err
 					return err
 				}
 
+				if existingUUIDs[networkForward.UUID] {
+					delete(existingUUIDs, networkForward.UUID)
+				} else {
+					slog.WarnContext(ctx, "sync cluster detected missing item in inventory", slog.String("object_type", "network_forward"), slog.Any("uuid", networkForward.UUID))
+				}
+
 				_, err := s.repo.Create(ctx, networkForward)
 				if err != nil {
 					return fmt.Errorf(`Failed to create network_forward %q for cluster %q, network %q: %w`, networkForward.UUID.String(), name, network.Name, err)
@@ -446,6 +467,10 @@ func (s networkForwardService) SyncCluster(ctx context.Context, name string) err
 		})
 		if err != nil {
 			return err
+		}
+
+		for uuid := range existingUUIDs {
+			slog.WarnContext(ctx, "sync cluster detected supernumerary item in inventory", slog.String("object_type", "network_forward"), slog.Any("uuid", uuid))
 		}
 	}
 

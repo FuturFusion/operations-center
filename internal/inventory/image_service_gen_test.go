@@ -3,6 +3,7 @@
 package inventory_test
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -17,8 +18,10 @@ import (
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
 	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -1050,6 +1053,8 @@ func TestImageService_ResyncByName(t *testing.T) {
 }
 
 func TestImageService_SyncAll(t *testing.T) {
+	fixedTime := time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+
 	// Includes also SyncCluster
 	tests := []struct {
 		name                     string
@@ -1057,11 +1062,14 @@ func TestImageService_SyncAll(t *testing.T) {
 		clusterSvcGetEndpointErr error
 		imageClientGetImages     []incusapi.Image
 		imageClientGetImagesErr  error
+		repoGetAllWithFilter     inventory.Images
+		repoGetAllWithFilterErr  error
 		repoDeleteWithFilterErr  error
 		repoCreateErr            error
 		serviceOptions           []inventory.ImageServiceOption
 
 		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
 	}{
 		{
 			name: "success",
@@ -1078,8 +1086,23 @@ func TestImageService_SyncAll(t *testing.T) {
 					Project:     "project one",
 				},
 			},
+			repoGetAllWithFilter: inventory.Images{
+				{
+					Cluster:     "one",
+					Name:        "image one",
+					ProjectName: "project one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusImageWrapper{
+						Image: incusapi.Image{
+							Fingerprint: "image one",
+							Project:     "project one",
+						},
+					},
+				},
+			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
 			name: "success - with sync filter",
@@ -1100,6 +1123,20 @@ func TestImageService_SyncAll(t *testing.T) {
 					Project:     "project one",
 				},
 			},
+			repoGetAllWithFilter: inventory.Images{
+				{
+					Cluster:     "one",
+					Name:        "image one",
+					ProjectName: "project one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusImageWrapper{
+						Image: incusapi.Image{
+							Fingerprint: "image one",
+							Project:     "project one",
+						},
+					},
+				},
+			},
 			serviceOptions: []inventory.ImageServiceOption{
 				inventory.ImageWithSyncFilter(func(image inventory.Image) bool {
 					return image.Name == "image filtered"
@@ -1107,12 +1144,82 @@ func TestImageService_SyncAll(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
-			name:                     "error - cluster service get by ID",
+			name: "success - missing",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			imageClientGetImages: []incusapi.Image{
+				{
+					Fingerprint: "image one",
+					Project:     "project one",
+				},
+			},
+			repoGetAllWithFilter: inventory.Images{
+				// item missing
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("sync cluster detected missing item in inventory"),
+		},
+		{
+			name: "success - supernumerary",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			imageClientGetImages: []incusapi.Image{
+				{
+					Fingerprint: "image one",
+					Project:     "project one",
+				},
+			},
+			repoGetAllWithFilter: inventory.Images{
+				{
+					Cluster:     "one",
+					Name:        "image one",
+					ProjectName: "project one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusImageWrapper{
+						Image: incusapi.Image{
+							Fingerprint: "image one",
+							Project:     "project one",
+						},
+					},
+				},
+				// supernumerary item
+				{
+					Cluster:     "one",
+					Name:        "supernumerary",
+					ProjectName: "project one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusImageWrapper{
+						Image: incusapi.Image{
+							Fingerprint: "supernumerary",
+							Project:     "project one",
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("sync cluster detected supernumerary item in inventory"),
+		},
+		{
+			name:                     "error - cluster service get by name",
 			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - image client get Images",
@@ -1126,9 +1233,30 @@ func TestImageService_SyncAll(t *testing.T) {
 			imageClientGetImagesErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
-			name: "error - images delete by cluster ID",
+			name: "error - images repo.GetAllWithFilter",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			imageClientGetImages: []incusapi.Image{
+				{
+					Fingerprint: "image one",
+					Project:     "project one",
+				},
+			},
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - images repo.DeleteWithFilter",
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
@@ -1145,6 +1273,7 @@ func TestImageService_SyncAll(t *testing.T) {
 			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - validate",
@@ -1166,6 +1295,7 @@ func TestImageService_SyncAll(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - image create",
@@ -1182,16 +1312,43 @@ func TestImageService_SyncAll(t *testing.T) {
 					Project:     "project one",
 				},
 			},
+			repoGetAllWithFilter: inventory.Images{
+				{
+					Cluster:     "one",
+					Name:        "image one",
+					ProjectName: "project one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusImageWrapper{
+						Image: incusapi.Image{
+							Fingerprint: "image one",
+							Project:     "project one",
+						},
+					},
+				},
+			},
 			repoCreateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			for i, item := range tc.repoGetAllWithFilter {
+				item.DeriveUUID()
+				tc.repoGetAllWithFilter[i] = item
+			}
+
 			repo := &repoMock.ImageRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.ImageFilter) (inventory.Images, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
 				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.ImageFilter) error {
 					return tc.repoDeleteWithFilterErr
 				},
@@ -1216,16 +1373,17 @@ func TestImageService_SyncAll(t *testing.T) {
 				append(
 					tc.serviceOptions,
 					inventory.ImageWithNow(func() time.Time {
-						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+						return fixedTime
 					}),
 				)...,
 			)
 
 			// Run test
-			err := imageSvc.SyncCluster(context.Background(), "one")
+			err = imageSvc.SyncCluster(context.Background(), "one")
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
 		})
 	}
 }

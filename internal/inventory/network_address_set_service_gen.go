@@ -382,12 +382,25 @@ func (s networkAddressSetService) SyncCluster(ctx context.Context, name string) 
 		return err
 	}
 
+	existingUUIDs := map[uuid.UUID]bool{}
 	err = transaction.Do(ctx, func(ctx context.Context) error {
+		existingNetworkAddressSets, err := s.repo.GetAllWithFilter(ctx, NetworkAddressSetFilter{
+			Cluster: &name,
+		})
+		if err != nil {
+			return fmt.Errorf(`Failed to get "network_address_sets" for cluster %q: %w`, name, err)
+		}
+
+		existingUUIDs = make(map[uuid.UUID]bool, len(existingNetworkAddressSets))
+		for _, existingNetworkAddressSet := range existingNetworkAddressSets {
+			existingUUIDs[existingNetworkAddressSet.UUID] = true
+		}
+
 		err = s.repo.DeleteWithFilter(ctx, NetworkAddressSetFilter{
 			Cluster: &name,
 		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			return fmt.Errorf(`Failed to delete "network_address_set" from cluster %q: %w`, name, err)
+			return fmt.Errorf(`Failed to delete "network_address_sets" for cluster %q: %w`, name, err)
 		}
 
 		for _, retrievedNetworkAddressSet := range retrievedNetworkAddressSets {
@@ -410,6 +423,12 @@ func (s networkAddressSetService) SyncCluster(ctx context.Context, name string) 
 				return err
 			}
 
+			if existingUUIDs[networkAddressSet.UUID] {
+				delete(existingUUIDs, networkAddressSet.UUID)
+			} else {
+				slog.WarnContext(ctx, "sync cluster detected missing item in inventory", slog.String("object_type", "network_address_set"), slog.Any("uuid", networkAddressSet.UUID))
+			}
+
 			_, err := s.repo.Create(ctx, networkAddressSet)
 			if err != nil {
 				return fmt.Errorf(`Failed to create network_address_set %q for cluster %q: %w`, networkAddressSet.UUID.String(), name, err)
@@ -420,6 +439,10 @@ func (s networkAddressSetService) SyncCluster(ctx context.Context, name string) 
 	})
 	if err != nil {
 		return err
+	}
+
+	for uuid := range existingUUIDs {
+		slog.WarnContext(ctx, "sync cluster detected supernumerary item in inventory", slog.String("object_type", "network_address_set"), slog.Any("uuid", uuid))
 	}
 
 	return nil

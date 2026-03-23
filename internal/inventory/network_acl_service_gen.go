@@ -378,12 +378,25 @@ func (s networkACLService) SyncCluster(ctx context.Context, name string) error {
 		return err
 	}
 
+	existingUUIDs := map[uuid.UUID]bool{}
 	err = transaction.Do(ctx, func(ctx context.Context) error {
+		existingNetworkACLs, err := s.repo.GetAllWithFilter(ctx, NetworkACLFilter{
+			Cluster: &name,
+		})
+		if err != nil {
+			return fmt.Errorf(`Failed to get "network_acls" for cluster %q: %w`, name, err)
+		}
+
+		existingUUIDs = make(map[uuid.UUID]bool, len(existingNetworkACLs))
+		for _, existingNetworkACL := range existingNetworkACLs {
+			existingUUIDs[existingNetworkACL.UUID] = true
+		}
+
 		err = s.repo.DeleteWithFilter(ctx, NetworkACLFilter{
 			Cluster: &name,
 		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			return fmt.Errorf(`Failed to delete "network_acl" from cluster %q: %w`, name, err)
+			return fmt.Errorf(`Failed to delete "network_acls" for cluster %q: %w`, name, err)
 		}
 
 		for _, retrievedNetworkACL := range retrievedNetworkACLs {
@@ -406,6 +419,12 @@ func (s networkACLService) SyncCluster(ctx context.Context, name string) error {
 				return err
 			}
 
+			if existingUUIDs[networkACL.UUID] {
+				delete(existingUUIDs, networkACL.UUID)
+			} else {
+				slog.WarnContext(ctx, "sync cluster detected missing item in inventory", slog.String("object_type", "network_acl"), slog.Any("uuid", networkACL.UUID))
+			}
+
 			_, err := s.repo.Create(ctx, networkACL)
 			if err != nil {
 				return fmt.Errorf(`Failed to create network_acl %q for cluster %q: %w`, networkACL.UUID.String(), name, err)
@@ -416,6 +435,10 @@ func (s networkACLService) SyncCluster(ctx context.Context, name string) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	for uuid := range existingUUIDs {
+		slog.WarnContext(ctx, "sync cluster detected supernumerary item in inventory", slog.String("object_type", "network_acl"), slog.Any("uuid", uuid))
 	}
 
 	return nil

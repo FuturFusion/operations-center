@@ -408,13 +408,27 @@ func (s storageBucketService) SyncCluster(ctx context.Context, name string) erro
 			return err
 		}
 
+		existingUUIDs := map[uuid.UUID]bool{}
 		err = transaction.Do(ctx, func(ctx context.Context) error {
+			existingStorageBuckets, err := s.repo.GetAllWithFilter(ctx, StorageBucketFilter{
+				Cluster:         &name,
+				StoragePoolName: &storagePool.Name,
+			})
+			if err != nil {
+				return fmt.Errorf(`Failed to get "storage_buckets" for cluster %q, storage_pool %q: %w`, name, storagePool.Name, err)
+			}
+
+			existingUUIDs = make(map[uuid.UUID]bool, len(existingStorageBuckets))
+			for _, existingStorageBucket := range existingStorageBuckets {
+				existingUUIDs[existingStorageBucket.UUID] = true
+			}
+
 			err = s.repo.DeleteWithFilter(ctx, StorageBucketFilter{
 				Cluster:         &name,
 				StoragePoolName: &storagePool.Name,
 			})
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
-				return fmt.Errorf(`Failed to delete "storage_bucket" from cluster %q, storage_pool %q: %w`, name, storagePool.Name, err)
+				return fmt.Errorf(`Failed to delete "storage_buckets" for cluster %q, storage_pool %q: %w`, name, storagePool.Name, err)
 			}
 
 			for _, retrievedStorageBucket := range retrievedStorageBuckets {
@@ -439,6 +453,12 @@ func (s storageBucketService) SyncCluster(ctx context.Context, name string) erro
 					return err
 				}
 
+				if existingUUIDs[storageBucket.UUID] {
+					delete(existingUUIDs, storageBucket.UUID)
+				} else {
+					slog.WarnContext(ctx, "sync cluster detected missing item in inventory", slog.String("object_type", "storage_bucket"), slog.Any("uuid", storageBucket.UUID))
+				}
+
 				_, err := s.repo.Create(ctx, storageBucket)
 				if err != nil {
 					return fmt.Errorf(`Failed to create storage_bucket %q for cluster %q, storage_pool %q: %w`, storageBucket.UUID.String(), name, storagePool.Name, err)
@@ -449,6 +469,10 @@ func (s storageBucketService) SyncCluster(ctx context.Context, name string) erro
 		})
 		if err != nil {
 			return err
+		}
+
+		for uuid := range existingUUIDs {
+			slog.WarnContext(ctx, "sync cluster detected supernumerary item in inventory", slog.String("object_type", "storage_bucket"), slog.Any("uuid", uuid))
 		}
 	}
 

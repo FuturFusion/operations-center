@@ -35,7 +35,7 @@ const (
 	// Operations Center. Since collecting this information might be an expensive
 	// operation on the servers, this information should not be quieried
 	// excessively.
-	InventoryUpdateInterval = 1 * time.Hour
+	InventoryUpdateInterval = 6 * time.Hour
 
 	// ACME server certificate renew interval.
 	ACMEServerCertificateRenewInterval = 24 * time.Hour

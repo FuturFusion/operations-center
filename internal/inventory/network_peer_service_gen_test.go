@@ -3,6 +3,7 @@
 package inventory_test
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -17,8 +18,10 @@ import (
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
 	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -1070,6 +1073,8 @@ func TestNetworkPeerService_ResyncByName(t *testing.T) {
 }
 
 func TestNetworkPeerService_SyncAll(t *testing.T) {
+	fixedTime := time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+
 	// Includes also SyncCluster
 	tests := []struct {
 		name                                string
@@ -1079,11 +1084,14 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 		networkClientGetNetworksErr         error
 		networkPeerClientGetNetworkPeers    []incusapi.NetworkPeer
 		networkPeerClientGetNetworkPeersErr error
+		repoGetAllWithFilter                inventory.NetworkPeers
+		repoGetAllWithFilterErr             error
 		repoDeleteWithFilterErr             error
 		repoCreateErr                       error
 		serviceOptions                      []inventory.NetworkPeerServiceOption
 
 		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
 	}{
 		{
 			name: "success",
@@ -1105,8 +1113,23 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 					Name: "networkPeer one",
 				},
 			},
+			repoGetAllWithFilter: inventory.NetworkPeers{
+				{
+					Cluster:     "one",
+					Name:        "networkPeer one",
+					ProjectName: "project one",
+					NetworkName: "network one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkPeerWrapper{
+						NetworkPeer: incusapi.NetworkPeer{
+							Name: "networkPeer one",
+						},
+					},
+				},
+			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
 			name: "success - with parent filter",
@@ -1132,6 +1155,20 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 					Name: "networkPeer one",
 				},
 			},
+			repoGetAllWithFilter: inventory.NetworkPeers{
+				{
+					Cluster:     "one",
+					Name:        "networkPeer one",
+					ProjectName: "project one",
+					NetworkName: "network one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkPeerWrapper{
+						NetworkPeer: incusapi.NetworkPeer{
+							Name: "networkPeer one",
+						},
+					},
+				},
+			},
 			serviceOptions: []inventory.NetworkPeerServiceOption{
 				inventory.NetworkPeerWithParentFilter(func(parent incusapi.Network) bool {
 					return parent.Name == "filtered"
@@ -1139,6 +1176,7 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
 			name: "success - with sync filter",
@@ -1163,6 +1201,20 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 					Name: "networkPeer filtered",
 				},
 			},
+			repoGetAllWithFilter: inventory.NetworkPeers{
+				{
+					Cluster:     "one",
+					Name:        "networkPeer one",
+					ProjectName: "project one",
+					NetworkName: "network one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkPeerWrapper{
+						NetworkPeer: incusapi.NetworkPeer{
+							Name: "networkPeer one",
+						},
+					},
+				},
+			},
 			serviceOptions: []inventory.NetworkPeerServiceOption{
 				inventory.NetworkPeerWithSyncFilter(func(networkPeer inventory.NetworkPeer) bool {
 					return networkPeer.Name == "networkPeer filtered"
@@ -1170,12 +1222,92 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
-			name:                     "error - cluster service get by ID",
+			name: "success - missing",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			networkClientGetNetworks: []incusapi.Network{
+				{
+					Name:    "network one",
+					Project: "project one",
+				},
+			},
+			networkPeerClientGetNetworkPeers: []incusapi.NetworkPeer{
+				{
+					Name: "networkPeer one",
+				},
+			},
+			repoGetAllWithFilter: inventory.NetworkPeers{
+				// item missing
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("sync cluster detected missing item in inventory"),
+		},
+		{
+			name: "success - supernumerary",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			networkClientGetNetworks: []incusapi.Network{
+				{
+					Name:    "network one",
+					Project: "project one",
+				},
+			},
+			networkPeerClientGetNetworkPeers: []incusapi.NetworkPeer{
+				{
+					Name: "networkPeer one",
+				},
+			},
+			repoGetAllWithFilter: inventory.NetworkPeers{
+				{
+					Cluster:     "one",
+					Name:        "networkPeer one",
+					ProjectName: "project one",
+					NetworkName: "network one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkPeerWrapper{
+						NetworkPeer: incusapi.NetworkPeer{
+							Name: "networkPeer one",
+						},
+					},
+				},
+				// supernumerary item
+				{
+					Cluster:     "one",
+					Name:        "supernumerary",
+					ProjectName: "project one",
+					NetworkName: "network one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkPeerWrapper{
+						NetworkPeer: incusapi.NetworkPeer{
+							Name: "supernumerary",
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("sync cluster detected supernumerary item in inventory"),
+		},
+		{
+			name:                     "error - cluster service get by name",
 			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - network client get Networks",
@@ -1189,6 +1321,7 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			networkClientGetNetworksErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - networkPeer client get NetworkPeers",
@@ -1208,9 +1341,35 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			networkPeerClientGetNetworkPeersErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
-			name: "error - network_peers delete by cluster ID",
+			name: "error - network_peers repo.GetAllWithFilter",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			networkClientGetNetworks: []incusapi.Network{
+				{
+					Name:    "network one",
+					Project: "project one",
+				},
+			},
+			networkPeerClientGetNetworkPeers: []incusapi.NetworkPeer{
+				{
+					Name: "networkPeer one",
+				},
+			},
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - network_peers repo.DeleteWithFilter",
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
@@ -1232,6 +1391,7 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - validate",
@@ -1258,6 +1418,7 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - networkPeer create",
@@ -1279,16 +1440,43 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 					Name: "networkPeer one",
 				},
 			},
+			repoGetAllWithFilter: inventory.NetworkPeers{
+				{
+					Cluster:     "one",
+					Name:        "networkPeer one",
+					ProjectName: "project one",
+					NetworkName: "network one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkPeerWrapper{
+						NetworkPeer: incusapi.NetworkPeer{
+							Name: "networkPeer one",
+						},
+					},
+				},
+			},
 			repoCreateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			for i, item := range tc.repoGetAllWithFilter {
+				item.DeriveUUID()
+				tc.repoGetAllWithFilter[i] = item
+			}
+
 			repo := &repoMock.NetworkPeerRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.NetworkPeerFilter) (inventory.NetworkPeers, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
 				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.NetworkPeerFilter) error {
 					require.Equal(t, tc.networkClientGetNetworks[0].Project, *filter.ProjectName)
 					require.Equal(t, tc.networkClientGetNetworks[0].Name, *filter.NetworkName)
@@ -1321,16 +1509,17 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 				append(
 					tc.serviceOptions,
 					inventory.NetworkPeerWithNow(func() time.Time {
-						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+						return fixedTime
 					}),
 				)...,
 			)
 
 			// Run test
-			err := networkPeerSvc.SyncCluster(context.Background(), "one")
+			err = networkPeerSvc.SyncCluster(context.Background(), "one")
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
 		})
 	}
 }

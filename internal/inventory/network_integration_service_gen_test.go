@@ -3,6 +3,7 @@
 package inventory_test
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -17,8 +18,10 @@ import (
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
 	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -995,6 +998,8 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 }
 
 func TestNetworkIntegrationService_SyncAll(t *testing.T) {
+	fixedTime := time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+
 	// Includes also SyncCluster
 	tests := []struct {
 		name                                              string
@@ -1002,11 +1007,14 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 		clusterSvcGetEndpointErr                          error
 		networkIntegrationClientGetNetworkIntegrations    []incusapi.NetworkIntegration
 		networkIntegrationClientGetNetworkIntegrationsErr error
+		repoGetAllWithFilter                              inventory.NetworkIntegrations
+		repoGetAllWithFilterErr                           error
 		repoDeleteWithFilterErr                           error
 		repoCreateErr                                     error
 		serviceOptions                                    []inventory.NetworkIntegrationServiceOption
 
 		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
 	}{
 		{
 			name: "success",
@@ -1022,8 +1030,21 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 					Name: "networkIntegration one",
 				},
 			},
+			repoGetAllWithFilter: inventory.NetworkIntegrations{
+				{
+					Cluster:     "one",
+					Name:        "networkIntegration one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkIntegrationWrapper{
+						NetworkIntegration: incusapi.NetworkIntegration{
+							Name: "networkIntegration one",
+						},
+					},
+				},
+			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
 			name: "success - with sync filter",
@@ -1042,6 +1063,18 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 					Name: "networkIntegration filtered",
 				},
 			},
+			repoGetAllWithFilter: inventory.NetworkIntegrations{
+				{
+					Cluster:     "one",
+					Name:        "networkIntegration one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkIntegrationWrapper{
+						NetworkIntegration: incusapi.NetworkIntegration{
+							Name: "networkIntegration one",
+						},
+					},
+				},
+			},
 			serviceOptions: []inventory.NetworkIntegrationServiceOption{
 				inventory.NetworkIntegrationWithSyncFilter(func(networkIntegration inventory.NetworkIntegration) bool {
 					return networkIntegration.Name == "networkIntegration filtered"
@@ -1049,12 +1082,76 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
-			name:                     "error - cluster service get by ID",
+			name: "success - missing",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
+				{
+					Name: "networkIntegration one",
+				},
+			},
+			repoGetAllWithFilter: inventory.NetworkIntegrations{
+				// item missing
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("sync cluster detected missing item in inventory"),
+		},
+		{
+			name: "success - supernumerary",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
+				{
+					Name: "networkIntegration one",
+				},
+			},
+			repoGetAllWithFilter: inventory.NetworkIntegrations{
+				{
+					Cluster:     "one",
+					Name:        "networkIntegration one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkIntegrationWrapper{
+						NetworkIntegration: incusapi.NetworkIntegration{
+							Name: "networkIntegration one",
+						},
+					},
+				},
+				// supernumerary item
+				{
+					Cluster:     "one",
+					Name:        "supernumerary",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkIntegrationWrapper{
+						NetworkIntegration: incusapi.NetworkIntegration{
+							Name: "supernumerary",
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("sync cluster detected supernumerary item in inventory"),
+		},
+		{
+			name:                     "error - cluster service get by name",
 			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - networkIntegration client get NetworkIntegrations",
@@ -1068,9 +1165,29 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			networkIntegrationClientGetNetworkIntegrationsErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
-			name: "error - network_integrations delete by cluster ID",
+			name: "error - network_integrations repo.GetAllWithFilter",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
+				{
+					Name: "networkIntegration one",
+				},
+			},
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - network_integrations repo.DeleteWithFilter",
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
@@ -1086,6 +1203,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - validate",
@@ -1106,6 +1224,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - networkIntegration create",
@@ -1121,16 +1240,41 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 					Name: "networkIntegration one",
 				},
 			},
+			repoGetAllWithFilter: inventory.NetworkIntegrations{
+				{
+					Cluster:     "one",
+					Name:        "networkIntegration one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkIntegrationWrapper{
+						NetworkIntegration: incusapi.NetworkIntegration{
+							Name: "networkIntegration one",
+						},
+					},
+				},
+			},
 			repoCreateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			for i, item := range tc.repoGetAllWithFilter {
+				item.DeriveUUID()
+				tc.repoGetAllWithFilter[i] = item
+			}
+
 			repo := &repoMock.NetworkIntegrationRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.NetworkIntegrationFilter) (inventory.NetworkIntegrations, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
 				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.NetworkIntegrationFilter) error {
 					return tc.repoDeleteWithFilterErr
 				},
@@ -1155,16 +1299,17 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				append(
 					tc.serviceOptions,
 					inventory.NetworkIntegrationWithNow(func() time.Time {
-						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+						return fixedTime
 					}),
 				)...,
 			)
 
 			// Run test
-			err := networkIntegrationSvc.SyncCluster(context.Background(), "one")
+			err = networkIntegrationSvc.SyncCluster(context.Background(), "one")
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
 		})
 	}
 }
