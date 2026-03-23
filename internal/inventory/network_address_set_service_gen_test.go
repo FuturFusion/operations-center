@@ -3,6 +3,7 @@
 package inventory_test
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -17,8 +18,10 @@ import (
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
 	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -1076,6 +1079,8 @@ func TestNetworkAddressSetService_ResyncByName(t *testing.T) {
 }
 
 func TestNetworkAddressSetService_SyncAll(t *testing.T) {
+	fixedTime := time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+
 	// Includes also SyncCluster
 	tests := []struct {
 		name                                            string
@@ -1084,11 +1089,14 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 		networkAddressSetClientHasExtension             bool
 		networkAddressSetClientGetNetworkAddressSets    []incusapi.NetworkAddressSet
 		networkAddressSetClientGetNetworkAddressSetsErr error
+		repoGetAllWithFilter                            inventory.NetworkAddressSets
+		repoGetAllWithFilterErr                         error
 		repoDeleteWithFilterErr                         error
 		repoCreateErr                                   error
 		serviceOptions                                  []inventory.NetworkAddressSetServiceOption
 
 		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
 	}{
 		{
 			name: "success",
@@ -1108,8 +1116,24 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 					Project: "project one",
 				},
 			},
+			repoGetAllWithFilter: inventory.NetworkAddressSets{
+				{
+					Cluster:     "one",
+					Name:        "networkAddressSet one",
+					ProjectName: "project one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkAddressSetWrapper{
+						NetworkAddressSet: incusapi.NetworkAddressSet{
+							NetworkAddressSetPost: incusapi.NetworkAddressSetPost{
+								Name: "networkAddressSet one",
+							},
+						},
+					},
+				},
+			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
 			name: "success - with sync filter",
@@ -1135,6 +1159,21 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 					Project: "project one",
 				},
 			},
+			repoGetAllWithFilter: inventory.NetworkAddressSets{
+				{
+					Cluster:     "one",
+					Name:        "networkAddressSet one",
+					ProjectName: "project one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkAddressSetWrapper{
+						NetworkAddressSet: incusapi.NetworkAddressSet{
+							NetworkAddressSetPost: incusapi.NetworkAddressSetPost{
+								Name: "networkAddressSet one",
+							},
+						},
+					},
+				},
+			},
 			serviceOptions: []inventory.NetworkAddressSetServiceOption{
 				inventory.NetworkAddressSetWithSyncFilter(func(networkAddressSet inventory.NetworkAddressSet) bool {
 					return networkAddressSet.Name == "networkAddressSet filtered"
@@ -1142,6 +1181,7 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
 			name: "success - does not have extension",
@@ -1155,12 +1195,90 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 			networkAddressSetClientHasExtension: false,
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
-			name:                     "error - cluster service get by ID",
+			name: "success - missing",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			networkAddressSetClientHasExtension: true,
+			networkAddressSetClientGetNetworkAddressSets: []incusapi.NetworkAddressSet{
+				{
+					NetworkAddressSetPost: incusapi.NetworkAddressSetPost{
+						Name: "networkAddressSet one",
+					},
+					Project: "project one",
+				},
+			},
+			repoGetAllWithFilter: inventory.NetworkAddressSets{
+				// item missing
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("sync cluster detected missing item in inventory"),
+		},
+		{
+			name: "success - supernumerary",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			networkAddressSetClientHasExtension: true,
+			networkAddressSetClientGetNetworkAddressSets: []incusapi.NetworkAddressSet{
+				{
+					NetworkAddressSetPost: incusapi.NetworkAddressSetPost{
+						Name: "networkAddressSet one",
+					},
+					Project: "project one",
+				},
+			},
+			repoGetAllWithFilter: inventory.NetworkAddressSets{
+				{
+					Cluster:     "one",
+					Name:        "networkAddressSet one",
+					ProjectName: "project one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkAddressSetWrapper{
+						NetworkAddressSet: incusapi.NetworkAddressSet{
+							NetworkAddressSetPost: incusapi.NetworkAddressSetPost{
+								Name: "networkAddressSet one",
+							},
+						},
+					},
+				},
+				// supernumerary item
+				{
+					Cluster:     "one",
+					Name:        "supernumerary",
+					ProjectName: "project one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkAddressSetWrapper{
+						NetworkAddressSet: incusapi.NetworkAddressSet{
+							NetworkAddressSetPost: incusapi.NetworkAddressSetPost{
+								Name: "supernumerary",
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("sync cluster detected supernumerary item in inventory"),
+		},
+		{
+			name:                     "error - cluster service get by name",
 			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - networkAddressSet client get NetworkAddressSets",
@@ -1175,9 +1293,33 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 			networkAddressSetClientGetNetworkAddressSetsErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
-			name: "error - network_address_sets delete by cluster ID",
+			name: "error - network_address_sets repo.GetAllWithFilter",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			networkAddressSetClientHasExtension: true,
+			networkAddressSetClientGetNetworkAddressSets: []incusapi.NetworkAddressSet{
+				{
+					NetworkAddressSetPost: incusapi.NetworkAddressSetPost{
+						Name: "networkAddressSet one",
+					},
+					Project: "project one",
+				},
+			},
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - network_address_sets repo.DeleteWithFilter",
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
@@ -1197,6 +1339,7 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - validate",
@@ -1221,6 +1364,7 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - networkAddressSet create",
@@ -1240,16 +1384,44 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 					Project: "project one",
 				},
 			},
+			repoGetAllWithFilter: inventory.NetworkAddressSets{
+				{
+					Cluster:     "one",
+					Name:        "networkAddressSet one",
+					ProjectName: "project one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkAddressSetWrapper{
+						NetworkAddressSet: incusapi.NetworkAddressSet{
+							NetworkAddressSetPost: incusapi.NetworkAddressSetPost{
+								Name: "networkAddressSet one",
+							},
+						},
+					},
+				},
+			},
 			repoCreateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			for i, item := range tc.repoGetAllWithFilter {
+				item.DeriveUUID()
+				tc.repoGetAllWithFilter[i] = item
+			}
+
 			repo := &repoMock.NetworkAddressSetRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.NetworkAddressSetFilter) (inventory.NetworkAddressSets, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
 				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.NetworkAddressSetFilter) error {
 					return tc.repoDeleteWithFilterErr
 				},
@@ -1277,16 +1449,17 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 				append(
 					tc.serviceOptions,
 					inventory.NetworkAddressSetWithNow(func() time.Time {
-						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+						return fixedTime
 					}),
 				)...,
 			)
 
 			// Run test
-			err := networkAddressSetSvc.SyncCluster(context.Background(), "one")
+			err = networkAddressSetSvc.SyncCluster(context.Background(), "one")
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
 		})
 	}
 }

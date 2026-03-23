@@ -378,12 +378,25 @@ func (s imageService) SyncCluster(ctx context.Context, name string) error {
 		return err
 	}
 
+	existingUUIDs := map[uuid.UUID]bool{}
 	err = transaction.Do(ctx, func(ctx context.Context) error {
+		existingImages, err := s.repo.GetAllWithFilter(ctx, ImageFilter{
+			Cluster: &name,
+		})
+		if err != nil {
+			return fmt.Errorf(`Failed to get "images" for cluster %q: %w`, name, err)
+		}
+
+		existingUUIDs = make(map[uuid.UUID]bool, len(existingImages))
+		for _, existingImage := range existingImages {
+			existingUUIDs[existingImage.UUID] = true
+		}
+
 		err = s.repo.DeleteWithFilter(ctx, ImageFilter{
 			Cluster: &name,
 		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			return fmt.Errorf(`Failed to delete "image" from cluster %q: %w`, name, err)
+			return fmt.Errorf(`Failed to delete "images" for cluster %q: %w`, name, err)
 		}
 
 		for _, retrievedImage := range retrievedImages {
@@ -406,6 +419,12 @@ func (s imageService) SyncCluster(ctx context.Context, name string) error {
 				return err
 			}
 
+			if existingUUIDs[image.UUID] {
+				delete(existingUUIDs, image.UUID)
+			} else {
+				slog.WarnContext(ctx, "sync cluster detected missing item in inventory", slog.String("object_type", "image"), slog.Any("uuid", image.UUID))
+			}
+
 			_, err := s.repo.Create(ctx, image)
 			if err != nil {
 				return fmt.Errorf(`Failed to create image %q for cluster %q: %w`, image.UUID.String(), name, err)
@@ -416,6 +435,10 @@ func (s imageService) SyncCluster(ctx context.Context, name string) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	for uuid := range existingUUIDs {
+		slog.WarnContext(ctx, "sync cluster detected supernumerary item in inventory", slog.String("object_type", "image"), slog.Any("uuid", uuid))
 	}
 
 	return nil

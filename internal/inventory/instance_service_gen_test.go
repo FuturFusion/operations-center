@@ -3,6 +3,7 @@
 package inventory_test
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -17,8 +18,10 @@ import (
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
 	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -1089,6 +1092,8 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 }
 
 func TestInstanceService_SyncAll(t *testing.T) {
+	fixedTime := time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+
 	// Includes also SyncCluster
 	tests := []struct {
 		name                          string
@@ -1096,11 +1101,14 @@ func TestInstanceService_SyncAll(t *testing.T) {
 		clusterSvcGetEndpointErr      error
 		instanceClientGetInstances    []incusapi.InstanceFull
 		instanceClientGetInstancesErr error
+		repoGetAllWithFilter          inventory.Instances
+		repoGetAllWithFilterErr       error
 		repoDeleteWithFilterErr       error
 		repoCreateErr                 error
 		serviceOptions                []inventory.InstanceServiceOption
 
 		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
 	}{
 		{
 			name: "success",
@@ -1120,8 +1128,26 @@ func TestInstanceService_SyncAll(t *testing.T) {
 					},
 				},
 			},
+			repoGetAllWithFilter: inventory.Instances{
+				{
+					Cluster:     "one",
+					Name:        "instance one",
+					ProjectName: "project one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusInstanceFullWrapper{
+						InstanceFull: incusapi.InstanceFull{
+							Instance: incusapi.Instance{
+								Name:     "instance one",
+								Location: "one",
+								Project:  "project one",
+							},
+						},
+					},
+				},
+			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
 			name: "success - with sync filter",
@@ -1143,8 +1169,25 @@ func TestInstanceService_SyncAll(t *testing.T) {
 				{
 					Instance: incusapi.Instance{
 						Name:     "instance filtered",
-						Location: "one",
+						Location: "instance one",
 						Project:  "project one",
+					},
+				},
+			},
+			repoGetAllWithFilter: inventory.Instances{
+				{
+					Cluster:     "one",
+					Name:        "instance one",
+					ProjectName: "project one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusInstanceFullWrapper{
+						InstanceFull: incusapi.InstanceFull{
+							Instance: incusapi.Instance{
+								Name:     "instance one",
+								Location: "one",
+								Project:  "project one",
+							},
+						},
 					},
 				},
 			},
@@ -1155,12 +1198,94 @@ func TestInstanceService_SyncAll(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
-			name:                     "error - cluster service get by ID",
+			name: "success - missing",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			instanceClientGetInstances: []incusapi.InstanceFull{
+				{
+					Instance: incusapi.Instance{
+						Name:     "instance one",
+						Location: "instance one",
+						Project:  "project one",
+					},
+				},
+			},
+			repoGetAllWithFilter: inventory.Instances{
+				// item missing
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("sync cluster detected missing item in inventory"),
+		},
+		{
+			name: "success - supernumerary",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			instanceClientGetInstances: []incusapi.InstanceFull{
+				{
+					Instance: incusapi.Instance{
+						Name:     "instance one",
+						Location: "instance one",
+						Project:  "project one",
+					},
+				},
+			},
+			repoGetAllWithFilter: inventory.Instances{
+				{
+					Cluster:     "one",
+					Name:        "instance one",
+					ProjectName: "project one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusInstanceFullWrapper{
+						InstanceFull: incusapi.InstanceFull{
+							Instance: incusapi.Instance{
+								Name:     "instance one",
+								Location: "one",
+								Project:  "project one",
+							},
+						},
+					},
+				},
+				// supernumerary item
+				{
+					Cluster:     "one",
+					Name:        "supernumerary",
+					ProjectName: "project one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusInstanceFullWrapper{
+						InstanceFull: incusapi.InstanceFull{
+							Instance: incusapi.Instance{
+								Name:     "supernumerary",
+								Location: "one",
+								Project:  "project one",
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("sync cluster detected supernumerary item in inventory"),
+		},
+		{
+			name:                     "error - cluster service get by name",
 			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - instance client get Instances",
@@ -1174,9 +1299,33 @@ func TestInstanceService_SyncAll(t *testing.T) {
 			instanceClientGetInstancesErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
-			name: "error - instances delete by cluster ID",
+			name: "error - instances repo.GetAllWithFilter",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			instanceClientGetInstances: []incusapi.InstanceFull{
+				{
+					Instance: incusapi.Instance{
+						Name:     "instance one",
+						Location: "one",
+						Project:  "project one",
+					},
+				},
+			},
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - instances repo.DeleteWithFilter",
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
@@ -1196,6 +1345,7 @@ func TestInstanceService_SyncAll(t *testing.T) {
 			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - validate",
@@ -1220,6 +1370,7 @@ func TestInstanceService_SyncAll(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - instance create",
@@ -1239,16 +1390,46 @@ func TestInstanceService_SyncAll(t *testing.T) {
 					},
 				},
 			},
+			repoGetAllWithFilter: inventory.Instances{
+				{
+					Cluster:     "one",
+					Name:        "instance one",
+					ProjectName: "project one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusInstanceFullWrapper{
+						InstanceFull: incusapi.InstanceFull{
+							Instance: incusapi.Instance{
+								Name:     "instance one",
+								Location: "one",
+								Project:  "project one",
+							},
+						},
+					},
+				},
+			},
 			repoCreateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			for i, item := range tc.repoGetAllWithFilter {
+				item.DeriveUUID()
+				tc.repoGetAllWithFilter[i] = item
+			}
+
 			repo := &repoMock.InstanceRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.InstanceFilter) (inventory.Instances, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
 				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.InstanceFilter) error {
 					return tc.repoDeleteWithFilterErr
 				},
@@ -1273,16 +1454,17 @@ func TestInstanceService_SyncAll(t *testing.T) {
 				append(
 					tc.serviceOptions,
 					inventory.InstanceWithNow(func() time.Time {
-						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+						return fixedTime
 					}),
 				)...,
 			)
 
 			// Run test
-			err := instanceSvc.SyncCluster(context.Background(), "one")
+			err = instanceSvc.SyncCluster(context.Background(), "one")
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
 		})
 	}
 }

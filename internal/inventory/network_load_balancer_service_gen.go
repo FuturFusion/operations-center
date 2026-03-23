@@ -405,14 +405,29 @@ func (s networkLoadBalancerService) SyncCluster(ctx context.Context, name string
 			return err
 		}
 
+		existingUUIDs := map[uuid.UUID]bool{}
 		err = transaction.Do(ctx, func(ctx context.Context) error {
+			existingNetworkLoadBalancers, err := s.repo.GetAllWithFilter(ctx, NetworkLoadBalancerFilter{
+				Cluster:     &name,
+				ProjectName: &network.Project,
+				NetworkName: &network.Name,
+			})
+			if err != nil {
+				return fmt.Errorf(`Failed to get "network_load_balancers" for cluster %q, project %q, network %q: %w`, name, network.Project, network.Name, err)
+			}
+
+			existingUUIDs = make(map[uuid.UUID]bool, len(existingNetworkLoadBalancers))
+			for _, existingNetworkLoadBalancer := range existingNetworkLoadBalancers {
+				existingUUIDs[existingNetworkLoadBalancer.UUID] = true
+			}
+
 			err = s.repo.DeleteWithFilter(ctx, NetworkLoadBalancerFilter{
 				Cluster:     &name,
 				ProjectName: &network.Project,
 				NetworkName: &network.Name,
 			})
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
-				return fmt.Errorf(`Failed to delete "network_load_balancer" from cluster %q, network %q: %w`, name, network.Name, err)
+				return fmt.Errorf(`Failed to delete "network_load_balancers" for cluster %q, project %q, network %q: %w`, name, network.Project, network.Name, err)
 			}
 
 			for _, retrievedNetworkLoadBalancer := range retrievedNetworkLoadBalancers {
@@ -436,6 +451,12 @@ func (s networkLoadBalancerService) SyncCluster(ctx context.Context, name string
 					return err
 				}
 
+				if existingUUIDs[networkLoadBalancer.UUID] {
+					delete(existingUUIDs, networkLoadBalancer.UUID)
+				} else {
+					slog.WarnContext(ctx, "sync cluster detected missing item in inventory", slog.String("object_type", "network_load_balancer"), slog.Any("uuid", networkLoadBalancer.UUID))
+				}
+
 				_, err := s.repo.Create(ctx, networkLoadBalancer)
 				if err != nil {
 					return fmt.Errorf(`Failed to create network_load_balancer %q for cluster %q, network %q: %w`, networkLoadBalancer.UUID.String(), name, network.Name, err)
@@ -446,6 +467,10 @@ func (s networkLoadBalancerService) SyncCluster(ctx context.Context, name string
 		})
 		if err != nil {
 			return err
+		}
+
+		for uuid := range existingUUIDs {
+			slog.WarnContext(ctx, "sync cluster detected supernumerary item in inventory", slog.String("object_type", "network_load_balancer"), slog.Any("uuid", uuid))
 		}
 	}
 

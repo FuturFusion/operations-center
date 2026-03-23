@@ -405,14 +405,29 @@ func (s networkPeerService) SyncCluster(ctx context.Context, name string) error 
 			return err
 		}
 
+		existingUUIDs := map[uuid.UUID]bool{}
 		err = transaction.Do(ctx, func(ctx context.Context) error {
+			existingNetworkPeers, err := s.repo.GetAllWithFilter(ctx, NetworkPeerFilter{
+				Cluster:     &name,
+				ProjectName: &network.Project,
+				NetworkName: &network.Name,
+			})
+			if err != nil {
+				return fmt.Errorf(`Failed to get "network_peers" for cluster %q, project %q, network %q: %w`, name, network.Project, network.Name, err)
+			}
+
+			existingUUIDs = make(map[uuid.UUID]bool, len(existingNetworkPeers))
+			for _, existingNetworkPeer := range existingNetworkPeers {
+				existingUUIDs[existingNetworkPeer.UUID] = true
+			}
+
 			err = s.repo.DeleteWithFilter(ctx, NetworkPeerFilter{
 				Cluster:     &name,
 				ProjectName: &network.Project,
 				NetworkName: &network.Name,
 			})
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
-				return fmt.Errorf(`Failed to delete "network_peer" from cluster %q, network %q: %w`, name, network.Name, err)
+				return fmt.Errorf(`Failed to delete "network_peers" for cluster %q, project %q, network %q: %w`, name, network.Project, network.Name, err)
 			}
 
 			for _, retrievedNetworkPeer := range retrievedNetworkPeers {
@@ -436,6 +451,12 @@ func (s networkPeerService) SyncCluster(ctx context.Context, name string) error 
 					return err
 				}
 
+				if existingUUIDs[networkPeer.UUID] {
+					delete(existingUUIDs, networkPeer.UUID)
+				} else {
+					slog.WarnContext(ctx, "sync cluster detected missing item in inventory", slog.String("object_type", "network_peer"), slog.Any("uuid", networkPeer.UUID))
+				}
+
 				_, err := s.repo.Create(ctx, networkPeer)
 				if err != nil {
 					return fmt.Errorf(`Failed to create network_peer %q for cluster %q, network %q: %w`, networkPeer.UUID.String(), name, network.Name, err)
@@ -446,6 +467,10 @@ func (s networkPeerService) SyncCluster(ctx context.Context, name string) error 
 		})
 		if err != nil {
 			return err
+		}
+
+		for uuid := range existingUUIDs {
+			slog.WarnContext(ctx, "sync cluster detected supernumerary item in inventory", slog.String("object_type", "network_peer"), slog.Any("uuid", uuid))
 		}
 	}
 

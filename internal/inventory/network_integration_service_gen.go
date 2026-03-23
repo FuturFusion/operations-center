@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -359,12 +360,25 @@ func (s networkIntegrationService) SyncCluster(ctx context.Context, name string)
 		return err
 	}
 
+	existingUUIDs := map[uuid.UUID]bool{}
 	err = transaction.Do(ctx, func(ctx context.Context) error {
+		existingNetworkIntegrations, err := s.repo.GetAllWithFilter(ctx, NetworkIntegrationFilter{
+			Cluster: &name,
+		})
+		if err != nil {
+			return fmt.Errorf(`Failed to get "network_integrations" for cluster %q: %w`, name, err)
+		}
+
+		existingUUIDs = make(map[uuid.UUID]bool, len(existingNetworkIntegrations))
+		for _, existingNetworkIntegration := range existingNetworkIntegrations {
+			existingUUIDs[existingNetworkIntegration.UUID] = true
+		}
+
 		err = s.repo.DeleteWithFilter(ctx, NetworkIntegrationFilter{
 			Cluster: &name,
 		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			return fmt.Errorf(`Failed to delete "network_integration" from cluster %q: %w`, name, err)
+			return fmt.Errorf(`Failed to delete "network_integrations" for cluster %q: %w`, name, err)
 		}
 
 		for _, retrievedNetworkIntegration := range retrievedNetworkIntegrations {
@@ -386,6 +400,12 @@ func (s networkIntegrationService) SyncCluster(ctx context.Context, name string)
 				return err
 			}
 
+			if existingUUIDs[networkIntegration.UUID] {
+				delete(existingUUIDs, networkIntegration.UUID)
+			} else {
+				slog.WarnContext(ctx, "sync cluster detected missing item in inventory", slog.String("object_type", "network_integration"), slog.Any("uuid", networkIntegration.UUID))
+			}
+
 			_, err := s.repo.Create(ctx, networkIntegration)
 			if err != nil {
 				return fmt.Errorf(`Failed to create network_integration %q for cluster %q: %w`, networkIntegration.UUID.String(), name, err)
@@ -396,6 +416,10 @@ func (s networkIntegrationService) SyncCluster(ctx context.Context, name string)
 	})
 	if err != nil {
 		return err
+	}
+
+	for uuid := range existingUUIDs {
+		slog.WarnContext(ctx, "sync cluster detected supernumerary item in inventory", slog.String("object_type", "network_integration"), slog.Any("uuid", uuid))
 	}
 
 	return nil

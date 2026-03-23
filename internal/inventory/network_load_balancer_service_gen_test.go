@@ -3,6 +3,7 @@
 package inventory_test
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -17,8 +18,10 @@ import (
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
 	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -1070,6 +1073,8 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 }
 
 func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
+	fixedTime := time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+
 	// Includes also SyncCluster
 	tests := []struct {
 		name                                                string
@@ -1079,11 +1084,14 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 		networkClientGetNetworksErr                         error
 		networkLoadBalancerClientGetNetworkLoadBalancers    []incusapi.NetworkLoadBalancer
 		networkLoadBalancerClientGetNetworkLoadBalancersErr error
+		repoGetAllWithFilter                                inventory.NetworkLoadBalancers
+		repoGetAllWithFilterErr                             error
 		repoDeleteWithFilterErr                             error
 		repoCreateErr                                       error
 		serviceOptions                                      []inventory.NetworkLoadBalancerServiceOption
 
 		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
 	}{
 		{
 			name: "success",
@@ -1105,8 +1113,23 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 					ListenAddress: "networkLoadBalancer one",
 				},
 			},
+			repoGetAllWithFilter: inventory.NetworkLoadBalancers{
+				{
+					Cluster:     "one",
+					Name:        "networkLoadBalancer one",
+					ProjectName: "project one",
+					NetworkName: "network one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkLoadBalancerWrapper{
+						NetworkLoadBalancer: incusapi.NetworkLoadBalancer{
+							ListenAddress: "networkLoadBalancer one",
+						},
+					},
+				},
+			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
 			name: "success - with parent filter",
@@ -1132,6 +1155,20 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 					ListenAddress: "networkLoadBalancer one",
 				},
 			},
+			repoGetAllWithFilter: inventory.NetworkLoadBalancers{
+				{
+					Cluster:     "one",
+					Name:        "networkLoadBalancer one",
+					ProjectName: "project one",
+					NetworkName: "network one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkLoadBalancerWrapper{
+						NetworkLoadBalancer: incusapi.NetworkLoadBalancer{
+							ListenAddress: "networkLoadBalancer one",
+						},
+					},
+				},
+			},
 			serviceOptions: []inventory.NetworkLoadBalancerServiceOption{
 				inventory.NetworkLoadBalancerWithParentFilter(func(parent incusapi.Network) bool {
 					return parent.Name == "filtered"
@@ -1139,6 +1176,7 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
 			name: "success - with sync filter",
@@ -1163,6 +1201,20 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 					ListenAddress: "networkLoadBalancer filtered",
 				},
 			},
+			repoGetAllWithFilter: inventory.NetworkLoadBalancers{
+				{
+					Cluster:     "one",
+					Name:        "networkLoadBalancer one",
+					ProjectName: "project one",
+					NetworkName: "network one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkLoadBalancerWrapper{
+						NetworkLoadBalancer: incusapi.NetworkLoadBalancer{
+							ListenAddress: "networkLoadBalancer one",
+						},
+					},
+				},
+			},
 			serviceOptions: []inventory.NetworkLoadBalancerServiceOption{
 				inventory.NetworkLoadBalancerWithSyncFilter(func(networkLoadBalancer inventory.NetworkLoadBalancer) bool {
 					return networkLoadBalancer.Name == "networkLoadBalancer filtered"
@@ -1170,12 +1222,92 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
-			name:                     "error - cluster service get by ID",
+			name: "success - missing",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			networkClientGetNetworks: []incusapi.Network{
+				{
+					Name:    "network one",
+					Project: "project one",
+				},
+			},
+			networkLoadBalancerClientGetNetworkLoadBalancers: []incusapi.NetworkLoadBalancer{
+				{
+					ListenAddress: "networkLoadBalancer one",
+				},
+			},
+			repoGetAllWithFilter: inventory.NetworkLoadBalancers{
+				// item missing
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("sync cluster detected missing item in inventory"),
+		},
+		{
+			name: "success - supernumerary",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			networkClientGetNetworks: []incusapi.Network{
+				{
+					Name:    "network one",
+					Project: "project one",
+				},
+			},
+			networkLoadBalancerClientGetNetworkLoadBalancers: []incusapi.NetworkLoadBalancer{
+				{
+					ListenAddress: "networkLoadBalancer one",
+				},
+			},
+			repoGetAllWithFilter: inventory.NetworkLoadBalancers{
+				{
+					Cluster:     "one",
+					Name:        "networkLoadBalancer one",
+					ProjectName: "project one",
+					NetworkName: "network one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkLoadBalancerWrapper{
+						NetworkLoadBalancer: incusapi.NetworkLoadBalancer{
+							ListenAddress: "networkLoadBalancer one",
+						},
+					},
+				},
+				// supernumerary item
+				{
+					Cluster:     "one",
+					Name:        "supernumerary",
+					ProjectName: "project one",
+					NetworkName: "network one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkLoadBalancerWrapper{
+						NetworkLoadBalancer: incusapi.NetworkLoadBalancer{
+							ListenAddress: "supernumerary",
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("sync cluster detected supernumerary item in inventory"),
+		},
+		{
+			name:                     "error - cluster service get by name",
 			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - network client get Networks",
@@ -1189,6 +1321,7 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			networkClientGetNetworksErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - networkLoadBalancer client get NetworkLoadBalancers",
@@ -1208,9 +1341,35 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			networkLoadBalancerClientGetNetworkLoadBalancersErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
-			name: "error - network_load_balancers delete by cluster ID",
+			name: "error - network_load_balancers repo.GetAllWithFilter",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+			networkClientGetNetworks: []incusapi.Network{
+				{
+					Name:    "network one",
+					Project: "project one",
+				},
+			},
+			networkLoadBalancerClientGetNetworkLoadBalancers: []incusapi.NetworkLoadBalancer{
+				{
+					ListenAddress: "networkLoadBalancer one",
+				},
+			},
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - network_load_balancers repo.DeleteWithFilter",
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
@@ -1232,6 +1391,7 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - validate",
@@ -1258,6 +1418,7 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - networkLoadBalancer create",
@@ -1279,16 +1440,43 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 					ListenAddress: "networkLoadBalancer one",
 				},
 			},
+			repoGetAllWithFilter: inventory.NetworkLoadBalancers{
+				{
+					Cluster:     "one",
+					Name:        "networkLoadBalancer one",
+					ProjectName: "project one",
+					NetworkName: "network one",
+					LastUpdated: fixedTime,
+					Object: inventory.IncusNetworkLoadBalancerWrapper{
+						NetworkLoadBalancer: incusapi.NetworkLoadBalancer{
+							ListenAddress: "networkLoadBalancer one",
+						},
+					},
+				},
+			},
 			repoCreateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			for i, item := range tc.repoGetAllWithFilter {
+				item.DeriveUUID()
+				tc.repoGetAllWithFilter[i] = item
+			}
+
 			repo := &repoMock.NetworkLoadBalancerRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (inventory.NetworkLoadBalancers, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
 				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) error {
 					require.Equal(t, tc.networkClientGetNetworks[0].Project, *filter.ProjectName)
 					require.Equal(t, tc.networkClientGetNetworks[0].Name, *filter.NetworkName)
@@ -1321,16 +1509,17 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 				append(
 					tc.serviceOptions,
 					inventory.NetworkLoadBalancerWithNow(func() time.Time {
-						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+						return fixedTime
 					}),
 				)...,
 			)
 
 			// Run test
-			err := networkLoadBalancerSvc.SyncCluster(context.Background(), "one")
+			err = networkLoadBalancerSvc.SyncCluster(context.Background(), "one")
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
 		})
 	}
 }

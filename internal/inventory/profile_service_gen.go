@@ -378,12 +378,25 @@ func (s profileService) SyncCluster(ctx context.Context, name string) error {
 		return err
 	}
 
+	existingUUIDs := map[uuid.UUID]bool{}
 	err = transaction.Do(ctx, func(ctx context.Context) error {
+		existingProfiles, err := s.repo.GetAllWithFilter(ctx, ProfileFilter{
+			Cluster: &name,
+		})
+		if err != nil {
+			return fmt.Errorf(`Failed to get "profiles" for cluster %q: %w`, name, err)
+		}
+
+		existingUUIDs = make(map[uuid.UUID]bool, len(existingProfiles))
+		for _, existingProfile := range existingProfiles {
+			existingUUIDs[existingProfile.UUID] = true
+		}
+
 		err = s.repo.DeleteWithFilter(ctx, ProfileFilter{
 			Cluster: &name,
 		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			return fmt.Errorf(`Failed to delete "profile" from cluster %q: %w`, name, err)
+			return fmt.Errorf(`Failed to delete "profiles" for cluster %q: %w`, name, err)
 		}
 
 		for _, retrievedProfile := range retrievedProfiles {
@@ -406,6 +419,12 @@ func (s profileService) SyncCluster(ctx context.Context, name string) error {
 				return err
 			}
 
+			if existingUUIDs[profile.UUID] {
+				delete(existingUUIDs, profile.UUID)
+			} else {
+				slog.WarnContext(ctx, "sync cluster detected missing item in inventory", slog.String("object_type", "profile"), slog.Any("uuid", profile.UUID))
+			}
+
 			_, err := s.repo.Create(ctx, profile)
 			if err != nil {
 				return fmt.Errorf(`Failed to create profile %q for cluster %q: %w`, profile.UUID.String(), name, err)
@@ -416,6 +435,10 @@ func (s profileService) SyncCluster(ctx context.Context, name string) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	for uuid := range existingUUIDs {
+		slog.WarnContext(ctx, "sync cluster detected supernumerary item in inventory", slog.String("object_type", "profile"), slog.Any("uuid", uuid))
 	}
 
 	return nil
