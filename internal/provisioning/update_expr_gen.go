@@ -20,7 +20,6 @@ type ExprUpdate struct {
 	Severity         images.UpdateSeverity  `json:"severity" expr:"severity"`
 	Channels         []string               `json:"channels" db:"ignore" expr:"channels"`
 	UpstreamChannels UpdateUpstreamChannels `json:"upstream_channels" expr:"upstream_channels"`
-	Changelog        string                 `json:"-" expr:"change_log"`
 	Files            UpdateFiles            `json:"files" expr:"files"`
 	URL              string                 `json:"url" expr:"url"`
 	Status           api.UpdateStatus       `json:"-" expr:"status"`
@@ -38,7 +37,6 @@ func ToExprUpdate(u Update) ExprUpdate {
 		Severity:         u.Severity,
 		Channels:         u.Channels,
 		UpstreamChannels: u.UpstreamChannels,
-		Changelog:        u.Changelog,
 		Files:            u.Files,
 		URL:              u.URL,
 		Status:           u.Status,

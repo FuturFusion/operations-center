@@ -51,6 +51,26 @@ func (c OperationsCenterClient) GetUpdate(ctx context.Context, id string) (api.U
 	return update, nil
 }
 
+func (c OperationsCenterClient) GetUpdateChangelog(ctx context.Context, id string, channel string, upstream bool, architecture string) (api.UpdateChangelog, error) {
+	query := url.Values{}
+	query.Add("architecture", architecture)
+	query.Add("channel", channel)
+	query.Add("upstream", strconv.FormatBool(upstream))
+
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/updates", id, "changelog"), query, nil)
+	if err != nil {
+		return api.UpdateChangelog{}, err
+	}
+
+	changelog := api.UpdateChangelog{}
+	err = json.Unmarshal(response.Metadata, &changelog)
+	if err != nil {
+		return api.UpdateChangelog{}, err
+	}
+
+	return changelog, nil
+}
+
 func (c OperationsCenterClient) CreateUpdate(ctx context.Context, updateStream io.ReadCloser) error {
 	_, err := c.DoRequest(ctx, http.MethodPost, "/provisioning/updates", nil, updateStream)
 	if err != nil {

@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -105,6 +107,20 @@ func (_d ChannelServiceWithPrometheus) GetByName(ctx context.Context, name strin
 		channelServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByName", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetByName(ctx, name)
+}
+
+// GetChangelogByName implements provisioning.ChannelService.
+func (_d ChannelServiceWithPrometheus) GetChangelogByName(ctx context.Context, name string, architecture images.UpdateFileArchitecture) (updateChangelogs api.UpdateChangelogs, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		channelServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetChangelogByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetChangelogByName(ctx, name, architecture)
 }
 
 // SetServerService implements provisioning.ChannelService.

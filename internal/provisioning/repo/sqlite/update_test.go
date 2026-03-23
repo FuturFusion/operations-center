@@ -30,7 +30,6 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		Channels:         []string{},
 		UpstreamChannels: []string{"daily"},
 		Status:           api.UpdateStatusReady,
-		Changelog:        "Some changes",
 		URL:              "/217816150",
 		Files: provisioning.UpdateFiles{
 			{
@@ -55,7 +54,6 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		Channels:         []string{},
 		UpstreamChannels: []string{"stable", "daily"},
 		Status:           api.UpdateStatusReady,
-		Changelog:        "Other changes",
 		URL:              "/217808146",
 		Files: provisioning.UpdateFiles{
 			{

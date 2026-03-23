@@ -9,6 +9,8 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 )
 
 // ChannelServiceWithSlog implements provisioning.ChannelService that is instrumented with slog logger.
@@ -209,6 +211,42 @@ func (_d ChannelServiceWithSlog) GetByName(ctx context.Context, name string) (ch
 		}
 	}()
 	return _d._base.GetByName(ctx, name)
+}
+
+// GetChangelogByName implements provisioning.ChannelService.
+func (_d ChannelServiceWithSlog) GetChangelogByName(ctx context.Context, name string, architecture images.UpdateFileArchitecture) (updateChangelogs api.UpdateChangelogs, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Any("architecture", architecture),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetChangelogByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("updateChangelogs", updateChangelogs),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetChangelogByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetChangelogByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetChangelogByName finished")
+		}
+	}()
+	return _d._base.GetChangelogByName(ctx, name, architecture)
 }
 
 // SetServerService implements provisioning.ChannelService.

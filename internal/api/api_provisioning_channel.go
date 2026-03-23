@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/lxc/incus-os/incus-osd/api/images"
+
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
@@ -27,6 +29,7 @@ func registerChannelsHandler(router Router, authorizer *authz.Authorizer, servic
 	router.HandleFunc("GET /{name}", response.With(handler.channelGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /{name}", response.With(handler.channelPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{name}", response.With(handler.channelDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
+	router.HandleFunc("GET /{name}/changelog", response.With(handler.channelChangelogGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 }
 
 // swagger:operation GET /1.0/provisioning/channels channels channels_get
@@ -355,4 +358,68 @@ func (u *channelsHandler) channelDelete(r *http.Request) response.Response {
 	}
 
 	return response.EmptySyncResponse
+}
+
+// swagger:operation GET /1.0/provisioning/channels/{name}/changelog channels channel_changelog_get
+//
+//	Get the channel's changelog
+//
+//	Gets a channel's changelog for all updates available in the channel.
+//
+//	---
+//	parameters:
+//	  - in: query
+//	    name: architecture
+//	    description: |-
+//	      Architecture the changelog should be generated for. Defaults to "x86_64".
+//	    type: string
+//	    example: aarch64
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Channel
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          $ref: "#/definitions/Channel"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (u *channelsHandler) channelChangelogGet(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	architectureParam := r.URL.Query().Get("architecture")
+	architecture := images.UpdateFileArchitecture(architectureParam)
+	_, ok := images.UpdateFileArchitectures[architecture]
+	if !ok || architecture == images.UpdateFileArchitectureUndefined {
+		architecture = images.UpdateFileArchitecture64BitX86
+	}
+
+	changelog, err := u.service.GetChangelogByName(r.Context(), name, architecture)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponse(
+		true,
+		changelog,
+	)
 }

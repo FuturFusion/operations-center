@@ -3303,6 +3303,10 @@ definitions:
         x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemStoragePool:
         properties:
+            allow_mixed_dev_sizes:
+                description: If true, allow creation of a pool with devices of different sizes.
+                type: boolean
+                x-go-name: AllowMixedDevSizes
             cache:
                 items:
                     type: string
@@ -3314,7 +3318,7 @@ definitions:
                 type: array
                 x-go-name: CacheDegraded
             devices:
-                description: Devices, Cache, and Log can be modified to add/remove/replace devices in the pool.
+                description: Devices, Cache, Log, and Special can be modified to add/remove/replace devices in the pool.
                 items:
                     type: string
                 type: array
@@ -3351,6 +3355,13 @@ definitions:
                 format: int64
                 type: integer
                 x-go-name: RawPoolSizeInBytes
+            special:
+                $ref: '#/definitions/SystemStoragePoolSpecial'
+            special_degraded:
+                items:
+                    type: string
+                type: array
+                x-go-name: SpecialDegraded
             state:
                 description: Read-only fields returned from the server with additional pool information.
                 type: string
@@ -3395,6 +3406,26 @@ definitions:
             state:
                 $ref: '#/definitions/SystemStoragePoolScrubState'
         title: SystemStoragePoolScrubStatus represents the status of a scrub in a pool.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemStoragePoolSpecial:
+        properties:
+            devices:
+                description: One or more physical devices to create the pool's special vdev.
+                items:
+                    type: string
+                type: array
+                x-go-name: Devices
+            special_small_blocks_size_in_kb:
+                description: If non-zero, will be used when setting the pool's special_small_blocks property.
+                format: int64
+                type: integer
+                x-go-name: SpecialSmallBlocksSizeInKB
+            type:
+                description: 'Supported special device types: zfs-raid0, zfs-raid1, zfs-raid10, zfs-raidz1, zfs-raidz2, zfs-raidz3.'
+                type: string
+                x-go-name: Type
+        title: SystemStoragePoolSpecial defines a struct that is used to create or update a pool's special vdev.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemStoragePoolVolume:
@@ -3678,10 +3709,6 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     Update:
         properties:
-            changelog:
-                description: Changelog of the Update as plain text.
-                type: string
-                x-go-name: Changelog
             channels:
                 description: Channels holds the name of the channels the update is assigned to.
                 example: stable
@@ -3736,6 +3763,16 @@ definitions:
                 x-go-name: Version
         title: Update defines an update.
         type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    UpdateChangelog:
+        title: UpdateChangelog defines a changelog for an update.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    UpdateChangelogs:
+        items:
+            $ref: '#/definitions/UpdateChangelog'
+        title: UpdateChangelogs represents a series of changelogs, e.g. for all the updates of a channel.
+        type: array
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     UpdateFile:
         properties:
@@ -6857,6 +6894,48 @@ paths:
             summary: Update the channel
             tags:
                 - channels
+    /1.0/provisioning/channels/{name}/changelog:
+        get:
+            description: Gets a channel's changelog for all updates available in the channel.
+            operationId: channel_changelog_get
+            parameters:
+                - description: Architecture the changelog should be generated for. Defaults to "x86_64".
+                  example: aarch64
+                  in: query
+                  name: architecture
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Channel
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/Channel'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the channel's changelog
+            tags:
+                - channels
     /1.0/provisioning/channels?recursion=1:
         get:
             description: Returns a list of channels for updates (structs).
@@ -7950,6 +8029,42 @@ paths:
             summary: Sync server state
             tags:
                 - servers
+    /1.0/provisioning/servers/{name}/changelog:
+        get:
+            description: Gets a specific server's changelog from available update to current update.
+            operationId: server_changelog_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Server
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/UpdateChangelog'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the server's changelog
+            tags:
+                - servers
     /1.0/provisioning/servers/{name}/system/:evacuate:
         post:
             description: Triggers an evacuate operation on the server.
@@ -8938,12 +9053,52 @@ paths:
         get:
             description: Gets the changelog for a specific update.
             operationId: update_changelog_get
+            parameters:
+                - description: Architecture the changelog should be generated for. Defaults to "x86_64".
+                  example: aarch64
+                  in: query
+                  name: architecture
+                  type: string
+                - description: Channel the changelog should be generated for. Defaults to "stable".
+                  example: stable
+                  in: query
+                  name: channel
+                  type: string
+                - description: |-
+                    If set, the channel name is an upstream channel. If not set, channel
+                    name is an update channel. By default this is not set.
+                    default.
+                  in: query
+                  name: upstream
+                  type: boolean
             produces:
                 - text/plain
                 - application/json
             responses:
                 "200":
-                    description: Update changelog
+                    description: Changelog
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/UpdateChangelog'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Get the update changelog

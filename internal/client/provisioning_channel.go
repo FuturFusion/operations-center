@@ -69,3 +69,21 @@ func (c OperationsCenterClient) DeleteChannel(ctx context.Context, name string) 
 
 	return nil
 }
+
+func (c OperationsCenterClient) GetChannelChangelog(ctx context.Context, name string, architecture string) (api.UpdateChangelogs, error) {
+	query := url.Values{}
+	query.Add("architecture", architecture)
+
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/channels", name, "changelog"), query, nil)
+	if err != nil {
+		return api.UpdateChangelogs{}, err
+	}
+
+	changelog := api.UpdateChangelogs{}
+	err = json.Unmarshal(response.Metadata, &changelog)
+	if err != nil {
+		return api.UpdateChangelogs{}, err
+	}
+
+	return changelog, nil
+}

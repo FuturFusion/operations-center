@@ -2,26 +2,32 @@ package provisioning
 
 import (
 	"archive/tar"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"hash"
 	"io"
+	"log/slog"
 	"runtime"
 	"slices"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/expr-lang/expr"
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
+	"github.com/lxc/incus-os/incus-osd/manifests"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
@@ -336,6 +342,157 @@ func (s updateService) Update(ctx context.Context, update Update) error {
 
 		return nil
 	})
+}
+
+func (s updateService) GetChangelog(ctx context.Context, currentID uuid.UUID, priorID uuid.UUID, architecture images.UpdateFileArchitecture) (api.UpdateChangelog, error) {
+	if currentID == priorID {
+		// There are no changes when comparing update with it self.
+		return api.UpdateChangelog{}, nil
+	}
+
+	current, err := s.GetByUUID(ctx, currentID)
+	if err != nil {
+		return api.UpdateChangelog{}, fmt.Errorf("Failed to get current update %q: %w", currentID.String(), err)
+	}
+
+	prior := &Update{}
+	if priorID != uuid.Nil {
+		prior, err = s.GetByUUID(ctx, priorID)
+		if err != nil {
+			return api.UpdateChangelog{}, fmt.Errorf("Failed to get prior update %q: %w", priorID.String(), err)
+		}
+
+		if current.Version < prior.Version {
+			return api.UpdateChangelog{}, domain.NewValidationErrf("Version of current update %q (%s) is not after version of prior update %q (%s)", currentID.String(), current.Version, priorID.String(), prior.Version)
+		}
+	}
+
+	changelog := api.UpdateChangelog{
+		CurrentVersion: current.Version,
+		PriorVersion:   prior.Version,
+		Components:     map[string]images.ChangelogEntries{},
+	}
+
+	for _, file := range current.Files {
+		if file.Type != images.UpdateFileTypeImageManifest {
+			continue
+		}
+
+		parts := strings.Split(file.Filename, "/")
+		if len(parts) != 2 {
+			// invalid filename
+			continue
+		}
+
+		archName := images.UpdateFileArchitecture(parts[0])
+		componentName := strings.TrimSuffix(parts[1], ".manifest.json.gz")         // Trim the filename extension.
+		componentName = strings.Replace(componentName, "_"+current.Version, "", 1) // Trim any version string.
+
+		if archName != architecture {
+			continue
+		}
+
+		var currentManifest manifests.IncusOSManifest
+		var priorManifest manifests.IncusOSManifest
+
+		err = s.readManifest(ctx, *current, file.Filename, &currentManifest)
+		if err != nil {
+			return api.UpdateChangelog{}, fmt.Errorf("Failed to read manifest of component %q for current update %q (%s): %w", componentName, currentID.String(), current.Version, err)
+		}
+
+		if priorID != uuid.Nil {
+			// Replace the version string, if any, in the filename to use the previous version.
+			priorFilename := strings.Replace(file.Filename, "_"+current.Version, "_"+prior.Version, 1)
+
+			err = s.readManifest(ctx, *prior, priorFilename, &priorManifest)
+			if err != nil {
+				slog.WarnContext(ctx, "Failed to read prior manifest", slog.String("update_id", priorID.String()), slog.String("update_version", prior.Version), slog.String("filename", priorFilename), logger.Err(err))
+			}
+		}
+
+		diff := manifests.Diff(priorManifest, currentManifest)
+		if len(diff.Added) > 0 || len(diff.Updated) > 0 || len(diff.Removed) > 0 {
+			changelog.Components[componentName] = diff
+		}
+	}
+
+	return changelog, nil
+}
+
+func (s updateService) readManifest(ctx context.Context, update Update, filename string, manifest *manifests.IncusOSManifest) (err error) {
+	var manifestFileGz io.ReadCloser
+
+	manifestFileGz, _, err = s.filesRepo.Get(ctx, update, filename)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		closeErr := manifestFileGz.Close()
+		err = errors.Join(err, closeErr)
+	}()
+
+	manifestFile, err := gzip.NewReader(manifestFileGz)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		closeErr := manifestFile.Close()
+		err = errors.Join(err, closeErr)
+	}()
+
+	err = json.NewDecoder(manifestFile).Decode(manifest)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s updateService) GetChangelogByChannel(ctx context.Context, currentUUID uuid.UUID, channelName string, upstream bool, architecture images.UpdateFileArchitecture) (api.UpdateChangelog, error) {
+	updateFilter := UpdateFilter{}
+	if upstream {
+		updateFilter.UpstreamChannel = ptr.To(channelName)
+	} else {
+		updateFilter.Channel = ptr.To(channelName)
+	}
+
+	updates, err := s.GetAllWithFilter(ctx, updateFilter)
+	if err != nil {
+		return api.UpdateChangelog{}, fmt.Errorf("Failed to get updates: %w", err)
+	}
+
+	sort.Sort(updates)
+
+	foundCurrent := false
+	var priorUUID uuid.UUID
+	for _, update := range updates {
+		if update.UUID == currentUUID {
+			foundCurrent = true
+			continue
+		}
+
+		if !foundCurrent {
+			continue
+		}
+
+		priorUUID = update.UUID
+		break
+	}
+
+	if !foundCurrent {
+		return api.UpdateChangelog{}, fmt.Errorf("Current UUID not found: %w", domain.ErrNotFound)
+	}
+
+	changelog, err := s.GetChangelog(ctx, currentUUID, priorUUID, architecture)
+	if err != nil {
+		return api.UpdateChangelog{}, fmt.Errorf("Failed to generate changelog: %w", err)
+	}
+
+	changelog.Channel = channelName
+
+	return changelog, nil
 }
 
 func (s updateService) GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (UpdateFiles, error) {

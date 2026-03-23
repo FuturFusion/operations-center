@@ -6,6 +6,9 @@ import (
 	"io"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
+
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type UpdateService interface {
@@ -16,6 +19,8 @@ type UpdateService interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Update, error)
 	GetUpdatesByAssignedChannelName(ctx context.Context, channelName string) (Updates, error)
 	Update(ctx context.Context, update Update) error
+	GetChangelog(ctx context.Context, currentID uuid.UUID, priorID uuid.UUID, architecture images.UpdateFileArchitecture) (api.UpdateChangelog, error)
+	GetChangelogByChannel(ctx context.Context, UUID uuid.UUID, channelName string, upstream bool, architecture images.UpdateFileArchitecture) (api.UpdateChangelog, error)
 
 	// Files
 	GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (UpdateFiles, error)

@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
@@ -189,7 +190,6 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 				Origin:           update.Origin,
 				URL:              update.URL,
 				UpstreamChannels: update.UpstreamChannels,
-				Changelog:        update.Changelog,
 				Status:           update.Status,
 			})
 		}
@@ -407,7 +407,6 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 			Origin:           update.Origin,
 			URL:              update.URL,
 			UpstreamChannels: update.UpstreamChannels,
-			Changelog:        update.Changelog,
 			Status:           update.Status,
 		},
 		update,
@@ -499,36 +498,86 @@ func (u *updateHandler) updatePut(r *http.Request) response.Response {
 //	Gets the changelog for a specific update.
 //
 //	---
+//	parameters:
+//	  - in: query
+//	    name: architecture
+//	    description: |-
+//	      Architecture the changelog should be generated for. Defaults to "x86_64".
+//	    type: string
+//	    example: aarch64
+//	  - in: query
+//	    name: channel
+//	    description: |-
+//	      Channel the changelog should be generated for. Defaults to "stable".
+//	    type: string
+//	    example: stable
+//	  - in: query
+//	    name: upstream
+//	    type: boolean
+//	    description: |-
+//	      If set, the channel name is an upstream channel. If not set, channel
+//	      name is an update channel. By default this is not set.
+//	      default.
 //	produces:
 //	  - text/plain
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Update changelog
-//	    content:
-//	      text/plain:
-//	        schema:
+//	    description: Changelog
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
 //	          type: string
-//	          example: This is the changelog.
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          $ref: "#/definitions/UpdateChangelog"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updateChangelogGet(r *http.Request) response.Response {
 	UUIDString := r.PathValue("uuid")
-
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
-	update, err := u.service.GetByUUID(r.Context(), UUID)
+	channelName := r.URL.Query().Get("channel")
+	if channelName == "" {
+		channelName = "stable"
+	}
+
+	upstreamParam := r.URL.Query().Get("upstream")
+	upstream, _ := strconv.ParseBool(upstreamParam)
+
+	architectureParam := r.URL.Query().Get("architecture")
+	architecture := images.UpdateFileArchitecture(architectureParam)
+	_, ok := images.UpdateFileArchitectures[architecture]
+	if !ok || architecture == images.UpdateFileArchitectureUndefined {
+		architecture = images.UpdateFileArchitecture64BitX86
+	}
+
+	changelog, err := u.service.GetChangelogByChannel(r.Context(), UUID, channelName, upstream, architecture)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	return response.SyncResponsePlain(
+	return response.SyncResponse(
 		true,
-		false,
-		update.Changelog,
+		changelog,
 	)
 }
 

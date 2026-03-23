@@ -31,7 +31,6 @@ type Update struct {
 	Severity         images.UpdateSeverity  `json:"severity"`
 	Channels         []string               `json:"channels" db:"ignore"`
 	UpstreamChannels UpdateUpstreamChannels `json:"upstream_channels"`
-	Changelog        string                 `json:"-" expr:"change_log"`
 	Files            UpdateFiles            `json:"files"`
 	URL              string                 `json:"url"`
 	Status           api.UpdateStatus       `json:"-" expr:"status"`

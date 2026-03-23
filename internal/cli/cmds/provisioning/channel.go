@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
@@ -53,6 +54,13 @@ func (c *CmdChannel) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(updateAddCmd.Command())
+
+	// Changelog
+	updateChangelogCmd := cmdChannelChangelog{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updateChangelogCmd.Command())
 
 	return cmd
 }
@@ -239,6 +247,57 @@ func (c *cmdChannelAdd) run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("Failed to create channel %q: %w", name, err)
 	}
+
+	return nil
+}
+
+// Update changelog.
+type cmdChannelChangelog struct {
+	ocClient *client.OperationsCenterClient
+
+	flagArchitecture string
+}
+
+func (c *cmdChannelChangelog) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "changelog <name>"
+	cmd.Short = "Changelog information of a channel"
+	cmd.Long = `Description:
+  Changelog from one update to the next for all updates in a channel.
+`
+
+	cmd.Flags().StringVar(&c.flagArchitecture, "architecture", "x86_64", "architecture the changelog should be shown for")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdChannelChangelog) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdChannelChangelog) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	changelog, err := c.ocClient.GetChannelChangelog(cmd.Context(), name, c.flagArchitecture)
+	if err != nil {
+		return err
+	}
+
+	changelogYAML, err := yaml.Marshal(changelog)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Changelog:\n%s\n", render.Indent(4, string(changelogYAML)))
 
 	return nil
 }
