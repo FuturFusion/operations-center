@@ -433,12 +433,15 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 	}
 
 	require.True(t, success)
-	log.Contains(`[1/6] evacuation pending server \"one\"`)(t, logBuf)
-	log.Contains(`[2/6] evacuating server \"one\"`)(t, logBuf)
-	log.Contains(`[3/6] in maintenance, reboot pending server \"one\"`)(t, logBuf)
-	log.Contains(`[4/6] in maintenance, rebooting server \"one\"`)(t, logBuf)
-	log.Contains(`[5/6] in maintenance, restore pending server \"one\"`)(t, logBuf)
-	log.Contains(`[6/6] restoring server \"one\"`)(t, logBuf)
+	log.Contains(`[1/8] update pending server \"one\"`)(t, logBuf)
+	log.Contains(`[2/8] updating server \"one\"`)(t, logBuf)
+
+	log.Contains(`[3/8] evacuation pending server \"one\"`)(t, logBuf)
+	log.Contains(`[4/8] evacuating server \"one\"`)(t, logBuf)
+	log.Contains(`[5/8] in maintenance, reboot pending server \"one\"`)(t, logBuf)
+	log.Contains(`[6/8] in maintenance, rebooting server \"one\"`)(t, logBuf)
+	log.Contains(`[7/8] in maintenance, restore pending server \"one\"`)(t, logBuf)
+	log.Contains(`[8/8] restoring server \"one\"`)(t, logBuf)
 }
 
 func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
@@ -886,18 +889,25 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 	}
 
 	require.True(t, success)
-	log.Contains(`[1/12] evacuation pending server \"one\"`)(t, logBuf)
-	log.Contains(`[2/12] evacuating server \"one\"`)(t, logBuf)
-	log.Contains(`[3/12] in maintenance, reboot pending server \"one\"`)(t, logBuf)
-	log.Contains(`[4/12] in maintenance, rebooting server \"one\"`)(t, logBuf)
-	log.Contains(`[5/12] in maintenance, restore pending server \"one\"`)(t, logBuf)
-	log.Contains(`[6/12] restoring server \"one\"`)(t, logBuf)
-	log.Contains(`[7/12] evacuation pending server \"two\"`)(t, logBuf)
-	log.Contains(`[8/12] evacuating server \"two\"`)(t, logBuf)
-	log.Contains(`[9/12] in maintenance, reboot pending server \"two\"`)(t, logBuf)
-	log.Contains(`[10/12] in maintenance, rebooting server \"two\"`)(t, logBuf)
-	log.Contains(`[11/12] in maintenance, restore pending server \"two\"`)(t, logBuf)
-	log.Contains(`[12/12] restoring server \"two\"`)(t, logBuf)
+	log.Contains(`[1/16] update pending server \"one\"`)(t, logBuf)
+	log.Contains(`[2/16] updating server \"one\"`)(t, logBuf)
+
+	log.Contains(`[3/16] update pending server \"two\"`)(t, logBuf)
+	log.Contains(`[4/16] updating server \"two\"`)(t, logBuf)
+
+	log.Contains(`[5/16] evacuation pending server \"one\"`)(t, logBuf)
+	log.Contains(`[6/16] evacuating server \"one\"`)(t, logBuf)
+	log.Contains(`[7/16] in maintenance, reboot pending server \"one\"`)(t, logBuf)
+	log.Contains(`[8/16] in maintenance, rebooting server \"one\"`)(t, logBuf)
+	log.Contains(`[9/16] in maintenance, restore pending server \"one\"`)(t, logBuf)
+	log.Contains(`[10/16] restoring server \"one\"`)(t, logBuf)
+
+	log.Contains(`[11/16] evacuation pending server \"two\"`)(t, logBuf)
+	log.Contains(`[12/16] evacuating server \"two\"`)(t, logBuf)
+	log.Contains(`[13/16] in maintenance, reboot pending server \"two\"`)(t, logBuf)
+	log.Contains(`[14/16] in maintenance, rebooting server \"two\"`)(t, logBuf)
+	log.Contains(`[15/16] in maintenance, restore pending server \"two\"`)(t, logBuf)
+	log.Contains(`[16/16] restoring server \"two\"`)(t, logBuf)
 }
 
 func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
@@ -908,6 +918,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 		repoUpdateErr                  error
 		serverSvcPollServersErr        error
 		serverSvcGetAllWithFilter      []queue.Item[provisioning.Servers]
+		serverSvcUpdateByNameErrs      queue.Errs
 		serverSvcRebootSystemByNameErr error
 
 		assertErr require.ErrorAssertionFunc
@@ -1123,6 +1134,112 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 				require.ErrorContains(tt, err, `Server update state for "server" (https://server:8443) is undefined`)
 			},
 		},
+
+		{
+			name: "error - executeRollingUpdate - serverSvc.UpdateSystemByName",
+			repoGetAll: []queue.Item[provisioning.Clusters]{
+				{
+					Value: provisioning.Clusters{
+						{
+							Name: "one",
+							UpdateStatus: api.ClusterUpdateStatus{
+								InProgressStatus: api.ClusterUpdateInProgressStatus{
+									InProgress: api.ClusterUpdateInProgressApplyUpdateWithReboot,
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// cluster GetAllWithFilter
+				{},
+				// GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:   "server",
+							Status: api.ServerStatusReady,
+							VersionData: api.ServerVersionData{
+								NeedsUpdate: ptr.To(true),
+							},
+						},
+					},
+				},
+			},
+			serverSvcUpdateByNameErrs: queue.Errs{
+				boom.Error,
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - executeRollingUpdate - repo.GetByName",
+			repoGetAll: []queue.Item[provisioning.Clusters]{
+				{
+					Value: provisioning.Clusters{
+						{
+							Name: "one",
+							UpdateStatus: api.ClusterUpdateStatus{
+								InProgressStatus: api.ClusterUpdateInProgressStatus{
+									InProgress: api.ClusterUpdateInProgressApplyUpdateWithReboot,
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// cluster GetAllWithFilter
+				{},
+				// GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:   "server",
+							Status: api.ServerStatusReady,
+						},
+					},
+				},
+			},
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - executeRollingUpdate - repo.Update",
+			repoGetAll: []queue.Item[provisioning.Clusters]{
+				{
+					Value: provisioning.Clusters{
+						{
+							Name: "one",
+							UpdateStatus: api.ClusterUpdateStatus{
+								InProgressStatus: api.ClusterUpdateInProgressStatus{
+									InProgress: api.ClusterUpdateInProgressApplyUpdateWithReboot,
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// cluster GetAllWithFilter
+				{},
+				// GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:   "server",
+							Status: api.ServerStatusReady,
+						},
+					},
+				},
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+
 		{
 			name: "error - executeRollingUpdateNextStep - server in update pending",
 			repoGetAll: []queue.Item[provisioning.Clusters]{
@@ -1569,6 +1686,9 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
 					return queue.Pop(t, &tc.serverSvcGetAllWithFilter)
 				},
+				UpdateSystemByNameFunc: func(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error {
+					return tc.serverSvcUpdateByNameErrs.Pop(t)
+				},
 				RebootSystemByNameFunc: func(ctx context.Context, name string, force bool) error {
 					return tc.serverSvcRebootSystemByNameErr
 				},
@@ -1584,6 +1704,9 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+			require.Empty(t, tc.repoGetAll)
+			require.Empty(t, tc.serverSvcGetAllWithFilter)
+			require.Empty(t, tc.serverSvcUpdateByNameErrs)
 		})
 	}
 }
