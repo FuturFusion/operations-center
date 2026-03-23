@@ -1,6 +1,7 @@
 package inventory_test
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -15,8 +16,10 @@ import (
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
 	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -1503,6 +1506,8 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 }
 
 func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
+	fixedTime := time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+
 	// Includes also SyncCluster
 	tests := []struct {
 		name                              string
@@ -1517,11 +1522,14 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- end }}
 		{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}        []incusapi.{{ .ObjectType | pascalcase }}
 		{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}Err     error
+		repoGetAllWithFilter              inventory.{{ .PluralName | pascalcase }}
+		repoGetAllWithFilterErr           error
 		repoDeleteWithFilterErr           error
 		repoCreateErr                     error
 		serviceOptions                    []inventory.{{ .Name | pascalcase }}ServiceOption
 
 		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
 	}{
 		{
 			name: "success",
@@ -1568,8 +1576,52 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- end }}
 				},
 			},
+			repoGetAllWithFilter: inventory.{{ .PluralName | pascalcase }}{
+				{
+					Cluster: "one",
+{{- if and .ServerIDByLocation .IsServerIDDefining }}
+	{{- if .IsServerIDOptional }}
+					Server:  ptr.To("one"),
+	{{- else }}
+					Server:  "one",
+	{{- end }}
+{{- end }}
+					Name:    "{{ .Name | camelcase }} one",
+{{- if .HasProject }}
+					ProjectName: "project one",
+{{- end }}
+{{- if .HasParent }}
+					{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase }} one",
+{{- end }}
+					LastUpdated: fixedTime,
+					Object: inventory.Incus{{ .ObjectType | pascalcase }}Wrapper{
+						{{ .ObjectType | pascalcase }}: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+							{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+							{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+								{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .ServerIDByLocation }}
+								Location:  "one",
+{{- end }}
+{{- if and (not .UsesEmbeddedPostType) .HasProjectDirect }}
+								Project: "project one",
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+							},
+{{- end }}
+{{- if .ObjectEmbedded }}
+							},
+{{- end }}
+						},
+					},
+				},
+			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 {{- if .HasParent }}
 		{
@@ -1621,6 +1673,49 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- end }}
 				},
 			},
+			repoGetAllWithFilter: inventory.{{ .PluralName | pascalcase }}{
+				{
+					Cluster: "one",
+{{- if and .ServerIDByLocation .IsServerIDDefining }}
+	{{- if .IsServerIDOptional }}
+					Server:  ptr.To("one"),
+	{{- else }}
+					Server:  "one",
+	{{- end }}
+{{- end }}
+					Name:    "{{ .Name | camelcase }} one",
+{{- if .HasProject }}
+					ProjectName: "project one",
+{{- end }}
+{{- if .HasParent }}
+					{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase  }} one",
+{{- end }}
+					LastUpdated: fixedTime,
+					Object: inventory.Incus{{ .ObjectType | pascalcase }}Wrapper{
+						{{ .ObjectType | pascalcase }}: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+							{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+							{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+								{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .ServerIDByLocation }}
+								Location:  "one",
+{{- end }}
+{{- if and (not .UsesEmbeddedPostType) .HasProjectDirect }}
+								Project: "project one",
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+							},
+{{- end }}
+{{- if .ObjectEmbedded }}
+							},
+{{- end }}
+						},
+					},
+				},
+			},
 			serviceOptions: []inventory.{{ .Name | pascalcase }}ServiceOption{
 				inventory.{{ .Name | pascalcase }}WithParentFilter(func(parent incusapi.{{ .ParentObjectType | pascalcase }}) bool {
 					return parent.Name == "filtered"
@@ -1628,6 +1723,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 {{- end }}
 		{
@@ -1686,7 +1782,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 						},
 {{- end }}
 {{- if .ServerIDByLocation }}
-						Location:  "one",
+						Location:  "{{ .Name | camelcase }} one",
 {{- end }}
 {{- if .HasProjectDirect }}
 						Project: "project one",
@@ -1696,6 +1792,49 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- end }}
 				},
 			},
+			repoGetAllWithFilter: inventory.{{ .PluralName | pascalcase }}{
+				{
+					Cluster: "one",
+{{- if and .ServerIDByLocation .IsServerIDDefining }}
+	{{- if .IsServerIDOptional }}
+					Server:  ptr.To("one"),
+	{{- else }}
+					Server:  "one",
+	{{- end }}
+{{- end }}
+					Name:    "{{ .Name | camelcase }} one",
+{{- if .HasProject }}
+					ProjectName: "project one",
+{{- end }}
+{{- if .HasParent }}
+					{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase  }} one",
+{{- end }}
+					LastUpdated: fixedTime,
+					Object: inventory.Incus{{ .ObjectType | pascalcase }}Wrapper{
+						{{ .ObjectType | pascalcase }}: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+							{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+							{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+								{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .ServerIDByLocation }}
+								Location:  "one",
+{{- end }}
+{{- if and (not .UsesEmbeddedPostType) .HasProjectDirect }}
+								Project: "project one",
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+							},
+{{- end }}
+{{- if .ObjectEmbedded }}
+							},
+{{- end }}
+						},
+					},
+				},
+			},
 			serviceOptions: []inventory.{{ .Name | pascalcase }}ServiceOption{
 				inventory.{{ .Name | pascalcase }}WithSyncFilter(func({{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}) bool{
 					return {{ .Name | camelcase }}.Name == "{{ .Name | camelcase }} filtered"
@@ -1703,6 +1842,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 {{- with .RequiresExtension }}
 		{
@@ -1717,13 +1857,201 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			{{ $.Name | camelcase }}ClientHasExtension: false,
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 {{- end }}
 		{
-			name: "error - cluster service get by ID",
+			name: "success - missing",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL: "https://server-one/",
+					Certificate: "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+{{- with .RequiresExtension }}
+			{{ $.Name | camelcase }}ClientHasExtension: true,
+{{- end }}
+{{- if .HasParent }}
+			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
+				{
+					Name: "{{ .ParentName | camelcase }} one",
+{{- if .HasProjectFromParent }}
+					Project: "project one",
+{{- end }}
+				},
+			},
+{{- end }}
+			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}: []incusapi.{{ .ObjectType | pascalcase }}{
+				{
+{{- if .ObjectEmbedded }}
+					{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+						{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+							{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .UsesEmbeddedPostType }}
+						},
+{{- end }}
+{{- if .ServerIDByLocation }}
+						Location:  "{{ .Name | camelcase }} one",
+{{- end }}
+{{- if .HasProjectDirect }}
+						Project: "project one",
+{{- end }}
+{{- if .ObjectEmbedded }}
+					},
+{{- end }}
+				},
+			},
+			repoGetAllWithFilter: inventory.{{ .PluralName | pascalcase }}{
+				// item missing
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("sync cluster detected missing item in inventory"),
+		},
+		{
+			name: "success - supernumerary",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL: "https://server-one/",
+					Certificate: "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+{{- with .RequiresExtension }}
+			{{ $.Name | camelcase }}ClientHasExtension: true,
+{{- end }}
+{{- if .HasParent }}
+			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
+				{
+					Name: "{{ .ParentName | camelcase }} one",
+{{- if .HasProjectFromParent }}
+					Project: "project one",
+{{- end }}
+				},
+			},
+{{- end }}
+			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}: []incusapi.{{ .ObjectType | pascalcase }}{
+				{
+{{- if .ObjectEmbedded }}
+					{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+						{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+							{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .UsesEmbeddedPostType }}
+						},
+{{- end }}
+{{- if .ServerIDByLocation }}
+						Location:  "{{ .Name | camelcase }} one",
+{{- end }}
+{{- if .HasProjectDirect }}
+						Project: "project one",
+{{- end }}
+{{- if .ObjectEmbedded }}
+					},
+{{- end }}
+				},
+			},
+			repoGetAllWithFilter: inventory.{{ .PluralName | pascalcase }}{
+				{
+					Cluster: "one",
+{{- if and .ServerIDByLocation .IsServerIDDefining }}
+	{{- if .IsServerIDOptional }}
+					Server:  ptr.To("one"),
+	{{- else }}
+					Server:  "one",
+	{{- end }}
+{{- end }}
+					Name:    "{{ .Name | camelcase }} one",
+{{- if .HasProject }}
+					ProjectName: "project one",
+{{- end }}
+{{- if .HasParent }}
+					{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase  }} one",
+{{- end }}
+					LastUpdated: fixedTime,
+					Object: inventory.Incus{{ .ObjectType | pascalcase }}Wrapper{
+						{{ .ObjectType | pascalcase }}: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+							{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+							{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+								{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .ServerIDByLocation }}
+								Location:  "one",
+{{- end }}
+{{- if and (not .UsesEmbeddedPostType) .HasProjectDirect }}
+								Project: "project one",
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+							},
+{{- end }}
+{{- if .ObjectEmbedded }}
+							},
+{{- end }}
+						},
+					},
+				},
+				// supernumerary item
+				{
+					Cluster: "one",
+{{- if and .ServerIDByLocation .IsServerIDDefining }}
+	{{- if .IsServerIDOptional }}
+					Server:  ptr.To("one"),
+	{{- else }}
+					Server:  "one",
+	{{- end }}
+{{- end }}
+					Name:    "supernumerary",
+{{- if .HasProject }}
+					ProjectName: "project one",
+{{- end }}
+{{- if .HasParent }}
+					{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase  }} one",
+{{- end }}
+					LastUpdated: fixedTime,
+					Object: inventory.Incus{{ .ObjectType | pascalcase }}Wrapper{
+						{{ .ObjectType | pascalcase }}: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+							{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+							{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+								{{ .ObjectNamePropertyName | pascalcase }}: "supernumerary",
+{{- if .ServerIDByLocation }}
+								Location:  "one",
+{{- end }}
+{{- if and (not .UsesEmbeddedPostType) .HasProjectDirect }}
+								Project: "project one",
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+							},
+{{- end }}
+{{- if .ObjectEmbedded }}
+							},
+{{- end }}
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("sync cluster detected supernumerary item in inventory"),
+		},
+		{
+			name: "error - cluster service get by name",
 			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 {{- if .HasParent }}
 		{
@@ -1741,6 +2069,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}Err: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 {{- end }}
 		{
@@ -1768,9 +2097,60 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}Err: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
-			name: "error - {{ .PluralName }} delete by cluster ID",
+			name: "error - {{ .PluralName }} repo.GetAllWithFilter",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL: "https://server-one/",
+					Certificate: "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+{{- with .RequiresExtension }}
+			{{ $.Name | camelcase }}ClientHasExtension: true,
+{{- end }}
+{{- if .HasParent }}
+			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
+				{
+					Name: "{{ .ParentName | camelcase }} one",
+{{- if .HasProjectFromParent }}
+					Project: "project one",
+{{- end }}
+				},
+			},
+{{- end }}
+			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}: []incusapi.{{ .ObjectType | pascalcase }}{
+				{
+{{- if .ObjectEmbedded }}
+					{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+						{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+							{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .UsesEmbeddedPostType }}
+						},
+{{- end }}
+{{- if .ServerIDByLocation }}
+						Location:  "one",
+{{- end }}
+{{- if .HasProjectDirect }}
+						Project: "project one",
+{{- end }}
+{{- if .ObjectEmbedded }}
+					},
+{{- end }}
+				},
+			},
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - {{ .PluralName }} repo.DeleteWithFilter",
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL: "https://server-one/",
@@ -1817,6 +2197,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - validate",
@@ -1868,6 +2249,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - {{ .Name | camelcase }} create",
@@ -1914,16 +2296,72 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- end }}
 				},
 			},
+			repoGetAllWithFilter: inventory.{{ .PluralName | pascalcase }}{
+				{
+					Cluster: "one",
+{{- if and .ServerIDByLocation .IsServerIDDefining }}
+	{{- if .IsServerIDOptional }}
+					Server:  ptr.To("one"),
+	{{- else }}
+					Server:  "one",
+	{{- end }}
+{{- end }}
+					Name:    "{{ .Name | camelcase }} one",
+{{- if .HasProject }}
+					ProjectName: "project one",
+{{- end }}
+{{- if .HasParent }}
+					{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase  }} one",
+{{- end }}
+					LastUpdated: fixedTime,
+					Object: inventory.Incus{{ .ObjectType | pascalcase }}Wrapper{
+						{{ .ObjectType | pascalcase }}: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+							{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+							{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+								{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .ServerIDByLocation }}
+								Location:  "one",
+{{- end }}
+{{- if and (not .UsesEmbeddedPostType) .HasProjectDirect }}
+								Project: "project one",
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+							},
+{{- end }}
+{{- if .ObjectEmbedded }}
+							},
+{{- end }}
+						},
+					},
+				},
+			},
 			repoCreateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			for i, item := range tc.repoGetAllWithFilter {
+				item.DeriveUUID()
+				tc.repoGetAllWithFilter[i] = item
+			}
+
 			repo := &repoMock.{{ .Name | pascalcase }}RepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) (inventory.{{ .PluralName | pascalcase }}, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
 				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) error {
 {{- if .HasProjectFromParent }}
 					require.Equal(t, tc.{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}[0].Project, *filter.ProjectName)
@@ -1967,16 +2405,17 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				append(
 					tc.serviceOptions,
 					inventory.{{ .Name | pascalcase }}WithNow(func() time.Time {
-						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+						return fixedTime
 					}),
 				)...
 			)
 
 			// Run test
-			err := {{ .Name | camelcase }}Svc.SyncCluster(context.Background(), "one")
+			err = {{ .Name | camelcase }}Svc.SyncCluster(context.Background(), "one")
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
 		})
 	}
 }

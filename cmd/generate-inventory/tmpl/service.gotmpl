@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-{{- if .HasProject }}
 	"log/slog"
-{{- end }}
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -476,7 +474,26 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 	}
 {{ end }}
 
+	existingUUIDs := map[uuid.UUID]bool{}
 	err = transaction.Do(ctx, func(ctx context.Context) error {
+		existing{{ .PluralName | pascalcase }}, err := s.repo.GetAllWithFilter(ctx, {{ .Name | pascalcase }}Filter{
+			Cluster: &name,
+{{- if .HasProjectFromParent }}
+			ProjectName: &{{ .ParentName | camelcase }}.Project,
+{{- end }}
+{{- if .HasParent }}
+			{{ .ParentName | pascalcase }}Name: &{{ .ParentName | camelcase }}.Name,
+{{- end }}
+		})
+		if err != nil {
+			return fmt.Errorf(`Failed to get "{{ .PluralName }}" for cluster %q{{ if .HasProjectFromParent }}, project %q{{ end }}{{ if .HasParent }}, {{ .ParentName }} %q{{ end }}: %w`, name, {{ if .HasProjectFromParent }}{{ .ParentName | camelcase }}.Project, {{ end }}{{ if .HasParent }}{{ .ParentName | camelcase }}.Name, {{ end }}err)
+		}
+
+		existingUUIDs = make(map[uuid.UUID]bool, len(existing{{ .PluralName | pascalcase }}))
+		for _, existing{{ .Name | pascalcase }} := range existing{{ .PluralName | pascalcase }} {
+			existingUUIDs[existing{{ .Name | pascalcase }}.UUID] = true
+		}
+
 		err = s.repo.DeleteWithFilter(ctx, {{ .Name | pascalcase }}Filter{
 			Cluster: &name,
 {{- if .HasProjectFromParent }}
@@ -487,7 +504,7 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 {{- end }}
 		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			return fmt.Errorf(`Failed to delete "{{ .Name }}" from cluster %q{{ if .HasParent }}, {{ .ParentName }} %q{{ end }}: %w`, name, {{ if .HasParent }}{{ .ParentName | camelcase }}.Name, {{ end }}err)
+			return fmt.Errorf(`Failed to delete "{{ .PluralName }}" for cluster %q{{ if .HasProjectFromParent }}, project %q{{ end }}{{ if .HasParent }}, {{ .ParentName }} %q{{ end }}: %w`, name, {{ if .HasProjectFromParent }}{{ .ParentName | camelcase }}.Project, {{ end }}{{ if .HasParent }}{{ .ParentName | camelcase }}.Name, {{ end }}err)
 		}
 
 		for _, retrieved{{ .Name | pascalcase }} := range retrieved{{ .PluralName | pascalcase }} {
@@ -525,6 +542,12 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 				return err
 			}
 
+			if existingUUIDs[{{ .Name | camelcase }}.UUID] {
+				delete(existingUUIDs, {{ .Name | camelcase }}.UUID)
+			} else {
+				slog.WarnContext(ctx, "sync cluster detected missing item in inventory", slog.String("object_type", "{{ .Name }}"), slog.Any("uuid", {{ .Name | camelcase }}.UUID))
+			}
+
 			_, err := s.repo.Create(ctx, {{ .Name | camelcase }})
 			if err != nil {
 				return fmt.Errorf(`Failed to create {{ .Name }} %q for cluster %q{{ if .HasParent }}, {{ .ParentName }} %q{{ end }}: %w`, {{ .Name | camelcase }}.UUID.String(), name, {{ if .HasParent }}{{ .ParentName | camelcase }}.Name, {{ end }}err)
@@ -535,6 +558,10 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 	})
 	if err != nil {
 		return err
+	}
+
+	for uuid := range existingUUIDs {
+		slog.WarnContext(ctx, "sync cluster detected supernumerary item in inventory", slog.String("object_type", "{{ .Name }}"), slog.Any("uuid", uuid))
 	}
 {{- if .HasParent }}
 	}

@@ -380,12 +380,25 @@ func (s instanceService) SyncCluster(ctx context.Context, name string) error {
 		return err
 	}
 
+	existingUUIDs := map[uuid.UUID]bool{}
 	err = transaction.Do(ctx, func(ctx context.Context) error {
+		existingInstances, err := s.repo.GetAllWithFilter(ctx, InstanceFilter{
+			Cluster: &name,
+		})
+		if err != nil {
+			return fmt.Errorf(`Failed to get "instances" for cluster %q: %w`, name, err)
+		}
+
+		existingUUIDs = make(map[uuid.UUID]bool, len(existingInstances))
+		for _, existingInstance := range existingInstances {
+			existingUUIDs[existingInstance.UUID] = true
+		}
+
 		err = s.repo.DeleteWithFilter(ctx, InstanceFilter{
 			Cluster: &name,
 		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			return fmt.Errorf(`Failed to delete "instance" from cluster %q: %w`, name, err)
+			return fmt.Errorf(`Failed to delete "instances" for cluster %q: %w`, name, err)
 		}
 
 		for _, retrievedInstance := range retrievedInstances {
@@ -409,6 +422,12 @@ func (s instanceService) SyncCluster(ctx context.Context, name string) error {
 				return err
 			}
 
+			if existingUUIDs[instance.UUID] {
+				delete(existingUUIDs, instance.UUID)
+			} else {
+				slog.WarnContext(ctx, "sync cluster detected missing item in inventory", slog.String("object_type", "instance"), slog.Any("uuid", instance.UUID))
+			}
+
 			_, err := s.repo.Create(ctx, instance)
 			if err != nil {
 				return fmt.Errorf(`Failed to create instance %q for cluster %q: %w`, instance.UUID.String(), name, err)
@@ -419,6 +438,10 @@ func (s instanceService) SyncCluster(ctx context.Context, name string) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	for uuid := range existingUUIDs {
+		slog.WarnContext(ctx, "sync cluster detected supernumerary item in inventory", slog.String("object_type", "instance"), slog.Any("uuid", uuid))
 	}
 
 	return nil

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -359,12 +360,25 @@ func (s storagePoolService) SyncCluster(ctx context.Context, name string) error 
 		return err
 	}
 
+	existingUUIDs := map[uuid.UUID]bool{}
 	err = transaction.Do(ctx, func(ctx context.Context) error {
+		existingStoragePools, err := s.repo.GetAllWithFilter(ctx, StoragePoolFilter{
+			Cluster: &name,
+		})
+		if err != nil {
+			return fmt.Errorf(`Failed to get "storage_pools" for cluster %q: %w`, name, err)
+		}
+
+		existingUUIDs = make(map[uuid.UUID]bool, len(existingStoragePools))
+		for _, existingStoragePool := range existingStoragePools {
+			existingUUIDs[existingStoragePool.UUID] = true
+		}
+
 		err = s.repo.DeleteWithFilter(ctx, StoragePoolFilter{
 			Cluster: &name,
 		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			return fmt.Errorf(`Failed to delete "storage_pool" from cluster %q: %w`, name, err)
+			return fmt.Errorf(`Failed to delete "storage_pools" for cluster %q: %w`, name, err)
 		}
 
 		for _, retrievedStoragePool := range retrievedStoragePools {
@@ -386,6 +400,12 @@ func (s storagePoolService) SyncCluster(ctx context.Context, name string) error 
 				return err
 			}
 
+			if existingUUIDs[storagePool.UUID] {
+				delete(existingUUIDs, storagePool.UUID)
+			} else {
+				slog.WarnContext(ctx, "sync cluster detected missing item in inventory", slog.String("object_type", "storage_pool"), slog.Any("uuid", storagePool.UUID))
+			}
+
 			_, err := s.repo.Create(ctx, storagePool)
 			if err != nil {
 				return fmt.Errorf(`Failed to create storage_pool %q for cluster %q: %w`, storagePool.UUID.String(), name, err)
@@ -396,6 +416,10 @@ func (s storagePoolService) SyncCluster(ctx context.Context, name string) error 
 	})
 	if err != nil {
 		return err
+	}
+
+	for uuid := range existingUUIDs {
+		slog.WarnContext(ctx, "sync cluster detected supernumerary item in inventory", slog.String("object_type", "storage_pool"), slog.Any("uuid", uuid))
 	}
 
 	return nil
