@@ -7,7 +7,7 @@ interface Props {
   onChange: (value: string) => void;
   disabled?: boolean;
   label?: string;
-  formClasses: string;
+  formClasses?: string;
 }
 
 const ChannelSelect: FC<Props> = ({
