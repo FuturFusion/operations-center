@@ -29,6 +29,7 @@ type ServerService interface {
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
 	ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error
+	GetChangelogByName(ctx context.Context, name string) (api.UpdateChangelog, error)
 	SyncCluster(ctx context.Context, clusterName string) error
 
 	PollServers(ctx context.Context, serverFilter ServerFilter, updateServerConfiguration bool) error

@@ -115,9 +115,6 @@ type Update struct {
 	// Example: stable
 	UpstreamChannels []string `json:"upstream_channels" yaml:"upstream_channels"`
 
-	// Changelog of the Update as plain text.
-	Changelog string `json:"changelog" yaml:"changelog"`
-
 	// Status contains the status the update is currently in.
 	// Possible values for status are: pending, ready
 	// Example: ready
@@ -152,3 +149,13 @@ type UpdateFile struct {
 	// Example: x86_64
 	Architecture images.UpdateFileArchitecture `json:"architecture" yaml:"architecture"`
 }
+
+// UpdateChangelog defines a changelog for an update.
+//
+// swagger:model
+type UpdateChangelog = images.Changelog
+
+// UpdateChangelogs represents a series of changelogs, e.g. for all the updates of a channel.
+//
+// swagger:model
+type UpdateChangelogs []UpdateChangelog

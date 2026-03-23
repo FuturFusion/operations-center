@@ -4,12 +4,16 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"sort"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -137,4 +141,43 @@ func (s channelService) validateUpdatesConfig(ctx context.Context, su system.Upd
 	}
 
 	return nil
+}
+
+func (s channelService) GetChangelogByName(ctx context.Context, name string, architecture images.UpdateFileArchitecture) (api.UpdateChangelogs, error) {
+	updates, err := s.updateSvc.GetAllWithFilter(ctx, UpdateFilter{
+		Channel: ptr.To(name),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get updates for channel %q: %w", name, err)
+	}
+
+	if len(updates) == 0 {
+		return nil, fmt.Errorf("Channel %q does not contain any updates: %w", name, domain.ErrOperationNotPermitted)
+	}
+
+	if len(updates) == 1 {
+		changelog, err := s.updateSvc.GetChangelog(ctx, updates[0].UUID, uuid.Nil, architecture)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get changelog for update %s: %w", updates[0].UUID.String(), err)
+		}
+
+		return api.UpdateChangelogs{changelog}, nil
+	}
+
+	sort.Sort(updates)
+
+	channelChangelog := make(api.UpdateChangelogs, 0, len(updates)-1)
+	for range updates[:len(updates)-1] {
+		currentID := updates[0].UUID
+		priorID := updates[1].UUID
+
+		changelog, err := s.updateSvc.GetChangelog(ctx, currentID, priorID, architecture)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get changelog for update %s: %w", updates[0].UUID.String(), err)
+		}
+
+		channelChangelog = append(channelChangelog, changelog)
+	}
+
+	return channelChangelog, nil
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -11,6 +13,8 @@ import (
 	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
+	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -393,6 +397,233 @@ func TestChannelService_DeleteByName(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestChannelService_GetChangelog(t *testing.T) {
+	updateV1UUID := uuidgen.FromPattern(t, "1")
+	updateV2UUID := uuidgen.FromPattern(t, "2")
+	updateV3UUID := uuidgen.FromPattern(t, "3")
+
+	tests := []struct {
+		name                      string
+		nameArg                   string
+		architectureArg           images.UpdateFileArchitecture
+		updateSvcGetAllWithFilter []queue.Item[provisioning.Updates]
+		updateSvcGetChangelog     []queue.Item[api.UpdateChangelog]
+
+		assertErr     require.ErrorAssertionFunc
+		wantChangelog api.UpdateChangelogs
+	}{
+		{
+			name:            "success",
+			nameArg:         "stable",
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			updateSvcGetAllWithFilter: []queue.Item[provisioning.Updates]{
+				{
+					Value: provisioning.Updates{
+						{
+							UUID:    updateV1UUID,
+							Version: "1",
+						},
+						{
+							UUID:    updateV2UUID,
+							Version: "2",
+						},
+						{
+							UUID:    updateV3UUID,
+							Version: "3",
+						},
+					},
+				},
+			},
+			updateSvcGetChangelog: []queue.Item[api.UpdateChangelog]{
+				{
+					Value: api.UpdateChangelog{
+						CurrentVersion: "3",
+						PriorVersion:   "2",
+						Components: map[string]images.ChangelogEntries{
+							"foo": {
+								Updated: []string{"file version 2 to version 3"},
+							},
+						},
+					},
+				},
+				{
+					Value: api.UpdateChangelog{
+						CurrentVersion: "2",
+						PriorVersion:   "1",
+						Components: map[string]images.ChangelogEntries{
+							"foo": {
+								Updated: []string{"file version 1 to version 2"},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantChangelog: api.UpdateChangelogs{
+				{
+					CurrentVersion: "3",
+					PriorVersion:   "2",
+					Components: map[string]images.ChangelogEntries{
+						"foo": {
+							Updated: []string{"file version 2 to version 3"},
+						},
+					},
+				},
+				{
+					CurrentVersion: "2",
+					PriorVersion:   "1",
+					Components: map[string]images.ChangelogEntries{
+						"foo": {
+							Updated: []string{"file version 1 to version 2"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "success - single entry",
+			nameArg:         "stable",
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			updateSvcGetAllWithFilter: []queue.Item[provisioning.Updates]{
+				{
+					Value: provisioning.Updates{
+						{
+							UUID:    updateV1UUID,
+							Version: "1",
+						},
+					},
+				},
+			},
+			updateSvcGetChangelog: []queue.Item[api.UpdateChangelog]{
+				{
+					Value: api.UpdateChangelog{
+						CurrentVersion: "1",
+						Components: map[string]images.ChangelogEntries{
+							"foo": {
+								Added: []string{"file version 1"},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantChangelog: api.UpdateChangelogs{
+				{
+					CurrentVersion: "1",
+					Components: map[string]images.ChangelogEntries{
+						"foo": {
+							Added: []string{"file version 1"},
+						},
+					},
+				},
+			},
+		},
+
+		{
+			name:            "error - updateSvc.GetAllWithFilter",
+			nameArg:         "stable",
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			updateSvcGetAllWithFilter: []queue.Item[provisioning.Updates]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:            "error - no updates in channel",
+			nameArg:         "stable",
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			updateSvcGetAllWithFilter: []queue.Item[provisioning.Updates]{
+				{
+					Value: provisioning.Updates{}, // no updates in channel
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+			},
+		},
+		{
+			name:            "error - single entry - updateSvc.GetChangelog",
+			nameArg:         "stable",
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			updateSvcGetAllWithFilter: []queue.Item[provisioning.Updates]{
+				{
+					Value: provisioning.Updates{
+						{
+							UUID:    updateV1UUID,
+							Version: "1",
+						},
+					},
+				},
+			},
+			updateSvcGetChangelog: []queue.Item[api.UpdateChangelog]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:            "error - updateSvc.GetChangelog",
+			nameArg:         "stable",
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			updateSvcGetAllWithFilter: []queue.Item[provisioning.Updates]{
+				{
+					Value: provisioning.Updates{
+						{
+							UUID:    updateV1UUID,
+							Version: "1",
+						},
+						{
+							UUID:    updateV2UUID,
+							Version: "2",
+						},
+					},
+				},
+			},
+			updateSvcGetChangelog: []queue.Item[api.UpdateChangelog]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return queue.Pop(t, &tc.updateSvcGetAllWithFilter)
+				},
+				GetChangelogFunc: func(ctx context.Context, currentID, priorID uuid.UUID, architecture images.UpdateFileArchitecture) (api.UpdateChangelog, error) {
+					return queue.Pop(t, &tc.updateSvcGetChangelog)
+				},
+			}
+
+			channelSvc := provisioning.NewChannelService(nil, updateSvc)
+
+			// Run test
+			changelog, err := channelSvc.GetChangelogByName(t.Context(), tc.nameArg, tc.architectureArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantChangelog, changelog)
+
+			require.Empty(t, tc.updateSvcGetAllWithFilter)
+			require.Empty(t, tc.updateSvcGetChangelog)
 		})
 	}
 }

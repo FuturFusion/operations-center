@@ -355,6 +355,41 @@ func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (ser
 	return _d._base.GetByName(ctx, name)
 }
 
+// GetChangelogByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) GetChangelogByName(ctx context.Context, name string) (v api.UpdateChangelog, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetChangelogByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("v", v),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetChangelogByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetChangelogByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetChangelogByName finished")
+		}
+	}()
+	return _d._base.GetChangelogByName(ctx, name)
+}
+
 // GetSystemKernel implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetSystemKernel(ctx context.Context, name string) (v provisioning.ServerSystemKernel, err error) {
 	log := slog.With()

@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -136,6 +138,34 @@ func (_d UpdateServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUI
 		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetByUUID(ctx, id)
+}
+
+// GetChangelog implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) GetChangelog(ctx context.Context, currentID uuid.UUID, priorID uuid.UUID, architecture images.UpdateFileArchitecture) (v api.UpdateChangelog, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetChangelog", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetChangelog(ctx, currentID, priorID, architecture)
+}
+
+// GetChangelogByChannel implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) GetChangelogByChannel(ctx context.Context, UUID uuid.UUID, channelName string, upstream bool, architecture images.UpdateFileArchitecture) (v api.UpdateChangelog, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetChangelogByChannel", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetChangelogByChannel(ctx, UUID, channelName, upstream, architecture)
 }
 
 // GetUpdateAllFiles implements provisioning.UpdateService.

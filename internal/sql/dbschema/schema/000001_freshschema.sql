@@ -75,7 +75,6 @@ CREATE TABLE updates (
   published_at DATETIME NOT NULL,
   severity TEXT NOT NULL,
   upstream_channels TEXT NOT NULL,
-  changelog TEXT NOT NULL,
   files TEXT NOT NULL,
   "url" NOT NULL DEFAULT '',
   "status" NOT NULL DEFAULT 'ready',
@@ -408,4 +407,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (30, strftime("%s"));
+INSERT INTO schema (version, updated_at) VALUES (31, strftime("%s"));

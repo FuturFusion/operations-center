@@ -58,6 +58,16 @@ var updates = map[int]update{
 	28: updateFromV27,
 	29: updateFromV28,
 	30: updateFromV29,
+	31: updateFromV30,
+}
+
+func updateFromV30(ctx context.Context, tx *sql.Tx) error {
+	// v30..v31 remove updates.changelog property
+	stmt := `
+ALTER TABLE updates DROP COLUMN changelog;
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV29(ctx context.Context, tx *sql.Tx) error {

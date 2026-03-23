@@ -166,6 +166,20 @@ func (_d ServerServiceWithPrometheus) GetByName(ctx context.Context, name string
 	return _d.base.GetByName(ctx, name)
 }
 
+// GetChangelogByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) GetChangelogByName(ctx context.Context, name string) (v api.UpdateChangelog, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetChangelogByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetChangelogByName(ctx, name)
+}
+
 // GetSystemKernel implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) GetSystemKernel(ctx context.Context, name string) (v provisioning.ServerSystemKernel, err error) {
 	_since := time.Now()

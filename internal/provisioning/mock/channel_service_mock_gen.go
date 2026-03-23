@@ -9,6 +9,8 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 )
 
 // Ensure that ChannelServiceMock does implement provisioning.ChannelService.
@@ -35,6 +37,9 @@ var _ provisioning.ChannelService = &ChannelServiceMock{}
 //			},
 //			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
 //				panic("mock out the GetByName method")
+//			},
+//			GetChangelogByNameFunc: func(ctx context.Context, name string, architecture images.UpdateFileArchitecture) (api.UpdateChangelogs, error) {
+//				panic("mock out the GetChangelogByName method")
 //			},
 //			SetServerServiceFunc: func(serverSvc provisioning.ServerService)  {
 //				panic("mock out the SetServerService method")
@@ -63,6 +68,9 @@ type ChannelServiceMock struct {
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Channel, error)
+
+	// GetChangelogByNameFunc mocks the GetChangelogByName method.
+	GetChangelogByNameFunc func(ctx context.Context, name string, architecture images.UpdateFileArchitecture) (api.UpdateChangelogs, error)
 
 	// SetServerServiceFunc mocks the SetServerService method.
 	SetServerServiceFunc func(serverSvc provisioning.ServerService)
@@ -103,6 +111,15 @@ type ChannelServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// GetChangelogByName holds details about calls to the GetChangelogByName method.
+		GetChangelogByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// Architecture is the architecture argument value.
+			Architecture images.UpdateFileArchitecture
+		}
 		// SetServerService holds details about calls to the SetServerService method.
 		SetServerService []struct {
 			// ServerSvc is the serverSvc argument value.
@@ -116,13 +133,14 @@ type ChannelServiceMock struct {
 			NewChannel provisioning.Channel
 		}
 	}
-	lockCreate           sync.RWMutex
-	lockDeleteByName     sync.RWMutex
-	lockGetAll           sync.RWMutex
-	lockGetAllNames      sync.RWMutex
-	lockGetByName        sync.RWMutex
-	lockSetServerService sync.RWMutex
-	lockUpdate           sync.RWMutex
+	lockCreate             sync.RWMutex
+	lockDeleteByName       sync.RWMutex
+	lockGetAll             sync.RWMutex
+	lockGetAllNames        sync.RWMutex
+	lockGetByName          sync.RWMutex
+	lockGetChangelogByName sync.RWMutex
+	lockSetServerService   sync.RWMutex
+	lockUpdate             sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -294,6 +312,46 @@ func (mock *ChannelServiceMock) GetByNameCalls() []struct {
 	mock.lockGetByName.RLock()
 	calls = mock.calls.GetByName
 	mock.lockGetByName.RUnlock()
+	return calls
+}
+
+// GetChangelogByName calls GetChangelogByNameFunc.
+func (mock *ChannelServiceMock) GetChangelogByName(ctx context.Context, name string, architecture images.UpdateFileArchitecture) (api.UpdateChangelogs, error) {
+	if mock.GetChangelogByNameFunc == nil {
+		panic("ChannelServiceMock.GetChangelogByNameFunc: method is nil but ChannelService.GetChangelogByName was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		Name         string
+		Architecture images.UpdateFileArchitecture
+	}{
+		Ctx:          ctx,
+		Name:         name,
+		Architecture: architecture,
+	}
+	mock.lockGetChangelogByName.Lock()
+	mock.calls.GetChangelogByName = append(mock.calls.GetChangelogByName, callInfo)
+	mock.lockGetChangelogByName.Unlock()
+	return mock.GetChangelogByNameFunc(ctx, name, architecture)
+}
+
+// GetChangelogByNameCalls gets all the calls that were made to GetChangelogByName.
+// Check the length with:
+//
+//	len(mockedChannelService.GetChangelogByNameCalls())
+func (mock *ChannelServiceMock) GetChangelogByNameCalls() []struct {
+	Ctx          context.Context
+	Name         string
+	Architecture images.UpdateFileArchitecture
+} {
+	var calls []struct {
+		Ctx          context.Context
+		Name         string
+		Architecture images.UpdateFileArchitecture
+	}
+	mock.lockGetChangelogByName.RLock()
+	calls = mock.calls.GetChangelogByName
+	mock.lockGetChangelogByName.RUnlock()
 	return calls
 }
 

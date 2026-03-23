@@ -11,7 +11,9 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 )
 
 // Ensure that UpdateServiceMock does implement provisioning.UpdateService.
@@ -44,6 +46,12 @@ var _ provisioning.UpdateService = &UpdateServiceMock{}
 //			},
 //			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
 //				panic("mock out the GetByUUID method")
+//			},
+//			GetChangelogFunc: func(ctx context.Context, currentID uuid.UUID, priorID uuid.UUID, architecture images.UpdateFileArchitecture) (api.UpdateChangelog, error) {
+//				panic("mock out the GetChangelog method")
+//			},
+//			GetChangelogByChannelFunc: func(ctx context.Context, UUID uuid.UUID, channelName string, upstream bool, architecture images.UpdateFileArchitecture) (api.UpdateChangelog, error) {
+//				panic("mock out the GetChangelogByChannel method")
 //			},
 //			GetUpdateAllFilesFunc: func(ctx context.Context, id uuid.UUID) (provisioning.UpdateFiles, error) {
 //				panic("mock out the GetUpdateAllFiles method")
@@ -93,6 +101,12 @@ type UpdateServiceMock struct {
 
 	// GetByUUIDFunc mocks the GetByUUID method.
 	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error)
+
+	// GetChangelogFunc mocks the GetChangelog method.
+	GetChangelogFunc func(ctx context.Context, currentID uuid.UUID, priorID uuid.UUID, architecture images.UpdateFileArchitecture) (api.UpdateChangelog, error)
+
+	// GetChangelogByChannelFunc mocks the GetChangelogByChannel method.
+	GetChangelogByChannelFunc func(ctx context.Context, UUID uuid.UUID, channelName string, upstream bool, architecture images.UpdateFileArchitecture) (api.UpdateChangelog, error)
 
 	// GetUpdateAllFilesFunc mocks the GetUpdateAllFiles method.
 	GetUpdateAllFilesFunc func(ctx context.Context, id uuid.UUID) (provisioning.UpdateFiles, error)
@@ -160,6 +174,30 @@ type UpdateServiceMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
+		// GetChangelog holds details about calls to the GetChangelog method.
+		GetChangelog []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// CurrentID is the currentID argument value.
+			CurrentID uuid.UUID
+			// PriorID is the priorID argument value.
+			PriorID uuid.UUID
+			// Architecture is the architecture argument value.
+			Architecture images.UpdateFileArchitecture
+		}
+		// GetChangelogByChannel holds details about calls to the GetChangelogByChannel method.
+		GetChangelogByChannel []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// UUID is the UUID argument value.
+			UUID uuid.UUID
+			// ChannelName is the channelName argument value.
+			ChannelName string
+			// Upstream is the upstream argument value.
+			Upstream bool
+			// Architecture is the architecture argument value.
+			Architecture images.UpdateFileArchitecture
+		}
 		// GetUpdateAllFiles holds details about calls to the GetUpdateAllFiles method.
 		GetUpdateAllFiles []struct {
 			// Ctx is the ctx argument value.
@@ -213,6 +251,8 @@ type UpdateServiceMock struct {
 	lockGetAllUUIDsWithFilter           sync.RWMutex
 	lockGetAllWithFilter                sync.RWMutex
 	lockGetByUUID                       sync.RWMutex
+	lockGetChangelog                    sync.RWMutex
+	lockGetChangelogByChannel           sync.RWMutex
 	lockGetUpdateAllFiles               sync.RWMutex
 	lockGetUpdateFileByFilename         sync.RWMutex
 	lockGetUpdatesByAssignedChannelName sync.RWMutex
@@ -459,6 +499,98 @@ func (mock *UpdateServiceMock) GetByUUIDCalls() []struct {
 	mock.lockGetByUUID.RLock()
 	calls = mock.calls.GetByUUID
 	mock.lockGetByUUID.RUnlock()
+	return calls
+}
+
+// GetChangelog calls GetChangelogFunc.
+func (mock *UpdateServiceMock) GetChangelog(ctx context.Context, currentID uuid.UUID, priorID uuid.UUID, architecture images.UpdateFileArchitecture) (api.UpdateChangelog, error) {
+	if mock.GetChangelogFunc == nil {
+		panic("UpdateServiceMock.GetChangelogFunc: method is nil but UpdateService.GetChangelog was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		CurrentID    uuid.UUID
+		PriorID      uuid.UUID
+		Architecture images.UpdateFileArchitecture
+	}{
+		Ctx:          ctx,
+		CurrentID:    currentID,
+		PriorID:      priorID,
+		Architecture: architecture,
+	}
+	mock.lockGetChangelog.Lock()
+	mock.calls.GetChangelog = append(mock.calls.GetChangelog, callInfo)
+	mock.lockGetChangelog.Unlock()
+	return mock.GetChangelogFunc(ctx, currentID, priorID, architecture)
+}
+
+// GetChangelogCalls gets all the calls that were made to GetChangelog.
+// Check the length with:
+//
+//	len(mockedUpdateService.GetChangelogCalls())
+func (mock *UpdateServiceMock) GetChangelogCalls() []struct {
+	Ctx          context.Context
+	CurrentID    uuid.UUID
+	PriorID      uuid.UUID
+	Architecture images.UpdateFileArchitecture
+} {
+	var calls []struct {
+		Ctx          context.Context
+		CurrentID    uuid.UUID
+		PriorID      uuid.UUID
+		Architecture images.UpdateFileArchitecture
+	}
+	mock.lockGetChangelog.RLock()
+	calls = mock.calls.GetChangelog
+	mock.lockGetChangelog.RUnlock()
+	return calls
+}
+
+// GetChangelogByChannel calls GetChangelogByChannelFunc.
+func (mock *UpdateServiceMock) GetChangelogByChannel(ctx context.Context, UUID uuid.UUID, channelName string, upstream bool, architecture images.UpdateFileArchitecture) (api.UpdateChangelog, error) {
+	if mock.GetChangelogByChannelFunc == nil {
+		panic("UpdateServiceMock.GetChangelogByChannelFunc: method is nil but UpdateService.GetChangelogByChannel was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		UUID         uuid.UUID
+		ChannelName  string
+		Upstream     bool
+		Architecture images.UpdateFileArchitecture
+	}{
+		Ctx:          ctx,
+		UUID:         UUID,
+		ChannelName:  channelName,
+		Upstream:     upstream,
+		Architecture: architecture,
+	}
+	mock.lockGetChangelogByChannel.Lock()
+	mock.calls.GetChangelogByChannel = append(mock.calls.GetChangelogByChannel, callInfo)
+	mock.lockGetChangelogByChannel.Unlock()
+	return mock.GetChangelogByChannelFunc(ctx, UUID, channelName, upstream, architecture)
+}
+
+// GetChangelogByChannelCalls gets all the calls that were made to GetChangelogByChannel.
+// Check the length with:
+//
+//	len(mockedUpdateService.GetChangelogByChannelCalls())
+func (mock *UpdateServiceMock) GetChangelogByChannelCalls() []struct {
+	Ctx          context.Context
+	UUID         uuid.UUID
+	ChannelName  string
+	Upstream     bool
+	Architecture images.UpdateFileArchitecture
+} {
+	var calls []struct {
+		Ctx          context.Context
+		UUID         uuid.UUID
+		ChannelName  string
+		Upstream     bool
+		Architecture images.UpdateFileArchitecture
+	}
+	mock.lockGetChangelogByChannel.RLock()
+	calls = mock.calls.GetChangelogByChannel
+	mock.lockGetChangelogByChannel.RUnlock()
 	return calls
 }
 
