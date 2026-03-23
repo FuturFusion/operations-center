@@ -774,16 +774,17 @@ func (c *clusterHandler) clusterResyncInventoryPost(r *http.Request) response.Re
 //	Perform a cluster wide update of OS and applications on all servers of the cluster.
 //
 //	---
-//	parameters:
-//	  - in: query
-//	    name: reboot
-//	    description: |-
-//	      Boolean indicating, if after the update a rolling reboot should be
-//	      triggered or not. If the "reboot" is true-ish, a rolling reboot is
-//	      triggered after the update, otherwise the rolling reboot is skipped.
-//	      Defaults to false (no rolling reboot is triggered).
+//	consumes:
+//	  - application/json
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: cluster_update_post
+//	    description: Cluster update request.
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/ClusterUpdatePost"
 //	responses:
 //	  "200":
 //	    description: Empty response
@@ -809,9 +810,15 @@ func (c *clusterHandler) clusterResyncInventoryPost(r *http.Request) response.Re
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterHandler) clusterUpdatePost(r *http.Request) response.Response {
 	name := r.PathValue("name")
-	reboot, _ := strconv.ParseBool(r.URL.Query().Get("reboot"))
 
-	err := c.service.LaunchClusterUpdate(r.Context(), name, reboot)
+	var request api.ClusterUpdatePost
+
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	err = c.service.LaunchClusterUpdate(r.Context(), name, request.Reboot)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to launch cluster wide update: %w", err))
 	}

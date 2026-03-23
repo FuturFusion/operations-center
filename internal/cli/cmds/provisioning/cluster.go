@@ -934,7 +934,9 @@ func (c *cmdClusterUpdate) validateArgsAndFlags(cmd *cobra.Command, args []strin
 func (c *cmdClusterUpdate) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	err := c.ocClient.LaunchClusterWideUpdate(cmd.Context(), name, c.flagReboot)
+	err := c.ocClient.LaunchClusterWideUpdate(cmd.Context(), name, api.ClusterUpdatePost{
+		Reboot: c.flagReboot,
+	})
 	if err != nil {
 		return err
 	}
