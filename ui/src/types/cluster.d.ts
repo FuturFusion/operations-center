@@ -1,7 +1,13 @@
+export interface ClusterUpdateStatusProgress {
+  in_progress: string;
+  status_description: string;
+}
+
 export interface ClusterUpdateStatus {
   needs_reboot: string[];
   needs_update: string[];
   in_maintenance: string[];
+  in_progress_status: ClusterUpdateStatusProgress;
 }
 
 export interface ClusterProperty {

@@ -11,6 +11,7 @@ import ClusterUpdateCertModal from "components/ClusterUpdateCertModal";
 import { useNotification } from "context/notificationContext";
 import { Cluster } from "types/cluster";
 import { downloadFile } from "util/util";
+import ClusterUpdateBtn from "components/ClusterUpdateBtn";
 
 interface Props {
   cluster: Cluster;
@@ -70,6 +71,9 @@ const ClusterActions: FC<Props> = ({ cluster }) => {
           onBulkAction();
         }}
       />
+      {cluster.update_status?.needs_update?.length > 0 && (
+        <ClusterUpdateBtn cluster={cluster} recommended={true} />
+      )}
       <PiCertificate
         size={25}
         title="Update certificate"
