@@ -1,4 +1,4 @@
-import { FC } from "react";
+import { FC, useState } from "react";
 import { Button, Form } from "react-bootstrap";
 import { useFormik } from "formik";
 import ChannelSelect from "components/ChannelSelect";
@@ -12,7 +12,10 @@ interface Props {
   systemNetwork?: object;
   systemStorage?: object;
   onRename: (newName: string) => void;
-  onSubmit: (values: ServerFormValues) => Promise<APIResponse<null> | void>;
+  onSubmit: (
+    values: ServerFormValues,
+    section: string,
+  ) => Promise<APIResponse<null> | void>;
 }
 
 const ServerForm: FC<Props> = ({
@@ -22,6 +25,8 @@ const ServerForm: FC<Props> = ({
   onRename,
   onSubmit,
 }) => {
+  const [submitting, setSubmitting] = useState<Record<string, boolean>>({});
+
   const formikInitialValues = {
     name: server?.name || "",
     public_connection_url: server?.public_connection_url || "",
@@ -34,18 +39,28 @@ const ServerForm: FC<Props> = ({
   const formik = useFormik({
     initialValues: formikInitialValues,
     enableReinitialize: true,
-    onSubmit: (values: ServerFormValues) => {
-      return onSubmit(values);
-    },
+    onSubmit: () => {},
   });
+
+  const submitForm = async (values: ServerFormValues, section: string) => {
+    setSubmitting((prev) => ({
+      ...prev,
+      [section]: true,
+    }));
+    await onSubmit(values, section);
+    setSubmitting((prev) => ({
+      ...prev,
+      [section]: false,
+    }));
+  };
 
   return (
     <div className="form-container">
       <div>
         <Form noValidate>
-          <Form.Group className="mb-3" controlId="name">
-            <Form.Label>Name</Form.Label>
-            <div className="d-flex align-items-center gap-2">
+          <fieldset className="border p-3 mb-3 rounded">
+            <Form.Group className="mb-3" controlId="name">
+              <Form.Label>Name</Form.Label>
               <Form.Control
                 type="text"
                 name="name"
@@ -59,82 +74,102 @@ const ServerForm: FC<Props> = ({
                 {formik.errors.name}
               </Form.Control.Feedback>
               <Button
-                className="float-end"
+                className="mt-3 float-end"
                 variant="success"
                 onClick={() => onRename(formik.values.name)}
               >
                 Rename
               </Button>
-            </div>
-          </Form.Group>
-          <Form.Group className="mb-3" controlId="description">
-            <Form.Label>Description</Form.Label>
-            <Form.Control
-              type="text"
-              name="description"
-              value={formik.values.description}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              disabled={formik.isSubmitting}
+            </Form.Group>
+          </fieldset>
+          <fieldset className="border p-3 mb-3 rounded">
+            <Form.Group className="mb-3" controlId="description">
+              <Form.Label>Description</Form.Label>
+              <Form.Control
+                type="text"
+                name="description"
+                value={formik.values.description}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                disabled={submitting["configuration"]}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="public_connection_url">
+              <Form.Label>Connection URL</Form.Label>
+              <Form.Control
+                type="text"
+                name="public_connection_url"
+                value={formik.values.public_connection_url}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                disabled={submitting["configuration"]}
+              />
+            </Form.Group>
+            <ChannelSelect
+              value={formik.values.channel}
+              onChange={(val) => formik.setFieldValue("channel", val)}
+              disabled={submitting["configuration"]}
             />
-          </Form.Group>
-          <Form.Group className="mb-3" controlId="public_connection_url">
-            <Form.Label>Connection URL</Form.Label>
-            <Form.Control
-              type="text"
-              name="public_connection_url"
-              value={formik.values.public_connection_url}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              disabled={formik.isSubmitting}
-            />
-          </Form.Group>
-          <ChannelSelect
-            formClasses="mb-3"
-            value={formik.values.channel}
-            onChange={(val) => formik.setFieldValue("channel", val)}
-            disabled={formik.isSubmitting}
-          />
-          <Form.Group className="mb-3" controlId="network_configuration">
-            <Form.Label>Network configuration</Form.Label>
-            <Form.Control
-              type="text"
-              name="network_configuration"
-              as="textarea"
-              rows={10}
-              value={formik.values.network_configuration}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              disabled={formik.isSubmitting}
-              className="editor"
-            />
-          </Form.Group>
-          <Form.Group className="mb-3" controlId="storage_configuration">
-            <Form.Label>Storage configuration</Form.Label>
-            <Form.Control
-              type="text"
-              name="storage_configuration"
-              as="textarea"
-              rows={10}
-              value={formik.values.storage_configuration}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              disabled={formik.isSubmitting}
-              className="editor"
-            />
-          </Form.Group>
+            <LoadingButton
+              isLoading={submitting["configuration"]}
+              className="mt-3 float-end"
+              variant="success"
+              onClick={() => submitForm(formik.values, "configuration")}
+            >
+              Submit
+            </LoadingButton>
+          </fieldset>
+          <fieldset className="border p-3 mb-3 rounded">
+            <Form.Group className="mb-3" controlId="network_configuration">
+              <Form.Label>Network configuration</Form.Label>
+              <Form.Control
+                type="text"
+                name="network_configuration"
+                as="textarea"
+                rows={10}
+                value={formik.values.network_configuration}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                disabled={submitting["network"]}
+                className="editor"
+              />
+              <LoadingButton
+                isLoading={submitting["network"]}
+                className="mt-3 float-end"
+                variant="success"
+                onClick={() => submitForm(formik.values, "network")}
+              >
+                Submit
+              </LoadingButton>
+            </Form.Group>
+          </fieldset>
+          <fieldset className="border p-3 mb-3 rounded">
+            <Form.Group className="mb-3" controlId="storage_configuration">
+              <Form.Label>Storage configuration</Form.Label>
+              <Form.Control
+                type="text"
+                name="storage_configuration"
+                as="textarea"
+                rows={10}
+                value={formik.values.storage_configuration}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                disabled={submitting["storage"]}
+                className="editor"
+              />
+              <LoadingButton
+                isLoading={submitting["storage"]}
+                className="mt-3 float-end"
+                variant="success"
+                onClick={() => submitForm(formik.values, "storage")}
+              >
+                Submit
+              </LoadingButton>
+            </Form.Group>
+          </fieldset>
         </Form>
       </div>
-      <div className="fixed-footer p-3">
-        <LoadingButton
-          isLoading={formik.isSubmitting}
-          className="float-end"
-          variant="success"
-          onClick={() => formik.handleSubmit()}
-        >
-          Submit
-        </LoadingButton>
-      </div>
+      <div className="fixed-footer p-3"></div>
     </div>
   );
 };

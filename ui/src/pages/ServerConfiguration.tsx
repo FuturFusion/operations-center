@@ -22,69 +22,20 @@ const ServerConfiguration = () => {
 
   const onSubmit = async (
     values: ServerFormValues,
+    section: string,
   ): Promise<APIResponse<null> | void> => {
-    let networkConfig = {};
-    try {
-      networkConfig = YAML.parse(values.network_configuration);
-    } catch (error) {
-      notify.error(`Error during YAML network value parsing: ${error}`);
-      return;
+    if (section === "configuration") {
+      return onConfigurationSubmit(values);
+    } else if (section == "network") {
+      return onNetworkSubmit(values);
+    } else if (section == "storage") {
+      return onStorageSubmit(values);
     }
+  };
 
-    let storageConfig = {};
-    try {
-      storageConfig = YAML.parse(values.storage_configuration);
-    } catch (error) {
-      notify.error(`Error during YAML storage value parsing: ${error}`);
-      return;
-    }
-
-    const networkUpdateSuccess = await updateSystemNetwork(
-      values.name,
-      JSON.stringify(networkConfig, null, 2),
-    )
-      .then((response) => {
-        if (response.error_code == 0) {
-          return true;
-        }
-
-        notify.error(
-          `Error during network configuration update: ${response.error}`,
-        );
-        return false;
-      })
-      .catch((e) => {
-        notify.error(`Error during server network update: ${e}`);
-        return false;
-      });
-
-    if (!networkUpdateSuccess) {
-      return;
-    }
-
-    const storageUpdateSuccess = await updateSystemStorage(
-      values.name,
-      JSON.stringify(storageConfig, null, 2),
-    )
-      .then((response) => {
-        if (response.error_code == 0) {
-          return true;
-        }
-
-        notify.error(
-          `Error during storage configuration update: ${response.error}`,
-        );
-        return false;
-      })
-      .catch((e) => {
-        notify.error(`Error during server storage update: ${e}`);
-        return false;
-      });
-
-    if (!storageUpdateSuccess) {
-      return;
-    }
-
+  const onConfigurationSubmit = async (
+    values: ServerFormValues,
+  ): Promise<APIResponse<null> | void> => {
     return updateServer(
       values.name,
       JSON.stringify(
@@ -106,6 +57,64 @@ const ServerConfiguration = () => {
       })
       .catch((e) => {
         notify.error(`Error during server update: ${e}`);
+      });
+  };
+
+  const onNetworkSubmit = async (
+    values: ServerFormValues,
+  ): Promise<APIResponse<null> | void> => {
+    let networkConfig = {};
+    try {
+      networkConfig = YAML.parse(values.network_configuration);
+    } catch (error) {
+      notify.error(`Error during YAML network value parsing: ${error}`);
+      return;
+    }
+
+    return updateSystemNetwork(
+      values.name,
+      JSON.stringify(networkConfig, null, 2),
+    )
+      .then((response) => {
+        if (response.error_code == 0) {
+          return;
+        }
+
+        notify.error(
+          `Error during network configuration update: ${response.error}`,
+        );
+      })
+      .catch((e) => {
+        notify.error(`Error during server network update: ${e}`);
+      });
+  };
+
+  const onStorageSubmit = async (
+    values: ServerFormValues,
+  ): Promise<APIResponse<null> | void> => {
+    let storageConfig = {};
+    try {
+      storageConfig = YAML.parse(values.storage_configuration);
+    } catch (error) {
+      notify.error(`Error during YAML storage value parsing: ${error}`);
+      return;
+    }
+
+    return updateSystemStorage(
+      values.name,
+      JSON.stringify(storageConfig, null, 2),
+    )
+      .then((response) => {
+        if (response.error_code == 0) {
+          return;
+        }
+
+        notify.error(
+          `Error during storage configuration update: ${response.error}`,
+        );
+      })
+      .catch((e) => {
+        notify.error(`Error during server storage update: ${e}`);
       });
   };
 
