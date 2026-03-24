@@ -62,7 +62,11 @@ func (s imageService) GetAllWithFilter(ctx context.Context, filter ImageFilter) 
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprImage(Image{}))}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(ToExprImage(Image{})),
+			expr.AsBool(),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -76,17 +80,12 @@ func (s imageService) GetAllWithFilter(ctx context.Context, filter ImageFilter) 
 	var filteredImages Images
 	if filter.Expression != nil {
 		for _, image := range images {
-			output, err := expr.Run(filterExpression, ToExprImage(image))
+			result, err := expr.Run(filterExpression, ToExprImage(image))
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredImages = append(filteredImages, image)
 			}
 		}
@@ -106,7 +105,11 @@ func (s imageService) GetAllUUIDsWithFilter(ctx context.Context, filter ImageFil
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(Env{}),
+			expr.AsBool(),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -120,17 +123,12 @@ func (s imageService) GetAllUUIDsWithFilter(ctx context.Context, filter ImageFil
 	var filteredImagesUUIDs []uuid.UUID
 	if filter.Expression != nil {
 		for _, imageUUID := range imagesUUIDs {
-			output, err := expr.Run(filterExpression, Env{imageUUID.String()})
+			result, err := expr.Run(filterExpression, Env{imageUUID.String()})
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredImagesUUIDs = append(filteredImagesUUIDs, imageUUID)
 			}
 		}

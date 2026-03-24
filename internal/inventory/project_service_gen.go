@@ -62,7 +62,11 @@ func (s projectService) GetAllWithFilter(ctx context.Context, filter ProjectFilt
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprProject(Project{}))}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(ToExprProject(Project{})),
+			expr.AsBool(),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -76,17 +80,12 @@ func (s projectService) GetAllWithFilter(ctx context.Context, filter ProjectFilt
 	var filteredProjects Projects
 	if filter.Expression != nil {
 		for _, project := range projects {
-			output, err := expr.Run(filterExpression, ToExprProject(project))
+			result, err := expr.Run(filterExpression, ToExprProject(project))
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredProjects = append(filteredProjects, project)
 			}
 		}
@@ -106,7 +105,11 @@ func (s projectService) GetAllUUIDsWithFilter(ctx context.Context, filter Projec
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(Env{}),
+			expr.AsBool(),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -120,17 +123,12 @@ func (s projectService) GetAllUUIDsWithFilter(ctx context.Context, filter Projec
 	var filteredProjectsUUIDs []uuid.UUID
 	if filter.Expression != nil {
 		for _, projectUUID := range projectsUUIDs {
-			output, err := expr.Run(filterExpression, Env{projectUUID.String()})
+			result, err := expr.Run(filterExpression, Env{projectUUID.String()})
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredProjectsUUIDs = append(filteredProjectsUUIDs, projectUUID)
 			}
 		}

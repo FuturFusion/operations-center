@@ -62,7 +62,11 @@ func (s networkAddressSetService) GetAllWithFilter(ctx context.Context, filter N
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprNetworkAddressSet(NetworkAddressSet{}))}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(ToExprNetworkAddressSet(NetworkAddressSet{})),
+			expr.AsBool(),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -76,17 +80,12 @@ func (s networkAddressSetService) GetAllWithFilter(ctx context.Context, filter N
 	var filteredNetworkAddressSets NetworkAddressSets
 	if filter.Expression != nil {
 		for _, networkAddressSet := range networkAddressSets {
-			output, err := expr.Run(filterExpression, ToExprNetworkAddressSet(networkAddressSet))
+			result, err := expr.Run(filterExpression, ToExprNetworkAddressSet(networkAddressSet))
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredNetworkAddressSets = append(filteredNetworkAddressSets, networkAddressSet)
 			}
 		}
@@ -106,7 +105,11 @@ func (s networkAddressSetService) GetAllUUIDsWithFilter(ctx context.Context, fil
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(Env{}),
+			expr.AsBool(),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -120,17 +123,12 @@ func (s networkAddressSetService) GetAllUUIDsWithFilter(ctx context.Context, fil
 	var filteredNetworkAddressSetsUUIDs []uuid.UUID
 	if filter.Expression != nil {
 		for _, networkAddressSetUUID := range networkAddressSetsUUIDs {
-			output, err := expr.Run(filterExpression, Env{networkAddressSetUUID.String()})
+			result, err := expr.Run(filterExpression, Env{networkAddressSetUUID.String()})
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredNetworkAddressSetsUUIDs = append(filteredNetworkAddressSetsUUIDs, networkAddressSetUUID)
 			}
 		}

@@ -65,8 +65,8 @@ func TestStoragePoolService_GetAllWithFilter(t *testing.T) {
 			count:     1,
 		},
 		{
-			name:             "error - invalid filter expression",
-			filterExpression: ptr.To(``), // the empty expression is an invalid expression.
+			name:             "error - non bool expression",
+			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
 			repoGetAllWithFilter: inventory.StoragePools{
 				inventory.StoragePool{
 					Name: "one",
@@ -78,7 +78,7 @@ func TestStoragePoolService_GetAllWithFilter(t *testing.T) {
 		},
 		{
 			name:             "error - filter expression run",
-			filterExpression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
+			filterExpression: ptr.To(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
 			repoGetAllWithFilter: inventory.StoragePools{
 				inventory.StoragePool{
 					Name: "one",
@@ -87,20 +87,6 @@ func TestStoragePoolService_GetAllWithFilter(t *testing.T) {
 
 			assertErr: require.Error,
 			count:     0,
-		},
-		{
-			name:             "error - non bool expression",
-			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
-			repoGetAllWithFilter: inventory.StoragePools{
-				inventory.StoragePool{
-					Name: "one",
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "does not evaluate to boolean result")
-			},
-			count: 0,
 		},
 		{
 			name:                    "error - repo",
@@ -168,8 +154,8 @@ func TestStoragePoolService_GetAllUUIDsWithFilter(t *testing.T) {
 			count:     1,
 		},
 		{
-			name:             "error - invalid filter expression",
-			filterExpression: ptr.To(``), // the empty expression is an invalid expression.
+			name:             "error - non bool expression",
+			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
 				uuidgen.FromPattern(t, "1"),
 			},
@@ -179,25 +165,13 @@ func TestStoragePoolService_GetAllUUIDsWithFilter(t *testing.T) {
 		},
 		{
 			name:             "error - filter expression run",
-			filterExpression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
+			filterExpression: ptr.To(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
 				uuidgen.FromPattern(t, "1"),
 			},
 
 			assertErr: require.Error,
 			count:     0,
-		},
-		{
-			name:             "error - non bool expression",
-			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
-			repoGetAllUUIDsWithFilter: []uuid.UUID{
-				uuidgen.FromPattern(t, "1"),
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "does not evaluate to boolean result")
-			},
-			count: 0,
 		},
 		{
 			name:                         "error - repo",

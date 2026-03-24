@@ -62,7 +62,11 @@ func (s networkACLService) GetAllWithFilter(ctx context.Context, filter NetworkA
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprNetworkACL(NetworkACL{}))}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(ToExprNetworkACL(NetworkACL{})),
+			expr.AsBool(),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -76,17 +80,12 @@ func (s networkACLService) GetAllWithFilter(ctx context.Context, filter NetworkA
 	var filteredNetworkACLs NetworkACLs
 	if filter.Expression != nil {
 		for _, networkACL := range networkACLs {
-			output, err := expr.Run(filterExpression, ToExprNetworkACL(networkACL))
+			result, err := expr.Run(filterExpression, ToExprNetworkACL(networkACL))
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredNetworkACLs = append(filteredNetworkACLs, networkACL)
 			}
 		}
@@ -106,7 +105,11 @@ func (s networkACLService) GetAllUUIDsWithFilter(ctx context.Context, filter Net
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(Env{}),
+			expr.AsBool(),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -120,17 +123,12 @@ func (s networkACLService) GetAllUUIDsWithFilter(ctx context.Context, filter Net
 	var filteredNetworkACLsUUIDs []uuid.UUID
 	if filter.Expression != nil {
 		for _, networkACLUUID := range networkACLsUUIDs {
-			output, err := expr.Run(filterExpression, Env{networkACLUUID.String()})
+			result, err := expr.Run(filterExpression, Env{networkACLUUID.String()})
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredNetworkACLsUUIDs = append(filteredNetworkACLsUUIDs, networkACLUUID)
 			}
 		}

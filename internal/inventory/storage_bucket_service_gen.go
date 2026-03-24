@@ -77,7 +77,11 @@ func (s storageBucketService) GetAllWithFilter(ctx context.Context, filter Stora
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprStorageBucket(StorageBucket{}))}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(ToExprStorageBucket(StorageBucket{})),
+			expr.AsBool(),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -91,17 +95,12 @@ func (s storageBucketService) GetAllWithFilter(ctx context.Context, filter Stora
 	var filteredStorageBuckets StorageBuckets
 	if filter.Expression != nil {
 		for _, storageBucket := range storageBuckets {
-			output, err := expr.Run(filterExpression, ToExprStorageBucket(storageBucket))
+			result, err := expr.Run(filterExpression, ToExprStorageBucket(storageBucket))
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredStorageBuckets = append(filteredStorageBuckets, storageBucket)
 			}
 		}
@@ -121,7 +120,11 @@ func (s storageBucketService) GetAllUUIDsWithFilter(ctx context.Context, filter 
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(Env{}),
+			expr.AsBool(),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -135,17 +138,12 @@ func (s storageBucketService) GetAllUUIDsWithFilter(ctx context.Context, filter 
 	var filteredStorageBucketsUUIDs []uuid.UUID
 	if filter.Expression != nil {
 		for _, storageBucketUUID := range storageBucketsUUIDs {
-			output, err := expr.Run(filterExpression, Env{storageBucketUUID.String()})
+			result, err := expr.Run(filterExpression, Env{storageBucketUUID.String()})
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredStorageBucketsUUIDs = append(filteredStorageBucketsUUIDs, storageBucketUUID)
 			}
 		}

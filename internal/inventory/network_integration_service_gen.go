@@ -62,7 +62,11 @@ func (s networkIntegrationService) GetAllWithFilter(ctx context.Context, filter 
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprNetworkIntegration(NetworkIntegration{}))}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(ToExprNetworkIntegration(NetworkIntegration{})),
+			expr.AsBool(),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -76,17 +80,12 @@ func (s networkIntegrationService) GetAllWithFilter(ctx context.Context, filter 
 	var filteredNetworkIntegrations NetworkIntegrations
 	if filter.Expression != nil {
 		for _, networkIntegration := range networkIntegrations {
-			output, err := expr.Run(filterExpression, ToExprNetworkIntegration(networkIntegration))
+			result, err := expr.Run(filterExpression, ToExprNetworkIntegration(networkIntegration))
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredNetworkIntegrations = append(filteredNetworkIntegrations, networkIntegration)
 			}
 		}
@@ -106,7 +105,11 @@ func (s networkIntegrationService) GetAllUUIDsWithFilter(ctx context.Context, fi
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(Env{}),
+			expr.AsBool(),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -120,17 +123,12 @@ func (s networkIntegrationService) GetAllUUIDsWithFilter(ctx context.Context, fi
 	var filteredNetworkIntegrationsUUIDs []uuid.UUID
 	if filter.Expression != nil {
 		for _, networkIntegrationUUID := range networkIntegrationsUUIDs {
-			output, err := expr.Run(filterExpression, Env{networkIntegrationUUID.String()})
+			result, err := expr.Run(filterExpression, Env{networkIntegrationUUID.String()})
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredNetworkIntegrationsUUIDs = append(filteredNetworkIntegrationsUUIDs, networkIntegrationUUID)
 			}
 		}
