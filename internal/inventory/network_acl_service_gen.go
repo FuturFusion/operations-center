@@ -15,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 )
 
 type networkACLService struct {
@@ -66,6 +67,7 @@ func (s networkACLService) GetAllWithFilter(ctx context.Context, filter NetworkA
 			*filter.Expression,
 			expr.Env(ToExprNetworkACL(NetworkACL{})),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err
@@ -109,6 +111,7 @@ func (s networkACLService) GetAllUUIDsWithFilter(ctx context.Context, filter Net
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err

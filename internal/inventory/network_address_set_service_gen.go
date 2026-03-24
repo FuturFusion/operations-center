@@ -15,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 )
 
 type networkAddressSetService struct {
@@ -66,6 +67,7 @@ func (s networkAddressSetService) GetAllWithFilter(ctx context.Context, filter N
 			*filter.Expression,
 			expr.Env(ToExprNetworkAddressSet(NetworkAddressSet{})),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err
@@ -109,6 +111,7 @@ func (s networkAddressSetService) GetAllUUIDsWithFilter(ctx context.Context, fil
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err

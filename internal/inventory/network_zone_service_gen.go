@@ -15,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 )
 
 type networkZoneService struct {
@@ -66,6 +67,7 @@ func (s networkZoneService) GetAllWithFilter(ctx context.Context, filter Network
 			*filter.Expression,
 			expr.Env(ToExprNetworkZone(NetworkZone{})),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err
@@ -109,6 +111,7 @@ func (s networkZoneService) GetAllUUIDsWithFilter(ctx context.Context, filter Ne
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err

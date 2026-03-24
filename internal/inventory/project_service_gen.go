@@ -15,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 )
 
 type projectService struct {
@@ -66,6 +67,7 @@ func (s projectService) GetAllWithFilter(ctx context.Context, filter ProjectFilt
 			*filter.Expression,
 			expr.Env(ToExprProject(Project{})),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err
@@ -109,6 +111,7 @@ func (s projectService) GetAllUUIDsWithFilter(ctx context.Context, filter Projec
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err

@@ -15,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 )
 
 type networkIntegrationService struct {
@@ -66,6 +67,7 @@ func (s networkIntegrationService) GetAllWithFilter(ctx context.Context, filter 
 			*filter.Expression,
 			expr.Env(ToExprNetworkIntegration(NetworkIntegration{})),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err
@@ -109,6 +111,7 @@ func (s networkIntegrationService) GetAllUUIDsWithFilter(ctx context.Context, fi
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err

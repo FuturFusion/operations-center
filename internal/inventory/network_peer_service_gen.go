@@ -16,6 +16,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 )
 
 type networkPeerService struct {
@@ -80,6 +81,7 @@ func (s networkPeerService) GetAllWithFilter(ctx context.Context, filter Network
 			*filter.Expression,
 			expr.Env(ToExprNetworkPeer(NetworkPeer{})),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err
@@ -123,6 +125,7 @@ func (s networkPeerService) GetAllUUIDsWithFilter(ctx context.Context, filter Ne
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err

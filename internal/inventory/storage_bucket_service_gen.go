@@ -16,6 +16,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
@@ -81,6 +82,7 @@ func (s storageBucketService) GetAllWithFilter(ctx context.Context, filter Stora
 			*filter.Expression,
 			expr.Env(ToExprStorageBucket(StorageBucket{})),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err
@@ -124,6 +126,7 @@ func (s storageBucketService) GetAllUUIDsWithFilter(ctx context.Context, filter 
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err

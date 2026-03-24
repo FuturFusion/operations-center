@@ -16,6 +16,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 )
 
 type networkLoadBalancerService struct {
@@ -80,6 +81,7 @@ func (s networkLoadBalancerService) GetAllWithFilter(ctx context.Context, filter
 			*filter.Expression,
 			expr.Env(ToExprNetworkLoadBalancer(NetworkLoadBalancer{})),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err
@@ -123,6 +125,7 @@ func (s networkLoadBalancerService) GetAllUUIDsWithFilter(ctx context.Context, f
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err

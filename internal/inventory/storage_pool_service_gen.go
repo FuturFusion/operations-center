@@ -15,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 )
 
 type storagePoolService struct {
@@ -66,6 +67,7 @@ func (s storagePoolService) GetAllWithFilter(ctx context.Context, filter Storage
 			*filter.Expression,
 			expr.Env(ToExprStoragePool(StoragePool{})),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err
@@ -109,6 +111,7 @@ func (s storagePoolService) GetAllUUIDsWithFilter(ctx context.Context, filter St
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err

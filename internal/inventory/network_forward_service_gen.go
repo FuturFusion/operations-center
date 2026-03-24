@@ -16,6 +16,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 )
 
 type networkForwardService struct {
@@ -80,6 +81,7 @@ func (s networkForwardService) GetAllWithFilter(ctx context.Context, filter Netw
 			*filter.Expression,
 			expr.Env(ToExprNetworkForward(NetworkForward{})),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err
@@ -123,6 +125,7 @@ func (s networkForwardService) GetAllUUIDsWithFilter(ctx context.Context, filter
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err
