@@ -844,7 +844,7 @@ type cmdClusterBulkUpdate struct {
 func (c *cmdClusterBulkUpdate) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "bulk-update <name> <bulk-request.json>"
-	cmd.Short = "Update cluster certificate"
+	cmd.Short = "Bulk update cluster"
 	cmd.Long = `Description:
   Bulk update for a cluster. Provide the request through a file or through stdin.
 `
