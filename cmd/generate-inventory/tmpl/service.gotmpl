@@ -15,6 +15,7 @@ import (
 {{- end }}
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 {{- if .IsServerIDOptional }}
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 {{- end }}
@@ -95,6 +96,7 @@ func (s {{ .Name | camelcase }}Service) GetAllWithFilter(ctx context.Context, fi
 			*filter.Expression,
 			expr.Env(ToExpr{{.Name | pascalcase}}({{ .Name | pascalcase }}{})),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err
@@ -138,6 +140,7 @@ func (s {{ .Name | camelcase }}Service) GetAllUUIDsWithFilter(ctx context.Contex
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, err
