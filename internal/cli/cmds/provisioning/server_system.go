@@ -82,6 +82,8 @@ func (c *cmdServerSystem) Command() *cobra.Command {
 // Evacuate server.
 type cmdServerEvacuate struct {
 	ocClient *client.OperationsCenterClient
+
+	flagForce bool
 }
 
 func (c *cmdServerEvacuate) Command() *cobra.Command {
@@ -93,6 +95,8 @@ func (c *cmdServerEvacuate) Command() *cobra.Command {
 
   Evacuates a server.
 `
+
+	cmd.Flags().BoolVar(&c.flagForce, "force", false, "forcefully trigger an evacuation")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -113,7 +117,7 @@ func (c *cmdServerEvacuate) validateArgsAndFlags(cmd *cobra.Command, args []stri
 func (c *cmdServerEvacuate) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	err := c.ocClient.EvacuateServerSystem(cmd.Context(), name)
+	err := c.ocClient.EvacuateServerSystem(cmd.Context(), name, c.flagForce)
 	if err != nil {
 		return err
 	}
@@ -124,6 +128,8 @@ func (c *cmdServerEvacuate) run(cmd *cobra.Command, args []string) error {
 // Poweroff server.
 type cmdServerPoweroff struct {
 	ocClient *client.OperationsCenterClient
+
+	flagForce bool
 }
 
 func (c *cmdServerPoweroff) Command() *cobra.Command {
@@ -135,6 +141,8 @@ func (c *cmdServerPoweroff) Command() *cobra.Command {
 
   Powers off a server.
 `
+
+	cmd.Flags().BoolVar(&c.flagForce, "force", false, "forcefully trigger a power off")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -155,7 +163,7 @@ func (c *cmdServerPoweroff) validateArgsAndFlags(cmd *cobra.Command, args []stri
 func (c *cmdServerPoweroff) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	err := c.ocClient.PoweroffServerSystem(cmd.Context(), name)
+	err := c.ocClient.PoweroffServerSystem(cmd.Context(), name, c.flagForce)
 	if err != nil {
 		return err
 	}
@@ -166,6 +174,8 @@ func (c *cmdServerPoweroff) run(cmd *cobra.Command, args []string) error {
 // Reboot server.
 type cmdServerReboot struct {
 	ocClient *client.OperationsCenterClient
+
+	flagForce bool
 }
 
 func (c *cmdServerReboot) Command() *cobra.Command {
@@ -177,6 +187,8 @@ func (c *cmdServerReboot) Command() *cobra.Command {
 
   Reboots a server.
 `
+
+	cmd.Flags().BoolVar(&c.flagForce, "force", false, "forcefully trigger a reboot")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -197,7 +209,7 @@ func (c *cmdServerReboot) validateArgsAndFlags(cmd *cobra.Command, args []string
 func (c *cmdServerReboot) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	err := c.ocClient.RebootServerSystem(cmd.Context(), name)
+	err := c.ocClient.RebootServerSystem(cmd.Context(), name, c.flagForce)
 	if err != nil {
 		return err
 	}
@@ -208,6 +220,8 @@ func (c *cmdServerReboot) run(cmd *cobra.Command, args []string) error {
 // Restore server.
 type cmdServerRestore struct {
 	ocClient *client.OperationsCenterClient
+
+	flagForce bool
 }
 
 func (c *cmdServerRestore) Command() *cobra.Command {
@@ -219,6 +233,8 @@ func (c *cmdServerRestore) Command() *cobra.Command {
 
   Restores a server.
 `
+
+	cmd.Flags().BoolVar(&c.flagForce, "force", false, "forcefully trigger a restore")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -239,7 +255,7 @@ func (c *cmdServerRestore) validateArgsAndFlags(cmd *cobra.Command, args []strin
 func (c *cmdServerRestore) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	err := c.ocClient.RestoreServerSystem(cmd.Context(), name)
+	err := c.ocClient.RestoreServerSystem(cmd.Context(), name, c.flagForce)
 	if err != nil {
 		return err
 	}
@@ -251,6 +267,7 @@ func (c *cmdServerRestore) run(cmd *cobra.Command, args []string) error {
 type cmdServerUpdate struct {
 	ocClient *client.OperationsCenterClient
 
+	flagForce    bool
 	flagUpdateOS bool
 }
 
@@ -264,6 +281,7 @@ func (c *cmdServerUpdate) Command() *cobra.Command {
   Triggers an update on a server.
 `
 
+	cmd.Flags().BoolVar(&c.flagForce, "force", false, "forcefully trigger an update")
 	cmd.Flags().BoolVar(&c.flagUpdateOS, "os", false, "trigger OS update")
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -292,7 +310,7 @@ func (c *cmdServerUpdate) run(cmd *cobra.Command, args []string) error {
 		},
 	}
 
-	err := c.ocClient.UpdateServerSystem(cmd.Context(), name, updateRequest)
+	err := c.ocClient.UpdateServerSystem(cmd.Context(), name, updateRequest, c.flagForce)
 	if err != nil {
 		return err
 	}

@@ -111,8 +111,13 @@ func (c OperationsCenterClient) GetServerChangelog(ctx context.Context, name str
 	return changelog, nil
 }
 
-func (c OperationsCenterClient) EvacuateServerSystem(ctx context.Context, name string) error {
-	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:evacuate"), nil, nil)
+func (c OperationsCenterClient) EvacuateServerSystem(ctx context.Context, name string, force bool) error {
+	query := url.Values{}
+	if force {
+		query.Add("force", "1")
+	}
+
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:evacuate"), query, nil)
 	if err != nil {
 		return err
 	}
@@ -120,8 +125,13 @@ func (c OperationsCenterClient) EvacuateServerSystem(ctx context.Context, name s
 	return nil
 }
 
-func (c OperationsCenterClient) PoweroffServerSystem(ctx context.Context, name string) error {
-	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:poweroff"), nil, nil)
+func (c OperationsCenterClient) PoweroffServerSystem(ctx context.Context, name string, force bool) error {
+	query := url.Values{}
+	if force {
+		query.Add("force", "1")
+	}
+
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:poweroff"), query, nil)
 	if err != nil {
 		return err
 	}
@@ -129,8 +139,13 @@ func (c OperationsCenterClient) PoweroffServerSystem(ctx context.Context, name s
 	return nil
 }
 
-func (c OperationsCenterClient) RebootServerSystem(ctx context.Context, name string) error {
-	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:reboot"), nil, nil)
+func (c OperationsCenterClient) RebootServerSystem(ctx context.Context, name string, force bool) error {
+	query := url.Values{}
+	if force {
+		query.Add("force", "1")
+	}
+
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:reboot"), query, nil)
 	if err != nil {
 		return err
 	}
@@ -138,8 +153,13 @@ func (c OperationsCenterClient) RebootServerSystem(ctx context.Context, name str
 	return nil
 }
 
-func (c OperationsCenterClient) RestoreServerSystem(ctx context.Context, name string) error {
-	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:restore"), nil, nil)
+func (c OperationsCenterClient) RestoreServerSystem(ctx context.Context, name string, force bool) error {
+	query := url.Values{}
+	if force {
+		query.Add("force", "1")
+	}
+
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:restore"), query, nil)
 	if err != nil {
 		return err
 	}
@@ -147,8 +167,13 @@ func (c OperationsCenterClient) RestoreServerSystem(ctx context.Context, name st
 	return nil
 }
 
-func (c OperationsCenterClient) UpdateServerSystem(ctx context.Context, name string, updateRequest api.ServerUpdatePost) error {
-	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:update"), nil, updateRequest)
+func (c OperationsCenterClient) UpdateServerSystem(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error {
+	query := url.Values{}
+	if force {
+		query.Add("force", "1")
+	}
+
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:update"), query, updateRequest)
 	if err != nil {
 		return err
 	}

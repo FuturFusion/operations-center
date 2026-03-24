@@ -113,9 +113,10 @@ type ClusterUpdateInProgressStatus struct {
 type ClusterUpdateInProgress string
 
 const (
-	ClusterUpdateInProgressInactive       ClusterUpdateInProgress = ""
-	ClusterUpdateInProgressApplyUpdate    ClusterUpdateInProgress = "apply updates"
-	ClusterUpdateInProgressRollingRestart ClusterUpdateInProgress = "rolling restart"
+	ClusterUpdateInProgressInactive              ClusterUpdateInProgress = ""
+	ClusterUpdateInProgressApplyUpdate           ClusterUpdateInProgress = "apply updates"
+	ClusterUpdateInProgressApplyUpdateWithReboot ClusterUpdateInProgress = "apply updates with reboot"
+	ClusterUpdateInProgressRollingRestart        ClusterUpdateInProgress = "rolling restart"
 )
 
 // ClusterUpdateStatus contains the update status of each server of the cluster

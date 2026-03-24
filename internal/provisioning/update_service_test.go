@@ -3066,10 +3066,11 @@ func TestUpdateService_Refresh(t *testing.T) {
 				repo,
 				repoUpdateFiles,
 				source,
-				serverSvc,
+				nil,
 				provisioning.UpdateServiceWithLatestLimit(1),
 				provisioning.UpdateServiceWithPendingGracePeriod(24*time.Hour),
 			)
+			updateSvc.SetServerService(serverSvc)
 
 			// Run test
 			err = updateSvc.Refresh(tc.ctx)
