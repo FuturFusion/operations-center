@@ -27,6 +27,7 @@ import (
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -194,6 +195,7 @@ func (s *serverService) GetAllWithFilter(ctx context.Context, filter ServerFilte
 			*filter.Expression,
 			expr.Env(ToExprServer(Server{})),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
@@ -257,6 +259,7 @@ func (s *serverService) GetAllNamesWithFilter(ctx context.Context, filter Server
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)

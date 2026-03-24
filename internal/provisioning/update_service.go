@@ -27,6 +27,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -718,6 +719,7 @@ func (s updateService) validateUpdatesConfig(ctx context.Context, su system.Upda
 			su.FilterExpression,
 			expr.Env(ToExprUpdate(Update{})),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return domain.NewValidationErrf(`Invalid config, failed to compile filter expression: %v`, err)
@@ -747,6 +749,7 @@ func (s updateService) filterUpdatesByFilterExpression(updates Updates) (Updates
 			config.GetUpdates().FilterExpression,
 			expr.Env(ToExprUpdate(Update{})),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 
 		n := 0
@@ -820,6 +823,7 @@ func (u UpdateFileExprEnv) ExprCompileOptions() []expr.Option {
 		expr.Env(UpdateFileExprEnv{}),
 
 		expr.AsBool(),
+		expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 	}
 }
 

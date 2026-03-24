@@ -26,6 +26,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/structs"
@@ -539,6 +540,7 @@ func (s clusterService) GetAllWithFilter(ctx context.Context, filter ClusterFilt
 			*filter.Expression,
 			expr.Env(ToExprCluster(Cluster{})),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
@@ -601,6 +603,7 @@ func (s clusterService) GetAllNamesWithFilter(ctx context.Context, filter Cluste
 			*filter.Expression,
 			expr.Env(Env{}),
 			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 		)
 		if err != nil {
 			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
@@ -1075,7 +1078,7 @@ func (s clusterService) LaunchClusterUpdate(ctx context.Context, name string, re
 func (s clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNameFilter *string) error {
 	clusters, err := s.GetAllWithFilter(ctx, ClusterFilter{
 		Name:       clusterNameFilter,
-		Expression: ptr.To(`string(update_status.in_progress_status.in_progress) != ""`),
+		Expression: ptr.To(`update_status.in_progress_status.in_progress != ""`),
 	})
 	if err != nil {
 		return fmt.Errorf("Failed to get clusters for update control loop: %w", err)
