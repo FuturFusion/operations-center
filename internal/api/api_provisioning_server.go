@@ -817,6 +817,15 @@ func (s *serverHandler) serverChangelogGet(r *http.Request) response.Response {
 //	Triggers an evacuate operation on the server.
 //
 //	---
+//	parameters:
+//	  - in: query
+//	    name: force
+//	    description: |-
+//	      Boolean indicating, if the operations should be applied forcefully or
+//	      not. If the "force" is true-ish, safety checks are bypassed and the
+//	      operation is applied forcefully, otherwise the regular safety checks
+//	      are applied.
+//	      Defaults to false.
 //	produces:
 //	  - application/json
 //	responses:
@@ -832,8 +841,9 @@ func (s *serverHandler) serverChangelogGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverSystemEvacuatePost(r *http.Request) response.Response {
 	name := r.PathValue("name")
+	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
 
-	err := s.service.EvacuateSystemByName(r.Context(), name, false)
+	err := s.service.EvacuateSystemByName(r.Context(), name, force)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to evacuate server %q: %w", name, err))
 	}
@@ -848,6 +858,15 @@ func (s *serverHandler) serverSystemEvacuatePost(r *http.Request) response.Respo
 //	Triggers a poweroff operation on the server.
 //
 //	---
+//	parameters:
+//	  - in: query
+//	    name: force
+//	    description: |-
+//	      Boolean indicating, if the operations should be applied forcefully or
+//	      not. If the "force" is true-ish, safety checks are bypassed and the
+//	      operation is applied forcefully, otherwise the regular safety checks
+//	      are applied.
+//	      Defaults to false.
 //	produces:
 //	  - application/json
 //	responses:
@@ -863,8 +882,9 @@ func (s *serverHandler) serverSystemEvacuatePost(r *http.Request) response.Respo
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverSystemPoweroffPost(r *http.Request) response.Response {
 	name := r.PathValue("name")
+	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
 
-	err := s.service.PoweroffSystemByName(r.Context(), name, false)
+	err := s.service.PoweroffSystemByName(r.Context(), name, force)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to poweroff server %q: %w", name, err))
 	}
@@ -879,6 +899,15 @@ func (s *serverHandler) serverSystemPoweroffPost(r *http.Request) response.Respo
 //	Triggers a reboot operation on the server.
 //
 //	---
+//	parameters:
+//	  - in: query
+//	    name: force
+//	    description: |-
+//	      Boolean indicating, if the operations should be applied forcefully or
+//	      not. If the "force" is true-ish, safety checks are bypassed and the
+//	      operation is applied forcefully, otherwise the regular safety checks
+//	      are applied.
+//	      Defaults to false.
 //	produces:
 //	  - application/json
 //	responses:
@@ -894,8 +923,9 @@ func (s *serverHandler) serverSystemPoweroffPost(r *http.Request) response.Respo
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverSystemRebootPost(r *http.Request) response.Response {
 	name := r.PathValue("name")
+	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
 
-	err := s.service.RebootSystemByName(r.Context(), name, false)
+	err := s.service.RebootSystemByName(r.Context(), name, force)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to reboot server %q: %w", name, err))
 	}
@@ -910,6 +940,15 @@ func (s *serverHandler) serverSystemRebootPost(r *http.Request) response.Respons
 //	Triggers an restore operation on the server.
 //
 //	---
+//	parameters:
+//	  - in: query
+//	    name: force
+//	    description: |-
+//	      Boolean indicating, if the operations should be applied forcefully or
+//	      not. If the "force" is true-ish, safety checks are bypassed and the
+//	      operation is applied forcefully, otherwise the regular safety checks
+//	      are applied.
+//	      Defaults to false.
 //	produces:
 //	  - application/json
 //	responses:
@@ -925,8 +964,9 @@ func (s *serverHandler) serverSystemRebootPost(r *http.Request) response.Respons
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverSystemRestorePost(r *http.Request) response.Response {
 	name := r.PathValue("name")
+	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
 
-	err := s.service.RestoreSystemByName(r.Context(), name, false, false)
+	err := s.service.RestoreSystemByName(r.Context(), name, false, force)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to restore server %q: %w", name, err))
 	}
@@ -941,6 +981,15 @@ func (s *serverHandler) serverSystemRestorePost(r *http.Request) response.Respon
 //	Triggers an update operation on the server.
 //
 //	---
+//	parameters:
+//	  - in: query
+//	    name: force
+//	    description: |-
+//	      Boolean indicating, if the operations should be applied forcefully or
+//	      not. If the "force" is true-ish, safety checks are bypassed and the
+//	      operation is applied forcefully, otherwise the regular safety checks
+//	      are applied.
+//	      Defaults to false.
 //	produces:
 //	  - application/json
 //	responses:
@@ -956,6 +1005,7 @@ func (s *serverHandler) serverSystemRestorePost(r *http.Request) response.Respon
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverSystemUpdatePost(r *http.Request) response.Response {
 	name := r.PathValue("name")
+	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
 
 	var updateRequest api.ServerUpdatePost
 
@@ -964,7 +1014,7 @@ func (s *serverHandler) serverSystemUpdatePost(r *http.Request) response.Respons
 		return response.BadRequest(fmt.Errorf("Request decoding: %v", err))
 	}
 
-	err = s.service.UpdateSystemByName(r.Context(), name, updateRequest, false)
+	err = s.service.UpdateSystemByName(r.Context(), name, updateRequest, force)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to update server %q: %w", name, err))
 	}
