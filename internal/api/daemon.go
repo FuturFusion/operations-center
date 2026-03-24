@@ -516,9 +516,27 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 			provisioningSqlite.NewServer(db),
 		),
 		provisioningAdapterMiddleware.NewServerClientPortWithSlog(
-			provisioningIncusAdapter.New(
-				d.clientCertificate,
-				d.clientKey,
+			provisioningAdapterMiddleware.NewServerClientPortWithErrorWrapper(
+				provisioningIncusAdapter.New(
+					d.clientCertificate,
+					d.clientKey,
+				),
+				func(err error) error {
+					// Connection errors are retryable.
+					if errors.Is(err, syscall.ECONNREFUSED) ||
+						errors.Is(err, io.EOF) ||
+						errors.Is(err, io.ErrUnexpectedEOF) {
+						return domain.NewRetryableErr(err)
+					}
+
+					// Cancelled context or context with exceeded deadline are retryable.
+					if errors.Is(err, context.DeadlineExceeded) ||
+						errors.Is(err, context.Canceled) {
+						return domain.NewRetryableErr(err)
+					}
+
+					return err
+				},
 			),
 			provisioningAdapterMiddleware.ServerClientPortWithSlogWithInformativeErrFunc(
 				func(err error) bool {
@@ -529,18 +547,8 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 						return true
 					}
 
-					// Connection errors are retryable and therefore should not be
-					// reported as errors.
-					if errors.Is(err, syscall.ECONNREFUSED) ||
-						errors.Is(err, io.EOF) ||
-						errors.Is(err, io.ErrUnexpectedEOF) {
-						return true
-					}
-
-					// Cancelled context or context with exceeded deadline should not be
-					// reported as errors.
-					if errors.Is(err, context.DeadlineExceeded) ||
-						errors.Is(err, context.Canceled) {
+					// Treat retryable errors as informational.
+					if domain.IsRetryableError(err) {
 						return true
 					}
 
@@ -619,10 +627,36 @@ func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.Se
 				localClusterArtifactRepo,
 			),
 			provisioningAdapterMiddleware.NewClusterClientPortWithSlog(
-				provisioningIncusAdapter.New(
-					d.clientCertificate,
-					d.clientKey,
+				provisioningAdapterMiddleware.NewClusterClientPortWithErrorWrapper(
+					provisioningIncusAdapter.New(
+						d.clientCertificate,
+						d.clientKey,
+					),
+					func(err error) error {
+						// Connection errors are retryable.
+						if errors.Is(err, syscall.ECONNREFUSED) ||
+							errors.Is(err, io.EOF) ||
+							errors.Is(err, io.ErrUnexpectedEOF) {
+							return domain.NewRetryableErr(err)
+						}
+
+						// Cancelled context or context with exceeded deadline are retryable.
+						if errors.Is(err, context.DeadlineExceeded) ||
+							errors.Is(err, context.Canceled) {
+							return domain.NewRetryableErr(err)
+						}
+
+						return err
+					},
 				),
+				provisioningAdapterMiddleware.ClusterClientPortWithSlogWithInformativeErrFunc(func(err error) bool {
+					// Treat retryable errors as informational.
+					if domain.IsRetryableError(err) {
+						return true
+					}
+
+					return false
+				}),
 			),
 			serverSvc,
 			tokenSvc,
@@ -671,24 +705,32 @@ func (d *Daemon) setupAPIRoutes(
 	// serverClientProvider is a provider of a client to access (Incus) servers
 	// or clusters.
 	serverClientProvider := serverMiddleware.NewServerClientWithSlog(
-		inventoryIncusAdapter.New(
-			d.clientCertificate,
-			d.clientKey,
-		),
-		serverMiddleware.ServerClientWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Connection errors are retryable and therefore should not be
-				// reported as errors.
+		serverMiddleware.NewServerClientWithErrorWrapper(
+			inventoryIncusAdapter.New(
+				d.clientCertificate,
+				d.clientKey,
+			),
+			func(err error) error {
+				// Connection errors are retryable.
 				if errors.Is(err, syscall.ECONNREFUSED) ||
 					errors.Is(err, io.EOF) ||
 					errors.Is(err, io.ErrUnexpectedEOF) {
-					return true
+					return domain.NewRetryableErr(err)
 				}
 
-				// Cancelled context or context with exceeded deadline should not be
-				// reported as errors.
+				// Cancelled context or context with exceeded deadline are retryable.
 				if errors.Is(err, context.DeadlineExceeded) ||
 					errors.Is(err, context.Canceled) {
+					return domain.NewRetryableErr(err)
+				}
+
+				return err
+			},
+		),
+		serverMiddleware.ServerClientWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
 					return true
 				}
 
@@ -793,7 +835,13 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "Refresh updates triggered")
 		err := updateSvc.Refresh(ctx)
 		if err != nil {
-			slog.ErrorContext(ctx, "Refresh updates failed", logger.Err(err))
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "Refresh updates failed", logger.Err(err))
+
 			return
 		}
 
@@ -815,7 +863,13 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "Cluster update control loop triggered")
 		err := clusterSvc.ClusterUpdateControlLoop(ctx, nil)
 		if err != nil {
-			slog.ErrorContext(ctx, "Cluster update control loop failed", logger.Err(err))
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "Cluster update control loop failed", logger.Err(err))
+
 			return
 		}
 
@@ -831,10 +885,15 @@ func (d *Daemon) setupBackgroundTasks(
 	lifecycle.ServerLifecycleSignal.AddListenerWithErr(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) error {
 		err := clusterSvc.ClusterUpdateControlLoop(ctx, slm.Cluster)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed to handle server lifecycle event", logger.Err(err), slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update-state", slm.ServerUpdateState.String()))
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "Failed to handle server lifecycle event", logger.Err(err), slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update-state", slm.ServerUpdateState.String()))
 		}
 
-		return err
+		return nil
 	})
 
 	// Start background task to poll servers in pending, updating or rebooting state to become available.
@@ -844,7 +903,13 @@ func (d *Daemon) setupBackgroundTasks(
 			Status: ptr.To(api.ServerStatusPending),
 		}, true)
 		if err != nil {
-			slog.ErrorContext(ctx, "Polling for pending servers failed", logger.Err(err))
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "Polling for pending servers failed", logger.Err(err))
+
 			return
 		}
 
@@ -853,7 +918,13 @@ func (d *Daemon) setupBackgroundTasks(
 			StatusDetail: ptr.To(api.ServerStatusDetailReadyUpdating),
 		}, true)
 		if err != nil {
-			slog.ErrorContext(ctx, "Polling for updating servers failed", logger.Err(err))
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "Polling for updating servers failed", logger.Err(err))
+
 			return
 		}
 
@@ -862,7 +933,13 @@ func (d *Daemon) setupBackgroundTasks(
 			StatusDetail: ptr.To(api.ServerStatusDetailOfflineRebooting),
 		}, true)
 		if err != nil {
-			slog.ErrorContext(ctx, "Polling for rebooting servers failed", logger.Err(err))
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "Polling for rebooting servers failed", logger.Err(err))
+
 			return
 		}
 
@@ -884,7 +961,13 @@ func (d *Daemon) setupBackgroundTasks(
 			Status: ptr.To(api.ServerStatusReady),
 		}, updateConfiguration)
 		if err != nil {
-			slog.ErrorContext(ctx, "Connectivity test for some servers failed", logger.Err(err))
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "Connectivity test for some servers failed", logger.Err(err))
+
 			return
 		}
 
@@ -901,7 +984,13 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "Inventory update triggered")
 		err := clusterSvc.ResyncInventory(ctx)
 		if err != nil {
-			slog.ErrorContext(ctx, "Inventory update failed", logger.Err(err))
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "Inventory update failed", logger.Err(err))
+
 			return
 		}
 
