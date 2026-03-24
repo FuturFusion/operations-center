@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
 
@@ -54,9 +55,16 @@ func TestServerDatabaseActions(t *testing.T) {
 		Certificate:   string(certPEMB),
 		Fingerprint:   fingerprintB,
 		HardwareData:  api.HardwareData{},
-		VersionData:   api.ServerVersionData{},
-		Status:        api.ServerStatusReady,
-		Channel:       "stable",
+		VersionData: api.ServerVersionData{
+			Applications: []api.ApplicationVersionData{
+				{
+					Name:    string(images.UpdateFileComponentIncus),
+					Version: "1",
+				},
+			},
+		},
+		Status:  api.ServerStatusReady,
+		Channel: "stable",
 	}
 
 	localArtifactRepo := &repoMock.ClusterArtifactRepoMock{
