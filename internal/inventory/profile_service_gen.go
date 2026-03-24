@@ -15,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 )
 
 type profileService struct {
@@ -62,7 +63,12 @@ func (s profileService) GetAllWithFilter(ctx context.Context, filter ProfileFilt
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprProfile(Profile{}))}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(ToExprProfile(Profile{})),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -76,17 +82,12 @@ func (s profileService) GetAllWithFilter(ctx context.Context, filter ProfileFilt
 	var filteredProfiles Profiles
 	if filter.Expression != nil {
 		for _, profile := range profiles {
-			output, err := expr.Run(filterExpression, ToExprProfile(profile))
+			result, err := expr.Run(filterExpression, ToExprProfile(profile))
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredProfiles = append(filteredProfiles, profile)
 			}
 		}
@@ -106,7 +107,12 @@ func (s profileService) GetAllUUIDsWithFilter(ctx context.Context, filter Profil
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(Env{}),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -120,17 +126,12 @@ func (s profileService) GetAllUUIDsWithFilter(ctx context.Context, filter Profil
 	var filteredProfilesUUIDs []uuid.UUID
 	if filter.Expression != nil {
 		for _, profileUUID := range profilesUUIDs {
-			output, err := expr.Run(filterExpression, Env{profileUUID.String()})
+			result, err := expr.Run(filterExpression, Env{profileUUID.String()})
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredProfilesUUIDs = append(filteredProfilesUUIDs, profileUUID)
 			}
 		}

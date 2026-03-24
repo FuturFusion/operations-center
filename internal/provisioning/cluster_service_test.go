@@ -2572,42 +2572,6 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 			count:     1,
 		},
 		{
-			name: "error - invalid filter expression",
-			filter: provisioning.ClusterFilter{
-				Expression: ptr.To(``), // the empty expression is an invalid expression.
-			},
-			repoGetAllWithFilter: provisioning.Clusters{
-				provisioning.Cluster{
-					Name: "one",
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(t, err, "Failed to compile filter expression:")
-			},
-			count: 0,
-		},
-		{
-			name: "error - filter expression run",
-			filter: provisioning.ClusterFilter{
-				Expression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
-			},
-			repoGetAllWithFilter: provisioning.Clusters{
-				provisioning.Cluster{
-					Name: "one",
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(t, err, "Failed to execute filter expression:")
-			},
-			count: 0,
-		},
-		{
 			name: "error - non bool expression",
 			filter: provisioning.ClusterFilter{
 				Expression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
@@ -2621,7 +2585,25 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(tt, err, "does not evaluate to boolean result")
+				require.ErrorContains(tt, err, "Failed to compile filter expression:")
+			},
+			count: 0,
+		},
+		{
+			name: "error - filter expression run",
+			filter: provisioning.ClusterFilter{
+				Expression: ptr.To(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
+			},
+			repoGetAllWithFilter: provisioning.Clusters{
+				provisioning.Cluster{
+					Name: "one",
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, "Failed to execute filter expression:")
 			},
 			count: 0,
 		},
@@ -2729,7 +2711,7 @@ func TestClusterService_GetAllNames(t *testing.T) {
 	}
 }
 
-func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
+func TestClusterService_GetAllNamesWithFilter(t *testing.T) {
 	tests := []struct {
 		name                         string
 		filter                       provisioning.ClusterFilter
@@ -2762,9 +2744,9 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 			count:     1,
 		},
 		{
-			name: "error - invalid filter expression",
+			name: "error - non bool expression",
 			filter: provisioning.ClusterFilter{
-				Expression: ptr.To(``), // the empty expression is an invalid expression.
+				Expression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
 			},
 			repoGetAllNamesWithFilter: []string{
 				"one",
@@ -2780,7 +2762,7 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name: "error - filter expression run",
 			filter: provisioning.ClusterFilter{
-				Expression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
+				Expression: ptr.To(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
 			},
 			repoGetAllNamesWithFilter: []string{
 				"one",
@@ -2790,22 +2772,6 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 				require.ErrorContains(tt, err, "Failed to execute filter expression:")
-			},
-			count: 0,
-		},
-		{
-			name: "error - non bool expression",
-			filter: provisioning.ClusterFilter{
-				Expression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
-			},
-			repoGetAllNamesWithFilter: []string{
-				"one",
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(tt, err, "does not evaluate to boolean result")
 			},
 			count: 0,
 		},

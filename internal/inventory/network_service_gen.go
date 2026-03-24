@@ -15,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 )
 
 type networkService struct {
@@ -62,7 +63,12 @@ func (s networkService) GetAllWithFilter(ctx context.Context, filter NetworkFilt
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprNetwork(Network{}))}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(ToExprNetwork(Network{})),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -76,17 +82,12 @@ func (s networkService) GetAllWithFilter(ctx context.Context, filter NetworkFilt
 	var filteredNetworks Networks
 	if filter.Expression != nil {
 		for _, network := range networks {
-			output, err := expr.Run(filterExpression, ToExprNetwork(network))
+			result, err := expr.Run(filterExpression, ToExprNetwork(network))
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredNetworks = append(filteredNetworks, network)
 			}
 		}
@@ -106,7 +107,12 @@ func (s networkService) GetAllUUIDsWithFilter(ctx context.Context, filter Networ
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(Env{}),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -120,17 +126,12 @@ func (s networkService) GetAllUUIDsWithFilter(ctx context.Context, filter Networ
 	var filteredNetworksUUIDs []uuid.UUID
 	if filter.Expression != nil {
 		for _, networkUUID := range networksUUIDs {
-			output, err := expr.Run(filterExpression, Env{networkUUID.String()})
+			result, err := expr.Run(filterExpression, Env{networkUUID.String()})
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredNetworksUUIDs = append(filteredNetworksUUIDs, networkUUID)
 			}
 		}

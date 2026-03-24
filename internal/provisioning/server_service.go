@@ -27,6 +27,7 @@ import (
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -190,7 +191,12 @@ func (s *serverService) GetAllWithFilter(ctx context.Context, filter ServerFilte
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprServer(Server{}))}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(ToExprServer(Server{})),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
 		}
@@ -210,17 +216,12 @@ func (s *serverService) GetAllWithFilter(ctx context.Context, filter ServerFilte
 	if filter.Expression != nil {
 		n := 0
 		for i := range servers {
-			output, err := expr.Run(filterExpression, ToExprServer(servers[i]))
+			result, err := expr.Run(filterExpression, ToExprServer(servers[i]))
 			if err != nil {
 				return nil, domain.NewValidationErrf("Failed to execute filter expression: %v", err)
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, domain.NewValidationErrf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if !result {
+			if !result.(bool) {
 				continue
 			}
 
@@ -254,7 +255,12 @@ func (s *serverService) GetAllNamesWithFilter(ctx context.Context, filter Server
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(Env{}),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
 		}
@@ -275,17 +281,12 @@ func (s *serverService) GetAllNamesWithFilter(ctx context.Context, filter Server
 	var filteredServerIDs []string
 	if filter.Expression != nil {
 		for _, serverID := range serverIDs {
-			output, err := expr.Run(filterExpression, Env{serverID})
+			result, err := expr.Run(filterExpression, Env{serverID})
 			if err != nil {
 				return nil, domain.NewValidationErrf("Failed to execute filter expression: %v", err)
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, domain.NewValidationErrf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredServerIDs = append(filteredServerIDs, serverID)
 			}
 		}

@@ -63,30 +63,6 @@ func Test{{ .Name | pascalcase }}Service_GetAllWithFilter(t *testing.T) {
 			count:     1,
 		},
 		{
-			name:             "error - invalid filter expression",
-			filterExpression: ptr.To(``), // the empty expression is an invalid expression.
-			repoGetAllWithFilter: inventory.{{ .PluralName | pascalcase }}{
-				inventory.{{ .Name | pascalcase }}{
-					Name: "one",
-				},
-			},
-
-			assertErr: require.Error,
-			count:     0,
-		},
-		{
-			name:             "error - filter expression run",
-			filterExpression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
-			repoGetAllWithFilter: inventory.{{ .PluralName | pascalcase }}{
-				inventory.{{ .Name | pascalcase }}{
-					Name: "one",
-				},
-			},
-
-			assertErr: require.Error,
-			count:     0,
-		},
-		{
 			name:             "error - non bool expression",
 			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
 			repoGetAllWithFilter: inventory.{{ .PluralName | pascalcase }}{
@@ -95,10 +71,20 @@ func Test{{ .Name | pascalcase }}Service_GetAllWithFilter(t *testing.T) {
 				},
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "does not evaluate to boolean result")
-			},
+			assertErr: require.Error,
 			count: 0,
+		},
+		{
+			name:             "error - filter expression run",
+			filterExpression: ptr.To(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
+			repoGetAllWithFilter: inventory.{{ .PluralName | pascalcase }}{
+				inventory.{{ .Name | pascalcase }}{
+					Name: "one",
+				},
+			},
+
+			assertErr: require.Error,
+			count:     0,
 		},
 		{
 			name:             "error - repo",
@@ -166,36 +152,24 @@ func Test{{ .Name | pascalcase }}Service_GetAllUUIDsWithFilter(t *testing.T) {
 			count:     1,
 		},
 		{
-			name:             "error - invalid filter expression",
-			filterExpression: ptr.To(``), // the empty expression is an invalid expression.
-			repoGetAllUUIDsWithFilter: []uuid.UUID{
-				uuidgen.FromPattern(t, "1"),
-			},
-
-			assertErr: require.Error,
-			count:     0,
-		},
-		{
-			name:             "error - filter expression run",
-			filterExpression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
-			repoGetAllUUIDsWithFilter: []uuid.UUID{
-				uuidgen.FromPattern(t, "1"),
-			},
-
-			assertErr: require.Error,
-			count:     0,
-		},
-		{
 			name:             "error - non bool expression",
 			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
 				uuidgen.FromPattern(t, "1"),
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "does not evaluate to boolean result")
-			},
+			assertErr: require.Error,
 			count: 0,
+		},
+		{
+			name:             "error - filter expression run",
+			filterExpression: ptr.To(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+
+			assertErr: require.Error,
+			count:     0,
 		},
 		{
 			name:             "error - repo",

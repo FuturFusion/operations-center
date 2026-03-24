@@ -16,6 +16,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 )
 
 type networkLoadBalancerService struct {
@@ -76,7 +77,12 @@ func (s networkLoadBalancerService) GetAllWithFilter(ctx context.Context, filter
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprNetworkLoadBalancer(NetworkLoadBalancer{}))}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(ToExprNetworkLoadBalancer(NetworkLoadBalancer{})),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -90,17 +96,12 @@ func (s networkLoadBalancerService) GetAllWithFilter(ctx context.Context, filter
 	var filteredNetworkLoadBalancers NetworkLoadBalancers
 	if filter.Expression != nil {
 		for _, networkLoadBalancer := range networkLoadBalancers {
-			output, err := expr.Run(filterExpression, ToExprNetworkLoadBalancer(networkLoadBalancer))
+			result, err := expr.Run(filterExpression, ToExprNetworkLoadBalancer(networkLoadBalancer))
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredNetworkLoadBalancers = append(filteredNetworkLoadBalancers, networkLoadBalancer)
 			}
 		}
@@ -120,7 +121,12 @@ func (s networkLoadBalancerService) GetAllUUIDsWithFilter(ctx context.Context, f
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(Env{}),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -134,17 +140,12 @@ func (s networkLoadBalancerService) GetAllUUIDsWithFilter(ctx context.Context, f
 	var filteredNetworkLoadBalancersUUIDs []uuid.UUID
 	if filter.Expression != nil {
 		for _, networkLoadBalancerUUID := range networkLoadBalancersUUIDs {
-			output, err := expr.Run(filterExpression, Env{networkLoadBalancerUUID.String()})
+			result, err := expr.Run(filterExpression, Env{networkLoadBalancerUUID.String()})
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredNetworkLoadBalancersUUIDs = append(filteredNetworkLoadBalancersUUIDs, networkLoadBalancerUUID)
 			}
 		}

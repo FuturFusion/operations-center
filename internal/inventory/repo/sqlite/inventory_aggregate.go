@@ -13,6 +13,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/maps"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
@@ -62,7 +63,12 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(Env{}),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -159,25 +165,23 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 				return nil, err
 			}
 
-			output, err := expr.Run(filterExpression, Env{
-				Kind:        inventoryResource.Kind,
-				ClusterName: inventoryResource.ClusterName,
-				ServerName:  ptr.From(inventoryResource.ServerName),
-				ProjectName: ptr.From(inventoryResource.ProjectName),
-				ParentName:  ptr.From(inventoryResource.ParentName),
-				Name:        inventoryResource.Name,
-				Object:      object,
-			})
+			result, err := expr.Run(
+				filterExpression,
+				Env{
+					Kind:        inventoryResource.Kind,
+					ClusterName: inventoryResource.ClusterName,
+					ServerName:  ptr.From(inventoryResource.ServerName),
+					ProjectName: ptr.From(inventoryResource.ProjectName),
+					ParentName:  ptr.From(inventoryResource.ParentName),
+					Name:        inventoryResource.Name,
+					Object:      object,
+				},
+			)
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Include expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if !result {
+			if !result.(bool) {
 				continue
 			}
 		}

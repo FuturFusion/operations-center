@@ -15,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 )
 
 type storagePoolService struct {
@@ -62,7 +63,12 @@ func (s storagePoolService) GetAllWithFilter(ctx context.Context, filter Storage
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprStoragePool(StoragePool{}))}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(ToExprStoragePool(StoragePool{})),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -76,17 +82,12 @@ func (s storagePoolService) GetAllWithFilter(ctx context.Context, filter Storage
 	var filteredStoragePools StoragePools
 	if filter.Expression != nil {
 		for _, storagePool := range storagePools {
-			output, err := expr.Run(filterExpression, ToExprStoragePool(storagePool))
+			result, err := expr.Run(filterExpression, ToExprStoragePool(storagePool))
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredStoragePools = append(filteredStoragePools, storagePool)
 			}
 		}
@@ -106,7 +107,12 @@ func (s storagePoolService) GetAllUUIDsWithFilter(ctx context.Context, filter St
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(Env{}),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -120,17 +126,12 @@ func (s storagePoolService) GetAllUUIDsWithFilter(ctx context.Context, filter St
 	var filteredStoragePoolsUUIDs []uuid.UUID
 	if filter.Expression != nil {
 		for _, storagePoolUUID := range storagePoolsUUIDs {
-			output, err := expr.Run(filterExpression, Env{storagePoolUUID.String()})
+			result, err := expr.Run(filterExpression, Env{storagePoolUUID.String()})
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredStoragePoolsUUIDs = append(filteredStoragePoolsUUIDs, storagePoolUUID)
 			}
 		}

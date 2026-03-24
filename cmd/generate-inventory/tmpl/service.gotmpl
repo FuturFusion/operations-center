@@ -15,6 +15,7 @@ import (
 {{- end }}
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 {{- if .IsServerIDOptional }}
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 {{- end }}
@@ -91,7 +92,12 @@ func (s {{ .Name | camelcase }}Service) GetAllWithFilter(ctx context.Context, fi
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExpr{{.Name | pascalcase}}({{ .Name | pascalcase }}{}))}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(ToExpr{{.Name | pascalcase}}({{ .Name | pascalcase }}{})),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -105,17 +111,12 @@ func (s {{ .Name | camelcase }}Service) GetAllWithFilter(ctx context.Context, fi
 	var filtered{{ .PluralName | pascalcase }} {{ .PluralName | pascalcase }}
 	if filter.Expression != nil {
 		for _, {{ .Name | camelcase }} := range {{ .PluralName | camelcase }} {
-			output, err := expr.Run(filterExpression, ToExpr{{.Name | pascalcase}}({{ .Name | camelcase }}))
+			result, err := expr.Run(filterExpression, ToExpr{{.Name | pascalcase}}({{ .Name | camelcase }}))
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filtered{{ .PluralName | pascalcase }} = append(filtered{{ .PluralName | pascalcase }}, {{ .Name | camelcase }})
 			}
 		}
@@ -135,7 +136,12 @@ func (s {{ .Name | camelcase }}Service) GetAllUUIDsWithFilter(ctx context.Contex
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(Env{}),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -149,17 +155,12 @@ func (s {{ .Name | camelcase }}Service) GetAllUUIDsWithFilter(ctx context.Contex
 	var filtered{{ .PluralName | pascalcase }}UUIDs []uuid.UUID
 	if filter.Expression != nil {
 		for _, {{ .Name | camelcase }}UUID := range {{ .PluralName | camelcase }}UUIDs {
-			output, err := expr.Run(filterExpression, Env{ {{ .Name | camelcase }}UUID.String() })
+			result, err := expr.Run(filterExpression, Env{ {{ .Name | camelcase }}UUID.String() })
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filtered{{ .PluralName | pascalcase }}UUIDs = append(filtered{{ .PluralName | pascalcase }}UUIDs, {{ .Name | camelcase }}UUID)
 			}
 		}

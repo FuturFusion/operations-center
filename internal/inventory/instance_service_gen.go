@@ -15,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 )
 
 type instanceService struct {
@@ -62,7 +63,12 @@ func (s instanceService) GetAllWithFilter(ctx context.Context, filter InstanceFi
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprInstance(Instance{}))}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(ToExprInstance(Instance{})),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -76,17 +82,12 @@ func (s instanceService) GetAllWithFilter(ctx context.Context, filter InstanceFi
 	var filteredInstances Instances
 	if filter.Expression != nil {
 		for _, instance := range instances {
-			output, err := expr.Run(filterExpression, ToExprInstance(instance))
+			result, err := expr.Run(filterExpression, ToExprInstance(instance))
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredInstances = append(filteredInstances, instance)
 			}
 		}
@@ -106,7 +107,12 @@ func (s instanceService) GetAllUUIDsWithFilter(ctx context.Context, filter Insta
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(Env{}),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -120,17 +126,12 @@ func (s instanceService) GetAllUUIDsWithFilter(ctx context.Context, filter Insta
 	var filteredInstancesUUIDs []uuid.UUID
 	if filter.Expression != nil {
 		for _, instanceUUID := range instancesUUIDs {
-			output, err := expr.Run(filterExpression, Env{instanceUUID.String()})
+			result, err := expr.Run(filterExpression, Env{instanceUUID.String()})
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredInstancesUUIDs = append(filteredInstancesUUIDs, instanceUUID)
 			}
 		}

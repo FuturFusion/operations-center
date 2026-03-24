@@ -27,6 +27,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -714,14 +715,22 @@ func (s updateService) Refresh(ctx context.Context) error {
 
 func (s updateService) validateUpdatesConfig(ctx context.Context, su system.Updates) error {
 	if su.FilterExpression != "" {
-		_, err := expr.Compile(su.FilterExpression, expr.Env(ToExprUpdate(Update{})))
+		_, err := expr.Compile(
+			su.FilterExpression,
+			expr.Env(ToExprUpdate(Update{})),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return domain.NewValidationErrf(`Invalid config, failed to compile filter expression: %v`, err)
 		}
 	}
 
 	if su.FileFilterExpression != "" {
-		_, err := expr.Compile(su.FileFilterExpression, UpdateFileExprEnvFrom(UpdateFile{}).ExprCompileOptions()...)
+		_, err := expr.Compile(
+			su.FileFilterExpression,
+			UpdateFileExprEnvFrom(UpdateFile{}).ExprCompileOptions()...,
+		)
 		if err != nil {
 			return domain.NewValidationErrf(`Invalid config, failed to compile file filter expression: %v`, err)
 		}
@@ -736,21 +745,21 @@ func (s updateService) filterUpdatesByFilterExpression(updates Updates) (Updates
 		// of the config so we can assume the filter expression to compile without
 		// error.
 		// If not the case, the Run call will fail with a "program is nil" error.
-		filterExpression, _ := expr.Compile(config.GetUpdates().FilterExpression, expr.Env(ToExprUpdate(Update{})))
+		filterExpression, _ := expr.Compile(
+			config.GetUpdates().FilterExpression,
+			expr.Env(ToExprUpdate(Update{})),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 
 		n := 0
 		for i := range updates {
-			output, err := expr.Run(filterExpression, ToExprUpdate(updates[i]))
+			result, err := expr.Run(filterExpression, ToExprUpdate(updates[i]))
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", config.GetUpdates().FilterExpression, output)
-			}
-
-			if !result {
+			if !result.(bool) {
 				continue
 			}
 
@@ -812,6 +821,9 @@ func (u UpdateFileExprEnv) ExprCompileOptions() []expr.Option {
 
 		// Always compile with an empty struct for consistency.
 		expr.Env(UpdateFileExprEnv{}),
+
+		expr.AsBool(),
+		expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 	}
 }
 
@@ -832,22 +844,20 @@ func (s updateService) filterUpdateFileByFilterExpression(updates Updates) (Upda
 		// of the config so we can assume the filter expression to compile without
 		// error.
 		// If not the case, the Run call will fail with a "program is nil" error.
-		fileFilterExpression, _ := expr.Compile(config.GetUpdates().FileFilterExpression, UpdateFileExprEnvFrom(UpdateFile{}).ExprCompileOptions()...)
+		fileFilterExpression, _ := expr.Compile(
+			config.GetUpdates().FileFilterExpression,
+			UpdateFileExprEnvFrom(UpdateFile{}).ExprCompileOptions()...,
+		)
 
 		for i := range updates {
 			n := 0
 			for j := range updates[i].Files {
-				output, err := expr.Run(fileFilterExpression, UpdateFileExprEnvFrom(updates[i].Files[j]))
+				result, err := expr.Run(fileFilterExpression, UpdateFileExprEnvFrom(updates[i].Files[j]))
 				if err != nil {
 					return nil, err
 				}
 
-				result, ok := output.(bool)
-				if !ok {
-					return nil, fmt.Errorf("File filter expression %q does not evaluate to boolean result: %v", config.GetUpdates().FilterExpression, output)
-				}
-
-				if !result {
+				if !result.(bool) {
 					continue
 				}
 

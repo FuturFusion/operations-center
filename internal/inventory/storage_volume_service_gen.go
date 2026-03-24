@@ -16,6 +16,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
@@ -77,7 +78,12 @@ func (s storageVolumeService) GetAllWithFilter(ctx context.Context, filter Stora
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprStorageVolume(StorageVolume{}))}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(ToExprStorageVolume(StorageVolume{})),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -91,17 +97,12 @@ func (s storageVolumeService) GetAllWithFilter(ctx context.Context, filter Stora
 	var filteredStorageVolumes StorageVolumes
 	if filter.Expression != nil {
 		for _, storageVolume := range storageVolumes {
-			output, err := expr.Run(filterExpression, ToExprStorageVolume(storageVolume))
+			result, err := expr.Run(filterExpression, ToExprStorageVolume(storageVolume))
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredStorageVolumes = append(filteredStorageVolumes, storageVolume)
 			}
 		}
@@ -121,7 +122,12 @@ func (s storageVolumeService) GetAllUUIDsWithFilter(ctx context.Context, filter 
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(Env{}),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -135,17 +141,12 @@ func (s storageVolumeService) GetAllUUIDsWithFilter(ctx context.Context, filter 
 	var filteredStorageVolumesUUIDs []uuid.UUID
 	if filter.Expression != nil {
 		for _, storageVolumeUUID := range storageVolumesUUIDs {
-			output, err := expr.Run(filterExpression, Env{storageVolumeUUID.String()})
+			result, err := expr.Run(filterExpression, Env{storageVolumeUUID.String()})
 			if err != nil {
 				return nil, err
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredStorageVolumesUUIDs = append(filteredStorageVolumesUUIDs, storageVolumeUUID)
 			}
 		}

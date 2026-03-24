@@ -599,7 +599,7 @@ func TestUpdateService_validateUpdatesConfig(t *testing.T) {
 		},
 		{
 			name:                 "error - invalid filter expression",
-			filterExpression:     `invalid`, // invalid,
+			filterExpression:     `"string"`, // invalid, does not return bool
 			fileFilterExpression: "",
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -609,7 +609,7 @@ func TestUpdateService_validateUpdatesConfig(t *testing.T) {
 		{
 			name:                 "error - invalid file filter expression",
 			filterExpression:     "",
-			fileFilterExpression: `invalid`, // invalid,
+			fileFilterExpression: `"string"`, // invalid, does not return bool
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Invalid config, failed to compile file filter expression`)
