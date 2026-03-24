@@ -22,3 +22,11 @@ func TestRetryableErrf(t *testing.T) {
 	var retryableErr domain.ErrRetryable
 	require.ErrorAs(t, err, &retryableErr)
 }
+
+func TestIsRetryableError(t *testing.T) {
+	err := boom.Error
+	require.False(t, domain.IsRetryableError(err))
+
+	retryableErr := domain.NewRetryableErr(err)
+	require.True(t, domain.IsRetryableError(retryableErr))
+}

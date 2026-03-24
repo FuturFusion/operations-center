@@ -51,3 +51,8 @@ func (e ErrRetryable) Error() string {
 func (e ErrRetryable) Unwrap() error {
 	return e.innerErr
 }
+
+func IsRetryableError(err error) bool {
+	var retryableErr ErrRetryable
+	return errors.As(err, &retryableErr)
+}
