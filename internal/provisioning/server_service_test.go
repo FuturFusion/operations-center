@@ -461,42 +461,6 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 			count:     0,
 		},
 		{
-			name: "error - invalid filter expression",
-			filter: provisioning.ServerFilter{
-				Expression: ptr.To(``), // the empty expression is an invalid expression.
-			},
-			repoGetAllWithFilter: provisioning.Servers{
-				provisioning.Server{
-					Name: "one",
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(t, err, "Failed to compile filter expression:")
-			},
-			count: 0,
-		},
-		{
-			name: "error - filter expression run",
-			filter: provisioning.ServerFilter{
-				Expression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
-			},
-			repoGetAllWithFilter: provisioning.Servers{
-				provisioning.Server{
-					Name: "one",
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(t, err, "Failed to execute filter expression:")
-			},
-			count: 0,
-		},
-		{
 			name: "error - non bool expression",
 			filter: provisioning.ServerFilter{
 				Expression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
@@ -510,7 +474,25 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(tt, err, "does not evaluate to boolean result")
+				require.ErrorContains(tt, err, "Failed to compile filter expression:")
+			},
+			count: 0,
+		},
+		{
+			name: "error - filter expression run",
+			filter: provisioning.ServerFilter{
+				Expression: ptr.To(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
+			},
+			repoGetAllWithFilter: provisioning.Servers{
+				provisioning.Server{
+					Name: "one",
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, "Failed to execute filter expression:")
 			},
 			count: 0,
 		},
@@ -646,38 +628,6 @@ func TestServerService_GetAllNamesWithFilter(t *testing.T) {
 			count:     1,
 		},
 		{
-			name: "error - invalid filter expression",
-			filter: provisioning.ServerFilter{
-				Expression: ptr.To(``), // the empty expression is an invalid expression.
-			},
-			repoGetAllNamesWithFilter: []string{
-				"one",
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(t, err, "Failed to compile filter expression:")
-			},
-			count: 0,
-		},
-		{
-			name: "error - filter expression run",
-			filter: provisioning.ServerFilter{
-				Expression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
-			},
-			repoGetAllNamesWithFilter: []string{
-				"one",
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(t, err, "Failed to execute filter expression:")
-			},
-			count: 0,
-		},
-		{
 			name: "error - non bool expression",
 			filter: provisioning.ServerFilter{
 				Expression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
@@ -689,7 +639,23 @@ func TestServerService_GetAllNamesWithFilter(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(tt, err, "does not evaluate to boolean result")
+				require.ErrorContains(tt, err, "Failed to compile filter expression:")
+			},
+			count: 0,
+		},
+		{
+			name: "error - filter expression run",
+			filter: provisioning.ServerFilter{
+				Expression: ptr.To(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
+			},
+			repoGetAllNamesWithFilter: []string{
+				"one",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, "Failed to execute filter expression:")
 			},
 			count: 0,
 		},

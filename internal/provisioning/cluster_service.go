@@ -535,7 +535,11 @@ func (s clusterService) GetAllWithFilter(ctx context.Context, filter ClusterFilt
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprCluster(Cluster{}))}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(ToExprCluster(Cluster{})),
+			expr.AsBool(),
+		)
 		if err != nil {
 			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
 		}
@@ -551,17 +555,12 @@ func (s clusterService) GetAllWithFilter(ctx context.Context, filter ClusterFilt
 		var filteredClusters Clusters
 		if filter.Expression != nil {
 			for _, cluster := range clusters {
-				output, err := expr.Run(filterExpression, ToExprCluster(cluster))
+				result, err := expr.Run(filterExpression, ToExprCluster(cluster))
 				if err != nil {
 					return domain.NewValidationErrf("Failed to execute filter expression: %v", err)
 				}
 
-				result, ok := output.(bool)
-				if !ok {
-					return domain.NewValidationErrf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-				}
-
-				if result {
+				if result.(bool) {
 					filteredClusters = append(filteredClusters, cluster)
 				}
 			}
@@ -598,7 +597,11 @@ func (s clusterService) GetAllNamesWithFilter(ctx context.Context, filter Cluste
 	}
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		filterExpression, err = expr.Compile(
+			*filter.Expression,
+			expr.Env(Env{}),
+			expr.AsBool(),
+		)
 		if err != nil {
 			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
 		}
@@ -612,17 +615,12 @@ func (s clusterService) GetAllNamesWithFilter(ctx context.Context, filter Cluste
 	var filteredClusterIDs []string
 	if filter.Expression != nil {
 		for _, clusterID := range clusterIDs {
-			output, err := expr.Run(filterExpression, Env{clusterID})
+			result, err := expr.Run(filterExpression, Env{clusterID})
 			if err != nil {
 				return nil, domain.NewValidationErrf("Failed to execute filter expression: %v", err)
 			}
 
-			result, ok := output.(bool)
-			if !ok {
-				return nil, domain.NewValidationErrf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
-			}
-
-			if result {
+			if result.(bool) {
 				filteredClusterIDs = append(filteredClusterIDs, clusterID)
 			}
 		}

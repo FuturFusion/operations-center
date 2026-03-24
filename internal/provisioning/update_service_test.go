@@ -87,7 +87,10 @@ func TestUpdateFileExprEnv_ExprCompileOptions(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			fileFilterExpression, err := expr.Compile(tc.filterExpression, provisioning.UpdateFileExprEnvFrom(provisioning.UpdateFile{}).ExprCompileOptions()...)
+			fileFilterExpression, err := expr.Compile(
+				tc.filterExpression,
+				provisioning.UpdateFileExprEnvFrom(provisioning.UpdateFile{}).ExprCompileOptions()...,
+			)
 			require.NoError(t, err)
 
 			result, err := expr.Run(fileFilterExpression, provisioning.UpdateFileExprEnvFrom(provisioning.UpdateFile{}))
@@ -2167,7 +2170,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:             "error - filter expression run",
 			ctx:              t.Context(),
-			filterExpression: `fromBase64("~invalid")`, // invalid, returns runtime error during evauluation of the expression.
+			filterExpression: `fromBase64("~invalid") == ""`, // invalid, returns runtime error during evauluation of the expression.
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -2181,32 +2184,13 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "illegal base64 data")
-			},
-		},
-		{
-			name:             "error - filter expression run - not bool return",
-			ctx:              t.Context(),
-			filterExpression: `"string"`, // invalid, does evaluate to string instead of boolean.
-
-			sourceGetLatestUpdates: provisioning.Updates{
-				{
-					UUID:        updatePresentUUID,
-					PublishedAt: dateTime2,
-					UpstreamChannels: provisioning.UpdateUpstreamChannels{
-						"daily",
-					},
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "does not evaluate to boolean result")
 			},
 		},
 		{
 			name:                 "error - file filter expression run - invalid",
 			ctx:                  t.Context(),
 			filterExpression:     `true`,
-			fileFilterExpression: `fromBase64("~invalid")`, // invalid, returns runtime error during evauluation of the expression.
+			fileFilterExpression: `fromBase64("~invalid") == ""`, // invalid, returns runtime error during evauluation of the expression.
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -2222,28 +2206,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "illegal base64 data")
-			},
-		},
-		{
-			name:                 "error - file filter expression run - not bool return",
-			ctx:                  t.Context(),
-			filterExpression:     `true`,
-			fileFilterExpression: `"string"`, // invalid, does evaluate to string instead of boolean.
-
-			sourceGetLatestUpdates: provisioning.Updates{
-				{
-					UUID:        updatePresentUUID,
-					PublishedAt: dateTime2,
-					Files: provisioning.UpdateFiles{
-						{
-							Architecture: "x86_64",
-						},
-					},
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "does not evaluate to boolean result")
 			},
 		},
 		{
