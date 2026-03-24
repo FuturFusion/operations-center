@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -524,7 +525,32 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 					// ErrSelfUpdateNotification is used as cause when the context is
 					// cancelled. This is an expected success path and therefore not
 					// an error.
-					return errors.Is(err, provisioning.ErrSelfUpdateNotification) || errors.Is(err, api.NotIncusOSError)
+					if errors.Is(err, provisioning.ErrSelfUpdateNotification) {
+						return true
+					}
+
+					// Connection errors are retryable and therefore should not be
+					// reported as errors.
+					if errors.Is(err, syscall.ECONNREFUSED) ||
+						errors.Is(err, io.EOF) ||
+						errors.Is(err, io.ErrUnexpectedEOF) {
+						return true
+					}
+
+					// Cancelled context or context with exceeded deadline should not be
+					// reported as errors.
+					if errors.Is(err, context.DeadlineExceeded) ||
+						errors.Is(err, context.Canceled) {
+						return true
+					}
+
+					// Errors caused by Operations Center not running on top of Incus OS
+					// are ignored.
+					if errors.Is(err, api.NotIncusOSError) {
+						return true
+					}
+
+					return false
 				},
 			),
 		),
@@ -651,7 +677,27 @@ func (d *Daemon) setupAPIRoutes(
 		),
 		serverMiddleware.ServerClientWithSlogWithInformativeErrFunc(
 			func(err error) bool {
-				return errors.Is(err, domain.ErrNotFound)
+				// Connection errors are retryable and therefore should not be
+				// reported as errors.
+				if errors.Is(err, syscall.ECONNREFUSED) ||
+					errors.Is(err, io.EOF) ||
+					errors.Is(err, io.ErrUnexpectedEOF) {
+					return true
+				}
+
+				// Cancelled context or context with exceeded deadline should not be
+				// reported as errors.
+				if errors.Is(err, context.DeadlineExceeded) ||
+					errors.Is(err, context.Canceled) {
+					return true
+				}
+
+				// Treat not found errors as informational.
+				if errors.Is(err, domain.ErrNotFound) {
+					return true
+				}
+
+				return false
 			},
 		),
 	)
