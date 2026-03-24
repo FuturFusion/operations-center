@@ -19,6 +19,7 @@ import (
 	"github.com/expr-lang/expr/vm"
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/lxc/incus/v6/shared/revert"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -168,6 +169,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 
 		// Validate all listed servers are already known and do have configuration
 		// valid for clustering.
+		incusVersions := make([]string, 0, len(newCluster.ServerNames))
 		for _, serverName := range newCluster.ServerNames {
 			server, err := s.serverSvc.GetByName(ctx, serverName)
 			if err != nil {
@@ -190,7 +192,27 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 				return fmt.Errorf("Server %q not ready to be clustered (needs update: %t, needs reboot: %t, in maintenance: %v): %w", server.Name, ptr.From(server.VersionData.NeedsUpdate), ptr.From(server.VersionData.NeedsReboot), server.VersionData.InMaintenance.String(), domain.ErrOperationNotPermitted)
 			}
 
+			hasIncus := false
+			for _, app := range server.VersionData.Applications {
+				if app.Name == string(images.UpdateFileComponentIncus) {
+					incusVersions = append(incusVersions, app.Version)
+					hasIncus = true
+					break
+				}
+			}
+
+			if !hasIncus {
+				return fmt.Errorf("Server %q does not have application Incus: %w", server.Name, domain.ErrOperationNotPermitted)
+			}
+
 			servers = append(servers, *server)
+		}
+
+		bootstrapIncusVersion := incusVersions[0]
+		for _, incusVersion := range incusVersions {
+			if bootstrapIncusVersion != incusVersion {
+				return fmt.Errorf("Incus version is not the same on all servers, found %q and %q: %w", bootstrapIncusVersion, incusVersion, domain.ErrOperationNotPermitted)
+			}
 		}
 
 		// Select first server as the bootstrap server.
