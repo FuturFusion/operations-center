@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
@@ -89,6 +90,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -97,6 +106,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -105,6 +122,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -113,6 +138,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -225,6 +258,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusPending, // server not in ready state
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -249,6 +290,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "testing", // channel does not match cluster's update channel
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -274,6 +323,12 @@ func TestClusterService_Create(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
 							NeedsUpdate: ptr.To(true), // server requires update
 						},
 					},
@@ -283,6 +338,86 @@ func TestClusterService_Create(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, `Server "server1" not ready to be clustered (needs update: true, needs reboot: false, in maintenance: not in maintenance)`)
+			},
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name: "error - server does not have incus application",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentOperationsCenter), // not incus application
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Server "server1" does not have application Incus`)
+			},
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name: "error - incus application version mismatch",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "2", // Incus application version mismatch
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Incus version is not the same on all servers, found "1" and "2"`)
 			},
 			signalHandler: requireNoCallSignalHandler,
 		},
@@ -300,6 +435,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -308,6 +451,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -331,6 +482,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeMigrationManager, // wrong type, incus expected.
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -339,6 +498,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -363,6 +530,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -371,6 +546,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -397,6 +580,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -405,6 +596,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -433,6 +632,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -441,6 +648,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -470,6 +685,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -478,6 +701,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -506,6 +737,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -514,6 +753,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -536,6 +783,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -544,6 +799,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -571,6 +834,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -579,6 +850,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -605,6 +884,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -613,6 +900,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -640,6 +935,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -648,6 +951,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -675,6 +986,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -683,6 +1002,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -710,6 +1037,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -718,6 +1053,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -746,6 +1089,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -754,6 +1105,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -762,6 +1121,14 @@ func TestClusterService_Create(t *testing.T) {
 						Name:    "server1",
 						Type:    api.ServerTypeIncus,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -790,6 +1157,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -798,6 +1173,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -806,6 +1189,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -814,6 +1205,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -841,6 +1240,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -849,6 +1256,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -857,6 +1272,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -865,6 +1288,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -892,6 +1323,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -900,6 +1339,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -908,6 +1355,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -916,6 +1371,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -943,6 +1406,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -951,6 +1422,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -959,6 +1438,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -967,6 +1454,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -994,6 +1489,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1002,6 +1505,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1010,6 +1521,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1018,6 +1537,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -1049,6 +1576,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1057,6 +1592,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1065,6 +1608,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1073,6 +1624,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -1113,6 +1672,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1121,6 +1688,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1129,6 +1704,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1137,6 +1720,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -1169,6 +1760,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1177,6 +1776,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1185,6 +1792,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1193,6 +1808,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -1225,6 +1848,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1233,6 +1864,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1241,6 +1880,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1249,6 +1896,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -1287,6 +1942,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1295,6 +1958,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1303,6 +1974,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1311,6 +1990,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -1346,6 +2033,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1354,6 +2049,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1362,6 +2065,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1370,6 +2081,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -1405,6 +2124,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1413,6 +2140,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1421,6 +2156,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1429,6 +2172,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -1459,6 +2210,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1467,6 +2226,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1475,6 +2242,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1483,6 +2258,14 @@ func TestClusterService_Create(t *testing.T) {
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
 					},
 				},
 			},
