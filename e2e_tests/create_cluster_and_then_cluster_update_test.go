@@ -64,7 +64,7 @@ func createClusterAndThenClusterUpdate(t *testing.T, tmpDir string) {
 	defer stopUpdate()
 
 	t.Log("Update cluster - trigger update")
-	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster update incus-os-cluster`, cpuArch)
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster update incus-os-cluster --reboot`, cpuArch)
 
 	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(20*time.Minute))
 	defer cancel()
