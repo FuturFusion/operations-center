@@ -1063,40 +1063,47 @@ func (s clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNam
 
 	var errs []error
 	for _, cluster := range clusters {
-		// Refresh all status information for all servers.
-		err = s.serverSvc.PollServers(ctx, ServerFilter{
-			Cluster: &cluster.Name,
-		}, true)
-		if err != nil {
-			var retryableErr domain.ErrRetryable
-			if !errors.As(err, &retryableErr) {
-				return fmt.Errorf("Failed to refresh server state information for cluster %q: %w", cluster.Name, err)
+		err := func() error {
+			// Refresh all status information for all servers.
+			err := s.serverSvc.PollServers(ctx, ServerFilter{
+				Cluster: &cluster.Name,
+			}, true)
+			if err != nil {
+				var retryableErr domain.ErrRetryable
+				if !errors.As(err, &retryableErr) {
+					return fmt.Errorf("Failed to refresh server state information for cluster %q: %w", cluster.Name, err)
+				}
 			}
-		}
 
-		// Get updated server state information.
-		servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
-			Cluster: &cluster.Name,
-		})
-		if err == nil && len(servers) == 0 {
-			err = domain.ErrNotFound
-		}
+			// Get updated server state information.
+			servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+				Cluster: &cluster.Name,
+			})
+			if err == nil && len(servers) == 0 {
+				return fmt.Errorf("Failed to get server details for cluster %q: %w", cluster.Name, domain.ErrNotFound)
+			}
 
+			if err != nil {
+				return fmt.Errorf("Failed to get server details for cluster %q: %w", cluster.Name, err)
+			}
+
+			switch cluster.UpdateStatus.InProgressStatus.InProgress {
+			case api.ClusterUpdateInProgressApplyUpdate,
+				api.ClusterUpdateInProgressApplyUpdateWithReboot:
+				err = s.executeRollingUpdate(ctx, cluster, servers)
+
+			case api.ClusterUpdateInProgressRollingRestart:
+				err = s.executeRollingRestartNextStep(ctx, cluster, servers)
+			}
+
+			if err != nil {
+				return fmt.Errorf("Failed to execute control loop action for cluster %q: %w", cluster.Name, err)
+			}
+
+			return nil
+		}()
 		if err != nil {
-			return fmt.Errorf("Failed to get server details for cluster %q: %w", cluster.Name, err)
-		}
-
-		switch cluster.UpdateStatus.InProgressStatus.InProgress {
-		case api.ClusterUpdateInProgressApplyUpdate,
-			api.ClusterUpdateInProgressApplyUpdateWithReboot:
-			err = s.executeRollingUpdate(ctx, cluster, servers)
-
-		case api.ClusterUpdateInProgressRollingRestart:
-			err = s.executeRollingRestartNextStep(ctx, cluster, servers)
-		}
-
-		if err != nil {
-			errs = append(errs, fmt.Errorf("Failed to execute control loop action for cluster %q: %w", cluster.Name, err))
+			errs = append(errs, err)
 			continue
 		}
 	}
