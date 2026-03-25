@@ -82,6 +82,7 @@ func (s networkPeerService) GetAllWithFilter(ctx context.Context, filter Network
 			expr.Env(ToExprNetworkPeer(NetworkPeer{})),
 			expr.AsBool(),
 			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+			expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
 		)
 		if err != nil {
 			return nil, err
