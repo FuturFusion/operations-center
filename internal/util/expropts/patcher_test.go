@@ -391,8 +391,7 @@ func TestUnderlyingBaseTypePatcher(t *testing.T) {
 				expr.Env(Data{}),
 				expr.AsBool(),
 				expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
-				expr.Function("toFloat64", expropts.ToFloat64,
-					new(func(any) float64)),
+				expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
 			)
 			tc.assertCompileErr(t, err)
 
