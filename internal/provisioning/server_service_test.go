@@ -2973,8 +2973,13 @@ foobar
 				},
 			},
 
-			assertErr: require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
-			assertLog: log.Match("Server connection test failed"),
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				boom.ErrorIs(t, err)
+				var retryableErr domain.ErrRetryable
+				require.ErrorAs(t, err, &retryableErr)
+			},
+			assertLog:        log.Empty,
+			wantServerStatus: api.ServerStatusPending,
 		},
 		{
 			name: "error - client Ping - server state offline rebooting",
@@ -3027,7 +3032,7 @@ foobar
 			},
 
 			assertErr:        require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
-			assertLog:        log.Match("Server connection test failed, shutdown"),
+			assertLog:        log.Match("Server connection test failed.*shut down"),
 			wantServerStatus: api.ServerStatusOffline,
 		},
 		{
@@ -3052,7 +3057,7 @@ foobar
 			},
 
 			assertErr:        require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
-			assertLog:        log.Match("Server connection test failed, unresponsive"),
+			assertLog:        log.Match("Server connection test failed.*unresponsive"),
 			wantServerStatus: api.ServerStatusOffline,
 		},
 
@@ -3078,8 +3083,13 @@ foobar
 				},
 			},
 
-			assertErr: require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
-			assertLog: log.Match("Server connection test failed"),
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(t, err, "failed to verify certificate")
+				var retryableErr domain.ErrRetryable
+				require.ErrorAs(t, err, &retryableErr)
+			},
+			assertLog:        log.Empty,
+			wantServerStatus: api.ServerStatusPending,
 		},
 		{
 			name: "success - cluster now has publicly valid certificate",
