@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/docker/go-units"
+	"github.com/lxc/incus/v6/shared/units"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
@@ -182,7 +182,7 @@ func (c *cmdClusterArtifactShow) run(cmd *cobra.Command, args []string) error {
 	data = [][]string{}
 
 	for _, f := range clusterArtifact.Files {
-		data = append(data, []string{f.Name, f.MimeType, units.BytesSize(float64(f.Size))})
+		data = append(data, []string{f.Name, f.MimeType, units.GetByteSizeString(f.Size, 2)})
 	}
 
 	if len(data) > 0 {
@@ -251,12 +251,17 @@ func (c *cmdClusterArtifactGetArchive) run(cmd *cobra.Command, args []string) er
 
 	defer archiveReader.Close()
 
-	size, err := io.Copy(targetFile, archiveReader)
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	format := fmt.Sprintf("Fetching artifact %q archive for cluster %q: %%s", artifactName, clusterName)
+
+	progress, writer := progressWriter(targetFile, format, quiet)
+
+	size, err := io.Copy(writer, archiveReader)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Successfully written %d bytes to %q\n", size, targetFilename)
+	progress.Done(fmt.Sprintf("Successfully written %s to %q ", units.GetByteSizeString(size, 2), targetFilename))
 
 	return nil
 }
@@ -314,12 +319,17 @@ func (c *cmdClusterArtifactGetFile) run(cmd *cobra.Command, args []string) error
 
 	defer fileReader.Close()
 
-	size, err := io.Copy(targetFile, fileReader)
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	format := fmt.Sprintf("Fetching file %q for artifact %q of cluster %q: %%s", filename, artifactName, clusterName)
+
+	progress, writer := progressWriter(targetFile, format, quiet)
+
+	size, err := io.Copy(writer, fileReader)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Successfully written %d bytes to %q\n", size, targetFilename)
+	progress.Done(fmt.Sprintf("Successfully written %s to %q ", units.GetByteSizeString(size, 2), targetFilename))
 
 	return nil
 }

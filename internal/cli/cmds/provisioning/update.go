@@ -10,6 +10,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/lxc/incus-os/incus-osd/api/images"
+	"github.com/lxc/incus/v6/shared/units"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
@@ -720,12 +721,17 @@ func (c *cmdUpdateFileGet) run(cmd *cobra.Command, args []string) error {
 
 	defer imageReader.Close()
 
-	size, err := io.Copy(targetFile, imageReader)
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	format := fmt.Sprintf("Fetching file %q for update %s: %%s", sourceFilename, id)
+
+	progress, writer := progressWriter(targetFile, format, quiet)
+
+	size, err := io.Copy(writer, imageReader)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Successfully written %d bytes to %q\n", size, targetFilename)
+	progress.Done(fmt.Sprintf("Successfully written %s to %q ", units.GetByteSizeString(size, 2), targetFilename))
 
 	return nil
 }
