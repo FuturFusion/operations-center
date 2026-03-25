@@ -17,7 +17,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -521,22 +520,7 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 					d.clientCertificate,
 					d.clientKey,
 				),
-				func(err error) error {
-					// Connection errors are retryable.
-					if errors.Is(err, syscall.ECONNREFUSED) ||
-						errors.Is(err, io.EOF) ||
-						errors.Is(err, io.ErrUnexpectedEOF) {
-						return domain.NewRetryableErr(err)
-					}
-
-					// Cancelled context or context with exceeded deadline are retryable.
-					if errors.Is(err, context.DeadlineExceeded) ||
-						errors.Is(err, context.Canceled) {
-						return domain.NewRetryableErr(err)
-					}
-
-					return err
-				},
+				domain.RetryableWrapper(),
 			),
 			provisioningAdapterMiddleware.ServerClientPortWithSlogWithInformativeErrFunc(
 				func(err error) bool {
@@ -632,22 +616,7 @@ func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.Se
 						d.clientCertificate,
 						d.clientKey,
 					),
-					func(err error) error {
-						// Connection errors are retryable.
-						if errors.Is(err, syscall.ECONNREFUSED) ||
-							errors.Is(err, io.EOF) ||
-							errors.Is(err, io.ErrUnexpectedEOF) {
-							return domain.NewRetryableErr(err)
-						}
-
-						// Cancelled context or context with exceeded deadline are retryable.
-						if errors.Is(err, context.DeadlineExceeded) ||
-							errors.Is(err, context.Canceled) {
-							return domain.NewRetryableErr(err)
-						}
-
-						return err
-					},
+					domain.RetryableWrapper(),
 				),
 				provisioningAdapterMiddleware.ClusterClientPortWithSlogWithInformativeErrFunc(func(err error) bool {
 					// Treat retryable errors as informational.
@@ -710,22 +679,7 @@ func (d *Daemon) setupAPIRoutes(
 				d.clientCertificate,
 				d.clientKey,
 			),
-			func(err error) error {
-				// Connection errors are retryable.
-				if errors.Is(err, syscall.ECONNREFUSED) ||
-					errors.Is(err, io.EOF) ||
-					errors.Is(err, io.ErrUnexpectedEOF) {
-					return domain.NewRetryableErr(err)
-				}
-
-				// Cancelled context or context with exceeded deadline are retryable.
-				if errors.Is(err, context.DeadlineExceeded) ||
-					errors.Is(err, context.Canceled) {
-					return domain.NewRetryableErr(err)
-				}
-
-				return err
-			},
+			domain.RetryableWrapper(),
 		),
 		serverMiddleware.ServerClientWithSlogWithInformativeErrFunc(
 			func(err error) bool {
