@@ -36,9 +36,29 @@ resource "incus_storage_volume" "images" {
   ]
 }
 
+resource "incus_storage_volume" "logs" {
+  for_each = local.members
+
+  name         = "logs"
+  description  = "Volume holding system logs"
+  target       = each.key
+  pool         = "local"
+  type         = "custom"
+  content_type = "filesystem"
+
+  config = {
+  }
+
+  depends_on = [
+    null_resource.post_storage_pools,
+    null_resource.post_projects,
+  ]
+}
+
 resource "null_resource" "post_storage_volumes" {
   depends_on = [
     incus_storage_volume.backups,
     incus_storage_volume.images,
+    incus_storage_volume.logs,
   ]
 }

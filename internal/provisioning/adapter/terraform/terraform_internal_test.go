@@ -25,6 +25,7 @@ func Test_incusPreseedWithDefaults(t *testing.T) {
 					Config: incusapi.ConfigMap{
 						"storage.backups_volume": "local/backups",
 						"storage.images_volume":  "local/images",
+						"storage.logs_volume":    "local/logs",
 					},
 				},
 
@@ -69,6 +70,17 @@ func Test_incusPreseedWithDefaults(t *testing.T) {
 								Description: "Volume holding system images",
 							},
 							Name:        "images",
+							Type:        "custom",
+							ContentType: "filesystem",
+						},
+						Pool: "local",
+					},
+					{
+						StorageVolumesPost: incusapi.StorageVolumesPost{
+							StorageVolumePut: incusapi.StorageVolumePut{
+								Description: "Volume holding system logs",
+							},
+							Name:        "logs",
 							Type:        "custom",
 							ContentType: "filesystem",
 						},
@@ -160,6 +172,12 @@ func Test_incusPreseedWithDefaults(t *testing.T) {
 						"type":         "custom",
 						"content_type": "filesystem",
 					},
+					map[string]any{
+						"pool":         "local",
+						"name":         "logs",
+						"type":         "custom",
+						"content_type": "filesystem",
+					},
 				},
 				"profiles": []any{
 					map[string]any{
@@ -179,6 +197,7 @@ func Test_incusPreseedWithDefaults(t *testing.T) {
 					Config: incusapi.ConfigMap{
 						"storage.backups_volume": "local/backups",
 						"storage.images_volume":  "local/images",
+						"storage.logs_volume":    "local/logs",
 					},
 				},
 
@@ -223,6 +242,17 @@ func Test_incusPreseedWithDefaults(t *testing.T) {
 								Description: "Volume holding system images",
 							},
 							Name:        "images",
+							Type:        "custom",
+							ContentType: "filesystem",
+						},
+						Pool: "local",
+					},
+					{
+						StorageVolumesPost: incusapi.StorageVolumesPost{
+							StorageVolumePut: incusapi.StorageVolumePut{
+								Description: "Volume holding system logs",
+							},
+							Name:        "logs",
 							Type:        "custom",
 							ContentType: "filesystem",
 						},

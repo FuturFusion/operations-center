@@ -4,6 +4,7 @@ resource "incus_server" "this_per_node" {
   config = {
     "storage.backups_volume" = "local/backups"
     "storage.images_volume"  = "shared"
+    "storage.logs_volume"    = "local/logs"
   }
 
   depends_on = [

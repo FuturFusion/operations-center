@@ -6,7 +6,7 @@ import (
 )
 
 // nodeSpecificConfig lists all config keys, which are node-specific.
-// Extracted from https://github.com/lxc/incus/blob/a2adb4f79580f5b25fe6cc55ef140e321a10682a/internal/server/node/config.go#L163
+// Extracted from https://github.com/lxc/incus/blob/5c9f4d6823b79cc0a8825c8c52aa3fe186f4e7bb/internal/server/node/config.go#L168
 var nodeSpecificConfig = []string{
 	"core.https_address",
 	"cluster.https_address",
@@ -20,13 +20,13 @@ var nodeSpecificConfig = []string{
 	"network.ovs.connection",
 	"storage.backups_volume",
 	"storage.images_volume",
+	"storage.logs_volume",
 	"storage.linstor.satellite.name",
 }
 
 // nodeSpecificStorageConfig lists all storage pool config keys which are node-specific.
-// This is copied from https://github.com/lxc/incus/blob/a2adb4f79580f5b25fe6cc55ef140e321a10682a/internal/server/db/storage_pools.go#L878-L888
+// This is copied from https://github.com/lxc/incus/blob/5c9f4d6823b79cc0a8825c8c52aa3fe186f4e7bb/internal/server/db/storage_pools.go#L885-L894
 var nodeSpecificStorageConfig = []string{
-	"size",
 	"source",
 	"source.wipe",
 	"volatile.initial_source",
@@ -37,7 +37,7 @@ var nodeSpecificStorageConfig = []string{
 }
 
 // nodeSpecificNetworkConfig lists all static network config keys which are node-specific.
-// This is copied from https://github.com/lxc/incus/blob/e4b571a470ca8c9d9e21245664eed1149139d2bb/internal/server/db/networks.go#L889-L895
+// This is copied from https://github.com/lxc/incus/blob/5c9f4d6823b79cc0a8825c8c52aa3fe186f4e7bb/internal/server/db/networks.go#L889-L895
 var nodeSpecificNetworkConfig = []string{
 	"bgp.ipv4.nexthop",
 	"bgp.ipv6.nexthop",

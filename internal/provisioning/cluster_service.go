@@ -135,7 +135,7 @@ func (s *clusterService) SetInventorySyncers(inventorySyncers map[domain.Resourc
 //   - Initialize default storage:
 //     Create local storage pool on each server and finalize it for the cluster.
 //     Create two volumes on that pool on each server named images and backups.
-//     Set storage.images_volume and storage.backups_volume on each server to point to the volumes.
+//     Set storage.images_volume, storage.backups_volume and storage.logs_volume on each server to point to the volumes.
 //     Update the default profile in the default project to use the local storage pool.
 //     Update the default profile in the internal project to use the local storage pool.
 //   - Initialize default networking:

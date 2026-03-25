@@ -34,14 +34,14 @@ func Test_splitConfig(t *testing.T) {
 		{
 			name: "storage",
 			in: map[string]string{
-				"size":       "foo",
+				"source":     "foo",
 				"global_key": "bar",
 			},
 			kind: "storage",
 
 			want: splitConfigs{
 				Specific: map[string]string{
-					"size": "foo",
+					"source": "foo",
 				},
 				Global: map[string]string{
 					"global_key": "bar",
