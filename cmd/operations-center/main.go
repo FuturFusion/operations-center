@@ -69,6 +69,7 @@ func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
 	app.PersistentPreRunE = globalCmd.PreRun
 	app.PersistentFlags().BoolVar(&globalCmd.flagVersion, "version", false, "Print version number")
 	app.PersistentFlags().BoolVarP(&globalCmd.flagHelp, "help", "h", false, "Print help")
+	app.PersistentFlags().BoolVarP(&globalCmd.flagQuiet, "quiet", "q", false, "Don't show progress information")
 	app.PersistentFlags().BoolVar(&globalCmd.flagLogDebug, "debug", false, "Show all debug messages")
 	app.PersistentFlags().BoolVarP(&globalCmd.flagLogVerbose, "verbose", "v", false, "Show all information messages")
 	app.PersistentFlags().BoolVar(&globalCmd.flagForceLocal, "force-local", false, "Force using the local unix socket")
@@ -125,6 +126,8 @@ type cmdGlobal struct {
 
 	flagHelp    bool
 	flagVersion bool
+
+	flagQuiet bool
 
 	flagLogDebug   bool
 	flagLogVerbose bool
