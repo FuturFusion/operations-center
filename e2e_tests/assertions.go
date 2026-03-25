@@ -128,10 +128,10 @@ func assertInventory(t *testing.T, clusterName string) {
 		fmt.Println(resp.Output())
 	}
 
-	resp = run(t, `../bin/operations-center.linux.%s inventory storage-volume list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == 6'`, cpuArch, clusterName)
-	require.NoError(t, resp.err, "expect 6 storage-volumes: images and backups for each server")
+	resp = run(t, `../bin/operations-center.linux.%s inventory storage-volume list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == 9'`, cpuArch, clusterName)
+	require.NoError(t, resp.err, "expect 9 storage-volumes: images and backups for each server")
 	if !resp.Success() {
-		t.Error("expect 6 storage-volumes: images and backups for each server")
+		t.Error("expect 9 storage-volumes: images and backups for each server")
 		success = false
 		fmt.Println("====[ Storage Volume List ]====")
 		resp = mustRun(t, "../bin/operations-center.linux.%s inventory storage-volume list", cpuArch)
