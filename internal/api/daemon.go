@@ -515,16 +515,34 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 			provisioningSqlite.NewServer(db),
 		),
 		provisioningAdapterMiddleware.NewServerClientPortWithSlog(
-			provisioningIncusAdapter.New(
-				d.clientCertificate,
-				d.clientKey,
+			provisioningAdapterMiddleware.NewServerClientPortWithErrorWrapper(
+				provisioningIncusAdapter.New(
+					d.clientCertificate,
+					d.clientKey,
+				),
+				domain.RetryableWrapper(),
 			),
 			provisioningAdapterMiddleware.ServerClientPortWithSlogWithInformativeErrFunc(
 				func(err error) bool {
 					// ErrSelfUpdateNotification is used as cause when the context is
 					// cancelled. This is an expected success path and therefore not
 					// an error.
-					return errors.Is(err, provisioning.ErrSelfUpdateNotification) || errors.Is(err, api.NotIncusOSError)
+					if errors.Is(err, provisioning.ErrSelfUpdateNotification) {
+						return true
+					}
+
+					// Treat retryable errors as informational.
+					if domain.IsRetryableError(err) {
+						return true
+					}
+
+					// Errors caused by Operations Center not running on top of Incus OS
+					// are ignored.
+					if errors.Is(err, api.NotIncusOSError) {
+						return true
+					}
+
+					return false
 				},
 			),
 		),
@@ -593,10 +611,21 @@ func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.Se
 				localClusterArtifactRepo,
 			),
 			provisioningAdapterMiddleware.NewClusterClientPortWithSlog(
-				provisioningIncusAdapter.New(
-					d.clientCertificate,
-					d.clientKey,
+				provisioningAdapterMiddleware.NewClusterClientPortWithErrorWrapper(
+					provisioningIncusAdapter.New(
+						d.clientCertificate,
+						d.clientKey,
+					),
+					domain.RetryableWrapper(),
 				),
+				provisioningAdapterMiddleware.ClusterClientPortWithSlogWithInformativeErrFunc(func(err error) bool {
+					// Treat retryable errors as informational.
+					if domain.IsRetryableError(err) {
+						return true
+					}
+
+					return false
+				}),
 			),
 			serverSvc,
 			tokenSvc,
@@ -645,13 +674,26 @@ func (d *Daemon) setupAPIRoutes(
 	// serverClientProvider is a provider of a client to access (Incus) servers
 	// or clusters.
 	serverClientProvider := serverMiddleware.NewServerClientWithSlog(
-		inventoryIncusAdapter.New(
-			d.clientCertificate,
-			d.clientKey,
+		serverMiddleware.NewServerClientWithErrorWrapper(
+			inventoryIncusAdapter.New(
+				d.clientCertificate,
+				d.clientKey,
+			),
+			domain.RetryableWrapper(),
 		),
 		serverMiddleware.ServerClientWithSlogWithInformativeErrFunc(
 			func(err error) bool {
-				return errors.Is(err, domain.ErrNotFound)
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				// Treat not found errors as informational.
+				if errors.Is(err, domain.ErrNotFound) {
+					return true
+				}
+
+				return false
 			},
 		),
 	)
@@ -747,7 +789,13 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "Refresh updates triggered")
 		err := updateSvc.Refresh(ctx)
 		if err != nil {
-			slog.ErrorContext(ctx, "Refresh updates failed", logger.Err(err))
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "Refresh updates failed", logger.Err(err))
+
 			return
 		}
 
@@ -769,7 +817,13 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "Cluster update control loop triggered")
 		err := clusterSvc.ClusterUpdateControlLoop(ctx, nil)
 		if err != nil {
-			slog.ErrorContext(ctx, "Cluster update control loop failed", logger.Err(err))
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "Cluster update control loop failed", logger.Err(err))
+
 			return
 		}
 
@@ -785,10 +839,15 @@ func (d *Daemon) setupBackgroundTasks(
 	lifecycle.ServerLifecycleSignal.AddListenerWithErr(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) error {
 		err := clusterSvc.ClusterUpdateControlLoop(ctx, slm.Cluster)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed to handle server lifecycle event", logger.Err(err), slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update-state", slm.ServerUpdateState.String()))
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "Failed to handle server lifecycle event", logger.Err(err), slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update-state", slm.ServerUpdateState.String()))
 		}
 
-		return err
+		return nil
 	})
 
 	// Start background task to poll servers in pending, updating or rebooting state to become available.
@@ -798,7 +857,13 @@ func (d *Daemon) setupBackgroundTasks(
 			Status: ptr.To(api.ServerStatusPending),
 		}, true)
 		if err != nil {
-			slog.ErrorContext(ctx, "Polling for pending servers failed", logger.Err(err))
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "Polling for pending servers failed", logger.Err(err))
+
 			return
 		}
 
@@ -807,7 +872,13 @@ func (d *Daemon) setupBackgroundTasks(
 			StatusDetail: ptr.To(api.ServerStatusDetailReadyUpdating),
 		}, true)
 		if err != nil {
-			slog.ErrorContext(ctx, "Polling for updating servers failed", logger.Err(err))
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "Polling for updating servers failed", logger.Err(err))
+
 			return
 		}
 
@@ -816,7 +887,13 @@ func (d *Daemon) setupBackgroundTasks(
 			StatusDetail: ptr.To(api.ServerStatusDetailOfflineRebooting),
 		}, true)
 		if err != nil {
-			slog.ErrorContext(ctx, "Polling for rebooting servers failed", logger.Err(err))
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "Polling for rebooting servers failed", logger.Err(err))
+
 			return
 		}
 
@@ -838,7 +915,13 @@ func (d *Daemon) setupBackgroundTasks(
 			Status: ptr.To(api.ServerStatusReady),
 		}, updateConfiguration)
 		if err != nil {
-			slog.ErrorContext(ctx, "Connectivity test for some servers failed", logger.Err(err))
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "Connectivity test for some servers failed", logger.Err(err))
+
 			return
 		}
 
@@ -855,7 +938,13 @@ func (d *Daemon) setupBackgroundTasks(
 		slog.InfoContext(ctx, "Inventory update triggered")
 		err := clusterSvc.ResyncInventory(ctx)
 		if err != nil {
-			slog.ErrorContext(ctx, "Inventory update failed", logger.Err(err))
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "Inventory update failed", logger.Err(err))
+
 			return
 		}
 

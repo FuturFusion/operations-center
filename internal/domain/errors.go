@@ -1,8 +1,12 @@
 package domain
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
+	"strings"
+	"syscall"
 )
 
 var (
@@ -50,4 +54,33 @@ func (e ErrRetryable) Error() string {
 
 func (e ErrRetryable) Unwrap() error {
 	return e.innerErr
+}
+
+func IsRetryableError(err error) bool {
+	var retryableErr ErrRetryable
+	return errors.As(err, &retryableErr)
+}
+
+func RetryableWrapper() func(err error) error {
+	return func(err error) error {
+		// Connection errors are retryable.
+		if errors.Is(err, syscall.ECONNREFUSED) ||
+			errors.Is(err, io.EOF) ||
+			errors.Is(err, io.ErrUnexpectedEOF) {
+			return NewRetryableErr(err)
+		}
+
+		// Cancelled context or context with exceeded deadline are retryable.
+		if errors.Is(err, context.DeadlineExceeded) ||
+			errors.Is(err, context.Canceled) {
+			return NewRetryableErr(err)
+		}
+
+		// Retryable incus errors.
+		if strings.Contains(err.Error(), "no available cowsql leader server found") {
+			return NewRetryableErr(err)
+		}
+
+		return err
+	}
 }

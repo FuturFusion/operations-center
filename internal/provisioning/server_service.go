@@ -1307,9 +1307,7 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 					log.WarnContext(ctx, "Server connection test failed")
 
 				case api.ServerStatusPending:
-					// TODO: it would make more sense to return a retryable error here
-					// as well, similar to the reboot case.
-					log.WarnContext(ctx, "Server connection test failed")
+					return fmt.Errorf("still pending: %w", connTestErr)
 
 				case api.ServerStatusReady:
 					log.WarnContext(ctx, "Server connection test failed")
@@ -1330,10 +1328,10 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 						return fmt.Errorf("still rebooting: %w", connTestErr)
 
 					case api.ServerStatusDetailOfflineShutdown:
-						log.DebugContext(ctx, "Server connection test failed, shutdown")
+						log.DebugContext(ctx, "Server connection test failed")
 
 					case api.ServerStatusDetailOfflineUnresponsive:
-						log.WarnContext(ctx, "Server connection test failed, unresponsive")
+						log.WarnContext(ctx, "Server connection test failed")
 					}
 				}
 

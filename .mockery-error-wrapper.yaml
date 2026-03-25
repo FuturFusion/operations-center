@@ -1,0 +1,24 @@
+---
+
+all: False
+template: file://./internal/domain/error_wrapper.gotmpl
+require-template-schema-exists: false
+force-file-write: true
+include-auto-generated: true
+include-interface-regex: "(.*ServerClient|.+ClientPort)"
+dir: >-
+  {{- $targetDir := "middleware" -}}
+  {{- if and (.InterfaceName | hasSuffix "ServerClient") -}}
+  {{- $targetDir = "server/middleware" -}}
+  {{- end -}}
+  {{- if .InterfaceName | hasSuffix "ClientPort" -}}
+  {{- $targetDir = "adapter/middleware" -}}
+  {{- end -}}
+  {{- .InterfaceDir -}}/{{- $targetDir -}}
+filename: >-
+  {{ .InterfaceName | snakecase }}_error_wrapper_gen.go
+structname: "{{ .InterfaceName }}WithErrorWrapper"
+pkgname: middleware
+packages:
+  github.com/FuturFusion/operations-center/internal/inventory:
+  github.com/FuturFusion/operations-center/internal/provisioning:
