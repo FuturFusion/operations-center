@@ -720,6 +720,7 @@ func (s updateService) validateUpdatesConfig(ctx context.Context, su system.Upda
 			expr.Env(ToExprUpdate(Update{})),
 			expr.AsBool(),
 			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+			expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
 		)
 		if err != nil {
 			return domain.NewValidationErrf(`Invalid config, failed to compile filter expression: %v`, err)
@@ -750,6 +751,7 @@ func (s updateService) filterUpdatesByFilterExpression(updates Updates) (Updates
 			expr.Env(ToExprUpdate(Update{})),
 			expr.AsBool(),
 			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+			expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
 		)
 
 		n := 0
@@ -824,6 +826,7 @@ func (u UpdateFileExprEnv) ExprCompileOptions() []expr.Option {
 
 		expr.AsBool(),
 		expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
 	}
 }
 

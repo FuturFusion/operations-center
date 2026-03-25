@@ -196,6 +196,7 @@ func (s *serverService) GetAllWithFilter(ctx context.Context, filter ServerFilte
 			expr.Env(ToExprServer(Server{})),
 			expr.AsBool(),
 			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+			expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
 		)
 		if err != nil {
 			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
@@ -260,6 +261,7 @@ func (s *serverService) GetAllNamesWithFilter(ctx context.Context, filter Server
 			expr.Env(Env{}),
 			expr.AsBool(),
 			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+			expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
 		)
 		if err != nil {
 			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)

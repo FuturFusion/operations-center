@@ -541,6 +541,7 @@ func (s clusterService) GetAllWithFilter(ctx context.Context, filter ClusterFilt
 			expr.Env(ToExprCluster(Cluster{})),
 			expr.AsBool(),
 			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+			expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
 		)
 		if err != nil {
 			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
@@ -604,6 +605,7 @@ func (s clusterService) GetAllNamesWithFilter(ctx context.Context, filter Cluste
 			expr.Env(Env{}),
 			expr.AsBool(),
 			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+			expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
 		)
 		if err != nil {
 			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)

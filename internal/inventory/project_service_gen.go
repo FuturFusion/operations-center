@@ -68,6 +68,7 @@ func (s projectService) GetAllWithFilter(ctx context.Context, filter ProjectFilt
 			expr.Env(ToExprProject(Project{})),
 			expr.AsBool(),
 			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+			expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
 		)
 		if err != nil {
 			return nil, err

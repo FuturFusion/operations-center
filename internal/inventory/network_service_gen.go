@@ -68,6 +68,7 @@ func (s networkService) GetAllWithFilter(ctx context.Context, filter NetworkFilt
 			expr.Env(ToExprNetwork(Network{})),
 			expr.AsBool(),
 			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+			expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
 		)
 		if err != nil {
 			return nil, err
