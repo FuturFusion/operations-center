@@ -39,9 +39,11 @@ func createClusterFromTemplate(t *testing.T, tmpDir string) {
 
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster-template add incus-os-cluster --services-config %s --application-seed-config %s --variables %s --description "Cluster template for incus-os-cluster"`, cpuArch, filepath.Join(tmpDir, "services_template.yaml"), filepath.Join(tmpDir, "application_template.yaml"), filepath.Join(tmpDir, "variable_definition.yaml"))
 
-	instanceIPs, instanceNames := mustGetInstanceIPAndNames(t, []string{"IncusOS01", "IncusOS02", "IncusOS03"})
+	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 
-	servers := strings.Join(instanceNames, " --server-names ")
+	instanceIPs, _ := mustGetInstanceIPAndNames(t, names)
+
+	servers := strings.Join(names, " --server-names ")
 
 	// Run test
 	t.Log("Create cluster")

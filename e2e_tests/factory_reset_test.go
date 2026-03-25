@@ -29,9 +29,11 @@ func factoryResetCluster(t *testing.T, tmpDir string) {
 	err = os.WriteFile(filepath.Join(tmpDir, "application.yaml"), incusOSClusterApplicationConfig, 0o600)
 	require.NoError(t, err)
 
-	instanceIPs, instanceNames := mustGetInstanceIPAndNames(t, []string{"IncusOS01", "IncusOS02", "IncusOS03"})
+	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 
-	servers := strings.Join(instanceNames, " --server-names ")
+	instanceIPs, instanceNames := mustGetInstanceIPAndNames(t, names)
+
+	servers := strings.Join(names, " --server-names ")
 
 	// Run test
 	t.Log("Create cluster incus-os-cluster")
@@ -44,6 +46,9 @@ func factoryResetCluster(t *testing.T, tmpDir string) {
 	mustWaitIncusOSReady(t, []string{"IncusOS01", "IncusOS02", "IncusOS03"})
 
 	mustWaitInventoryReady(t, instanceNames)
+
+	// Post factory reset, the servers register with their machine ID again.
+	servers = strings.Join(instanceNames, " --server-names ")
 
 	clientCertificate := getClientCertificate(t)
 	applicationConfig := replacePlaceholders(incusOSClusterApplicationConfigPostFactoryReset,
