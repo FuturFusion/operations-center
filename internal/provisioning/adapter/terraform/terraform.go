@@ -256,6 +256,11 @@ func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed,
 		preseed.Config["storage.images_volume"] = "local/images"
 	}
 
+	_, ok = preseed.Config["storage.logs_volume"]
+	if !ok {
+		preseed.Config["storage.logs_volume"] = "local/logs"
+	}
+
 	// Set default configuration for local storage pool, if the local storage pool
 	// exists in the preseed.
 	var hasLocalStoragePool bool
@@ -357,6 +362,7 @@ func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed,
 	// the local storage pool, if they exist in the preseed.
 	var hasLocalBackupsStorageVolume bool
 	var hasLocalImagesStorageVolume bool
+	var hasLocalLogsStorageVolume bool
 	for i := range preseed.StorageVolumes {
 		switch {
 		case preseed.StorageVolumes[i].Pool == "local" && preseed.StorageVolumes[i].Name == "backups":
@@ -372,6 +378,13 @@ func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed,
 			}
 
 			hasLocalImagesStorageVolume = true
+
+		case preseed.StorageVolumes[i].Pool == "local" && preseed.StorageVolumes[i].Name == "logs":
+			if preseed.StorageVolumes[i].Description == "" {
+				preseed.StorageVolumes[i].Description = "Volume holding system logs"
+			}
+
+			hasLocalLogsStorageVolume = true
 		}
 	}
 
@@ -402,6 +415,22 @@ func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed,
 				ContentType: "filesystem",
 				StorageVolumePut: incusapi.StorageVolumePut{
 					Description: "Volume holding system images",
+				},
+			},
+		})
+	}
+
+	// Add logs storage volume on the local storage pool if it is not defined
+	// in the preseed.
+	if !hasLocalLogsStorageVolume {
+		preseed.StorageVolumes = append(preseed.StorageVolumes, incusapi.InitStorageVolumesProjectPost{
+			Pool: "local",
+			StorageVolumesPost: incusapi.StorageVolumesPost{
+				Name:        "logs",
+				Type:        "custom",
+				ContentType: "filesystem",
+				StorageVolumePut: incusapi.StorageVolumePut{
+					Description: "Volume holding system logs",
 				},
 			},
 		})
