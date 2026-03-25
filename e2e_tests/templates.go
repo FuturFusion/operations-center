@@ -98,6 +98,58 @@ USER_UI_TITLE:
 	incusOSClusterTemplateVariables = []byte(`---
 LVM_ENABLED: "true"
 `)
+
+	createManualUpdateScript = []byte(`#!/usr/bin/env bash
+set -euo pipefail
+
+BASE_URL="https://images.linuxcontainers.org/os"
+INDEX_URL="${BASE_URL}/index.json"
+DEST="tmp_manual_update"
+
+echo "Fetching index..."
+index=$(curl -fsSL "$INDEX_URL")
+
+# Extract filenames for x86_64 from the first update entry
+mapfile -t files < <(
+  echo "$index" | jq -r '
+    .updates[0].files[]
+    | select(.architecture == "x86_64" or .architecture == "")
+    | .filename
+  '
+)
+
+update_index=(
+  "update.json"
+  "update.sjson"
+)
+files+=("${update_index[@]}")
+
+url_path=$(echo "$index" | jq -r '.updates[0].url')
+
+echo "Found ${#files[@]} files to download."
+
+for file in "${files[@]}"; do
+  dest_path="${DEST}/${file}"
+  mkdir -p "$(dirname "$dest_path")"
+
+  if [[ -f "$dest_path" ]]; then
+    echo "  Skipping ${file} (already exists)"
+  else
+    echo "  Downloading ${file}..."
+    curl -fsSL --create-dirs -o "$dest_path" "${BASE_URL}/${url_path}/${file}"
+  fi
+done
+
+echo "Done. Files saved to ${DEST}/"
+
+if [[ ! -f "manual_update.tar" ]]; then
+  echo "Creating tar archive..."
+  cd "$DEST"
+  tar -cf ../manual_update.tar *
+  cd -
+  echo "Archive created: manual_update.tar"
+fi
+`)
 )
 
 func replacePlaceholders(in []byte, vars map[string]string) []byte {
