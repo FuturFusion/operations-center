@@ -32,7 +32,18 @@ func createClusterWithChannelName(channelName string) func(t *testing.T, tmpDir 
 		err := os.WriteFile(filepath.Join(tmpDir, "services.yaml"), incusOSClusterServicesConfig, 0o600)
 		require.NoError(t, err)
 
-		err = os.WriteFile(filepath.Join(tmpDir, "application.yaml"), incusOSClusterApplicationConfig, 0o600)
+		clientCertificate := getClientCertificate(t)
+
+		err = os.WriteFile(
+			filepath.Join(tmpDir, "application.yaml"),
+			replacePlaceholders(
+				incusOSClusterApplicationConfig,
+				map[string]string{
+					"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 6)),
+				},
+			),
+			0o600,
+		)
 		require.NoError(t, err)
 
 		names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}

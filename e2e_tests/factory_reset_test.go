@@ -26,7 +26,18 @@ func factoryResetCluster(t *testing.T, tmpDir string) {
 	err := os.WriteFile(filepath.Join(tmpDir, "services.yaml"), incusOSClusterServicesConfig, 0o600)
 	require.NoError(t, err)
 
-	err = os.WriteFile(filepath.Join(tmpDir, "application.yaml"), incusOSClusterApplicationConfig, 0o600)
+	clientCertificate := getClientCertificate(t)
+
+	err = os.WriteFile(
+		filepath.Join(tmpDir, "application.yaml"),
+		replacePlaceholders(
+			incusOSClusterApplicationConfig,
+			map[string]string{
+				"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 6)),
+			},
+		),
+		0o600,
+	)
 	require.NoError(t, err)
 
 	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
@@ -50,14 +61,16 @@ func factoryResetCluster(t *testing.T, tmpDir string) {
 	// Post factory reset, the servers register with their machine ID again.
 	servers = strings.Join(instanceNames, " --server-names ")
 
-	clientCertificate := getClientCertificate(t)
-	applicationConfig := replacePlaceholders(incusOSClusterApplicationConfigPostFactoryReset,
-		map[string]string{
-			"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 10)),
-		},
+	err = os.WriteFile(
+		filepath.Join(tmpDir, "application-post-factory-reset.yaml"),
+		replacePlaceholders(
+			incusOSClusterApplicationConfigPostFactoryReset,
+			map[string]string{
+				"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 6)),
+			},
+		),
+		0o600,
 	)
-
-	err = os.WriteFile(filepath.Join(tmpDir, "application-post-factory-reset.yaml"), applicationConfig, 0o600)
 	require.NoError(t, err)
 
 	t.Log("Create cluster incus-os-cluster-after-factory-reset")

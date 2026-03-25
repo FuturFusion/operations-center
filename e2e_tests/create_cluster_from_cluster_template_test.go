@@ -28,7 +28,18 @@ func createClusterFromTemplate(t *testing.T, tmpDir string) {
 	err := os.WriteFile(filepath.Join(tmpDir, "services_template.yaml"), incusOSClusterServicesConfigTemplate, 0o600)
 	require.NoError(t, err)
 
-	err = os.WriteFile(filepath.Join(tmpDir, "application_template.yaml"), incusOSClusterApplicationConfigTemplate, 0o600)
+	clientCertificate := getClientCertificate(t)
+
+	err = os.WriteFile(
+		filepath.Join(tmpDir, "application_template.yaml"),
+		replacePlaceholders(
+			incusOSClusterApplicationConfigTemplate,
+			map[string]string{
+				"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 6)),
+			},
+		),
+		0o600,
+	)
 	require.NoError(t, err)
 
 	err = os.WriteFile(filepath.Join(tmpDir, "variable_definition.yaml"), incusOSClusterTemplateVariableDefinition, 0o600)
