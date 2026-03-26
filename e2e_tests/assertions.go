@@ -99,6 +99,73 @@ func assertOperationsCenterCliAdmin(t *testing.T) {
 	require.True(t, success, "operations-center cli admin assertions failed")
 }
 
+func assertOperationsCenterCliQuery(t *testing.T) {
+	t.Helper()
+
+	var resp cmdResponse
+	success := true
+
+	t.Log("Assert operations-center cli query")
+
+	resp = run(t, `../bin/operations-center.linux.%s query /system/settings | jq -r -e '.metadata | keys | length > 0'`, cpuArch)
+	require.NoError(t, resp.err, "expect operations center query command to work")
+	if !resp.Success() {
+		t.Errorf("expect operations center query command to work")
+		success = false
+		resp = mustRun(t, "../bin/operations-center.linux.%s query /system/settings", cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	require.True(t, success, "operations-center cli query assertions failed")
+}
+
+func assertOperationsCenterCliSystem(t *testing.T) {
+	t.Helper()
+
+	var resp cmdResponse
+	success := true
+
+	t.Log("Assert operations-center cli system")
+
+	resp = run(t, `../bin/operations-center.linux.%s system network show`, cpuArch)
+	require.NoError(t, resp.err, "expect operations center system network show to work")
+	if !resp.Success() {
+		t.Errorf("expect operations center system network show to work")
+		success = false
+		resp = mustRun(t, "../bin/operations-center.linux.%s system network show", cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	resp = run(t, `../bin/operations-center.linux.%s system security show`, cpuArch)
+	require.NoError(t, resp.err, "expect operations center system security show to work")
+	if !resp.Success() {
+		t.Errorf("expect operations center system security show to work")
+		success = false
+		resp = mustRun(t, "../bin/operations-center.linux.%s system security show", cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	resp = run(t, `../bin/operations-center.linux.%s system settings show`, cpuArch)
+	require.NoError(t, resp.err, "expect operations center system settings show to work")
+	if !resp.Success() {
+		t.Errorf("expect operations center system settings show to work")
+		success = false
+		resp = mustRun(t, "../bin/operations-center.linux.%s system settings show", cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	resp = run(t, `../bin/operations-center.linux.%s system updates show`, cpuArch)
+	require.NoError(t, resp.err, "expect operations center system updates show to work")
+	if !resp.Success() {
+		t.Errorf("expect operations center system updates show to work")
+		success = false
+		resp = mustRun(t, "../bin/operations-center.linux.%s system updates show", cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	require.True(t, success, "operations-center cli system assertions failed")
+}
+
 func assertIncusRemote(t *testing.T, clusterName string, clusterIP string) {
 	t.Helper()
 
