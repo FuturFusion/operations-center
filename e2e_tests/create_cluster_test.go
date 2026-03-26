@@ -11,40 +11,46 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createCluster(t *testing.T, tmpDir string) {
-	t.Helper()
+func createCluster() func(t *testing.T, tmpDir string) {
+	return createClusterWithChannelName("stable")
+}
 
-	stop := timeTrack(t)
-	defer stop()
+func createClusterWithChannelName(channelName string) func(t *testing.T, tmpDir string) {
+	return func(t *testing.T, tmpDir string) {
+		t.Helper()
 
-	// Pre check
-	mustNotBeAlreadyClustered(t)
+		stop := timeTrack(t)
+		defer stop()
 
-	// Register cleanup
-	t.Cleanup(clusterCleanup(t))
+		// Pre check
+		mustNotBeAlreadyClustered(t)
 
-	// Setup
-	err := os.WriteFile(filepath.Join(tmpDir, "services.yaml"), incusOSClusterServicesConfig, 0o600)
-	require.NoError(t, err)
+		// Register cleanup
+		t.Cleanup(clusterCleanup(t))
 
-	err = os.WriteFile(filepath.Join(tmpDir, "application.yaml"), incusOSClusterApplicationConfig, 0o600)
-	require.NoError(t, err)
+		// Setup
+		err := os.WriteFile(filepath.Join(tmpDir, "services.yaml"), incusOSClusterServicesConfig, 0o600)
+		require.NoError(t, err)
 
-	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
+		err = os.WriteFile(filepath.Join(tmpDir, "application.yaml"), incusOSClusterApplicationConfig, 0o600)
+		require.NoError(t, err)
 
-	instanceIPs, _ := mustGetInstanceIPAndNames(t, names)
+		names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 
-	servers := strings.Join(names, " --server-names ")
+		instanceIPs, _ := mustGetInstanceIPAndNames(t, names)
 
-	// Run test
-	t.Log("Create cluster")
-	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add incus-os-cluster https://%s:8443 --server-names %s --services-config %s --application-seed-config %s`, cpuArch, instanceIPs[0], servers, filepath.Join(tmpDir, "services.yaml"), filepath.Join(tmpDir, "application.yaml"))
+		servers := strings.Join(names, " --server-names ")
 
-	// Assertions
-	assertIncusRemote(t, "incus-os-cluster", instanceIPs[0])
-	assertInventory(t, "incus-os-cluster")
-	assertTerraformArtifact(t, "incus-os-cluster")
-	assertWebsocketEventsInventoryUpdate(t, "incus-os-cluster")
+		// Run test
+		t.Log("Create cluster")
+		mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add incus-os-cluster https://%s:8443 --server-names %s --channel %s --services-config %s --application-seed-config %s`, cpuArch, instanceIPs[0], servers, channelName, filepath.Join(tmpDir, "services.yaml"), filepath.Join(tmpDir, "application.yaml"))
+
+		// Assertions
+		assertIncusRemote(t, "incus-os-cluster", instanceIPs[0])
+		assertInventory(t, "incus-os-cluster")
+		assertTerraformArtifact(t, "incus-os-cluster")
+		assertWebsocketEventsInventoryUpdate(t, "incus-os-cluster")
+	}
 }
 
 func clusterCleanup(t *testing.T) func() {
