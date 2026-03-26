@@ -8714,6 +8714,7 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 
 			// Run test
 			err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)
+			t.Cleanup(lifecycle.ClusterUpdateSignal.Reset)
 
 			select {
 			case <-done:
@@ -8831,6 +8832,7 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 
 			// Run test
 			err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)
+			t.Cleanup(lifecycle.ClusterUpdateSignal.Reset)
 
 			lifecycle.ClusterUpdateSignal.Emit(cancableCtx, tc.updateMessage)
 

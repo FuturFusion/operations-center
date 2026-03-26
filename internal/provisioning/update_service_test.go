@@ -23,6 +23,7 @@ import (
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
@@ -185,6 +186,7 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 			}
 
 			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			id, err := updateSvc.CreateFromArchive(context.Background(), nil)
@@ -275,6 +277,7 @@ func TestUpdateService_CleanupAll(t *testing.T) {
 			}
 
 			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			err := updateSvc.CleanupAll(context.Background())
@@ -433,6 +436,7 @@ func TestUpdateService_Prune(t *testing.T) {
 			}
 
 			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			err := updateSvc.Prune(context.Background())
@@ -476,6 +480,7 @@ func TestUpdateService_GetAll(t *testing.T) {
 			}
 
 			updateSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			updates, err := updateSvc.GetAll(context.Background())
@@ -581,6 +586,7 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 			}
 
 			serverSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			server, err := serverSvc.GetAllWithFilter(context.Background(), tc.filter)
@@ -627,6 +633,7 @@ func TestUpdateService_GetAllUUIDs(t *testing.T) {
 			}
 
 			updateSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			updates, err := updateSvc.GetAllUUIDs(context.Background())
@@ -712,6 +719,7 @@ func TestUpdateService_GetAllUUIDsWithFilter(t *testing.T) {
 			}
 
 			serverSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			serverIDs, err := serverSvc.GetAllUUIDsWithFilter(context.Background(), tc.filter)
@@ -766,6 +774,7 @@ func TestUpdateService_GetUpdatesByAssignedChannelName(t *testing.T) {
 			}
 
 			serverSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			serverIDs, err := serverSvc.GetUpdatesByAssignedChannelName(context.Background(), "stable")
@@ -812,6 +821,7 @@ func TestUpdateService_GetByUUID(t *testing.T) {
 			}
 
 			updateSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			update, err := updateSvc.GetByUUID(context.Background(), tc.idArg)
@@ -888,6 +898,7 @@ func TestUpdateService_Update(t *testing.T) {
 			}
 
 			updateSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			err := updateSvc.Update(t.Context(), tc.updateArg)
@@ -1347,6 +1358,7 @@ func TestUpdateService_GetChangelog(t *testing.T) {
 			}
 
 			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			changelog, err := updateSvc.GetChangelog(t.Context(), tc.currentIDArg, tc.priorIDArg, tc.architectureArg)
@@ -1721,6 +1733,7 @@ func TestUpdateService_GetChangelogByChannel(t *testing.T) {
 			}
 
 			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			changelog, err := updateSvc.GetChangelogByChannel(t.Context(), tc.currentIDArg, tc.channelNameArg, tc.upstreamArg, tc.architectureArg)
@@ -1779,6 +1792,7 @@ func TestUpdateService_GetUpdateAllFiles(t *testing.T) {
 			}
 
 			updateSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			updateFiles, err := updateSvc.GetUpdateAllFiles(context.Background(), tc.idArg)
@@ -1877,6 +1891,7 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 			}
 
 			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			rc, size, err := updateSvc.GetUpdateFileByFilename(context.Background(), tc.idArg, "foo.bar")
@@ -3033,6 +3048,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				provisioning.UpdateServiceWithPendingGracePeriod(24*time.Hour),
 			)
 			updateSvc.SetServerService(serverSvc)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			err = updateSvc.Refresh(tc.ctx)

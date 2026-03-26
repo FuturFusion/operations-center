@@ -106,6 +106,7 @@ func TestLocalArtifact_updateSignalHandler(t *testing.T) {
 
 			_, err = localartifact.New(nil, tmpDir)
 			require.NoError(t, err)
+			t.Cleanup(lifecycle.ClusterUpdateSignal.Reset)
 
 			// Run test
 			lifecycle.ClusterUpdateSignal.Emit(t.Context(), lifecycle.ClusterUpdateMessage{

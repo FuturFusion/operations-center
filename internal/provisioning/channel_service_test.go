@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
@@ -66,6 +67,7 @@ func TestChannelService_Create(t *testing.T) {
 			}
 
 			channelSvc := provisioning.NewChannelService(repo, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			_, err := channelSvc.Create(t.Context(), tc.channel)
@@ -118,6 +120,7 @@ func TestChannelService_GetAll(t *testing.T) {
 			}
 
 			channelSvc := provisioning.NewChannelService(repo, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			channels, err := channelSvc.GetAll(t.Context())
@@ -167,6 +170,7 @@ func TestChannelService_GetAllNames(t *testing.T) {
 			}
 
 			channelSvc := provisioning.NewChannelService(repo, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			channelNames, err := channelSvc.GetAllNames(t.Context())
@@ -221,6 +225,7 @@ func TestUpdateService_GetChannelByName(t *testing.T) {
 			}
 
 			channelSvc := provisioning.NewChannelService(repo, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			channels, err := channelSvc.GetByName(context.Background(), tc.nameArg)
@@ -280,6 +285,7 @@ func TestChannelService_Update(t *testing.T) {
 			}
 
 			channelSvc := provisioning.NewChannelService(repo, nil)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			err := channelSvc.Update(t.Context(), tc.channel)
@@ -391,6 +397,7 @@ func TestChannelService_DeleteByName(t *testing.T) {
 
 			channelSvc := provisioning.NewChannelService(repo, updateSvc)
 			channelSvc.SetServerService(serverSvc)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			err := channelSvc.DeleteByName(t.Context(), tc.nameArg)
@@ -614,6 +621,7 @@ func TestChannelService_GetChangelog(t *testing.T) {
 			}
 
 			channelSvc := provisioning.NewChannelService(nil, updateSvc)
+			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
 			changelog, err := channelSvc.GetChangelogByName(t.Context(), tc.nameArg, tc.architectureArg)
