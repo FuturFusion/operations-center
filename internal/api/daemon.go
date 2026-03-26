@@ -1115,5 +1115,16 @@ func (d *Daemon) Stop(ctx context.Context) error {
 		errs = append(errs, errgroupWaitErr)
 	}
 
+	// Remove all signal listeners.
+	lifecycle.ServerCertificateUpdateSignal.Reset()
+	lifecycle.NetworkUpdateSignal.Reset()
+	lifecycle.SecurityUpdateSignal.Reset()
+	lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.Reset()
+	lifecycle.SecurityACMEUpdateSignal.Reset()
+	lifecycle.UpdatesValidateSignal.Reset()
+	lifecycle.UpdatesUpdateSignal.Reset()
+	lifecycle.ClusterUpdateSignal.Reset()
+	lifecycle.ServerLifecycleSignal.Reset()
+
 	return errors.Join(errs...)
 }
