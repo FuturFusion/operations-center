@@ -1379,6 +1379,7 @@ func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgres
 	switch clusterUpdateInProgressStatus {
 	case api.ClusterUpdateInProgressApplyUpdate,
 		api.ClusterUpdateInProgressApplyUpdateWithReboot:
+		firstEvacuationPendingServer := ""
 		for _, server := range servers {
 			totalSteps += 8
 
@@ -1397,7 +1398,19 @@ func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgres
 
 			case api.ServerUpdateStateEvacuationPending:
 				pendingSteps += 6
+				// Don't set the currentServer here, since these servers are ready for evacuation, but we might still have
+				// servers, which are not yet done with updating.
+				if firstEvacuationPendingServer == "" {
+					firstEvacuationPendingServer = server.Name
+				}
 			}
+		}
+
+		// If all servers are properly updated, but we have not yet updated the cluster's
+		// update in progress status, then currentServer might be empty here, so we take
+		// the first server, which is in state evacuation pending.
+		if currentServer == "" {
+			currentServer = firstEvacuationPendingServer
 		}
 
 	case api.ClusterUpdateInProgressRollingRestart:
