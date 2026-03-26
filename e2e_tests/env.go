@@ -14,7 +14,24 @@ var (
 	cpuArch              = envOrDefault("OPERATIONS_CENTER_E2E_TEST_CPU_ARCH", "amd64")
 	debug                = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_DEBUG", false)
 	noCleanup            = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP", false)
+
+	goCoverDir      = ""
+	ocE2EGoCoverDir = ""
 )
+
+func init() {
+	goCoverDir = os.Getenv("GOCOVERDIR")
+	if goCoverDir == "" {
+		tmpDir, err := os.MkdirTemp("", "oc-e2e-tests-*")
+		if err != nil {
+			panic("failed to create tmp dir: " + err.Error())
+		}
+
+		goCoverDir = tmpDir
+	}
+
+	ocE2EGoCoverDir = envOrDefault("OPERATIONS_CENTER_E2E_GOCOVERDIR", goCoverDir)
+}
 
 func envOrDefault(envVar string, defaultValue string) string {
 	value := os.Getenv(envVar)
