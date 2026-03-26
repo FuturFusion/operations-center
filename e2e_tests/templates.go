@@ -43,6 +43,16 @@ applications:
     - name: debug
 incus:
   version: "1"
+`)
+
+	incusOSFactoryResetSeedFileYAMLTemplate = []byte(`---
+applications:
+  version: "1"
+  applications:
+    - name: incus
+    - name: debug
+incus:
+  version: "1"
   preseed:
     certificates:
       - name: admin
@@ -62,6 +72,12 @@ lvm:
 	incusOSClusterApplicationConfig = []byte(`---
 config:
   user.ui.title: E2E Test IncusOS Cluster
+certificates:
+  - name: admin
+    type: client
+    certificate: |
+$CLIENT_CERTIFICATE$
+    description: Initial admin client
 `)
 
 	incusOSClusterApplicationConfigPostFactoryReset = []byte(`---
@@ -75,6 +91,11 @@ certificates:
 $CLIENT_CERTIFICATE$
 `)
 
+	incusOSClusterApplicationConfigPostFactoryResetWithTokenSeed = []byte(`---
+config:
+  user.ui.title: E2E Test IncusOS Cluster
+`)
+
 	// createClusterFromTemplate templates.
 
 	incusOSClusterServicesConfigTemplate = []byte(`---
@@ -85,6 +106,12 @@ lvm:
 	incusOSClusterApplicationConfigTemplate = []byte(`---
 config:
   user.ui.title: @USER_UI_TITLE@
+certificates:
+  - name: admin
+    type: client
+    certificate: |
+$CLIENT_CERTIFICATE$
+    description: Initial admin client
 `)
 
 	incusOSClusterTemplateVariableDefinition = []byte(`---

@@ -26,7 +26,18 @@ func factoryResetClusterWithTokenSeed(t *testing.T, tmpDir string) {
 	err := os.WriteFile(filepath.Join(tmpDir, "services.yaml"), incusOSClusterServicesConfig, 0o600)
 	require.NoError(t, err)
 
-	err = os.WriteFile(filepath.Join(tmpDir, "application.yaml"), incusOSClusterApplicationConfig, 0o600)
+	clientCertificate := getClientCertificate(t)
+
+	err = os.WriteFile(
+		filepath.Join(tmpDir, "application.yaml"),
+		replacePlaceholders(
+			incusOSClusterApplicationConfig,
+			map[string]string{
+				"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 6)),
+			},
+		),
+		0o600,
+	)
 	require.NoError(t, err)
 
 	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
@@ -42,8 +53,7 @@ func factoryResetClusterWithTokenSeed(t *testing.T, tmpDir string) {
 	t.Log("Create token seed for factory reset")
 	token := createProvisioningToken(t)
 
-	clientCertificate := getClientCertificate(t)
-	incusOSSeedFileYAML := replacePlaceholders(incusOSSeedFileYAMLTemplate,
+	incusOSSeedFileYAML := replacePlaceholders(incusOSFactoryResetSeedFileYAMLTemplate,
 		map[string]string{
 			"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 10)),
 		},
@@ -63,7 +73,14 @@ func factoryResetClusterWithTokenSeed(t *testing.T, tmpDir string) {
 
 	mustWaitInventoryReady(t, instanceNames)
 
-	err = os.WriteFile(filepath.Join(tmpDir, "application-post-factory-reset.yaml"), incusOSClusterApplicationConfig, 0o600)
+	err = os.WriteFile(
+		filepath.Join(tmpDir, "application-post-factory-reset.yaml"),
+		replacePlaceholders(
+			incusOSClusterApplicationConfigPostFactoryResetWithTokenSeed,
+			map[string]string{},
+		),
+		0o600,
+	)
 	require.NoError(t, err)
 
 	// Post factory reset, the servers register with their machine ID again.

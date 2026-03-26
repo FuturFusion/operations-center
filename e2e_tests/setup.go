@@ -405,12 +405,8 @@ func createIncusOSPreseededISO(t *testing.T, tmpDir string, token string) string
 		stop := timeTrack(t)
 		defer stop()
 
-		clientCertificate := getClientCertificate(t)
-
 		incusOSSeedFileYAML := replacePlaceholders(incusOSSeedFileYAMLTemplate,
-			map[string]string{
-				"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 10)),
-			},
+			map[string]string{},
 		)
 
 		err := os.WriteFile(filepath.Join(tmpDir, "incusos_seed.yaml"), incusOSSeedFileYAML, 0o600)
@@ -430,12 +426,8 @@ func createIncusOSPreseededISOFromTokenSeed(t *testing.T, tmpDir string, token s
 		stop := timeTrack(t)
 		defer stop()
 
-		clientCertificate := getClientCertificate(t)
-
 		incusOSSeedFileYAML := replacePlaceholders(incusOSSeedFileYAMLTemplate,
-			map[string]string{
-				"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 10)),
-			},
+			map[string]string{},
 		)
 
 		err := os.WriteFile(filepath.Join(tmpDir, "incusos_seed.yaml"), incusOSSeedFileYAML, 0o600)
