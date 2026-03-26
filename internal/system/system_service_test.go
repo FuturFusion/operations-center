@@ -3,6 +3,7 @@ package system_test
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -203,6 +204,46 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 				require.ErrorContains(tt, err, "server.key")
 			},
 			wantServerCertificateUpdateEmit: []queue.Item[string]{},
+		},
+
+		{
+			name: "error - ServerCertificateUpdateSignal",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+			},
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+
+			assertErr: boom.ErrorIs,
+			wantServerCertificateUpdateEmit: []queue.Item[string]{
+				{
+					Err:   boom.Error,
+					Value: certFingerprint,
+				},
+				{
+					Value: currentCertFingerprint,
+				},
+			},
+		},
+		{
+			name: "error - ServerCertificateUpdateSignal",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+			},
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+
+			assertErr: boom.ErrorIs,
+			wantServerCertificateUpdateEmit: []queue.Item[string]{
+				{
+					Err:   fmt.Errorf("error"),
+					Value: certFingerprint,
+				},
+				{
+					Err:   boom.Error,
+					Value: currentCertFingerprint,
+				},
+			},
 		},
 		{
 			name: "error - with registered servers - repo.GetAll",
@@ -429,11 +470,13 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			tc.setupEnv(t, env.VarDir())
 
 			listenerID := uuid.New()
-			lifecycle.ServerCertificateUpdateSignal.AddListener(func(ctx context.Context, cert tls.Certificate) {
-				wantCertificateFingerprint, _ := queue.Pop(t, &tc.wantServerCertificateUpdateEmit)
+			lifecycle.ServerCertificateUpdateSignal.AddListenerWithErr(func(ctx context.Context, cert tls.Certificate) error {
+				wantCertificateFingerprint, err := queue.Pop(t, &tc.wantServerCertificateUpdateEmit)
 
 				certFingerprint := incustls.CertFingerprint(cert.Leaf)
 				require.Equal(t, wantCertificateFingerprint, certFingerprint)
+
+				return err
 			}, listenerID.String())
 			t.Cleanup(func() {
 				lifecycle.ServerCertificateUpdateSignal.RemoveListener(listenerID.String())

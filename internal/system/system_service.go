@@ -61,7 +61,7 @@ func NewSystemService(
 	return systemSvc
 }
 
-func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM string, keyPEM string) error {
+func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
 	serverCertificate, err := tls.X509KeyPair([]byte(certificatePEM), []byte(keyPEM))
 	if err != nil {
 		return fmt.Errorf("Failed to validate key pair: %w", err)
@@ -106,13 +106,20 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	reverter.Add(func() {
+		revertErr := lifecycle.ServerCertificateUpdateSignal.TryEmit(ctx, currentCertificate)
+		if revertErr != nil {
+			err = errors.Join(err, fmt.Errorf("Failed to revert back to the original certificate: %w ", revertErr))
+		}
+	})
+
 	// Notify services about new certificate, which also causes the http listener
 	// to switch to the new certificate, which is necessary for the the provider
 	// updates to be successful.
-	lifecycle.ServerCertificateUpdateSignal.Emit(ctx, serverCertificate)
-	reverter.Add(func() {
-		lifecycle.ServerCertificateUpdateSignal.Emit(ctx, currentCertificate)
-	})
+	err = lifecycle.ServerCertificateUpdateSignal.TryEmit(ctx, serverCertificate)
+	if err != nil {
+		return fmt.Errorf("Failed to update certificate: %w", err)
+	}
 
 	err = s.updateProviderConfigAll(ctx, map[string]string{"server_certificate": certificatePEM})
 	if err != nil {
