@@ -3,6 +3,9 @@ DETECTED_LIBNBD_VERSION = $(shell dpkg-query --showformat='$${Version}' -W libnb
 SPHINXENV=doc/.sphinx/venv/bin/activate
 SPHINXPIPPATH=doc/.sphinx/venv/bin/pip
 OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(shell pwd)/tmp-e2e.out
+GOCOVERDIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/coverage_$(EXECUTION_DATETIME)
+EXECUTION_DATETIME=$(shell date +%F-%H-%M-%S)
+SHELL=/bin/bash -o pipefail
 
 default: build
 
@@ -48,16 +51,16 @@ build-all-packages:
 
 .PHONY: test
 test:
-	$(GO) test ./... -v
+	OPERATIONS_CENTER_E2E_TEST=0 $(GO) test ./... -v
 
 .PHONY: test-coverage
 test-coverage:
 	@rm -rf coverage.out covdata-coverage.out
 	@mkdir -p coverage.out
 	@echo "================= Running Tests with Coverage ================="
-	@go test -cover ./... -coverpkg=github.com/FuturFusion/operations-center/cmd/...,github.com/FuturFusion/operations-center/internal/...,github.com/FuturFusion/operations-center/shared/... -args -test.gocoverdir="$$PWD/coverage.out"
+	@OPERATIONS_CENTER_E2E_TEST=0 $(GO) test -cover ./... -coverpkg=github.com/FuturFusion/operations-center/cmd/...,github.com/FuturFusion/operations-center/internal/...,github.com/FuturFusion/operations-center/shared/... -args -test.gocoverdir="$$PWD/coverage.out"
 	@echo "================= Coverage Report ================="
-	@go tool covdata percent -pkg $$(go tool covdata pkglist -i ./coverage.out | grep -vE '(middleware|mock|version)$$' | paste -sd,) -i=./coverage.out -o covdata-coverage.out | sed 's/%//' | sort -k3,3nr -k1,1 | column -t
+	@$(GO) tool covdata percent -pkg $$($(GO) tool covdata pkglist -i ./coverage.out | grep -vE '(middleware|mock|version)$$' | paste -sd,) -i=./coverage.out -o covdata-coverage.out | sed 's/%//' | sort -k3,3nr -k1,1 | column -t
 	@cat covdata-coverage.out | awk 'BEGIN {cov=0; stat=0;} $$3!="" { cov+=($$3==1?$$2:0); stat+=$$2; } END {printf("Total coverage: %.2f%% of statements\n", (cov/stat)*100);}'
 
 .PHONY: test-coverage-func
@@ -65,11 +68,11 @@ test-coverage-func:
 	@rm -rf coverage.out covdata-coverage-func.out covdata-coverage-func-filtered.out
 	@mkdir -p coverage.out
 	@echo "================= Running Tests with Coverage ================="
-	@go test -cover ./... -coverpkg=github.com/FuturFusion/operations-center/cmd/...,github.com/FuturFusion/operations-center/internal/...,github.com/FuturFusion/operations-center/shared/... -args -test.gocoverdir="$$PWD/coverage.out"
+	@OPERATIONS_CENTER_E2E_TEST=0 $(GO) test -cover ./... -coverpkg=github.com/FuturFusion/operations-center/cmd/...,github.com/FuturFusion/operations-center/internal/...,github.com/FuturFusion/operations-center/shared/... -args -test.gocoverdir="$$PWD/coverage.out"
 	@echo "================= Coverage Report ================="
-	@go tool covdata textfmt -pkg $$(go tool covdata pkglist -i ./coverage.out | grep -vE '(middleware|mock|version)$$' | paste -sd,) -i=./coverage.out -o covdata-coverage-func.out
+	@$(GO) tool covdata textfmt -pkg $$($(GO) tool covdata pkglist -i ./coverage.out | grep -vE '(middleware|mock|version)$$' | paste -sd,) -i=./coverage.out -o covdata-coverage-func.out
 	@grep -vE '_gen(_test)?\.go' covdata-coverage-func.out > covdata-coverage-func-filtered.out
-	@go tool cover -func covdata-coverage-func-filtered.out | grep -vE '^total' | sed 's/%//' | sort -k3,3nr -k1,1 | column -t
+	@$(GO) tool cover -func covdata-coverage-func-filtered.out | grep -vE '^total' | sed 's/%//' | sort -k3,3nr -k1,1 | column -t
 	@cat covdata-coverage-func-filtered.out | awk 'BEGIN {cov=0; stat=0;} $$3!="" { cov+=($$3==1?$$2:0); stat+=$$2; } END {printf("Total coverage: %.2f%% of statements\n", (cov/stat)*100);}'
 
 .PHONY: static-analysis
@@ -89,7 +92,7 @@ ifeq ($(shell command -v golangci-lint),)
 endif
 	golangci-lint run ./...
 	run-parts $(shell run-parts -V >/dev/null 2>&1 && echo -n "--verbose --exit-on-error --regex '\.sh$$'") scripts/lint
-	go run github.com/breml/newline-after-block/cmd/newline-after-block -exclude '.*\.mapper\.go' -exclude '.*_gen\.go' -exclude '.*_gen_test\.go' ./...
+	$(GO) run github.com/breml/newline-after-block/cmd/newline-after-block -exclude '.*\.mapper\.go' -exclude '.*_gen\.go' -exclude '.*_gen_test\.go' ./...
 
 .PHONY: tofu-fmt-check
 tofu-fmt-check:
@@ -101,9 +104,9 @@ endif
 .PHONY: vulncheck
 vulncheck:
 ifeq ($(shell command -v govulncheck),)
-	go install golang.org/x/vuln/cmd/govulncheck@latest
+	$(GO) install golang.org/x/vuln/cmd/govulncheck@latest
 endif
-	govulncheck ./...
+	$(GO) run golang.org/x/vuln/cmd/govulncheck ./...
 
 .PHONY: clean
 clean:
@@ -207,14 +210,26 @@ doc-lint:
 GO_TEST_RUN ?= 'TestE2E'
 
 .PHONY: e2e-test
-e2e-test: build
+e2e-test: bld
 	@echo "go test flags: $(GO_TEST_RUN) (change by running 'make e2e-test GO_TEST_RUN=TestMyTest')"
 	mkdir -p $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)
-	OPERATIONS_CENTER_E2E_TEST=1 OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) go test ./e2e_tests/ -v -timeout 120m -count 1 -failfast -run $(GO_TEST_RUN) | tee $$OPERATIONS_CENTER_E2E_TEST_TMP_DIR/e2e_tests_$$(date +%F-%H-%M-%S).log
+	OPERATIONS_CENTER_E2E_TEST=1 OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) $(GO) test ./e2e_tests/ -v -timeout 120m -count 1 -failfast -run $(GO_TEST_RUN) | tee $$OPERATIONS_CENTER_E2E_TEST_TMP_DIR/e2e_tests_$(EXECUTION_DATETIME).log
+
+.PHONY: e2e-test-cover
+e2e-test-cover: bld-cover
+	DATE=$(shell date +%F-%H-%M-%S)
+	@echo "go test flags: $(GO_TEST_RUN) (change by running 'make e2e-test-cover GO_TEST_RUN=TestMyTest')"
+	mkdir -p $(GOCOVERDIR)
+	OPERATIONS_CENTER_E2E_TEST=0 $(GO) test ./... -cover -coverpkg=./... -v -count 1 -args -test.gocoverdir="$(GOCOVERDIR)" | tee $$OPERATIONS_CENTER_E2E_TEST_TMP_DIR/e2e_tests_$(EXECUTION_DATETIME).log
+	OPERATIONS_CENTER_E2E_GOCOVERDIR=$(GOCOVERDIR) OPERATIONS_CENTER_E2E_TEST=1 OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) $(GO) test ./e2e_tests/ -cover -coverpkg=./... -v -timeout 120m -count 1 -failfast -run $(GO_TEST_RUN) -args -test.gocoverdir="$(GOCOVERDIR)" | tee $$OPERATIONS_CENTER_E2E_TEST_TMP_DIR/e2e_tests_$(EXECUTION_DATETIME).log
+	@echo ""
+	@echo "================= Coverage Report ================="
+	@$(GO) tool covdata percent -pkg $$($(GO) tool covdata pkglist -i $(GOCOVERDIR) | grep -vE '(middleware|mock|version|lifecycle)$$' | paste -sd,) -i=$(GOCOVERDIR) -o covdata-coverage.out | sed 's/%//' | sort -k3,3nr -k1,1 | column -t
+	@cat covdata-coverage.out | awk 'BEGIN {cov=0; stat=0;} $$3!="" { cov+=($$3==1?$$2:0); stat+=$$2; } END {printf("Total coverage: %.2f%% of statements\n", (cov/stat)*100);}'
 
 .PHONY: e2e-test-list
 e2e-test-list:
-	go test -list 'TestE2E' ./e2e_tests/
+	$(GO) test -list 'TestE2E' ./e2e_tests/
 
 .PHONY: clean-e2e-test
 clean-e2e-test:
