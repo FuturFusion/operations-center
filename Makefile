@@ -230,3 +230,15 @@ clean-e2e-test:
 	for i in $$(incus storage volume list default -f json | jq -r '.[] | select(.name | test("IncusOS-.*")) | .name'); do \
 		incus storage volume delete default $$i || true; \
 	done
+
+# Keeps Operations Center but cleans up all the test artifacts, useful if test have been executed with OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP.
+.PHONY: clean-e2e-test-soft
+clean-e2e-test-soft:
+	incus remote remove incus-os-cluster || true
+	incus remote remove incus-os-cluster-after-factory-reset || true
+	incus remove --force IncusOS01 || true
+	incus remove --force IncusOS02 || true
+	incus remove --force IncusOS03 || true
+	bin/operations-center.linux.amd64 provisioning cluster remove incus-os-cluster --force || true
+	bin/operations-center.linux.amd64 provisioning cluster remove incus-os-cluster-after-factory-reset --force || true
+
