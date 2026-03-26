@@ -26,6 +26,79 @@ func assertOperationsCenterSelfRegistration(t *testing.T) {
 	require.True(t, resp.Success(), "failed to assert self registration of operations-center")
 }
 
+func assertOperationsCenterCliAdmin(t *testing.T) {
+	t.Helper()
+
+	var resp cmdResponse
+	success := true
+
+	t.Log("Assert operations-center cli admin")
+
+	resp = run(t, `../bin/operations-center.linux.%s admin os show -f json | jq -r -e '.environment.os_name == "IncusOS"'`, cpuArch)
+	require.NoError(t, resp.err, "expect operations center OS to be IncusOS")
+	if !resp.Success() {
+		t.Errorf("expect operations center OS to be IncusOS")
+		success = false
+		resp = mustRun(t, "../bin/operations-center.linux.%s admin os show -f json", cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	resp = run(t, `../bin/operations-center.linux.%s admin os application list -f json | jq -r -e '(. | length >= 1) and ([ .[] | select(contains("operations-center")) ] | length == 1)'`, cpuArch)
+	require.NoError(t, resp.err, "expect operations center application to be installed")
+	if !resp.Success() {
+		t.Errorf("expect operations center application to be installed")
+		success = false
+		resp = mustRun(t, "../bin/operations-center.linux.%s admin os application list -f json", cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	resp = run(t, `../bin/operations-center.linux.%s admin os application show operations-center -f json | jq -r -e '.state.initialized'`, cpuArch)
+	require.NoError(t, resp.err, "expect operations center application to be initialized")
+	if !resp.Success() {
+		t.Errorf("expect operations center application to be initialized")
+		success = false
+		resp = mustRun(t, "../bin/operations-center.linux.%s admin os application show operations-center -f json", cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	resp = run(t, `../bin/operations-center.linux.%s admin os debug log -u operations-center -n 10`, cpuArch)
+	require.NoError(t, resp.err, "expect operations center debug log to be fetchable")
+	if !resp.Success() {
+		t.Errorf("expect operations center debug log to be fetchable")
+		success = false
+		fmt.Println(resp.Output())
+	}
+
+	resp = run(t, `../bin/operations-center.linux.%s admin os debug processes | grep operations-center`, cpuArch)
+	require.NoError(t, resp.err, "expect operations center process to be contained in the process output")
+	if !resp.Success() {
+		t.Errorf("expect operations center process to be contained in the process output")
+		success = false
+		resp := mustRun(t, "../bin/operations-center.linux.%s admin os debug processes", cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	resp = run(t, `../bin/operations-center.linux.%s admin os service list -f json | jq -r -e '. | length > 0'`, cpuArch)
+	require.NoError(t, resp.err, "expect operations center to have services")
+	if !resp.Success() {
+		t.Errorf("expect operations center to have services")
+		success = false
+		resp := mustRun(t, "../bin/operations-center.linux.%s admin os service list -f json", cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	resp = run(t, `../bin/operations-center.linux.%s admin os system network show -f json | jq -r -e '. | keys | length >= 2'`, cpuArch)
+	require.NoError(t, resp.err, "expect operations center to system network output to contain config and state")
+	if !resp.Success() {
+		t.Errorf("expect operations center to system network output to contain config and state")
+		success = false
+		resp := mustRun(t, "../bin/operations-center.linux.%s admin os system network show -f json", cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	require.True(t, success, "operations-center cli admin assertions failed")
+}
+
 func assertIncusRemote(t *testing.T, clusterName string, clusterIP string) {
 	t.Helper()
 
