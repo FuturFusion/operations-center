@@ -14,12 +14,22 @@ export interface ClusterProperty {
   [key: string]: string;
 }
 
+export interface ClusterConfigRollingRestart {
+  post_restore_delay: number;
+  restore_mode: string;
+}
+
+export interface ClusterConfig {
+  rolling_restart: ClusterConfigRollingRestart;
+}
+
 export interface Cluster {
   name: string;
   connection_url: string;
   channel: string;
   description: string;
   properties: ClusterProperty;
+  config: ClusterConfig;
   certificate: string;
   fingerprint: string;
   status: string;
@@ -33,6 +43,7 @@ export interface ClusterPost {
   channel: string;
   description: string;
   properties: ClusterProperty;
+  config: ClusterConfig;
   server_names: string[];
   server_type: string;
   services_config: YamlValue;
@@ -47,6 +58,8 @@ export interface ClusterFormValues {
   channel: string;
   description: string;
   properties: ClusterProperty;
+  restore_mode: string;
+  post_restore_delay: number;
 }
 
 export interface ClusterCertFormValues {
