@@ -20,6 +20,22 @@ operations-center:
 	GOOS=windows GOARCH=amd64 $(GO) build -o ./bin/operations-center.windows.amd64.exe ./cmd/operations-center
 	GOOS=windows GOARCH=arm64 $(GO) build -o ./bin/operations-center.windows.arm64.exe ./cmd/operations-center
 
+# bld (build linux development)
+# Build only the Linux AMD64 version, used for development and testing.
+.PHONY: bld
+bld:
+	mkdir -p ./bin/
+	$(GO) build -o ./bin/operations-centerd ./cmd/operations-centerd
+	CGO_ENABLED=0 GOARCH=amd64 $(GO) build -o ./bin/operations-center.linux.amd64 ./cmd/operations-center
+
+# bld (build linux development) with coverage instrumentation enabled
+# Build only the Linux AMD64 version, used for development and testing incl. coverage.
+.PHONY: bld-cover
+bld-cover:
+	mkdir -p ./bin/
+	$(GO) build -cover -o ./bin/operations-centerd ./cmd/operations-centerd
+	CGO_ENABLED=0 GOARCH=amd64 $(GO) build -cover -o ./bin/operations-center.linux.amd64 ./cmd/operations-center
+
 .PHONY: build-ui
 build-ui:
 	$(MAKE) -C ui
