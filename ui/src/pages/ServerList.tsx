@@ -76,7 +76,19 @@ const Server = () => {
         ),
       },
       {
-        content: item.cluster,
+        content: (
+          <>
+            {item.cluster && [
+              <Link
+                to={`/ui/provisioning/clusters/${item.cluster}`}
+                className="data-table-link"
+                title="Server details"
+              >
+                {item.cluster}
+              </Link>,
+            ]}
+          </>
+        ),
         sortKey: item.cluster,
       },
       {

@@ -104,12 +104,42 @@ export const updateCluster = (
   });
 };
 
+export const updateClusterRolling = (
+  name: string,
+  body: string,
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/clusters/${name}/:update`, {
+      method: "POST",
+      body: body,
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
 export const resyncClusterInventory = (
   name: string,
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/clusters/${name}/:resync-inventory`, {
       method: "POST",
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
+export const bulkClusterAction = (
+  name: string,
+  body: string,
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/clusters/${name}/:bulk-update`, {
+      method: "POST",
+      body: body,
     })
       .then((response) => response.json())
       .then((data) => resolve(data))

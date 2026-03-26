@@ -1,13 +1,25 @@
+export interface ClusterUpdateStatusProgress {
+  in_progress: string;
+  status_description: string;
+}
+
 export interface ClusterUpdateStatus {
   needs_reboot: string[];
   needs_update: string[];
   in_maintenance: string[];
+  in_progress_status: ClusterUpdateStatusProgress;
+}
+
+export interface ClusterProperty {
+  [key: string]: string;
 }
 
 export interface Cluster {
   name: string;
   connection_url: string;
   channel: string;
+  description: string;
+  properties: ClusterProperty;
   certificate: string;
   fingerprint: string;
   status: string;
@@ -19,6 +31,8 @@ export interface ClusterPost {
   name: string;
   connection_url: string;
   channel: string;
+  description: string;
+  properties: ClusterProperty;
   server_names: string[];
   server_type: string;
   services_config: YamlValue;
@@ -31,11 +45,18 @@ export interface ClusterFormValues {
   name: string;
   connection_url: string;
   channel: string;
+  description: string;
+  properties: ClusterProperty;
 }
 
 export interface ClusterCertFormValues {
   cluster_certificate: string;
   cluster_certificate_key: string;
+}
+
+export interface ClusterBulkUpdateFormValues {
+  action: string;
+  arguments: YamlValue;
 }
 
 export interface ClusterArtifactFile {

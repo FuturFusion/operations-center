@@ -11,22 +11,29 @@ interface Props {
 const ClusterStatus: FC<Props> = ({ cluster }) => {
   return (
     <div>
-      {cluster.status}{" "}
-      {cluster.update_status.in_maintenance.length > 0 && (
+      {cluster.status}
+      {cluster.update_status?.in_progress_status?.in_progress != "" && (
+        <>
+          {" ("}
+          {cluster.update_status?.in_progress_status?.in_progress}
+          {")"}
+        </>
+      )}{" "}
+      {cluster.update_status?.in_maintenance?.length > 0 && (
         <MdExitToApp
           color="orange"
           size={25}
           title="One or more servers are in maintenance"
         />
       )}
-      {cluster.update_status.needs_update.length > 0 && (
+      {cluster.update_status?.needs_update?.length > 0 && (
         <MdSystemUpdateAlt
           color="orange"
           size={25}
           title="One or more servers have pending updates"
         />
       )}
-      {cluster.update_status.needs_reboot.length > 0 && (
+      {cluster.update_status?.needs_reboot?.length > 0 && (
         <MdOutlineReplay
           color="orange"
           size={25}

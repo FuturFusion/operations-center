@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { fetchCluster } from "api/cluster";
 import { formatDate } from "util/date";
+import { Badge } from "react-bootstrap";
 
 const ClusterOverview = () => {
   const { name } = useParams();
@@ -28,6 +29,22 @@ const ClusterOverview = () => {
       <div className="row">
         <div className="col-2 detail-table-header">Name</div>
         <div className="col-10 detail-table-cell">{cluster?.name}</div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Description</div>
+        <div className="col-10 detail-table-cell">{cluster?.description}</div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Properties</div>
+        <div className="col-10 detail-table-cell">
+          {cluster?.properties &&
+            Object.entries(cluster?.properties).map(([key, value]) => [
+              <Badge bg="primary">
+                {key}:{value}
+              </Badge>,
+              <span> </span>,
+            ])}
+        </div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Connection URL</div>

@@ -1,11 +1,17 @@
 import { FC, useState } from "react";
-import { MdOutlineFileDownload, MdOutlineSync } from "react-icons/md";
+import {
+  MdOutlineFileDownload,
+  MdOutlineSync,
+  MdChecklist,
+} from "react-icons/md";
 import { PiCertificate } from "react-icons/pi";
 import { downloadArtifact, resyncClusterInventory } from "api/cluster";
+import ClusterBulkActionModal from "components/ClusterBulkActionModal";
 import ClusterUpdateCertModal from "components/ClusterUpdateCertModal";
 import { useNotification } from "context/notificationContext";
 import { Cluster } from "types/cluster";
 import { downloadFile } from "util/util";
+import ClusterUpdateBtn from "components/ClusterUpdateBtn";
 
 interface Props {
   cluster: Cluster;
@@ -14,6 +20,7 @@ interface Props {
 const ClusterActions: FC<Props> = ({ cluster }) => {
   const { notify } = useNotification();
   const [showUpdateCertModal, setShowUpdateCertModal] = useState(false);
+  const [showBulkActionModal, setShowBulkActionModal] = useState(false);
   const actionStyle = {
     cursor: "pointer",
     color: "grey",
@@ -21,6 +28,10 @@ const ClusterActions: FC<Props> = ({ cluster }) => {
 
   const onCertUpdate = () => {
     setShowUpdateCertModal(true);
+  };
+
+  const onBulkAction = () => {
+    setShowBulkActionModal(true);
   };
 
   const onDownloadTerraformData = async () => {
@@ -52,6 +63,17 @@ const ClusterActions: FC<Props> = ({ cluster }) => {
 
   return (
     <div>
+      <MdChecklist
+        size={25}
+        title="Run a bulk action"
+        style={actionStyle}
+        onClick={() => {
+          onBulkAction();
+        }}
+      />
+      {cluster.update_status?.needs_update?.length > 0 && (
+        <ClusterUpdateBtn cluster={cluster} recommended={true} />
+      )}
       <PiCertificate
         size={25}
         title="Update certificate"
@@ -80,6 +102,11 @@ const ClusterActions: FC<Props> = ({ cluster }) => {
         cluster={cluster}
         show={showUpdateCertModal}
         handleClose={() => setShowUpdateCertModal(false)}
+      />
+      <ClusterBulkActionModal
+        cluster={cluster}
+        show={showBulkActionModal}
+        handleClose={() => setShowBulkActionModal(false)}
       />
     </div>
   );
