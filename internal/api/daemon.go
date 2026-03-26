@@ -546,11 +546,8 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 	})
 
 	// Server service needs to learn about updates of the server certificate.
-	lifecycle.ServerCertificateUpdateSignal.AddListener(func(ctx context.Context, c tls.Certificate) {
-		err := serverSvc.UpdateServerCertificate(ctx, c)
-		if err != nil {
-			slog.WarnContext(ctx, "failed to update server URL", logger.Err(err))
-		}
+	lifecycle.ServerCertificateUpdateSignal.AddListenerWithErr(func(ctx context.Context, c tls.Certificate) error {
+		return serverSvc.UpdateServerCertificate(ctx, c)
 	})
 
 	return provisioningServiceMiddleware.NewServerServiceWithSlog(
