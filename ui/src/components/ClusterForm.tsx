@@ -3,6 +3,7 @@ import { Button, Form } from "react-bootstrap";
 import { useFormik } from "formik";
 import ChannelSelect from "components/ChannelSelect";
 import KeyValueWidget from "components/KeyValueWidget";
+import RestoreModeSelect from "components/RestoreModeSelect";
 import { Cluster, ClusterFormValues } from "types/cluster";
 
 interface Props {
@@ -18,6 +19,8 @@ const ClusterForm: FC<Props> = ({ cluster, onRename, onSubmit }) => {
     channel: cluster?.channel || "",
     description: cluster?.description || "",
     properties: cluster?.properties || {},
+    post_restore_delay: cluster?.config.rolling_restart.post_restore_delay || 0,
+    restore_mode: cluster?.config.rolling_restart.restore_mode || "",
   };
 
   const formik = useFormik({
@@ -87,6 +90,21 @@ const ClusterForm: FC<Props> = ({ cluster, onRename, onSubmit }) => {
             value={formik.values.channel}
             onChange={(val) => formik.setFieldValue("channel", val)}
           />
+          <RestoreModeSelect
+            formClasses="mb-3"
+            value={formik.values.restore_mode}
+            onChange={(val) => formik.setFieldValue("restore_mode", val)}
+          />
+          <Form.Group className="mb-3" controlId="post_restore_delay">
+            <Form.Label>Post restore delay (miliseconds)</Form.Label>
+            <Form.Control
+              type="number"
+              name="post_restore_delay"
+              value={formik.values.post_restore_delay}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
+          </Form.Group>
         </Form>
       </div>
       <div className="fixed-footer p-3">

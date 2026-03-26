@@ -1,8 +1,9 @@
+import { Badge } from "react-bootstrap";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { fetchCluster } from "api/cluster";
 import { formatDate } from "util/date";
-import { Badge } from "react-bootstrap";
+import { RestoreModeValues } from "util/cluster";
 
 const ClusterOverview = () => {
   const { name } = useParams();
@@ -61,6 +62,23 @@ const ClusterOverview = () => {
       <div className="row">
         <div className="col-2 detail-table-header">Channel</div>
         <div className="col-10 detail-table-cell">{cluster?.channel}</div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Restore mode</div>
+        <div className="col-10 detail-table-cell">
+          {
+            RestoreModeValues[
+              (cluster?.config.rolling_restart.restore_mode ??
+                "") as keyof typeof RestoreModeValues
+            ]
+          }
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Post restore delay</div>
+        <div className="col-10 detail-table-cell">
+          {cluster?.config.rolling_restart.post_restore_delay}
+        </div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Certificate</div>

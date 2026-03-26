@@ -19,6 +19,12 @@ const ClusterConfiguration = () => {
           properties: values.properties,
           connection_url: values.connection_url,
           channel: values.channel,
+          config: {
+            rolling_restart: {
+              post_restore_delay: values.post_restore_delay,
+              restore_mode: values.restore_mode,
+            },
+          },
         },
         null,
         2,

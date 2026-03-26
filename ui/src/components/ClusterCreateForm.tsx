@@ -4,6 +4,7 @@ import { FormikErrors, useFormik } from "formik";
 import ChannelSelect from "components/ChannelSelect";
 import LoadingButton from "components/LoadingButton";
 import KeyValueWidget from "components/KeyValueWidget";
+import RestoreModeSelect from "components/RestoreModeSelect";
 import { useNotification } from "context/notificationContext";
 import { useServers } from "context/useServers";
 import { useClusterTemplates } from "context/useClusterTemplates";
@@ -62,6 +63,12 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
     application_seed_config: "",
     cluster_template: "",
     cluster_template_variable_values: "",
+    config: {
+      rolling_restart: {
+        post_restore_delay: 0,
+        restore_mode: "",
+      },
+    },
   };
 
   const formik = useFormik({
@@ -104,6 +111,12 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
         application_seed_config: applicationSeedConfig,
         cluster_template: values.cluster_template,
         cluster_template_variable_values: variableValues,
+        config: {
+          rolling_restart: {
+            post_restore_delay: 0,
+            restore_mode: "",
+          },
+        },
       });
     },
   });
@@ -176,6 +189,23 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
             onChange={(val) => formik.setFieldValue("channel", val)}
             disabled={formik.isSubmitting}
           />
+          <RestoreModeSelect
+            formClasses="mb-3"
+            value={formik.values.config.rolling_restart.restore_mode}
+            onChange={(val) =>
+              formik.setFieldValue("config.rolling_restart.restore_mode", val)
+            }
+          />
+          <Form.Group className="mb-3" controlId="post_restore_delay">
+            <Form.Label>Post restore delay (miliseconds)</Form.Label>
+            <Form.Control
+              type="number"
+              name="config.rolling_restart.post_restore_delay"
+              value={formik.values.config.rolling_restart.post_restore_delay}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
+          </Form.Group>
           <Form.Group className="mb-4" controlId="serverNames">
             <Form.Label>Servers</Form.Label>
             <Form.Select
