@@ -568,6 +568,17 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 		case <-time.After(time.Second):
 		}
 	}
+
+	incusServers := mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '.[] | select(.server_type == "incus" and .server_status == "ready") | .name'`, 10*time.Second, cpuArch)
+	incusServerNames := strings.Split(incusServers.OutputTrimmed(), "\n")
+	if len(names) != len(incusServerNames) {
+		t.Fatalf("expected a server %v for each name %v", incusServerNames, names)
+	}
+
+	// Rename servers
+	for i, serverName := range incusServerNames {
+		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning server rename %s %s`, 10*time.Second, cpuArch, serverName, names[i])
+	}
 }
 
 func printServerList(t *testing.T) {

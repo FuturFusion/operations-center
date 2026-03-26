@@ -29,9 +29,11 @@ func factoryResetClusterWithTokenSeed(t *testing.T, tmpDir string) {
 	err = os.WriteFile(filepath.Join(tmpDir, "application.yaml"), incusOSClusterApplicationConfig, 0o600)
 	require.NoError(t, err)
 
-	instanceIPs, instanceNames := mustGetInstanceIPAndNames(t, []string{"IncusOS01", "IncusOS02", "IncusOS03"})
+	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 
-	servers := strings.Join(instanceNames, " --server-names ")
+	instanceIPs, instanceNames := mustGetInstanceIPAndNames(t, names)
+
+	servers := strings.Join(names, " --server-names ")
 
 	// Run test
 	t.Log("Create cluster incus-os-cluster")
@@ -63,6 +65,9 @@ func factoryResetClusterWithTokenSeed(t *testing.T, tmpDir string) {
 
 	err = os.WriteFile(filepath.Join(tmpDir, "application-post-factory-reset.yaml"), incusOSClusterApplicationConfig, 0o600)
 	require.NoError(t, err)
+
+	// Post factory reset, the servers register with their machine ID again.
+	servers = strings.Join(instanceNames, " --server-names ")
 
 	t.Log("Create cluster incus-os-cluster-after-factory-reset")
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add incus-os-cluster-after-factory-reset https://%s:8443 --server-names %s --services-config %s --application-seed-config %s`, cpuArch, instanceIPs[0], servers, filepath.Join(tmpDir, "services.yaml"), filepath.Join(tmpDir, "application-post-factory-reset.yaml"))

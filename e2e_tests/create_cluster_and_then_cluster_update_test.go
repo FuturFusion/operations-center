@@ -32,9 +32,11 @@ func createClusterAndThenClusterUpdate(t *testing.T, tmpDir string) {
 	err = os.WriteFile(filepath.Join(tmpDir, "application.yaml"), incusOSClusterApplicationConfig, 0o600)
 	require.NoError(t, err)
 
-	instanceIPs, instanceNames := mustGetInstanceIPAndNames(t, []string{"IncusOS01", "IncusOS02", "IncusOS03"})
+	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 
-	servers := strings.Join(instanceNames, " --server-names ")
+	instanceIPs, _ := mustGetInstanceIPAndNames(t, names)
+
+	servers := strings.Join(names, " --server-names ")
 
 	// Run test
 	t.Log("Create cluster")
