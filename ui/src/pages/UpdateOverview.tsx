@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
-import { fetchUpdate } from "api/update";
+import { fetchUpdate, fetchUpdateChangelog } from "api/update";
+import ChangelogView from "components/ChangelogView";
 import { formatDate } from "util/date";
 
 const UpdateOverview = () => {
@@ -13,6 +14,11 @@ const UpdateOverview = () => {
   } = useQuery({
     queryKey: ["updates", uuid],
     queryFn: () => fetchUpdate(uuid || ""),
+  });
+
+  const { data: changelog = null } = useQuery({
+    queryKey: ["updates", uuid, "changelog"],
+    queryFn: () => fetchUpdateChangelog(uuid || ""),
   });
 
   if (isLoading) {
@@ -62,6 +68,12 @@ const UpdateOverview = () => {
       <div className="row">
         <div className="col-2 detail-table-header">Status</div>
         <div className="col-10 detail-table-cell">{update?.update_status}</div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Changelog</div>
+        <div className="col-10 detail-table-cell">
+          <ChangelogView changelog={changelog ?? undefined} />
+        </div>
       </div>
     </div>
   );

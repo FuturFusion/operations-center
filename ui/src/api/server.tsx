@@ -1,5 +1,6 @@
 import { APIResponse } from "types/response";
 import { Server, Settings } from "types/server";
+import { Changelog } from "types/changelog";
 import { processResponse } from "util/response";
 
 export const fetchSettings = (): Promise<Settings> => {
@@ -28,6 +29,15 @@ export const fetchServers = (filter: string): Promise<Server[]> => {
 export const fetchServer = (name: string): Promise<Server> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}`)
+      .then((response) => response.json())
+      .then((data) => resolve(data.metadata))
+      .catch(reject);
+  });
+};
+
+export const fetchServerChangelog = (name: string): Promise<Changelog> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/servers/${name}/changelog`)
       .then((response) => response.json())
       .then((data) => resolve(data.metadata))
       .catch(reject);

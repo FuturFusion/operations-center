@@ -1,3 +1,4 @@
+import { Changelog } from "types/changelog";
 import { Channel } from "types/channel";
 import { APIResponse } from "types/response";
 import { processResponse } from "util/response";
@@ -14,6 +15,15 @@ export const fetchChannels = (): Promise<Channel[]> => {
 export const fetchChannel = (name: string): Promise<Channel> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/channels/${name}`)
+      .then((response) => response.json())
+      .then((data) => resolve(data.metadata))
+      .catch(reject);
+  });
+};
+
+export const fetchChannelChangelog = (name: string): Promise<Changelog[]> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/channels/${name}/changelog`)
       .then((response) => response.json())
       .then((data) => resolve(data.metadata))
       .catch(reject);
