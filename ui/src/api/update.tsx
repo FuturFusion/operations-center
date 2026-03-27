@@ -1,4 +1,5 @@
 import { APIResponse } from "types/response";
+import { Changelog } from "types/changelog";
 import { Update, UpdateFile } from "types/update";
 import { processResponse } from "util/response";
 
@@ -23,6 +24,15 @@ export const fetchUpdate = (uuid: string): Promise<Update> => {
 export const fetchUpdateFiles = (uuid: string): Promise<UpdateFile[]> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/updates/${uuid}/files`)
+      .then(processResponse)
+      .then((data) => resolve(data.metadata))
+      .catch(reject);
+  });
+};
+
+export const fetchUpdateChangelog = (uuid: string): Promise<Changelog> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/updates/${uuid}/changelog`)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
