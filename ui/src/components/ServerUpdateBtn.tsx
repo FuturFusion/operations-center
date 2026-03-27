@@ -1,6 +1,8 @@
 import { FC, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { MdSystemUpdateAlt } from "react-icons/md";
-import { updateSystemServer } from "api/server";
+import { fetchServerChangelog, updateSystemServer } from "api/server";
+import ChangelogView from "components/ChangelogView";
 import LoadingButton from "components/LoadingButton";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
@@ -21,6 +23,23 @@ const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
     cursor: "pointer",
     color: recommended ? "red" : "grey",
   };
+
+  const {
+    data: changelog = null,
+    error,
+    isLoading,
+  } = useQuery({
+    queryKey: ["servers", server.name, "changelog"],
+    queryFn: () => fetchServerChangelog(server.name),
+  });
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>Error while loading changelog</div>;
+  }
 
   const onUpdateServer = () => {
     setOpInProgress(true);
@@ -69,7 +88,15 @@ const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
           </>
         }
       >
-        <p>Are you sure you want to update the server "{server.name}"?</p>
+        <p>
+          Are you sure you want to update the server "{server.name}" from
+          version {changelog?.prior_version} to version{" "}
+          {changelog?.current_version}?
+        </p>
+        <p>
+          Changelog:
+          <ChangelogView changelog={changelog ?? undefined} />
+        </p>
       </ModalWindow>
     </>
   );
