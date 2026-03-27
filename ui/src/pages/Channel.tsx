@@ -2,6 +2,7 @@ import Button from "react-bootstrap/Button";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import { fetchChannels } from "api/channel";
+import ChannelActions from "components/ChannelActions";
 import DataTable from "components/DataTable";
 import { formatDate } from "util/date";
 
@@ -25,7 +26,7 @@ const Channel = () => {
     return <div>Error while loading channels: {error.message}</div>;
   }
 
-  const headers = ["Name", "Description", "Last updated"];
+  const headers = ["Name", "Description", "Last updated", "Actions"];
   const rows = channels.map((item) => {
     return [
       {
@@ -46,6 +47,9 @@ const Channel = () => {
       {
         content: formatDate(item.last_updated),
         sortKey: item.last_updated,
+      },
+      {
+        content: <ChannelActions channel={item} />,
       },
     ];
   });
