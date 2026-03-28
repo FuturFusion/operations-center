@@ -12,6 +12,7 @@ import { ServerTypeString } from "util/server";
 import { BsLink45Deg } from "react-icons/bs";
 
 const Server = () => {
+  const refetchInterval = 10000; // 10 seconds
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
 
@@ -28,6 +29,7 @@ const Server = () => {
     queryFn: () => fetchServers(filter || ""),
     select: (items) => [...items].sort(sortData),
     retry: false,
+    refetchInterval: refetchInterval,
   });
 
   const headers = [
