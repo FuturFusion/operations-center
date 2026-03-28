@@ -116,7 +116,7 @@ const (
 	ClusterUpdateInProgressInactive              ClusterUpdateInProgress = ""
 	ClusterUpdateInProgressApplyUpdate           ClusterUpdateInProgress = "applying updates"
 	ClusterUpdateInProgressApplyUpdateWithReboot ClusterUpdateInProgress = "applying updates with reboot"
-	ClusterUpdateInProgressRollingRestart        ClusterUpdateInProgress = "rostarting servers"
+	ClusterUpdateInProgressRollingRestart        ClusterUpdateInProgress = "restarting servers"
 )
 
 // ClusterUpdateStatus contains the update status of each server of the cluster
