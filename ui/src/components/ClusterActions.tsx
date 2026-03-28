@@ -71,7 +71,8 @@ const ClusterActions: FC<Props> = ({ cluster }) => {
           onBulkAction();
         }}
       />
-      {cluster.update_status?.needs_update?.length > 0 && (
+      {(cluster.update_status?.needs_update?.length > 0 ||
+        cluster.update_status?.needs_reboot?.length > 0) && (
         <ClusterUpdateBtn cluster={cluster} recommended={true} />
       )}
       <PiCertificate
