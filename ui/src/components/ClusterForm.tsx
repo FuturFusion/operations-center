@@ -19,7 +19,11 @@ const ClusterForm: FC<Props> = ({ cluster, onRename, onSubmit }) => {
     channel: cluster?.channel || "",
     description: cluster?.description || "",
     properties: cluster?.properties || {},
-    post_restore_delay: cluster?.config.rolling_restart.post_restore_delay || 0,
+    post_restore_delay:
+      (cluster?.config.rolling_restart.post_restore_delay || 0) /
+      1000 /
+      1000 /
+      60,
     restore_mode: cluster?.config.rolling_restart.restore_mode || "",
   };
 
@@ -96,7 +100,7 @@ const ClusterForm: FC<Props> = ({ cluster, onRename, onSubmit }) => {
             onChange={(val) => formik.setFieldValue("restore_mode", val)}
           />
           <Form.Group className="mb-3" controlId="post_restore_delay">
-            <Form.Label>Post restore delay (miliseconds)</Form.Label>
+            <Form.Label>Post restore delay (minutes)</Form.Label>
             <Form.Control
               type="number"
               name="post_restore_delay"

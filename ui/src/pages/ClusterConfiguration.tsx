@@ -21,7 +21,7 @@ const ClusterConfiguration = () => {
           channel: values.channel,
           config: {
             rolling_restart: {
-              post_restore_delay: values.post_restore_delay,
+              post_restore_delay: values.post_restore_delay * 1000 * 1000 * 60,
               restore_mode: values.restore_mode,
             },
           },
