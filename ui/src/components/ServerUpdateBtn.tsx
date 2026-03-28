@@ -89,12 +89,14 @@ const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
         }
       >
         <p>
-          Are you sure you want to update the server "{server.name}" from
-          version {changelog?.prior_version} to version{" "}
-          {changelog?.current_version}?
+          Are you sure you want to update server "{server.name}"?
+          <br />
+          {changelog?.prior_version}
+          {" -> "}
+          {changelog?.current_version}
         </p>
         <p>
-          Changelog:
+          <h3>Changes</h3>
           <ChangelogView changelog={changelog ?? undefined} />
         </p>
       </ModalWindow>

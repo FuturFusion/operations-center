@@ -40,6 +40,14 @@ const ClusterStatus: FC<Props> = ({ cluster }) => {
           title="One or more servers require a reboot"
         />
       )}
+      {cluster.update_status?.in_progress_status?.status_description != "" && (
+        <>
+          <br />
+          <span style={{ color: "#00000090" }}>
+            {cluster.update_status.in_progress_status.status_description}
+          </span>
+        </>
+      )}
     </div>
   );
 };

@@ -10,6 +10,7 @@ import type { Cluster } from "types/cluster";
 import { BsLink45Deg } from "react-icons/bs";
 
 const Cluster = () => {
+  const refetchInterval = 10000; // 10 seconds
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
@@ -27,6 +28,7 @@ const Cluster = () => {
     queryFn: () => fetchClusters(filter || ""),
     select: (items) => [...items].sort(sortData),
     retry: false,
+    refetchInterval: refetchInterval,
   });
 
   const headers = ["Name", "Description / Properties", "Status", "Actions"];
