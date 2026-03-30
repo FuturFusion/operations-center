@@ -226,5 +226,5 @@ type UpdatesPut struct {
 	// HTTP header based image server authentication to query parameter instead.
 	// If set to true, authentication is done by `token` query parameter on the
 	// first request, if set to false, authentication is done by HTTP header.
-	ImageServerAuthenticationByQueryParam bool `json:"image_server_authentication_by_query_param"`
+	ImageServerAuthenticationByQueryParam bool `json:"image_server_authentication_by_query_param" yaml:"image_server_authentication_by_query_param"`
 }

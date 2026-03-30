@@ -12,12 +12,9 @@ import (
 func TestE2E_WithToken_SetupOnly(t *testing.T) {
 	runE2ETest(
 		t,
-		"token - setup only",
+		"token - basic operations center interactions",
 		setupIncusOSWithToken,
-		func(t *testing.T, tmpDir string) {
-			t.Helper()
-			// Setup only
-		},
+		basicOperationsCenterInteractions,
 	)
 }
 
