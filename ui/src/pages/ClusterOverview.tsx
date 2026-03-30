@@ -77,7 +77,10 @@ const ClusterOverview = () => {
       <div className="row">
         <div className="col-2 detail-table-header">Post restore delay</div>
         <div className="col-10 detail-table-cell">
-          {cluster?.config.rolling_restart.post_restore_delay}
+          {(cluster?.config.rolling_restart.post_restore_delay || 0) /
+            1000 /
+            1000 /
+            60}
         </div>
       </div>
       <div className="row">
