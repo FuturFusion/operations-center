@@ -94,6 +94,9 @@ type ClusterUpdateInProgressStatus struct {
 	// Example: true
 	InProgress ClusterUpdateInProgress `json:"in_progress" yaml:"in_progress"`
 
+	// Error contains the error description, if the cluster update failed permanently.
+	Error string `json:"error" yaml:"error"`
+
 	// StatusDescription contains progress information for the user in plain text
 	// form.
 	// Example: [3/20] Evacuating server xyz
@@ -117,6 +120,7 @@ const (
 	ClusterUpdateInProgressApplyUpdate           ClusterUpdateInProgress = "applying updates"
 	ClusterUpdateInProgressApplyUpdateWithReboot ClusterUpdateInProgress = "applying updates with reboot"
 	ClusterUpdateInProgressRollingRestart        ClusterUpdateInProgress = "restarting servers"
+	ClusterUpdateInProgressError                 ClusterUpdateInProgress = "error"
 )
 
 // ClusterUpdateStatus contains the update status of each server of the cluster
