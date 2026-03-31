@@ -19,6 +19,8 @@ var (
 	ErrNotAuthenticated = errors.New("Not authenticated")
 
 	ErrNotAuthorized = errors.New("Not authorized")
+
+	ErrTerminal = errors.New("Terminal")
 )
 
 type ErrValidation string
