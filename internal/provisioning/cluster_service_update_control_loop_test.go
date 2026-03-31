@@ -251,7 +251,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 
 			return nil
 		},
-		EvacuateFunc: func(ctx context.Context, server provisioning.Server) error {
+		EvacuateFunc: func(ctx context.Context, server provisioning.Server, callback func(err error)) error {
 			go func() {
 				time.Sleep(asyncActionsDelay)
 
@@ -273,6 +273,8 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 						},
 					},
 				}
+
+				callback(nil)
 			}()
 
 			serverVersionDataMu.Lock()
@@ -345,7 +347,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 
 			return nil
 		},
-		RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool) error {
+		RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(err error)) error {
 			go func() {
 				time.Sleep(asyncActionsDelay)
 
@@ -367,6 +369,8 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 						},
 					},
 				}
+
+				callback(nil)
 			}()
 
 			serverVersionDataMu.Lock()
@@ -707,7 +711,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 
 			return nil
 		},
-		EvacuateFunc: func(ctx context.Context, server provisioning.Server) error {
+		EvacuateFunc: func(ctx context.Context, server provisioning.Server, callback func(err error)) error {
 			go func() {
 				time.Sleep(asyncActionsDelay)
 
@@ -729,6 +733,8 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 						},
 					},
 				}
+
+				callback(nil)
 			}()
 
 			serverVersionDataMu.Lock()
@@ -801,7 +807,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 
 			return nil
 		},
-		RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool) error {
+		RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(err error)) error {
 			go func() {
 				time.Sleep(asyncActionsDelay)
 
@@ -823,6 +829,8 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 						},
 					},
 				}
+
+				callback(nil)
 			}()
 
 			serverVersionDataMu.Lock()
@@ -932,7 +940,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "success - executeRollingUpdateNextStep - 1st and 3rd server manually evacuated before",
+			name: "success - executeRollingRestartNextStep - 1st and 3rd server manually evacuated before",
 			repoGetAll: []queue.Item[provisioning.Clusters]{
 				{
 					Value: provisioning.Clusters{
@@ -1022,6 +1030,30 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - cluster has in progress error",
+			repoGetAll: []queue.Item[provisioning.Clusters]{
+				{
+					Value: provisioning.Clusters{
+						{
+							Name: "one",
+							UpdateStatus: api.ClusterUpdateStatus{
+								InProgressStatus: api.ClusterUpdateInProgressStatus{
+									InProgress: api.ClusterUpdateInProgressRollingRestart,
+									Error:      "error",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// cluster GetAllWithFilter
+				{},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name: "error - serverSvc.PollServers",
 			repoGetAll: []queue.Item[provisioning.Clusters]{
 				{
@@ -1100,7 +1132,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			},
 		},
 		{
-			name: "error - executeRollingUpdateNextStep - server in undefined state",
+			name: "error - executeRollingRestartNextStep - server in undefined state",
 			repoGetAll: []queue.Item[provisioning.Clusters]{
 				{
 					Value: provisioning.Clusters{
@@ -1241,7 +1273,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 		},
 
 		{
-			name: "error - executeRollingUpdateNextStep - server in update pending",
+			name: "error - executeRollingRestartNextStep - server in update pending",
 			repoGetAll: []queue.Item[provisioning.Clusters]{
 				{
 					Value: provisioning.Clusters{
@@ -1278,7 +1310,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			},
 		},
 		{
-			name: "error - executeRollingUpdateNextStep - server in updating state",
+			name: "error - executeRollingRestartNextStep - server in updating state",
 			repoGetAll: []queue.Item[provisioning.Clusters]{
 				{
 					Value: provisioning.Clusters{
@@ -1313,7 +1345,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			},
 		},
 		{
-			name: "error - executeRollingUpdateNextStep - server update state not supported",
+			name: "error - executeRollingRestartNextStep - server update state not supported",
 			repoGetAll: []queue.Item[provisioning.Clusters]{
 				{
 					Value: provisioning.Clusters{
@@ -1350,7 +1382,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			},
 		},
 		{
-			name: "error - executeRollingUpdateNextStep - 2nd server undefined state",
+			name: "error - executeRollingRestartNextStep - 2nd server undefined state",
 			repoGetAll: []queue.Item[provisioning.Clusters]{
 				{
 					Value: provisioning.Clusters{
@@ -1395,7 +1427,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			},
 		},
 		{
-			name: "error - executeRollingUpdateNextStep - 2nd server update pending",
+			name: "error - executeRollingRestartNextStep - 2nd server update pending",
 			repoGetAll: []queue.Item[provisioning.Clusters]{
 				{
 					Value: provisioning.Clusters{
@@ -1442,7 +1474,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			},
 		},
 		{
-			name: "error - executeRollingUpdateNextStep - 2nd server updating",
+			name: "error - executeRollingRestartNextStep - 2nd server updating",
 			repoGetAll: []queue.Item[provisioning.Clusters]{
 				{
 					Value: provisioning.Clusters{
@@ -1487,7 +1519,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			},
 		},
 		{
-			name: "error - executeRollingUpdateNextStep - 2nd server evacuated",
+			name: "error - executeRollingRestartNextStep - 2nd server evacuated",
 			repoGetAll: []queue.Item[provisioning.Clusters]{
 				{
 					Value: provisioning.Clusters{
@@ -1543,7 +1575,152 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			},
 		},
 		{
-			name: "error - executeRollingUpdateNextStep - nextAction",
+			name: "error - executeRollingRestartNextStep - nextAction - retryable",
+			repoGetAll: []queue.Item[provisioning.Clusters]{
+				{
+					Value: provisioning.Clusters{
+						{
+							Name: "one",
+							UpdateStatus: api.ClusterUpdateStatus{
+								InProgressStatus: api.ClusterUpdateInProgressStatus{
+									InProgress: api.ClusterUpdateInProgressRollingRestart,
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// cluster GetAllWithFilter
+				{},
+				// GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:          "server",
+							Cluster:       ptr.To("cluster"),
+							ConnectionURL: "https://server:8443",
+							Status:        api.ServerStatusReady,
+							StatusDetail:  api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								NeedsUpdate:   ptr.To(false),
+								NeedsReboot:   ptr.To(true),
+								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								Applications: []api.ApplicationVersionData{
+									{
+										Name: "incus",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcRebootSystemByNameErr: domain.NewRetryableErr(boom.Error),
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - executeRollingRestartNextStep - nextAction - terminal error",
+			repoGetAll: []queue.Item[provisioning.Clusters]{
+				{
+					Value: provisioning.Clusters{
+						{
+							Name: "one",
+							UpdateStatus: api.ClusterUpdateStatus{
+								InProgressStatus: api.ClusterUpdateInProgressStatus{
+									InProgress: api.ClusterUpdateInProgressRollingRestart,
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// cluster GetAllWithFilter
+				{},
+				// GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:          "server",
+							Cluster:       ptr.To("cluster"),
+							ConnectionURL: "https://server:8443",
+							Status:        api.ServerStatusReady,
+							StatusDetail:  api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								NeedsUpdate:   ptr.To(false),
+								NeedsReboot:   ptr.To(true),
+								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								Applications: []api.ApplicationVersionData{
+									{
+										Name: "incus",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcRebootSystemByNameErr: errors.Join(boom.Error, domain.ErrTerminal),
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrTerminal)
+				boom.ErrorIs(tt, err)
+			},
+		},
+		{
+			name: "error - executeRollingRestartNextStep - nextAction - terminal error - failed update",
+			repoGetAll: []queue.Item[provisioning.Clusters]{
+				{
+					Value: provisioning.Clusters{
+						{
+							Name: "one",
+							UpdateStatus: api.ClusterUpdateStatus{
+								InProgressStatus: api.ClusterUpdateInProgressStatus{
+									InProgress: api.ClusterUpdateInProgressRollingRestart,
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// cluster GetAllWithFilter
+				{},
+				// GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:          "server",
+							Cluster:       ptr.To("cluster"),
+							ConnectionURL: "https://server:8443",
+							Status:        api.ServerStatusReady,
+							StatusDetail:  api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								NeedsUpdate:   ptr.To(false),
+								NeedsReboot:   ptr.To(true),
+								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								Applications: []api.ApplicationVersionData{
+									{
+										Name: "incus",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcRebootSystemByNameErr: domain.ErrTerminal,
+			repoUpdateErr:                  boom.Error,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrTerminal)
+				boom.ErrorIs(tt, err)
+			},
+		},
+		{
+			name: "error - executeRollingRestartNextStep - nextAction",
 			repoGetAll: []queue.Item[provisioning.Clusters]{
 				{
 					Value: provisioning.Clusters{
@@ -1589,7 +1766,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - executeRollingUpdateNextStep - update done - repo.GetByName",
+			name: "error - executeRollingRestartNextStep - update done - repo.GetByName",
 			repoGetAll: []queue.Item[provisioning.Clusters]{
 				{
 					Value: provisioning.Clusters{
@@ -1626,7 +1803,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - executeRollingUpdateNextStep - update done - repo.Update",
+			name: "error - executeRollingRestartNextStep - update done - repo.Update",
 			repoGetAll: []queue.Item[provisioning.Clusters]{
 				{
 					Value: provisioning.Clusters{
@@ -1692,7 +1869,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 				RebootSystemByNameFunc: func(ctx context.Context, name string, force bool) error {
 					return tc.serverSvcRebootSystemByNameErr
 				},
-				RestoreSystemByNameFunc: func(ctx context.Context, name string, force bool, restoreModeSkip bool) error {
+				RestoreSystemByNameFunc: func(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) error {
 					return nil
 				},
 			}

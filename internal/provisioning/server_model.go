@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -139,15 +140,17 @@ func (s Server) UpdateState() api.ServerUpdateState {
 }
 
 func (s Server) signalLifecycleEvent(ctx context.Context) {
-	slm := lifecycle.ServerLifecycleMessage{
-		Server:            s.Name,
-		Cluster:           s.Cluster,
-		ServerUpdateState: s.UpdateState(),
-	}
-	err := lifecycle.ServerLifecycleSignal.TryEmit(ctx, slm)
-	if err != nil {
-		slog.ErrorContext(ctx, "Signal lifecycle event failed", logger.Err(err), slog.Any("server_lifecycle_message", slm))
-	}
+	go func() {
+		slm := lifecycle.ServerLifecycleMessage{
+			Server:            s.Name,
+			Cluster:           s.Cluster,
+			ServerUpdateState: s.UpdateState(),
+		}
+		err := lifecycle.ServerLifecycleSignal.TryEmit(ctx, slm)
+		if err != nil {
+			slog.ErrorContext(ctx, "Signal lifecycle event failed", logger.Err(err), slog.Any("server_lifecycle_message", slm))
+		}
+	}()
 }
 
 type Servers []Server
@@ -214,3 +217,96 @@ type ServerSystemUpdate = api.ServerSystemUpdate
 type ServerSystemKernel = api.ServerSystemKernel
 
 type ServerSystemLogging = api.ServerSystemLogging
+
+type operation int
+
+const (
+	operationNone operation = iota
+	operationEvacuation
+	operationRestore
+)
+
+type volatileServerStates struct {
+	mu      sync.Mutex
+	servers map[string]volatileServerState
+}
+
+type volatileServerState struct {
+	inFlightOperation   operation
+	operationRetryCount int
+	operationLastErr    error
+}
+
+// start sets the volatile server state for the given server to in flight
+// with the given operation.
+func (v *volatileServerStates) start(serverName string, op operation) (int, bool) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	s, ok := v.servers[serverName]
+	if !ok {
+		s = volatileServerState{}
+	}
+
+	if s.inFlightOperation != operationNone {
+		return 0, false
+	}
+
+	s.inFlightOperation = op
+	s.operationRetryCount++
+	s.operationLastErr = nil
+
+	v.servers[serverName] = s
+
+	return s.operationRetryCount, true
+}
+
+// done sets the volatile server state for the given server and marks the
+// previously in flight operation as completed.
+func (v *volatileServerStates) done(serverName string, op operation, err error) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	s, ok := v.servers[serverName]
+	if !ok {
+		s = volatileServerState{}
+	}
+
+	if s.inFlightOperation != op {
+		return
+	}
+
+	s.inFlightOperation = operationNone
+	s.operationLastErr = err
+
+	v.servers[serverName] = s
+}
+
+// reset resets all operation related state.
+func (v *volatileServerStates) reset(serverName string, op operation) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	s, ok := v.servers[serverName]
+	if !ok {
+		s = volatileServerState{}
+	}
+
+	if s.inFlightOperation != op {
+		return
+	}
+
+	s.inFlightOperation = operationNone
+	s.operationRetryCount = 0
+	s.operationLastErr = nil
+
+	v.servers[serverName] = s
+}
+
+// lastErr returns the last recorded error for a given server operation.
+func (v *volatileServerStates) lastErr(serverName string) error {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	return v.servers[serverName].operationLastErr
+}

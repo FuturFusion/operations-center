@@ -46,6 +46,8 @@ type serverService struct {
 	mu                sync.Mutex
 	serverCertificate tls.Certificate
 
+	volatileServerStates *volatileServerStates
+
 	now                    func() time.Time
 	initialConnectionDelay time.Duration
 
@@ -101,6 +103,11 @@ func NewServerService(
 		httpClient: &http.Client{},
 
 		serverCertificate: serverCertificate,
+
+		volatileServerStates: &volatileServerStates{
+			mu:      sync.Mutex{},
+			servers: map[string]volatileServerState{},
+		},
 
 		now:                    time.Now,
 		initialConnectionDelay: 1 * time.Second,
@@ -885,7 +892,33 @@ func (s *serverService) PollServers(ctx context.Context, serverFilter ServerFilt
 	return errors.Join(errs...)
 }
 
-func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, force bool) error {
+func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool) error {
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	callback := func(err error) {
+		s.volatileServerStates.reset(name, operationEvacuation)
+	}
+
+	if clusterUpdate {
+		reverter.Add(func() {
+			s.volatileServerStates.done(name, operationEvacuation, nil)
+		})
+
+		attempts, ok := s.volatileServerStates.start(name, operationEvacuation)
+		if !ok {
+			return domain.NewRetryableErr(fmt.Errorf("server operation in flight"))
+		}
+
+		if attempts > 3 {
+			return fmt.Errorf("Failed to evacuate system in 3 attempts, lastErr: %v: %w", s.volatileServerStates.lastErr(name), domain.ErrTerminal)
+		}
+
+		callback = func(err error) {
+			s.volatileServerStates.done(name, operationEvacuation, err)
+		}
+	}
+
 	var server *Server
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -899,7 +932,7 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, f
 			return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
 		}
 
-		if !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
+		if !clusterUpdate && !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
 			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
 
@@ -915,7 +948,7 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, f
 			return fmt.Errorf("Failed put server %q in evacuating: %w", name, err)
 		}
 
-		err = s.client.Evacuate(ctx, *server)
+		err = s.client.Evacuate(ctx, *server, callback)
 		if err != nil {
 			return fmt.Errorf("Failed to evacuate server %q by name: %w", name, err)
 		}
@@ -925,6 +958,8 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, f
 	if err != nil {
 		return err
 	}
+
+	reverter.Success()
 
 	server.signalLifecycleEvent(ctx)
 
@@ -1009,7 +1044,33 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 	return nil
 }
 
-func (s *serverService) RestoreSystemByName(ctx context.Context, name string, force bool, restoreModeSkip bool) error {
+func (s *serverService) RestoreSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) error {
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	callback := func(err error) {
+		s.volatileServerStates.reset(name, operationRestore)
+	}
+
+	if clusterUpdate {
+		reverter.Add(func() {
+			s.volatileServerStates.done(name, operationRestore, nil)
+		})
+
+		attempts, ok := s.volatileServerStates.start(name, operationRestore)
+		if !ok {
+			return domain.NewRetryableErr(fmt.Errorf("server operation in flight"))
+		}
+
+		if attempts > 3 {
+			return fmt.Errorf("Failed to restore system in 3 attempts: %w", domain.ErrTerminal)
+		}
+
+		callback = func(err error) {
+			s.volatileServerStates.done(name, operationRestore, err)
+		}
+	}
+
 	var server *Server
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
@@ -1024,7 +1085,7 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, fo
 			return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
 		}
 
-		if !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
+		if !clusterUpdate && !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
 			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
 
@@ -1040,7 +1101,7 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, fo
 			return fmt.Errorf("Failed put server %q in restoring: %w", name, err)
 		}
 
-		err = s.client.Restore(ctx, *server, restoreModeSkip)
+		err = s.client.Restore(ctx, *server, restoreModeSkip, callback)
 		if err != nil {
 			return fmt.Errorf("Failed to restore server %q by name: %w", name, err)
 		}
@@ -1050,6 +1111,8 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, fo
 	if err != nil {
 		return err
 	}
+
+	reverter.Success()
 
 	server.signalLifecycleEvent(ctx)
 
@@ -1202,9 +1265,11 @@ func (s *serverService) ResyncByName(ctx context.Context, _ string, event domain
 
 	switch event.Operation {
 	case domain.LifecycleOperationEvacuate:
+		s.volatileServerStates.reset(server.Name, operationEvacuation)
 		err = s.handleMaintenanceUpdate(ctx, server, api.InMaintenanceEvacuated)
 
 	case domain.LifecycleOperationRestore:
+		s.volatileServerStates.reset(server.Name, operationRestore)
 		err = s.handleMaintenanceUpdate(ctx, server, api.NotInMaintenance)
 
 	case domain.LifecycleOperationUpdate:
