@@ -25,7 +25,7 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			AddApplicationFunc: func(ctx context.Context, server provisioning.Server, application string) error {
 //				panic("mock out the AddApplication method")
 //			},
-//			EvacuateFunc: func(ctx context.Context, server provisioning.Server) error {
+//			EvacuateFunc: func(ctx context.Context, server provisioning.Server, callback func(err error)) error {
 //				panic("mock out the Evacuate method")
 //			},
 //			GetNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemNetwork, error) {
@@ -67,7 +67,7 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			RebootFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the Reboot method")
 //			},
-//			RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool) error {
+//			RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(err error)) error {
 //				panic("mock out the Restore method")
 //			},
 //			UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
@@ -102,7 +102,7 @@ type ServerClientPortMock struct {
 	AddApplicationFunc func(ctx context.Context, server provisioning.Server, application string) error
 
 	// EvacuateFunc mocks the Evacuate method.
-	EvacuateFunc func(ctx context.Context, server provisioning.Server) error
+	EvacuateFunc func(ctx context.Context, server provisioning.Server, callback func(err error)) error
 
 	// GetNetworkConfigFunc mocks the GetNetworkConfig method.
 	GetNetworkConfigFunc func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemNetwork, error)
@@ -144,7 +144,7 @@ type ServerClientPortMock struct {
 	RebootFunc func(ctx context.Context, server provisioning.Server) error
 
 	// RestoreFunc mocks the Restore method.
-	RestoreFunc func(ctx context.Context, server provisioning.Server, restoreModeSkip bool) error
+	RestoreFunc func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(err error)) error
 
 	// UpdateNetworkConfigFunc mocks the UpdateNetworkConfig method.
 	UpdateNetworkConfigFunc func(ctx context.Context, server provisioning.Server) error
@@ -184,6 +184,8 @@ type ServerClientPortMock struct {
 			Ctx context.Context
 			// Server is the server argument value.
 			Server provisioning.Server
+			// Callback is the callback argument value.
+			Callback func(err error)
 		}
 		// GetNetworkConfig holds details about calls to the GetNetworkConfig method.
 		GetNetworkConfig []struct {
@@ -284,6 +286,8 @@ type ServerClientPortMock struct {
 			Server provisioning.Server
 			// RestoreModeSkip is the restoreModeSkip argument value.
 			RestoreModeSkip bool
+			// Callback is the callback argument value.
+			Callback func(err error)
 		}
 		// UpdateNetworkConfig holds details about calls to the UpdateNetworkConfig method.
 		UpdateNetworkConfig []struct {
@@ -409,21 +413,23 @@ func (mock *ServerClientPortMock) AddApplicationCalls() []struct {
 }
 
 // Evacuate calls EvacuateFunc.
-func (mock *ServerClientPortMock) Evacuate(ctx context.Context, server provisioning.Server) error {
+func (mock *ServerClientPortMock) Evacuate(ctx context.Context, server provisioning.Server, callback func(err error)) error {
 	if mock.EvacuateFunc == nil {
 		panic("ServerClientPortMock.EvacuateFunc: method is nil but ServerClientPort.Evacuate was just called")
 	}
 	callInfo := struct {
-		Ctx    context.Context
-		Server provisioning.Server
+		Ctx      context.Context
+		Server   provisioning.Server
+		Callback func(err error)
 	}{
-		Ctx:    ctx,
-		Server: server,
+		Ctx:      ctx,
+		Server:   server,
+		Callback: callback,
 	}
 	mock.lockEvacuate.Lock()
 	mock.calls.Evacuate = append(mock.calls.Evacuate, callInfo)
 	mock.lockEvacuate.Unlock()
-	return mock.EvacuateFunc(ctx, server)
+	return mock.EvacuateFunc(ctx, server, callback)
 }
 
 // EvacuateCalls gets all the calls that were made to Evacuate.
@@ -431,12 +437,14 @@ func (mock *ServerClientPortMock) Evacuate(ctx context.Context, server provision
 //
 //	len(mockedServerClientPort.EvacuateCalls())
 func (mock *ServerClientPortMock) EvacuateCalls() []struct {
-	Ctx    context.Context
-	Server provisioning.Server
+	Ctx      context.Context
+	Server   provisioning.Server
+	Callback func(err error)
 } {
 	var calls []struct {
-		Ctx    context.Context
-		Server provisioning.Server
+		Ctx      context.Context
+		Server   provisioning.Server
+		Callback func(err error)
 	}
 	mock.lockEvacuate.RLock()
 	calls = mock.calls.Evacuate
@@ -913,7 +921,7 @@ func (mock *ServerClientPortMock) RebootCalls() []struct {
 }
 
 // Restore calls RestoreFunc.
-func (mock *ServerClientPortMock) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool) error {
+func (mock *ServerClientPortMock) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(err error)) error {
 	if mock.RestoreFunc == nil {
 		panic("ServerClientPortMock.RestoreFunc: method is nil but ServerClientPort.Restore was just called")
 	}
@@ -921,15 +929,17 @@ func (mock *ServerClientPortMock) Restore(ctx context.Context, server provisioni
 		Ctx             context.Context
 		Server          provisioning.Server
 		RestoreModeSkip bool
+		Callback        func(err error)
 	}{
 		Ctx:             ctx,
 		Server:          server,
 		RestoreModeSkip: restoreModeSkip,
+		Callback:        callback,
 	}
 	mock.lockRestore.Lock()
 	mock.calls.Restore = append(mock.calls.Restore, callInfo)
 	mock.lockRestore.Unlock()
-	return mock.RestoreFunc(ctx, server, restoreModeSkip)
+	return mock.RestoreFunc(ctx, server, restoreModeSkip, callback)
 }
 
 // RestoreCalls gets all the calls that were made to Restore.
@@ -940,11 +950,13 @@ func (mock *ServerClientPortMock) RestoreCalls() []struct {
 	Ctx             context.Context
 	Server          provisioning.Server
 	RestoreModeSkip bool
+	Callback        func(err error)
 } {
 	var calls []struct {
 		Ctx             context.Context
 		Server          provisioning.Server
 		RestoreModeSkip bool
+		Callback        func(err error)
 	}
 	mock.lockRestore.RLock()
 	calls = mock.calls.Restore

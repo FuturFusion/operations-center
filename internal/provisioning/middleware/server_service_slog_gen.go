@@ -148,12 +148,13 @@ func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (
 }
 
 // EvacuateSystemByName implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) EvacuateSystemByName(ctx context.Context, name string, force bool) (err error) {
+func (_d ServerServiceWithSlog) EvacuateSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
+			slog.Bool("clusterUpdate", clusterUpdate),
 			slog.Bool("force", force),
 		)
 	}
@@ -179,7 +180,7 @@ func (_d ServerServiceWithSlog) EvacuateSystemByName(ctx context.Context, name s
 			log.DebugContext(ctx, "<= method EvacuateSystemByName finished")
 		}
 	}()
-	return _d._base.EvacuateSystemByName(ctx, name, force)
+	return _d._base.EvacuateSystemByName(ctx, name, clusterUpdate, force)
 }
 
 // GetAll implements provisioning.ServerService.
@@ -706,12 +707,13 @@ func (_d ServerServiceWithSlog) Rename(ctx context.Context, oldName string, newN
 }
 
 // RestoreSystemByName implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) RestoreSystemByName(ctx context.Context, name string, force bool, restoreModeSkip bool) (err error) {
+func (_d ServerServiceWithSlog) RestoreSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
+			slog.Bool("clusterUpdate", clusterUpdate),
 			slog.Bool("force", force),
 			slog.Bool("restoreModeSkip", restoreModeSkip),
 		)
@@ -738,7 +740,7 @@ func (_d ServerServiceWithSlog) RestoreSystemByName(ctx context.Context, name st
 			log.DebugContext(ctx, "<= method RestoreSystemByName finished")
 		}
 	}()
-	return _d._base.RestoreSystemByName(ctx, name, force, restoreModeSkip)
+	return _d._base.RestoreSystemByName(ctx, name, clusterUpdate, force, restoreModeSkip)
 }
 
 // ResyncByName implements provisioning.ServerService.
