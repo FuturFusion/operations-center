@@ -13,8 +13,8 @@ type ExprApiClusterConfig struct {
 }
 
 type ExprApiClusterConfigRollingRestart struct {
-	PostRestoreDelay time.Duration `json:"post_restore_delay" yaml:"post_restore_delay" expr:"post_restore_delay"`
-	RestoreMode      string        `json:"restore_mode" yaml:"restore_mode" expr:"restore_mode"`
+	PostRestoreDelay string `json:"post_restore_delay" yaml:"post_restore_delay" expr:"post_restore_delay"`
+	RestoreMode      string `json:"restore_mode" yaml:"restore_mode" expr:"restore_mode"`
 }
 
 type ExprApiClusterUpdateInProgressStatus struct {

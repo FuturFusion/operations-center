@@ -59,7 +59,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 		Channel:       "stable",
 		Config: api.ClusterConfig{
 			RollingRestart: api.ClusterConfigRollingRestart{
-				PostRestoreDelay: 4 * asyncActionsDelay,
+				PostRestoreDelay: (4 * asyncActionsDelay).String(),
 			},
 		},
 	}

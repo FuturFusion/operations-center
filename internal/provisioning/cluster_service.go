@@ -1279,7 +1279,8 @@ func (s clusterService) executeRollingRestartNextStep(ctx context.Context, clust
 				}
 
 				// Check if the post restore delay has passed.
-				if cluster.UpdateStatus.InProgressStatus.LastUpdated.Add(cluster.Config.RollingRestart.PostRestoreDelay).Before(s.now()) {
+				postRestoreDelay, _ := time.ParseDuration(cluster.Config.RollingRestart.PostRestoreDelay) // Duration is validated on save, we ignore the error here.
+				if cluster.UpdateStatus.InProgressStatus.LastUpdated.Add(postRestoreDelay).Before(s.now()) {
 					restoreModeSkip := cluster.Config.RollingRestart.RestoreMode == "skip"
 					nextAction = func(ctx context.Context) error {
 						return s.serverSvc.RestoreSystemByName(ctx, server.Name, true, false, restoreModeSkip)
