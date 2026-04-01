@@ -1357,6 +1357,7 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 	var osData api.OSData
 	var versionData api.ServerVersionData
 	var serverType api.ServerType
+	var serverConnectionURL string
 	if updateServerConfiguration {
 		hardwareData, err = s.client.GetResources(ctx, server)
 		if err != nil {
@@ -1379,6 +1380,8 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 				slog.String("expected_channel", server.VersionData.UpdateChannel),
 			)
 		}
+
+		serverConnectionURL = determineManagementRoleURL(server)
 
 		// For now, we ignore the error and we are fine to persist type "unknown",
 		// if we are not able to determine the server type.
@@ -1414,6 +1417,7 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 			server.OSData = osData
 			server.VersionData = versionData
 			server.Type = serverType
+			server.ConnectionURL = serverConnectionURL
 
 			// If an update has been triggered, check if an update is still needed.
 			// If not, updating is done.

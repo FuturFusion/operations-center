@@ -958,6 +958,7 @@ func (c client) JoinCluster(ctx context.Context, server provisioning.Server, joi
 	}
 
 	// Ignore error, connection URL has been parsed by incus client already.
+	// FIXME: this needs to be decoupled!!!
 	serverAddressURL, _ := url.Parse(server.ConnectionURL)
 	clusterAddressURL, _ := url.Parse(endpoint.GetConnectionURL())
 

@@ -216,9 +216,6 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 			}
 		}
 
-		// Select first server as the bootstrap server.
-		bootstrapServer = servers[0]
-
 		// Create Cluster record in pending state in the repo.
 		newCluster.Status = api.ClusterStatusPending
 
@@ -253,7 +250,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 	}
 
 	// Push pre-clustering configuration to the servers.
-	for _, server := range servers {
+	for i, server := range servers {
 		for service, configAny := range newCluster.ServicesConfig {
 			cfg, ok := configAny.(map[string]any)
 			if !ok {
@@ -285,16 +282,19 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 			}
 		}
 
-		// Ignore error, connection URL has been parsed by incus client already.
-		serverAddressURL, _ := url.Parse(server.ConnectionURL)
-
 		err = s.client.SetServerConfig(ctx, server, map[string]string{
-			"cluster.https_address": serverAddressURL.Host,
+			"cluster.https_address": determineClusterRoleAddress(server),
+			"core.https_address":    determineManagementRoleAddress(server),
 		})
 		if err != nil {
-			return newCluster, fmt.Errorf("Failed to set cluster.https_address on %q: %w", server.Name, err)
+			return newCluster, fmt.Errorf("Failed to set cluster.https_address and core.https_address on %q: %w", server.Name, err)
 		}
+
+		servers[i].ConnectionURL = determineManagementRoleURL(server)
 	}
+
+	// Select first server as the bootstrap server.
+	bootstrapServer = servers[0]
 
 	// Bootstrap cluster on bootstrap server (first server of the provided server list).
 	clusterCertificate, err := s.client.EnableCluster(ctx, bootstrapServer)
@@ -302,16 +302,14 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 		return newCluster, fmt.Errorf("Failed to enable clustering on bootstrap server %q: %w", bootstrapServer.Name, err)
 	}
 
-	clusterConnectionURL := determineClusterConnectionURL(bootstrapServer)
-
 	// From now on, use the cluster certificate to connect to the cluster instead
 	// of the certificate of the bootstrap server.
 	clusterEndpoint := ClusterEndpoint{
 		Server{
-			ConnectionURL:        clusterConnectionURL,
+			ConnectionURL:        determineManagementRoleURL(bootstrapServer),
 			Cluster:              &newCluster.Name,
 			ClusterCertificate:   &clusterCertificate,
-			ClusterConnectionURL: &clusterConnectionURL,
+			ClusterConnectionURL: &newCluster.ConnectionURL,
 		},
 	}
 
@@ -345,7 +343,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 
 	// Send the join tokens to the remaining servers to join the cluster.
 	for i, server := range servers[1:] {
-		err := s.client.JoinCluster(ctx, server, joinTokens[i], clusterEndpoint)
+		err := s.client.JoinCluster(ctx, server, joinTokens[i], determineClusterRoleAddress(server), clusterEndpoint)
 		if err != nil {
 			return newCluster, fmt.Errorf("Failed to join cluster on %q: %w", server.Name, err)
 		}
@@ -518,13 +516,35 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 	return newCluster, nil
 }
 
-func determineClusterConnectionURL(server Server) string {
-	ip := server.OSData.Network.State.GetInterfaceAddressByRole(incusosapi.SystemNetworkInterfaceRoleCluster)
+func determineManagementRoleAddress(server Server) string {
+	ip := server.OSData.Network.State.GetInterfaceAddressByRole(incusosapi.SystemNetworkInterfaceRoleManagement)
+	if ip == nil {
+		return ":8443"
+	}
+
+	return net.JoinHostPort(ip.String(), "8443")
+}
+
+func determineManagementRoleURL(server Server) string {
+	ip := server.OSData.Network.State.GetInterfaceAddressByRole(incusosapi.SystemNetworkInterfaceRoleManagement)
 	if ip == nil {
 		return server.ConnectionURL
 	}
 
 	return "https://" + net.JoinHostPort(ip.String(), "8443")
+}
+
+func determineClusterRoleAddress(server Server) string {
+	ip := server.OSData.Network.State.GetInterfaceAddressByRole(incusosapi.SystemNetworkInterfaceRoleCluster)
+	if ip == nil {
+		ip = server.OSData.Network.State.GetInterfaceAddressByRole(incusosapi.SystemNetworkInterfaceRoleManagement)
+		if ip == nil {
+			serverConnectionURL, _ := url.Parse(server.ConnectionURL)
+			return serverConnectionURL.Host
+		}
+	}
+
+	return net.JoinHostPort(ip.String(), "8443")
 }
 
 func (s clusterService) GetAll(ctx context.Context) (Clusters, error) {

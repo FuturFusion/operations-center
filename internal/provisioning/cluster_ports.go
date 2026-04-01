@@ -88,7 +88,7 @@ type ClusterClientPort interface {
 	EnableCluster(ctx context.Context, server Server) (clusterCertificate string, _ error)
 	GetClusterNodeNames(ctx context.Context, endpoint Endpoint) (nodeNames []string, _ error)
 	GetClusterJoinToken(ctx context.Context, endpoint Endpoint, memberName string) (joinToken string, _ error)
-	JoinCluster(ctx context.Context, server Server, joinToken string, endpoint Endpoint) error
+	JoinCluster(ctx context.Context, server Server, joinToken string, serverAddressOfClusterRole string, endpoint Endpoint) error
 	GetOSData(ctx context.Context, endpoint Endpoint) (api.OSData, error)
 	UpdateClusterCertificate(ctx context.Context, endpoint Endpoint, certificatePEM string, keyPEM string) error
 	SystemFactoryReset(ctx context.Context, endpoint Endpoint, allowTPMResetFailure bool, seeds TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error
