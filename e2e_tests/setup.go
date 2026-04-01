@@ -39,7 +39,7 @@ func setupOperationsCenter(t *testing.T, tmpDir string) {
 
 	mustWaitExpectedLog(t, "OperationsCenter", "incus-osd", "System is ready")
 
-	replaceOperationsCenterExecutable(t)
+	replaceOperationsCenterExecutable(t, tmpDir)
 
 	setupLocalOperationsCenterConfig(t)
 
@@ -303,7 +303,7 @@ func removeBootMedia(t *testing.T) {
 	}
 }
 
-func replaceOperationsCenterExecutable(t *testing.T) {
+func replaceOperationsCenterExecutable(t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -313,6 +313,21 @@ func replaceOperationsCenterExecutable(t *testing.T) {
 	mustRun(t, `incus exec OperationsCenter -- bash -c "systemctl stop operations-center || true"`)
 	mustRun(t, `incus exec OperationsCenter -- bash -c "umount -l /usr/local/bin/operations-centerd || true"`)
 	mustRun(t, `incus file push ../bin/operations-centerd OperationsCenter/root/dev/operations-centerd`)
+	if testing.CoverMode() != "" {
+		err := os.WriteFile(filepath.Join(tmpDir, "environment"), []byte(`GOCOVERDIR=/tmp/coverdata
+`), 0o700)
+		require.NoError(t, err)
+
+		mustRun(t, `incus file push %s OperationsCenter/etc/environment`, filepath.Join(tmpDir, "environment"))
+		mustRun(t, `incus exec OperationsCenter -- bash -c "rm -rf /tmp/coverdata; mkdir -p /tmp/coverdata"`)
+
+		t.Cleanup(func() {
+			// Restart operations-centerd to flush coverage data.
+			mustRunWithContext(context.Background(), t, `incus exec OperationsCenter -- systemctl restart operations-center`)
+			mustRunWithContext(context.Background(), t, `incus exec OperationsCenter -- tar -czf - -C /tmp/coverdata . | tar -xzf - -C %s`, ocE2EGoCoverDir)
+		})
+	}
+
 	mustRun(t, `incus exec OperationsCenter -- bash -c "mount -o bind /root/dev/operations-centerd /usr/local/bin/operations-centerd && systemctl start operations-center"`)
 }
 
@@ -362,7 +377,7 @@ func createProvisioningToken(t *testing.T) string {
 		stop := timeTrack(t)
 		defer stop()
 
-		mustRun(t, `../bin/operations-center.linux.%s provisioning token add --description "test" --uses 50`, cpuArch)
+		mustRun(t, `../bin/operations-center.linux.%s provisioning token add --description "test" --uses 100`, cpuArch)
 		tokenResp := mustRun(t, `../bin/operations-center.linux.%s provisioning token list -f json | jq -r '[ .[] | select(.channel == "stable" and .uses_remaining > 20) ] | first | .uuid'`, cpuArch)
 		token = tokenResp.OutputTrimmed()
 	}

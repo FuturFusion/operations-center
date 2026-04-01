@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	asyncActionsDelay   = 50 * time.Millisecond
+	asyncActionsDelay   = 100 * time.Millisecond
 	controlLoopInterval = 10 * time.Millisecond
 )
 
@@ -59,7 +59,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 		Channel:       "stable",
 		Config: api.ClusterConfig{
 			RollingRestart: api.ClusterConfigRollingRestart{
-				PostRestoreDelay: 200 * time.Millisecond,
+				PostRestoreDelay: 4 * asyncActionsDelay,
 			},
 		},
 	}

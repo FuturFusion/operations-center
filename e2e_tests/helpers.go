@@ -200,6 +200,14 @@ func runWithContext(ctx context.Context, t *testing.T, command string, args ...a
 	}
 
 	cmd := exec.CommandContext(ctx, name, shellArgs...)
+
+	e2eGoCoverDir := os.Getenv("OPERATIONS_CENTER_E2E_GOCOVERDIR")
+	if e2eGoCoverDir != "" {
+		env := os.Environ()
+		env = append(env, "GOCOVERDIR="+e2eGoCoverDir)
+		cmd.Env = env
+	}
+
 	cmd.Stdout = resp.output
 	cmd.Stderr = resp.output
 

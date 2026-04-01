@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"testing"
 
@@ -40,6 +41,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 
 	tests := []struct {
 		name                       string
+		skipIfRoot                 bool
 		setupEnv                   func(t *testing.T, targetDir string)
 		certPEM                    string
 		keyPEM                     string
@@ -176,7 +178,8 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			wantServerCertificateUpdateEmit: []queue.Item[string]{},
 		},
 		{
-			name: "error - unable to read certificate file",
+			name:       "error - unable to write certificate file",
+			skipIfRoot: true,
 			setupEnv: func(t *testing.T, targetDir string) {
 				t.Helper()
 				err := os.Chmod(filepath.Join(targetDir, "server.crt"), 0o400)
@@ -191,7 +194,8 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			wantServerCertificateUpdateEmit: []queue.Item[string]{},
 		},
 		{
-			name: "error - unable to read certificate key file",
+			name:       "error - unable to write certificate key file",
+			skipIfRoot: true,
 			setupEnv: func(t *testing.T, targetDir string) {
 				t.Helper()
 				err := os.Chmod(filepath.Join(targetDir, "server.key"), 0o400)
@@ -452,6 +456,10 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			if isRoot(t) {
+				t.Skip("Test is skipped, if executed as root user")
+			}
+
 			// Setup
 			tmpDir := t.TempDir()
 
@@ -509,6 +517,15 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			require.Empty(t, tc.wantServerCertificateUpdateEmit)
 		})
 	}
+}
+
+func isRoot(t *testing.T) bool {
+	t.Helper()
+
+	currentUser, err := user.Current()
+	require.NoError(t, err)
+
+	return currentUser.Username == "root"
 }
 
 func TestSystemService_TriggerCertificateRenew(t *testing.T) {

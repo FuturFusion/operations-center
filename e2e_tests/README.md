@@ -81,14 +81,35 @@ Enroll the MOK key.
 #### Stage 2: Install required packages and get Operations Center repository
 
 ```shell
-apt install -y curl jq golang git make build-essential systemd-timesyncd unzip
+apt install -y curl jq golang git make build-essential systemd-timesyncd unzip bsdextrautils
 systemctl enable systemd-timesyncd
 systemctl restart systemd-timesyncd
+
+# Install Incus
 curl https://pkgs.zabbly.com/get/incus-stable | sudo sh
+
+# Install OpenTofu
 curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
 chmod +x install-opentofu.sh
 ./install-opentofu.sh --install-method deb
 rm -f install-opentofu.sh
+
+# Add Docker's official GPG key:
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+chmod a+r /etc/apt/keyrings/docker.asc
+
+# Add the repository to Apt sources:
+tee /etc/apt/sources.list.d/docker.sources <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/debian
+Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
+Components: stable
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+apt update
+apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
 Initialize Incus with ZFS storage backend using the ZFS block device:
