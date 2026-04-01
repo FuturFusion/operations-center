@@ -19,6 +19,7 @@ const TokenForm: FC<Props> = ({ token, onSubmit }) => {
 
   let formikInitialValues: TokenFormValues = {
     description: "",
+    channel: "",
     expire_at: in30Days.current?.toISOString(),
     uses_remaining: 1,
   };
@@ -26,6 +27,7 @@ const TokenForm: FC<Props> = ({ token, onSubmit }) => {
   if (token) {
     formikInitialValues = {
       description: token.description,
+      channel: token.channel,
       expire_at: token.expire_at,
       uses_remaining: token.uses_remaining,
     };

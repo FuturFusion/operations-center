@@ -16,6 +16,7 @@ type YamlValue =
 
 export interface Token {
   uuid: string;
+  channel: string;
   description: string;
   expire_at: string;
   uses_remaining: number;
@@ -23,6 +24,7 @@ export interface Token {
 
 export interface TokenFormValues {
   description: string;
+  channel: string;
   expire_at: string;
   uses_remaining: number;
 }
