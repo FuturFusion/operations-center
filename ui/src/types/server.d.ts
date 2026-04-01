@@ -6,7 +6,13 @@ export interface Settings {
   server_version: string;
 }
 
+export interface ApplicationVersionData {
+  name: string;
+  version: string;
+}
+
 export interface ServerVersionData {
+  applications: ApplicationVersionData[];
   needs_reboot: boolean;
   needs_update: boolean;
   in_maintenance: number;
