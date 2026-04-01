@@ -1297,7 +1297,14 @@ func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *Ser
 		}
 	}
 
-	return s.repo.Update(ctx, *server)
+	err := s.repo.Update(ctx, *server)
+	if err != nil {
+		return fmt.Errorf("Failed to update servers in maintenance state: %w", err)
+	}
+
+	server.signalLifecycleEvent(ctx)
+
+	return nil
 }
 
 func (s *serverService) GetChangelogByName(ctx context.Context, name string) (api.UpdateChangelog, error) {

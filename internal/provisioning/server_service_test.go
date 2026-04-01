@@ -3812,6 +3812,26 @@ func TestServerService_ResyncByName(t *testing.T) {
 			assertErr:    boom.ErrorIs,
 			wantLastSeen: fixedDate,
 		},
+		{
+			name:                  "error - evacuate operation - repo.Update",
+			resourceTypeArg:       domain.ResourceTypeServer,
+			lifecycleOperationArg: domain.LifecycleOperationEvacuate,
+			repoGetByName: provisioning.Server{
+				Name:   "incus",
+				Type:   api.ServerTypeIncus,
+				Status: api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: string(images.UpdateFileComponentIncus),
+						},
+					},
+				},
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
 	}
 
 	for _, tc := range tests {
