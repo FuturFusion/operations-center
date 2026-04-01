@@ -601,6 +601,19 @@ definitions:
                 x-go-name: StatusDescription
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ClusterUpdatePost:
+        properties:
+            reboot:
+                description: |-
+                    Reboot indicates ifif after the update a rolling reboot of the servers
+                    should be triggered or not. If reboot is set to true, the servers are
+                    rebooted, otherwise only the updates are applied without reboot (OS updates
+                    will require a reboot at a later stage).
+                type: boolean
+                x-go-name: Reboot
+        title: ClusterUpdatePost represents a cluster update request.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     ClusterUpdateStatus:
         description: |-
             ClusterUpdateStatus contains the update status of each server of the cluster
@@ -2206,6 +2219,27 @@ definitions:
                 x-go-name: TrustedTLSClientCertFingerprints
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    SeedApplications:
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    SeedIncus:
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    SeedInstall:
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    SeedMigrationManager:
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    SeedNetwork:
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    SeedOperationsCenter:
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    SeedUpdate:
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     Server:
         properties:
             certificate:
@@ -2598,6 +2632,12 @@ definitions:
                     $ref: '#/definitions/SystemNetworkBond'
                 type: array
                 x-go-name: Bonds
+            confirmation_timeout:
+                description: |-
+                    If defined, automatically roll back the new network changes after the
+                    specified timeout has elapsed unless those changes are confirmed before then.
+                type: string
+                x-go-name: ConfirmationTimeout
             dns:
                 $ref: '#/definitions/SystemNetworkDNS'
             interfaces:
@@ -3612,40 +3652,19 @@ definitions:
     TokenSeedConfigs:
         properties:
             applications:
-                additionalProperties: {}
-                description: Applications represents the applications configuration (applications.yaml) to be included in the pre-seeded image.
-                type: object
-                x-go-name: Applications
+                $ref: '#/definitions/SeedApplications'
             incus:
-                additionalProperties: {}
-                description: Incus represents the incus preseed configuration (incus.yaml) fo be included in the pre-seeded image.
-                type: object
-                x-go-name: Incus
+                $ref: '#/definitions/SeedIncus'
             install:
-                additionalProperties: {}
-                description: Install represents the install configuration (install.yaml) to be included in the pre-seeded image.
-                type: object
-                x-go-name: Install
+                $ref: '#/definitions/SeedInstall'
             migration_manager:
-                additionalProperties: {}
-                description: MigrationManager represents the seed configuration for migration manager (migration-manager.yaml) to be included in the pre-seeded image.
-                type: object
-                x-go-name: MigrationManager
+                $ref: '#/definitions/SeedMigrationManager'
             network:
-                additionalProperties: {}
-                description: Network represents the network configuration (network.yaml) to be included in the pre-seeded image.
-                type: object
-                x-go-name: Network
+                $ref: '#/definitions/SeedNetwork'
             operations_center:
-                additionalProperties: {}
-                description: OperationsCenter represents the seed configuration for operations center (operations-center.yaml) to be included in the pre-seeded image.
-                type: object
-                x-go-name: OperationsCenter
+                $ref: '#/definitions/SeedOperationsCenter'
             update:
-                additionalProperties: {}
-                description: Update represents the seed configuration for updates (update.yaml) to be included in the pre-seeded image.
-                type: object
-                x-go-name: Update
+                $ref: '#/definitions/SeedUpdate'
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     TokenSeedPost:
@@ -7622,16 +7641,17 @@ paths:
                 - clusters
     /1.0/provisioning/clusters/{name}/:update:
         post:
+            consumes:
+                - application/json
             description: Perform a cluster wide update of OS and applications on all servers of the cluster.
             operationId: cluster_update_post
             parameters:
-                - description: |-
-                    Boolean indicating, if after the update a rolling reboot should be
-                    triggered or not. If the "reboot" is true-ish, a rolling reboot is
-                    triggered after the update, otherwise the rolling reboot is skipped.
-                    Defaults to false (no rolling reboot is triggered).
-                  in: query
-                  name: reboot
+                - description: Cluster update request.
+                  in: body
+                  name: cluster_update_post
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ClusterUpdatePost'
             produces:
                 - application/json
             responses:
@@ -8069,6 +8089,15 @@ paths:
         post:
             description: Triggers an evacuate operation on the server.
             operationId: server_system_evacuate_post
+            parameters:
+                - description: |-
+                    Boolean indicating, if the operations should be applied forcefully or
+                    not. If the "force" is true-ish, safety checks are bypassed and the
+                    operation is applied forcefully, otherwise the regular safety checks
+                    are applied.
+                    Defaults to false.
+                  in: query
+                  name: force
             produces:
                 - application/json
             responses:
@@ -8089,6 +8118,15 @@ paths:
         post:
             description: Triggers a poweroff operation on the server.
             operationId: server_system_poweroff_post
+            parameters:
+                - description: |-
+                    Boolean indicating, if the operations should be applied forcefully or
+                    not. If the "force" is true-ish, safety checks are bypassed and the
+                    operation is applied forcefully, otherwise the regular safety checks
+                    are applied.
+                    Defaults to false.
+                  in: query
+                  name: force
             produces:
                 - application/json
             responses:
@@ -8109,6 +8147,15 @@ paths:
         post:
             description: Triggers a reboot operation on the server.
             operationId: server_system_reboot_post
+            parameters:
+                - description: |-
+                    Boolean indicating, if the operations should be applied forcefully or
+                    not. If the "force" is true-ish, safety checks are bypassed and the
+                    operation is applied forcefully, otherwise the regular safety checks
+                    are applied.
+                    Defaults to false.
+                  in: query
+                  name: force
             produces:
                 - application/json
             responses:
@@ -8129,6 +8176,15 @@ paths:
         post:
             description: Triggers an restore operation on the server.
             operationId: server_system_restore_post
+            parameters:
+                - description: |-
+                    Boolean indicating, if the operations should be applied forcefully or
+                    not. If the "force" is true-ish, safety checks are bypassed and the
+                    operation is applied forcefully, otherwise the regular safety checks
+                    are applied.
+                    Defaults to false.
+                  in: query
+                  name: force
             produces:
                 - application/json
             responses:
@@ -8149,6 +8205,15 @@ paths:
         post:
             description: Triggers an update operation on the server.
             operationId: server_system_update_post
+            parameters:
+                - description: |-
+                    Boolean indicating, if the operations should be applied forcefully or
+                    not. If the "force" is true-ish, safety checks are bypassed and the
+                    operation is applied forcefully, otherwise the regular safety checks
+                    are applied.
+                    Defaults to false.
+                  in: query
+                  name: force
             produces:
                 - application/json
             responses:
