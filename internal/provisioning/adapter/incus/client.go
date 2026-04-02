@@ -951,15 +951,13 @@ func (c client) GetClusterJoinToken(ctx context.Context, endpoint provisioning.E
 	return token.String(), nil
 }
 
-func (c client) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) error {
+func (c client) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {
 		return err
 	}
 
 	// Ignore error, connection URL has been parsed by incus client already.
-	// FIXME: this needs to be decoupled!!!
-	serverAddressURL, _ := url.Parse(server.ConnectionURL)
 	clusterAddressURL, _ := url.Parse(endpoint.GetConnectionURL())
 
 	op, err := client.UpdateCluster(incusapi.ClusterPut{
@@ -970,7 +968,7 @@ func (c client) JoinCluster(ctx context.Context, server provisioning.Server, joi
 			MemberConfig: []incusapi.ClusterMemberConfigKey{},
 		},
 		ClusterCertificate: endpoint.GetCertificate(),
-		ServerAddress:      serverAddressURL.Host,
+		ServerAddress:      serverAddressOfClusterRole,
 		ClusterToken:       joinToken,
 		ClusterAddress:     clusterAddressURL.Host,
 	}, "")
