@@ -29,6 +29,7 @@ type loggerContainer struct {
 	writer   io.Writer
 	filepath string
 	file     *os.File
+	noColor  bool
 }
 
 var (
@@ -36,7 +37,7 @@ var (
 	loggerMu sync.Mutex
 )
 
-func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool) error {
+func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool, noColor bool) error {
 	level := slog.LevelWarn
 
 	if verbose {
@@ -55,6 +56,7 @@ func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool) err
 	logger = loggerContainer{
 		writer:   writer,
 		filepath: filepath,
+		noColor:  noColor,
 	}
 
 	loggerMu.Unlock()
@@ -83,6 +85,7 @@ func SetLogLevel(level slog.Level) error {
 			// Add source information, if debug level is enabled.
 			AddSource:   debug,
 			ReplaceAttr: replaceAttrFunc,
+			NoColor:     logger.noColor,
 		},
 	)
 

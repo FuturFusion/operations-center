@@ -4738,7 +4738,7 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false)
+			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
 			repo := &mock.ClusterRepoMock{
@@ -5262,7 +5262,7 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false)
+			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
 			repo := &mock.ClusterRepoMock{
@@ -5606,7 +5606,7 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false)
+			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
 			repo := &mock.ClusterRepoMock{
@@ -5889,7 +5889,7 @@ func TestClusterService_UpdateSystemLogging(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false)
+			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
 			repo := &mock.ClusterRepoMock{
@@ -6173,7 +6173,7 @@ func TestClusterService_UpdateSystemKernel(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false)
+			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
 			repo := &mock.ClusterRepoMock{
@@ -6698,7 +6698,7 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false)
+			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
 			repo := &mock.ClusterRepoMock{
@@ -7063,7 +7063,7 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false)
+			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
 			repo := &mock.ClusterRepoMock{
@@ -7374,7 +7374,7 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false)
+			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
 			repo := &mock.ClusterRepoMock{
@@ -7685,7 +7685,7 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false)
+			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
 			repo := &mock.ClusterRepoMock{
@@ -8022,7 +8022,7 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false)
+			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
 			repo := &mock.ClusterRepoMock{
@@ -8387,7 +8387,7 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false)
+			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
 			repo := &mock.ClusterRepoMock{
@@ -8668,7 +8668,7 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 			defer cancel()
 
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false)
+			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
 			done := tc.initDone()
@@ -8791,7 +8791,7 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 			defer cancel()
 
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false)
+			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
 			repo := &mock.ClusterRepoMock{

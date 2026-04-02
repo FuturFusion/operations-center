@@ -43,7 +43,7 @@ func TestServer_signalLifecycleEvent(t *testing.T) {
 			})
 
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false)
+			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
 			server := Server{}

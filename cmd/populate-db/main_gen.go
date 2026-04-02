@@ -63,7 +63,7 @@ func main() {
 
 	pflag.Parse()
 
-	err := logger.InitLogger(os.Stderr, "", *flagLogVerbose, *flagLogDebug)
+	err := logger.InitLogger(os.Stderr, "", *flagLogVerbose, *flagLogDebug, false)
 	die(err)
 
 	err = os.MkdirAll(*flagDBDir, 0o700)

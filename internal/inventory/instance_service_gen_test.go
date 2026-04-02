@@ -1392,7 +1392,7 @@ func TestInstanceService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false)
+			err := logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
 			for i, item := range tc.repoGetAllWithFilter {

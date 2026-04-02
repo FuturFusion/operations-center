@@ -122,7 +122,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 		logSink = io.MultiWriter(os.Stdout, logBuf)
 	}
 
-	err = logger.InitLogger(logSink, "", false, true)
+	err = logger.InitLogger(logSink, "", false, true, false)
 	require.NoError(t, err)
 
 	tmpDir := t.TempDir()
@@ -576,7 +576,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 		logSink = io.MultiWriter(os.Stdout, logBuf)
 	}
 
-	err = logger.InitLogger(logSink, "", false, true)
+	err = logger.InitLogger(logSink, "", false, true, false)
 	require.NoError(t, err)
 
 	tmpDir := t.TempDir()

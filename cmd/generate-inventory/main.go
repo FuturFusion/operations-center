@@ -215,7 +215,7 @@ func main() {
 
 	pflag.Parse()
 
-	err := logger.InitLogger(os.Stderr, "", *flagLogVerbose, *flagLogDebug)
+	err := logger.InitLogger(os.Stderr, "", *flagLogVerbose, *flagLogDebug, false)
 	die(err)
 
 	slog.DebugContext(ctx, "config file", slog.String("filename", *flagConfigFile))

@@ -95,7 +95,7 @@ func TestLocalArtifact_updateSignalHandler(t *testing.T) {
 			require.NoError(t, err)
 
 			logBuf := &bytes.Buffer{}
-			err = logger.InitLogger(logBuf, "", false, false)
+			err = logger.InitLogger(logBuf, "", false, false, false)
 			require.NoError(t, err)
 
 			oldClusterUpdateSignal := lifecycle.ClusterUpdateSignal
