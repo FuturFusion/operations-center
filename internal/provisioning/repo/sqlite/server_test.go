@@ -122,7 +122,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		EnableClusterFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
 			return "certificate", nil
 		},
-		JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) error {
+		JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint) error {
 			return nil
 		},
 		GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {

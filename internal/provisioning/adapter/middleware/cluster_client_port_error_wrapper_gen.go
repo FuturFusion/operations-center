@@ -110,13 +110,13 @@ func (_d ClusterClientPortWithErrorWrapper) GetRemoteCertificate(ctx context.Con
 }
 
 // JoinCluster implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithErrorWrapper) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) (err error) {
+func (_d ClusterClientPortWithErrorWrapper) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint) (err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)
 		}
 	}()
-	return _d._base.JoinCluster(ctx, server, joinToken, endpoint)
+	return _d._base.JoinCluster(ctx, server, joinToken, serverAddressOfClusterRole, endpoint)
 }
 
 // Ping implements provisioning.ClusterClientPort.

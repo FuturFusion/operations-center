@@ -49,7 +49,7 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			GetRemoteCertificateFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (*x509.Certificate, error) {
 //				panic("mock out the GetRemoteCertificate method")
 //			},
-//			JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) error {
+//			JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint) error {
 //				panic("mock out the JoinCluster method")
 //			},
 //			PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
@@ -108,7 +108,7 @@ type ClusterClientPortMock struct {
 	GetRemoteCertificateFunc func(ctx context.Context, endpoint provisioning.Endpoint) (*x509.Certificate, error)
 
 	// JoinClusterFunc mocks the JoinCluster method.
-	JoinClusterFunc func(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) error
+	JoinClusterFunc func(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint) error
 
 	// PingFunc mocks the Ping method.
 	PingFunc func(ctx context.Context, endpoint provisioning.Endpoint) error
@@ -202,6 +202,8 @@ type ClusterClientPortMock struct {
 			Server provisioning.Server
 			// JoinToken is the joinToken argument value.
 			JoinToken string
+			// ServerAddressOfClusterRole is the serverAddressOfClusterRole argument value.
+			ServerAddressOfClusterRole string
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
 		}
@@ -592,25 +594,27 @@ func (mock *ClusterClientPortMock) GetRemoteCertificateCalls() []struct {
 }
 
 // JoinCluster calls JoinClusterFunc.
-func (mock *ClusterClientPortMock) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) error {
+func (mock *ClusterClientPortMock) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint) error {
 	if mock.JoinClusterFunc == nil {
 		panic("ClusterClientPortMock.JoinClusterFunc: method is nil but ClusterClientPort.JoinCluster was just called")
 	}
 	callInfo := struct {
-		Ctx       context.Context
-		Server    provisioning.Server
-		JoinToken string
-		Endpoint  provisioning.Endpoint
+		Ctx                        context.Context
+		Server                     provisioning.Server
+		JoinToken                  string
+		ServerAddressOfClusterRole string
+		Endpoint                   provisioning.Endpoint
 	}{
-		Ctx:       ctx,
-		Server:    server,
-		JoinToken: joinToken,
-		Endpoint:  endpoint,
+		Ctx:                        ctx,
+		Server:                     server,
+		JoinToken:                  joinToken,
+		ServerAddressOfClusterRole: serverAddressOfClusterRole,
+		Endpoint:                   endpoint,
 	}
 	mock.lockJoinCluster.Lock()
 	mock.calls.JoinCluster = append(mock.calls.JoinCluster, callInfo)
 	mock.lockJoinCluster.Unlock()
-	return mock.JoinClusterFunc(ctx, server, joinToken, endpoint)
+	return mock.JoinClusterFunc(ctx, server, joinToken, serverAddressOfClusterRole, endpoint)
 }
 
 // JoinClusterCalls gets all the calls that were made to JoinCluster.
@@ -618,16 +622,18 @@ func (mock *ClusterClientPortMock) JoinCluster(ctx context.Context, server provi
 //
 //	len(mockedClusterClientPort.JoinClusterCalls())
 func (mock *ClusterClientPortMock) JoinClusterCalls() []struct {
-	Ctx       context.Context
-	Server    provisioning.Server
-	JoinToken string
-	Endpoint  provisioning.Endpoint
+	Ctx                        context.Context
+	Server                     provisioning.Server
+	JoinToken                  string
+	ServerAddressOfClusterRole string
+	Endpoint                   provisioning.Endpoint
 } {
 	var calls []struct {
-		Ctx       context.Context
-		Server    provisioning.Server
-		JoinToken string
-		Endpoint  provisioning.Endpoint
+		Ctx                        context.Context
+		Server                     provisioning.Server
+		JoinToken                  string
+		ServerAddressOfClusterRole string
+		Endpoint                   provisioning.Endpoint
 	}
 	mock.lockJoinCluster.RLock()
 	calls = mock.calls.JoinCluster

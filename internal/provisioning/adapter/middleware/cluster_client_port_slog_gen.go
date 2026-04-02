@@ -325,13 +325,14 @@ func (_d ClusterClientPortWithSlog) GetRemoteCertificate(ctx context.Context, en
 }
 
 // JoinCluster implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) (err error) {
+func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
 			slog.String("joinToken", joinToken),
+			slog.String("serverAddressOfClusterRole", serverAddressOfClusterRole),
 			slog.Any("endpoint", endpoint),
 		)
 	}
@@ -357,7 +358,7 @@ func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server prov
 			log.DebugContext(ctx, "<= method JoinCluster finished")
 		}
 	}()
-	return _d._base.JoinCluster(ctx, server, joinToken, endpoint)
+	return _d._base.JoinCluster(ctx, server, joinToken, serverAddressOfClusterRole, endpoint)
 }
 
 // Ping implements provisioning.ClusterClientPort.
