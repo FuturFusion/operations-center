@@ -2419,7 +2419,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, true)
+			err := logger.InitLogger(logBuf, "", false, true, false)
 			require.NoError(t, err)
 
 			repo := &repoMock.ServerRepoMock{
@@ -3420,7 +3420,7 @@ foobar
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, true)
+			err := logger.InitLogger(logBuf, "", false, true, false)
 			require.NoError(t, err)
 
 			repo := &repoMock.ServerRepoMock{
@@ -3643,7 +3643,7 @@ func TestServerService_PollServer(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, true)
+			err := logger.InitLogger(logBuf, "", false, true, false)
 			require.NoError(t, err)
 
 			repo := &repoMock.ServerRepoMock{
