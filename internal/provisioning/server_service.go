@@ -36,6 +36,7 @@ import (
 type serverService struct {
 	repo       ServerRepo
 	client     ServerClientPort
+	scriptlet  ServerScriptletPort
 	tokenSvc   TokenService
 	clusterSvc ClusterService
 	channelSvc ChannelService
@@ -86,6 +87,7 @@ func (s *serverService) UpdateServerCertificate(ctx context.Context, serverCerti
 func NewServerService(
 	repo ServerRepo,
 	client ServerClientPort,
+	scriptlet ServerScriptletPort,
 	tokenSvc TokenService,
 	clusterSvc ClusterService,
 	channelSvc ChannelService,
@@ -96,6 +98,7 @@ func NewServerService(
 	serverSvc := &serverService{
 		repo:       repo,
 		client:     client,
+		scriptlet:  scriptlet,
 		tokenSvc:   tokenSvc,
 		clusterSvc: clusterSvc,
 		channelSvc: channelSvc,
@@ -1483,6 +1486,13 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 		if server.Status != api.ServerStatusReady {
 			server.StatusDetail = api.ServerStatusDetailNone
 			signalLifecycle = true
+		}
+
+		if server.Status == api.ServerStatusPending {
+			err = s.scriptlet.ServerRegistrationRun(ctx, server)
+			if err != nil {
+				return fmt.Errorf("Failed to run server registration scriptlet: %w", err)
+			}
 		}
 
 		server.Status = api.ServerStatusReady

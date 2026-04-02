@@ -86,3 +86,7 @@ type ServerClientPort interface {
 	GetSystemLogging(ctx context.Context, server Server) (ServerSystemLogging, error)
 	UpdateSystemLogging(ctx context.Context, server Server, config ServerSystemLogging) error
 }
+
+type ServerScriptletPort interface {
+	ServerRegistrationRun(ctx context.Context, server *Server) error
+}

@@ -412,7 +412,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 		},
 	}
 
-	serverSvc := provisioning.NewServerService(serverDB, serverClient, nil, nil, channelSvc, updateSvc, tls.Certificate{})
+	serverSvc := provisioning.NewServerService(serverDB, serverClient, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{})
 
 	clusterSvc := provisioning.NewClusterService(clusterDB, nil, nil, serverSvc, nil, nil, nil,
 		provisioning.WithClusterServicePendingUpdateRecheckInterval(controlLoopInterval),
@@ -941,7 +941,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 		},
 	}
 
-	serverSvc := provisioning.NewServerService(serverDB, serverClient, nil, nil, channelSvc, updateSvc, tls.Certificate{})
+	serverSvc := provisioning.NewServerService(serverDB, serverClient, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{})
 
 	clusterSvc := provisioning.NewClusterService(clusterDB, nil, nil, serverSvc, nil, nil, nil,
 		provisioning.WithClusterServicePendingUpdateRecheckInterval(controlLoopInterval),
