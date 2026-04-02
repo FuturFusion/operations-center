@@ -279,7 +279,11 @@ func UpdateSettings(ctx context.Context, cfg system.SettingsPut) error {
 		}
 	}
 
-	return nil
+	err = lifecycle.SettingsUpdateSignal.TryEmit(ctx, system.Settings{
+		SettingsPut: cfg,
+	})
+
+	return err
 }
 
 func GetUpdates() system.Updates {
@@ -430,6 +434,14 @@ func validate(cfg config) error {
 
 	// Settings configuration
 	err = logger.ValidateLevel(cfg.Settings.LogLevel)
+	if err != nil {
+		return err
+	}
+
+	// This is not ideal, but we can not have a direct dependency from the config
+	// onto the provisioning adapter package, because we get a dependency cycle
+	// otherwise.
+	err = lifecycle.SettingsValidateSignal.TryEmit(context.Background(), cfg.Settings)
 	if err != nil {
 		return err
 	}
