@@ -18,6 +18,9 @@ var (
 	SecurityTrustedHTTPSProxiesUpdateSignal = signals.NewSync[[]string]()
 	SecurityACMEUpdateSignal                = signals.NewSync[apisystem.SecurityACME]()
 
+	SettingsValidateSignal = signals.NewSync[apisystem.Settings]()
+	SettingsUpdateSignal   = signals.NewSync[apisystem.Settings]()
+
 	UpdatesValidateSignal = signals.NewSync[apisystem.Updates]()
 	UpdatesUpdateSignal   = signals.NewSync[apisystem.Updates]()
 
