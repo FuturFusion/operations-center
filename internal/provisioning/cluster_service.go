@@ -10,7 +10,6 @@ import (
 	"iter"
 	"log/slog"
 	"net"
-	"net/url"
 	"slices"
 	"sync"
 	"time"
@@ -282,8 +281,13 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 			}
 		}
 
+		clusterRoleAddress, err := determineClusterRoleAddress(server)
+		if err != nil {
+			return newCluster, err
+		}
+
 		err = s.client.SetServerConfig(ctx, server, map[string]string{
-			"cluster.https_address": determineClusterRoleAddress(server),
+			"cluster.https_address": clusterRoleAddress,
 			"core.https_address":    determineManagementRoleAddress(server),
 		})
 		if err != nil {
@@ -346,7 +350,10 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 
 	// Send the join tokens to the remaining servers to join the cluster.
 	for i, server := range servers[1:] {
-		err := s.client.JoinCluster(ctx, server, joinTokens[i], determineClusterRoleAddress(server), clusterEndpoint)
+		// Ignore the error, the cluster role address has already been successfully determined for `core.https_address`.
+		clusterRoleAddress, _ := determineClusterRoleAddress(server)
+
+		err = s.client.JoinCluster(ctx, server, joinTokens[i], clusterRoleAddress, clusterEndpoint)
 		if err != nil {
 			return newCluster, fmt.Errorf("Failed to join cluster on %q: %w", server.Name, err)
 		}
@@ -537,17 +544,16 @@ func determineManagementRoleURL(osdata api.OSData) (string, error) {
 	return "https://" + net.JoinHostPort(ip.String(), "8443"), nil
 }
 
-func determineClusterRoleAddress(server Server) string {
+func determineClusterRoleAddress(server Server) (string, error) {
 	ip := server.OSData.Network.State.GetInterfaceAddressByRole(incusosapi.SystemNetworkInterfaceRoleCluster)
 	if ip == nil {
 		ip = server.OSData.Network.State.GetInterfaceAddressByRole(incusosapi.SystemNetworkInterfaceRoleManagement)
 		if ip == nil {
-			serverConnectionURL, _ := url.Parse(server.ConnectionURL)
-			return serverConnectionURL.Host
+			return "", fmt.Errorf(`Failed to determine an IP address for the network interface with "cluster" role`)
 		}
 	}
 
-	return net.JoinHostPort(ip.String(), "8443")
+	return net.JoinHostPort(ip.String(), "8443"), nil
 }
 
 func (s clusterService) GetAll(ctx context.Context) (Clusters, error) {
