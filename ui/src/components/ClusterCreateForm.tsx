@@ -64,7 +64,7 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
     cluster_template_variable_values: "",
     config: {
       rolling_restart: {
-        post_restore_delay: 0,
+        post_restore_delay: "",
         restore_mode: "",
       },
     },
@@ -112,7 +112,7 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
         cluster_template_variable_values: variableValues,
         config: {
           rolling_restart: {
-            post_restore_delay: 0,
+            post_restore_delay: "",
             restore_mode: "",
           },
         },

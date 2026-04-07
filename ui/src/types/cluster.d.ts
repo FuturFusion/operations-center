@@ -15,7 +15,7 @@ export interface ClusterProperty {
 }
 
 export interface ClusterConfigRollingRestart {
-  post_restore_delay: number;
+  post_restore_delay: string;
   restore_mode: string;
 }
 
@@ -59,7 +59,7 @@ export interface ClusterFormValues {
   description: string;
   properties: ClusterProperty;
   restore_mode: string;
-  post_restore_delay: number;
+  post_restore_delay: string;
 }
 
 export interface ClusterCertFormValues {
