@@ -3551,7 +3551,7 @@ func TestClientServer(t *testing.T) {
 		{
 			name: "Evacuate",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
-				return nil, client.Evacuate(ctx, target)
+				return nil, client.Evacuate(ctx, target, func(err error) {})
 			},
 			testCases: []methodTestCase{
 				{
@@ -3672,7 +3672,7 @@ func TestClientServer(t *testing.T) {
 		{
 			name: "Restore - normal mode",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
-				return nil, client.Restore(ctx, target, false)
+				return nil, client.Restore(ctx, target, false, func(err error) {})
 			},
 			testCases: []methodTestCase{
 				{
@@ -3727,7 +3727,7 @@ func TestClientServer(t *testing.T) {
 		{
 			name: "Restore - skip mode",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
-				return nil, client.Restore(ctx, target, true)
+				return nil, client.Restore(ctx, target, true, func(err error) {})
 			},
 			testCases: []methodTestCase{
 				{

@@ -3755,6 +3755,48 @@ func TestClusterService_GetByName(t *testing.T) {
 			},
 		},
 		{
+			name:    "success - with update status error",
+			nameArg: "one",
+			repoGetByNameCluster: &provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1"},
+				ConnectionURL: "http://one/",
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressError,
+						Error:      "error",
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "server1",
+					VersionData: api.ServerVersionData{
+						NeedsUpdate:   ptr.To(true),
+						NeedsReboot:   ptr.To(false),
+						InMaintenance: ptr.To(api.NotInMaintenance),
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantCluster: &provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1"},
+				ConnectionURL: "http://one/",
+				UpdateStatus: api.ClusterUpdateStatus{
+					NeedsUpdate:   []string{"server1"},
+					NeedsReboot:   []string{},
+					InMaintenance: []string{},
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress:        api.ClusterUpdateInProgressError,
+						Error:             "error",
+						StatusDescription: ptr.To("error"),
+					},
+				},
+			},
+		},
+		{
 			name:    "error - name empty",
 			nameArg: "", // invalid
 

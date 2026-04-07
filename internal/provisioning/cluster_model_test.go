@@ -122,7 +122,7 @@ func TestCluster_ValidateCreate(t *testing.T) {
 			},
 		},
 		{
-			name: "error - negative cluster config rolling restart post restore delay",
+			name: "error - invalid cluster config rolling restart post restore delay",
 			cluster: provisioning.Cluster{
 				Name:          "one",
 				ServerNames:   []string{"server1", "server2"},
@@ -131,7 +131,7 @@ func TestCluster_ValidateCreate(t *testing.T) {
 				Channel:       "stable",
 				Config: api.ClusterConfig{
 					RollingRestart: api.ClusterConfigRollingRestart{
-						PostRestoreDelay: -1, // negative
+						PostRestoreDelay: "invalid", // invalid duration
 					},
 				},
 			},

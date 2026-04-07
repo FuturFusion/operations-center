@@ -83,7 +83,7 @@ func (_d ServerServiceWithPrometheus) DeleteByName(ctx context.Context, name str
 }
 
 // EvacuateSystemByName implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) EvacuateSystemByName(ctx context.Context, name string, force bool) (err error) {
+func (_d ServerServiceWithPrometheus) EvacuateSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -93,7 +93,7 @@ func (_d ServerServiceWithPrometheus) EvacuateSystemByName(ctx context.Context, 
 
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "EvacuateSystemByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.EvacuateSystemByName(ctx, name, force)
+	return _d.base.EvacuateSystemByName(ctx, name, clusterUpdate, force)
 }
 
 // GetAll implements provisioning.ServerService.
@@ -307,7 +307,7 @@ func (_d ServerServiceWithPrometheus) Rename(ctx context.Context, oldName string
 }
 
 // RestoreSystemByName implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) RestoreSystemByName(ctx context.Context, name string, force bool, restoreModeSkip bool) (err error) {
+func (_d ServerServiceWithPrometheus) RestoreSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -317,7 +317,7 @@ func (_d ServerServiceWithPrometheus) RestoreSystemByName(ctx context.Context, n
 
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RestoreSystemByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.RestoreSystemByName(ctx, name, force, restoreModeSkip)
+	return _d.base.RestoreSystemByName(ctx, name, clusterUpdate, force, restoreModeSkip)
 }
 
 // ResyncByName implements provisioning.ServerService.

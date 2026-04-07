@@ -449,19 +449,23 @@ func (c client) UpdateUpdateConfig(ctx context.Context, server provisioning.Serv
 	return nil
 }
 
-func (c client) Evacuate(ctx context.Context, server provisioning.Server) error {
+func (c client) Evacuate(ctx context.Context, server provisioning.Server, callback func(err error)) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {
 		return err
 	}
 
-	_, err = client.UpdateClusterMemberState(server.Name, incusapi.ClusterMemberStatePost{
+	op, err := client.UpdateClusterMemberState(server.Name, incusapi.ClusterMemberStatePost{
 		Action: "evacuate",
 		Mode:   "auto",
 	})
 	if err != nil {
 		return fmt.Errorf("Failed to update cluster member state to evacuated on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
+
+	go func() {
+		callback(op.Wait())
+	}()
 
 	return nil
 }
@@ -494,7 +498,7 @@ func (c client) Reboot(ctx context.Context, server provisioning.Server) error {
 	return nil
 }
 
-func (c client) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool) error {
+func (c client) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(err error)) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {
 		return err
@@ -505,13 +509,17 @@ func (c client) Restore(ctx context.Context, server provisioning.Server, restore
 		restoreMode = "skip"
 	}
 
-	_, err = client.UpdateClusterMemberState(server.Name, incusapi.ClusterMemberStatePost{
+	op, err := client.UpdateClusterMemberState(server.Name, incusapi.ClusterMemberStatePost{
 		Action: "restore",
 		Mode:   restoreMode,
 	})
 	if err != nil {
 		return fmt.Errorf("Failed to update cluster member state to evacuated on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
+
+	go func() {
+		callback(op.Wait())
+	}()
 
 	return nil
 }

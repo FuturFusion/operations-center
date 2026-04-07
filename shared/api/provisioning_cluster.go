@@ -94,6 +94,9 @@ type ClusterUpdateInProgressStatus struct {
 	// Example: true
 	InProgress ClusterUpdateInProgress `json:"in_progress" yaml:"in_progress"`
 
+	// Error contains the error description, if the cluster update failed permanently.
+	Error string `json:"error" yaml:"error"`
+
 	// StatusDescription contains progress information for the user in plain text
 	// form.
 	// Example: [3/20] Evacuating server xyz
@@ -117,6 +120,7 @@ const (
 	ClusterUpdateInProgressApplyUpdate           ClusterUpdateInProgress = "applying updates"
 	ClusterUpdateInProgressApplyUpdateWithReboot ClusterUpdateInProgress = "applying updates with reboot"
 	ClusterUpdateInProgressRollingRestart        ClusterUpdateInProgress = "restarting servers"
+	ClusterUpdateInProgressError                 ClusterUpdateInProgress = "error"
 )
 
 // ClusterUpdateStatus contains the update status of each server of the cluster
@@ -185,12 +189,12 @@ func (c *ClusterUpdateStatus) Scan(value any) error {
 }
 
 type ClusterConfigRollingRestart struct {
-	// PostRestoreDelay holds the time, that is waited between the resore
-	// of a server and the evacuation of the next server. This should be set if
-	// RestoreMode is kept at the default value in order to grant a cluster
-	// enough time to move previously evacuated instances back to their
-	// originating server.
-	PostRestoreDelay time.Duration `json:"post_restore_delay" yaml:"post_restore_delay"`
+	// PostRestoreDelay holds the time.Duration (as string, e.g. "15m"), that is
+	// waited between the resore of a server and the evacuation of the next
+	// server. This should be set if RestoreMode is kept at the default value in
+	// order to grant a cluster enough time to move previously evacuated instances
+	// back to their originating server.
+	PostRestoreDelay string `json:"post_restore_delay" yaml:"post_restore_delay"`
 
 	// RestoreMode is the mode applied dring Incus restore operation. Valid
 	// values are "" (default, move instances back, that have been evacuated

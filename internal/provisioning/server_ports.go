@@ -35,10 +35,10 @@ type ServerService interface {
 	PollServers(ctx context.Context, serverFilter ServerFilter, updateServerConfiguration bool) error
 	PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error
 
-	EvacuateSystemByName(ctx context.Context, name string, force bool) error
+	EvacuateSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool) error
 	PoweroffSystemByName(ctx context.Context, name string, force bool) error
 	RebootSystemByName(ctx context.Context, name string, force bool) error
-	RestoreSystemByName(ctx context.Context, name string, force bool, restoreModeSkip bool) error
+	RestoreSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) error
 	UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error
 
 	GetSystemLogging(ctx context.Context, name string) (ServerSystemLogging, error)
@@ -75,10 +75,10 @@ type ServerClientPort interface {
 	UpdateProviderConfig(ctx context.Context, server Server, providerConfig ServerSystemProvider) error
 	GetUpdateConfig(ctx context.Context, server Server) (ServerSystemUpdate, error)
 	UpdateUpdateConfig(ctx context.Context, server Server, providerConfig ServerSystemUpdate) error
-	Evacuate(ctx context.Context, server Server) error
+	Evacuate(ctx context.Context, server Server, callback func(err error)) error
 	Poweroff(ctx context.Context, server Server) error
 	Reboot(ctx context.Context, server Server) error
-	Restore(ctx context.Context, server Server, restoreModeSkip bool) error
+	Restore(ctx context.Context, server Server, restoreModeSkip bool, callback func(err error)) error
 	UpdateOS(ctx context.Context, server Server) error
 	AddApplication(ctx context.Context, server Server, application string) error
 	GetSystemKernel(ctx context.Context, server Server) (ServerSystemKernel, error)

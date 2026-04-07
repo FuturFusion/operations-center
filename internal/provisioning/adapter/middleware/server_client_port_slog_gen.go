@@ -76,12 +76,13 @@ func (_d ServerClientPortWithSlog) AddApplication(ctx context.Context, server pr
 }
 
 // Evacuate implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) Evacuate(ctx context.Context, server provisioning.Server) (err error) {
+func (_d ServerClientPortWithSlog) Evacuate(ctx context.Context, server provisioning.Server, callback func(err error)) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
+			slog.Any("callback", callback),
 		)
 	}
 	log.DebugContext(ctx, "=> calling Evacuate")
@@ -106,7 +107,7 @@ func (_d ServerClientPortWithSlog) Evacuate(ctx context.Context, server provisio
 			log.DebugContext(ctx, "<= method Evacuate finished")
 		}
 	}()
-	return _d._base.Evacuate(ctx, server)
+	return _d._base.Evacuate(ctx, server, callback)
 }
 
 // GetNetworkConfig implements provisioning.ServerClientPort.
@@ -562,13 +563,14 @@ func (_d ServerClientPortWithSlog) Reboot(ctx context.Context, server provisioni
 }
 
 // Restore implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool) (err error) {
+func (_d ServerClientPortWithSlog) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(err error)) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
 			slog.Bool("restoreModeSkip", restoreModeSkip),
+			slog.Any("callback", callback),
 		)
 	}
 	log.DebugContext(ctx, "=> calling Restore")
@@ -593,7 +595,7 @@ func (_d ServerClientPortWithSlog) Restore(ctx context.Context, server provision
 			log.DebugContext(ctx, "<= method Restore finished")
 		}
 	}()
-	return _d._base.Restore(ctx, server, restoreModeSkip)
+	return _d._base.Restore(ctx, server, restoreModeSkip, callback)
 }
 
 // UpdateNetworkConfig implements provisioning.ServerClientPort.

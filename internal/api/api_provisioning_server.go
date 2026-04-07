@@ -843,7 +843,7 @@ func (s *serverHandler) serverSystemEvacuatePost(r *http.Request) response.Respo
 	name := r.PathValue("name")
 	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
 
-	err := s.service.EvacuateSystemByName(r.Context(), name, force)
+	err := s.service.EvacuateSystemByName(r.Context(), name, false, force)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to evacuate server %q: %w", name, err))
 	}
@@ -966,7 +966,7 @@ func (s *serverHandler) serverSystemRestorePost(r *http.Request) response.Respon
 	name := r.PathValue("name")
 	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
 
-	err := s.service.RestoreSystemByName(r.Context(), name, false, force)
+	err := s.service.RestoreSystemByName(r.Context(), name, false, force, false)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to restore server %q: %w", name, err))
 	}

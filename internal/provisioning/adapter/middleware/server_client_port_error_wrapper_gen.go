@@ -37,13 +37,13 @@ func (_d ServerClientPortWithErrorWrapper) AddApplication(ctx context.Context, s
 }
 
 // Evacuate implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithErrorWrapper) Evacuate(ctx context.Context, server provisioning.Server) (err error) {
+func (_d ServerClientPortWithErrorWrapper) Evacuate(ctx context.Context, server provisioning.Server, callback func(err error)) (err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)
 		}
 	}()
-	return _d._base.Evacuate(ctx, server)
+	return _d._base.Evacuate(ctx, server, callback)
 }
 
 // GetNetworkConfig implements provisioning.ServerClientPort.
@@ -177,13 +177,13 @@ func (_d ServerClientPortWithErrorWrapper) Reboot(ctx context.Context, server pr
 }
 
 // Restore implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithErrorWrapper) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool) (err error) {
+func (_d ServerClientPortWithErrorWrapper) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(err error)) (err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)
 		}
 	}()
-	return _d._base.Restore(ctx, server, restoreModeSkip)
+	return _d._base.Restore(ctx, server, restoreModeSkip, callback)
 }
 
 // UpdateNetworkConfig implements provisioning.ServerClientPort.

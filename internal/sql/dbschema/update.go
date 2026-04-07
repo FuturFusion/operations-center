@@ -59,6 +59,25 @@ var updates = map[int]update{
 	29: updateFromV28,
 	30: updateFromV29,
 	31: updateFromV30,
+	32: updateFromV31,
+}
+
+func updateFromV31(ctx context.Context, tx *sql.Tx) error {
+	// v31..v32 convert clusters.config.rolling_restart.post_restore_delay duration value from int to string.
+	// Compensate for UI bug where the value was micro seconds and not nano seconds.
+	stmt := `
+UPDATE clusters SET config = json_set(
+	config,
+	'$.rolling_restart.post_restore_delay',
+	CASE ( json_extract(config, '$.rolling_restart.post_restore_delay') / 1000000000) < 1
+		WHEN true THEN ( json_extract(config, '$.rolling_restart.post_restore_delay') / 1000000) || 's'
+		ELSE ( json_extract(config, '$.rolling_restart.post_restore_delay') / 1000000000) || 's'
+	END
+)
+WHERE json_extract(config, '$.rolling_restart.post_restore_delay') IS NOT NULL;
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV30(ctx context.Context, tx *sql.Tx) error {

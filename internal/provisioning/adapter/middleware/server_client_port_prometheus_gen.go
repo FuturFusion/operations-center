@@ -53,7 +53,7 @@ func (_d ServerClientPortWithPrometheus) AddApplication(ctx context.Context, ser
 }
 
 // Evacuate implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithPrometheus) Evacuate(ctx context.Context, server provisioning.Server) (err error) {
+func (_d ServerClientPortWithPrometheus) Evacuate(ctx context.Context, server provisioning.Server, callback func(err error)) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -63,7 +63,7 @@ func (_d ServerClientPortWithPrometheus) Evacuate(ctx context.Context, server pr
 
 		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Evacuate", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.Evacuate(ctx, server)
+	return _d.base.Evacuate(ctx, server, callback)
 }
 
 // GetNetworkConfig implements provisioning.ServerClientPort.
@@ -249,7 +249,7 @@ func (_d ServerClientPortWithPrometheus) Reboot(ctx context.Context, server prov
 }
 
 // Restore implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithPrometheus) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool) (err error) {
+func (_d ServerClientPortWithPrometheus) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(err error)) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -259,7 +259,7 @@ func (_d ServerClientPortWithPrometheus) Restore(ctx context.Context, server pro
 
 		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Restore", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.Restore(ctx, server, restoreModeSkip)
+	return _d.base.Restore(ctx, server, restoreModeSkip, callback)
 }
 
 // UpdateNetworkConfig implements provisioning.ServerClientPort.

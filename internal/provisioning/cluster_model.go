@@ -58,8 +58,11 @@ func (c Cluster) Validate() error {
 		return domain.NewValidationErrf("Invalid cluster, channel can not be empty")
 	}
 
-	if c.Config.RollingRestart.PostRestoreDelay < 0 {
-		return domain.NewValidationErrf("Invalid cluster, cluster config for rolling restart post restore delay needs to be non negative")
+	if c.Config.RollingRestart.PostRestoreDelay != "" {
+		_, err = time.ParseDuration(c.Config.RollingRestart.PostRestoreDelay)
+		if err != nil {
+			return domain.NewValidationErrf("Invalid cluster, cluster config for rolling restart post restore delay needs to be a valid time duration")
+		}
 	}
 
 	if c.Config.RollingRestart.RestoreMode != "" && c.Config.RollingRestart.RestoreMode != "skip" {

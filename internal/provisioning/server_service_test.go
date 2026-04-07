@@ -3519,7 +3519,7 @@ foobar
 			serverSvc.SetClusterService(clusterSvc)
 
 			// Run test
-			err = serverSvc.PollServer(t.Context(), tc.serverArg, false)
+			err = serverSvc.PollServer(context.Background(), tc.serverArg, false)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -3942,7 +3942,7 @@ func TestServerService_PollServer(t *testing.T) {
 			)
 
 			// Run test
-			err = serverSvc.PollServer(t.Context(), tc.serverArg, tc.updateServerConfigArg)
+			err = serverSvc.PollServer(context.Background(), tc.serverArg, tc.updateServerConfigArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -4067,6 +4067,26 @@ func TestServerService_ResyncByName(t *testing.T) {
 
 			assertErr:    boom.ErrorIs,
 			wantLastSeen: fixedDate,
+		},
+		{
+			name:                  "error - evacuate operation - repo.Update",
+			resourceTypeArg:       domain.ResourceTypeServer,
+			lifecycleOperationArg: domain.LifecycleOperationEvacuate,
+			repoGetByName: provisioning.Server{
+				Name:   "incus",
+				Type:   api.ServerTypeIncus,
+				Status: api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: string(images.UpdateFileComponentIncus),
+						},
+					},
+				},
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -4522,12 +4542,15 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 func TestServerService_EvacuateSystemByName(t *testing.T) {
 	tests := []struct {
 		name                                            string
+		argClusterUpdate                                bool
 		argForce                                        bool
 		repoGetByName                                   provisioning.Server
 		repoGetByNameErr                                error
 		repoUpdateErr                                   error
 		clientEvacuateErr                               error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
+		doCallback                                      func(f func(err error))
+		initVolatileServerState                         func(serverSvc provisioning.ServerService)
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -4545,7 +4568,31 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					},
 				},
 			},
+			doCallback: func(f func(err error)) {
+				f(nil)
+			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "success - cluster update",
+			argClusterUpdate: true,
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			doCallback: func(f func(err error)) {
+				f(nil)
+			},
 
 			assertErr: require.NoError,
 		},
@@ -4564,8 +4611,67 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					},
 				},
 			},
+			doCallback: func(f func(err error)) {
+				f(nil)
+			},
 
 			assertErr: require.NoError,
+		},
+		{
+			name:             "success - cluster update - operation in flight",
+			argClusterUpdate: true,
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			doCallback: func(_ func(err error)) {
+				// don't perform the callback
+			},
+			initVolatileServerState: func(serverSvc provisioning.ServerService) {
+				_ = serverSvc.EvacuateSystemByName(context.Background(), "one", true, false)
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.True(tt, domain.IsRetryableError(err))
+				require.ErrorContains(tt, err, "server operation in flight")
+			},
+		},
+		{
+			name:             "success - cluster update - attempt limit reached",
+			argClusterUpdate: true,
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			doCallback: func(f func(err error)) {
+				f(nil)
+			},
+			initVolatileServerState: func(serverSvc provisioning.ServerService) {
+				_ = serverSvc.EvacuateSystemByName(context.Background(), "one", true, false)
+				_ = serverSvc.EvacuateSystemByName(context.Background(), "one", true, false)
+				_ = serverSvc.EvacuateSystemByName(context.Background(), "one", true, false)
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrTerminal)
+				require.ErrorContains(tt, err, "Failed to evacuate system in 3 attempts")
+			},
 		},
 		{
 			name:             "error - repo.GetByName",
@@ -4641,6 +4747,9 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 			clientEvacuateErr: boom.Error,
+			doCallback: func(f func(err error)) {
+				f(nil)
+			},
 
 			assertErr: boom.ErrorIs,
 		},
@@ -4661,7 +4770,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			}
 
 			client := &adapterMock.ServerClientPortMock{
-				EvacuateFunc: func(ctx context.Context, server provisioning.Server) error {
+				EvacuateFunc: func(ctx context.Context, server provisioning.Server, callback func(err error)) error {
+					tc.doCallback(callback)
 					return tc.clientEvacuateErr
 				},
 			}
@@ -4680,8 +4790,12 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 
 			serverSvc := provisioning.NewServerService(repo, client, nil, clusterSvc, nil, updateSvc, tls.Certificate{})
 
+			if tc.initVolatileServerState != nil {
+				tc.initVolatileServerState(serverSvc)
+			}
+
 			// Run test
-			err := serverSvc.EvacuateSystemByName(t.Context(), "one", tc.argForce)
+			err := serverSvc.EvacuateSystemByName(t.Context(), "one", tc.argClusterUpdate, tc.argForce)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -4968,6 +5082,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 func TestServerService_RestoreSystemByName(t *testing.T) {
 	tests := []struct {
 		name                                            string
+		argClusterUpdate                                bool
 		argForce                                        bool
 		argRestoreModeSkip                              bool
 		repoGetByName                                   provisioning.Server
@@ -4975,6 +5090,8 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 		repoUpdateErr                                   error
 		clientRestoreErr                                error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
+		doCallback                                      func(f func(err error))
+		initVolatileServerState                         func(serverSvc provisioning.ServerService)
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -4993,6 +5110,30 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				},
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+			doCallback: func(f func(err error)) {
+				f(nil)
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "success - cluster update",
+			argClusterUpdate: true,
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			doCallback: func(f func(err error)) {
+				f(nil)
+			},
 
 			assertErr: require.NoError,
 		},
@@ -5011,8 +5152,67 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 					},
 				},
 			},
+			doCallback: func(f func(err error)) {
+				f(nil)
+			},
 
 			assertErr: require.NoError,
+		},
+		{
+			name:             "success - cluster update - operation in flight",
+			argClusterUpdate: true,
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			doCallback: func(_ func(err error)) {
+				// don't perform the callback
+			},
+			initVolatileServerState: func(serverSvc provisioning.ServerService) {
+				_ = serverSvc.RestoreSystemByName(context.Background(), "one", true, false, false)
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.True(tt, domain.IsRetryableError(err))
+				require.ErrorContains(tt, err, "server operation in flight")
+			},
+		},
+		{
+			name:             "success - cluster update - attempt limit reached",
+			argClusterUpdate: true,
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			doCallback: func(f func(err error)) {
+				f(nil)
+			},
+			initVolatileServerState: func(serverSvc provisioning.ServerService) {
+				_ = serverSvc.RestoreSystemByName(context.Background(), "one", true, false, false)
+				_ = serverSvc.RestoreSystemByName(context.Background(), "one", true, false, false)
+				_ = serverSvc.RestoreSystemByName(context.Background(), "one", true, false, false)
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrTerminal)
+				require.ErrorContains(tt, err, "Failed to restore system in 3 attempts")
+			},
 		},
 		{
 			name:             "error - repo.GetByName",
@@ -5088,6 +5288,9 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 			clientRestoreErr: boom.Error,
+			doCallback: func(f func(err error)) {
+				f(nil)
+			},
 
 			assertErr: boom.ErrorIs,
 		},
@@ -5108,7 +5311,8 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			}
 
 			client := &adapterMock.ServerClientPortMock{
-				RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool) error {
+				RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(err error)) error {
+					tc.doCallback(callback)
 					return tc.clientRestoreErr
 				},
 			}
@@ -5127,8 +5331,12 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 
 			serverSvc := provisioning.NewServerService(repo, client, nil, clusterSvc, nil, updateSvc, tls.Certificate{})
 
+			if tc.initVolatileServerState != nil {
+				tc.initVolatileServerState(serverSvc)
+			}
+
 			// Run test
-			err := serverSvc.RestoreSystemByName(t.Context(), "one", tc.argForce, tc.argRestoreModeSkip)
+			err := serverSvc.RestoreSystemByName(t.Context(), "one", tc.argClusterUpdate, tc.argForce, tc.argRestoreModeSkip)
 
 			// Assert
 			tc.assertErr(t, err)
