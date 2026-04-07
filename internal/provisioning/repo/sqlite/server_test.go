@@ -44,8 +44,24 @@ func TestServerDatabaseActions(t *testing.T) {
 		Fingerprint:   fingerprintA,
 		HardwareData:  api.HardwareData{},
 		VersionData:   api.ServerVersionData{},
-		Status:        api.ServerStatusReady,
-		Channel:       "stable",
+		OSData: api.OSData{
+			Network: incusosapi.SystemNetwork{
+				State: incusosapi.SystemNetworkState{
+					Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+						"eth0": {
+							Addresses: []string{
+								"192.168.0.100",
+							},
+							Roles: []string{
+								"management",
+							},
+						},
+					},
+				},
+			},
+		},
+		Status:  api.ServerStatusReady,
+		Channel: "stable",
 	}
 
 	serverB := provisioning.Server{
@@ -60,6 +76,22 @@ func TestServerDatabaseActions(t *testing.T) {
 				{
 					Name:    string(images.UpdateFileComponentIncus),
 					Version: "1",
+				},
+			},
+		},
+		OSData: api.OSData{
+			Network: incusosapi.SystemNetwork{
+				State: incusosapi.SystemNetworkState{
+					Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+						"eth0": {
+							Addresses: []string{
+								"192.168.0.100",
+							},
+							Roles: []string{
+								"management",
+							},
+						},
+					},
 				},
 			},
 		},
@@ -93,7 +125,22 @@ func TestServerDatabaseActions(t *testing.T) {
 			return api.HardwareData{}, nil
 		},
 		GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
-			return api.OSData{}, nil
+			return api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			}, nil
 		},
 		GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 			return api.ServerVersionData{}, nil
