@@ -1357,6 +1357,7 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 	var osData api.OSData
 	var versionData api.ServerVersionData
 	var serverType api.ServerType
+	var serverConnectionURL string
 	if updateServerConfiguration {
 		hardwareData, err = s.client.GetResources(ctx, server)
 		if err != nil {
@@ -1366,6 +1367,11 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 		osData, err = s.client.GetOSData(ctx, server)
 		if err != nil {
 			return fmt.Errorf("Failed to get os data from server %q: %w", server.Name, err)
+		}
+
+		serverConnectionURL, err = determineManagementRoleURL(osData)
+		if err != nil {
+			return err
 		}
 
 		versionData, err = s.client.GetVersionData(ctx, server)
@@ -1414,6 +1420,7 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 			server.OSData = osData
 			server.VersionData = versionData
 			server.Type = serverType
+			server.ConnectionURL = serverConnectionURL
 
 			// If an update has been triggered, check if an update is still needed.
 			// If not, updating is done.

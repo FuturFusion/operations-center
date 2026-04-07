@@ -166,12 +166,15 @@ func assertOperationsCenterCliSystem(t *testing.T) {
 	require.True(t, success, "operations-center cli system assertions failed")
 }
 
-func assertIncusRemote(t *testing.T, clusterName string, clusterIP string) {
+func assertIncusRemote(t *testing.T, clusterName string) {
 	t.Helper()
 
 	t.Log("Add incus remote")
 
-	mustRun(t, `incus remote add --accept-certificate --auth-type tls %s https://%s:8443`, clusterName, clusterIP)
+	resp := mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .connection_url'`, cpuArch, clusterName)
+	clusterConnectionURL := resp.OutputTrimmed()
+
+	mustRun(t, `incus remote add --accept-certificate --auth-type tls %s %s`, clusterName, clusterConnectionURL)
 	t.Cleanup(func() {
 		if noCleanup {
 			return

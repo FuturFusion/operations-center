@@ -154,7 +154,7 @@ func (_d ClusterClientPortWithPrometheus) GetRemoteCertificate(ctx context.Conte
 }
 
 // JoinCluster implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) (err error) {
+func (_d ClusterClientPortWithPrometheus) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -164,7 +164,7 @@ func (_d ClusterClientPortWithPrometheus) JoinCluster(ctx context.Context, serve
 
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "JoinCluster", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.JoinCluster(ctx, server, joinToken, endpoint)
+	return _d.base.JoinCluster(ctx, server, joinToken, serverAddressOfClusterRole, endpoint)
 }
 
 // Ping implements provisioning.ClusterClientPort.

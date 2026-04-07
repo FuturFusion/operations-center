@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -58,10 +59,10 @@ func createClusterFromTemplate(t *testing.T, tmpDir string) {
 
 	// Run test
 	t.Log("Create cluster")
-	mustRun(t, "../bin/operations-center.linux.%s provisioning cluster add incus-os-cluster https://%s:8443 --server-names %s --cluster-template incus-os-cluster --cluster-template-variables %s", cpuArch, instanceIPs[0], servers, filepath.Join(tmpDir, "variables.yaml"))
+	mustRun(t, "../bin/operations-center.linux.%s provisioning cluster add incus-os-cluster https://%s --server-names %s --cluster-template incus-os-cluster --cluster-template-variables %s", cpuArch, net.JoinHostPort(instanceIPs[0], "8443"), servers, filepath.Join(tmpDir, "variables.yaml"))
 
 	// Assertions
-	assertIncusRemote(t, "incus-os-cluster", instanceIPs[0])
+	assertIncusRemote(t, "incus-os-cluster")
 	assertInventory(t, "incus-os-cluster")
 	assertTerraformArtifact(t, "incus-os-cluster")
 	assertWebsocketEventsInventoryUpdate(t, "incus-os-cluster")

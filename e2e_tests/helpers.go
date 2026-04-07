@@ -638,7 +638,9 @@ func mustGetInstanceIPAndNames(t *testing.T, names []string) (instanceIPs []stri
 	instanceIPs = make([]string, 0, len(names))
 	instanceNames = make([]string, 0, len(names))
 	for _, name := range names {
-		ipResp := mustRun(t, `incus list -f json | jq -r '.[] | select(.name == "%s") | .state.network | to_entries[] | .value.addresses[]? | select(.family == "inet" and .scope == "global") | [ .address ] | first'`, name)
+		// Get the first IP address not from incusbr0 or meshbr0 with global scope
+		// while preferring IPv6.
+		ipResp := mustRun(t, `incus list -f json | jq -r '[ .[] | select(.name == "%s") | .state.network | to_entries[] | select(.key != "incusbr0" and .key != "meshbr0") | .value.addresses[]? | select(.scope == "global") | . ] | sort_by(.family) | reverse | first | .address'`, name)
 		instanceIPs = append(instanceIPs, strings.TrimSpace(ipResp.Output()))
 
 		nameResp := mustRun(t, `incus list -f json | jq -r '.[] | select(.name == "%s") | .state.os_info.hostname'`, name)

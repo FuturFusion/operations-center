@@ -3817,7 +3817,7 @@ func TestClientServer(t *testing.T) {
 		{
 			name: "JoinCluster",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
-				return nil, client.JoinCluster(ctx, target, "token", provisioning.ClusterEndpoint{})
+				return nil, client.JoinCluster(ctx, target, "token", "10.10.10.10:8443", provisioning.ClusterEndpoint{})
 			},
 			testCases: []methodTestCase{
 				{
