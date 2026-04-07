@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
@@ -195,7 +196,22 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 			return api.HardwareData{}, nil
 		},
 		GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
-			return api.OSData{}, nil
+			return api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			}, nil
 		},
 		GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 			serverVersionDataMu.Lock()
@@ -651,7 +667,22 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 			return api.HardwareData{}, nil
 		},
 		GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
-			return api.OSData{}, nil
+			return api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			}, nil
 		},
 		GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 			serverVersionDataMu.Lock()

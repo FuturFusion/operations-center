@@ -156,7 +156,22 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 					return api.HardwareData{}, nil
 				},
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
-					return api.OSData{}, nil
+					return api.OSData{
+						Network: incusosapi.SystemNetwork{
+							State: incusosapi.SystemNetworkState{
+								Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+									"eth0": {
+										Addresses: []string{
+											"192.168.0.100",
+										},
+										Roles: []string{
+											"management",
+										},
+									},
+								},
+							},
+						},
+					}, nil
 				},
 				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, nil
@@ -313,7 +328,22 @@ one
 					return api.HardwareData{}, nil
 				},
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
-					return api.OSData{}, nil
+					return api.OSData{
+						Network: incusosapi.SystemNetwork{
+							State: incusosapi.SystemNetworkState{
+								Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+									"eth0": {
+										Addresses: []string{
+											"192.168.0.100",
+										},
+										Roles: []string{
+											"management",
+										},
+									},
+								},
+							},
+						},
+					}, nil
 				},
 				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, nil
@@ -2445,7 +2475,22 @@ func TestServerService_SelfUpdate(t *testing.T) {
 					return api.HardwareData{}, nil
 				},
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
-					return api.OSData{}, nil
+					return api.OSData{
+						Network: incusosapi.SystemNetwork{
+							State: incusosapi.SystemNetworkState{
+								Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+									"eth0": {
+										Addresses: []string{
+											"192.168.0.100",
+										},
+										Roles: []string{
+											"management",
+										},
+									},
+								},
+							},
+						},
+					}, nil
 				},
 				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, nil
@@ -2575,7 +2620,22 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 					return api.HardwareData{}, tc.clientGetResourcesErr
 				},
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
-					return api.OSData{}, nil
+					return api.OSData{
+						Network: incusosapi.SystemNetwork{
+							State: incusosapi.SystemNetworkState{
+								Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+									"eth0": {
+										Addresses: []string{
+											"192.168.0.100",
+										},
+										Roles: []string{
+											"management",
+										},
+									},
+								},
+							},
+						},
+					}, nil
 				},
 				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, nil
@@ -3479,6 +3539,7 @@ func TestServerService_PollServer(t *testing.T) {
 		serverArg                    provisioning.Server
 		updateServerConfigArg        bool
 		clientGetResourcesErr        error
+		clientGetOSData              api.OSData
 		clientGetOSDataErr           error
 		clientGetVersionData         api.ServerVersionData
 		clientGetVersionDataErr      error
@@ -3501,6 +3562,22 @@ func TestServerService_PollServer(t *testing.T) {
 				Name:   "one",
 				Status: api.ServerStatusPending,
 			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
 
 			assertErr: require.NoError,
 			assertLog: log.Empty,
@@ -3515,6 +3592,22 @@ func TestServerService_PollServer(t *testing.T) {
 			repoGetByName: &provisioning.Server{
 				Name:   "one",
 				Status: api.ServerStatusPending,
+			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
 			},
 
 			assertErr: require.NoError,
@@ -3532,6 +3625,22 @@ func TestServerService_PollServer(t *testing.T) {
 				Status:       api.ServerStatusReady,
 				StatusDetail: api.ServerStatusDetailReadyUpdating,
 			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
 
 			assertErr: require.NoError,
 			assertLog: log.Empty,
@@ -3545,6 +3654,22 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 			updateServerConfigArg: true,
 			clientGetResourcesErr: boom.Error,
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
 
 			assertErr: boom.ErrorIs,
 			assertLog: log.Empty,
@@ -3557,8 +3682,59 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 			updateServerConfigArg: true,
 			clientGetOSDataErr:    boom.Error,
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - server without ip address on management interface",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Status:  api.ServerStatusPending,
+				Channel: "stable",
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{}, // no ip present on management interface
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetVersionData: api.ServerVersionData{
+				UpdateChannel: "testing", // does not match expected channel
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Failed to determine an IP address for the network interface with "management" role`)
+			},
 			assertLog: log.Empty,
 		},
 		{
@@ -3567,7 +3743,23 @@ func TestServerService_PollServer(t *testing.T) {
 				Name:   "one",
 				Status: api.ServerStatusPending,
 			},
-			updateServerConfigArg:   true,
+			updateServerConfigArg: true,
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
 			clientGetVersionDataErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -3585,6 +3777,22 @@ func TestServerService_PollServer(t *testing.T) {
 				Name:   "one",
 				Status: api.ServerStatusPending,
 			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
 			clientGetVersionData: api.ServerVersionData{
 				UpdateChannel: "testing", // does not match expected channel
 			},
@@ -3600,6 +3808,22 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 			updateServerConfigArg: true,
 			repoGetByNameErr:      boom.Error,
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
 
 			assertErr: boom.ErrorIs,
 			assertLog: log.Empty,
@@ -3615,6 +3839,22 @@ func TestServerService_PollServer(t *testing.T) {
 				Name:         "one",
 				Status:       api.ServerStatusReady,
 				StatusDetail: api.ServerStatusDetailReadyUpdating,
+			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
 			},
 			updateSvcGetAllWithFilterErr: boom.Error,
 
@@ -3632,7 +3872,23 @@ func TestServerService_PollServer(t *testing.T) {
 				Status: api.ServerStatusPending,
 			},
 			updateServerConfigArg: true,
-			repoUpdateErr:         boom.Error,
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
+			repoUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			assertLog: log.Empty,
@@ -3665,7 +3921,7 @@ func TestServerService_PollServer(t *testing.T) {
 					return api.HardwareData{}, tc.clientGetResourcesErr
 				},
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
-					return api.OSData{}, tc.clientGetOSDataErr
+					return tc.clientGetOSData, tc.clientGetOSDataErr
 				},
 				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return tc.clientGetVersionData, tc.clientGetVersionDataErr
@@ -3835,7 +4091,22 @@ func TestServerService_ResyncByName(t *testing.T) {
 					return api.HardwareData{}, nil
 				},
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
-					return api.OSData{}, nil
+					return api.OSData{
+						Network: incusosapi.SystemNetwork{
+							State: incusosapi.SystemNetworkState{
+								Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+									"eth0": {
+										Addresses: []string{
+											"192.168.0.100",
+										},
+										Roles: []string{
+											"management",
+										},
+									},
+								},
+							},
+						},
+					}, nil
 				},
 				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 					return api.ServerVersionData{}, nil

@@ -290,7 +290,10 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 			return newCluster, fmt.Errorf("Failed to set cluster.https_address and core.https_address on %q: %w", server.Name, err)
 		}
 
-		servers[i].ConnectionURL = determineManagementRoleURL(server)
+		servers[i].ConnectionURL, err = determineManagementRoleURL(server.OSData)
+		if err != nil {
+			return newCluster, err
+		}
 	}
 
 	// Select first server as the bootstrap server.
@@ -306,7 +309,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 	// of the certificate of the bootstrap server.
 	clusterEndpoint := ClusterEndpoint{
 		Server{
-			ConnectionURL:        determineManagementRoleURL(bootstrapServer),
+			ConnectionURL:        bootstrapServer.ConnectionURL,
 			Cluster:              &newCluster.Name,
 			ClusterCertificate:   &clusterCertificate,
 			ClusterConnectionURL: &newCluster.ConnectionURL,
@@ -525,13 +528,13 @@ func determineManagementRoleAddress(server Server) string {
 	return net.JoinHostPort(ip.String(), "8443")
 }
 
-func determineManagementRoleURL(server Server) string {
-	ip := server.OSData.Network.State.GetInterfaceAddressByRole(incusosapi.SystemNetworkInterfaceRoleManagement)
+func determineManagementRoleURL(osdata api.OSData) (string, error) {
+	ip := osdata.Network.State.GetInterfaceAddressByRole(incusosapi.SystemNetworkInterfaceRoleManagement)
 	if ip == nil {
-		return server.ConnectionURL
+		return "", fmt.Errorf(`Failed to determine an IP address for the network interface with "management" role`)
 	}
 
-	return "https://" + net.JoinHostPort(ip.String(), "8443")
+	return "https://" + net.JoinHostPort(ip.String(), "8443"), nil
 }
 
 func determineClusterRoleAddress(server Server) string {

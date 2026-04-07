@@ -98,6 +98,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -111,6 +127,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -821,6 +853,86 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
+			name: "error - server without ip address on management interface",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{}, // no ip present on management interface
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    string(images.UpdateFileComponentIncus),
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Failed to determine an IP address for the network interface with "management" role`)
+			},
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
 			name: "error - client.EnableCluster",
 			cluster: provisioning.Cluster{
 				Name:        "one",
@@ -842,6 +954,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -855,6 +983,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -892,6 +1036,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -905,6 +1065,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -943,6 +1119,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -956,6 +1148,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -994,6 +1202,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1007,6 +1231,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -1045,6 +1285,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1058,6 +1314,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -1097,6 +1369,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1110,6 +1398,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -1165,6 +1469,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1178,6 +1498,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -1248,6 +1584,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1261,6 +1613,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -1331,6 +1699,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1344,6 +1728,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -1414,6 +1814,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1427,6 +1843,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -1497,6 +1929,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1510,6 +1958,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -1584,6 +2048,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1597,6 +2077,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -1680,6 +2176,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1693,6 +2205,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -1768,6 +2296,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1781,6 +2325,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -1856,6 +2416,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1869,6 +2445,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -1950,6 +2542,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -1963,6 +2571,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -2041,6 +2665,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -2054,6 +2694,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -2132,6 +2788,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -2145,6 +2817,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -2218,6 +2906,22 @@ func TestClusterService_Create(t *testing.T) {
 								},
 							},
 						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				{
@@ -2231,6 +2935,22 @@ func TestClusterService_Create(t *testing.T) {
 								{
 									Name:    string(images.UpdateFileComponentIncus),
 									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
 								},
 							},
 						},

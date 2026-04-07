@@ -1369,6 +1369,11 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 			return fmt.Errorf("Failed to get os data from server %q: %w", server.Name, err)
 		}
 
+		serverConnectionURL, err = determineManagementRoleURL(osData)
+		if err != nil {
+			return err
+		}
+
 		versionData, err = s.client.GetVersionData(ctx, server)
 		if err != nil {
 			return fmt.Errorf("Failed to get version data from server %q: %w", server.Name, err)
@@ -1380,8 +1385,6 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 				slog.String("expected_channel", server.VersionData.UpdateChannel),
 			)
 		}
-
-		serverConnectionURL = determineManagementRoleURL(server)
 
 		// For now, we ignore the error and we are fine to persist type "unknown",
 		// if we are not able to determine the server type.
