@@ -10,13 +10,17 @@ exclude-interface-regex: "Provisioning.+Service"
 dir: >-
   {{- $targetDir := "middleware" -}}
   {{- if and (.InterfaceName | hasSuffix "ServerClient") -}}
-  {{- $targetDir = "server/middleware" -}}
+    {{- $targetDir = "server/middleware" -}}
   {{- end -}}
   {{- if .InterfaceName | hasSuffix "Repo" -}}
-  {{- $targetDir = "repo/middleware" -}}
+    {{- $targetDir = "repo/middleware" -}}
   {{- end -}}
   {{- if .InterfaceName | hasSuffix "Port" -}}
-  {{- $targetDir = "adapter/middleware" -}}
+    {{- if .InterfaceDir | contains "adapter" -}}
+      {{- $targetDir = "../middleware" -}}
+    {{- else -}}
+      {{- $targetDir = "adapter/middleware" -}}
+    {{- end -}}
   {{- end -}}
   {{- .InterfaceDir -}}/{{- $targetDir -}}
 filename: >-
