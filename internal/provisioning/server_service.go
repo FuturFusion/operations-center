@@ -137,7 +137,7 @@ func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer S
 		}
 
 		newServer.Status = api.ServerStatusPending
-		newServer.StatusDetail = api.ServerStatusDetailPendingReconfiguring
+		newServer.StatusDetail = api.ServerStatusDetailPendingRegistering
 		newServer.LastStatusUpdated = s.now()
 		newServer.LastSeen = s.now()
 		newServer.Channel = channel
@@ -1662,6 +1662,13 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 			server.Certificate = updatedServerCertificate
 		}
 
+		if server.Status == api.ServerStatusPending && server.StatusDetail == api.ServerStatusDetailPendingRegistering {
+			err = s.scriptlet.ServerRegistrationRun(ctx, server)
+			if err != nil {
+				return fmt.Errorf("Failed to run server registration scriptlet: %w", err)
+			}
+		}
+
 		// Clear status detail, if previous state was not ready, e.g. because
 		// of reboot or reconfiguration.
 		if server.Status != api.ServerStatusReady {
@@ -1670,13 +1677,6 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastStatusUpdated = s.now()
 			signalLifecycle = true
-		}
-
-		if server.Status == api.ServerStatusPending {
-			err = s.scriptlet.ServerRegistrationRun(ctx, server)
-			if err != nil {
-				return fmt.Errorf("Failed to run server registration scriptlet: %w", err)
-			}
 		}
 
 		server.Status = api.ServerStatusReady
