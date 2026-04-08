@@ -4007,8 +4007,8 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 			runnerServerRegistrationRunErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertErr: require.NoError,
+			assertLog: log.Contains("Failed to run server registration scriptlet server=one err=boom!"),
 		},
 		{
 			name: "error - enrichServerWithVersionDetails",

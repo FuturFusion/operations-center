@@ -1665,7 +1665,7 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 		if server.Status == api.ServerStatusPending && server.StatusDetail == api.ServerStatusDetailPendingRegistering {
 			err = s.scriptlet.ServerRegistrationRun(ctx, server)
 			if err != nil {
-				return fmt.Errorf("Failed to run server registration scriptlet: %w", err)
+				slog.WarnContext(ctx, "Failed to run server registration scriptlet", slog.String("server", server.Name), logger.Err(err))
 			}
 		}
 
