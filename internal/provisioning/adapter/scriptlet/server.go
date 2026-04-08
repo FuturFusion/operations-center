@@ -49,7 +49,11 @@ func serverRegistrationCompile(name string, src string) (*starlark.Program, erro
 
 		"get_system",
 		"set_system",
+
 		"execute_system_command",
+
+		"get_service_config",
+		"set_service_config",
 	})
 }
 
@@ -89,6 +93,9 @@ func (r Runner) ServerRegistrationRun(ctx context.Context, server *provisioning.
 		"set_system": starlark.NewBuiltin("set_system", r.setSystem(ctx, *server)),
 
 		"execute_system_command": starlark.NewBuiltin("execute_system_command", r.executeSystemCommand(ctx, *server)),
+
+		"get_service_config": starlark.NewBuiltin("get_service_config", r.getServiceConfig(ctx, *server)),
+		"set_service_config": starlark.NewBuiltin("set_service_config", r.setServiceConfig(ctx, *server)),
 	}
 
 	go func() {
@@ -315,6 +322,51 @@ func (r Runner) executeSystemCommand(ctx context.Context, server provisioning.Se
 		err = r.client.ExecuteSystemCommand(ctx, server, resource, action, body)
 		if err != nil {
 			return starlark.None, fmt.Errorf("Failed to execute system command %s/%s for server %q: %w", resource, action, server.Name, err)
+		}
+
+		return starlark.None, nil
+	}
+}
+
+func (r Runner) getServiceConfig(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var service string
+		err := starlark.UnpackArgs(b.Name(), args, kwargs, "service", &service)
+		if err != nil {
+			return nil, err
+		}
+
+		res, err := r.client.GetOSService(ctx, server, service)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get service %s configuration from server %q: %w", service, server.Name, err)
+		}
+
+		rv, err := scriptlet.StarlarkMarshal(res)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to marshal value for starlark: %w", err)
+		}
+
+		return rv, nil
+	}
+}
+
+func (r Runner) setServiceConfig(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var service string
+		configArg := &starlark.Dict{}
+		err := starlark.UnpackArgs(b.Name(), args, kwargs, "service", &service, "config", &configArg)
+		if err != nil {
+			return nil, err
+		}
+
+		config, err := scriptlet.StarlarkUnmarshal(configArg)
+		if err != nil {
+			return nil, err
+		}
+
+		err = r.client.UpdateOSService(ctx, server, service, config)
+		if err != nil {
+			return starlark.None, fmt.Errorf("Failed to set service %s configuration for server %q: %w", service, server.Name, err)
 		}
 
 		return starlark.None, nil
