@@ -152,6 +152,7 @@ type ServerStatusDetail string
 const (
 	ServerStatusDetailNone ServerStatusDetail = ""
 
+	ServerStatusDetailPendingRegistering   ServerStatusDetail = "registering"
 	ServerStatusDetailPendingReconfiguring ServerStatusDetail = "re-configuring"
 
 	ServerStatusDetailReadyUpdating  ServerStatusDetail = "updating"
@@ -164,6 +165,7 @@ const (
 
 var serverStatusDetails = map[ServerStatusDetail]struct{}{
 	ServerStatusDetailNone:                 {},
+	ServerStatusDetailPendingRegistering:   {},
 	ServerStatusDetailPendingReconfiguring: {},
 	ServerStatusDetailReadyUpdating:        {},
 	ServerStatusDetailReadyRestoring:       {},
