@@ -22,6 +22,9 @@ var _ scriptlet.ScriptletClientPort = &ScriptletClientPortMock{}
 //
 //		// make and configure a mocked scriptlet.ScriptletClientPort
 //		mockedScriptletClientPort := &ScriptletClientPortMock{
+//			ExecuteSystemCommandFunc: func(ctx context.Context, server provisioning.Server, resource string, action string, body any) error {
+//				panic("mock out the ExecuteSystemCommand method")
+//			},
 //			GetSystemFunc: func(ctx context.Context, server provisioning.Server, resource string) (map[string]any, error) {
 //				panic("mock out the GetSystem method")
 //			},
@@ -35,6 +38,9 @@ var _ scriptlet.ScriptletClientPort = &ScriptletClientPortMock{}
 //
 //	}
 type ScriptletClientPortMock struct {
+	// ExecuteSystemCommandFunc mocks the ExecuteSystemCommand method.
+	ExecuteSystemCommandFunc func(ctx context.Context, server provisioning.Server, resource string, action string, body any) error
+
 	// GetSystemFunc mocks the GetSystem method.
 	GetSystemFunc func(ctx context.Context, server provisioning.Server, resource string) (map[string]any, error)
 
@@ -43,6 +49,19 @@ type ScriptletClientPortMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// ExecuteSystemCommand holds details about calls to the ExecuteSystemCommand method.
+		ExecuteSystemCommand []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Resource is the resource argument value.
+			Resource string
+			// Action is the action argument value.
+			Action string
+			// Body is the body argument value.
+			Body any
+		}
 		// GetSystem holds details about calls to the GetSystem method.
 		GetSystem []struct {
 			// Ctx is the ctx argument value.
@@ -64,8 +83,57 @@ type ScriptletClientPortMock struct {
 			Config any
 		}
 	}
-	lockGetSystem    sync.RWMutex
-	lockUpdateSystem sync.RWMutex
+	lockExecuteSystemCommand sync.RWMutex
+	lockGetSystem            sync.RWMutex
+	lockUpdateSystem         sync.RWMutex
+}
+
+// ExecuteSystemCommand calls ExecuteSystemCommandFunc.
+func (mock *ScriptletClientPortMock) ExecuteSystemCommand(ctx context.Context, server provisioning.Server, resource string, action string, body any) error {
+	if mock.ExecuteSystemCommandFunc == nil {
+		panic("ScriptletClientPortMock.ExecuteSystemCommandFunc: method is nil but ScriptletClientPort.ExecuteSystemCommand was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Server   provisioning.Server
+		Resource string
+		Action   string
+		Body     any
+	}{
+		Ctx:      ctx,
+		Server:   server,
+		Resource: resource,
+		Action:   action,
+		Body:     body,
+	}
+	mock.lockExecuteSystemCommand.Lock()
+	mock.calls.ExecuteSystemCommand = append(mock.calls.ExecuteSystemCommand, callInfo)
+	mock.lockExecuteSystemCommand.Unlock()
+	return mock.ExecuteSystemCommandFunc(ctx, server, resource, action, body)
+}
+
+// ExecuteSystemCommandCalls gets all the calls that were made to ExecuteSystemCommand.
+// Check the length with:
+//
+//	len(mockedScriptletClientPort.ExecuteSystemCommandCalls())
+func (mock *ScriptletClientPortMock) ExecuteSystemCommandCalls() []struct {
+	Ctx      context.Context
+	Server   provisioning.Server
+	Resource string
+	Action   string
+	Body     any
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Server   provisioning.Server
+		Resource string
+		Action   string
+		Body     any
+	}
+	mock.lockExecuteSystemCommand.RLock()
+	calls = mock.calls.ExecuteSystemCommand
+	mock.lockExecuteSystemCommand.RUnlock()
+	return calls
 }
 
 // GetSystem calls GetSystemFunc.
