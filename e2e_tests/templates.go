@@ -72,6 +72,7 @@ lvm:
 	incusOSClusterApplicationConfig = []byte(`---
 config:
   user.ui.title: E2E Test IncusOS Cluster
+  core.https_address: 0.0.0.0:8443
 certificates:
   - name: admin
     type: client
