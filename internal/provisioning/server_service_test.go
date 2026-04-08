@@ -3838,13 +3838,15 @@ func TestServerService_PollServer(t *testing.T) {
 		{
 			name: "error - pending update with server registration scriptlet error",
 			serverArg: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusPending,
+				Name:         "one",
+				Status:       api.ServerStatusPending,
+				StatusDetail: api.ServerStatusDetailPendingRegistering,
 			},
 			updateServerConfigArg: true,
 			repoGetByName: &provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusPending,
+				Name:         "one",
+				Status:       api.ServerStatusPending,
+				StatusDetail: api.ServerStatusDetailPendingRegistering,
 			},
 			clientGetOSData: api.OSData{
 				Network: incusosapi.SystemNetwork{
