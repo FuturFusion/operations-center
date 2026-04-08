@@ -606,15 +606,16 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 		}
 	}
 
-	incusServers := mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '.[] | select(.server_type == "incus" and .server_status == "ready") | .name'`, 10*time.Second, cpuArch)
-	incusServerNames := strings.Split(incusServers.OutputTrimmed(), "\n")
-	if len(names) != len(incusServerNames) {
-		t.Fatalf("expected a server %v for each name %v", incusServerNames, names)
+	incusServers := mustRun(t, `incus list -f json | jq -r '.[] | select(.name != "OperationsCenter") | .name + "," + .state.os_info.hostname'`)
+	incusServerNameHostnamePairs := strings.Split(incusServers.OutputTrimmed(), "\n")
+	if len(names) != len(incusServerNameHostnamePairs) {
+		t.Fatalf("expected a server %v for each name %v", incusServerNameHostnamePairs, names)
 	}
 
 	// Rename servers
-	for i, serverName := range incusServerNames {
-		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning server rename %s %s`, 10*time.Second, cpuArch, serverName, names[i])
+	for _, serverNameHostnamePair := range incusServerNameHostnamePairs {
+		nameHostnamePair := strings.SplitN(serverNameHostnamePair, ",", 2)
+		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning server rename %s %s`, 10*time.Second, cpuArch, nameHostnamePair[1], nameHostnamePair[0])
 	}
 }
 
