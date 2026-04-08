@@ -24,12 +24,14 @@ import (
 
 func TestRunner_ServerRegistrationRun(t *testing.T) {
 	tests := []struct {
-		name                  string
-		script                string
-		clientGetSystem       map[string]any
-		clientGetSystemErr    error
-		clientUpdateSystem    any
-		clientUpdateSystemErr error
+		name                          string
+		script                        string
+		clientGetSystem               map[string]any
+		clientGetSystemErr            error
+		clientUpdateSystem            any
+		clientUpdateSystemErr         error
+		clientExecuteSystemCommand    any
+		clientExecuteSystemCommandErr error
 
 		assertSetScriptletErr require.ErrorAssertionFunc
 		assertRunErr          require.ErrorAssertionFunc
@@ -172,6 +174,22 @@ def server_registration(server):
 				log.Contains(`INF Server registration scriptlet: config.blacklist_modules[0]: bad-module`)(t, logBuf)
 			},
 		},
+
+		{
+			name: "success - execute_system_command",
+			script: `
+def server_registration(server):
+	execute_system_command("storage", "scrub-pool", { "name": "mypool" })
+`,
+			clientExecuteSystemCommand: map[string]any{
+				"name": "mypool",
+			},
+
+			assertSetScriptletErr: require.NoError,
+			assertRunErr:          require.NoError,
+			assertLog:             log.Empty,
+		},
+
 		{
 			name: "error - invalid script",
 			script: `
@@ -409,6 +427,43 @@ def server_registration(server):
 			assertRunErr:          boom.ErrorIs,
 			assertLog:             log.Empty,
 		},
+		{
+			name: "error - execute_system_command - invalid argument count",
+			script: `
+def server_registration(server):
+	execute_system_command()
+`,
+
+			assertSetScriptletErr: require.NoError,
+			assertRunErr:          require.Error,
+			assertLog:             log.Empty,
+		},
+		{
+			name: "error - execute_system_command - invalid argument - unsupported starlark.Dict",
+			script: `
+def server_registration(server):
+	execute_system_command("storage", "scrub-pool", {1: ""})
+`,
+
+			assertSetScriptletErr: require.NoError,
+			assertRunErr:          require.Error,
+			assertLog:             log.Empty,
+		},
+		{
+			name: "error - execute_system_command - client",
+			script: `
+def server_registration(server):
+	execute_system_command("storage", "scrub-pool", { "name": "mypool" })
+`,
+			clientExecuteSystemCommand: map[string]any{
+				"name": "mypool",
+			},
+			clientExecuteSystemCommandErr: boom.Error,
+
+			assertSetScriptletErr: require.NoError,
+			assertRunErr:          boom.ErrorIs,
+			assertLog:             log.Empty,
+		},
 	}
 
 	for _, tc := range tests {
@@ -431,6 +486,10 @@ def server_registration(server):
 				UpdateSystemFunc: func(ctx context.Context, server provisioning.Server, resource string, config any) error {
 					require.Equal(t, tc.clientUpdateSystem, config)
 					return tc.clientUpdateSystemErr
+				},
+				ExecuteSystemCommandFunc: func(ctx context.Context, server provisioning.Server, resource, action string, body any) error {
+					require.Equal(t, tc.clientExecuteSystemCommand, body)
+					return tc.clientExecuteSystemCommandErr
 				},
 			}
 
