@@ -40,6 +40,43 @@ func NewScriptletClientPortWithSlog(base scriptlet.ScriptletClientPort, opts ...
 	return this
 }
 
+// ExecuteSystemCommand implements scriptlet.ScriptletClientPort.
+func (_d ScriptletClientPortWithSlog) ExecuteSystemCommand(ctx context.Context, server provisioning.Server, resource string, action string, body any) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.String("resource", resource),
+			slog.String("action", action),
+			slog.Any("body", body),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ExecuteSystemCommand")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method ExecuteSystemCommand returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method ExecuteSystemCommand returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method ExecuteSystemCommand finished")
+		}
+	}()
+	return _d._base.ExecuteSystemCommand(ctx, server, resource, action, body)
+}
+
 // GetSystem implements scriptlet.ScriptletClientPort.
 func (_d ScriptletClientPortWithSlog) GetSystem(ctx context.Context, server provisioning.Server, resource string) (stringToV map[string]any, err error) {
 	log := slog.With()

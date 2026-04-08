@@ -26,6 +26,16 @@ func NewScriptletClientPortWithErrorWrapper(base scriptlet.ScriptletClientPort, 
 	return this
 }
 
+// ExecuteSystemCommand implements scriptlet.ScriptletClientPort.
+func (_d ScriptletClientPortWithErrorWrapper) ExecuteSystemCommand(ctx context.Context, server provisioning.Server, resource string, action string, body any) (err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.ExecuteSystemCommand(ctx, server, resource, action, body)
+}
+
 // GetSystem implements scriptlet.ScriptletClientPort.
 func (_d ScriptletClientPortWithErrorWrapper) GetSystem(ctx context.Context, server provisioning.Server, resource string) (stringToV map[string]any, err error) {
 	defer func() {
