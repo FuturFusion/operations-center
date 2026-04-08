@@ -43,8 +43,10 @@ resolvers
 resync
 Resync
 rollout
+scriptlet
 SHA
 sso
+starlark
 struct
 Terraform
 TLS
