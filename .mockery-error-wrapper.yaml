@@ -9,10 +9,14 @@ include-interface-regex: "(.*ServerClient|.+ClientPort)"
 dir: >-
   {{- $targetDir := "middleware" -}}
   {{- if and (.InterfaceName | hasSuffix "ServerClient") -}}
-  {{- $targetDir = "server/middleware" -}}
+    {{- $targetDir = "server/middleware" -}}
   {{- end -}}
   {{- if .InterfaceName | hasSuffix "ClientPort" -}}
-  {{- $targetDir = "adapter/middleware" -}}
+    {{- if .InterfaceDir | contains "adapter" -}}
+      {{- $targetDir = "../middleware" -}}
+    {{- else -}}
+      {{- $targetDir = "adapter/middleware" -}}
+    {{- end -}}
   {{- end -}}
   {{- .InterfaceDir -}}/{{- $targetDir -}}
 filename: >-
@@ -22,3 +26,4 @@ pkgname: middleware
 packages:
   github.com/FuturFusion/operations-center/internal/inventory:
   github.com/FuturFusion/operations-center/internal/provisioning:
+  github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet:

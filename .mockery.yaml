@@ -10,13 +10,17 @@ exclude-interface-regex: "(Image|Instance|InventoryAggregate|Network|NetworkACL|
 dir: >-
   {{- $targetDir := "mock" -}}
   {{- if and (.InterfaceName | hasSuffix "ServerClient") -}}
-  {{- $targetDir = "server/mock" -}}
+    {{- $targetDir = "server/mock" -}}
   {{- end -}}
   {{- if .InterfaceName | hasSuffix "Repo" -}}
-  {{- $targetDir = "repo/mock" -}}
+    {{- $targetDir = "repo/mock" -}}
   {{- end -}}
   {{- if .InterfaceName | hasSuffix "Port" -}}
-  {{- $targetDir = "adapter/mock" -}}
+    {{- if .InterfaceDir | contains "adapter" -}}
+      {{- $targetDir = "../mock" -}}
+    {{- else -}}
+      {{- $targetDir = "adapter/mock" -}}
+    {{- end -}}
   {{- end -}}
   {{- .InterfaceDir -}}/{{- $targetDir -}}
 filename: "{{ .InterfaceName | snakecase }}_mock_gen.go"
@@ -26,4 +30,5 @@ packages:
   github.com/FuturFusion/operations-center/internal/environment:
   github.com/FuturFusion/operations-center/internal/inventory:
   github.com/FuturFusion/operations-center/internal/provisioning:
+  github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet:
   github.com/FuturFusion/operations-center/internal/system:
