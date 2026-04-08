@@ -3866,8 +3866,8 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 			runnerServerRegistrationRunErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertErr: require.NoError,
+			assertLog: log.Contains("Failed to run server registration scriptlet server=one err=boom!"),
 		},
 		{
 			name: "error - enrichServerWithVersionDetails",
@@ -3940,7 +3940,7 @@ func TestServerService_PollServer(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, true, false)
+			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
 
 			repo := &repoMock.ServerRepoMock{
