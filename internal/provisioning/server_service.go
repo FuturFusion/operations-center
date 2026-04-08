@@ -1656,17 +1656,13 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 			return err
 		}
 
+		// Evaluate, if server registration scriptlet should be run before updating the state
+		runServerRegistrationScriptlet := server.Status == api.ServerStatusPending && server.StatusDetail == api.ServerStatusDetailPendingRegistering
+
 		server.LastSeen = s.now()
 
 		if updatedServerCertificate != "" {
 			server.Certificate = updatedServerCertificate
-		}
-
-		if server.Status == api.ServerStatusPending && server.StatusDetail == api.ServerStatusDetailPendingRegistering {
-			err = s.scriptlet.ServerRegistrationRun(ctx, server)
-			if err != nil {
-				slog.WarnContext(ctx, "Failed to run server registration scriptlet", slog.String("server", server.Name), logger.Err(err))
-			}
 		}
 
 		// Clear status detail, if previous state was not ready, e.g. because
@@ -1699,6 +1695,13 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 						server.StatusDetail = api.ServerStatusDetailNone
 					}
 				}
+			}
+		}
+
+		if runServerRegistrationScriptlet {
+			err = s.scriptlet.ServerRegistrationRun(ctx, server)
+			if err != nil {
+				slog.WarnContext(ctx, "Failed to run server registration scriptlet", slog.String("server", server.Name), logger.Err(err))
 			}
 		}
 
