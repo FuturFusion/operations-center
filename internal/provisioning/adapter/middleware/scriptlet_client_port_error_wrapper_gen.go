@@ -36,6 +36,16 @@ func (_d ScriptletClientPortWithErrorWrapper) ExecuteSystemCommand(ctx context.C
 	return _d._base.ExecuteSystemCommand(ctx, server, resource, action, body)
 }
 
+// GetOSService implements scriptlet.ScriptletClientPort.
+func (_d ScriptletClientPortWithErrorWrapper) GetOSService(ctx context.Context, server provisioning.Server, name string) (stringToV map[string]any, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.GetOSService(ctx, server, name)
+}
+
 // GetSystem implements scriptlet.ScriptletClientPort.
 func (_d ScriptletClientPortWithErrorWrapper) GetSystem(ctx context.Context, server provisioning.Server, resource string) (stringToV map[string]any, err error) {
 	defer func() {
@@ -44,6 +54,16 @@ func (_d ScriptletClientPortWithErrorWrapper) GetSystem(ctx context.Context, ser
 		}
 	}()
 	return _d._base.GetSystem(ctx, server, resource)
+}
+
+// UpdateOSService implements scriptlet.ScriptletClientPort.
+func (_d ScriptletClientPortWithErrorWrapper) UpdateOSService(ctx context.Context, server provisioning.Server, name string, config any) (err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.UpdateOSService(ctx, server, name, config)
 }
 
 // UpdateSystem implements scriptlet.ScriptletClientPort.
