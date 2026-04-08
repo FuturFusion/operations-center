@@ -470,6 +470,28 @@ func (c client) Evacuate(ctx context.Context, server provisioning.Server, callba
 	return nil
 }
 
+func (c client) ExecuteSystemCommand(ctx context.Context, server provisioning.Server, resource string, action string, body any) error {
+	if strings.Contains(resource, "/") || strings.Contains(action, "/") {
+		return fmt.Errorf(`Resource and action must not contain forward slashes ("/")`)
+	}
+
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return err
+	}
+
+	if !strings.HasPrefix(action, ":") {
+		action = ":" + action
+	}
+
+	_, _, err = client.RawQuery(http.MethodPost, path.Join("/os/1.0/system", resource, action), body, "")
+	if err != nil {
+		return fmt.Errorf("Failed to trigger %s on %q (%s): %w", action, server.Name, server.GetConnectionURL(), err)
+	}
+
+	return nil
+}
+
 func (c client) Poweroff(ctx context.Context, server provisioning.Server) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {

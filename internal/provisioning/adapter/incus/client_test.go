@@ -3740,6 +3740,41 @@ func TestClientServer(t *testing.T) {
 			},
 		},
 		{
+			name: "ExecuteSystemCommand",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.ExecuteSystemCommand(ctx, target, "", "poweroff", nil)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"POST /os/1.0/system/:poweroff"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"POST /os/1.0/system/:poweroff"},
+				},
+			},
+		},
+		{
 			name: "Poweroff",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
 				return nil, client.Poweroff(ctx, target)
@@ -4545,5 +4580,10 @@ func TestClient_input_validation(t *testing.T) {
 	require.ErrorContains(t, err, "must not contain forward slashes")
 
 	err = client.UpdateSystem(t.Context(), provisioning.Server{}, "invalid/resource", nil)
+	require.ErrorContains(t, err, "must not contain forward slashes")
+
+	err = client.ExecuteSystemCommand(t.Context(), provisioning.Server{}, "invalid/resource", "action", nil)
+	require.ErrorContains(t, err, "must not contain forward slashes")
+	err = client.ExecuteSystemCommand(t.Context(), provisioning.Server{}, "resource", "invalid/action", nil)
 	require.ErrorContains(t, err, "must not contain forward slashes")
 }
