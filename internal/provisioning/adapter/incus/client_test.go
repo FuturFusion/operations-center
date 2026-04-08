@@ -24,6 +24,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
@@ -34,6 +35,7 @@ import (
 type clientPort interface {
 	provisioning.ServerClientPort
 	provisioning.ClusterClientPort
+	scriptlet.ScriptletClientPort
 
 	GetOSService(ctx context.Context, server provisioning.Server, name string) (map[string]any, error)
 	GetOSServiceCeph(ctx context.Context, server provisioning.Server) (incusosapi.ServiceCeph, error)
@@ -1732,6 +1734,144 @@ func TestClientServer(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			name: "GetSystem",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetSystem(ctx, target, "kernel")
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/kernel
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "blacklist_modules": [
+        "bad-module"
+      ],
+      "network": {
+        "buffer_size": 33554432
+      },
+      "pci": {
+        "passthrough": [
+          {
+            "product_id": "1050"
+          }
+        ]
+      }
+    }
+  },
+  "status": "Success",
+  "status_code": 200,
+  "type": "sync"
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /os/1.0/system/kernel"},
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantConfig := map[string]any{
+							"config": map[string]any{
+								"blacklist_modules": []any{"bad-module"},
+								"network": map[string]any{
+									"buffer_size": float64(33554432),
+								},
+								"pci": map[string]any{
+									"passthrough": []any{
+										map[string]any{
+											"product_id": "1050",
+										},
+									},
+								},
+							},
+						}
+
+						require.Equal(t, wantConfig, res)
+					},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/kernel
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/kernel"},
+					assertResult: noResult,
+				},
+				{
+					name: "error - kernel config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/kernel
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/kernel"},
+					assertResult: noResult,
+				},
+			},
+		},
+		{
+			name: "UpdateSystem",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.UpdateSystem(ctx, target, "kernel", incusosapi.SystemKernel{})
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// PUT /os/1.0/system/kernel
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"PUT /os/1.0/system/kernel"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// PUT /os/1.0/system/kernel
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"PUT /os/1.0/system/kernel"},
+					assertResult: noResult,
+				},
+			},
+		},
+
 		{
 			name: "GetSystemKernel",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
@@ -4497,4 +4637,14 @@ func setupCerts(t *testing.T) (caPool *x509.CertPool, certPEM string, keyPEM str
 	caPool.AppendCertsFromPEM(certPEMByte)
 
 	return caPool, string(certPEMByte), string(keyPEMByte)
+}
+
+func TestClient_input_validation(t *testing.T) {
+	client := incus.New("", "")
+
+	_, err := client.GetSystem(t.Context(), provisioning.Server{}, "invalid/resource")
+	require.ErrorContains(t, err, "must not contain forward slashes")
+
+	err = client.UpdateSystem(t.Context(), provisioning.Server{}, "invalid/resource", nil)
+	require.ErrorContains(t, err, "must not contain forward slashes")
 }

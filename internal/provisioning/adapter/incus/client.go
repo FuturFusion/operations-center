@@ -595,6 +595,48 @@ func (c client) AddApplication(ctx context.Context, server provisioning.Server, 
 	return nil
 }
 
+func (c client) GetSystem(ctx context.Context, server provisioning.Server, resource string) (map[string]any, error) {
+	if strings.Contains(resource, "/") {
+		return nil, fmt.Errorf(`Resource name must not contain forward slashes ("/")`)
+	}
+
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, _, err := client.RawQuery(http.MethodGet, path.Join("/os/1.0/system", resource), http.NoBody, "")
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get system %s configuration on %q (%s): %w", resource, server.Name, server.GetConnectionURL(), err)
+	}
+
+	config := map[string]any{}
+	err = json.Unmarshal(resp.Metadata, &config)
+	if err != nil {
+		return nil, fmt.Errorf("Unexpected response metadata while fetching system %s configuration from %q (%s): %w", resource, server.Name, server.GetConnectionURL(), err)
+	}
+
+	return config, nil
+}
+
+func (c client) UpdateSystem(ctx context.Context, server provisioning.Server, resource string, config any) error {
+	if strings.Contains(resource, "/") {
+		return fmt.Errorf(`Resource name must not contain forward slashes ("/")`)
+	}
+
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = client.RawQuery(http.MethodPut, path.Join("/os/1.0/system", resource), config, "")
+	if err != nil {
+		return fmt.Errorf("Failed to update system %s configuration on %q (%s): %w", resource, server.Name, server.GetConnectionURL(), err)
+	}
+
+	return nil
+}
+
 func (c client) GetSystemKernel(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemKernel, error) {
 	client, err := c.getClient(ctx, server)
 	if err != nil {
