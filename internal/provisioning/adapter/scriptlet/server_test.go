@@ -32,6 +32,10 @@ func TestRunner_ServerRegistrationRun(t *testing.T) {
 		clientUpdateSystemErr         error
 		clientExecuteSystemCommand    any
 		clientExecuteSystemCommandErr error
+		clientGetOSService            map[string]any
+		clientGetOSServiceErr         error
+		clientUpdateOSService         any
+		clientUpdateOSServiceErr      error
 
 		assertSetScriptletErr require.ErrorAssertionFunc
 		assertRunErr          require.ErrorAssertionFunc
@@ -197,6 +201,36 @@ def server_registration(server):
 
 			assertSetScriptletErr: require.Error,
 		},
+
+		{
+			name: "success - get + set_service_config",
+			script: `
+def server_registration(server):
+	info = get_service_config("lvm")
+	log_info("config.enabled: ", info["config"]["enabled"])
+	set_service_config("lvm", { "config": { "enabled": True } })
+`,
+			clientGetOSService: map[string]any{
+				"config": map[string]any{
+					"enabled": true,
+				},
+				"state": map[string]any{},
+			},
+			clientUpdateOSService: map[string]any{
+				"config": map[string]any{
+					"enabled": true,
+				},
+			},
+
+			assertSetScriptletErr: require.NoError,
+			assertRunErr:          require.NoError,
+			assertLog: func(t *testing.T, logBuf *bytes.Buffer) {
+				t.Helper()
+
+				log.Contains(`INF Server registration scriptlet: config.enabled: True`)(t, logBuf)
+			},
+		},
+
 		{
 			name: "error - scriptlet fail",
 			script: `
@@ -427,6 +461,7 @@ def server_registration(server):
 			assertRunErr:          boom.ErrorIs,
 			assertLog:             log.Empty,
 		},
+
 		{
 			name: "error - execute_system_command - invalid argument count",
 			script: `
@@ -464,6 +499,83 @@ def server_registration(server):
 			assertRunErr:          boom.ErrorIs,
 			assertLog:             log.Empty,
 		},
+
+		{
+			name: "error - get_service_config - invalid argument count",
+			script: `
+def server_registration(server):
+	get_service_config()
+`,
+
+			assertSetScriptletErr: require.NoError,
+			assertRunErr:          require.Error,
+			assertLog:             log.Empty,
+		},
+		{
+			name: "error - get_service_config - client",
+			script: `
+def server_registration(server):
+	get_service_config("lvm")
+`,
+			clientGetOSServiceErr: boom.Error,
+
+			assertSetScriptletErr: require.NoError,
+			assertRunErr:          boom.ErrorIs,
+			assertLog:             log.Empty,
+		},
+		{
+			name: "error - get_service_config - starlark marshal",
+			script: `
+def server_registration(server):
+	get_service_config("lvm")
+`,
+			clientGetOSService: map[string]any{
+				"invalid": func() {}, // functions are invalid types for starlark marshal.
+			},
+
+			assertSetScriptletErr: require.NoError,
+			assertRunErr:          require.Error,
+			assertLog:             log.Empty,
+		},
+		{
+			name: "error - set_service_config - invalid argument count",
+			script: `
+def server_registration(server):
+	set_service_config("lvm", { "config": { "enabled": True } }, "additional argument")
+`,
+
+			assertSetScriptletErr: require.NoError,
+			assertRunErr:          require.Error,
+			assertLog:             log.Empty,
+		},
+		{
+			name: "error - set_service_config - invalid argument - unsupported starlark.Dict",
+			script: `
+def server_registration(server):
+	set_service_config("lvm", {1: ""})
+`,
+
+			assertSetScriptletErr: require.NoError,
+			assertRunErr:          require.Error,
+			assertLog:             log.Empty,
+		},
+		{
+			name: "error - set_service_config - client",
+			script: `
+def server_registration(server):
+	set_service_config("lvm", { "config": { "enabled": True } })
+`,
+			clientUpdateOSService: map[string]any{
+				"config": map[string]any{
+					"enabled": true,
+				},
+			},
+			clientUpdateOSServiceErr: boom.Error,
+
+			assertSetScriptletErr: require.NoError,
+			assertRunErr:          boom.ErrorIs,
+			assertLog:             log.Empty,
+		},
 	}
 
 	for _, tc := range tests {
@@ -490,6 +602,13 @@ def server_registration(server):
 				ExecuteSystemCommandFunc: func(ctx context.Context, server provisioning.Server, resource, action string, body any) error {
 					require.Equal(t, tc.clientExecuteSystemCommand, body)
 					return tc.clientExecuteSystemCommandErr
+				},
+				GetOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string) (map[string]any, error) {
+					return tc.clientGetOSService, tc.clientGetOSServiceErr
+				},
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					require.Equal(t, tc.clientUpdateOSService, config)
+					return tc.clientUpdateOSServiceErr
 				},
 			}
 
