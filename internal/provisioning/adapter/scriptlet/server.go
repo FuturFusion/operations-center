@@ -49,6 +49,7 @@ func serverRegistrationCompile(name string, src string) (*starlark.Program, erro
 
 		"get_system",
 		"set_system",
+		"execute_system_command",
 	})
 }
 
@@ -86,6 +87,8 @@ func (r Runner) ServerRegistrationRun(ctx context.Context, server *provisioning.
 
 		"get_system": starlark.NewBuiltin("get_system", r.getSystem(ctx, *server)),
 		"set_system": starlark.NewBuiltin("set_system", r.setSystem(ctx, *server)),
+
+		"execute_system_command": starlark.NewBuiltin("execute_system_command", r.executeSystemCommand(ctx, *server)),
 	}
 
 	go func() {
@@ -288,6 +291,30 @@ func (r Runner) setSystem(ctx context.Context, server provisioning.Server) func(
 		err = r.client.UpdateSystem(ctx, server, resource, config)
 		if err != nil {
 			return starlark.None, fmt.Errorf("Failed to set system %s configuration for server %q: %w", resource, server.Name, err)
+		}
+
+		return starlark.None, nil
+	}
+}
+
+func (r Runner) executeSystemCommand(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var resource string
+		var action string
+		bodyArg := &starlark.Dict{}
+		err := starlark.UnpackArgs(b.Name(), args, kwargs, "resource", &resource, "action", &action, "body", &bodyArg)
+		if err != nil {
+			return nil, err
+		}
+
+		body, err := scriptlet.StarlarkUnmarshal(bodyArg)
+		if err != nil {
+			return nil, err
+		}
+
+		err = r.client.ExecuteSystemCommand(ctx, server, resource, action, body)
+		if err != nil {
+			return starlark.None, fmt.Errorf("Failed to execute system command %s/%s for server %q: %w", resource, action, server.Name, err)
 		}
 
 		return starlark.None, nil
