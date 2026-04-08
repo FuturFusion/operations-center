@@ -77,6 +77,42 @@ func (_d ScriptletClientPortWithSlog) ExecuteSystemCommand(ctx context.Context, 
 	return _d._base.ExecuteSystemCommand(ctx, server, resource, action, body)
 }
 
+// GetOSService implements scriptlet.ScriptletClientPort.
+func (_d ScriptletClientPortWithSlog) GetOSService(ctx context.Context, server provisioning.Server, name string) (stringToV map[string]any, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetOSService")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("stringToV", stringToV),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetOSService returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetOSService returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetOSService finished")
+		}
+	}()
+	return _d._base.GetOSService(ctx, server, name)
+}
+
 // GetSystem implements scriptlet.ScriptletClientPort.
 func (_d ScriptletClientPortWithSlog) GetSystem(ctx context.Context, server provisioning.Server, resource string) (stringToV map[string]any, err error) {
 	log := slog.With()
@@ -111,6 +147,42 @@ func (_d ScriptletClientPortWithSlog) GetSystem(ctx context.Context, server prov
 		}
 	}()
 	return _d._base.GetSystem(ctx, server, resource)
+}
+
+// UpdateOSService implements scriptlet.ScriptletClientPort.
+func (_d ScriptletClientPortWithSlog) UpdateOSService(ctx context.Context, server provisioning.Server, name string, config any) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.String("name", name),
+			slog.Any("config", config),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateOSService")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateOSService returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateOSService returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateOSService finished")
+		}
+	}()
+	return _d._base.UpdateOSService(ctx, server, name, config)
 }
 
 // UpdateSystem implements scriptlet.ScriptletClientPort.

@@ -25,8 +25,14 @@ var _ scriptlet.ScriptletClientPort = &ScriptletClientPortMock{}
 //			ExecuteSystemCommandFunc: func(ctx context.Context, server provisioning.Server, resource string, action string, body any) error {
 //				panic("mock out the ExecuteSystemCommand method")
 //			},
+//			GetOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string) (map[string]any, error) {
+//				panic("mock out the GetOSService method")
+//			},
 //			GetSystemFunc: func(ctx context.Context, server provisioning.Server, resource string) (map[string]any, error) {
 //				panic("mock out the GetSystem method")
+//			},
+//			UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+//				panic("mock out the UpdateOSService method")
 //			},
 //			UpdateSystemFunc: func(ctx context.Context, server provisioning.Server, resource string, config any) error {
 //				panic("mock out the UpdateSystem method")
@@ -41,8 +47,14 @@ type ScriptletClientPortMock struct {
 	// ExecuteSystemCommandFunc mocks the ExecuteSystemCommand method.
 	ExecuteSystemCommandFunc func(ctx context.Context, server provisioning.Server, resource string, action string, body any) error
 
+	// GetOSServiceFunc mocks the GetOSService method.
+	GetOSServiceFunc func(ctx context.Context, server provisioning.Server, name string) (map[string]any, error)
+
 	// GetSystemFunc mocks the GetSystem method.
 	GetSystemFunc func(ctx context.Context, server provisioning.Server, resource string) (map[string]any, error)
+
+	// UpdateOSServiceFunc mocks the UpdateOSService method.
+	UpdateOSServiceFunc func(ctx context.Context, server provisioning.Server, name string, config any) error
 
 	// UpdateSystemFunc mocks the UpdateSystem method.
 	UpdateSystemFunc func(ctx context.Context, server provisioning.Server, resource string, config any) error
@@ -62,6 +74,15 @@ type ScriptletClientPortMock struct {
 			// Body is the body argument value.
 			Body any
 		}
+		// GetOSService holds details about calls to the GetOSService method.
+		GetOSService []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Name is the name argument value.
+			Name string
+		}
 		// GetSystem holds details about calls to the GetSystem method.
 		GetSystem []struct {
 			// Ctx is the ctx argument value.
@@ -70,6 +91,17 @@ type ScriptletClientPortMock struct {
 			Server provisioning.Server
 			// Resource is the resource argument value.
 			Resource string
+		}
+		// UpdateOSService holds details about calls to the UpdateOSService method.
+		UpdateOSService []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Name is the name argument value.
+			Name string
+			// Config is the config argument value.
+			Config any
 		}
 		// UpdateSystem holds details about calls to the UpdateSystem method.
 		UpdateSystem []struct {
@@ -84,7 +116,9 @@ type ScriptletClientPortMock struct {
 		}
 	}
 	lockExecuteSystemCommand sync.RWMutex
+	lockGetOSService         sync.RWMutex
 	lockGetSystem            sync.RWMutex
+	lockUpdateOSService      sync.RWMutex
 	lockUpdateSystem         sync.RWMutex
 }
 
@@ -136,6 +170,46 @@ func (mock *ScriptletClientPortMock) ExecuteSystemCommandCalls() []struct {
 	return calls
 }
 
+// GetOSService calls GetOSServiceFunc.
+func (mock *ScriptletClientPortMock) GetOSService(ctx context.Context, server provisioning.Server, name string) (map[string]any, error) {
+	if mock.GetOSServiceFunc == nil {
+		panic("ScriptletClientPortMock.GetOSServiceFunc: method is nil but ScriptletClientPort.GetOSService was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Name   string
+	}{
+		Ctx:    ctx,
+		Server: server,
+		Name:   name,
+	}
+	mock.lockGetOSService.Lock()
+	mock.calls.GetOSService = append(mock.calls.GetOSService, callInfo)
+	mock.lockGetOSService.Unlock()
+	return mock.GetOSServiceFunc(ctx, server, name)
+}
+
+// GetOSServiceCalls gets all the calls that were made to GetOSService.
+// Check the length with:
+//
+//	len(mockedScriptletClientPort.GetOSServiceCalls())
+func (mock *ScriptletClientPortMock) GetOSServiceCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+	Name   string
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Name   string
+	}
+	mock.lockGetOSService.RLock()
+	calls = mock.calls.GetOSService
+	mock.lockGetOSService.RUnlock()
+	return calls
+}
+
 // GetSystem calls GetSystemFunc.
 func (mock *ScriptletClientPortMock) GetSystem(ctx context.Context, server provisioning.Server, resource string) (map[string]any, error) {
 	if mock.GetSystemFunc == nil {
@@ -173,6 +247,50 @@ func (mock *ScriptletClientPortMock) GetSystemCalls() []struct {
 	mock.lockGetSystem.RLock()
 	calls = mock.calls.GetSystem
 	mock.lockGetSystem.RUnlock()
+	return calls
+}
+
+// UpdateOSService calls UpdateOSServiceFunc.
+func (mock *ScriptletClientPortMock) UpdateOSService(ctx context.Context, server provisioning.Server, name string, config any) error {
+	if mock.UpdateOSServiceFunc == nil {
+		panic("ScriptletClientPortMock.UpdateOSServiceFunc: method is nil but ScriptletClientPort.UpdateOSService was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Name   string
+		Config any
+	}{
+		Ctx:    ctx,
+		Server: server,
+		Name:   name,
+		Config: config,
+	}
+	mock.lockUpdateOSService.Lock()
+	mock.calls.UpdateOSService = append(mock.calls.UpdateOSService, callInfo)
+	mock.lockUpdateOSService.Unlock()
+	return mock.UpdateOSServiceFunc(ctx, server, name, config)
+}
+
+// UpdateOSServiceCalls gets all the calls that were made to UpdateOSService.
+// Check the length with:
+//
+//	len(mockedScriptletClientPort.UpdateOSServiceCalls())
+func (mock *ScriptletClientPortMock) UpdateOSServiceCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+	Name   string
+	Config any
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Name   string
+		Config any
+	}
+	mock.lockUpdateOSService.RLock()
+	calls = mock.calls.UpdateOSService
+	mock.lockUpdateOSService.RUnlock()
 	return calls
 }
 
