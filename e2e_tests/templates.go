@@ -5,6 +5,14 @@ import (
 )
 
 var (
+	operationsCenterSettingsWithRegistrationScriptletYAML = []byte(`---
+log_level: INFO
+server_registration_scriptlet: |
+  def server_registration(server):
+    set_server_description("some description")
+    set_server_properties({ "timezone": server.os_data.network.config.time.timezone })
+`)
+
 	operationsCenterSeedTemplate = []byte(`{
   "seeds": {
     "install": {

@@ -26,6 +26,35 @@ func assertOperationsCenterSelfRegistration(t *testing.T) {
 	require.True(t, resp.Success(), "failed to assert self registration of operations-center")
 }
 
+func assertServerRegistrationScriptletEffects(t *testing.T) {
+	t.Helper()
+
+	var resp cmdResponse
+	success := true
+
+	t.Log("Assert operations-center server registration scriptlet effects")
+
+	resp = run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '.[] | select(.name == "IncusOS01") | .description == "some description"'`, cpuArch)
+	require.NoError(t, resp.err, "expect server description to be set by server registration scriptlet")
+	if !resp.Success() {
+		t.Errorf("expect server description to be set by server registration scriptlet")
+		success = false
+		resp = mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '.[] | select(.name == "IncusOS01")`, cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	resp = run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '.[] | select(.name == "IncusOS01") | .properties.timezone == "UTC"'`, cpuArch)
+	require.NoError(t, resp.err, "expect server properties to be set by server registration scriptlet")
+	if !resp.Success() {
+		t.Errorf("expect server properties to be set by server registration scriptlet")
+		success = false
+		resp = mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '.[] | select(.name == "IncusOS01")`, cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	require.True(t, success, "operations-center server registration scriptlet effects failed")
+}
+
 func assertOperationsCenterCliAdmin(t *testing.T) {
 	t.Helper()
 
