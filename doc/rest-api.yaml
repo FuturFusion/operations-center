@@ -270,7 +270,14 @@ definitions:
     ClusterConfigRollingRestart:
         properties:
             post_restore_delay:
-                $ref: '#/definitions/Duration'
+                description: |-
+                    PostRestoreDelay holds the time.Duration (as string, e.g. "15m"), that is
+                    waited between the resore of a server and the evacuation of the next
+                    server. This should be set if RestoreMode is kept at the default value in
+                    order to grant a cluster enough time to move previously evacuated instances
+                    back to their originating server.
+                type: string
+                x-go-name: PostRestoreDelay
             restore_mode:
                 description: |-
                     RestoreMode is the mode applied dring Incus restore operation. Valid
@@ -573,6 +580,10 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ClusterUpdateInProgressStatus:
         properties:
+            error:
+                description: Error contains the error description, if the cluster update failed permanently.
+                type: string
+                x-go-name: Error
             evacuated_before:
                 description: |-
                     EvacuatedBefore contains the list of server names of the servers, that have
@@ -660,14 +671,6 @@ definitions:
             gracefully handle numbers and bools.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
-    Duration:
-        description: |-
-            A Duration represents the elapsed time between two instants
-            as an int64 nanosecond count. The representation limits the
-            largest representable duration to approximately 290 years.
-        format: int64
-        type: integer
-        x-go-package: time
     HardwareData:
         properties:
             cpu:
@@ -2545,6 +2548,10 @@ definitions:
                 description: Daemon log level.
                 type: string
                 x-go-name: LogLevel
+            server_registration_scriptlet:
+                description: ServerRegistrationScriptlet hold the server registration scriptlet.
+                type: string
+                x-go-name: ServerRegistrationScriptlet
         title: Settings represents global system settings.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
@@ -2557,6 +2564,10 @@ definitions:
                 description: Daemon log level.
                 type: string
                 x-go-name: LogLevel
+            server_registration_scriptlet:
+                description: ServerRegistrationScriptlet hold the server registration scriptlet.
+                type: string
+                x-go-name: ServerRegistrationScriptlet
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     SystemNetwork:
