@@ -59,6 +59,16 @@ func (_d ClusterClientPortWithErrorWrapper) GetClusterNodeNames(ctx context.Cont
 	return _d._base.GetClusterNodeNames(ctx, endpoint)
 }
 
+// GetNetworkConfig implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithErrorWrapper) GetNetworkConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemNetwork, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.GetNetworkConfig(ctx, server)
+}
+
 // GetOSData implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithErrorWrapper) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (oSData api.OSData, err error) {
 	defer func() {
@@ -77,6 +87,16 @@ func (_d ClusterClientPortWithErrorWrapper) GetOSServiceISCSI(ctx context.Contex
 		}
 	}()
 	return _d._base.GetOSServiceISCSI(ctx, server)
+}
+
+// GetOSServiceLVM implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithErrorWrapper) GetOSServiceLVM(ctx context.Context, server provisioning.Server) (serviceLVM api0.ServiceLVM, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.GetOSServiceLVM(ctx, server)
 }
 
 // GetOSServiceMultipath implements provisioning.ClusterClientPort.
@@ -109,14 +129,34 @@ func (_d ClusterClientPortWithErrorWrapper) GetRemoteCertificate(ctx context.Con
 	return _d._base.GetRemoteCertificate(ctx, endpoint)
 }
 
-// JoinCluster implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithErrorWrapper) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint) (err error) {
+// GetStorageConfig implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithErrorWrapper) GetStorageConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemStorage, err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)
 		}
 	}()
-	return _d._base.JoinCluster(ctx, server, joinToken, serverAddressOfClusterRole, endpoint)
+	return _d._base.GetStorageConfig(ctx, server)
+}
+
+// IncusClient implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithErrorWrapper) IncusClient(ctx context.Context, endpoint provisioning.Endpoint) (v provisioning.InstanceServer, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.IncusClient(ctx, endpoint)
+}
+
+// JoinCluster implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithErrorWrapper) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint, config []api.ClusterMemberConfigKey) (err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.JoinCluster(ctx, server, joinToken, serverAddressOfClusterRole, endpoint, config)
 }
 
 // Ping implements provisioning.ClusterClientPort.

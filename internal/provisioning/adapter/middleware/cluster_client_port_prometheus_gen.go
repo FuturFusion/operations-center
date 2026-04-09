@@ -83,6 +83,20 @@ func (_d ClusterClientPortWithPrometheus) GetClusterNodeNames(ctx context.Contex
 	return _d.base.GetClusterNodeNames(ctx, endpoint)
 }
 
+// GetNetworkConfig implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) GetNetworkConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemNetwork, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetNetworkConfig(ctx, server)
+}
+
 // GetOSData implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithPrometheus) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (oSData api.OSData, err error) {
 	_since := time.Now()
@@ -109,6 +123,20 @@ func (_d ClusterClientPortWithPrometheus) GetOSServiceISCSI(ctx context.Context,
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSServiceISCSI", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetOSServiceISCSI(ctx, server)
+}
+
+// GetOSServiceLVM implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) GetOSServiceLVM(ctx context.Context, server provisioning.Server) (serviceLVM api0.ServiceLVM, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSServiceLVM", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetOSServiceLVM(ctx, server)
 }
 
 // GetOSServiceMultipath implements provisioning.ClusterClientPort.
@@ -153,8 +181,36 @@ func (_d ClusterClientPortWithPrometheus) GetRemoteCertificate(ctx context.Conte
 	return _d.base.GetRemoteCertificate(ctx, endpoint)
 }
 
+// GetStorageConfig implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) GetStorageConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemStorage, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetStorageConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetStorageConfig(ctx, server)
+}
+
+// IncusClient implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) IncusClient(ctx context.Context, endpoint provisioning.Endpoint) (v provisioning.InstanceServer, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "IncusClient", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.IncusClient(ctx, endpoint)
+}
+
 // JoinCluster implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint) (err error) {
+func (_d ClusterClientPortWithPrometheus) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint, config []api.ClusterMemberConfigKey) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -164,7 +220,7 @@ func (_d ClusterClientPortWithPrometheus) JoinCluster(ctx context.Context, serve
 
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "JoinCluster", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.JoinCluster(ctx, server, joinToken, serverAddressOfClusterRole, endpoint)
+	return _d.base.JoinCluster(ctx, server, joinToken, serverAddressOfClusterRole, endpoint, config)
 }
 
 // Ping implements provisioning.ClusterClientPort.
