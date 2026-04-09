@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type ClusterStatus string
@@ -375,6 +377,22 @@ const (
 	ClusterBulkUpdateActionAddNVMEStorageTarget           ClusterBulkUpdateAction = "add_nvme_storage_target"
 	ClusterBulkUpdateActionRemoveNVMEStorageTarget        ClusterBulkUpdateAction = "remove_nvme_storage_target"
 )
+
+// ClusterAddServersPost represents a cluster add servers request containing
+// the names of the servers to be added to the cluster.
+//
+// swagger:model
+type ClusterAddServersPost struct {
+	// Names of the servers to be added to the cluster.
+	// Example: [ "server1", "server2" ]
+	ServerNames []string `json:"server_names" yaml:"server_names"`
+
+	// If set to true, the post join operations (namely the creation of the local storage volumes for backups,
+	// images and logs) are skipped.
+	SkipPostJoinOperations bool `json:"skip_post_join_operations" yaml:"skip_post_join_operations"`
+}
+
+type ClusterMemberConfigKey = incusapi.ClusterMemberConfigKey
 
 // ClusterBulkUpdatePost represents a cluster bulk update request containing
 // action and optional arguments.
