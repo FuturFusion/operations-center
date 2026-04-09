@@ -1000,7 +1000,7 @@ func (c client) GetClusterJoinToken(ctx context.Context, endpoint provisioning.E
 	return token.String(), nil
 }
 
-func (c client) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint) error {
+func (c client) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint, config []api.ClusterMemberConfigKey) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {
 		return err
@@ -1011,10 +1011,9 @@ func (c client) JoinCluster(ctx context.Context, server provisioning.Server, joi
 
 	op, err := client.UpdateCluster(incusapi.ClusterPut{
 		Cluster: incusapi.Cluster{
-			ServerName: server.Name,
-			Enabled:    true,
-			// TODO: Add storage pool config?
-			MemberConfig: []incusapi.ClusterMemberConfigKey{},
+			ServerName:   server.Name,
+			Enabled:      true,
+			MemberConfig: config,
 		},
 		ClusterCertificate: endpoint.GetCertificate(),
 		ServerAddress:      serverAddressOfClusterRole,
@@ -1250,4 +1249,13 @@ func firstNonEmpty(candidates ...string) string {
 	}
 
 	return ""
+}
+
+func (c client) IncusClient(ctx context.Context, endpoint provisioning.Endpoint) (incus.InstanceServer, error) {
+	client, err := c.getClient(ctx, endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }
