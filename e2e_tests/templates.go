@@ -11,6 +11,12 @@ server_registration_scriptlet: |
   def server_registration(server):
     set_server_description("some description")
     set_server_properties({ "timezone": server.os_data.network.config.time.timezone })
+
+    # Make sure, "required_for_online" is set to "both" for all interfaces in E2E tests.
+    networkConfig = get_system("network")
+    for i in range(len(networkConfig["config"]["interfaces"])):
+      networkConfig["config"]["interfaces"][i]["required_for_online"] = "both"
+    set_system("network", networkConfig)
 `)
 
 	operationsCenterSeedTemplate = []byte(`{

@@ -45,6 +45,8 @@ func setupOperationsCenter(t *testing.T, tmpDir string) {
 
 	assertOperationsCenterSelfRegistration(t)
 
+	updateSystemSettingsWithRegistrationScriptlet(t, tmpDir)
+
 	mustWaitUpdatesReady(t)
 }
 
@@ -56,8 +58,6 @@ func setupIncusOSWithToken(t *testing.T, tmpDir string) {
 
 	// Register cleanup
 	t.Cleanup(cleanupIncusOS(t))
-
-	updateSystemSettingsWithRegistrationScriptlet(t, tmpDir)
 
 	token := createProvisioningToken(t)
 
@@ -598,7 +598,7 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 	require.NoError(t, err, "Failed to create IncusOS VMs for e2e test")
 
 	// Wait for instances to self update in Operations Center
-	instanceReadyTimeoutCtx, instanceReadyCancel := context.WithTimeout(t.Context(), strechedTimeout(1*time.Minute))
+	instanceReadyTimeoutCtx, instanceReadyCancel := context.WithTimeout(t.Context(), strechedTimeout(2*time.Minute))
 	defer instanceReadyCancel()
 
 	for {
