@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	incus "github.com/lxc/incus/v6/client"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -14,6 +15,7 @@ import (
 
 type ClusterService interface {
 	Create(ctx context.Context, cluster Cluster) (Cluster, error)
+	AddServers(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool) error
 	GetAll(ctx context.Context) (Clusters, error)
 	GetAllWithFilter(ctx context.Context, filter ClusterFilter) (Clusters, error)
 	GetAllNames(ctx context.Context) ([]string, error)
@@ -79,6 +81,7 @@ type InventorySyncer interface {
 
 type ClusterClientPort interface {
 	Ping(ctx context.Context, endpoint Endpoint) error
+	GetOSServiceLVM(ctx context.Context, server Server) (incusosapi.ServiceLVM, error)
 	GetOSServiceISCSI(ctx context.Context, server Server) (incusosapi.ServiceISCSI, error)
 	GetOSServiceMultipath(ctx context.Context, server Server) (incusosapi.ServiceMultipath, error)
 	GetOSServiceNVME(ctx context.Context, server Server) (incusosapi.ServiceNVME, error)
@@ -88,15 +91,21 @@ type ClusterClientPort interface {
 	EnableCluster(ctx context.Context, server Server) (clusterCertificate string, _ error)
 	GetClusterNodeNames(ctx context.Context, endpoint Endpoint) (nodeNames []string, _ error)
 	GetClusterJoinToken(ctx context.Context, endpoint Endpoint, memberName string) (joinToken string, _ error)
-	JoinCluster(ctx context.Context, server Server, joinToken string, serverAddressOfClusterRole string, endpoint Endpoint) error
+	JoinCluster(ctx context.Context, server Server, joinToken string, serverAddressOfClusterRole string, endpoint Endpoint, config []api.ClusterMemberConfigKey) error
 	GetOSData(ctx context.Context, endpoint Endpoint) (api.OSData, error)
 	UpdateClusterCertificate(ctx context.Context, endpoint Endpoint, certificatePEM string, keyPEM string) error
 	SystemFactoryReset(ctx context.Context, endpoint Endpoint, allowTPMResetFailure bool, seeds TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error
 	SubscribeLifecycleEvents(ctx context.Context, endpoint Endpoint) (chan domain.LifecycleEvent, chan error, error)
 	UpdateUpdateConfig(ctx context.Context, server Server, updateConfig ServerSystemUpdate) error
+	GetNetworkConfig(ctx context.Context, server Server) (ServerSystemNetwork, error)
+	GetStorageConfig(ctx context.Context, server Server) (ServerSystemStorage, error)
 
 	GetRemoteCertificate(ctx context.Context, endpoint Endpoint) (*x509.Certificate, error)
+
+	IncusClient(ctx context.Context, endpoint Endpoint) (InstanceServer, error)
 }
+
+type InstanceServer = incus.InstanceServer
 
 type ClusterProvisioningPort interface {
 	Init(ctx context.Context, clusterName string, config ClusterProvisioningConfig) (temporaryPath string, cleanup func() error, _ error)
