@@ -22,14 +22,14 @@ var _ scriptlet.ScriptletClientPort = &ScriptletClientPortMock{}
 //
 //		// make and configure a mocked scriptlet.ScriptletClientPort
 //		mockedScriptletClientPort := &ScriptletClientPortMock{
-//			ExecuteSystemCommandFunc: func(ctx context.Context, server provisioning.Server, resource string, action string, body any) error {
-//				panic("mock out the ExecuteSystemCommand method")
-//			},
 //			GetOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string) (map[string]any, error) {
 //				panic("mock out the GetOSService method")
 //			},
 //			GetSystemFunc: func(ctx context.Context, server provisioning.Server, resource string) (map[string]any, error) {
 //				panic("mock out the GetSystem method")
+//			},
+//			TriggerSystemActionFunc: func(ctx context.Context, server provisioning.Server, resource string, action string, body any) error {
+//				panic("mock out the TriggerSystemAction method")
 //			},
 //			UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
 //				panic("mock out the UpdateOSService method")
@@ -44,14 +44,14 @@ var _ scriptlet.ScriptletClientPort = &ScriptletClientPortMock{}
 //
 //	}
 type ScriptletClientPortMock struct {
-	// ExecuteSystemCommandFunc mocks the ExecuteSystemCommand method.
-	ExecuteSystemCommandFunc func(ctx context.Context, server provisioning.Server, resource string, action string, body any) error
-
 	// GetOSServiceFunc mocks the GetOSService method.
 	GetOSServiceFunc func(ctx context.Context, server provisioning.Server, name string) (map[string]any, error)
 
 	// GetSystemFunc mocks the GetSystem method.
 	GetSystemFunc func(ctx context.Context, server provisioning.Server, resource string) (map[string]any, error)
+
+	// TriggerSystemActionFunc mocks the TriggerSystemAction method.
+	TriggerSystemActionFunc func(ctx context.Context, server provisioning.Server, resource string, action string, body any) error
 
 	// UpdateOSServiceFunc mocks the UpdateOSService method.
 	UpdateOSServiceFunc func(ctx context.Context, server provisioning.Server, name string, config any) error
@@ -61,19 +61,6 @@ type ScriptletClientPortMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// ExecuteSystemCommand holds details about calls to the ExecuteSystemCommand method.
-		ExecuteSystemCommand []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Server is the server argument value.
-			Server provisioning.Server
-			// Resource is the resource argument value.
-			Resource string
-			// Action is the action argument value.
-			Action string
-			// Body is the body argument value.
-			Body any
-		}
 		// GetOSService holds details about calls to the GetOSService method.
 		GetOSService []struct {
 			// Ctx is the ctx argument value.
@@ -91,6 +78,19 @@ type ScriptletClientPortMock struct {
 			Server provisioning.Server
 			// Resource is the resource argument value.
 			Resource string
+		}
+		// TriggerSystemAction holds details about calls to the TriggerSystemAction method.
+		TriggerSystemAction []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Resource is the resource argument value.
+			Resource string
+			// Action is the action argument value.
+			Action string
+			// Body is the body argument value.
+			Body any
 		}
 		// UpdateOSService holds details about calls to the UpdateOSService method.
 		UpdateOSService []struct {
@@ -115,59 +115,11 @@ type ScriptletClientPortMock struct {
 			Config any
 		}
 	}
-	lockExecuteSystemCommand sync.RWMutex
-	lockGetOSService         sync.RWMutex
-	lockGetSystem            sync.RWMutex
-	lockUpdateOSService      sync.RWMutex
-	lockUpdateSystem         sync.RWMutex
-}
-
-// ExecuteSystemCommand calls ExecuteSystemCommandFunc.
-func (mock *ScriptletClientPortMock) ExecuteSystemCommand(ctx context.Context, server provisioning.Server, resource string, action string, body any) error {
-	if mock.ExecuteSystemCommandFunc == nil {
-		panic("ScriptletClientPortMock.ExecuteSystemCommandFunc: method is nil but ScriptletClientPort.ExecuteSystemCommand was just called")
-	}
-	callInfo := struct {
-		Ctx      context.Context
-		Server   provisioning.Server
-		Resource string
-		Action   string
-		Body     any
-	}{
-		Ctx:      ctx,
-		Server:   server,
-		Resource: resource,
-		Action:   action,
-		Body:     body,
-	}
-	mock.lockExecuteSystemCommand.Lock()
-	mock.calls.ExecuteSystemCommand = append(mock.calls.ExecuteSystemCommand, callInfo)
-	mock.lockExecuteSystemCommand.Unlock()
-	return mock.ExecuteSystemCommandFunc(ctx, server, resource, action, body)
-}
-
-// ExecuteSystemCommandCalls gets all the calls that were made to ExecuteSystemCommand.
-// Check the length with:
-//
-//	len(mockedScriptletClientPort.ExecuteSystemCommandCalls())
-func (mock *ScriptletClientPortMock) ExecuteSystemCommandCalls() []struct {
-	Ctx      context.Context
-	Server   provisioning.Server
-	Resource string
-	Action   string
-	Body     any
-} {
-	var calls []struct {
-		Ctx      context.Context
-		Server   provisioning.Server
-		Resource string
-		Action   string
-		Body     any
-	}
-	mock.lockExecuteSystemCommand.RLock()
-	calls = mock.calls.ExecuteSystemCommand
-	mock.lockExecuteSystemCommand.RUnlock()
-	return calls
+	lockGetOSService        sync.RWMutex
+	lockGetSystem           sync.RWMutex
+	lockTriggerSystemAction sync.RWMutex
+	lockUpdateOSService     sync.RWMutex
+	lockUpdateSystem        sync.RWMutex
 }
 
 // GetOSService calls GetOSServiceFunc.
@@ -247,6 +199,54 @@ func (mock *ScriptletClientPortMock) GetSystemCalls() []struct {
 	mock.lockGetSystem.RLock()
 	calls = mock.calls.GetSystem
 	mock.lockGetSystem.RUnlock()
+	return calls
+}
+
+// TriggerSystemAction calls TriggerSystemActionFunc.
+func (mock *ScriptletClientPortMock) TriggerSystemAction(ctx context.Context, server provisioning.Server, resource string, action string, body any) error {
+	if mock.TriggerSystemActionFunc == nil {
+		panic("ScriptletClientPortMock.TriggerSystemActionFunc: method is nil but ScriptletClientPort.TriggerSystemAction was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Server   provisioning.Server
+		Resource string
+		Action   string
+		Body     any
+	}{
+		Ctx:      ctx,
+		Server:   server,
+		Resource: resource,
+		Action:   action,
+		Body:     body,
+	}
+	mock.lockTriggerSystemAction.Lock()
+	mock.calls.TriggerSystemAction = append(mock.calls.TriggerSystemAction, callInfo)
+	mock.lockTriggerSystemAction.Unlock()
+	return mock.TriggerSystemActionFunc(ctx, server, resource, action, body)
+}
+
+// TriggerSystemActionCalls gets all the calls that were made to TriggerSystemAction.
+// Check the length with:
+//
+//	len(mockedScriptletClientPort.TriggerSystemActionCalls())
+func (mock *ScriptletClientPortMock) TriggerSystemActionCalls() []struct {
+	Ctx      context.Context
+	Server   provisioning.Server
+	Resource string
+	Action   string
+	Body     any
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Server   provisioning.Server
+		Resource string
+		Action   string
+		Body     any
+	}
+	mock.lockTriggerSystemAction.RLock()
+	calls = mock.calls.TriggerSystemAction
+	mock.lockTriggerSystemAction.RUnlock()
 	return calls
 }
 

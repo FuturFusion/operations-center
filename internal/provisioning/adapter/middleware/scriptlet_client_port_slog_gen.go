@@ -40,43 +40,6 @@ func NewScriptletClientPortWithSlog(base scriptlet.ScriptletClientPort, opts ...
 	return this
 }
 
-// ExecuteSystemCommand implements scriptlet.ScriptletClientPort.
-func (_d ScriptletClientPortWithSlog) ExecuteSystemCommand(ctx context.Context, server provisioning.Server, resource string, action string, body any) (err error) {
-	log := slog.With()
-	if slog.Default().Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.Any("server", server),
-			slog.String("resource", resource),
-			slog.String("action", action),
-			slog.Any("body", body),
-		)
-	}
-	log.DebugContext(ctx, "=> calling ExecuteSystemCommand")
-	defer func() {
-		log := slog.With()
-		if slog.Default().Enabled(ctx, logger.LevelTrace) {
-			log = slog.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = slog.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method ExecuteSystemCommand returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method ExecuteSystemCommand returned an error")
-			}
-		} else {
-			log.DebugContext(ctx, "<= method ExecuteSystemCommand finished")
-		}
-	}()
-	return _d._base.ExecuteSystemCommand(ctx, server, resource, action, body)
-}
-
 // GetOSService implements scriptlet.ScriptletClientPort.
 func (_d ScriptletClientPortWithSlog) GetOSService(ctx context.Context, server provisioning.Server, name string) (stringToV map[string]any, err error) {
 	log := slog.With()
@@ -147,6 +110,43 @@ func (_d ScriptletClientPortWithSlog) GetSystem(ctx context.Context, server prov
 		}
 	}()
 	return _d._base.GetSystem(ctx, server, resource)
+}
+
+// TriggerSystemAction implements scriptlet.ScriptletClientPort.
+func (_d ScriptletClientPortWithSlog) TriggerSystemAction(ctx context.Context, server provisioning.Server, resource string, action string, body any) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.String("resource", resource),
+			slog.String("action", action),
+			slog.Any("body", body),
+		)
+	}
+	log.DebugContext(ctx, "=> calling TriggerSystemAction")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method TriggerSystemAction returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method TriggerSystemAction returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method TriggerSystemAction finished")
+		}
+	}()
+	return _d._base.TriggerSystemAction(ctx, server, resource, action, body)
 }
 
 // UpdateOSService implements scriptlet.ScriptletClientPort.
