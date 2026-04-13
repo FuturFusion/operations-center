@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -587,14 +586,14 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 	require.NoError(t, err, "Failed to create IncusOS VMs for e2e test")
 
 	// Wait for instances to self update in Operations Center
-	instanceReadyTimeoutCtx, instanceReadyCancel := context.WithTimeout(t.Context(), strechedTimeout(1*time.Minute))
+	instanceReadyTimeoutCtx, instanceReadyCancel := context.WithTimeout(t.Context(), strechedTimeout(2*time.Minute))
 	defer instanceReadyCancel()
 
 	for {
-		operationsCenterSelfRegistered := mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '[ .[] | select(.server_type == "incus" and .server_status == "ready") ] | length == 3'`, 10*time.Second, cpuArch)
+		operationsCenterSelfRegistered := runWithTimeout(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_type == "incus" and .server_status == "ready") ] | length == 3'`, 10*time.Second, cpuArch)
+		require.NoError(t, operationsCenterSelfRegistered.err)
 
-		ok, _ := strconv.ParseBool(strings.TrimSpace(operationsCenterSelfRegistered.Output()))
-		if ok {
+		if operationsCenterSelfRegistered.Success() {
 			break
 		}
 
