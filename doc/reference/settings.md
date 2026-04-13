@@ -88,6 +88,7 @@ scriptlet:
 
 | Function                                        | Description |
 | :---                                            | :---        |
+| `add_application(name)`                         | Add a non-primary application to the server. See the [IncusOS documentation](https://linuxcontainers.org/incus-os/docs/main/reference/applications/non-primary/) for the supported non-primary applications. |
 | `get_service_config(service)`                   | Get the configuration of a service on the server being registered. Service is a string which identifies the service to get the configuration of, e.g. `lvm`. See the [IncusOS API documentation](https://linuxcontainers.org/incus-os/docs/main/reference/api/#/services) for the complete list of services. |
 | `get_system_config(resource)`                   | Get the state and configuration of a system resource from the server being registered. Resource is a string which identifies the resource to get, e.g. `kernel` or `logging`. See the [IncusOS API documentation](https://linuxcontainers.org/incus-os/docs/main/reference/api/#/system) for the complete list of resources. |
 | `set_server_connection_url(connection_url)`     | Set the connection URL of the server being registered. |
