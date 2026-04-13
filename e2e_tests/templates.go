@@ -41,6 +41,15 @@ applications:
   applications:
     - name: incus
     - name: debug
+network:
+  interfaces:
+    - name: enp5s0
+      hwaddr: enp5s0
+      required_for_online: both
+      addresses:
+      - dhcp4
+      - dhcp6
+      - slaac
 incus:
   version: "1"
 `)
@@ -51,6 +60,15 @@ applications:
   applications:
     - name: incus
     - name: debug
+network:
+  interfaces:
+    - name: enp5s0
+      hwaddr: enp5s0
+      required_for_online: both
+      addresses:
+      - dhcp4
+      - dhcp6
+      - slaac
 incus:
   version: "1"
   preseed:
