@@ -47,10 +47,10 @@ func serverRegistrationCompile(name string, src string) (*starlark.Program, erro
 		"set_server_connection_url",
 		"set_server_update_channel",
 
-		"get_system",
-		"set_system",
+		"get_system_config",
+		"set_system_config",
 
-		"execute_system_command",
+		"trigger_system_action",
 
 		"get_service_config",
 		"set_service_config",
@@ -89,10 +89,10 @@ func (r Runner) ServerRegistrationRun(ctx context.Context, server *provisioning.
 		"set_server_connection_url": starlark.NewBuiltin("set_server_connection_url", setServerConnectionURL(ctx, server)),
 		"set_server_update_channel": starlark.NewBuiltin("set_server_update_channel", setServerUpdateChannel(ctx, server)),
 
-		"get_system": starlark.NewBuiltin("get_system", r.getSystem(ctx, *server)),
-		"set_system": starlark.NewBuiltin("set_system", r.setSystem(ctx, *server)),
+		"get_system_config": starlark.NewBuiltin("get_system_config", r.getSystemConfig(ctx, *server)),
+		"set_system_config": starlark.NewBuiltin("set_system_config", r.setSystemConfig(ctx, *server)),
 
-		"execute_system_command": starlark.NewBuiltin("execute_system_command", r.executeSystemCommand(ctx, *server)),
+		"trigger_system_action": starlark.NewBuiltin("trigger_system_action", r.triggerSystemAction(ctx, *server)),
 
 		"get_service_config": starlark.NewBuiltin("get_service_config", r.getServiceConfig(ctx, *server)),
 		"set_service_config": starlark.NewBuiltin("set_service_config", r.setServiceConfig(ctx, *server)),
@@ -259,7 +259,7 @@ func setServerUpdateChannel(ctx context.Context, server *provisioning.Server) fu
 	}
 }
 
-func (r Runner) getSystem(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (r Runner) getSystemConfig(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var resource string
 		err := starlark.UnpackArgs(b.Name(), args, kwargs, "resource", &resource)
@@ -281,7 +281,7 @@ func (r Runner) getSystem(ctx context.Context, server provisioning.Server) func(
 	}
 }
 
-func (r Runner) setSystem(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (r Runner) setSystemConfig(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var resource string
 		configArg := &starlark.Dict{}
@@ -304,7 +304,7 @@ func (r Runner) setSystem(ctx context.Context, server provisioning.Server) func(
 	}
 }
 
-func (r Runner) executeSystemCommand(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (r Runner) triggerSystemAction(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var resource string
 		var action string
@@ -319,7 +319,7 @@ func (r Runner) executeSystemCommand(ctx context.Context, server provisioning.Se
 			return nil, err
 		}
 
-		err = r.client.ExecuteSystemCommand(ctx, server, resource, action, body)
+		err = r.client.TriggerSystemAction(ctx, server, resource, action, body)
 		if err != nil {
 			return starlark.None, fmt.Errorf("Failed to execute system command %s/%s for server %q: %w", resource, action, server.Name, err)
 		}

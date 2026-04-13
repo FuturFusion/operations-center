@@ -24,18 +24,18 @@ import (
 
 func TestRunner_ServerRegistrationRun(t *testing.T) {
 	tests := []struct {
-		name                          string
-		script                        string
-		clientGetSystem               map[string]any
-		clientGetSystemErr            error
-		clientUpdateSystem            any
-		clientUpdateSystemErr         error
-		clientExecuteSystemCommand    any
-		clientExecuteSystemCommandErr error
-		clientGetOSService            map[string]any
-		clientGetOSServiceErr         error
-		clientUpdateOSService         any
-		clientUpdateOSServiceErr      error
+		name                         string
+		script                       string
+		clientGetSystem              map[string]any
+		clientGetSystemErr           error
+		clientUpdateSystem           any
+		clientUpdateSystemErr        error
+		clientTriggerSystemAction    any
+		clientTriggerSystemActionErr error
+		clientGetOSService           map[string]any
+		clientGetOSServiceErr        error
+		clientUpdateOSService        any
+		clientUpdateOSServiceErr     error
 
 		assertSetScriptletErr require.ErrorAssertionFunc
 		assertRunErr          require.ErrorAssertionFunc
@@ -117,12 +117,12 @@ def server_registration(server):
 		},
 
 		{
-			name: "success - get + set_system",
+			name: "success - get + set_system_config",
 			script: `
 def server_registration(server):
-	info = get_system("kernel")
+	info = get_system_config("kernel")
 	log_info("config.blacklist_modules[0]: ", info["config"]["blacklist_modules"][0])
-	set_system("kernel", { "config": { "blacklist_modules": [ "bad-module"], "memory": { "persistent_hugepages": 1 }, "network": { "buffer_size": 33554432, "queuing_discipline": "fq", "tcp_congestion_algorithm": "bbr" }, "pci": { "passthrough": [ { "pci_address": "0000:04:00.0", "product_id": "1050", "vendor_id": "1af4" } ] } } })
+	set_system_config("kernel", { "config": { "blacklist_modules": [ "bad-module"], "memory": { "persistent_hugepages": 1 }, "network": { "buffer_size": 33554432, "queuing_discipline": "fq", "tcp_congestion_algorithm": "bbr" }, "pci": { "passthrough": [ { "pci_address": "0000:04:00.0", "product_id": "1050", "vendor_id": "1af4" } ] } } })
 `,
 			clientGetSystem: map[string]any{
 				"config": map[string]any{
@@ -180,12 +180,12 @@ def server_registration(server):
 		},
 
 		{
-			name: "success - execute_system_command",
+			name: "success - trigger_system_action",
 			script: `
 def server_registration(server):
-	execute_system_command("storage", "scrub-pool", { "name": "mypool" })
+	trigger_system_action("storage", "scrub-pool", { "name": "mypool" })
 `,
-			clientExecuteSystemCommand: map[string]any{
+			clientTriggerSystemAction: map[string]any{
 				"name": "mypool",
 			},
 
@@ -369,10 +369,10 @@ def server_registration(server):
 		},
 
 		{
-			name: "error - get_system - invalid argument count",
+			name: "error - get_system_config - invalid argument count",
 			script: `
 def server_registration(server):
-	get_system()
+	get_system_config()
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -380,10 +380,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - get_system - client",
+			name: "error - get_system_config - client",
 			script: `
 def server_registration(server):
-	get_system("kernel")
+	get_system_config("kernel")
 `,
 			clientGetSystemErr: boom.Error,
 
@@ -392,10 +392,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - get_system - starlark marshal",
+			name: "error - get_system_config - starlark marshal",
 			script: `
 def server_registration(server):
-	get_system("kernel")
+	get_system_config("kernel")
 `,
 			clientGetSystem: map[string]any{
 				"invalid": func() {}, // functions are invalid types for starlark marshal.
@@ -406,10 +406,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - set_system - invalid argument count",
+			name: "error - set_system_config - invalid argument count",
 			script: `
 def server_registration(server):
-	set_system("kernel", { "config": { "blacklist_modules": [ "bad-module"], "memory": { "persistent_hugepages": 1 }, "network": { "buffer_size": 33554432, "queuing_discipline": "fq", "tcp_congestion_algorithm": "bbr" }, "pci": { "passthrough": [ { "pci_address": "0000:04:00.0", "product_id": "1050", "vendor_id": "1af4" } ] } } }, "additional argument")
+	set_system_config("kernel", { "config": { "blacklist_modules": [ "bad-module"], "memory": { "persistent_hugepages": 1 }, "network": { "buffer_size": 33554432, "queuing_discipline": "fq", "tcp_congestion_algorithm": "bbr" }, "pci": { "passthrough": [ { "pci_address": "0000:04:00.0", "product_id": "1050", "vendor_id": "1af4" } ] } } }, "additional argument")
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -417,10 +417,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - set_system - invalid argument - unsupported starlark.Dict",
+			name: "error - set_system_config - invalid argument - unsupported starlark.Dict",
 			script: `
 def server_registration(server):
-	set_system("kernel", {1: ""})
+	set_system_config("kernel", {1: ""})
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -428,10 +428,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - set_system - client",
+			name: "error - set_system_config - client",
 			script: `
 def server_registration(server):
-	set_system("kernel", { "config": { "blacklist_modules": [ "bad-module"], "memory": { "persistent_hugepages": 1 }, "network": { "buffer_size": 33554432, "queuing_discipline": "fq", "tcp_congestion_algorithm": "bbr" }, "pci": { "passthrough": [ { "pci_address": "0000:04:00.0", "product_id": "1050", "vendor_id": "1af4" } ] } } })
+	set_system_config("kernel", { "config": { "blacklist_modules": [ "bad-module"], "memory": { "persistent_hugepages": 1 }, "network": { "buffer_size": 33554432, "queuing_discipline": "fq", "tcp_congestion_algorithm": "bbr" }, "pci": { "passthrough": [ { "pci_address": "0000:04:00.0", "product_id": "1050", "vendor_id": "1af4" } ] } } })
 `,
 			clientUpdateSystem: map[string]any{
 				"config": map[string]any{
@@ -463,10 +463,10 @@ def server_registration(server):
 		},
 
 		{
-			name: "error - execute_system_command - invalid argument count",
+			name: "error - trigger_system_action - invalid argument count",
 			script: `
 def server_registration(server):
-	execute_system_command()
+	trigger_system_action()
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -474,10 +474,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - execute_system_command - invalid argument - unsupported starlark.Dict",
+			name: "error - trigger_system_action - invalid argument - unsupported starlark.Dict",
 			script: `
 def server_registration(server):
-	execute_system_command("storage", "scrub-pool", {1: ""})
+	trigger_system_action("storage", "scrub-pool", {1: ""})
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -485,15 +485,15 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - execute_system_command - client",
+			name: "error - trigger_system_action - client",
 			script: `
 def server_registration(server):
-	execute_system_command("storage", "scrub-pool", { "name": "mypool" })
+	trigger_system_action("storage", "scrub-pool", { "name": "mypool" })
 `,
-			clientExecuteSystemCommand: map[string]any{
+			clientTriggerSystemAction: map[string]any{
 				"name": "mypool",
 			},
-			clientExecuteSystemCommandErr: boom.Error,
+			clientTriggerSystemActionErr: boom.Error,
 
 			assertSetScriptletErr: require.NoError,
 			assertRunErr:          boom.ErrorIs,
@@ -599,9 +599,9 @@ def server_registration(server):
 					require.Equal(t, tc.clientUpdateSystem, config)
 					return tc.clientUpdateSystemErr
 				},
-				ExecuteSystemCommandFunc: func(ctx context.Context, server provisioning.Server, resource, action string, body any) error {
-					require.Equal(t, tc.clientExecuteSystemCommand, body)
-					return tc.clientExecuteSystemCommandErr
+				TriggerSystemActionFunc: func(ctx context.Context, server provisioning.Server, resource, action string, body any) error {
+					require.Equal(t, tc.clientTriggerSystemAction, body)
+					return tc.clientTriggerSystemActionErr
 				},
 				GetOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string) (map[string]any, error) {
 					return tc.clientGetOSService, tc.clientGetOSServiceErr

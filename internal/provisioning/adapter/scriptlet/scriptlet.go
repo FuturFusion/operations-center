@@ -16,7 +16,7 @@ import (
 type ScriptletClientPort interface {
 	GetSystem(ctx context.Context, server provisioning.Server, resource string) (map[string]any, error)
 	UpdateSystem(ctx context.Context, server provisioning.Server, resource string, config any) error
-	ExecuteSystemCommand(ctx context.Context, server provisioning.Server, resource string, action string, body any) error
+	TriggerSystemAction(ctx context.Context, server provisioning.Server, resource string, action string, body any) error
 	GetOSService(ctx context.Context, server provisioning.Server, name string) (map[string]any, error)
 	UpdateOSService(ctx context.Context, server provisioning.Server, name string, config any) error
 }
