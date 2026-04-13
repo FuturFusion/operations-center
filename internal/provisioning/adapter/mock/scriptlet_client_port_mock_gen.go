@@ -22,6 +22,9 @@ var _ scriptlet.ScriptletClientPort = &ScriptletClientPortMock{}
 //
 //		// make and configure a mocked scriptlet.ScriptletClientPort
 //		mockedScriptletClientPort := &ScriptletClientPortMock{
+//			AddApplicationFunc: func(ctx context.Context, server provisioning.Server, application string) error {
+//				panic("mock out the AddApplication method")
+//			},
 //			GetOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string) (map[string]any, error) {
 //				panic("mock out the GetOSService method")
 //			},
@@ -44,6 +47,9 @@ var _ scriptlet.ScriptletClientPort = &ScriptletClientPortMock{}
 //
 //	}
 type ScriptletClientPortMock struct {
+	// AddApplicationFunc mocks the AddApplication method.
+	AddApplicationFunc func(ctx context.Context, server provisioning.Server, application string) error
+
 	// GetOSServiceFunc mocks the GetOSService method.
 	GetOSServiceFunc func(ctx context.Context, server provisioning.Server, name string) (map[string]any, error)
 
@@ -61,6 +67,15 @@ type ScriptletClientPortMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// AddApplication holds details about calls to the AddApplication method.
+		AddApplication []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Application is the application argument value.
+			Application string
+		}
 		// GetOSService holds details about calls to the GetOSService method.
 		GetOSService []struct {
 			// Ctx is the ctx argument value.
@@ -115,11 +130,52 @@ type ScriptletClientPortMock struct {
 			Config any
 		}
 	}
+	lockAddApplication      sync.RWMutex
 	lockGetOSService        sync.RWMutex
 	lockGetSystem           sync.RWMutex
 	lockTriggerSystemAction sync.RWMutex
 	lockUpdateOSService     sync.RWMutex
 	lockUpdateSystem        sync.RWMutex
+}
+
+// AddApplication calls AddApplicationFunc.
+func (mock *ScriptletClientPortMock) AddApplication(ctx context.Context, server provisioning.Server, application string) error {
+	if mock.AddApplicationFunc == nil {
+		panic("ScriptletClientPortMock.AddApplicationFunc: method is nil but ScriptletClientPort.AddApplication was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		Server      provisioning.Server
+		Application string
+	}{
+		Ctx:         ctx,
+		Server:      server,
+		Application: application,
+	}
+	mock.lockAddApplication.Lock()
+	mock.calls.AddApplication = append(mock.calls.AddApplication, callInfo)
+	mock.lockAddApplication.Unlock()
+	return mock.AddApplicationFunc(ctx, server, application)
+}
+
+// AddApplicationCalls gets all the calls that were made to AddApplication.
+// Check the length with:
+//
+//	len(mockedScriptletClientPort.AddApplicationCalls())
+func (mock *ScriptletClientPortMock) AddApplicationCalls() []struct {
+	Ctx         context.Context
+	Server      provisioning.Server
+	Application string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		Server      provisioning.Server
+		Application string
+	}
+	mock.lockAddApplication.RLock()
+	calls = mock.calls.AddApplication
+	mock.lockAddApplication.RUnlock()
+	return calls
 }
 
 // GetOSService calls GetOSServiceFunc.

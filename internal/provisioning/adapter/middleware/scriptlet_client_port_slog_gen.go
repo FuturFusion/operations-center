@@ -40,6 +40,41 @@ func NewScriptletClientPortWithSlog(base scriptlet.ScriptletClientPort, opts ...
 	return this
 }
 
+// AddApplication implements scriptlet.ScriptletClientPort.
+func (_d ScriptletClientPortWithSlog) AddApplication(ctx context.Context, server provisioning.Server, application string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.String("application", application),
+		)
+	}
+	log.DebugContext(ctx, "=> calling AddApplication")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method AddApplication returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method AddApplication returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method AddApplication finished")
+		}
+	}()
+	return _d._base.AddApplication(ctx, server, application)
+}
+
 // GetOSService implements scriptlet.ScriptletClientPort.
 func (_d ScriptletClientPortWithSlog) GetOSService(ctx context.Context, server provisioning.Server, name string) (stringToV map[string]any, err error) {
 	log := slog.With()

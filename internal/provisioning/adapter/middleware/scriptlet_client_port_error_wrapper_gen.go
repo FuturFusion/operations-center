@@ -26,6 +26,16 @@ func NewScriptletClientPortWithErrorWrapper(base scriptlet.ScriptletClientPort, 
 	return this
 }
 
+// AddApplication implements scriptlet.ScriptletClientPort.
+func (_d ScriptletClientPortWithErrorWrapper) AddApplication(ctx context.Context, server provisioning.Server, application string) (err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.AddApplication(ctx, server, application)
+}
+
 // GetOSService implements scriptlet.ScriptletClientPort.
 func (_d ScriptletClientPortWithErrorWrapper) GetOSService(ctx context.Context, server provisioning.Server, name string) (stringToV map[string]any, err error) {
 	defer func() {
