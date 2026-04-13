@@ -194,6 +194,7 @@ linters:
         text: var-naming
       - linters:
           - errcheck
+          - unparam
         path: ^e2e_tests/
         source: 'mustRun'
     paths:
