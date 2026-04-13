@@ -259,4 +259,6 @@ clean-e2e-test-soft:
 	for i in $$(bin/operations-center.linux.amd64 provisioning server list -f json | jq -r '.[] | select(.server_type == "incus") | .name'); do \
 		bin/operations-center.linux.amd64 provisioning server remove $$i || true; \
 	done
-
+	for i in $$(bin/operations-center.linux.amd64 provisioning update list -f json | jq -r '.[] | .uuid'); do \
+		bin/operations-center provisioning update assign-channels $$i --channel stable || true; \
+	done
