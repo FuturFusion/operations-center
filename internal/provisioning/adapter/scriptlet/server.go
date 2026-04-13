@@ -11,6 +11,7 @@ import (
 
 	"github.com/lxc/incus/v6/shared/scriptlet"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -25,7 +26,7 @@ func serverRegistrationValidate(src string) error {
 	}
 
 	err := scriptlet.Validate(serverRegistrationCompile, serverRegistration, src, scriptlet.Declaration{
-		scriptlet.Required(serverRegistration): {"server"},
+		scriptlet.Required(serverRegistration): {"candidate"},
 	})
 	if err != nil {
 		return fmt.Errorf("Failed to validate server registration scriptlet: %w", err)
@@ -37,25 +38,9 @@ func serverRegistrationValidate(src string) error {
 // serverRegistrationCompile compiles the server registration scriptlet.
 func serverRegistrationCompile(name string, src string) (*starlark.Program, error) {
 	return scriptlet.Compile(name, src, []string{
-		"log_info",
-		"log_warn",
-		"log_error",
-
-		"set_server_name",
-		"set_server_description",
-		"set_server_properties",
-		"set_server_connection_url",
-		"set_server_update_channel",
-
-		"get_system_config",
-		"set_system_config",
-
-		"trigger_system_action",
-
-		"get_service_config",
-		"set_service_config",
-
-		"add_application",
+		"log",
+		"server",
+		"incusos",
 	})
 }
 
@@ -80,26 +65,45 @@ func (r Runner) ServerRegistrationRun(ctx context.Context, server *provisioning.
 
 	logFunc := CreateLogger(slog.Default(), "Server registration scriptlet")
 
+	logNamespace := starlarkstruct.FromStringDict(
+		starlarkstruct.Default,
+		starlark.StringDict{
+			"info":  starlark.NewBuiltin("info", logFunc),
+			"warn":  starlark.NewBuiltin("warn", logFunc),
+			"error": starlark.NewBuiltin("error", logFunc),
+		},
+	)
+
+	serverNamespace := starlarkstruct.FromStringDict(
+		starlarkstruct.Default,
+		starlark.StringDict{
+			"set_name":           starlark.NewBuiltin("set_name", setServerName(ctx, server)),
+			"set_description":    starlark.NewBuiltin("set_description", setServerDescription(ctx, server)),
+			"set_properties":     starlark.NewBuiltin("set_properties", setServerProperties(ctx, server)),
+			"set_connection_url": starlark.NewBuiltin("set_connection_url", setServerConnectionURL(ctx, server)),
+			"set_update_channel": starlark.NewBuiltin("set_update_channel", setServerUpdateChannel(ctx, server)),
+		},
+	)
+
+	incusosNamespace := starlarkstruct.FromStringDict(
+		starlarkstruct.Default,
+		starlark.StringDict{
+			"get_system": starlark.NewBuiltin("get_system", r.getIncusOSSystem(ctx, *server)),
+			"set_system": starlark.NewBuiltin("set_system", r.setIncusOSSystem(ctx, *server)),
+
+			"trigger_action": starlark.NewBuiltin("trigger_action", r.triggerIncusOSAction(ctx, *server)),
+
+			"get_service": starlark.NewBuiltin("get_service", r.getIncusOSService(ctx, *server)),
+			"set_service": starlark.NewBuiltin("set_service", r.setIncusOSService(ctx, *server)),
+
+			"add_application": starlark.NewBuiltin("add_application", r.addIncusOSApplication(ctx, *server)),
+		},
+	)
+
 	env := starlark.StringDict{
-		"log_info":  starlark.NewBuiltin("log_info", logFunc),
-		"log_warn":  starlark.NewBuiltin("log_warn", logFunc),
-		"log_error": starlark.NewBuiltin("log_error", logFunc),
-
-		"set_server_name":           starlark.NewBuiltin("set_server_name", setServerName(ctx, server)),
-		"set_server_description":    starlark.NewBuiltin("set_server_description", setServerDescription(ctx, server)),
-		"set_server_properties":     starlark.NewBuiltin("set_server_properties", setServerProperties(ctx, server)),
-		"set_server_connection_url": starlark.NewBuiltin("set_server_connection_url", setServerConnectionURL(ctx, server)),
-		"set_server_update_channel": starlark.NewBuiltin("set_server_update_channel", setServerUpdateChannel(ctx, server)),
-
-		"get_system_config": starlark.NewBuiltin("get_system_config", r.getSystemConfig(ctx, *server)),
-		"set_system_config": starlark.NewBuiltin("set_system_config", r.setSystemConfig(ctx, *server)),
-
-		"trigger_system_action": starlark.NewBuiltin("trigger_system_action", r.triggerSystemAction(ctx, *server)),
-
-		"get_service_config": starlark.NewBuiltin("get_service_config", r.getServiceConfig(ctx, *server)),
-		"set_service_config": starlark.NewBuiltin("set_service_config", r.setServiceConfig(ctx, *server)),
-
-		"add_application": starlark.NewBuiltin("add_application", r.addApplication(ctx, *server)),
+		"log":     logNamespace,
+		"server":  serverNamespace,
+		"incusos": incusosNamespace,
 	}
 
 	go func() {
@@ -126,7 +130,7 @@ func (r Runner) ServerRegistrationRun(ctx context.Context, server *provisioning.
 	}
 
 	v, err := starlark.Call(thread, placement, nil, []starlark.Tuple{
-		{starlark.String("server"), serverv},
+		{starlark.String("candidate"), serverv},
 	})
 	if err != nil {
 		return fmt.Errorf("Failed to run: %w", err)
@@ -263,7 +267,7 @@ func setServerUpdateChannel(ctx context.Context, server *provisioning.Server) fu
 	}
 }
 
-func (r Runner) getSystemConfig(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (r Runner) getIncusOSSystem(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var resource string
 		err := starlark.UnpackArgs(b.Name(), args, kwargs, "resource", &resource)
@@ -285,7 +289,7 @@ func (r Runner) getSystemConfig(ctx context.Context, server provisioning.Server)
 	}
 }
 
-func (r Runner) setSystemConfig(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (r Runner) setIncusOSSystem(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var resource string
 		configArg := &starlark.Dict{}
@@ -308,7 +312,7 @@ func (r Runner) setSystemConfig(ctx context.Context, server provisioning.Server)
 	}
 }
 
-func (r Runner) triggerSystemAction(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (r Runner) triggerIncusOSAction(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var resource string
 		var action string
@@ -332,7 +336,7 @@ func (r Runner) triggerSystemAction(ctx context.Context, server provisioning.Ser
 	}
 }
 
-func (r Runner) getServiceConfig(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (r Runner) getIncusOSService(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var service string
 		err := starlark.UnpackArgs(b.Name(), args, kwargs, "service", &service)
@@ -354,7 +358,7 @@ func (r Runner) getServiceConfig(ctx context.Context, server provisioning.Server
 	}
 }
 
-func (r Runner) setServiceConfig(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (r Runner) setIncusOSService(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var service string
 		configArg := &starlark.Dict{}
@@ -377,7 +381,7 @@ func (r Runner) setServiceConfig(ctx context.Context, server provisioning.Server
 	}
 }
 
-func (r Runner) addApplication(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (r Runner) addIncusOSApplication(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var application string
 		err := starlark.UnpackArgs(b.Name(), args, kwargs, "application", &application)

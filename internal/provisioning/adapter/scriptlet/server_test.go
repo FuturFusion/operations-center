@@ -54,10 +54,10 @@ func TestRunner_ServerRegistrationRun(t *testing.T) {
 		{
 			name: "success - log",
 			script: `
-def server_registration(server):
-	log_info("some info ", 1)
-	log_warn("some warning ", 2)
-	log_error("some error ", 3)
+def server_registration(candidate):
+	log.info("some info ", 1)
+	log.warn("some warning ", 2)
+	log.error("some error ", 3)
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -71,15 +71,15 @@ def server_registration(server):
 			},
 		},
 		{
-			name: "success - set_*",
+			name: "success - server.set_*",
 			script: `
-def server_registration(server):
-	set_server_name("name")
-	set_server_description("description")
-	set_server_properties({ "key": "value", "name": server.name, "timezone": server.os_data.network.config.time.timezone })
-	set_server_connection_url("https://server01", False)
-	set_server_connection_url("https://server01:8443", True)
-	set_server_update_channel("stable")
+def server_registration(candidate):
+	server.set_name("name")
+	server.set_description("description")
+	server.set_properties({ "key": "value", "name": candidate.name, "timezone": candidate.os_data.network.config.time.timezone })
+	server.set_connection_url("https://server01", False)
+	server.set_connection_url("https://server01:8443", True)
+	server.set_update_channel("stable")
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -118,12 +118,12 @@ def server_registration(server):
 		},
 
 		{
-			name: "success - get + set_system_config",
+			name: "success - incusos.get_system + incusos.set_system",
 			script: `
-def server_registration(server):
-	info = get_system_config("kernel")
-	log_info("config.blacklist_modules[0]: ", info["config"]["blacklist_modules"][0])
-	set_system_config("kernel", { "config": { "blacklist_modules": [ "bad-module"], "memory": { "persistent_hugepages": 1 }, "network": { "buffer_size": 33554432, "queuing_discipline": "fq", "tcp_congestion_algorithm": "bbr" }, "pci": { "passthrough": [ { "pci_address": "0000:04:00.0", "product_id": "1050", "vendor_id": "1af4" } ] } } })
+def server_registration(candidate):
+	info = incusos.get_system("kernel")
+	log.info("config.blacklist_modules[0]: ", info["config"]["blacklist_modules"][0])
+	incusos.set_system("kernel", { "config": { "blacklist_modules": [ "bad-module"], "memory": { "persistent_hugepages": 1 }, "network": { "buffer_size": 33554432, "queuing_discipline": "fq", "tcp_congestion_algorithm": "bbr" }, "pci": { "passthrough": [ { "pci_address": "0000:04:00.0", "product_id": "1050", "vendor_id": "1af4" } ] } } })
 `,
 			clientGetSystem: map[string]any{
 				"config": map[string]any{
@@ -181,10 +181,10 @@ def server_registration(server):
 		},
 
 		{
-			name: "success - trigger_system_action",
+			name: "success - incusos.trigger_action",
 			script: `
-def server_registration(server):
-	trigger_system_action("storage", "scrub-pool", { "name": "mypool" })
+def server_registration(candidate):
+	incusos.trigger_action("storage", "scrub-pool", { "name": "mypool" })
 `,
 			clientTriggerSystemAction: map[string]any{
 				"name": "mypool",
@@ -204,12 +204,12 @@ def server_registration(server):
 		},
 
 		{
-			name: "success - get + set_service_config",
+			name: "success - incusos.get_service + incusos.set_service",
 			script: `
-def server_registration(server):
-	info = get_service_config("lvm")
-	log_info("config.enabled: ", info["config"]["enabled"])
-	set_service_config("lvm", { "config": { "enabled": True } })
+def server_registration(candidate):
+	info = incusos.get_service("lvm")
+	log.info("config.enabled: ", info["config"]["enabled"])
+	incusos.set_service("lvm", { "config": { "enabled": True } })
 `,
 			clientGetOSService: map[string]any{
 				"config": map[string]any{
@@ -233,10 +233,10 @@ def server_registration(server):
 		},
 
 		{
-			name: "success - add_application",
+			name: "success - incusos.add_application",
 			script: `
-def server_registration(server):
-	add_application("gpu-support")
+def server_registration(candidate):
+	incusos.add_application("gpu-support")
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -255,7 +255,7 @@ def server_registration(server):
 		{
 			name: "error - scriptlet fail",
 			script: `
-def server_registration(server):
+def server_registration(candidate):
 	fail("oops")
 `,
 
@@ -264,10 +264,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - set_server_name - invalid argument count",
+			name: "error - server.set_name - invalid argument count",
 			script: `
-def server_registration(server):
-	set_server_name("foobar", "additional argument")
+def server_registration(candidate):
+	server.set_name("foobar", "additional argument")
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -275,10 +275,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - set_server_name - empty name",
+			name: "error - server.set_name - empty name",
 			script: `
-def server_registration(server):
-	set_server_name("")
+def server_registration(candidate):
+	server.set_name("")
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -286,10 +286,10 @@ def server_registration(server):
 			assertLog:             log.Contains("ERR Server registration scriptlet failed. Server name is empty"),
 		},
 		{
-			name: "error - set_server_description - invalid argument count",
+			name: "error - server.set_description - invalid argument count",
 			script: `
-def server_registration(server):
-	set_server_description("foobar", "additional argument")
+def server_registration(candidate):
+	server.set_description("foobar", "additional argument")
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -297,10 +297,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - set_server_properties - additional argument",
+			name: "error - server.set_properties - additional argument",
 			script: `
-def server_registration(server):
-	set_server_properties({"key": "value"}, "additional argument")
+def server_registration(candidate):
+	server.set_properties({"key": "value"}, "additional argument")
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -308,10 +308,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - set_server_properties - invalid property key type",
+			name: "error - server.set_properties - invalid property key type",
 			script: `
-def server_registration(server):
-	set_server_properties({10: "value"})
+def server_registration(candidate):
+	server.set_properties({10: "value"})
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -321,10 +321,10 @@ def server_registration(server):
 			assertLog: log.Empty,
 		},
 		{
-			name: "error - set_server_properties - invalid property value type",
+			name: "error - server.set_properties - invalid property value type",
 			script: `
-def server_registration(server):
-	set_server_properties({"key": 10})
+def server_registration(candidate):
+	server.set_properties({"key": 10})
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -334,10 +334,10 @@ def server_registration(server):
 			assertLog: log.Empty,
 		},
 		{
-			name: "error - set_server_connection_url - invalid argument count",
+			name: "error - server.set_connection_url - invalid argument count",
 			script: `
-def server_registration(server):
-	set_server_connection_url("foobar", False, "additional argument")
+def server_registration(candidate):
+	server.set_connection_url("foobar", False, "additional argument")
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -345,10 +345,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - set_server_connection_url - invalid connection url",
+			name: "error - server.set_connection_url - invalid connection url",
 			script: `
-def server_registration(server):
-	set_server_connection_url(":|//", False)
+def server_registration(candidate):
+	server.set_connection_url(":|//", False)
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -356,10 +356,10 @@ def server_registration(server):
 			assertLog:             log.Contains("ERR Server registration scriptlet failed. Server connection URL is not valid"),
 		},
 		{
-			name: "error - set_server_connection_url - invalid connection url schema not https",
+			name: "error - server.set_connection_url - invalid connection url schema not https",
 			script: `
-def server_registration(server):
-	set_server_connection_url("http://server01", False)
+def server_registration(candidate):
+	server.set_connection_url("http://server01", False)
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -367,10 +367,10 @@ def server_registration(server):
 			assertLog:             log.Contains("ERR Server registration scriptlet failed. Server connection URL, schema is not https"),
 		},
 		{
-			name: "error - set_server_connection_url - empty connection url",
+			name: "error - server.set_connection_url - empty connection url",
 			script: `
-def server_registration(server):
-	set_server_connection_url("", False)
+def server_registration(candidate):
+	server.set_connection_url("", False)
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -378,10 +378,10 @@ def server_registration(server):
 			assertLog:             log.Contains("ERR Server registration scriptlet failed. Server connection URL is empty"),
 		},
 		{
-			name: "error - set_server_update_channel - invalid argument count",
+			name: "error - server.set_update_channel - invalid argument count",
 			script: `
-def server_registration(server):
-	set_server_update_channel("stable", "additional argument")
+def server_registration(candidate):
+	server.set_update_channel("stable", "additional argument")
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -390,10 +390,10 @@ def server_registration(server):
 		},
 
 		{
-			name: "error - get_system_config - invalid argument count",
+			name: "error - incusos.get_system - invalid argument count",
 			script: `
-def server_registration(server):
-	get_system_config()
+def server_registration(candidate):
+	incusos.get_system()
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -401,10 +401,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - get_system_config - client",
+			name: "error - incusos.get_system - client",
 			script: `
-def server_registration(server):
-	get_system_config("kernel")
+def server_registration(candidate):
+	incusos.get_system("kernel")
 `,
 			clientGetSystemErr: boom.Error,
 
@@ -413,10 +413,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - get_system_config - starlark marshal",
+			name: "error - incusos.get_system - starlark marshal",
 			script: `
-def server_registration(server):
-	get_system_config("kernel")
+def server_registration(candidate):
+	incusos.get_system("kernel")
 `,
 			clientGetSystem: map[string]any{
 				"invalid": func() {}, // functions are invalid types for starlark marshal.
@@ -427,10 +427,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - set_system_config - invalid argument count",
+			name: "error - incusos.set_system - invalid argument count",
 			script: `
-def server_registration(server):
-	set_system_config("kernel", { "config": { "blacklist_modules": [ "bad-module"], "memory": { "persistent_hugepages": 1 }, "network": { "buffer_size": 33554432, "queuing_discipline": "fq", "tcp_congestion_algorithm": "bbr" }, "pci": { "passthrough": [ { "pci_address": "0000:04:00.0", "product_id": "1050", "vendor_id": "1af4" } ] } } }, "additional argument")
+def server_registration(candidate):
+	incusos.set_system("kernel", { "config": { "blacklist_modules": [ "bad-module"], "memory": { "persistent_hugepages": 1 }, "network": { "buffer_size": 33554432, "queuing_discipline": "fq", "tcp_congestion_algorithm": "bbr" }, "pci": { "passthrough": [ { "pci_address": "0000:04:00.0", "product_id": "1050", "vendor_id": "1af4" } ] } } }, "additional argument")
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -438,10 +438,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - set_system_config - invalid argument - unsupported starlark.Dict",
+			name: "error - incusos.set_system - invalid argument - unsupported starlark.Dict",
 			script: `
-def server_registration(server):
-	set_system_config("kernel", {1: ""})
+def server_registration(candidate):
+	incusos.set_system("kernel", {1: ""})
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -449,10 +449,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - set_system_config - client",
+			name: "error - incusos.set_system - client",
 			script: `
-def server_registration(server):
-	set_system_config("kernel", { "config": { "blacklist_modules": [ "bad-module"], "memory": { "persistent_hugepages": 1 }, "network": { "buffer_size": 33554432, "queuing_discipline": "fq", "tcp_congestion_algorithm": "bbr" }, "pci": { "passthrough": [ { "pci_address": "0000:04:00.0", "product_id": "1050", "vendor_id": "1af4" } ] } } })
+def server_registration(candidate):
+	incusos.set_system("kernel", { "config": { "blacklist_modules": [ "bad-module"], "memory": { "persistent_hugepages": 1 }, "network": { "buffer_size": 33554432, "queuing_discipline": "fq", "tcp_congestion_algorithm": "bbr" }, "pci": { "passthrough": [ { "pci_address": "0000:04:00.0", "product_id": "1050", "vendor_id": "1af4" } ] } } })
 `,
 			clientUpdateSystem: map[string]any{
 				"config": map[string]any{
@@ -484,10 +484,10 @@ def server_registration(server):
 		},
 
 		{
-			name: "error - trigger_system_action - invalid argument count",
+			name: "error - incusos.trigger_action - invalid argument count",
 			script: `
-def server_registration(server):
-	trigger_system_action()
+def server_registration(candidate):
+	incusos.trigger_action()
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -495,10 +495,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - trigger_system_action - invalid argument - unsupported starlark.Dict",
+			name: "error - incusos.trigger_action - invalid argument - unsupported starlark.Dict",
 			script: `
-def server_registration(server):
-	trigger_system_action("storage", "scrub-pool", {1: ""})
+def server_registration(candidate):
+	incusos.trigger_action("storage", "scrub-pool", {1: ""})
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -506,10 +506,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - trigger_system_action - client",
+			name: "error - incusos.trigger_action - client",
 			script: `
-def server_registration(server):
-	trigger_system_action("storage", "scrub-pool", { "name": "mypool" })
+def server_registration(candidate):
+	incusos.trigger_action("storage", "scrub-pool", { "name": "mypool" })
 `,
 			clientTriggerSystemAction: map[string]any{
 				"name": "mypool",
@@ -522,10 +522,10 @@ def server_registration(server):
 		},
 
 		{
-			name: "error - get_service_config - invalid argument count",
+			name: "error - incusos.get_service - invalid argument count",
 			script: `
-def server_registration(server):
-	get_service_config()
+def server_registration(candidate):
+	incusos.get_service()
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -533,10 +533,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - get_service_config - client",
+			name: "error - incusos.get_service - client",
 			script: `
-def server_registration(server):
-	get_service_config("lvm")
+def server_registration(candidate):
+	incusos.get_service("lvm")
 `,
 			clientGetOSServiceErr: boom.Error,
 
@@ -545,10 +545,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - get_service_config - starlark marshal",
+			name: "error - incusos.get_service - starlark marshal",
 			script: `
-def server_registration(server):
-	get_service_config("lvm")
+def server_registration(candidate):
+	incusos.get_service("lvm")
 `,
 			clientGetOSService: map[string]any{
 				"invalid": func() {}, // functions are invalid types for starlark marshal.
@@ -559,10 +559,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - set_service_config - invalid argument count",
+			name: "error - incusos.set_service - invalid argument count",
 			script: `
-def server_registration(server):
-	set_service_config("lvm", { "config": { "enabled": True } }, "additional argument")
+def server_registration(candidate):
+	incusos.set_service("lvm", { "config": { "enabled": True } }, "additional argument")
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -570,10 +570,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - set_service_config - invalid argument - unsupported starlark.Dict",
+			name: "error - incusos.set_service - invalid argument - unsupported starlark.Dict",
 			script: `
-def server_registration(server):
-	set_service_config("lvm", {1: ""})
+def server_registration(candidate):
+	incusos.set_service("lvm", {1: ""})
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -581,10 +581,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - set_service_config - client",
+			name: "error - incusos.set_service - client",
 			script: `
-def server_registration(server):
-	set_service_config("lvm", { "config": { "enabled": True } })
+def server_registration(candidate):
+	incusos.set_service("lvm", { "config": { "enabled": True } })
 `,
 			clientUpdateOSService: map[string]any{
 				"config": map[string]any{
@@ -599,10 +599,10 @@ def server_registration(server):
 		},
 
 		{
-			name: "error - add_application - invalid argument count",
+			name: "error - incusos.add_application - invalid argument count",
 			script: `
-def server_registration(server):
-	add_application()
+def server_registration(candidate):
+	incusos.add_application()
 `,
 
 			assertSetScriptletErr: require.NoError,
@@ -610,10 +610,10 @@ def server_registration(server):
 			assertLog:             log.Empty,
 		},
 		{
-			name: "error - add_application - client",
+			name: "error - incusos.add_application - client",
 			script: `
-def server_registration(server):
-	add_application("gpu-support")
+def server_registration(candidate):
+	incusos.add_application("gpu-support")
 `,
 			clientTriggerSystemAction: map[string]any{
 				"name": "mypool",

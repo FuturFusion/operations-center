@@ -23,10 +23,10 @@ func CreateLogger(l *slog.Logger, name string) func(*starlark.Thread, *starlark.
 		}
 
 		switch b.Name() {
-		case "log_info":
+		case "info":
 			l.Info(fmt.Sprintf("%s: %s", name, sb.String())) //nolint:sloglint
 
-		case "log_warn":
+		case "warn":
 			l.Warn(fmt.Sprintf("%s: %s", name, sb.String())) //nolint:sloglint
 
 		default:
