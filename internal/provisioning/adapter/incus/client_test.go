@@ -3821,9 +3821,9 @@ func TestClientServer(t *testing.T) {
 			},
 		},
 		{
-			name: "ExecuteSystemCommand",
+			name: "TriggerSystemAction",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
-				return nil, client.ExecuteSystemCommand(ctx, target, "", "poweroff", nil)
+				return nil, client.TriggerSystemAction(ctx, target, "", "poweroff", nil)
 			},
 			testCases: []methodTestCase{
 				{
@@ -4683,8 +4683,8 @@ func TestClient_input_validation(t *testing.T) {
 	err = client.UpdateSystem(t.Context(), provisioning.Server{}, "invalid/resource", nil)
 	require.ErrorContains(t, err, "must not contain forward slashes")
 
-	err = client.ExecuteSystemCommand(t.Context(), provisioning.Server{}, "invalid/resource", "action", nil)
+	err = client.TriggerSystemAction(t.Context(), provisioning.Server{}, "invalid/resource", "action", nil)
 	require.ErrorContains(t, err, "must not contain forward slashes")
-	err = client.ExecuteSystemCommand(t.Context(), provisioning.Server{}, "resource", "invalid/action", nil)
+	err = client.TriggerSystemAction(t.Context(), provisioning.Server{}, "resource", "invalid/action", nil)
 	require.ErrorContains(t, err, "must not contain forward slashes")
 }

@@ -508,7 +508,7 @@ func (c client) Evacuate(ctx context.Context, server provisioning.Server, callba
 	return nil
 }
 
-func (c client) ExecuteSystemCommand(ctx context.Context, server provisioning.Server, resource string, action string, body any) error {
+func (c client) TriggerSystemAction(ctx context.Context, server provisioning.Server, resource string, action string, body any) error {
 	if strings.Contains(resource, "/") || strings.Contains(action, "/") {
 		return fmt.Errorf(`Resource and action must not contain forward slashes ("/")`)
 	}
