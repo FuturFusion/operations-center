@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -190,7 +191,7 @@ func assertIncusRemote(t *testing.T, clusterName string) {
 	mustRun(t, `incus cluster list %s: -f json | jq -r -e '. | length == 3'`, clusterName)
 }
 
-func assertInventory(t *testing.T, clusterName string) {
+func assertInventory(t *testing.T, clusterName string, names []string) {
 	t.Helper()
 
 	var resp cmdResponse
@@ -208,7 +209,7 @@ func assertInventory(t *testing.T, clusterName string) {
 		fmt.Println(resp.Output())
 	}
 
-	resp = run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_type == "incus" and .server_status == "ready") ] | length == 3'`, cpuArch)
+	resp = run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.cluster == "%s" and .server_type == "incus" and .server_status == "ready") ] | length == %d'`, cpuArch, clusterName, len(names))
 	require.NoError(t, resp.err, "expect 3 incus servers in ready state")
 	if !resp.Success() {
 		t.Error("expect 3 incus servers in ready state")
@@ -271,10 +272,10 @@ func assertInventory(t *testing.T, clusterName string) {
 		fmt.Println(resp.Output())
 	}
 
-	resp = run(t, `../bin/operations-center.linux.%s inventory storage-volume list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == 9'`, cpuArch, clusterName)
-	require.NoError(t, resp.err, "expect 9 storage-volumes: images and backups for each server")
+	resp = run(t, `../bin/operations-center.linux.%s inventory storage-volume list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == %d'`, cpuArch, clusterName, len(names)*3)
+	require.NoError(t, resp.err, "expect 9 storage-volumes: images, backups and logs for each server of the cluster")
 	if !resp.Success() {
-		t.Error("expect 9 storage-volumes: images and backups for each server")
+		t.Error("expect 9 storage-volumes: images, backups and logs for each server of the cluster")
 		success = false
 		fmt.Println("====[ Storage Volume List ]====")
 		resp = mustRun(t, "../bin/operations-center.linux.%s inventory storage-volume list", cpuArch)
@@ -337,4 +338,14 @@ func assertWebsocketEventsInventoryUpdate(t *testing.T, clusterName string) {
 	}
 
 	require.True(t, success, "inventory assertions failed after websocket events")
+}
+
+func assertClusterMembers(t *testing.T, clusterName string, clusterMembers []string) {
+	t.Helper()
+
+	servers := mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '[ .[] | select(.cluster == %q and .server_type == "incus" and .server_status == "ready" and (.name as $n | %s | index($n) ) ) ] | .[].name'`, cpuArch, clusterName, asJSON(t, clusterMembers))
+	serverNames := strings.Split(servers.OutputTrimmed(), "\n")
+	if len(clusterMembers) != len(serverNames) {
+		t.Fatalf("expected cluster %q to have a server %v for each name %v", clusterName, serverNames, clusterMembers)
+	}
 }

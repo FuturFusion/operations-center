@@ -13,7 +13,7 @@ func TestE2E_WithToken_SetupOnly(t *testing.T) {
 	runE2ETest(
 		t,
 		"token - basic operations center interactions",
-		setupIncusOSWithToken,
+		setupIncusOSWithToken([]string{"IncusOS01"}),
 		basicOperationsCenterInteractions,
 	)
 }
@@ -22,8 +22,17 @@ func TestE2E_WithToken_CreateCluster(t *testing.T) {
 	runE2ETest(
 		t,
 		"token - create cluster",
-		setupIncusOSWithToken,
+		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
 		createCluster(),
+	)
+}
+
+func TestE2E_WithToken_CreateClusterAndAddServer(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - create cluster",
+		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"}),
+		createClusterAndAddServer(),
 	)
 }
 
@@ -31,7 +40,7 @@ func TestE2E_WithToken_CreateClusterFromClusterTemplate(t *testing.T) {
 	runE2ETest(
 		t,
 		"token - create cluster from cluster template",
-		setupIncusOSWithToken,
+		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
 		createClusterFromTemplate,
 	)
 }
@@ -40,7 +49,7 @@ func TestE2E_WithToken_FactoryResetCluster(t *testing.T) {
 	runE2ETest(
 		t,
 		"token - factory reset cluster",
-		setupIncusOSWithToken,
+		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
 		factoryResetCluster,
 	)
 }
@@ -49,7 +58,7 @@ func TestE2E_WithToken_FactoryResetClusterWithTokenSeed(t *testing.T) {
 	runE2ETest(
 		t,
 		"token - factory reset cluster",
-		setupIncusOSWithToken,
+		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
 		factoryResetClusterWithTokenSeed,
 	)
 }

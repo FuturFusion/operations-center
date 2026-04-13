@@ -114,6 +114,12 @@ config:
   user.ui.title: E2E Test IncusOS Cluster
 `)
 
+	incusOSServiceLVMConfig = []byte(`---
+config:
+  enabled: true
+  system_id: 1999
+`)
+
 	// createClusterFromTemplate templates.
 
 	incusOSClusterServicesConfigTemplate = []byte(`---

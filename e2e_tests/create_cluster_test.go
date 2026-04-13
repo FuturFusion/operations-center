@@ -16,6 +16,26 @@ func createCluster() func(t *testing.T, tmpDir string) {
 	return createClusterWithChannelName("stable")
 }
 
+func createClusterAndAddServer() func(t *testing.T, tmpDir string) {
+	return func(t *testing.T, tmpDir string) {
+		t.Helper()
+
+		createClusterWithChannelName("stable")(t, tmpDir)
+
+		// Update LVM settings.
+		err := os.WriteFile(filepath.Join(tmpDir, "lvm_enable.yaml"), incusOSServiceLVMConfig, 0o600)
+		require.NoError(t, err)
+
+		mustRunWithTimeout(t, `incus exec IncusOS04 -- incus admin os service edit lvm < %s`, strechedTimeout(10*time.Minute), filepath.Join(tmpDir, "lvm_enable.yaml"))
+
+		// Add IncusOS04 to cluster.
+		mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add-servers incus-os-cluster --server-names IncusOS04`, cpuArch)
+
+		// Assertions
+		assertClusterMembers(t, "incus-os-cluster", []string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"})
+	}
+}
+
 func createClusterWithChannelName(channelName string) func(t *testing.T, tmpDir string) {
 	return func(t *testing.T, tmpDir string) {
 		t.Helper()
@@ -59,7 +79,7 @@ func createClusterWithChannelName(channelName string) func(t *testing.T, tmpDir 
 
 		// Assertions
 		assertIncusRemote(t, "incus-os-cluster")
-		assertInventory(t, "incus-os-cluster")
+		assertInventory(t, "incus-os-cluster", names)
 		assertTerraformArtifact(t, "incus-os-cluster")
 		assertWebsocketEventsInventoryUpdate(t, "incus-os-cluster")
 	}
