@@ -54,6 +54,8 @@ func serverRegistrationCompile(name string, src string) (*starlark.Program, erro
 
 		"get_service_config",
 		"set_service_config",
+
+		"add_application",
 	})
 }
 
@@ -96,6 +98,8 @@ func (r Runner) ServerRegistrationRun(ctx context.Context, server *provisioning.
 
 		"get_service_config": starlark.NewBuiltin("get_service_config", r.getServiceConfig(ctx, *server)),
 		"set_service_config": starlark.NewBuiltin("set_service_config", r.setServiceConfig(ctx, *server)),
+
+		"add_application": starlark.NewBuiltin("add_application", r.addApplication(ctx, *server)),
 	}
 
 	go func() {
@@ -367,6 +371,23 @@ func (r Runner) setServiceConfig(ctx context.Context, server provisioning.Server
 		err = r.client.UpdateOSService(ctx, server, service, config)
 		if err != nil {
 			return starlark.None, fmt.Errorf("Failed to set service %s configuration for server %q: %w", service, server.Name, err)
+		}
+
+		return starlark.None, nil
+	}
+}
+
+func (r Runner) addApplication(ctx context.Context, server provisioning.Server) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var application string
+		err := starlark.UnpackArgs(b.Name(), args, kwargs, "application", &application)
+		if err != nil {
+			return nil, err
+		}
+
+		err = r.client.AddApplication(ctx, server, application)
+		if err != nil {
+			return starlark.None, fmt.Errorf("Failed to add application %q to server %q: %w", application, server.Name, err)
 		}
 
 		return starlark.None, nil

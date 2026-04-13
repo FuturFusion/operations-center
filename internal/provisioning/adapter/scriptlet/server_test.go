@@ -36,6 +36,7 @@ func TestRunner_ServerRegistrationRun(t *testing.T) {
 		clientGetOSServiceErr        error
 		clientUpdateOSService        any
 		clientUpdateOSServiceErr     error
+		clientAddApplicationErr      error
 
 		assertSetScriptletErr require.ErrorAssertionFunc
 		assertRunErr          require.ErrorAssertionFunc
@@ -229,6 +230,26 @@ def server_registration(server):
 
 				log.Contains(`INF Server registration scriptlet: config.enabled: True`)(t, logBuf)
 			},
+		},
+
+		{
+			name: "success - add_application",
+			script: `
+def server_registration(server):
+	add_application("gpu-support")
+`,
+
+			assertSetScriptletErr: require.NoError,
+			assertRunErr:          require.NoError,
+			assertLog:             log.Empty,
+		},
+
+		{
+			name: "error - invalid script",
+			script: `
+		`,
+
+			assertSetScriptletErr: require.Error,
 		},
 
 		{
@@ -576,6 +597,33 @@ def server_registration(server):
 			assertRunErr:          boom.ErrorIs,
 			assertLog:             log.Empty,
 		},
+
+		{
+			name: "error - add_application - invalid argument count",
+			script: `
+def server_registration(server):
+	add_application()
+`,
+
+			assertSetScriptletErr: require.NoError,
+			assertRunErr:          require.Error,
+			assertLog:             log.Empty,
+		},
+		{
+			name: "error - add_application - client",
+			script: `
+def server_registration(server):
+	add_application("gpu-support")
+`,
+			clientTriggerSystemAction: map[string]any{
+				"name": "mypool",
+			},
+			clientAddApplicationErr: boom.Error,
+
+			assertSetScriptletErr: require.NoError,
+			assertRunErr:          boom.ErrorIs,
+			assertLog:             log.Empty,
+		},
 	}
 
 	for _, tc := range tests {
@@ -609,6 +657,9 @@ def server_registration(server):
 				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
 					require.Equal(t, tc.clientUpdateOSService, config)
 					return tc.clientUpdateOSServiceErr
+				},
+				AddApplicationFunc: func(ctx context.Context, server provisioning.Server, application string) error {
+					return tc.clientAddApplicationErr
 				},
 			}
 

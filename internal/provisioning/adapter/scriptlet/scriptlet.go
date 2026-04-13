@@ -19,6 +19,7 @@ type ScriptletClientPort interface {
 	TriggerSystemAction(ctx context.Context, server provisioning.Server, resource string, action string, body any) error
 	GetOSService(ctx context.Context, server provisioning.Server, name string) (map[string]any, error)
 	UpdateOSService(ctx context.Context, server provisioning.Server, name string, config any) error
+	AddApplication(ctx context.Context, server provisioning.Server, application string) error
 }
 
 type Runner struct {
