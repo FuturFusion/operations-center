@@ -241,7 +241,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 
 	// Check, that all the listed servers are online.
 	for _, server := range servers {
-		ctxWithTimeout, cancelFunc := context.WithTimeout(ctx, 1*time.Second)
+		ctxWithTimeout, cancelFunc := context.WithTimeout(ctx, 5*time.Second)
 		err = s.client.Ping(ctxWithTimeout, server)
 		cancelFunc()
 		if err != nil {
