@@ -121,6 +121,13 @@ func (c *CmdCluster) Command() *cobra.Command {
 
 	cmd.AddCommand(clusterUpdateCmd.Command())
 
+	// Cancel cluster wide update
+	clusterCancelUpdateCmd := cmdClusterCancelUpdate{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(clusterCancelUpdateCmd.Command())
+
 	// artifact sub-command
 	clusterArtifactCmd := cmdClusterArtifact{
 		ocClient: c.OCClient,
@@ -937,6 +944,46 @@ func (c *cmdClusterUpdate) run(cmd *cobra.Command, args []string) error {
 	err := c.ocClient.LaunchClusterWideUpdate(cmd.Context(), name, api.ClusterUpdatePost{
 		Reboot: c.flagReboot,
 	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Cancel cluster wide update.
+type cmdClusterCancelUpdate struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdClusterCancelUpdate) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "cancel-update <name>"
+	cmd.Short = "Cancel an ongoing cluster wide update"
+	cmd.Long = `Description:
+  Cancel an ongoing cluster wide update of all servers.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdClusterCancelUpdate) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdClusterCancelUpdate) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.CancelClusterWideUpdate(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
