@@ -65,6 +65,7 @@ export interface TokenSeedApplication {
 }
 
 export interface TokenSeedApplications {
+  version: string;
   applications: TokenSeedApplication[];
 }
 
