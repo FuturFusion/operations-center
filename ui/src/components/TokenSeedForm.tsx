@@ -115,7 +115,10 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
         ...values,
         seeds: {
           ...values.seeds,
-          applications: { applications: applications },
+          applications: {
+            version: "1",
+            applications: applications,
+          },
           install: parsedInstall,
           network: parsedNetwork,
           migration_manager: parsedMigrationManager,

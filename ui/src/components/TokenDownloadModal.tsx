@@ -93,7 +93,10 @@ const TokenDownloadModal: FC<Props> = ({
       download({
         ...values,
         seeds: {
-          applications: { applications: applications },
+          applications: {
+            version: "1",
+            applications: applications,
+          },
           install: {
             ...values.seeds.install,
             security: {
