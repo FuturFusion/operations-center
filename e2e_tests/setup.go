@@ -189,7 +189,7 @@ func cleanupTokenSeed(t *testing.T, token string) func() {
 		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
 		defer cancel()
 
-		stop := timeTrack(t)
+		stop := timeTrack(t, "cleanup token seed")
 		defer stop()
 
 		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning token seed remove %s incus-os-cluster`, cpuArch, token)

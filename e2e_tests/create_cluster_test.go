@@ -20,7 +20,7 @@ func createClusterWithChannelName(channelName string) func(t *testing.T, tmpDir 
 	return func(t *testing.T, tmpDir string) {
 		t.Helper()
 
-		stop := timeTrack(t)
+		stop := timeTrack(t, "create cluster with channel name")
 		defer stop()
 
 		// Pre check
