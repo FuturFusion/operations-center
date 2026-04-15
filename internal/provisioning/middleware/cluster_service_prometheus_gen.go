@@ -482,7 +482,7 @@ func (_d ClusterServiceWithPrometheus) StartLifecycleEventsMonitor(ctx context.C
 }
 
 // Update implements provisioning.ClusterService.
-func (_d ClusterServiceWithPrometheus) Update(ctx context.Context, cluster provisioning.Cluster) (err error) {
+func (_d ClusterServiceWithPrometheus) Update(ctx context.Context, cluster provisioning.Cluster, updateServers bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -492,7 +492,7 @@ func (_d ClusterServiceWithPrometheus) Update(ctx context.Context, cluster provi
 
 		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Update", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.Update(ctx, cluster)
+	return _d.base.Update(ctx, cluster, updateServers)
 }
 
 // UpdateCertificate implements provisioning.ClusterService.
