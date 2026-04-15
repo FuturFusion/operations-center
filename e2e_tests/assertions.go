@@ -176,7 +176,7 @@ func assertIncusRemote(t *testing.T, clusterName string) {
 
 	mustRun(t, `incus remote add --accept-certificate --auth-type tls %s %s`, clusterName, clusterConnectionURL)
 	t.Cleanup(func() {
-		if noCleanup {
+		if noCleanup || (noCleanupOnError && t.Failed()) {
 			return
 		}
 

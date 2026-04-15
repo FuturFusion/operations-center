@@ -141,7 +141,7 @@ func cleanupIncusOS(t *testing.T) func() {
 	t.Helper()
 
 	return func() {
-		if noCleanup {
+		if noCleanup || (noCleanupOnError && t.Failed()) {
 			return
 		}
 
@@ -181,7 +181,7 @@ func cleanupTokenSeed(t *testing.T, token string) func() {
 	t.Helper()
 
 	return func() {
-		if noCleanup {
+		if noCleanup || (noCleanupOnError && t.Failed()) {
 			return
 		}
 

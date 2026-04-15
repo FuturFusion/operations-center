@@ -69,7 +69,7 @@ func clusterCleanup(t *testing.T) func() {
 	t.Helper()
 
 	return func() {
-		if noCleanup {
+		if noCleanup || (noCleanupOnError && t.Failed()) {
 			return
 		}
 

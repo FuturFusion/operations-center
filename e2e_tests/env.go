@@ -14,6 +14,7 @@ var (
 	cpuArch              = envOrDefault("OPERATIONS_CENTER_E2E_TEST_CPU_ARCH", "amd64")
 	debug                = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_DEBUG", false)
 	noCleanup            = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP", false)
+	noCleanupOnError     = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR", false)
 
 	goCoverDir      = ""
 	ocE2EGoCoverDir = ""
