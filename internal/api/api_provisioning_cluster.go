@@ -379,7 +379,7 @@ func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 	currentCluster.Properties = cluster.Properties
 	currentCluster.Config = cluster.Config
 
-	err = c.service.Update(ctx, *currentCluster)
+	err = c.service.Update(ctx, *currentCluster, true)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating cluster %q: %w", name, err))
 	}
