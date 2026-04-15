@@ -629,10 +629,12 @@ func (s *serverService) UpdateSystemUpdate(ctx context.Context, name string, upd
 		return fmt.Errorf("Failed to update the update config for %q: %w", server.Name, err)
 	}
 
-	err = s.PollServer(ctx, *server, true)
-	if err != nil {
-		slog.WarnContext(ctx, "Server poll after changing the update configuration failed (non-critical), fixed by the next successful server poll interval", logger.Err(err), slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
-	}
+	go func() {
+		err := s.PollServer(ctx, *server, true)
+		if err != nil {
+			slog.WarnContext(ctx, "Server poll after changing the update configuration failed (non-critical), fixed by the next successful server poll interval", logger.Err(err), slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
+		}
+	}()
 
 	return nil
 }
