@@ -28,6 +28,7 @@ Other environment variables that can be set to control the tests:
 * `OPERATIONS_CENTER_E2E_TEST_CPU_ARCH`: CPU architecture used (default: "amd64")
 * `OPERATIONS_CENTER_E2E_TEST_DEBUG`: Enable debug output (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP`: Disable cleanup of resources after tests, WARNING: this might cause errors, only use with single test cases (default: "false")
+* `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR`: Disable cleanup of resources after failed tests, WARNING: this might cause errors, only use with single test cases or with `-failfast` flag of `go test` (default: "false")
 
 ## Setup
 
@@ -186,3 +187,7 @@ Examples:
   case.
 * `t.Cleanup(cleanupTokenSeed(t, token))`, cleans up the token seed created
   during the test case.
+
+For debug purposes, the cleanup can be disabled by setting the environment
+variable `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP` or
+`OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR` to a truthy value.
