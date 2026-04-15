@@ -3508,7 +3508,7 @@ foobar
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
 					return tc.clusterSvcGetByName, tc.clusterSvcGetByNameErr
 				},
-				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
+				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster, updateServers bool) error {
 					return tc.clusterSvcUpdateErr
 				},
 			}

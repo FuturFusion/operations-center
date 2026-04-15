@@ -1600,7 +1600,7 @@ func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context,
 
 					cluster.Certificate = nil
 
-					retryErr = s.clusterSvc.Update(ctx, *cluster)
+					retryErr = s.clusterSvc.Update(ctx, *cluster, false)
 					if retryErr != nil {
 						return fmt.Errorf("Failed to update cluster's certificate for server %q: %w", server.Name, retryErr)
 					}

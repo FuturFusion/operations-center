@@ -726,7 +726,7 @@ func (s clusterService) getClusterUpdateStatus(ctx context.Context, name string,
 	return nil
 }
 
-func (s clusterService) Update(ctx context.Context, newCluster Cluster) error {
+func (s clusterService) Update(ctx context.Context, newCluster Cluster, updateServers bool) error {
 	err := newCluster.Validate()
 	if err != nil {
 		return err
@@ -736,6 +736,10 @@ func (s clusterService) Update(ctx context.Context, newCluster Cluster) error {
 		err = s.repo.Update(ctx, newCluster)
 		if err != nil {
 			return err
+		}
+
+		if !updateServers {
+			return nil
 		}
 
 		// Get servers of cluster and update "channel" to same value as cluster.
@@ -1029,7 +1033,7 @@ func (s clusterService) LaunchClusterUpdate(ctx context.Context, name string, re
 		cluster.UpdateStatus.InProgressStatus.Error = ""
 		cluster.UpdateStatus.InProgressStatus.LastUpdated = s.now()
 
-		err = s.Update(ctx, *cluster)
+		err = s.Update(ctx, *cluster, false)
 		if err != nil {
 			return fmt.Errorf("Failed to update cluster %q: %w", name, err)
 		}
@@ -1053,7 +1057,7 @@ func (s clusterService) LaunchClusterUpdate(ctx context.Context, name string, re
 		cluster.UpdateStatus.InProgressStatus.EvacuatedBefore = nil
 		cluster.UpdateStatus.InProgressStatus.LastUpdated = s.now()
 
-		err = s.Update(ctx, *cluster)
+		err = s.Update(ctx, *cluster, false)
 		if err != nil {
 			slog.ErrorContext(ctx, "Failed to revert cluster update status", logger.Err(err), slog.String("cluster", cluster.Name))
 		}

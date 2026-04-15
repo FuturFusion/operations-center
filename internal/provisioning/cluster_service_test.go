@@ -3855,6 +3855,7 @@ func TestClusterService_GetByName(t *testing.T) {
 func TestClusterService_Update(t *testing.T) {
 	tests := []struct {
 		name                         string
+		argUpdateServers             bool
 		cluster                      provisioning.Cluster
 		repoUpdateErr                error
 		serverSvcGetAllWithFilter    []provisioning.Server
@@ -3864,7 +3865,8 @@ func TestClusterService_Update(t *testing.T) {
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name: "success",
+			name:             "success",
+			argUpdateServers: true,
 			cluster: provisioning.Cluster{
 				Name:          "one",
 				ConnectionURL: "http://one/",
@@ -3877,6 +3879,17 @@ func TestClusterService_Update(t *testing.T) {
 				{
 					Name: "two",
 				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "success - without servers update",
+			argUpdateServers: false,
+			cluster: provisioning.Cluster{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Channel:       "stable",
 			},
 
 			assertErr: require.NoError,
@@ -3907,7 +3920,8 @@ func TestClusterService_Update(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - serverSvc.GetAllNamesWithFilter",
+			name:             "error - serverSvc.GetAllNamesWithFilter",
+			argUpdateServers: true,
 			cluster: provisioning.Cluster{
 				Name:          "one",
 				ServerNames:   []string{"server1", "server3"},
@@ -3919,7 +3933,8 @@ func TestClusterService_Update(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - serverSvc.GetAllNamesWithFilter",
+			name:             "error - serverSvc.GetAllNamesWithFilter",
+			argUpdateServers: true,
 			cluster: provisioning.Cluster{
 				Name:          "one",
 				ServerNames:   []string{"server1", "server3"},
@@ -3961,7 +3976,7 @@ func TestClusterService_Update(t *testing.T) {
 			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
 
 			// Run test
-			err := clusterSvc.Update(context.Background(), tc.cluster)
+			err := clusterSvc.Update(context.Background(), tc.cluster, tc.argUpdateServers)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -4819,8 +4834,6 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 						},
 					},
 				},
-				// Update
-				{},
 				// GetAllWithFilter, needs update
 				{
 					Value: provisioning.Servers{
@@ -4908,8 +4921,6 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 						},
 					},
 				},
-				// Update
-				{},
 				// GetAllWithFilter, needs update
 				{
 					Value: provisioning.Servers{
@@ -4991,8 +5002,6 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 						},
 					},
 				},
-				// Update
-				{},
 				// GetAllWithFilter, needs update
 				{
 					Value: provisioning.Servers{
@@ -5084,6 +5093,7 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 					Value: api.ClusterUpdateInProgressStatus{
 						InProgress: api.ClusterUpdateInProgressApplyUpdate,
 					},
+					Err: boom.Error,
 				},
 			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
@@ -5108,10 +5118,6 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 							},
 						},
 					},
-				},
-				// Update
-				{
-					Err: boom.Error,
 				},
 			},
 
@@ -5167,10 +5173,6 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 						},
 					},
 				},
-				// Update
-				{},
-				// Update reverter
-				{},
 			},
 			serverSvcPollServers: boom.Error,
 
@@ -5201,6 +5203,7 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 					Value: api.ClusterUpdateInProgressStatus{
 						InProgress: api.ClusterUpdateInProgressInactive,
 					},
+					Err: boom.Error,
 				},
 			},
 			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
@@ -5225,12 +5228,6 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 							},
 						},
 					},
-				},
-				// Update
-				{},
-				// Update reverter
-				{
-					Err: boom.Error,
 				},
 			},
 			serverSvcPollServers: boom.Error,
@@ -5287,14 +5284,10 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 						},
 					},
 				},
-				// Update
-				{},
 				// GetAllWithFilter, needs update
 				{
 					Value: nil, // No servers found.
 				},
-				// Update reverter
-				{},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -5351,14 +5344,10 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 						},
 					},
 				},
-				// Update
-				{},
 				// GetAllWithFilter, needs update
 				{
 					Err: boom.Error,
 				},
-				// Update reverter
-				{},
 			},
 
 			assertErr: boom.ErrorIs,
@@ -5413,8 +5402,6 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 						},
 					},
 				},
-				// Update
-				{},
 				// GetAllWithFilter, needs update
 				{
 					Value: provisioning.Servers{
@@ -5435,8 +5422,6 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 						},
 					},
 				},
-				// Update reverter
-				{},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -5495,8 +5480,6 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 						},
 					},
 				},
-				// Update
-				{},
 				// GetAllWithFilter, needs update
 				{
 					Value: provisioning.Servers{
@@ -5519,8 +5502,6 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 						},
 					},
 				},
-				// Update reverter
-				{},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -5585,8 +5566,6 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 						},
 					},
 				},
-				// Update
-				{},
 				// GetAllWithFilter
 				{
 					Value: provisioning.Servers{
@@ -5608,8 +5587,6 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 						},
 					},
 				},
-				// Update reverter
-				{},
 			},
 
 			assertErr: boom.ErrorIs,
