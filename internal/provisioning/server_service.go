@@ -1148,7 +1148,9 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 		// Forcefully set channel and update frequency on server before triggering update.
 		err = s.UpdateSystemUpdate(ctx, name, incusosapi.SystemUpdate{
 			Config: incusosapi.SystemUpdateConfig{
-				Channel: server.Channel,
+				AutoReboot:     false,
+				Channel:        server.Channel,
+				CheckFrequency: "never",
 			},
 		})
 		if err != nil {
