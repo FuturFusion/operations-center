@@ -35,6 +35,7 @@ const SystemSettingsForm: FC<Props> = ({ settings, onSubmit }) => {
               onBlur={formik.handleBlur}
               isInvalid={!!formik.errors.log_level && formik.touched.log_level}
             >
+              <option key="" value=""></option>
               {Object.values(LogLevel).map((value) => (
                 <option key={value} value={value}>
                   {value}
