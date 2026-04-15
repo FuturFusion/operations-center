@@ -1359,6 +1359,10 @@ func (s *serverService) GetChangelogByName(ctx context.Context, name string) (ap
 func (s *serverService) PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error {
 	log := slog.With(slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 
+	if transaction.IsActive(ctx) {
+		log.WarnContext(ctx, "serverService.PollServer is called inside of a DB transaction", slog.Bool("update_server_configuration", updateServerConfiguration), logger.AddStacktrace())
+	}
+
 	var err error
 	signalLifecycle := false
 

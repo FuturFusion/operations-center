@@ -27,6 +27,7 @@ import (
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
@@ -3949,6 +3950,45 @@ func TestServerService_PollServer(t *testing.T) {
 			tc.assertLog(t, logBuf)
 		})
 	}
+}
+
+func TestServerService_PollServer_in_transaction(t *testing.T) {
+	// Setup
+	logBuf := &bytes.Buffer{}
+	err := logger.InitLogger(logBuf, "", false, true, false)
+	require.NoError(t, err)
+
+	repo := &repoMock.ServerRepoMock{
+		GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+			return &provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			}, nil
+		},
+		UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+			return nil
+		},
+	}
+
+	client := &adapterMock.ServerClientPortMock{
+		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+			return nil
+		},
+	}
+
+	serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, nil, tls.Certificate{})
+
+	// Run test
+	err = transaction.Do(t.Context(), func(ctx context.Context) error {
+		return serverSvc.PollServer(ctx, provisioning.Server{
+			Name:   "one",
+			Status: api.ServerStatusPending,
+		}, false)
+	})
+
+	// Assert
+	require.NoError(t, err)
+	log.Contains("serverService.PollServer is called inside of a DB transaction")(t, logBuf)
 }
 
 func TestServerService_ResyncByName(t *testing.T) {
