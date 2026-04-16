@@ -407,16 +407,19 @@ func (s *serverService) Update(ctx context.Context, server Server, force bool, u
 		return fmt.Errorf("Failed to validate server for update: %w", err)
 	}
 
-	return transaction.Do(ctx, func(ctx context.Context) error {
-		if !force {
-			currentServer, err := s.repo.GetByName(ctx, server.Name)
-			if err != nil {
-				return fmt.Errorf("Failed to get server %q for update: %w", server.Name, err)
-			}
+	reverter := revert.New()
+	defer reverter.Fail()
 
-			if currentServer.Cluster != nil && currentServer.Channel != server.Channel {
-				return fmt.Errorf("Update of channel not allowed for clustered server %q: %w", server.Name, domain.ErrOperationNotPermitted)
-			}
+	var previousServer *Server
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		previousServer, err = s.repo.GetByName(ctx, server.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to get server %q for update: %w", server.Name, err)
+		}
+
+		if !force && previousServer.Cluster != nil && previousServer.Channel != server.Channel {
+			return fmt.Errorf("Update of channel not allowed for clustered server %q: %w", server.Name, domain.ErrOperationNotPermitted)
 		}
 
 		err = s.repo.Update(ctx, server)
@@ -424,23 +427,38 @@ func (s *serverService) Update(ctx context.Context, server Server, force bool, u
 			return fmt.Errorf("Failed to update server %q: %w", server.Name, err)
 		}
 
-		if !updateSystem {
-			return nil
-		}
-
-		err = s.UpdateSystemUpdate(ctx, server.Name, incusosapi.SystemUpdate{
-			Config: incusosapi.SystemUpdateConfig{
-				AutoReboot:     false,
-				Channel:        server.Channel,
-				CheckFrequency: "never",
-			},
-		})
-		if err != nil {
-			return fmt.Errorf("Failed to update system update configuration for server %q: %w", server.Name, err)
-		}
-
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	if !updateSystem {
+		reverter.Success()
+		return nil
+	}
+
+	reverter.Add(func() {
+		err := s.repo.Update(ctx, *previousServer)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed restore previous server state after failed to update system update config", slog.String("server", server.Name), logger.Err(err))
+		}
+	})
+
+	err = s.UpdateSystemUpdate(ctx, server.Name, incusosapi.SystemUpdate{
+		Config: incusosapi.SystemUpdateConfig{
+			AutoReboot:     false,
+			Channel:        server.Channel,
+			CheckFrequency: "never",
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to update system update configuration for server %q: %w", server.Name, err)
+	}
+
+	reverter.Success()
+
+	return nil
 }
 
 func (s *serverService) UpdateSystemNetwork(ctx context.Context, name string, systemNetwork ServerSystemNetwork) (err error) {
@@ -927,6 +945,7 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 	}
 
 	var server *Server
+	var previousServer Server
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
 
@@ -934,6 +953,8 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 		if err != nil {
 			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 		}
+
+		previousServer = server.Clone()
 
 		if server.Type != api.ServerTypeIncus {
 			return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
@@ -955,15 +976,22 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 			return fmt.Errorf("Failed put server %q in evacuating: %w", name, err)
 		}
 
-		err = s.client.Evacuate(ctx, *server, callback)
-		if err != nil {
-			return fmt.Errorf("Failed to evacuate server %q by name: %w", name, err)
-		}
-
 		return nil
 	})
 	if err != nil {
 		return err
+	}
+
+	reverter.Add(func() {
+		err := s.repo.Update(ctx, previousServer)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed restore previous server state after failed to trigger evacuation", slog.String("server", name), logger.Err(err))
+		}
+	})
+
+	err = s.client.Evacuate(ctx, *server, callback)
+	if err != nil {
+		return fmt.Errorf("Failed to evacuate server %q by name: %w", name, err)
 	}
 
 	reverter.Success()
@@ -1017,7 +1045,20 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 func (s *serverService) RebootSystemByName(ctx context.Context, name string, force bool) error {
 	slog.InfoContext(ctx, "Reboot initiated", slog.String("server", name), slog.Bool("force", force))
 
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	reverter.Add(func() {
+		s.volatileServerStates.reset(name, operationEvacuation)
+	})
+
+	_, ok := s.volatileServerStates.start(name, operationReboot)
+	if !ok {
+		return domain.NewRetryableErr(fmt.Errorf("server operation in flight"))
+	}
+
 	var server *Server
+	var previousServer Server
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -1026,6 +1067,8 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 		if err != nil {
 			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 		}
+
+		previousServer = server.Clone()
 
 		if !force && !s.clusterSvc.IsInstanceLifecycleOperationPermitted(ctx, ptr.From(server.Cluster)) {
 			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
@@ -1039,16 +1082,25 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 			return fmt.Errorf("Failed to update server %q: %w", name, err)
 		}
 
-		err = s.client.Reboot(ctx, *server)
-		if err != nil {
-			return fmt.Errorf("Failed to reboot server %q by name: %w", name, err)
-		}
-
 		return nil
 	})
 	if err != nil {
 		return err
 	}
+
+	reverter.Add(func() {
+		err := s.repo.Update(ctx, previousServer)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed restore previous server state after failed to trigger reboot", slog.String("server", name), logger.Err(err))
+		}
+	})
+
+	err = s.client.Reboot(ctx, *server)
+	if err != nil {
+		return fmt.Errorf("Failed to reboot server %q by name: %w", name, err)
+	}
+
+	reverter.Success()
 
 	server.signalLifecycleEvent()
 
@@ -1085,6 +1137,7 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 	}
 
 	var server *Server
+	var previousServer Server
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -1093,6 +1146,8 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 		if err != nil {
 			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 		}
+
+		previousServer = server.Clone()
 
 		if server.Type != api.ServerTypeIncus {
 			return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
@@ -1114,15 +1169,22 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 			return fmt.Errorf("Failed put server %q in restoring: %w", name, err)
 		}
 
-		err = s.client.Restore(ctx, *server, restoreModeSkip, callback)
-		if err != nil {
-			return fmt.Errorf("Failed to restore server %q by name: %w", name, err)
-		}
-
 		return nil
 	})
 	if err != nil {
 		return err
+	}
+
+	reverter.Add(func() {
+		err := s.repo.Update(ctx, previousServer)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed restore previous server state after failed to trigger restore", slog.String("server", name), logger.Err(err))
+		}
+	})
+
+	err = s.client.Restore(ctx, *server, restoreModeSkip, callback)
+	if err != nil {
+		return fmt.Errorf("Failed to restore server %q by name: %w", name, err)
 	}
 
 	reverter.Success()
@@ -1407,6 +1469,8 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 				case api.ServerStatusReady:
 					log.WarnContext(ctx, "Server connection test failed")
 
+					s.volatileServerStates.reset(server.Name, operationReboot)
+
 					updateServer.Status = api.ServerStatusOffline
 					updateServer.StatusDetail = api.ServerStatusDetailOfflineUnresponsive
 					err = s.repo.Update(ctx, *updateServer)
@@ -1502,6 +1566,7 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 		// Clear status detail, if previous state was not ready, e.g. because
 		// of reboot or reconfiguration.
 		if server.Status != api.ServerStatusReady {
+			s.volatileServerStates.reset(server.Name, operationReboot)
 			server.StatusDetail = api.ServerStatusDetailNone
 			signalLifecycle = true
 		}

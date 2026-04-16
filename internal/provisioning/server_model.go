@@ -3,6 +3,7 @@ package provisioning
 import (
 	"context"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -74,6 +75,15 @@ func (s Server) GetServerName() (string, error) {
 
 func (s Server) GetName() string {
 	return s.Name
+}
+
+func (s Server) Clone() Server {
+	var server Server
+
+	b, _ := json.Marshal(s)
+	_ = json.Unmarshal(b, &server)
+
+	return server
 }
 
 func (s Server) Validate() error {
@@ -232,6 +242,7 @@ type operation int
 const (
 	operationNone operation = iota
 	operationEvacuation
+	operationReboot
 	operationRestore
 )
 
