@@ -36,6 +36,12 @@ func TestServer_signalLifecycleEvent(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			oldSignalLifecycleEventDelay := signalLifecycleEventDelay
+			signalLifecycleEventDelay = 0
+			defer func() {
+				signalLifecycleEventDelay = oldSignalLifecycleEventDelay
+			}()
+
 			lifecycle.ServerLifecycleSignal.AddListenerWithErr(func(_ context.Context, _ lifecycle.ServerLifecycleMessage) error {
 				return tc.lifecycleServerLifecycleSignalErr
 			}, "TestServer_signalLifecycleEvent")
@@ -49,7 +55,7 @@ func TestServer_signalLifecycleEvent(t *testing.T) {
 
 			server := Server{}
 
-			server.signalLifecycleEvent(t.Context())
+			server.signalLifecycleEvent()
 
 			tc.assertLog(t, logBuf)
 		})

@@ -1268,11 +1268,8 @@ func (s clusterService) executeRollingUpdate(ctx context.Context, cluster Cluste
 	}
 
 	if emitLifecycleSignal {
-		go func() {
-			lifecycle.ServerLifecycleSignal.Emit(ctx, lifecycle.ServerLifecycleMessage{
-				Cluster: &cluster.Name,
-			})
-		}()
+		// Use last server as the triggering server, since it was most likely the last one that was updated.
+		servers[len(servers)-1].signalLifecycleEvent()
 	}
 
 	return nil

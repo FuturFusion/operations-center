@@ -630,6 +630,9 @@ func (s *serverService) UpdateSystemUpdate(ctx context.Context, name string, upd
 	}
 
 	go func() {
+		// Use a detached context in order to make sure, no existing DB transaction is inherited.
+		ctx := context.Background()
+
 		err := s.PollServer(ctx, *server, true)
 		if err != nil {
 			slog.WarnContext(ctx, "Server poll after changing the update configuration failed (non-critical), fixed by the next successful server poll interval", logger.Err(err), slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
@@ -965,7 +968,7 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 
 	reverter.Success()
 
-	server.signalLifecycleEvent(ctx)
+	server.signalLifecycleEvent()
 
 	return nil
 }
@@ -1006,7 +1009,7 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 		return err
 	}
 
-	server.signalLifecycleEvent(ctx)
+	server.signalLifecycleEvent()
 
 	return nil
 }
@@ -1047,7 +1050,7 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 		return err
 	}
 
-	server.signalLifecycleEvent(ctx)
+	server.signalLifecycleEvent()
 
 	return nil
 }
@@ -1124,7 +1127,7 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 
 	reverter.Success()
 
-	server.signalLifecycleEvent(ctx)
+	server.signalLifecycleEvent()
 
 	return nil
 }
@@ -1186,7 +1189,7 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 		return err
 	}
 
-	server.signalLifecycleEvent(ctx)
+	server.signalLifecycleEvent()
 
 	return nil
 }
@@ -1316,7 +1319,7 @@ func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *Ser
 		return fmt.Errorf("Failed to update servers in maintenance state: %w", err)
 	}
 
-	server.signalLifecycleEvent(ctx)
+	server.signalLifecycleEvent()
 
 	return nil
 }
@@ -1434,7 +1437,7 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 			}
 
 			if signalLifecycle {
-				updateServer.signalLifecycleEvent(ctx)
+				updateServer.signalLifecycleEvent()
 			}
 
 			return nil
@@ -1533,7 +1536,7 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 	}
 
 	if signalLifecycle {
-		server.signalLifecycleEvent(ctx)
+		server.signalLifecycleEvent()
 	}
 
 	return nil

@@ -139,13 +139,22 @@ func (s Server) UpdateState() api.ServerUpdateState {
 	}.UpdateState()
 }
 
-func (s Server) signalLifecycleEvent(ctx context.Context) {
+var signalLifecycleEventDelay = 3 * time.Second
+
+func (s Server) signalLifecycleEvent() {
 	go func() {
+		// Defer lifecycle signal a bit, let the triggering event complete first.
+		time.Sleep(signalLifecycleEventDelay)
+
+		// Use a detached context in order to make sure, no existing DB transaction is inherited.
+		ctx := context.Background()
+
 		slm := lifecycle.ServerLifecycleMessage{
 			Server:            s.Name,
 			Cluster:           s.Cluster,
 			ServerUpdateState: s.UpdateState(),
 		}
+
 		err := lifecycle.ServerLifecycleSignal.TryEmit(ctx, slm)
 		if err != nil {
 			slog.ErrorContext(ctx, "Signal lifecycle event failed", logger.Err(err), slog.Any("server_lifecycle_message", slm))
