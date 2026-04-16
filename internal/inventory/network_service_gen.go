@@ -148,27 +148,32 @@ func (s networkService) GetByUUID(ctx context.Context, id uuid.UUID) (Network, e
 }
 
 func (s networkService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	network, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, network.Cluster)
+	if err != nil {
+		return err
+	}
+
+	retrievedNetwork, err := s.networkClient.GetNetworkByName(ctx, endpoint, network.ProjectName, network.Name)
+	if errors.Is(err, domain.ErrNotFound) {
+		err = s.repo.DeleteByUUID(ctx, network.UUID)
+		if err != nil {
+			return fmt.Errorf(`Failed to delete network %q from cluster %q: %w`, network.UUID.String(), network.Cluster, err)
+		}
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		network, err := s.repo.GetByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		endpoint, err := s.clusterSvc.GetEndpoint(ctx, network.Cluster)
-		if err != nil {
-			return err
-		}
-
-		retrievedNetwork, err := s.networkClient.GetNetworkByName(ctx, endpoint, network.ProjectName, network.Name)
-		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByUUID(ctx, network.UUID)
-			if err != nil {
-				return fmt.Errorf(`Failed to delete network %q from cluster %q: %w`, network.UUID.String(), network.Cluster, err)
-			}
-
-			return nil
-		}
-
 		if err != nil {
 			return err
 		}

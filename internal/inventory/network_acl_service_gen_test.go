@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
+	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -269,8 +270,7 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 		clusterSvcGetEndpointErr               error
 		networkACLClientGetNetworkACLByName    incusapi.NetworkACL
 		networkACLClientGetNetworkACLByNameErr error
-		repoGetByUUIDNetworkACL                inventory.NetworkACL
-		repoGetByUUIDErr                       error
+		repoGetByUUIDNetworkACL                []queue.Item[inventory.NetworkACL]
 		repoUpdateByUUIDErr                    error
 		repoDeleteByUUIDErr                    error
 
@@ -278,11 +278,23 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 	}{
 		{
 			name: "success",
-			repoGetByUUIDNetworkACL: inventory.NetworkACL{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkACL: []queue.Item[inventory.NetworkACL]{
+				{
+					Value: inventory.NetworkACL{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
+				{
+					Value: inventory.NetworkACL{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -302,11 +314,15 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "success - networkACL get by name - not found",
-			repoGetByUUIDNetworkACL: inventory.NetworkACL{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkACL: []queue.Item[inventory.NetworkACL]{
+				{
+					Value: inventory.NetworkACL{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -325,10 +341,21 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		{
 			name: "success - missing project",
-			repoGetByUUIDNetworkACL: inventory.NetworkACL{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDNetworkACL: []queue.Item[inventory.NetworkACL]{
+				{
+					Value: inventory.NetworkACL{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
+				{
+					Value: inventory.NetworkACL{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -346,18 +373,26 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:             "error - networkACL get by UUID",
-			repoGetByUUIDErr: boom.Error,
+			name: "error - networkACL get by UUID - 1st",
+			repoGetByUUIDNetworkACL: []queue.Item[inventory.NetworkACL]{
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - cluster get by ID",
-			repoGetByUUIDNetworkACL: inventory.NetworkACL{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkACL: []queue.Item[inventory.NetworkACL]{
+				{
+					Value: inventory.NetworkACL{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -365,11 +400,15 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - networkACL get by name",
-			repoGetByUUIDNetworkACL: inventory.NetworkACL{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkACL: []queue.Item[inventory.NetworkACL]{
+				{
+					Value: inventory.NetworkACL{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -384,11 +423,15 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - networkACL get by name - not found - delete by uuid",
-			repoGetByUUIDNetworkACL: inventory.NetworkACL{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkACL: []queue.Item[inventory.NetworkACL]{
+				{
+					Value: inventory.NetworkACL{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -403,12 +446,49 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - networkACL get by UUID - 2nd",
+			repoGetByUUIDNetworkACL: []queue.Item[inventory.NetworkACL]{
+				{
+					Value: inventory.NetworkACL{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
+				{
+					Err: boom.Error,
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - validate",
-			repoGetByUUIDNetworkACL: inventory.NetworkACL{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "", // invalid
-				ProjectName: "project one",
+			repoGetByUUIDNetworkACL: []queue.Item[inventory.NetworkACL]{
+				{
+					Value: inventory.NetworkACL{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "", // invalid
+						ProjectName: "project one",
+					},
+				},
+				{
+					Value: inventory.NetworkACL{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "", // invalid
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -431,11 +511,23 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - update by UUID",
-			repoGetByUUIDNetworkACL: inventory.NetworkACL{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkACL: []queue.Item[inventory.NetworkACL]{
+				{
+					Value: inventory.NetworkACL{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
+				{
+					Value: inventory.NetworkACL{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -461,7 +553,7 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkACLRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkACL, error) {
-					return tc.repoGetByUUIDNetworkACL, tc.repoGetByUUIDErr
+					return queue.Pop(t, &tc.repoGetByUUIDNetworkACL)
 				},
 				UpdateByUUIDFunc: func(ctx context.Context, networkACL inventory.NetworkACL) (inventory.NetworkACL, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkACL.LastUpdated)
@@ -481,8 +573,6 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 
 			networkACLClient := &serverMock.NetworkACLServerClientMock{
 				GetNetworkACLByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkACLName string) (incusapi.NetworkACL, error) {
-					require.Equal(t, tc.repoGetByUUIDNetworkACL.Name, networkACLName)
-					require.Equal(t, tc.repoGetByUUIDNetworkACL.ProjectName, projectName)
 					return tc.networkACLClientGetNetworkACLByName, tc.networkACLClientGetNetworkACLByNameErr
 				},
 			}
@@ -496,6 +586,8 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+
+			require.Empty(t, tc.repoGetByUUIDNetworkACL)
 		})
 	}
 }

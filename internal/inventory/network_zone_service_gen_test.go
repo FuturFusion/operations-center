@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
+	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -269,8 +270,7 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 		clusterSvcGetEndpointErr                 error
 		networkZoneClientGetNetworkZoneByName    incusapi.NetworkZone
 		networkZoneClientGetNetworkZoneByNameErr error
-		repoGetByUUIDNetworkZone                 inventory.NetworkZone
-		repoGetByUUIDErr                         error
+		repoGetByUUIDNetworkZone                 []queue.Item[inventory.NetworkZone]
 		repoUpdateByUUIDErr                      error
 		repoDeleteByUUIDErr                      error
 
@@ -278,11 +278,23 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 	}{
 		{
 			name: "success",
-			repoGetByUUIDNetworkZone: inventory.NetworkZone{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkZone: []queue.Item[inventory.NetworkZone]{
+				{
+					Value: inventory.NetworkZone{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
+				{
+					Value: inventory.NetworkZone{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -300,11 +312,15 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "success - networkZone get by name - not found",
-			repoGetByUUIDNetworkZone: inventory.NetworkZone{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkZone: []queue.Item[inventory.NetworkZone]{
+				{
+					Value: inventory.NetworkZone{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -323,10 +339,21 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		{
 			name: "success - missing project",
-			repoGetByUUIDNetworkZone: inventory.NetworkZone{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDNetworkZone: []queue.Item[inventory.NetworkZone]{
+				{
+					Value: inventory.NetworkZone{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
+				{
+					Value: inventory.NetworkZone{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -342,18 +369,26 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:             "error - networkZone get by UUID",
-			repoGetByUUIDErr: boom.Error,
+			name: "error - networkZone get by UUID - 1st",
+			repoGetByUUIDNetworkZone: []queue.Item[inventory.NetworkZone]{
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - cluster get by ID",
-			repoGetByUUIDNetworkZone: inventory.NetworkZone{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkZone: []queue.Item[inventory.NetworkZone]{
+				{
+					Value: inventory.NetworkZone{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -361,11 +396,15 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - networkZone get by name",
-			repoGetByUUIDNetworkZone: inventory.NetworkZone{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkZone: []queue.Item[inventory.NetworkZone]{
+				{
+					Value: inventory.NetworkZone{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -380,11 +419,15 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - networkZone get by name - not found - delete by uuid",
-			repoGetByUUIDNetworkZone: inventory.NetworkZone{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkZone: []queue.Item[inventory.NetworkZone]{
+				{
+					Value: inventory.NetworkZone{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -399,12 +442,49 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - networkZone get by UUID - 2nd",
+			repoGetByUUIDNetworkZone: []queue.Item[inventory.NetworkZone]{
+				{
+					Value: inventory.NetworkZone{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
+				{
+					Err: boom.Error,
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - validate",
-			repoGetByUUIDNetworkZone: inventory.NetworkZone{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "", // invalid
-				ProjectName: "project one",
+			repoGetByUUIDNetworkZone: []queue.Item[inventory.NetworkZone]{
+				{
+					Value: inventory.NetworkZone{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "", // invalid
+						ProjectName: "project one",
+					},
+				},
+				{
+					Value: inventory.NetworkZone{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "", // invalid
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -425,11 +505,23 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - update by UUID",
-			repoGetByUUIDNetworkZone: inventory.NetworkZone{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkZone: []queue.Item[inventory.NetworkZone]{
+				{
+					Value: inventory.NetworkZone{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
+				{
+					Value: inventory.NetworkZone{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -453,7 +545,7 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkZoneRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkZone, error) {
-					return tc.repoGetByUUIDNetworkZone, tc.repoGetByUUIDErr
+					return queue.Pop(t, &tc.repoGetByUUIDNetworkZone)
 				},
 				UpdateByUUIDFunc: func(ctx context.Context, networkZone inventory.NetworkZone) (inventory.NetworkZone, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkZone.LastUpdated)
@@ -473,8 +565,6 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 
 			networkZoneClient := &serverMock.NetworkZoneServerClientMock{
 				GetNetworkZoneByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkZoneName string) (incusapi.NetworkZone, error) {
-					require.Equal(t, tc.repoGetByUUIDNetworkZone.Name, networkZoneName)
-					require.Equal(t, tc.repoGetByUUIDNetworkZone.ProjectName, projectName)
 					return tc.networkZoneClientGetNetworkZoneByName, tc.networkZoneClientGetNetworkZoneByNameErr
 				},
 			}
@@ -488,6 +578,8 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+
+			require.Empty(t, tc.repoGetByUUIDNetworkZone)
 		})
 	}
 }

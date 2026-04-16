@@ -148,27 +148,32 @@ func (s storagePoolService) GetByUUID(ctx context.Context, id uuid.UUID) (Storag
 }
 
 func (s storagePoolService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	storagePool, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, storagePool.Cluster)
+	if err != nil {
+		return err
+	}
+
+	retrievedStoragePool, err := s.storagePoolClient.GetStoragePoolByName(ctx, endpoint, storagePool.Name)
+	if errors.Is(err, domain.ErrNotFound) {
+		err = s.repo.DeleteByUUID(ctx, storagePool.UUID)
+		if err != nil {
+			return fmt.Errorf(`Failed to delete storage_pool %q from cluster %q: %w`, storagePool.UUID.String(), storagePool.Cluster, err)
+		}
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		storagePool, err := s.repo.GetByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		endpoint, err := s.clusterSvc.GetEndpoint(ctx, storagePool.Cluster)
-		if err != nil {
-			return err
-		}
-
-		retrievedStoragePool, err := s.storagePoolClient.GetStoragePoolByName(ctx, endpoint, storagePool.Name)
-		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByUUID(ctx, storagePool.UUID)
-			if err != nil {
-				return fmt.Errorf(`Failed to delete storage_pool %q from cluster %q: %w`, storagePool.UUID.String(), storagePool.Cluster, err)
-			}
-
-			return nil
-		}
-
 		if err != nil {
 			return err
 		}

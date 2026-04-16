@@ -148,27 +148,32 @@ func (s networkAddressSetService) GetByUUID(ctx context.Context, id uuid.UUID) (
 }
 
 func (s networkAddressSetService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	networkAddressSet, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, networkAddressSet.Cluster)
+	if err != nil {
+		return err
+	}
+
+	retrievedNetworkAddressSet, err := s.networkAddressSetClient.GetNetworkAddressSetByName(ctx, endpoint, networkAddressSet.ProjectName, networkAddressSet.Name)
+	if errors.Is(err, domain.ErrNotFound) {
+		err = s.repo.DeleteByUUID(ctx, networkAddressSet.UUID)
+		if err != nil {
+			return fmt.Errorf(`Failed to delete network_address_set %q from cluster %q: %w`, networkAddressSet.UUID.String(), networkAddressSet.Cluster, err)
+		}
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		networkAddressSet, err := s.repo.GetByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		endpoint, err := s.clusterSvc.GetEndpoint(ctx, networkAddressSet.Cluster)
-		if err != nil {
-			return err
-		}
-
-		retrievedNetworkAddressSet, err := s.networkAddressSetClient.GetNetworkAddressSetByName(ctx, endpoint, networkAddressSet.ProjectName, networkAddressSet.Name)
-		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByUUID(ctx, networkAddressSet.UUID)
-			if err != nil {
-				return fmt.Errorf(`Failed to delete network_address_set %q from cluster %q: %w`, networkAddressSet.UUID.String(), networkAddressSet.Cluster, err)
-			}
-
-			return nil
-		}
-
 		if err != nil {
 			return err
 		}

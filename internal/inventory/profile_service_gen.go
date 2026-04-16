@@ -148,27 +148,32 @@ func (s profileService) GetByUUID(ctx context.Context, id uuid.UUID) (Profile, e
 }
 
 func (s profileService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	profile, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, profile.Cluster)
+	if err != nil {
+		return err
+	}
+
+	retrievedProfile, err := s.profileClient.GetProfileByName(ctx, endpoint, profile.ProjectName, profile.Name)
+	if errors.Is(err, domain.ErrNotFound) {
+		err = s.repo.DeleteByUUID(ctx, profile.UUID)
+		if err != nil {
+			return fmt.Errorf(`Failed to delete profile %q from cluster %q: %w`, profile.UUID.String(), profile.Cluster, err)
+		}
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		profile, err := s.repo.GetByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		endpoint, err := s.clusterSvc.GetEndpoint(ctx, profile.Cluster)
-		if err != nil {
-			return err
-		}
-
-		retrievedProfile, err := s.profileClient.GetProfileByName(ctx, endpoint, profile.ProjectName, profile.Name)
-		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByUUID(ctx, profile.UUID)
-			if err != nil {
-				return fmt.Errorf(`Failed to delete profile %q from cluster %q: %w`, profile.UUID.String(), profile.Cluster, err)
-			}
-
-			return nil
-		}
-
 		if err != nil {
 			return err
 		}

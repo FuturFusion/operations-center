@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
+	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -269,8 +270,7 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 		clusterSvcGetEndpointErr           error
 		instanceClientGetInstanceByName    incusapi.InstanceFull
 		instanceClientGetInstanceByNameErr error
-		repoGetByUUIDInstance              inventory.Instance
-		repoGetByUUIDErr                   error
+		repoGetByUUIDInstance              []queue.Item[inventory.Instance]
 		repoUpdateByUUIDErr                error
 		repoDeleteByUUIDErr                error
 
@@ -278,11 +278,23 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 	}{
 		{
 			name: "success",
-			repoGetByUUIDInstance: inventory.Instance{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDInstance: []queue.Item[inventory.Instance]{
+				{
+					Value: inventory.Instance{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
+				{
+					Value: inventory.Instance{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -303,11 +315,15 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "success - instance get by name - not found",
-			repoGetByUUIDInstance: inventory.Instance{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDInstance: []queue.Item[inventory.Instance]{
+				{
+					Value: inventory.Instance{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -326,10 +342,21 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		{
 			name: "success - missing project",
-			repoGetByUUIDInstance: inventory.Instance{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDInstance: []queue.Item[inventory.Instance]{
+				{
+					Value: inventory.Instance{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
+				{
+					Value: inventory.Instance{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -348,18 +375,26 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:             "error - instance get by UUID",
-			repoGetByUUIDErr: boom.Error,
+			name: "error - instance get by UUID - 1st",
+			repoGetByUUIDInstance: []queue.Item[inventory.Instance]{
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - cluster get by ID",
-			repoGetByUUIDInstance: inventory.Instance{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDInstance: []queue.Item[inventory.Instance]{
+				{
+					Value: inventory.Instance{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -367,11 +402,15 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - instance get by name",
-			repoGetByUUIDInstance: inventory.Instance{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDInstance: []queue.Item[inventory.Instance]{
+				{
+					Value: inventory.Instance{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -386,11 +425,15 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - instance get by name - not found - delete by uuid",
-			repoGetByUUIDInstance: inventory.Instance{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDInstance: []queue.Item[inventory.Instance]{
+				{
+					Value: inventory.Instance{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -405,12 +448,49 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - instance get by UUID - 2nd",
+			repoGetByUUIDInstance: []queue.Item[inventory.Instance]{
+				{
+					Value: inventory.Instance{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
+				{
+					Err: boom.Error,
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - validate",
-			repoGetByUUIDInstance: inventory.Instance{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "", // invalid
-				ProjectName: "project one",
+			repoGetByUUIDInstance: []queue.Item[inventory.Instance]{
+				{
+					Value: inventory.Instance{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "", // invalid
+						ProjectName: "project one",
+					},
+				},
+				{
+					Value: inventory.Instance{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "", // invalid
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -434,11 +514,23 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - update by UUID",
-			repoGetByUUIDInstance: inventory.Instance{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDInstance: []queue.Item[inventory.Instance]{
+				{
+					Value: inventory.Instance{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
+				{
+					Value: inventory.Instance{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -465,7 +557,7 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 			// Setup
 			repo := &repoMock.InstanceRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.Instance, error) {
-					return tc.repoGetByUUIDInstance, tc.repoGetByUUIDErr
+					return queue.Pop(t, &tc.repoGetByUUIDInstance)
 				},
 				UpdateByUUIDFunc: func(ctx context.Context, instance inventory.Instance) (inventory.Instance, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), instance.LastUpdated)
@@ -485,8 +577,6 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 
 			instanceClient := &serverMock.InstanceServerClientMock{
 				GetInstanceByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, instanceName string) (incusapi.InstanceFull, error) {
-					require.Equal(t, tc.repoGetByUUIDInstance.Name, instanceName)
-					require.Equal(t, tc.repoGetByUUIDInstance.ProjectName, projectName)
 					return tc.instanceClientGetInstanceByName, tc.instanceClientGetInstanceByNameErr
 				},
 			}
@@ -500,6 +590,8 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+
+			require.Empty(t, tc.repoGetByUUIDInstance)
 		})
 	}
 }

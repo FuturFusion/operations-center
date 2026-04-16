@@ -163,27 +163,32 @@ func (s storageBucketService) GetByUUID(ctx context.Context, id uuid.UUID) (Stor
 }
 
 func (s storageBucketService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	storageBucket, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, storageBucket.Cluster)
+	if err != nil {
+		return err
+	}
+
+	retrievedStorageBucket, err := s.storageBucketClient.GetStorageBucketByName(ctx, endpoint, storageBucket.ProjectName, storageBucket.StoragePoolName, storageBucket.Name)
+	if errors.Is(err, domain.ErrNotFound) {
+		err = s.repo.DeleteByUUID(ctx, storageBucket.UUID)
+		if err != nil {
+			return fmt.Errorf(`Failed to delete storage_bucket %q from cluster %q, storage_pool %q: %w`, storageBucket.UUID.String(), storageBucket.Cluster, storageBucket.StoragePoolName, err)
+		}
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		storageBucket, err := s.repo.GetByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		endpoint, err := s.clusterSvc.GetEndpoint(ctx, storageBucket.Cluster)
-		if err != nil {
-			return err
-		}
-
-		retrievedStorageBucket, err := s.storageBucketClient.GetStorageBucketByName(ctx, endpoint, storageBucket.ProjectName, storageBucket.StoragePoolName, storageBucket.Name)
-		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByUUID(ctx, storageBucket.UUID)
-			if err != nil {
-				return fmt.Errorf(`Failed to delete storage_bucket %q from cluster %q, storage_pool %q: %w`, storageBucket.UUID.String(), storageBucket.Cluster, storageBucket.StoragePoolName, err)
-			}
-
-			return nil
-		}
-
 		if err != nil {
 			return err
 		}

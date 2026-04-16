@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
+	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -270,8 +271,7 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 		clusterSvcGetEndpointErr                                 error
 		networkLoadBalancerClientGetNetworkLoadBalancerByName    incusapi.NetworkLoadBalancer
 		networkLoadBalancerClientGetNetworkLoadBalancerByNameErr error
-		repoGetByUUIDNetworkLoadBalancer                         inventory.NetworkLoadBalancer
-		repoGetByUUIDErr                                         error
+		repoGetByUUIDNetworkLoadBalancer                         []queue.Item[inventory.NetworkLoadBalancer]
 		repoUpdateByUUIDErr                                      error
 		repoDeleteByUUIDErr                                      error
 
@@ -279,12 +279,25 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 	}{
 		{
 			name: "success",
-			repoGetByUUIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
-				NetworkName: "network",
+			repoGetByUUIDNetworkLoadBalancer: []queue.Item[inventory.NetworkLoadBalancer]{
+				{
+					Value: inventory.NetworkLoadBalancer{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
+				{
+					Value: inventory.NetworkLoadBalancer{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -301,12 +314,16 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "success - networkLoadBalancer get by name - not found",
-			repoGetByUUIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
-				NetworkName: "network",
+			repoGetByUUIDNetworkLoadBalancer: []queue.Item[inventory.NetworkLoadBalancer]{
+				{
+					Value: inventory.NetworkLoadBalancer{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -325,11 +342,23 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		{
 			name: "success - missing project",
-			repoGetByUUIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				NetworkName: "network",
+			repoGetByUUIDNetworkLoadBalancer: []queue.Item[inventory.NetworkLoadBalancer]{
+				{
+					Value: inventory.NetworkLoadBalancer{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						NetworkName: "network",
+					},
+				},
+				{
+					Value: inventory.NetworkLoadBalancer{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						NetworkName: "network",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -345,19 +374,27 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:             "error - networkLoadBalancer get by UUID",
-			repoGetByUUIDErr: boom.Error,
+			name: "error - networkLoadBalancer get by UUID - 1st",
+			repoGetByUUIDNetworkLoadBalancer: []queue.Item[inventory.NetworkLoadBalancer]{
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - cluster get by ID",
-			repoGetByUUIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
-				NetworkName: "network",
+			repoGetByUUIDNetworkLoadBalancer: []queue.Item[inventory.NetworkLoadBalancer]{
+				{
+					Value: inventory.NetworkLoadBalancer{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -365,12 +402,16 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - networkLoadBalancer get by name",
-			repoGetByUUIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
-				NetworkName: "network",
+			repoGetByUUIDNetworkLoadBalancer: []queue.Item[inventory.NetworkLoadBalancer]{
+				{
+					Value: inventory.NetworkLoadBalancer{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -385,12 +426,16 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - networkLoadBalancer get by name - not found - delete by uuid",
-			repoGetByUUIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
-				NetworkName: "network",
+			repoGetByUUIDNetworkLoadBalancer: []queue.Item[inventory.NetworkLoadBalancer]{
+				{
+					Value: inventory.NetworkLoadBalancer{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -405,13 +450,52 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - networkLoadBalancer get by UUID - 2nd",
+			repoGetByUUIDNetworkLoadBalancer: []queue.Item[inventory.NetworkLoadBalancer]{
+				{
+					Value: inventory.NetworkLoadBalancer{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
+				{
+					Err: boom.Error,
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - validate",
-			repoGetByUUIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "", // invalid
-				ProjectName: "project one",
-				NetworkName: "network",
+			repoGetByUUIDNetworkLoadBalancer: []queue.Item[inventory.NetworkLoadBalancer]{
+				{
+					Value: inventory.NetworkLoadBalancer{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "", // invalid
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
+				{
+					Value: inventory.NetworkLoadBalancer{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "", // invalid
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -431,12 +515,25 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - update by UUID",
-			repoGetByUUIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
-				NetworkName: "network",
+			repoGetByUUIDNetworkLoadBalancer: []queue.Item[inventory.NetworkLoadBalancer]{
+				{
+					Value: inventory.NetworkLoadBalancer{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
+				{
+					Value: inventory.NetworkLoadBalancer{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -459,7 +556,7 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkLoadBalancerRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkLoadBalancer, error) {
-					return tc.repoGetByUUIDNetworkLoadBalancer, tc.repoGetByUUIDErr
+					return queue.Pop(t, &tc.repoGetByUUIDNetworkLoadBalancer)
 				},
 				UpdateByUUIDFunc: func(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkLoadBalancer.LastUpdated)
@@ -479,9 +576,6 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 
 			networkLoadBalancerClient := &serverMock.NetworkLoadBalancerServerClientMock{
 				GetNetworkLoadBalancerByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error) {
-					require.Equal(t, tc.repoGetByUUIDNetworkLoadBalancer.Name, networkLoadBalancerName)
-					require.Equal(t, tc.repoGetByUUIDNetworkLoadBalancer.ProjectName, projectName)
-					require.Equal(t, "network", networkName)
 					return tc.networkLoadBalancerClientGetNetworkLoadBalancerByName, tc.networkLoadBalancerClientGetNetworkLoadBalancerByNameErr
 				},
 			}
@@ -495,6 +589,8 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+
+			require.Empty(t, tc.repoGetByUUIDNetworkLoadBalancer)
 		})
 	}
 }

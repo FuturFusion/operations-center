@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
+	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -269,8 +270,7 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 		clusterSvcGetEndpointErr                             error
 		networkAddressSetClientGetNetworkAddressSetByName    incusapi.NetworkAddressSet
 		networkAddressSetClientGetNetworkAddressSetByNameErr error
-		repoGetByUUIDNetworkAddressSet                       inventory.NetworkAddressSet
-		repoGetByUUIDErr                                     error
+		repoGetByUUIDNetworkAddressSet                       []queue.Item[inventory.NetworkAddressSet]
 		repoUpdateByUUIDErr                                  error
 		repoDeleteByUUIDErr                                  error
 
@@ -278,11 +278,23 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 	}{
 		{
 			name: "success",
-			repoGetByUUIDNetworkAddressSet: inventory.NetworkAddressSet{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkAddressSet: []queue.Item[inventory.NetworkAddressSet]{
+				{
+					Value: inventory.NetworkAddressSet{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
+				{
+					Value: inventory.NetworkAddressSet{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -302,11 +314,15 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "success - networkAddressSet get by name - not found",
-			repoGetByUUIDNetworkAddressSet: inventory.NetworkAddressSet{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkAddressSet: []queue.Item[inventory.NetworkAddressSet]{
+				{
+					Value: inventory.NetworkAddressSet{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -325,10 +341,21 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		{
 			name: "success - missing project",
-			repoGetByUUIDNetworkAddressSet: inventory.NetworkAddressSet{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDNetworkAddressSet: []queue.Item[inventory.NetworkAddressSet]{
+				{
+					Value: inventory.NetworkAddressSet{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
+				{
+					Value: inventory.NetworkAddressSet{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -346,18 +373,26 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:             "error - networkAddressSet get by UUID",
-			repoGetByUUIDErr: boom.Error,
+			name: "error - networkAddressSet get by UUID - 1st",
+			repoGetByUUIDNetworkAddressSet: []queue.Item[inventory.NetworkAddressSet]{
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - cluster get by ID",
-			repoGetByUUIDNetworkAddressSet: inventory.NetworkAddressSet{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkAddressSet: []queue.Item[inventory.NetworkAddressSet]{
+				{
+					Value: inventory.NetworkAddressSet{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -365,11 +400,15 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - networkAddressSet get by name",
-			repoGetByUUIDNetworkAddressSet: inventory.NetworkAddressSet{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkAddressSet: []queue.Item[inventory.NetworkAddressSet]{
+				{
+					Value: inventory.NetworkAddressSet{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -384,11 +423,15 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - networkAddressSet get by name - not found - delete by uuid",
-			repoGetByUUIDNetworkAddressSet: inventory.NetworkAddressSet{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkAddressSet: []queue.Item[inventory.NetworkAddressSet]{
+				{
+					Value: inventory.NetworkAddressSet{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -403,12 +446,49 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - networkAddressSet get by UUID - 2nd",
+			repoGetByUUIDNetworkAddressSet: []queue.Item[inventory.NetworkAddressSet]{
+				{
+					Value: inventory.NetworkAddressSet{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
+				{
+					Err: boom.Error,
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - validate",
-			repoGetByUUIDNetworkAddressSet: inventory.NetworkAddressSet{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "", // invalid
-				ProjectName: "project one",
+			repoGetByUUIDNetworkAddressSet: []queue.Item[inventory.NetworkAddressSet]{
+				{
+					Value: inventory.NetworkAddressSet{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "", // invalid
+						ProjectName: "project one",
+					},
+				},
+				{
+					Value: inventory.NetworkAddressSet{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "", // invalid
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -431,11 +511,23 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - update by UUID",
-			repoGetByUUIDNetworkAddressSet: inventory.NetworkAddressSet{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDNetworkAddressSet: []queue.Item[inventory.NetworkAddressSet]{
+				{
+					Value: inventory.NetworkAddressSet{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
+				{
+					Value: inventory.NetworkAddressSet{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -461,7 +553,7 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkAddressSetRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkAddressSet, error) {
-					return tc.repoGetByUUIDNetworkAddressSet, tc.repoGetByUUIDErr
+					return queue.Pop(t, &tc.repoGetByUUIDNetworkAddressSet)
 				},
 				UpdateByUUIDFunc: func(ctx context.Context, networkAddressSet inventory.NetworkAddressSet) (inventory.NetworkAddressSet, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkAddressSet.LastUpdated)
@@ -481,8 +573,6 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 
 			networkAddressSetClient := &serverMock.NetworkAddressSetServerClientMock{
 				GetNetworkAddressSetByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkAddressSetName string) (incusapi.NetworkAddressSet, error) {
-					require.Equal(t, tc.repoGetByUUIDNetworkAddressSet.Name, networkAddressSetName)
-					require.Equal(t, tc.repoGetByUUIDNetworkAddressSet.ProjectName, projectName)
 					return tc.networkAddressSetClientGetNetworkAddressSetByName, tc.networkAddressSetClientGetNetworkAddressSetByNameErr
 				},
 			}
@@ -496,6 +586,8 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+
+			require.Empty(t, tc.repoGetByUUIDNetworkAddressSet)
 		})
 	}
 }

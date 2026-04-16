@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
+	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -268,8 +269,7 @@ func TestStoragePoolService_ResyncByUUID(t *testing.T) {
 		clusterSvcGetEndpointErr                 error
 		storagePoolClientGetStoragePoolByName    incusapi.StoragePool
 		storagePoolClientGetStoragePoolByNameErr error
-		repoGetByUUIDStoragePool                 inventory.StoragePool
-		repoGetByUUIDErr                         error
+		repoGetByUUIDStoragePool                 []queue.Item[inventory.StoragePool]
 		repoUpdateByUUIDErr                      error
 		repoDeleteByUUIDErr                      error
 
@@ -277,10 +277,21 @@ func TestStoragePoolService_ResyncByUUID(t *testing.T) {
 	}{
 		{
 			name: "success",
-			repoGetByUUIDStoragePool: inventory.StoragePool{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDStoragePool: []queue.Item[inventory.StoragePool]{
+				{
+					Value: inventory.StoragePool{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
+				{
+					Value: inventory.StoragePool{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -297,10 +308,14 @@ func TestStoragePoolService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "success - storagePool get by name - not found",
-			repoGetByUUIDStoragePool: inventory.StoragePool{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDStoragePool: []queue.Item[inventory.StoragePool]{
+				{
+					Value: inventory.StoragePool{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -319,10 +334,21 @@ func TestStoragePoolService_ResyncByUUID(t *testing.T) {
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		{
 			name: "success - missing project",
-			repoGetByUUIDStoragePool: inventory.StoragePool{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDStoragePool: []queue.Item[inventory.StoragePool]{
+				{
+					Value: inventory.StoragePool{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
+				{
+					Value: inventory.StoragePool{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -338,17 +364,25 @@ func TestStoragePoolService_ResyncByUUID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:             "error - storagePool get by UUID",
-			repoGetByUUIDErr: boom.Error,
+			name: "error - storagePool get by UUID - 1st",
+			repoGetByUUIDStoragePool: []queue.Item[inventory.StoragePool]{
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - cluster get by ID",
-			repoGetByUUIDStoragePool: inventory.StoragePool{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDStoragePool: []queue.Item[inventory.StoragePool]{
+				{
+					Value: inventory.StoragePool{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -356,10 +390,14 @@ func TestStoragePoolService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - storagePool get by name",
-			repoGetByUUIDStoragePool: inventory.StoragePool{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDStoragePool: []queue.Item[inventory.StoragePool]{
+				{
+					Value: inventory.StoragePool{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -374,10 +412,14 @@ func TestStoragePoolService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - storagePool get by name - not found - delete by uuid",
-			repoGetByUUIDStoragePool: inventory.StoragePool{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDStoragePool: []queue.Item[inventory.StoragePool]{
+				{
+					Value: inventory.StoragePool{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -392,11 +434,46 @@ func TestStoragePoolService_ResyncByUUID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - storagePool get by UUID - 2nd",
+			repoGetByUUIDStoragePool: []queue.Item[inventory.StoragePool]{
+				{
+					Value: inventory.StoragePool{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
+				{
+					Err: boom.Error,
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - validate",
-			repoGetByUUIDStoragePool: inventory.StoragePool{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "", // invalid
+			repoGetByUUIDStoragePool: []queue.Item[inventory.StoragePool]{
+				{
+					Value: inventory.StoragePool{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "", // invalid
+					},
+				},
+				{
+					Value: inventory.StoragePool{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "", // invalid
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -416,10 +493,21 @@ func TestStoragePoolService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - update by UUID",
-			repoGetByUUIDStoragePool: inventory.StoragePool{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDStoragePool: []queue.Item[inventory.StoragePool]{
+				{
+					Value: inventory.StoragePool{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
+				{
+					Value: inventory.StoragePool{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -442,7 +530,7 @@ func TestStoragePoolService_ResyncByUUID(t *testing.T) {
 			// Setup
 			repo := &repoMock.StoragePoolRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.StoragePool, error) {
-					return tc.repoGetByUUIDStoragePool, tc.repoGetByUUIDErr
+					return queue.Pop(t, &tc.repoGetByUUIDStoragePool)
 				},
 				UpdateByUUIDFunc: func(ctx context.Context, storagePool inventory.StoragePool) (inventory.StoragePool, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), storagePool.LastUpdated)
@@ -462,7 +550,6 @@ func TestStoragePoolService_ResyncByUUID(t *testing.T) {
 
 			storagePoolClient := &serverMock.StoragePoolServerClientMock{
 				GetStoragePoolByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (incusapi.StoragePool, error) {
-					require.Equal(t, tc.repoGetByUUIDStoragePool.Name, storagePoolName)
 					return tc.storagePoolClientGetStoragePoolByName, tc.storagePoolClientGetStoragePoolByNameErr
 				},
 			}
@@ -476,6 +563,8 @@ func TestStoragePoolService_ResyncByUUID(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+
+			require.Empty(t, tc.repoGetByUUIDStoragePool)
 		})
 	}
 }

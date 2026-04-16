@@ -148,27 +148,32 @@ func (s networkACLService) GetByUUID(ctx context.Context, id uuid.UUID) (Network
 }
 
 func (s networkACLService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	networkACL, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, networkACL.Cluster)
+	if err != nil {
+		return err
+	}
+
+	retrievedNetworkACL, err := s.networkACLClient.GetNetworkACLByName(ctx, endpoint, networkACL.ProjectName, networkACL.Name)
+	if errors.Is(err, domain.ErrNotFound) {
+		err = s.repo.DeleteByUUID(ctx, networkACL.UUID)
+		if err != nil {
+			return fmt.Errorf(`Failed to delete network_acl %q from cluster %q: %w`, networkACL.UUID.String(), networkACL.Cluster, err)
+		}
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		networkACL, err := s.repo.GetByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		endpoint, err := s.clusterSvc.GetEndpoint(ctx, networkACL.Cluster)
-		if err != nil {
-			return err
-		}
-
-		retrievedNetworkACL, err := s.networkACLClient.GetNetworkACLByName(ctx, endpoint, networkACL.ProjectName, networkACL.Name)
-		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByUUID(ctx, networkACL.UUID)
-			if err != nil {
-				return fmt.Errorf(`Failed to delete network_acl %q from cluster %q: %w`, networkACL.UUID.String(), networkACL.Cluster, err)
-			}
-
-			return nil
-		}
-
 		if err != nil {
 			return err
 		}
