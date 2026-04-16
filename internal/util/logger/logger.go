@@ -15,7 +15,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fabien-marty/slog-helpers/pkg/stacktrace"
 	"github.com/lmittmann/tint"
+
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
 const (
@@ -112,7 +115,10 @@ func SetLogLevel(level slog.Level) error {
 	}
 
 	logger := slog.New(
-		newContextHandler(slogHandler),
+		newContextHandler(stacktrace.New(slogHandler, &stacktrace.Options{
+			Mode:                                    stacktrace.ModeAddAttr,
+			MinimalLevelForStackTraceEnabledEnabled: ptr.To(slog.Level(100)), // Disable automatic addition of stack traces
+		})),
 	)
 
 	slog.SetDefault(logger)
@@ -244,4 +250,8 @@ func ContextWithAttr(parent context.Context, attr slog.Attr) context.Context {
 // or to add stack trace information in debug mode.
 func Err(err error) slog.Attr {
 	return slog.Any("err", err)
+}
+
+func AddStacktrace() slog.Attr {
+	return slog.Bool("add-stacktrace", true)
 }
