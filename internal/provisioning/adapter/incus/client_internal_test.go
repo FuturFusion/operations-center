@@ -1,6 +1,7 @@
 package incus
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -23,7 +24,10 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 )
 
 func TestClient_ClusterEndpointWithCA(t *testing.T) {
@@ -471,4 +475,22 @@ func Test_firstNonEmpty(t *testing.T) {
 			require.Equal(t, tc.want, got)
 		})
 	}
+}
+
+func Test_getClient(t *testing.T) {
+	logBuf := &bytes.Buffer{}
+	err := logger.InitLogger(logBuf, "", false, false, false)
+	require.NoError(t, err)
+
+	err = transaction.Do(t.Context(), func(ctx context.Context) error {
+		_, err := New("", "").getClient(ctx, provisioning.Server{
+			Name: "name",
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+	require.NoError(t, err)
+
+	log.Contains("Incus API call inside of a transaction")(t, logBuf)
 }

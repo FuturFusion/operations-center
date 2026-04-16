@@ -18,6 +18,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -54,6 +55,10 @@ func New(clientCert string, clientKey string) client {
 }
 
 func (c client) getClient(ctx context.Context, endpoint provisioning.Endpoint) (incus.InstanceServer, error) {
+	if transaction.IsActive(ctx) {
+		slog.WarnContext(ctx, "Incus API call inside of a transaction", logger.AddStacktrace())
+	}
+
 	serverName, err := endpoint.GetServerName()
 	if err != nil {
 		return nil, err
