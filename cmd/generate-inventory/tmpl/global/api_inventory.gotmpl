@@ -26,6 +26,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 				),
 			),
 		),
+		inventoryServiceMiddleware.InventoryAggregateServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
+		),
 	)
 
 {{ range . }}
@@ -50,6 +60,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			{{- if .HasParentFilter }}
 			inventory.{{ .Name | pascalcase }}WithParentFilter({{ .Name | camelcase }}WithParentFilter),
 			{{- end }}
+		),
+		inventoryServiceMiddleware.{{ .Name | pascalcase }}ServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
 		),
 	)
 
