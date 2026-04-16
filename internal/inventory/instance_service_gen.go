@@ -148,27 +148,32 @@ func (s instanceService) GetByUUID(ctx context.Context, id uuid.UUID) (Instance,
 }
 
 func (s instanceService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	instance, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, instance.Cluster)
+	if err != nil {
+		return err
+	}
+
+	retrievedInstance, err := s.instanceClient.GetInstanceByName(ctx, endpoint, instance.ProjectName, instance.Name)
+	if errors.Is(err, domain.ErrNotFound) {
+		err = s.repo.DeleteByUUID(ctx, instance.UUID)
+		if err != nil {
+			return fmt.Errorf(`Failed to delete instance %q from cluster %q: %w`, instance.UUID.String(), instance.Cluster, err)
+		}
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		instance, err := s.repo.GetByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		endpoint, err := s.clusterSvc.GetEndpoint(ctx, instance.Cluster)
-		if err != nil {
-			return err
-		}
-
-		retrievedInstance, err := s.instanceClient.GetInstanceByName(ctx, endpoint, instance.ProjectName, instance.Name)
-		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByUUID(ctx, instance.UUID)
-			if err != nil {
-				return fmt.Errorf(`Failed to delete instance %q from cluster %q: %w`, instance.UUID.String(), instance.Cluster, err)
-			}
-
-			return nil
-		}
-
 		if err != nil {
 			return err
 		}

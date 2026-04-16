@@ -28,6 +28,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 				),
 			),
 		),
+		inventoryServiceMiddleware.InventoryAggregateServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
+		),
 	)
 
 	inventoryImageSvc := inventoryServiceMiddleware.NewImageServiceWithSlog(
@@ -43,6 +53,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			clusterSvc,
 			serverClient,
 		),
+		inventoryServiceMiddleware.ImageServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
+		),
 	)
 
 	inventoryInstanceSvc := inventoryServiceMiddleware.NewInstanceServiceWithSlog(
@@ -57,6 +77,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			),
 			clusterSvc,
 			serverClient,
+		),
+		inventoryServiceMiddleware.InstanceServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
 		),
 	)
 
@@ -74,6 +104,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			serverClient,
 			inventory.NetworkWithSyncFilter(networkWithSyncFilter),
 		),
+		inventoryServiceMiddleware.NetworkServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
+		),
 	)
 
 	inventoryNetworkACLSvc := inventoryServiceMiddleware.NewNetworkACLServiceWithSlog(
@@ -89,6 +129,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			clusterSvc,
 			serverClient,
 		),
+		inventoryServiceMiddleware.NetworkACLServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
+		),
 	)
 
 	inventoryNetworkAddressSetSvc := inventoryServiceMiddleware.NewNetworkAddressSetServiceWithSlog(
@@ -103,6 +153,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			),
 			clusterSvc,
 			serverClient,
+		),
+		inventoryServiceMiddleware.NetworkAddressSetServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
 		),
 	)
 
@@ -121,6 +181,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			serverClient,
 			inventory.NetworkForwardWithParentFilter(networkForwardWithParentFilter),
 		),
+		inventoryServiceMiddleware.NetworkForwardServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
+		),
 	)
 
 	inventoryNetworkIntegrationSvc := inventoryServiceMiddleware.NewNetworkIntegrationServiceWithSlog(
@@ -135,6 +205,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			),
 			clusterSvc,
 			serverClient,
+		),
+		inventoryServiceMiddleware.NetworkIntegrationServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
 		),
 	)
 
@@ -153,6 +233,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			serverClient,
 			inventory.NetworkLoadBalancerWithParentFilter(networkLoadBalancerWithParentFilter),
 		),
+		inventoryServiceMiddleware.NetworkLoadBalancerServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
+		),
 	)
 
 	inventoryNetworkPeerSvc := inventoryServiceMiddleware.NewNetworkPeerServiceWithSlog(
@@ -170,6 +260,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			serverClient,
 			inventory.NetworkPeerWithParentFilter(networkPeerWithParentFilter),
 		),
+		inventoryServiceMiddleware.NetworkPeerServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
+		),
 	)
 
 	inventoryNetworkZoneSvc := inventoryServiceMiddleware.NewNetworkZoneServiceWithSlog(
@@ -184,6 +284,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			),
 			clusterSvc,
 			serverClient,
+		),
+		inventoryServiceMiddleware.NetworkZoneServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
 		),
 	)
 
@@ -200,6 +310,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			clusterSvc,
 			serverClient,
 		),
+		inventoryServiceMiddleware.ProfileServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
+		),
 	)
 
 	inventoryProjectSvc := inventoryServiceMiddleware.NewProjectServiceWithSlog(
@@ -214,6 +334,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			),
 			clusterSvc,
 			serverClient,
+		),
+		inventoryServiceMiddleware.ProjectServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
 		),
 	)
 
@@ -232,6 +362,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			serverClient,
 			inventory.StorageBucketWithParentFilter(storageBucketWithParentFilter),
 		),
+		inventoryServiceMiddleware.StorageBucketServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
+		),
 	)
 
 	inventoryStoragePoolSvc := inventoryServiceMiddleware.NewStoragePoolServiceWithSlog(
@@ -246,6 +386,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			),
 			clusterSvc,
 			serverClient,
+		),
+		inventoryServiceMiddleware.StoragePoolServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
 		),
 	)
 
@@ -263,6 +413,16 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			serverClient,
 			serverClient,
 			inventory.StorageVolumeWithParentFilter(storageVolumeWithParentFilter),
+		),
+		inventoryServiceMiddleware.StorageVolumeServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
 		),
 	)
 

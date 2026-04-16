@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
+	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -268,8 +269,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 		clusterSvcGetEndpointErr                               error
 		networkIntegrationClientGetNetworkIntegrationByName    incusapi.NetworkIntegration
 		networkIntegrationClientGetNetworkIntegrationByNameErr error
-		repoGetByUUIDNetworkIntegration                        inventory.NetworkIntegration
-		repoGetByUUIDErr                                       error
+		repoGetByUUIDNetworkIntegration                        []queue.Item[inventory.NetworkIntegration]
 		repoUpdateByUUIDErr                                    error
 		repoDeleteByUUIDErr                                    error
 
@@ -277,10 +277,21 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 	}{
 		{
 			name: "success",
-			repoGetByUUIDNetworkIntegration: inventory.NetworkIntegration{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDNetworkIntegration: []queue.Item[inventory.NetworkIntegration]{
+				{
+					Value: inventory.NetworkIntegration{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
+				{
+					Value: inventory.NetworkIntegration{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -297,10 +308,14 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "success - networkIntegration get by name - not found",
-			repoGetByUUIDNetworkIntegration: inventory.NetworkIntegration{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDNetworkIntegration: []queue.Item[inventory.NetworkIntegration]{
+				{
+					Value: inventory.NetworkIntegration{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -319,10 +334,21 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		{
 			name: "success - missing project",
-			repoGetByUUIDNetworkIntegration: inventory.NetworkIntegration{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDNetworkIntegration: []queue.Item[inventory.NetworkIntegration]{
+				{
+					Value: inventory.NetworkIntegration{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
+				{
+					Value: inventory.NetworkIntegration{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -338,17 +364,25 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:             "error - networkIntegration get by UUID",
-			repoGetByUUIDErr: boom.Error,
+			name: "error - networkIntegration get by UUID - 1st",
+			repoGetByUUIDNetworkIntegration: []queue.Item[inventory.NetworkIntegration]{
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - cluster get by ID",
-			repoGetByUUIDNetworkIntegration: inventory.NetworkIntegration{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDNetworkIntegration: []queue.Item[inventory.NetworkIntegration]{
+				{
+					Value: inventory.NetworkIntegration{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -356,10 +390,14 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - networkIntegration get by name",
-			repoGetByUUIDNetworkIntegration: inventory.NetworkIntegration{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDNetworkIntegration: []queue.Item[inventory.NetworkIntegration]{
+				{
+					Value: inventory.NetworkIntegration{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -374,10 +412,14 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - networkIntegration get by name - not found - delete by uuid",
-			repoGetByUUIDNetworkIntegration: inventory.NetworkIntegration{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDNetworkIntegration: []queue.Item[inventory.NetworkIntegration]{
+				{
+					Value: inventory.NetworkIntegration{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -392,11 +434,46 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - networkIntegration get by UUID - 2nd",
+			repoGetByUUIDNetworkIntegration: []queue.Item[inventory.NetworkIntegration]{
+				{
+					Value: inventory.NetworkIntegration{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
+				{
+					Err: boom.Error,
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - validate",
-			repoGetByUUIDNetworkIntegration: inventory.NetworkIntegration{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "", // invalid
+			repoGetByUUIDNetworkIntegration: []queue.Item[inventory.NetworkIntegration]{
+				{
+					Value: inventory.NetworkIntegration{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "", // invalid
+					},
+				},
+				{
+					Value: inventory.NetworkIntegration{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "", // invalid
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -416,10 +493,21 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - update by UUID",
-			repoGetByUUIDNetworkIntegration: inventory.NetworkIntegration{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDNetworkIntegration: []queue.Item[inventory.NetworkIntegration]{
+				{
+					Value: inventory.NetworkIntegration{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
+				{
+					Value: inventory.NetworkIntegration{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -442,7 +530,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkIntegrationRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkIntegration, error) {
-					return tc.repoGetByUUIDNetworkIntegration, tc.repoGetByUUIDErr
+					return queue.Pop(t, &tc.repoGetByUUIDNetworkIntegration)
 				},
 				UpdateByUUIDFunc: func(ctx context.Context, networkIntegration inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkIntegration.LastUpdated)
@@ -462,7 +550,6 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 
 			networkIntegrationClient := &serverMock.NetworkIntegrationServerClientMock{
 				GetNetworkIntegrationByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkIntegrationName string) (incusapi.NetworkIntegration, error) {
-					require.Equal(t, tc.repoGetByUUIDNetworkIntegration.Name, networkIntegrationName)
 					return tc.networkIntegrationClientGetNetworkIntegrationByName, tc.networkIntegrationClientGetNetworkIntegrationByNameErr
 				},
 			}
@@ -476,6 +563,8 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+
+			require.Empty(t, tc.repoGetByUUIDNetworkIntegration)
 		})
 	}
 }

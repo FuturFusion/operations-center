@@ -177,27 +177,32 @@ func (s {{ .Name | camelcase }}Service) GetByUUID(ctx context.Context, id uuid.U
 }
 
 func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	{{ .Name | camelcase }}, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, {{ .Name | camelcase }}.Cluster)
+	if err != nil {
+		return err
+	}
+
+	retrieved{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, endpoint, {{- if .HasProject }}{{ .Name | camelcase }}.ProjectName, {{ end -}}{{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end -}} {{ .Name | camelcase }}.Name {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}.{{ .Name | pascalcase }} {{- end}})
+	if errors.Is(err, domain.ErrNotFound) {
+		err = s.repo.DeleteByUUID(ctx, {{ .Name | camelcase }}.UUID)
+		if err != nil {
+			return fmt.Errorf(`Failed to delete {{ .Name }} %q from cluster %q{{ if .HasParent }}, {{ .ParentName }} %q{{ end }}: %w`, {{ .Name | camelcase }}.UUID.String(), {{ .Name | camelcase }}.Cluster, {{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end }}err)
+		}
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		{{ .Name | camelcase }}, err := s.repo.GetByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		endpoint, err := s.clusterSvc.GetEndpoint(ctx, {{ .Name | camelcase }}.Cluster)
-		if err != nil {
-			return err
-		}
-
-		retrieved{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, endpoint, {{- if .HasProject }}{{ .Name | camelcase }}.ProjectName, {{ end -}}{{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end -}} {{ .Name | camelcase }}.Name {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}.{{ .Name | pascalcase }} {{- end}})
-		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByUUID(ctx, {{ .Name | camelcase }}.UUID)
-			if err != nil {
-				return fmt.Errorf(`Failed to delete {{ .Name }} %q from cluster %q{{ if .HasParent }}, {{ .ParentName }} %q{{ end }}: %w`, {{ .Name | camelcase }}.UUID.String(), {{ .Name | camelcase }}.Cluster, {{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end }}err)
-			}
-
-			return nil
-		}
-
 		if err != nil {
 			return err
 		}

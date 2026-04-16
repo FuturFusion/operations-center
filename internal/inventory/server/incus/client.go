@@ -3,6 +3,7 @@ package incus
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 
@@ -10,6 +11,8 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
 type serverClient struct {
@@ -53,6 +56,10 @@ func New(clientCert string, clientKey string, opts ...Option) inventory.ServerCl
 }
 
 func (s serverClient) getClient(ctx context.Context, endpoint provisioning.Endpoint) (incus.InstanceServer, error) {
+	if transaction.IsActive(ctx) {
+		slog.WarnContext(ctx, "Incus API call inside of a transaction", logger.AddStacktrace())
+	}
+
 	serverName, err := endpoint.GetServerName()
 	if err != nil {
 		return nil, err

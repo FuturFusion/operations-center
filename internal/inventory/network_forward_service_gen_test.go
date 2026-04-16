@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
+	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -270,8 +271,7 @@ func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
 		clusterSvcGetEndpointErr                       error
 		networkForwardClientGetNetworkForwardByName    incusapi.NetworkForward
 		networkForwardClientGetNetworkForwardByNameErr error
-		repoGetByUUIDNetworkForward                    inventory.NetworkForward
-		repoGetByUUIDErr                               error
+		repoGetByUUIDNetworkForward                    []queue.Item[inventory.NetworkForward]
 		repoUpdateByUUIDErr                            error
 		repoDeleteByUUIDErr                            error
 
@@ -279,12 +279,25 @@ func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
 	}{
 		{
 			name: "success",
-			repoGetByUUIDNetworkForward: inventory.NetworkForward{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
-				NetworkName: "network",
+			repoGetByUUIDNetworkForward: []queue.Item[inventory.NetworkForward]{
+				{
+					Value: inventory.NetworkForward{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
+				{
+					Value: inventory.NetworkForward{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -301,12 +314,16 @@ func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "success - networkForward get by name - not found",
-			repoGetByUUIDNetworkForward: inventory.NetworkForward{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
-				NetworkName: "network",
+			repoGetByUUIDNetworkForward: []queue.Item[inventory.NetworkForward]{
+				{
+					Value: inventory.NetworkForward{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -325,11 +342,23 @@ func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		{
 			name: "success - missing project",
-			repoGetByUUIDNetworkForward: inventory.NetworkForward{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				NetworkName: "network",
+			repoGetByUUIDNetworkForward: []queue.Item[inventory.NetworkForward]{
+				{
+					Value: inventory.NetworkForward{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						NetworkName: "network",
+					},
+				},
+				{
+					Value: inventory.NetworkForward{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						NetworkName: "network",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -345,19 +374,27 @@ func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:             "error - networkForward get by UUID",
-			repoGetByUUIDErr: boom.Error,
+			name: "error - networkForward get by UUID - 1st",
+			repoGetByUUIDNetworkForward: []queue.Item[inventory.NetworkForward]{
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - cluster get by ID",
-			repoGetByUUIDNetworkForward: inventory.NetworkForward{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
-				NetworkName: "network",
+			repoGetByUUIDNetworkForward: []queue.Item[inventory.NetworkForward]{
+				{
+					Value: inventory.NetworkForward{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -365,12 +402,16 @@ func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - networkForward get by name",
-			repoGetByUUIDNetworkForward: inventory.NetworkForward{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
-				NetworkName: "network",
+			repoGetByUUIDNetworkForward: []queue.Item[inventory.NetworkForward]{
+				{
+					Value: inventory.NetworkForward{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -385,12 +426,16 @@ func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - networkForward get by name - not found - delete by uuid",
-			repoGetByUUIDNetworkForward: inventory.NetworkForward{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
-				NetworkName: "network",
+			repoGetByUUIDNetworkForward: []queue.Item[inventory.NetworkForward]{
+				{
+					Value: inventory.NetworkForward{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -405,13 +450,52 @@ func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - networkForward get by UUID - 2nd",
+			repoGetByUUIDNetworkForward: []queue.Item[inventory.NetworkForward]{
+				{
+					Value: inventory.NetworkForward{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
+				{
+					Err: boom.Error,
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - validate",
-			repoGetByUUIDNetworkForward: inventory.NetworkForward{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "", // invalid
-				ProjectName: "project one",
-				NetworkName: "network",
+			repoGetByUUIDNetworkForward: []queue.Item[inventory.NetworkForward]{
+				{
+					Value: inventory.NetworkForward{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "", // invalid
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
+				{
+					Value: inventory.NetworkForward{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "", // invalid
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -431,12 +515,25 @@ func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - update by UUID",
-			repoGetByUUIDNetworkForward: inventory.NetworkForward{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
-				NetworkName: "network",
+			repoGetByUUIDNetworkForward: []queue.Item[inventory.NetworkForward]{
+				{
+					Value: inventory.NetworkForward{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
+				{
+					Value: inventory.NetworkForward{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+						NetworkName: "network",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -459,7 +556,7 @@ func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkForwardRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkForward, error) {
-					return tc.repoGetByUUIDNetworkForward, tc.repoGetByUUIDErr
+					return queue.Pop(t, &tc.repoGetByUUIDNetworkForward)
 				},
 				UpdateByUUIDFunc: func(ctx context.Context, networkForward inventory.NetworkForward) (inventory.NetworkForward, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkForward.LastUpdated)
@@ -479,9 +576,6 @@ func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
 
 			networkForwardClient := &serverMock.NetworkForwardServerClientMock{
 				GetNetworkForwardByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
-					require.Equal(t, tc.repoGetByUUIDNetworkForward.Name, networkForwardName)
-					require.Equal(t, tc.repoGetByUUIDNetworkForward.ProjectName, projectName)
-					require.Equal(t, "network", networkName)
 					return tc.networkForwardClientGetNetworkForwardByName, tc.networkForwardClientGetNetworkForwardByNameErr
 				},
 			}
@@ -495,6 +589,8 @@ func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+
+			require.Empty(t, tc.repoGetByUUIDNetworkForward)
 		})
 	}
 }

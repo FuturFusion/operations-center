@@ -1,6 +1,7 @@
 package incus_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -19,6 +20,9 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/inventory/server/incus"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 )
 
@@ -253,6 +257,58 @@ func TestClient_HasExtension(t *testing.T) {
 			require.Equal(t, tc.want, got)
 		})
 	}
+}
+
+func TestClient_in_transaction(t *testing.T) {
+	// Setup
+	caPool, certPEM, keyPEM := setupCerts(t)
+
+	logBuf := &bytes.Buffer{}
+	err := logger.InitLogger(logBuf, "", false, false, false)
+	require.NoError(t, err)
+
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(
+			[]byte(`{
+  "metadata": {
+    "api_extensions": [
+      "foobar"
+    ]
+  }
+}`),
+		)
+	}))
+	server.TLS = &tls.Config{
+		NextProtos: []string{"h2", "http/1.1"},
+		ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientCAs:  caPool,
+	}
+
+	server.StartTLS()
+	defer server.Close()
+
+	client := incus.New(certPEM, keyPEM)
+
+	serverCert := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: server.Certificate().Raw,
+	})
+
+	target := provisioning.Server{
+		ConnectionURL: server.URL,
+		Certificate:   string(serverCert),
+	}
+
+	// Run test
+	err = transaction.Do(t.Context(), func(ctx context.Context) error {
+		_ = client.HasExtension(ctx, target, "foobar")
+		return nil
+	})
+	require.NoError(t, err)
+
+	// Assert
+	log.Contains("Incus API call inside of a transaction")(t, logBuf)
 }
 
 func endpointGetClientErr(t *testing.T, method methodTestSet, caPool *x509.CertPool, certPEM string) {

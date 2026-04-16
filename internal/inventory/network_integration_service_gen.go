@@ -148,27 +148,32 @@ func (s networkIntegrationService) GetByUUID(ctx context.Context, id uuid.UUID) 
 }
 
 func (s networkIntegrationService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	networkIntegration, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, networkIntegration.Cluster)
+	if err != nil {
+		return err
+	}
+
+	retrievedNetworkIntegration, err := s.networkIntegrationClient.GetNetworkIntegrationByName(ctx, endpoint, networkIntegration.Name)
+	if errors.Is(err, domain.ErrNotFound) {
+		err = s.repo.DeleteByUUID(ctx, networkIntegration.UUID)
+		if err != nil {
+			return fmt.Errorf(`Failed to delete network_integration %q from cluster %q: %w`, networkIntegration.UUID.String(), networkIntegration.Cluster, err)
+		}
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		networkIntegration, err := s.repo.GetByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		endpoint, err := s.clusterSvc.GetEndpoint(ctx, networkIntegration.Cluster)
-		if err != nil {
-			return err
-		}
-
-		retrievedNetworkIntegration, err := s.networkIntegrationClient.GetNetworkIntegrationByName(ctx, endpoint, networkIntegration.Name)
-		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByUUID(ctx, networkIntegration.UUID)
-			if err != nil {
-				return fmt.Errorf(`Failed to delete network_integration %q from cluster %q: %w`, networkIntegration.UUID.String(), networkIntegration.Cluster, err)
-			}
-
-			return nil
-		}
-
 		if err != nil {
 			return err
 		}

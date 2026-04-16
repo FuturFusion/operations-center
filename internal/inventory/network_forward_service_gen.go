@@ -162,27 +162,32 @@ func (s networkForwardService) GetByUUID(ctx context.Context, id uuid.UUID) (Net
 }
 
 func (s networkForwardService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	networkForward, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, networkForward.Cluster)
+	if err != nil {
+		return err
+	}
+
+	retrievedNetworkForward, err := s.networkForwardClient.GetNetworkForwardByName(ctx, endpoint, networkForward.ProjectName, networkForward.NetworkName, networkForward.Name)
+	if errors.Is(err, domain.ErrNotFound) {
+		err = s.repo.DeleteByUUID(ctx, networkForward.UUID)
+		if err != nil {
+			return fmt.Errorf(`Failed to delete network_forward %q from cluster %q, network %q: %w`, networkForward.UUID.String(), networkForward.Cluster, networkForward.NetworkName, err)
+		}
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		networkForward, err := s.repo.GetByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		endpoint, err := s.clusterSvc.GetEndpoint(ctx, networkForward.Cluster)
-		if err != nil {
-			return err
-		}
-
-		retrievedNetworkForward, err := s.networkForwardClient.GetNetworkForwardByName(ctx, endpoint, networkForward.ProjectName, networkForward.NetworkName, networkForward.Name)
-		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByUUID(ctx, networkForward.UUID)
-			if err != nil {
-				return fmt.Errorf(`Failed to delete network_forward %q from cluster %q, network %q: %w`, networkForward.UUID.String(), networkForward.Cluster, networkForward.NetworkName, err)
-			}
-
-			return nil
-		}
-
 		if err != nil {
 			return err
 		}

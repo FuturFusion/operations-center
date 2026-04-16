@@ -162,27 +162,32 @@ func (s networkPeerService) GetByUUID(ctx context.Context, id uuid.UUID) (Networ
 }
 
 func (s networkPeerService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	networkPeer, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, networkPeer.Cluster)
+	if err != nil {
+		return err
+	}
+
+	retrievedNetworkPeer, err := s.networkPeerClient.GetNetworkPeerByName(ctx, endpoint, networkPeer.ProjectName, networkPeer.NetworkName, networkPeer.Name)
+	if errors.Is(err, domain.ErrNotFound) {
+		err = s.repo.DeleteByUUID(ctx, networkPeer.UUID)
+		if err != nil {
+			return fmt.Errorf(`Failed to delete network_peer %q from cluster %q, network %q: %w`, networkPeer.UUID.String(), networkPeer.Cluster, networkPeer.NetworkName, err)
+		}
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		networkPeer, err := s.repo.GetByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		endpoint, err := s.clusterSvc.GetEndpoint(ctx, networkPeer.Cluster)
-		if err != nil {
-			return err
-		}
-
-		retrievedNetworkPeer, err := s.networkPeerClient.GetNetworkPeerByName(ctx, endpoint, networkPeer.ProjectName, networkPeer.NetworkName, networkPeer.Name)
-		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByUUID(ctx, networkPeer.UUID)
-			if err != nil {
-				return fmt.Errorf(`Failed to delete network_peer %q from cluster %q, network %q: %w`, networkPeer.UUID.String(), networkPeer.Cluster, networkPeer.NetworkName, err)
-			}
-
-			return nil
-		}
-
 		if err != nil {
 			return err
 		}

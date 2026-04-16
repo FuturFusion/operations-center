@@ -3,6 +3,7 @@ package provisioning
 import (
 	"context"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -76,6 +77,15 @@ func (s Server) GetName() string {
 	return s.Name
 }
 
+func (s Server) Clone() Server {
+	var server Server
+
+	b, _ := json.Marshal(s)
+	_ = json.Unmarshal(b, &server)
+
+	return server
+}
+
 func (s Server) Validate() error {
 	if s.Name == "" {
 		return domain.NewValidationErrf("Invalid server, name can not be empty")
@@ -139,13 +149,22 @@ func (s Server) UpdateState() api.ServerUpdateState {
 	}.UpdateState()
 }
 
-func (s Server) signalLifecycleEvent(ctx context.Context) {
+var signalLifecycleEventDelay = 3 * time.Second
+
+func (s Server) signalLifecycleEvent() {
 	go func() {
+		// Defer lifecycle signal a bit, let the triggering event complete first.
+		time.Sleep(signalLifecycleEventDelay)
+
+		// Use a detached context in order to make sure, no existing DB transaction is inherited.
+		ctx := context.Background()
+
 		slm := lifecycle.ServerLifecycleMessage{
 			Server:            s.Name,
 			Cluster:           s.Cluster,
 			ServerUpdateState: s.UpdateState(),
 		}
+
 		err := lifecycle.ServerLifecycleSignal.TryEmit(ctx, slm)
 		if err != nil {
 			slog.ErrorContext(ctx, "Signal lifecycle event failed", logger.Err(err), slog.Any("server_lifecycle_message", slm))
@@ -223,6 +242,7 @@ type operation int
 const (
 	operationNone operation = iota
 	operationEvacuation
+	operationReboot
 	operationRestore
 )
 

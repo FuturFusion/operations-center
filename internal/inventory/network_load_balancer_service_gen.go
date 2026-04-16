@@ -162,27 +162,32 @@ func (s networkLoadBalancerService) GetByUUID(ctx context.Context, id uuid.UUID)
 }
 
 func (s networkLoadBalancerService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	networkLoadBalancer, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, networkLoadBalancer.Cluster)
+	if err != nil {
+		return err
+	}
+
+	retrievedNetworkLoadBalancer, err := s.networkLoadBalancerClient.GetNetworkLoadBalancerByName(ctx, endpoint, networkLoadBalancer.ProjectName, networkLoadBalancer.NetworkName, networkLoadBalancer.Name)
+	if errors.Is(err, domain.ErrNotFound) {
+		err = s.repo.DeleteByUUID(ctx, networkLoadBalancer.UUID)
+		if err != nil {
+			return fmt.Errorf(`Failed to delete network_load_balancer %q from cluster %q, network %q: %w`, networkLoadBalancer.UUID.String(), networkLoadBalancer.Cluster, networkLoadBalancer.NetworkName, err)
+		}
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		networkLoadBalancer, err := s.repo.GetByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		endpoint, err := s.clusterSvc.GetEndpoint(ctx, networkLoadBalancer.Cluster)
-		if err != nil {
-			return err
-		}
-
-		retrievedNetworkLoadBalancer, err := s.networkLoadBalancerClient.GetNetworkLoadBalancerByName(ctx, endpoint, networkLoadBalancer.ProjectName, networkLoadBalancer.NetworkName, networkLoadBalancer.Name)
-		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByUUID(ctx, networkLoadBalancer.UUID)
-			if err != nil {
-				return fmt.Errorf(`Failed to delete network_load_balancer %q from cluster %q, network %q: %w`, networkLoadBalancer.UUID.String(), networkLoadBalancer.Cluster, networkLoadBalancer.NetworkName, err)
-			}
-
-			return nil
-		}
-
 		if err != nil {
 			return err
 		}

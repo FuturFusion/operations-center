@@ -123,9 +123,13 @@ func GetDBTX(ctx context.Context, db DBTX) DBTX {
 	return db
 }
 
-func Begin(ctx context.Context) (context.Context, transaction) {
+func IsActive(ctx context.Context) bool {
 	existingTC := ctx.Value(tcKey{})
-	if existingTC != nil {
+	return existingTC != nil
+}
+
+func Begin(ctx context.Context) (context.Context, transaction) {
+	if IsActive(ctx) {
 		return ctx, &noopTransactionContainer{}
 	}
 

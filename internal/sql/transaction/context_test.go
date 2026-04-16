@@ -31,7 +31,7 @@ func TestForceTx_inStartedTransacationRollback(t *testing.T) {
 		db: dbWithTransaction,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Get dummies from empty db, no dummies expected.
 	dummies, err := dummySvc.getAll(ctx)
@@ -63,7 +63,7 @@ func TestForceTx_inStartedTransacationRollback(t *testing.T) {
 
 	// Query dummies with fresh context, expect to not get any dummies, since no
 	// data has been persisted to the DB.
-	dummies, err = dummySvc.getAll(context.Background())
+	dummies, err = dummySvc.getAll(t.Context())
 	require.NoError(t, err)
 	require.Empty(t, dummies)
 }
@@ -88,7 +88,7 @@ func TestForceTx_firstInTransacationRollback(t *testing.T) {
 		db: dbWithTransaction,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Get dummies from empty db, no dummies expected.
 	dummies, err := dummySvc.getAll(ctx)
@@ -120,7 +120,7 @@ func TestForceTx_firstInTransacationRollback(t *testing.T) {
 
 	// Query dummies with fresh context, expect to not get any dummies, since no
 	// data has been persisted to the DB.
-	dummies, err = dummySvc.getAll(context.Background())
+	dummies, err = dummySvc.getAll(t.Context())
 	require.NoError(t, err)
 	require.Empty(t, dummies)
 }
@@ -145,7 +145,7 @@ func TestForceTx_withoutTransacationRollback(t *testing.T) {
 		db: dbWithTransaction,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Get dummies from empty db, no dummies expected.
 	dummies, err := dummySvc.getAll(ctx)
@@ -163,7 +163,20 @@ func TestForceTx_withoutTransacationRollback(t *testing.T) {
 
 	// Query dummies with fresh context, expect to not get any dummies, since no
 	// data has been persisted to the DB.
-	dummies, err = dummySvc.getAll(context.Background())
+	dummies, err = dummySvc.getAll(t.Context())
 	require.NoError(t, err)
 	require.Empty(t, dummies)
+}
+
+func TestIsActive(t *testing.T) {
+	ctx := t.Context()
+
+	require.False(t, transaction.IsActive(ctx))
+
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		require.True(t, transaction.IsActive(ctx))
+
+		return nil
+	})
+	require.NoError(t, err)
 }

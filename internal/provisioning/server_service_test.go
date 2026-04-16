@@ -27,6 +27,7 @@ import (
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
@@ -1094,14 +1095,14 @@ func TestServerService_Update(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
-		name                string
-		argForce            bool
-		server              provisioning.Server
-		repoUpdateErr       error
-		repoGetByNameServer *provisioning.Server
-		repoGetByNameErr    error
+		name           string
+		argForce       bool
+		server         provisioning.Server
+		repoUpdateErrs queue.Errs
+		repoGetByName  []queue.Item[*provisioning.Server]
 
 		assertErr require.ErrorAssertionFunc
+		assertLog log.MatcherFunc
 	}{
 		{
 			name: "success",
@@ -1117,12 +1118,29 @@ one
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
-			repoGetByNameServer: &provisioning.Server{
-				Name:    "one",
-				Channel: "stable",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - validation",
@@ -1143,6 +1161,7 @@ one
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+			assertLog: log.Empty,
 		},
 		{
 			name:     "error - repo.GetByName - without force",
@@ -1159,9 +1178,14 @@ one
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
-			repoGetByNameErr: boom.Error,
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name:     "error - channel update for clustered server",
@@ -1178,16 +1202,21 @@ one
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
-			repoGetByNameServer: &provisioning.Server{
-				Name:    "one",
-				Cluster: ptr.To("one"),
-				Channel: "testing",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("one"),
+						Channel: "testing",
+					},
+				},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, `Update of channel not allowed for clustered server "one"`)
 			},
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - repo.UpdateByID",
@@ -1203,13 +1232,20 @@ one
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
-			repoGetByNameServer: &provisioning.Server{
-				Name:    "one",
-				Channel: "stable",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
 			},
-			repoUpdateErr: boom.Error,
+			repoUpdateErrs: queue.Errs{
+				boom.Error,
+			},
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name:     "error - repo.GetByName - force", // UpdateSystemUpdate
@@ -1226,21 +1262,70 @@ one
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
-			repoGetByNameErr: boom.Error,
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name:     "error - repo.GetByName - force - revert error", // UpdateSystemUpdate
+			argForce: true,
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+				{
+					Err: boom.Error,
+				},
+			},
+			repoUpdateErrs: queue.Errs{
+				nil,
+				boom.Error,
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Contains("Failed restore previous server state after failed to update system update config"),
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, true, true)
+			require.NoError(t, err)
+
 			repo := &repoMock.ServerRepoMock{
 				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
-					return tc.repoUpdateErr
+					return tc.repoUpdateErrs.PopOrNil(t)
 				},
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
-					return tc.repoGetByNameServer, tc.repoGetByNameErr
+					return queue.Pop(t, &tc.repoGetByName)
 				},
 			}
 
@@ -1270,10 +1355,14 @@ one
 			)
 
 			// Run test
-			err := serverSvc.Update(t.Context(), tc.server, tc.argForce, true)
+			err = serverSvc.Update(t.Context(), tc.server, tc.argForce, true)
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+
+			// require.Empty(t, tc.repoGetByName)
+			require.Empty(t, tc.repoUpdateErrs)
 		})
 	}
 }
@@ -2449,7 +2538,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, true, false)
+			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
 
 			repo := &repoMock.ServerRepoMock{
@@ -3480,7 +3569,7 @@ foobar
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, true, false)
+			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
 
 			repo := &repoMock.ServerRepoMock{
@@ -3507,7 +3596,7 @@ foobar
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
 					return tc.clusterSvcGetByName, tc.clusterSvcGetByNameErr
 				},
-				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
+				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster, updateServers bool) error {
 					return tc.clusterSvcUpdateErr
 				},
 			}
@@ -3899,7 +3988,7 @@ func TestServerService_PollServer(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, true, false)
+			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
 
 			repo := &repoMock.ServerRepoMock{
@@ -3949,6 +4038,45 @@ func TestServerService_PollServer(t *testing.T) {
 			tc.assertLog(t, logBuf)
 		})
 	}
+}
+
+func TestServerService_PollServer_in_transaction(t *testing.T) {
+	// Setup
+	logBuf := &bytes.Buffer{}
+	err := logger.InitLogger(logBuf, "", false, true, true)
+	require.NoError(t, err)
+
+	repo := &repoMock.ServerRepoMock{
+		GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+			return &provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			}, nil
+		},
+		UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+			return nil
+		},
+	}
+
+	client := &adapterMock.ServerClientPortMock{
+		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+			return nil
+		},
+	}
+
+	serverSvc := provisioning.NewServerService(repo, client, nil, nil, nil, nil, tls.Certificate{})
+
+	// Run test
+	err = transaction.Do(t.Context(), func(ctx context.Context) error {
+		return serverSvc.PollServer(ctx, provisioning.Server{
+			Name:   "one",
+			Status: api.ServerStatusPending,
+		}, false)
+	})
+
+	// Assert
+	require.NoError(t, err)
+	log.Contains("serverService.PollServer is called inside of a DB transaction")(t, logBuf)
 }
 
 func TestServerService_ResyncByName(t *testing.T) {
@@ -4546,13 +4674,14 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 		argForce                                        bool
 		repoGetByName                                   provisioning.Server
 		repoGetByNameErr                                error
-		repoUpdateErr                                   error
+		repoUpdateErrs                                  queue.Errs
 		clientEvacuateErr                               error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
 		doCallback                                      func(f func(err error))
 		initVolatileServerState                         func(serverSvc provisioning.ServerService)
 
 		assertErr require.ErrorAssertionFunc
+		assertLog log.MatcherFunc
 	}{
 		{
 			name: "success - lifecycle operation permitted",
@@ -4574,6 +4703,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name:             "success - cluster update",
@@ -4595,6 +4725,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name:     "success - force",
@@ -4616,6 +4747,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name:             "success - cluster update - operation in flight",
@@ -4643,6 +4775,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				require.True(tt, domain.IsRetryableError(err))
 				require.ErrorContains(tt, err, "server operation in flight")
 			},
+			assertLog: log.Noop,
 		},
 		{
 			name:             "success - cluster update - attempt limit reached",
@@ -4672,12 +4805,14 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrTerminal)
 				require.ErrorContains(tt, err, "Failed to evacuate system in 3 attempts")
 			},
+			assertLog: log.Noop,
 		},
 		{
 			name:             "error - repo.GetByName",
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - not type incus",
@@ -4690,6 +4825,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 			},
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - cluster lifecycle operation not permitted",
@@ -4711,6 +4847,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, "Lifecycle operation for server")
 			},
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - repo.Update",
@@ -4726,10 +4863,13 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					},
 				},
 			},
+			repoUpdateErrs: queue.Errs{
+				boom.Error,
+			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
-			repoUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - client.Evacuate",
@@ -4752,20 +4892,50 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			},
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
+		},
+		{
+			name: "error - client.Evacuate - reverter error",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+			repoUpdateErrs: queue.Errs{
+				nil,
+				boom.Error,
+			},
+			clientEvacuateErr: boom.Error,
+			doCallback: func(f func(err error)) {
+				f(nil)
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Contains("Failed restore previous server state after failed to trigger evacuation server=one err=boom!"),
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, true, true)
+			require.NoError(t, err)
+
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return &tc.repoGetByName, tc.repoGetByNameErr
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
-					server.VersionData.Compute(nil)
-					require.Equal(t, api.InMaintenanceEvacuating, *server.VersionData.InMaintenance)
-					return tc.repoUpdateErr
+					return tc.repoUpdateErrs.PopOrNil(t)
 				},
 			}
 
@@ -4795,10 +4965,13 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			}
 
 			// Run test
-			err := serverSvc.EvacuateSystemByName(t.Context(), "one", tc.argClusterUpdate, tc.argForce)
+			err = serverSvc.EvacuateSystemByName(t.Context(), "one", tc.argClusterUpdate, tc.argForce)
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+
+			require.Empty(t, tc.repoUpdateErrs)
 		})
 	}
 }
@@ -4947,11 +5120,13 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 		argForce                                        bool
 		repoGetByName                                   provisioning.Server
 		repoGetByNameErr                                error
-		repoUpdateErr                                   error
+		repoUpdateErrs                                  queue.Errs
 		clientRebootErr                                 error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
+		initVolatileServerState                         func(serverSvc provisioning.ServerService)
 
 		assertErr require.ErrorAssertionFunc
+		assertLog log.MatcherFunc
 	}{
 		{
 			name: "success - lifecycle operation permitted",
@@ -4966,6 +5141,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name:     "success - force",
@@ -4980,12 +5156,35 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
+		},
+		{
+			name:     "success - operation in flight",
+			argForce: true,
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
+			initVolatileServerState: func(serverSvc provisioning.ServerService) {
+				_ = serverSvc.RebootSystemByName(context.Background(), "one", true)
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.True(tt, domain.IsRetryableError(err))
+				require.ErrorContains(tt, err, "server operation in flight")
+			},
+			assertLog: log.Noop,
 		},
 		{
 			name:             "error - repo.GetByName",
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - cluster lifecycle operation not permitted",
@@ -5003,6 +5202,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, "Lifecycle operation for server")
 			},
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - repo.Update",
@@ -5015,9 +5215,12 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
-			repoUpdateErr: boom.Error,
+			repoUpdateErrs: queue.Errs{
+				boom.Error,
+			},
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - client.Reboot",
@@ -5033,20 +5236,43 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 			clientRebootErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
+		},
+		{
+			name: "error - client.Reboot and reverter error",
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+			repoUpdateErrs: queue.Errs{
+				nil,
+				boom.Error,
+			},
+			clientRebootErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Match("Failed restore previous server state after failed to trigger reboot server=one err=boom!"),
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, true, true)
+			require.NoError(t, err)
+
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return &tc.repoGetByName, tc.repoGetByNameErr
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
-					require.Equal(t, api.ServerStatusOffline, server.Status)
-					require.Equal(t, api.ServerStatusDetailOfflineRebooting, server.StatusDetail)
-					return tc.repoUpdateErr
+					return tc.repoUpdateErrs.PopOrNil(t)
 				},
 			}
 
@@ -5070,11 +5296,17 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 
 			serverSvc := provisioning.NewServerService(repo, client, nil, clusterSvc, nil, updateSvc, tls.Certificate{})
 
+			if tc.initVolatileServerState != nil {
+				tc.initVolatileServerState(serverSvc)
+			}
+
 			// Run test
-			err := serverSvc.RebootSystemByName(t.Context(), "one", tc.argForce)
+			err = serverSvc.RebootSystemByName(t.Context(), "one", tc.argForce)
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.repoUpdateErrs)
 		})
 	}
 }
@@ -5087,13 +5319,14 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 		argRestoreModeSkip                              bool
 		repoGetByName                                   provisioning.Server
 		repoGetByNameErr                                error
-		repoUpdateErr                                   error
+		repoUpdateErrs                                  queue.Errs
 		clientRestoreErr                                error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
 		doCallback                                      func(f func(err error))
 		initVolatileServerState                         func(serverSvc provisioning.ServerService)
 
 		assertErr require.ErrorAssertionFunc
+		assertLog log.MatcherFunc
 	}{
 		{
 			name: "success - lifecycle operation permitted",
@@ -5115,6 +5348,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name:             "success - cluster update",
@@ -5136,6 +5370,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name:     "success - force",
@@ -5157,6 +5392,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name:             "success - cluster update - operation in flight",
@@ -5184,6 +5420,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				require.True(tt, domain.IsRetryableError(err))
 				require.ErrorContains(tt, err, "server operation in flight")
 			},
+			assertLog: log.Noop,
 		},
 		{
 			name:             "success - cluster update - attempt limit reached",
@@ -5213,12 +5450,14 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrTerminal)
 				require.ErrorContains(tt, err, "Failed to restore system in 3 attempts")
 			},
+			assertLog: log.Noop,
 		},
 		{
 			name:             "error - repo.GetByName",
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - not type incus",
@@ -5231,6 +5470,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 			},
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - cluster lifecycle operation not permitted",
@@ -5252,9 +5492,10 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, "Lifecycle operation for server")
 			},
+			assertLog: log.Noop,
 		},
 		{
-			name: "error - client.Restore",
+			name: "error - repo.Update",
 			repoGetByName: provisioning.Server{
 				Name:   "one",
 				Status: api.ServerStatusReady,
@@ -5268,9 +5509,12 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				},
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
-			repoUpdateErr: boom.Error,
+			repoUpdateErrs: queue.Errs{
+				boom.Error,
+			},
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - client.Restore",
@@ -5293,20 +5537,50 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			},
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
+		},
+		{
+			name: "error - client.Restore and reverter error",
+			repoGetByName: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				Type:   api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+			repoUpdateErrs: queue.Errs{
+				nil,
+				boom.Error,
+			},
+			clientRestoreErr: boom.Error,
+			doCallback: func(f func(err error)) {
+				f(nil)
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Match("Failed restore previous server state after failed to trigger restore server=one err=boom!"),
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, true, true)
+			require.NoError(t, err)
+
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return &tc.repoGetByName, tc.repoGetByNameErr
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
-					server.VersionData.Compute(nil)
-					require.Equal(t, api.InMaintenanceRestoring, *server.VersionData.InMaintenance)
-					return tc.repoUpdateErr
+					return tc.repoUpdateErrs.PopOrNil(t)
 				},
 			}
 
@@ -5336,10 +5610,12 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			}
 
 			// Run test
-			err := serverSvc.RestoreSystemByName(t.Context(), "one", tc.argClusterUpdate, tc.argForce, tc.argRestoreModeSkip)
+			err = serverSvc.RestoreSystemByName(t.Context(), "one", tc.argClusterUpdate, tc.argForce, tc.argRestoreModeSkip)
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.repoUpdateErrs)
 		})
 	}
 }

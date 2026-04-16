@@ -19,7 +19,7 @@ type ClusterService interface {
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetAllNamesWithFilter(ctx context.Context, filter ClusterFilter) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Cluster, error)
-	Update(ctx context.Context, cluster Cluster) error
+	Update(ctx context.Context, cluster Cluster, updateServers bool) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string, force bool) error
 	DeleteAndFactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error

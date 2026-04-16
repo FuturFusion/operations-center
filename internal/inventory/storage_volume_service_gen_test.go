@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
+	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -270,8 +271,7 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 		clusterSvcGetEndpointErr                     error
 		storageVolumeClientGetStorageVolumeByName    incusapi.StorageVolumeFull
 		storageVolumeClientGetStorageVolumeByNameErr error
-		repoGetByUUIDStorageVolume                   inventory.StorageVolume
-		repoGetByUUIDErr                             error
+		repoGetByUUIDStorageVolume                   []queue.Item[inventory.StorageVolume]
 		repoUpdateByUUIDErr                          error
 		repoDeleteByUUIDErr                          error
 
@@ -279,12 +279,25 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 	}{
 		{
 			name: "success",
-			repoGetByUUIDStorageVolume: inventory.StorageVolume{
-				UUID:            uuidgen.FromPattern(t, "1"),
-				Cluster:         "one",
-				Name:            "one",
-				ProjectName:     "project one",
-				StoragePoolName: "storage_pool",
+			repoGetByUUIDStorageVolume: []queue.Item[inventory.StorageVolume]{
+				{
+					Value: inventory.StorageVolume{
+						UUID:            uuidgen.FromPattern(t, "1"),
+						Cluster:         "one",
+						Name:            "one",
+						ProjectName:     "project one",
+						StoragePoolName: "storage_pool",
+					},
+				},
+				{
+					Value: inventory.StorageVolume{
+						UUID:            uuidgen.FromPattern(t, "1"),
+						Cluster:         "one",
+						Name:            "one",
+						ProjectName:     "project one",
+						StoragePoolName: "storage_pool",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -305,12 +318,16 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "success - storageVolume get by name - not found",
-			repoGetByUUIDStorageVolume: inventory.StorageVolume{
-				UUID:            uuidgen.FromPattern(t, "1"),
-				Cluster:         "one",
-				Name:            "one",
-				ProjectName:     "project one",
-				StoragePoolName: "storage_pool",
+			repoGetByUUIDStorageVolume: []queue.Item[inventory.StorageVolume]{
+				{
+					Value: inventory.StorageVolume{
+						UUID:            uuidgen.FromPattern(t, "1"),
+						Cluster:         "one",
+						Name:            "one",
+						ProjectName:     "project one",
+						StoragePoolName: "storage_pool",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -329,11 +346,23 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		{
 			name: "success - missing project",
-			repoGetByUUIDStorageVolume: inventory.StorageVolume{
-				UUID:            uuidgen.FromPattern(t, "1"),
-				Cluster:         "one",
-				Name:            "one",
-				StoragePoolName: "storage_pool",
+			repoGetByUUIDStorageVolume: []queue.Item[inventory.StorageVolume]{
+				{
+					Value: inventory.StorageVolume{
+						UUID:            uuidgen.FromPattern(t, "1"),
+						Cluster:         "one",
+						Name:            "one",
+						StoragePoolName: "storage_pool",
+					},
+				},
+				{
+					Value: inventory.StorageVolume{
+						UUID:            uuidgen.FromPattern(t, "1"),
+						Cluster:         "one",
+						Name:            "one",
+						StoragePoolName: "storage_pool",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -352,19 +381,27 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:             "error - storageVolume get by UUID",
-			repoGetByUUIDErr: boom.Error,
+			name: "error - storageVolume get by UUID - 1st",
+			repoGetByUUIDStorageVolume: []queue.Item[inventory.StorageVolume]{
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - cluster get by ID",
-			repoGetByUUIDStorageVolume: inventory.StorageVolume{
-				UUID:            uuidgen.FromPattern(t, "1"),
-				Cluster:         "one",
-				Name:            "one",
-				ProjectName:     "project one",
-				StoragePoolName: "storage_pool",
+			repoGetByUUIDStorageVolume: []queue.Item[inventory.StorageVolume]{
+				{
+					Value: inventory.StorageVolume{
+						UUID:            uuidgen.FromPattern(t, "1"),
+						Cluster:         "one",
+						Name:            "one",
+						ProjectName:     "project one",
+						StoragePoolName: "storage_pool",
+					},
+				},
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -372,12 +409,16 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - storageVolume get by name",
-			repoGetByUUIDStorageVolume: inventory.StorageVolume{
-				UUID:            uuidgen.FromPattern(t, "1"),
-				Cluster:         "one",
-				Name:            "one",
-				ProjectName:     "project one",
-				StoragePoolName: "storage_pool",
+			repoGetByUUIDStorageVolume: []queue.Item[inventory.StorageVolume]{
+				{
+					Value: inventory.StorageVolume{
+						UUID:            uuidgen.FromPattern(t, "1"),
+						Cluster:         "one",
+						Name:            "one",
+						ProjectName:     "project one",
+						StoragePoolName: "storage_pool",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -392,12 +433,16 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - storageVolume get by name - not found - delete by uuid",
-			repoGetByUUIDStorageVolume: inventory.StorageVolume{
-				UUID:            uuidgen.FromPattern(t, "1"),
-				Cluster:         "one",
-				Name:            "one",
-				ProjectName:     "project one",
-				StoragePoolName: "storage_pool",
+			repoGetByUUIDStorageVolume: []queue.Item[inventory.StorageVolume]{
+				{
+					Value: inventory.StorageVolume{
+						UUID:            uuidgen.FromPattern(t, "1"),
+						Cluster:         "one",
+						Name:            "one",
+						ProjectName:     "project one",
+						StoragePoolName: "storage_pool",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -412,13 +457,52 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - storageVolume get by UUID - 2nd",
+			repoGetByUUIDStorageVolume: []queue.Item[inventory.StorageVolume]{
+				{
+					Value: inventory.StorageVolume{
+						UUID:            uuidgen.FromPattern(t, "1"),
+						Cluster:         "one",
+						Name:            "one",
+						ProjectName:     "project one",
+						StoragePoolName: "storage_pool",
+					},
+				},
+				{
+					Err: boom.Error,
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - validate",
-			repoGetByUUIDStorageVolume: inventory.StorageVolume{
-				UUID:            uuidgen.FromPattern(t, "1"),
-				Cluster:         "one",
-				Name:            "", // invalid
-				ProjectName:     "project one",
-				StoragePoolName: "storage_pool",
+			repoGetByUUIDStorageVolume: []queue.Item[inventory.StorageVolume]{
+				{
+					Value: inventory.StorageVolume{
+						UUID:            uuidgen.FromPattern(t, "1"),
+						Cluster:         "one",
+						Name:            "", // invalid
+						ProjectName:     "project one",
+						StoragePoolName: "storage_pool",
+					},
+				},
+				{
+					Value: inventory.StorageVolume{
+						UUID:            uuidgen.FromPattern(t, "1"),
+						Cluster:         "one",
+						Name:            "", // invalid
+						ProjectName:     "project one",
+						StoragePoolName: "storage_pool",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -442,12 +526,25 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - update by UUID",
-			repoGetByUUIDStorageVolume: inventory.StorageVolume{
-				UUID:            uuidgen.FromPattern(t, "1"),
-				Cluster:         "one",
-				Name:            "one",
-				ProjectName:     "project one",
-				StoragePoolName: "storage_pool",
+			repoGetByUUIDStorageVolume: []queue.Item[inventory.StorageVolume]{
+				{
+					Value: inventory.StorageVolume{
+						UUID:            uuidgen.FromPattern(t, "1"),
+						Cluster:         "one",
+						Name:            "one",
+						ProjectName:     "project one",
+						StoragePoolName: "storage_pool",
+					},
+				},
+				{
+					Value: inventory.StorageVolume{
+						UUID:            uuidgen.FromPattern(t, "1"),
+						Cluster:         "one",
+						Name:            "one",
+						ProjectName:     "project one",
+						StoragePoolName: "storage_pool",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -474,7 +571,7 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 			// Setup
 			repo := &repoMock.StorageVolumeRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.StorageVolume, error) {
-					return tc.repoGetByUUIDStorageVolume, tc.repoGetByUUIDErr
+					return queue.Pop(t, &tc.repoGetByUUIDStorageVolume)
 				},
 				UpdateByUUIDFunc: func(ctx context.Context, storageVolume inventory.StorageVolume) (inventory.StorageVolume, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), storageVolume.LastUpdated)
@@ -494,9 +591,6 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 
 			storageVolumeClient := &serverMock.StorageVolumeServerClientMock{
 				GetStorageVolumeByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolumeFull, error) {
-					require.Equal(t, tc.repoGetByUUIDStorageVolume.Name, storageVolumeName)
-					require.Equal(t, tc.repoGetByUUIDStorageVolume.ProjectName, projectName)
-					require.Equal(t, "storage_pool", storagePoolName)
 					return tc.storageVolumeClientGetStorageVolumeByName, tc.storageVolumeClientGetStorageVolumeByNameErr
 				},
 			}
@@ -510,6 +604,8 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+
+			require.Empty(t, tc.repoGetByUUIDStorageVolume)
 		})
 	}
 }

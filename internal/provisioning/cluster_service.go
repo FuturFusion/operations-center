@@ -393,6 +393,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 
 		// Update Server records in the repo.
 		for _, server := range servers {
+			// FIXME: triggers API call within a transaction!!
 			err = s.serverSvc.Update(ctx, server, true, true)
 			if err != nil {
 				return err
@@ -726,7 +727,7 @@ func (s clusterService) getClusterUpdateStatus(ctx context.Context, name string,
 	return nil
 }
 
-func (s clusterService) Update(ctx context.Context, newCluster Cluster) error {
+func (s clusterService) Update(ctx context.Context, newCluster Cluster, updateServers bool) error {
 	err := newCluster.Validate()
 	if err != nil {
 		return err
@@ -736,6 +737,10 @@ func (s clusterService) Update(ctx context.Context, newCluster Cluster) error {
 		err = s.repo.Update(ctx, newCluster)
 		if err != nil {
 			return err
+		}
+
+		if !updateServers {
+			return nil
 		}
 
 		// Get servers of cluster and update "channel" to same value as cluster.
@@ -748,6 +753,7 @@ func (s clusterService) Update(ctx context.Context, newCluster Cluster) error {
 
 		for _, server := range servers {
 			server.Channel = newCluster.Channel
+			// FIXME: triggers API call within a transaction!!
 			err = s.serverSvc.Update(ctx, server, true, true)
 			if err != nil {
 				return fmt.Errorf("Failed to update member %q of cluster %q: %w", server.Name, newCluster.Name, err)
@@ -1029,7 +1035,7 @@ func (s clusterService) LaunchClusterUpdate(ctx context.Context, name string, re
 		cluster.UpdateStatus.InProgressStatus.Error = ""
 		cluster.UpdateStatus.InProgressStatus.LastUpdated = s.now()
 
-		err = s.Update(ctx, *cluster)
+		err = s.Update(ctx, *cluster, false)
 		if err != nil {
 			return fmt.Errorf("Failed to update cluster %q: %w", name, err)
 		}
@@ -1053,7 +1059,7 @@ func (s clusterService) LaunchClusterUpdate(ctx context.Context, name string, re
 		cluster.UpdateStatus.InProgressStatus.EvacuatedBefore = nil
 		cluster.UpdateStatus.InProgressStatus.LastUpdated = s.now()
 
-		err = s.Update(ctx, *cluster)
+		err = s.Update(ctx, *cluster, false)
 		if err != nil {
 			slog.ErrorContext(ctx, "Failed to revert cluster update status", logger.Err(err), slog.String("cluster", cluster.Name))
 		}
@@ -1120,11 +1126,22 @@ func (s clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNam
 
 	var errs []error
 	for _, cluster := range clusters {
-		if cluster.UpdateStatus.InProgressStatus.Error != "" {
-			return nil
-		}
-
 		err := func() error {
+			log := slog.With(slog.String("cluster", cluster.Name))
+			log.InfoContext(ctx,
+				"Cluster rolling update control loop started",
+				slog.String("in_progress_status", string(cluster.UpdateStatus.InProgressStatus.InProgress)),
+			)
+			defer log.InfoContext(ctx, "Cluster rolling update control loop end")
+
+			if cluster.UpdateStatus.InProgressStatus.Error != "" {
+				log.ErrorContext(ctx,
+					"Cluster rolling update control loop in progress status error",
+					slog.String("err", cluster.UpdateStatus.InProgressStatus.Error),
+				)
+				return nil
+			}
+
 			// Refresh all status information for all servers.
 			err := s.serverSvc.PollServers(ctx, ServerFilter{
 				Cluster: &cluster.Name,
@@ -1173,6 +1190,8 @@ func (s clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNam
 }
 
 func (s clusterService) executeRollingUpdate(ctx context.Context, cluster Cluster, servers Servers) error {
+	log := slog.With(slog.String("cluster", cluster.Name))
+
 	// Trigger update on each server, applications get updated immediately,
 	// OS is prepared for update on next reboot.
 	// Also verify, that none of the servers is still updating or has pending
@@ -1182,11 +1201,11 @@ func (s clusterService) executeRollingUpdate(ctx context.Context, cluster Cluste
 			continue
 		}
 
-		// To get a consistent debug log, print the current state before triggering the next action, since
+		// To get a consistent log, print the current state before triggering the next action, since
 		// it will likely update the state.
 		updateState := clusterUpdateState(cluster.UpdateStatus.InProgressStatus, servers)
 		if updateState != "" {
-			slog.DebugContext(ctx, "rolling update next step", slog.String("cluster_update_state", updateState))
+			log.InfoContext(ctx, "Cluster rolling update next step", slog.String("cluster_update_state", updateState))
 		}
 
 		if server.StatusDetail == api.ServerStatusDetailReadyUpdating {
@@ -1220,6 +1239,8 @@ func (s clusterService) executeRollingUpdate(ctx context.Context, cluster Cluste
 		return nil
 	}
 
+	log.InfoContext(ctx, "Cluster rolling update, all servers are updated")
+
 	// All servers are updated, update the clusters update status
 	var emitLifecycleSignal bool
 	err := transaction.Do(ctx, func(ctx context.Context) error {
@@ -1249,17 +1270,16 @@ func (s clusterService) executeRollingUpdate(ctx context.Context, cluster Cluste
 	}
 
 	if emitLifecycleSignal {
-		go func() {
-			lifecycle.ServerLifecycleSignal.Emit(ctx, lifecycle.ServerLifecycleMessage{
-				Cluster: &cluster.Name,
-			})
-		}()
+		// Use last server as the triggering server, since it was most likely the last one that was updated.
+		servers[len(servers)-1].signalLifecycleEvent()
 	}
 
 	return nil
 }
 
 func (s clusterService) executeRollingRestartNextStep(ctx context.Context, cluster Cluster, servers Servers) error {
+	log := slog.With(slog.String("cluster", cluster.Name))
+
 	// Calculate, if we are done based on the current state of all servers and the desired target state and
 	// calculate next action if we are not done yet.
 	var err error
@@ -1364,11 +1384,11 @@ func (s clusterService) executeRollingRestartNextStep(ctx context.Context, clust
 		}
 	}
 
-	// To get a consistent debug log, print the current state before triggering the next action, since
+	// To get a consistent log, print the current state before triggering the next action, since
 	// it will likely update the state.
 	updateState := clusterUpdateState(cluster.UpdateStatus.InProgressStatus, servers)
 	if updateState != "" {
-		slog.DebugContext(ctx, "rolling update next step", slog.String("cluster_update_state", updateState))
+		log.InfoContext(ctx, "Cluster rolling update next step", slog.String("cluster_update_state", updateState))
 	}
 
 	done := nextAction == nil
@@ -2303,7 +2323,7 @@ func (s clusterService) startLifecycleEventHandler(ctx context.Context, clusterN
 			for {
 				select {
 				case event := <-events:
-					slog.InfoContext(ctx, "lifecycle event", slog.String("event", event.LifecycleEventAction), slog.String("cluster", clusterName), slog.Any("action", event.Operation), slog.Any("resource_type", event.ResourceType), slog.String("source", event.Source.String()))
+					slog.InfoContext(ctx, "Lifecycle event", slog.String("event", event.LifecycleEventAction), slog.String("cluster", clusterName), slog.Any("action", event.Operation), slog.Any("resource_type", event.ResourceType), slog.String("source", event.Source.String()))
 
 					inventorySyncer, ok := s.inventorySyncers[event.ResourceType]
 					if !ok {

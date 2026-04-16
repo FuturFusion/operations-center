@@ -480,6 +480,16 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 
 	return provisioningServiceMiddleware.NewUpdateServiceWithSlog(
 		updateSvcBase,
+		provisioningServiceMiddleware.UpdateServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
+		),
 	), nil
 }
 
@@ -505,6 +515,16 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 			updateSvc,
 			channelSvc,
 			imageFlasher,
+		),
+		provisioningServiceMiddleware.TokenServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
 		),
 	)
 }
@@ -570,6 +590,16 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 
 	return provisioningServiceMiddleware.NewServerServiceWithSlog(
 		serverSvc,
+		provisioningServiceMiddleware.ServerServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
+		),
 	)
 }
 
@@ -629,6 +659,16 @@ func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.Se
 			nil,
 			terraformProvisioner,
 		),
+		provisioningServiceMiddleware.ClusterServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
+		),
 	), nil
 }
 
@@ -638,6 +678,16 @@ func (d *Daemon) setupClusterTemplateService(db dbdriver.DBTX) provisioning.Clus
 			provisioningRepoMiddleware.NewClusterTemplateRepoWithSlog(
 				provisioningSqlite.NewClusterTemplate(db),
 			),
+		),
+		provisioningServiceMiddleware.ClusterTemplateServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
 		),
 	)
 }
@@ -650,12 +700,32 @@ func (d *Daemon) setupChannelService(db dbdriver.DBTX, updateSvc provisioning.Up
 			),
 			updateSvc,
 		),
+		provisioningServiceMiddleware.ChannelServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
+		),
 	)
 }
 
 func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) system.SystemService {
 	return systemServiceMiddleware.NewSystemServiceWithSlog(
 		system.NewSystemService(d.env, serverSvc),
+		systemServiceMiddleware.SystemServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
+		),
 	)
 }
 

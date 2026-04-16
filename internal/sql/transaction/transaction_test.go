@@ -32,7 +32,7 @@ func TestRollback(t *testing.T) {
 		db: dbWithTransaction,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Get dummies from empty db, no dummies expected.
 	dummies, err := dummySvc.getAll(ctx)
@@ -57,7 +57,7 @@ func TestRollback(t *testing.T) {
 
 	// Query dummies with fresh context, expect to not get any dummies, since no
 	// data has been persisted to the DB.
-	dummies, err = dummySvc.getAll(context.Background())
+	dummies, err = dummySvc.getAll(t.Context())
 	require.NoError(t, err)
 	require.Empty(t, dummies)
 }
@@ -82,7 +82,7 @@ func TestCommit(t *testing.T) {
 		db: dbWithTransaction,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Get dummies from empty db, no dummies expected.
 	dummies, err := dummySvc.getAll(ctx)
@@ -116,7 +116,7 @@ func TestCommit(t *testing.T) {
 
 	// Query dummies with fresh context expect to get the dummy
 	// committed in the previous transaction.
-	dummies, err = dummySvc.getAll(context.Background())
+	dummies, err = dummySvc.getAll(t.Context())
 	require.NoError(t, err)
 	require.Len(t, dummies, 1)
 }
@@ -141,7 +141,7 @@ func TestTransactionInTransaction(t *testing.T) {
 		db: dbWithTransaction,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	ctx, trans := transaction.Begin(ctx)
 	defer func() {
@@ -192,7 +192,7 @@ func TestDo_commit(t *testing.T) {
 		db: dbWithTransaction,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		// Add dummy in transaction.
@@ -221,7 +221,7 @@ func TestDo_rollback(t *testing.T) {
 		db: dbWithTransaction,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		// Add dummy in transaction.

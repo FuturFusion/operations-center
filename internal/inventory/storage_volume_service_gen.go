@@ -163,27 +163,32 @@ func (s storageVolumeService) GetByUUID(ctx context.Context, id uuid.UUID) (Stor
 }
 
 func (s storageVolumeService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	storageVolume, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, storageVolume.Cluster)
+	if err != nil {
+		return err
+	}
+
+	retrievedStorageVolume, err := s.storageVolumeClient.GetStorageVolumeByName(ctx, endpoint, storageVolume.ProjectName, storageVolume.StoragePoolName, storageVolume.Name, storageVolume.Type)
+	if errors.Is(err, domain.ErrNotFound) {
+		err = s.repo.DeleteByUUID(ctx, storageVolume.UUID)
+		if err != nil {
+			return fmt.Errorf(`Failed to delete storage_volume %q from cluster %q, storage_pool %q: %w`, storageVolume.UUID.String(), storageVolume.Cluster, storageVolume.StoragePoolName, err)
+		}
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		storageVolume, err := s.repo.GetByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		endpoint, err := s.clusterSvc.GetEndpoint(ctx, storageVolume.Cluster)
-		if err != nil {
-			return err
-		}
-
-		retrievedStorageVolume, err := s.storageVolumeClient.GetStorageVolumeByName(ctx, endpoint, storageVolume.ProjectName, storageVolume.StoragePoolName, storageVolume.Name, storageVolume.Type)
-		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByUUID(ctx, storageVolume.UUID)
-			if err != nil {
-				return fmt.Errorf(`Failed to delete storage_volume %q from cluster %q, storage_pool %q: %w`, storageVolume.UUID.String(), storageVolume.Cluster, storageVolume.StoragePoolName, err)
-			}
-
-			return nil
-		}
-
 		if err != nil {
 			return err
 		}

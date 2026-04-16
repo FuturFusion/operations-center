@@ -148,27 +148,32 @@ func (s networkZoneService) GetByUUID(ctx context.Context, id uuid.UUID) (Networ
 }
 
 func (s networkZoneService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	networkZone, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, networkZone.Cluster)
+	if err != nil {
+		return err
+	}
+
+	retrievedNetworkZone, err := s.networkZoneClient.GetNetworkZoneByName(ctx, endpoint, networkZone.ProjectName, networkZone.Name)
+	if errors.Is(err, domain.ErrNotFound) {
+		err = s.repo.DeleteByUUID(ctx, networkZone.UUID)
+		if err != nil {
+			return fmt.Errorf(`Failed to delete network_zone %q from cluster %q: %w`, networkZone.UUID.String(), networkZone.Cluster, err)
+		}
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		networkZone, err := s.repo.GetByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		endpoint, err := s.clusterSvc.GetEndpoint(ctx, networkZone.Cluster)
-		if err != nil {
-			return err
-		}
-
-		retrievedNetworkZone, err := s.networkZoneClient.GetNetworkZoneByName(ctx, endpoint, networkZone.ProjectName, networkZone.Name)
-		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByUUID(ctx, networkZone.UUID)
-			if err != nil {
-				return fmt.Errorf(`Failed to delete network_zone %q from cluster %q: %w`, networkZone.UUID.String(), networkZone.Cluster, err)
-			}
-
-			return nil
-		}
-
 		if err != nil {
 			return err
 		}

@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
+	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -269,8 +270,7 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 		clusterSvcGetEndpointErr     error
 		imageClientGetImageByName    incusapi.Image
 		imageClientGetImageByNameErr error
-		repoGetByUUIDImage           inventory.Image
-		repoGetByUUIDErr             error
+		repoGetByUUIDImage           []queue.Item[inventory.Image]
 		repoUpdateByUUIDErr          error
 		repoDeleteByUUIDErr          error
 
@@ -278,11 +278,23 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 	}{
 		{
 			name: "success",
-			repoGetByUUIDImage: inventory.Image{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDImage: []queue.Item[inventory.Image]{
+				{
+					Value: inventory.Image{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
+				{
+					Value: inventory.Image{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -300,11 +312,15 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "success - image get by name - not found",
-			repoGetByUUIDImage: inventory.Image{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDImage: []queue.Item[inventory.Image]{
+				{
+					Value: inventory.Image{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -323,10 +339,21 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
 		{
 			name: "success - missing project",
-			repoGetByUUIDImage: inventory.Image{
-				UUID:    uuidgen.FromPattern(t, "1"),
-				Cluster: "one",
-				Name:    "one",
+			repoGetByUUIDImage: []queue.Item[inventory.Image]{
+				{
+					Value: inventory.Image{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
+				{
+					Value: inventory.Image{
+						UUID:    uuidgen.FromPattern(t, "1"),
+						Cluster: "one",
+						Name:    "one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -342,18 +369,26 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:             "error - image get by UUID",
-			repoGetByUUIDErr: boom.Error,
+			name: "error - image get by UUID - 1st",
+			repoGetByUUIDImage: []queue.Item[inventory.Image]{
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - cluster get by ID",
-			repoGetByUUIDImage: inventory.Image{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDImage: []queue.Item[inventory.Image]{
+				{
+					Value: inventory.Image{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -361,11 +396,15 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - image get by name",
-			repoGetByUUIDImage: inventory.Image{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDImage: []queue.Item[inventory.Image]{
+				{
+					Value: inventory.Image{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -380,11 +419,15 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - image get by name - not found - delete by uuid",
-			repoGetByUUIDImage: inventory.Image{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDImage: []queue.Item[inventory.Image]{
+				{
+					Value: inventory.Image{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -399,12 +442,49 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - image get by UUID - 2nd",
+			repoGetByUUIDImage: []queue.Item[inventory.Image]{
+				{
+					Value: inventory.Image{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
+				{
+					Err: boom.Error,
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - validate",
-			repoGetByUUIDImage: inventory.Image{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "", // invalid
-				ProjectName: "project one",
+			repoGetByUUIDImage: []queue.Item[inventory.Image]{
+				{
+					Value: inventory.Image{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "", // invalid
+						ProjectName: "project one",
+					},
+				},
+				{
+					Value: inventory.Image{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "", // invalid
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -425,11 +505,23 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 		},
 		{
 			name: "error - update by UUID",
-			repoGetByUUIDImage: inventory.Image{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "one",
-				Name:        "one",
-				ProjectName: "project one",
+			repoGetByUUIDImage: []queue.Item[inventory.Image]{
+				{
+					Value: inventory.Image{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
+				{
+					Value: inventory.Image{
+						UUID:        uuidgen.FromPattern(t, "1"),
+						Cluster:     "one",
+						Name:        "one",
+						ProjectName: "project one",
+					},
+				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -453,7 +545,7 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 			// Setup
 			repo := &repoMock.ImageRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.Image, error) {
-					return tc.repoGetByUUIDImage, tc.repoGetByUUIDErr
+					return queue.Pop(t, &tc.repoGetByUUIDImage)
 				},
 				UpdateByUUIDFunc: func(ctx context.Context, image inventory.Image) (inventory.Image, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), image.LastUpdated)
@@ -473,8 +565,6 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 
 			imageClient := &serverMock.ImageServerClientMock{
 				GetImageByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (incusapi.Image, error) {
-					require.Equal(t, tc.repoGetByUUIDImage.Name, imageName)
-					require.Equal(t, tc.repoGetByUUIDImage.ProjectName, projectName)
 					return tc.imageClientGetImageByName, tc.imageClientGetImageByNameErr
 				},
 			}
@@ -488,6 +578,8 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+
+			require.Empty(t, tc.repoGetByUUIDImage)
 		})
 	}
 }

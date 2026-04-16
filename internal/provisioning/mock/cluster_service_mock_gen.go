@@ -121,7 +121,7 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			StartLifecycleEventsMonitorFunc: func(ctx context.Context) error {
 //				panic("mock out the StartLifecycleEventsMonitor method")
 //			},
-//			UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
+//			UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster, updateServers bool) error {
 //				panic("mock out the Update method")
 //			},
 //			UpdateCertificateFunc: func(ctx context.Context, name string, certificatePEM string, keyPEM string) error {
@@ -237,7 +237,7 @@ type ClusterServiceMock struct {
 	StartLifecycleEventsMonitorFunc func(ctx context.Context) error
 
 	// UpdateFunc mocks the Update method.
-	UpdateFunc func(ctx context.Context, cluster provisioning.Cluster) error
+	UpdateFunc func(ctx context.Context, cluster provisioning.Cluster, updateServers bool) error
 
 	// UpdateCertificateFunc mocks the UpdateCertificate method.
 	UpdateCertificateFunc func(ctx context.Context, name string, certificatePEM string, keyPEM string) error
@@ -512,6 +512,8 @@ type ClusterServiceMock struct {
 			Ctx context.Context
 			// Cluster is the cluster argument value.
 			Cluster provisioning.Cluster
+			// UpdateServers is the updateServers argument value.
+			UpdateServers bool
 		}
 		// UpdateCertificate holds details about calls to the UpdateCertificate method.
 		UpdateCertificate []struct {
@@ -1798,21 +1800,23 @@ func (mock *ClusterServiceMock) StartLifecycleEventsMonitorCalls() []struct {
 }
 
 // Update calls UpdateFunc.
-func (mock *ClusterServiceMock) Update(ctx context.Context, cluster provisioning.Cluster) error {
+func (mock *ClusterServiceMock) Update(ctx context.Context, cluster provisioning.Cluster, updateServers bool) error {
 	if mock.UpdateFunc == nil {
 		panic("ClusterServiceMock.UpdateFunc: method is nil but ClusterService.Update was just called")
 	}
 	callInfo := struct {
-		Ctx     context.Context
-		Cluster provisioning.Cluster
+		Ctx           context.Context
+		Cluster       provisioning.Cluster
+		UpdateServers bool
 	}{
-		Ctx:     ctx,
-		Cluster: cluster,
+		Ctx:           ctx,
+		Cluster:       cluster,
+		UpdateServers: updateServers,
 	}
 	mock.lockUpdate.Lock()
 	mock.calls.Update = append(mock.calls.Update, callInfo)
 	mock.lockUpdate.Unlock()
-	return mock.UpdateFunc(ctx, cluster)
+	return mock.UpdateFunc(ctx, cluster, updateServers)
 }
 
 // UpdateCalls gets all the calls that were made to Update.
@@ -1820,12 +1824,14 @@ func (mock *ClusterServiceMock) Update(ctx context.Context, cluster provisioning
 //
 //	len(mockedClusterService.UpdateCalls())
 func (mock *ClusterServiceMock) UpdateCalls() []struct {
-	Ctx     context.Context
-	Cluster provisioning.Cluster
+	Ctx           context.Context
+	Cluster       provisioning.Cluster
+	UpdateServers bool
 } {
 	var calls []struct {
-		Ctx     context.Context
-		Cluster provisioning.Cluster
+		Ctx           context.Context
+		Cluster       provisioning.Cluster
+		UpdateServers bool
 	}
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update

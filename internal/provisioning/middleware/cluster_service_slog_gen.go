@@ -1134,12 +1134,13 @@ func (_d ClusterServiceWithSlog) StartLifecycleEventsMonitor(ctx context.Context
 }
 
 // Update implements provisioning.ClusterService.
-func (_d ClusterServiceWithSlog) Update(ctx context.Context, cluster provisioning.Cluster) (err error) {
+func (_d ClusterServiceWithSlog) Update(ctx context.Context, cluster provisioning.Cluster, updateServers bool) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("cluster", cluster),
+			slog.Bool("updateServers", updateServers),
 		)
 	}
 	log.DebugContext(ctx, "=> calling Update")
@@ -1164,7 +1165,7 @@ func (_d ClusterServiceWithSlog) Update(ctx context.Context, cluster provisionin
 			log.DebugContext(ctx, "<= method Update finished")
 		}
 	}()
-	return _d._base.Update(ctx, cluster)
+	return _d._base.Update(ctx, cluster, updateServers)
 }
 
 // UpdateCertificate implements provisioning.ClusterService.

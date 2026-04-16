@@ -148,27 +148,32 @@ func (s imageService) GetByUUID(ctx context.Context, id uuid.UUID) (Image, error
 }
 
 func (s imageService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	image, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, image.Cluster)
+	if err != nil {
+		return err
+	}
+
+	retrievedImage, err := s.imageClient.GetImageByName(ctx, endpoint, image.ProjectName, image.Name)
+	if errors.Is(err, domain.ErrNotFound) {
+		err = s.repo.DeleteByUUID(ctx, image.UUID)
+		if err != nil {
+			return fmt.Errorf(`Failed to delete image %q from cluster %q: %w`, image.UUID.String(), image.Cluster, err)
+		}
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		image, err := s.repo.GetByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		endpoint, err := s.clusterSvc.GetEndpoint(ctx, image.Cluster)
-		if err != nil {
-			return err
-		}
-
-		retrievedImage, err := s.imageClient.GetImageByName(ctx, endpoint, image.ProjectName, image.Name)
-		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByUUID(ctx, image.UUID)
-			if err != nil {
-				return fmt.Errorf(`Failed to delete image %q from cluster %q: %w`, image.UUID.String(), image.Cluster, err)
-			}
-
-			return nil
-		}
-
 		if err != nil {
 			return err
 		}
