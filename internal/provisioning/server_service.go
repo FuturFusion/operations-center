@@ -1026,6 +1026,7 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 			return fmt.Errorf("Failed to update server %q: %w", name, err)
 		}
 
+		// FIXME: triggers API call within a transaction!!
 		err = s.client.Poweroff(ctx, *server)
 		if err != nil {
 			return fmt.Errorf("Failed to poweroff server %q by name: %w", name, err)
@@ -1223,6 +1224,7 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 		}
 
 		// Forcefully set channel and update frequency on server before triggering update.
+		// FIXME: triggers API call within a transaction!!
 		err = s.UpdateSystemUpdate(ctx, name, incusosapi.SystemUpdate{
 			Config: incusosapi.SystemUpdateConfig{
 				AutoReboot:     false,
@@ -1235,6 +1237,7 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 		}
 
 		if updateRequest.OS.TriggerUpdate {
+			// FIXME: triggers API call within a transaction!!
 			err = s.client.UpdateOS(ctx, *server)
 			if err != nil {
 				return fmt.Errorf("Failed to update the OS of server %q by name: %w", name, err)

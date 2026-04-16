@@ -393,6 +393,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 
 		// Update Server records in the repo.
 		for _, server := range servers {
+			// FIXME: triggers API call within a transaction!!
 			err = s.serverSvc.Update(ctx, server, true, true)
 			if err != nil {
 				return err
@@ -752,6 +753,7 @@ func (s clusterService) Update(ctx context.Context, newCluster Cluster, updateSe
 
 		for _, server := range servers {
 			server.Channel = newCluster.Channel
+			// FIXME: triggers API call within a transaction!!
 			err = s.serverSvc.Update(ctx, server, true, true)
 			if err != nil {
 				return fmt.Errorf("Failed to update member %q of cluster %q: %w", server.Name, newCluster.Name, err)
