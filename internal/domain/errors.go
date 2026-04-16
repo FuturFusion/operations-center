@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"syscall"
 )
@@ -63,6 +64,13 @@ func IsRetryableError(err error) bool {
 	return errors.As(err, &retryableErr)
 }
 
+// Incus client returns connection errors with "Unable to connect to" prefix
+// see: https://github.com/lxc/incus/blob/07852cf61699581d05649eab55b02bc7aff7e68f/shared/tls/tls.go#L19
+// The original error can not be matched other than string comparison.
+var retryableIncusConnectErrors = regexp.MustCompile(`context deadline exceeded|Unable to connect to:.*\(.*(context cancelled|connection refused).*\)`)
+
+// context deadline exceeded
+
 func RetryableWrapper() func(err error) error {
 	return func(err error) error {
 		// Connection errors are retryable.
@@ -80,6 +88,10 @@ func RetryableWrapper() func(err error) error {
 
 		// Retryable incus errors.
 		if strings.Contains(err.Error(), "no available cowsql leader server found") {
+			return NewRetryableErr(err)
+		}
+
+		if retryableIncusConnectErrors.MatchString(err.Error()) {
 			return NewRetryableErr(err)
 		}
 
