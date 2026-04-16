@@ -207,13 +207,13 @@ doc-linkcheck: doc-setup
 doc-lint:
 	doc/.sphinx/.markdownlint/doc-lint.sh
 
-GO_TEST_RUN ?= 'TestE2E'
+GO_TEST_RUN ?= '^TestE2E'
 
 .PHONY: e2e-test
 e2e-test: bld
 	@echo "go test flags: $(GO_TEST_RUN) (change by running 'make e2e-test GO_TEST_RUN=TestMyTest')"
 	mkdir -p $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)
-	OPERATIONS_CENTER_E2E_TEST=1 OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR=1 OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) $(GO) test ./e2e_tests/ -v -timeout 120m -count 1 -failfast -run $(GO_TEST_RUN) | tee $$OPERATIONS_CENTER_E2E_TEST_TMP_DIR/e2e_tests_$(EXECUTION_DATETIME).log
+	OPERATIONS_CENTER_E2E_TEST=1 OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR=1 OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) $(GO) test ./e2e_tests/ -v -timeout 120m -count 1 -failfast -run "$(GO_TEST_RUN)" | tee $$OPERATIONS_CENTER_E2E_TEST_TMP_DIR/e2e_tests_$(EXECUTION_DATETIME).log
 
 .PHONY: e2e-test-cover
 e2e-test-cover: bld-cover
@@ -221,7 +221,7 @@ e2e-test-cover: bld-cover
 	@echo "go test flags: $(GO_TEST_RUN) (change by running 'make e2e-test-cover GO_TEST_RUN=TestMyTest')"
 	mkdir -p $(GOCOVERDIR)
 	OPERATIONS_CENTER_E2E_TEST=0 $(GO) test ./... -cover -coverpkg=./... -v -count 1 -args -test.gocoverdir="$(GOCOVERDIR)" | tee $$OPERATIONS_CENTER_E2E_TEST_TMP_DIR/e2e_tests_$(EXECUTION_DATETIME).log
-	OPERATIONS_CENTER_E2E_GOCOVERDIR=$(GOCOVERDIR) OPERATIONS_CENTER_E2E_TEST=1 OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) $(GO) test ./e2e_tests/ -cover -coverpkg=./... -v -timeout 120m -count 1 -run $(GO_TEST_RUN) -args -test.gocoverdir="$(GOCOVERDIR)" | tee $$OPERATIONS_CENTER_E2E_TEST_TMP_DIR/e2e_tests_$(EXECUTION_DATETIME).log
+	OPERATIONS_CENTER_E2E_GOCOVERDIR=$(GOCOVERDIR) OPERATIONS_CENTER_E2E_TEST=1 OPERATIONS_CENTER_E2E_TEST_TMP_DIR=$(OPERATIONS_CENTER_E2E_TEST_TMP_DIR) $(GO) test ./e2e_tests/ -cover -coverpkg=./... -v -timeout 120m -count 1 -run "$(GO_TEST_RUN)" -args -test.gocoverdir="$(GOCOVERDIR)" | tee $$OPERATIONS_CENTER_E2E_TEST_TMP_DIR/e2e_tests_$(EXECUTION_DATETIME).log
 	@echo ""
 	@echo "================= Coverage Report ================="
 	@$(GO) tool covdata percent -pkg $$($(GO) tool covdata pkglist -i $(GOCOVERDIR) | grep -vE '(middleware|mock|version|lifecycle)$$' | paste -sd,) -i=$(GOCOVERDIR) -o covdata-coverage.out | sed 's/%//' | sort -k3,3nr -k1,1 | column -t
@@ -229,7 +229,7 @@ e2e-test-cover: bld-cover
 
 .PHONY: e2e-test-list
 e2e-test-list:
-	$(GO) test -list 'TestE2E' ./e2e_tests/
+	$(GO) test -list '^TestE2E' ./e2e_tests/
 
 .PHONY: clean-e2e-test
 clean-e2e-test:
