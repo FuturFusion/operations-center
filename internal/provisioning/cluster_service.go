@@ -1124,11 +1124,22 @@ func (s clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNam
 
 	var errs []error
 	for _, cluster := range clusters {
-		if cluster.UpdateStatus.InProgressStatus.Error != "" {
-			return nil
-		}
-
 		err := func() error {
+			log := slog.With(slog.String("cluster", cluster.Name))
+			log.InfoContext(ctx,
+				"Cluster rolling update control loop started",
+				slog.String("in_progress_status", string(cluster.UpdateStatus.InProgressStatus.InProgress)),
+			)
+			defer log.InfoContext(ctx, "Cluster rolling update control loop end")
+
+			if cluster.UpdateStatus.InProgressStatus.Error != "" {
+				log.ErrorContext(ctx,
+					"Cluster rolling update control loop in progress status error",
+					slog.String("err", cluster.UpdateStatus.InProgressStatus.Error),
+				)
+				return nil
+			}
+
 			// Refresh all status information for all servers.
 			err := s.serverSvc.PollServers(ctx, ServerFilter{
 				Cluster: &cluster.Name,
@@ -1177,6 +1188,8 @@ func (s clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNam
 }
 
 func (s clusterService) executeRollingUpdate(ctx context.Context, cluster Cluster, servers Servers) error {
+	log := slog.With(slog.String("cluster", cluster.Name))
+
 	// Trigger update on each server, applications get updated immediately,
 	// OS is prepared for update on next reboot.
 	// Also verify, that none of the servers is still updating or has pending
@@ -1186,11 +1199,11 @@ func (s clusterService) executeRollingUpdate(ctx context.Context, cluster Cluste
 			continue
 		}
 
-		// To get a consistent debug log, print the current state before triggering the next action, since
+		// To get a consistent log, print the current state before triggering the next action, since
 		// it will likely update the state.
 		updateState := clusterUpdateState(cluster.UpdateStatus.InProgressStatus, servers)
 		if updateState != "" {
-			slog.DebugContext(ctx, "rolling update next step", slog.String("cluster_update_state", updateState))
+			log.InfoContext(ctx, "Cluster rolling update next step", slog.String("cluster_update_state", updateState))
 		}
 
 		if server.StatusDetail == api.ServerStatusDetailReadyUpdating {
@@ -1223,6 +1236,8 @@ func (s clusterService) executeRollingUpdate(ctx context.Context, cluster Cluste
 		// Update servers one by one, so we have to wait.
 		return nil
 	}
+
+	log.InfoContext(ctx, "Cluster rolling update, all servers are updated")
 
 	// All servers are updated, update the clusters update status
 	var emitLifecycleSignal bool
@@ -1264,6 +1279,8 @@ func (s clusterService) executeRollingUpdate(ctx context.Context, cluster Cluste
 }
 
 func (s clusterService) executeRollingRestartNextStep(ctx context.Context, cluster Cluster, servers Servers) error {
+	log := slog.With(slog.String("cluster", cluster.Name))
+
 	// Calculate, if we are done based on the current state of all servers and the desired target state and
 	// calculate next action if we are not done yet.
 	var err error
@@ -1368,11 +1385,11 @@ func (s clusterService) executeRollingRestartNextStep(ctx context.Context, clust
 		}
 	}
 
-	// To get a consistent debug log, print the current state before triggering the next action, since
+	// To get a consistent log, print the current state before triggering the next action, since
 	// it will likely update the state.
 	updateState := clusterUpdateState(cluster.UpdateStatus.InProgressStatus, servers)
 	if updateState != "" {
-		slog.DebugContext(ctx, "rolling update next step", slog.String("cluster_update_state", updateState))
+		log.InfoContext(ctx, "Cluster rolling update next step", slog.String("cluster_update_state", updateState))
 	}
 
 	done := nextAction == nil
@@ -2307,7 +2324,7 @@ func (s clusterService) startLifecycleEventHandler(ctx context.Context, clusterN
 			for {
 				select {
 				case event := <-events:
-					slog.InfoContext(ctx, "lifecycle event", slog.String("event", event.LifecycleEventAction), slog.String("cluster", clusterName), slog.Any("action", event.Operation), slog.Any("resource_type", event.ResourceType), slog.String("source", event.Source.String()))
+					slog.InfoContext(ctx, "Lifecycle event", slog.String("event", event.LifecycleEventAction), slog.String("cluster", clusterName), slog.Any("action", event.Operation), slog.Any("resource_type", event.ResourceType), slog.String("source", event.Source.String()))
 
 					inventorySyncer, ok := s.inventorySyncers[event.ResourceType]
 					if !ok {

@@ -895,6 +895,8 @@ func (s *serverService) PollServers(ctx context.Context, serverFilter ServerFilt
 }
 
 func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool) error {
+	slog.InfoContext(ctx, "Evacuation initiated", slog.String("server", name), slog.Bool("force", force))
+
 	reverter := revert.New()
 	defer reverter.Fail()
 
@@ -969,6 +971,8 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 }
 
 func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, force bool) error {
+	slog.InfoContext(ctx, "Poweroff initiated", slog.String("server", name), slog.Bool("force", force))
+
 	var server *Server
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
@@ -1008,6 +1012,8 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 }
 
 func (s *serverService) RebootSystemByName(ctx context.Context, name string, force bool) error {
+	slog.InfoContext(ctx, "Reboot initiated", slog.String("server", name), slog.Bool("force", force))
+
 	var server *Server
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
@@ -1047,6 +1053,8 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 }
 
 func (s *serverService) RestoreSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) error {
+	slog.InfoContext(ctx, "Restore initiated", slog.String("server", name), slog.Bool("force", force))
+
 	reverter := revert.New()
 	defer reverter.Fail()
 
@@ -1122,6 +1130,8 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 }
 
 func (s *serverService) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error {
+	slog.InfoContext(ctx, "System update initiated", slog.String("server", name), slog.Bool("force", force))
+
 	var server *Server
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
