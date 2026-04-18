@@ -119,6 +119,19 @@ export const updateClusterRolling = (
   });
 };
 
+export const cancelUpdateClusterRolling = (
+  name: string,
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/clusters/${name}/:cancel-update`, {
+      method: "POST",
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
 export const resyncClusterInventory = (
   name: string,
 ): Promise<APIResponse<null>> => {

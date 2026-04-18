@@ -10,7 +10,9 @@ import ClusterBulkActionModal from "components/ClusterBulkActionModal";
 import ClusterUpdateCertModal from "components/ClusterUpdateCertModal";
 import { useNotification } from "context/notificationContext";
 import { Cluster } from "types/cluster";
+import { ClusterUpdateInProgress } from "util/cluster";
 import { downloadFile } from "util/util";
+import ClusterCancelUpdateBtn from "components/ClusterCancelUpdateBtn";
 import ClusterUpdateBtn from "components/ClusterUpdateBtn";
 
 interface Props {
@@ -72,8 +74,14 @@ const ClusterActions: FC<Props> = ({ cluster }) => {
         }}
       />
       {(cluster.update_status?.needs_update?.length > 0 ||
-        cluster.update_status?.needs_reboot?.length > 0) && (
-        <ClusterUpdateBtn cluster={cluster} recommended={true} />
+        cluster.update_status?.needs_reboot?.length > 0) &&
+        cluster.update_status?.in_progress_status?.in_progress ==
+          ClusterUpdateInProgress.Inactive && (
+          <ClusterUpdateBtn cluster={cluster} recommended={true} />
+        )}
+      {cluster.update_status?.in_progress_status?.in_progress !=
+        ClusterUpdateInProgress.Inactive && (
+        <ClusterCancelUpdateBtn cluster={cluster} />
       )}
       <PiCertificate
         size={25}
