@@ -61,6 +61,31 @@ var updates = map[int]update{
 	31: updateFromV30,
 	32: updateFromV31,
 	33: updateFromV32,
+	34: updateFromV33,
+}
+
+func updateFromV33(ctx context.Context, tx *sql.Tx) error {
+	// v33..v34 add warnings table.
+	stmt := `
+CREATE TABLE warnings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  uuid TEXT NOT NULL,
+  type TEXT NOT NULL,
+  scope TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity TEXT NOT NULL,
+  status TEXT NOT NULL,
+  messages TEXT NOT NULL,
+  count INTEGER NOT NULL,
+  first_occurrence DATETIME NOT NULL,
+  last_occurrence DATETIME NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (uuid),
+  UNIQUE (type, scope, entity_type, entity)
+);
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV32(ctx context.Context, tx *sql.Tx) error {
