@@ -244,6 +244,12 @@ func ContextWithAttr(parent context.Context, attr slog.Attr) context.Context {
 	return context.WithValue(parent, contextHandlerKey{}, attrs)
 }
 
+// DetachedContext returns a detached context where logging related context
+// values are taken over.
+func DetachedContext(ctx context.Context) context.Context {
+	return context.WithValue(context.Background(), contextHandlerKey{}, ctx.Value(contextHandlerKey{}))
+}
+
 // Err is a helper function to ensure errors are always logged with the key
 // "err". Additionally this becomes the single point in code, where we could
 // tweak how errors are logged, e.g. to handle application specific error types
