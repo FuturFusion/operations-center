@@ -267,7 +267,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 
 			return nil
 		},
-		EvacuateFunc: func(ctx context.Context, server provisioning.Server, callback func(err error)) error {
+		EvacuateFunc: func(ctx context.Context, server provisioning.Server, callback func(ctx context.Context, err error)) error {
 			go func() {
 				time.Sleep(asyncActionsDelay)
 
@@ -290,7 +290,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 					},
 				}
 
-				callback(nil)
+				callback(t.Context(), nil)
 			}()
 
 			serverVersionDataMu.Lock()
@@ -363,7 +363,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 
 			return nil
 		},
-		RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(err error)) error {
+		RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) error {
 			go func() {
 				time.Sleep(asyncActionsDelay)
 
@@ -386,7 +386,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 					},
 				}
 
-				callback(nil)
+				callback(t.Context(), nil)
 			}()
 
 			serverVersionDataMu.Lock()
@@ -796,7 +796,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 
 			return nil
 		},
-		EvacuateFunc: func(ctx context.Context, server provisioning.Server, callback func(err error)) error {
+		EvacuateFunc: func(ctx context.Context, server provisioning.Server, callback func(ctx context.Context, err error)) error {
 			go func() {
 				time.Sleep(asyncActionsDelay)
 
@@ -819,7 +819,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 					},
 				}
 
-				callback(nil)
+				callback(t.Context(), nil)
 			}()
 
 			serverVersionDataMu.Lock()
@@ -892,7 +892,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 
 			return nil
 		},
-		RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(err error)) error {
+		RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) error {
 			go func() {
 				time.Sleep(asyncActionsDelay)
 
@@ -915,7 +915,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 					},
 				}
 
-				callback(nil)
+				callback(t.Context(), nil)
 			}()
 
 			serverVersionDataMu.Lock()
