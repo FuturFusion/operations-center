@@ -35,3 +35,4 @@ packages:
   github.com/FuturFusion/operations-center/internal/provisioning:
   github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet:
   github.com/FuturFusion/operations-center/internal/system:
+  github.com/FuturFusion/operations-center/internal/warning:
