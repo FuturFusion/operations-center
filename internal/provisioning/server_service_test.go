@@ -1309,7 +1309,7 @@ one
 			},
 
 			assertErr: boom.ErrorIs,
-			assertLog: log.Contains("Failed restore previous server state after failed to update system update config"),
+			assertLog: log.Contains("Failed to restore previous server state after failed to update system update config"),
 		},
 	}
 
@@ -1361,7 +1361,6 @@ one
 			tc.assertErr(t, err)
 			tc.assertLog(t, logBuf)
 
-			// require.Empty(t, tc.repoGetByName)
 			require.Empty(t, tc.repoUpdateErrs)
 		})
 	}
@@ -4963,7 +4962,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			},
 
 			assertErr: boom.ErrorIs,
-			assertLog: log.Contains("Failed restore previous server state after failed to trigger evacuation server=one err=boom!"),
+			assertLog: log.Contains("Failed to restore previous server state after failed to trigger evacuation server=one err=boom!"),
 		},
 	}
 
@@ -5026,11 +5025,12 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 		argForce                                        bool
 		repoGetByName                                   provisioning.Server
 		repoGetByNameErr                                error
-		repoUpdateErr                                   error
+		repoUpdateErrs                                  queue.Errs
 		clientPoweroffErr                               error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
 
 		assertErr require.ErrorAssertionFunc
+		assertLog log.MatcherFunc
 	}{
 		{
 			name: "success - lifecycle operation permitted",
@@ -5045,6 +5045,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name:     "success - force",
@@ -5059,12 +5060,14 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name:             "error - repo.GetByName",
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - cluster lifecycle operation not permitted",
@@ -5082,6 +5085,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, "Lifecycle operation for server")
 			},
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - repo.Update",
@@ -5094,9 +5098,12 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
-			repoUpdateErr: boom.Error,
+			repoUpdateErrs: queue.Errs{
+				boom.Error,
+			},
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - client.Poweroff",
@@ -5112,20 +5119,43 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 			clientPoweroffErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
+		},
+		{
+			name: "error - client.Poweroff and reverter error",
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+			repoUpdateErrs: queue.Errs{
+				nil,
+				boom.Error,
+			},
+			clientPoweroffErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Match("Failed to restore previous server state after failed to trigger poweroff server=one err=boom!"),
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, true, true)
+			require.NoError(t, err)
+
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return &tc.repoGetByName, tc.repoGetByNameErr
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
-					require.Equal(t, api.ServerStatusOffline, server.Status)
-					require.Equal(t, api.ServerStatusDetailOfflineShutdown, server.StatusDetail)
-					return tc.repoUpdateErr
+					return tc.repoUpdateErrs.PopOrNil(t)
 				},
 			}
 
@@ -5150,10 +5180,13 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 			serverSvc := provisioning.NewServerService(repo, client, nil, clusterSvc, nil, updateSvc, tls.Certificate{})
 
 			// Run test
-			err := serverSvc.PoweroffSystemByName(t.Context(), "one", tc.argForce)
+			err = serverSvc.PoweroffSystemByName(t.Context(), "one", tc.argForce)
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+
+			require.Empty(t, tc.repoUpdateErrs)
 		})
 	}
 }
@@ -5300,7 +5333,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 			clientRebootErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
-			assertLog: log.Match("Failed restore previous server state after failed to trigger reboot server=one err=boom!"),
+			assertLog: log.Match("Failed to restore previous server state after failed to trigger reboot server=one err=boom!"),
 		},
 	}
 
@@ -5652,7 +5685,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			},
 
 			assertErr: boom.ErrorIs,
-			assertLog: log.Match("Failed restore previous server state after failed to trigger restore server=one err=boom!"),
+			assertLog: log.Match("Failed to restore previous server state after failed to trigger restore server=one err=boom!"),
 		},
 	}
 
@@ -5715,12 +5748,13 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 		argForce                                        bool
 		repoGetByName                                   provisioning.Server
 		repoGetByNameErr                                error
-		repoUpdateErr                                   error
+		repoUpdateErrs                                  queue.Errs
 		clientUpdateOSErr                               error
 		channelSvcGetByNameErr                          error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
 
 		assertErr require.ErrorAssertionFunc
+		assertLog log.MatcherFunc
 	}{
 		{
 			name: "success - no update triggered",
@@ -5735,6 +5769,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name: "success - trigger OS update - lifecycle operation permitted",
@@ -5755,6 +5790,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name:     "success - trigger OS update - force",
@@ -5775,12 +5811,14 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name:             "error - repo.GetByName",
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - server not ready",
@@ -5796,6 +5834,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 			},
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - cluster lifecycle operation not permitted",
@@ -5813,6 +5852,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, "Lifecycle operation for server")
 			},
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - repo.Update",
@@ -5825,9 +5865,12 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
-			repoUpdateErr: boom.Error,
+			repoUpdateErrs: queue.Errs{
+				boom.Error,
+			},
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - UpdateSystemUpdate - channelSvc.GetByName",
@@ -5849,6 +5892,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			channelSvcGetByNameErr:                          boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - client.UpdateOS",
@@ -5870,18 +5914,49 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			clientUpdateOSErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
+		},
+		{
+			name: "error - client.UpdateOS and reverter error",
+			argUpdateRequest: api.ServerUpdatePost{
+				OS: api.ServerUpdateApplication{
+					Name:          "os",
+					TriggerUpdate: true,
+				},
+			},
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+			repoUpdateErrs: queue.Errs{
+				nil,
+				boom.Error,
+			},
+			clientUpdateOSErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Match("Failed to restore previous server state after failed to update the system server=one err=.*boom!"),
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, true, true)
+			require.NoError(t, err)
+
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return &tc.repoGetByName, tc.repoGetByNameErr
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
-					return tc.repoUpdateErr
+					return tc.repoUpdateErrs.PopOrNil(t)
 				},
 			}
 
@@ -5918,10 +5993,13 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			serverSvc := provisioning.NewServerService(repo, client, nil, clusterSvc, channelSvc, updateSvc, tls.Certificate{})
 
 			// Run test
-			err := serverSvc.UpdateSystemByName(t.Context(), "one", tc.argUpdateRequest, tc.argForce)
+			err = serverSvc.UpdateSystemByName(t.Context(), "one", tc.argUpdateRequest, tc.argForce)
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+
+			require.Empty(t, tc.repoUpdateErrs)
 		})
 	}
 }

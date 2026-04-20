@@ -441,7 +441,7 @@ func (s *serverService) Update(ctx context.Context, server Server, force bool, u
 	reverter.Add(func() {
 		err := s.repo.Update(ctx, *previousServer)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed restore previous server state after failed to update system update config", slog.String("server", server.Name), logger.Err(err))
+			slog.ErrorContext(ctx, "Failed to restore previous server state after failed to update system update config", slog.String("server", server.Name), logger.Err(err))
 		}
 	})
 
@@ -994,7 +994,7 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 	reverter.Add(func() {
 		err := s.repo.Update(ctx, previousServer)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed restore previous server state after failed to trigger evacuation", slog.String("server", name), logger.Err(err))
+			slog.ErrorContext(ctx, "Failed to restore previous server state after failed to trigger evacuation", slog.String("server", name), logger.Err(err))
 		}
 	})
 
@@ -1014,7 +1014,7 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 	slog.InfoContext(ctx, "Poweroff initiated", slog.String("server", name), slog.Bool("force", force))
 
 	var server *Server
-
+	var previousServer Server
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
 
@@ -1027,6 +1027,8 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
 
+		previousServer = server.Clone()
+
 		server.Status = api.ServerStatusOffline
 		server.StatusDetail = api.ServerStatusDetailOfflineShutdown
 
@@ -1035,17 +1037,28 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 			return fmt.Errorf("Failed to update server %q: %w", name, err)
 		}
 
-		// FIXME: triggers API call within a transaction!!
-		err = s.client.Poweroff(ctx, *server)
-		if err != nil {
-			return fmt.Errorf("Failed to poweroff server %q by name: %w", name, err)
-		}
-
 		return nil
 	})
 	if err != nil {
 		return err
 	}
+
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	reverter.Add(func() {
+		err := s.repo.Update(ctx, previousServer)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to restore previous server state after failed to trigger poweroff", slog.String("server", name), logger.Err(err))
+		}
+	})
+
+	err = s.client.Poweroff(ctx, *server)
+	if err != nil {
+		return fmt.Errorf("Failed to poweroff server %q by name: %w", name, err)
+	}
+
+	reverter.Success()
 
 	server.signalLifecycleEvent()
 
@@ -1101,7 +1114,7 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 	reverter.Add(func() {
 		err := s.repo.Update(ctx, previousServer)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed restore previous server state after failed to trigger reboot", slog.String("server", name), logger.Err(err))
+			slog.ErrorContext(ctx, "Failed to restore previous server state after failed to trigger reboot", slog.String("server", name), logger.Err(err))
 		}
 	})
 
@@ -1197,7 +1210,7 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 	reverter.Add(func() {
 		err := s.repo.Update(ctx, previousServer)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed restore previous server state after failed to trigger restore", slog.String("server", name), logger.Err(err))
+			slog.ErrorContext(ctx, "Failed to restore previous server state after failed to trigger restore", slog.String("server", name), logger.Err(err))
 		}
 	})
 
@@ -1216,7 +1229,11 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 func (s *serverService) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error {
 	slog.InfoContext(ctx, "System update initiated", slog.String("server", name), slog.Bool("force", force))
 
+	reverter := revert.New()
+	defer reverter.Fail()
+
 	var server *Server
+	var previousServer Server
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -1234,6 +1251,8 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
 
+		previousServer = server.Clone()
+
 		server.StatusDetail = api.ServerStatusDetailReadyUpdating
 
 		err = s.Update(ctx, *server, false, false)
@@ -1241,36 +1260,43 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 			return fmt.Errorf("Failed to update server state to updating for %q: %w", server.Name, err)
 		}
 
-		// Forcefully set channel and update frequency on server before triggering update.
-		// FIXME: triggers API call within a transaction!!
-		err = s.UpdateSystemUpdate(ctx, name, incusosapi.SystemUpdate{
-			Config: incusosapi.SystemUpdateConfig{
-				AutoReboot:     false,
-				Channel:        server.Channel,
-				CheckFrequency: "never",
-			},
-		})
-		if err != nil {
-			return fmt.Errorf("Failed to enforce update channel for server %q: %w", server.Name, err)
-		}
-
-		if updateRequest.OS.TriggerUpdate {
-			// FIXME: triggers API call within a transaction!!
-			err = s.client.UpdateOS(ctx, *server)
-			if err != nil {
-				return fmt.Errorf("Failed to update the OS of server %q by name: %w", name, err)
-			}
-		}
-
-		// FIXME: iterate over the applications and trigger the update for the applications
-		// as well, if the TriggerUpdate flag is set to true for the particular application.
-		// https://github.com/FuturFusion/operations-center/issues/616
-
 		return nil
 	})
 	if err != nil {
 		return err
 	}
+
+	reverter.Add(func() {
+		err := s.Update(ctx, previousServer, false, false)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to restore previous server state after failed to update the system", slog.String("server", name), logger.Err(err))
+		}
+	})
+
+	// Forcefully set channel and update frequency on server before triggering update.
+	err = s.UpdateSystemUpdate(ctx, name, incusosapi.SystemUpdate{
+		Config: incusosapi.SystemUpdateConfig{
+			AutoReboot:     false,
+			Channel:        server.Channel,
+			CheckFrequency: "never",
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to enforce update channel for server %q: %w", server.Name, err)
+	}
+
+	if updateRequest.OS.TriggerUpdate {
+		err = s.client.UpdateOS(ctx, *server)
+		if err != nil {
+			return fmt.Errorf("Failed to update the OS of server %q by name: %w", name, err)
+		}
+	}
+
+	// FIXME: iterate over the applications and trigger the update for the applications
+	// as well, if the TriggerUpdate flag is set to true for the particular application.
+	// https://github.com/FuturFusion/operations-center/issues/616
+
+	reverter.Success()
 
 	server.signalLifecycleEvent()
 

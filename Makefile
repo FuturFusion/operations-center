@@ -207,7 +207,7 @@ doc-linkcheck: doc-setup
 doc-lint:
 	doc/.sphinx/.markdownlint/doc-lint.sh
 
-GO_TEST_RUN ?= '^TestE2E'
+GO_TEST_RUN ?= "^TestE2E"
 
 .PHONY: e2e-test
 e2e-test: bld

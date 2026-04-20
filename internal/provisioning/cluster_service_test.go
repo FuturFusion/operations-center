@@ -3857,17 +3857,25 @@ func TestClusterService_Update(t *testing.T) {
 		name                         string
 		argUpdateServers             bool
 		cluster                      provisioning.Cluster
-		repoUpdateErr                error
+		repoGetByName                *provisioning.Cluster
+		repoGetByNameErr             error
+		repoUpdateErrs               queue.Errs
 		serverSvcGetAllWithFilter    []provisioning.Server
 		serverSvcGetAllWithFilterErr error
-		serverSvcUpdateErr           error
+		serverSvcUpdateErrs          queue.Errs
 
 		assertErr require.ErrorAssertionFunc
+		assertLog log.MatcherFunc
 	}{
 		{
 			name:             "success",
 			argUpdateServers: true,
 			cluster: provisioning.Cluster{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Channel:       "stable",
+			},
+			repoGetByName: &provisioning.Cluster{
 				Name:          "one",
 				ConnectionURL: "http://one/",
 				Channel:       "stable",
@@ -3882,6 +3890,7 @@ func TestClusterService_Update(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name:             "success - without servers update",
@@ -3893,6 +3902,7 @@ func TestClusterService_Update(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - validation",
@@ -3906,6 +3916,20 @@ func TestClusterService_Update(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+			assertLog: log.Noop,
+		},
+		{
+			name: "error - repo.GetByName",
+			cluster: provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server3"},
+				ConnectionURL: "http://one/",
+				Channel:       "stable",
+			},
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - repo.Update",
@@ -3915,9 +3939,12 @@ func TestClusterService_Update(t *testing.T) {
 				ConnectionURL: "http://one/",
 				Channel:       "stable",
 			},
-			repoUpdateErr: boom.Error,
+			repoUpdateErrs: queue.Errs{
+				boom.Error,
+			},
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name:             "error - serverSvc.GetAllNamesWithFilter",
@@ -3931,13 +3958,19 @@ func TestClusterService_Update(t *testing.T) {
 			serverSvcGetAllWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
-			name:             "error - serverSvc.GetAllNamesWithFilter",
+			name:             "error - serverSvc.Update",
 			argUpdateServers: true,
 			cluster: provisioning.Cluster{
 				Name:          "one",
 				ServerNames:   []string{"server1", "server3"},
+				ConnectionURL: "http://one/",
+				Channel:       "stable",
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:          "one",
 				ConnectionURL: "http://one/",
 				Channel:       "stable",
 			},
@@ -3949,18 +3982,67 @@ func TestClusterService_Update(t *testing.T) {
 					Name: "two",
 				},
 			},
-			serverSvcUpdateErr: boom.Error,
+			serverSvcUpdateErrs: queue.Errs{
+				boom.Error,
+			},
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
+		},
+		{
+			name:             "error - serverSvc.Update - 2nd update - reverter errors",
+			argUpdateServers: true,
+			cluster: provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server3"},
+				ConnectionURL: "http://one/",
+				Channel:       "stable",
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Channel:       "stable",
+			},
+			serverSvcGetAllWithFilter: []provisioning.Server{
+				{
+					Name: "one",
+				},
+				{
+					Name: "two",
+				},
+			},
+			repoUpdateErrs: queue.Errs{
+				nil,
+				boom.Error,
+			},
+			serverSvcUpdateErrs: queue.Errs{
+				nil,
+				boom.Error,
+				boom.Error,
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: func(t *testing.T, logBuf *bytes.Buffer) {
+				t.Helper()
+				log.Contains("Failed to restore previous cluster state after failed to update servers of the cluster cluster=one err=boom!")(t, logBuf)
+				log.Contains("Failed to restore previous server state after failed to update member server of cluster cluster=one server=one err=boom!")(t, logBuf)
+			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, true, true)
+			require.NoError(t, err)
+
 			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
 				UpdateFunc: func(ctx context.Context, in provisioning.Cluster) error {
-					return tc.repoUpdateErr
+					return tc.repoUpdateErrs.PopOrNil(t)
 				},
 			}
 
@@ -3969,17 +4051,21 @@ func TestClusterService_Update(t *testing.T) {
 					return tc.serverSvcGetAllWithFilter, tc.serverSvcGetAllWithFilterErr
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server, force, updateSystem bool) error {
-					return tc.serverSvcUpdateErr
+					return tc.serverSvcUpdateErrs.PopOrNil(t)
 				},
 			}
 
 			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
 
 			// Run test
-			err := clusterSvc.Update(context.Background(), tc.cluster, tc.argUpdateServers)
+			err = clusterSvc.Update(context.Background(), tc.cluster, tc.argUpdateServers)
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+
+			require.Empty(t, tc.repoUpdateErrs)
+			require.Empty(t, tc.serverSvcUpdateErrs)
 		})
 	}
 }
