@@ -391,19 +391,17 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 			return fmt.Errorf("Failed to update cluster record in the repository: %w", err)
 		}
 
-		// Update Server records in the repo.
-		for _, server := range servers {
-			// FIXME: triggers API call within a transaction!!
-			err = s.serverSvc.Update(ctx, server, true, true)
-			if err != nil {
-				return err
-			}
-		}
-
 		return nil
 	})
 	if err != nil {
 		return newCluster, err
+	}
+
+	for _, server := range servers {
+		err = s.serverSvc.Update(ctx, server, true, true)
+		if err != nil {
+			return newCluster, err
+		}
 	}
 
 	// Refresh OS Data, required for the detection of the network interface for
@@ -733,7 +731,15 @@ func (s clusterService) Update(ctx context.Context, newCluster Cluster, updateSe
 		return err
 	}
 
+	var previousCluster *Cluster
+	var servers Servers
+
 	err = transaction.Do(ctx, func(ctx context.Context) error {
+		previousCluster, err = s.repo.GetByName(ctx, newCluster.Name)
+		if err != nil {
+			return err
+		}
+
 		err = s.repo.Update(ctx, newCluster)
 		if err != nil {
 			return err
@@ -744,20 +750,11 @@ func (s clusterService) Update(ctx context.Context, newCluster Cluster, updateSe
 		}
 
 		// Get servers of cluster and update "channel" to same value as cluster.
-		servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+		servers, err = s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
 			Cluster: &newCluster.Name,
 		})
 		if err != nil {
 			return err
-		}
-
-		for _, server := range servers {
-			server.Channel = newCluster.Channel
-			// FIXME: triggers API call within a transaction!!
-			err = s.serverSvc.Update(ctx, server, true, true)
-			if err != nil {
-				return fmt.Errorf("Failed to update member %q of cluster %q: %w", server.Name, newCluster.Name, err)
-			}
 		}
 
 		return nil
@@ -765,6 +762,35 @@ func (s clusterService) Update(ctx context.Context, newCluster Cluster, updateSe
 	if err != nil {
 		return err
 	}
+
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	reverter.Add(func() {
+		err = s.repo.Update(ctx, *previousCluster)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to restore previous cluster state after failed to update servers of the cluster", slog.String("cluster", newCluster.Name), logger.Err(err))
+		}
+	})
+
+	for _, server := range servers {
+		previousChannel := server.Channel
+		server.Channel = newCluster.Channel
+		err = s.serverSvc.Update(ctx, server, true, true)
+		if err != nil {
+			return fmt.Errorf("Failed to update member %q of cluster %q: %w", server.Name, newCluster.Name, err)
+		}
+
+		reverter.Add(func() {
+			server.Channel = previousChannel
+			err = s.serverSvc.Update(ctx, server, true, false)
+			if err != nil {
+				slog.WarnContext(ctx, "Failed to restore previous server state after failed to update member server of cluster", slog.String("cluster", newCluster.Name), slog.String("server", server.Name), logger.Err(err))
+			}
+		})
+	}
+
+	reverter.Success()
 
 	return nil
 }
