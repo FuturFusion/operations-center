@@ -175,9 +175,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 		go func() {
 			// Use detached context to decouple async call from original request.
-			// For logging, we keep the original context, such that the original
-			// request ID is logged.
-			_, err := d.systemSvc.TriggerCertificateRenew(context.Background(), true)
+			ctx := logger.DetachedContext(ctx)
+			_, err := d.systemSvc.TriggerCertificateRenew(ctx, true)
 			if err != nil {
 				slog.ErrorContext(ctx, "Failed to renew ACME server certificate", logger.Err(err))
 			}
