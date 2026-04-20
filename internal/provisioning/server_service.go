@@ -1229,7 +1229,11 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 func (s *serverService) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error {
 	slog.InfoContext(ctx, "System update initiated", slog.String("server", name), slog.Bool("force", force))
 
+	reverter := revert.New()
+	defer reverter.Fail()
+
 	var server *Server
+	var previousServer Server
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -1247,6 +1251,8 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
 
+		previousServer = server.Clone()
+
 		server.StatusDetail = api.ServerStatusDetailReadyUpdating
 
 		err = s.Update(ctx, *server, false, false)
@@ -1254,36 +1260,43 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 			return fmt.Errorf("Failed to update server state to updating for %q: %w", server.Name, err)
 		}
 
-		// Forcefully set channel and update frequency on server before triggering update.
-		// FIXME: triggers API call within a transaction!!
-		err = s.UpdateSystemUpdate(ctx, name, incusosapi.SystemUpdate{
-			Config: incusosapi.SystemUpdateConfig{
-				AutoReboot:     false,
-				Channel:        server.Channel,
-				CheckFrequency: "never",
-			},
-		})
-		if err != nil {
-			return fmt.Errorf("Failed to enforce update channel for server %q: %w", server.Name, err)
-		}
-
-		if updateRequest.OS.TriggerUpdate {
-			// FIXME: triggers API call within a transaction!!
-			err = s.client.UpdateOS(ctx, *server)
-			if err != nil {
-				return fmt.Errorf("Failed to update the OS of server %q by name: %w", name, err)
-			}
-		}
-
-		// FIXME: iterate over the applications and trigger the update for the applications
-		// as well, if the TriggerUpdate flag is set to true for the particular application.
-		// https://github.com/FuturFusion/operations-center/issues/616
-
 		return nil
 	})
 	if err != nil {
 		return err
 	}
+
+	reverter.Add(func() {
+		err := s.Update(ctx, previousServer, false, false)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed restore previous server state after failed to update the system", slog.String("server", name), logger.Err(err))
+		}
+	})
+
+	// Forcefully set channel and update frequency on server before triggering update.
+	err = s.UpdateSystemUpdate(ctx, name, incusosapi.SystemUpdate{
+		Config: incusosapi.SystemUpdateConfig{
+			AutoReboot:     false,
+			Channel:        server.Channel,
+			CheckFrequency: "never",
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to enforce update channel for server %q: %w", server.Name, err)
+	}
+
+	if updateRequest.OS.TriggerUpdate {
+		err = s.client.UpdateOS(ctx, *server)
+		if err != nil {
+			return fmt.Errorf("Failed to update the OS of server %q by name: %w", name, err)
+		}
+	}
+
+	// FIXME: iterate over the applications and trigger the update for the applications
+	// as well, if the TriggerUpdate flag is set to true for the particular application.
+	// https://github.com/FuturFusion/operations-center/issues/616
+
+	reverter.Success()
 
 	server.signalLifecycleEvent()
 

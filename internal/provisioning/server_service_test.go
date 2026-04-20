@@ -5742,12 +5742,13 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 		argForce                                        bool
 		repoGetByName                                   provisioning.Server
 		repoGetByNameErr                                error
-		repoUpdateErr                                   error
+		repoUpdateErrs                                  queue.Errs
 		clientUpdateOSErr                               error
 		channelSvcGetByNameErr                          error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
 
 		assertErr require.ErrorAssertionFunc
+		assertLog log.MatcherFunc
 	}{
 		{
 			name: "success - no update triggered",
@@ -5762,6 +5763,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name: "success - trigger OS update - lifecycle operation permitted",
@@ -5782,6 +5784,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name:     "success - trigger OS update - force",
@@ -5802,12 +5805,14 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name:             "error - repo.GetByName",
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - server not ready",
@@ -5823,6 +5828,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 			},
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - cluster lifecycle operation not permitted",
@@ -5840,6 +5846,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, "Lifecycle operation for server")
 			},
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - repo.Update",
@@ -5852,9 +5859,12 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
-			repoUpdateErr: boom.Error,
+			repoUpdateErrs: queue.Errs{
+				boom.Error,
+			},
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - UpdateSystemUpdate - channelSvc.GetByName",
@@ -5876,6 +5886,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			channelSvcGetByNameErr:                          boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - client.UpdateOS",
@@ -5897,6 +5908,33 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			clientUpdateOSErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
+		},
+		{
+			name: "error - client.UpdateOS and reverter error",
+			argUpdateRequest: api.ServerUpdatePost{
+				OS: api.ServerUpdateApplication{
+					Name:          "os",
+					TriggerUpdate: true,
+				},
+			},
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+			repoUpdateErrs: queue.Errs{
+				nil,
+				boom.Error,
+			},
+			clientUpdateOSErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Match("Failed restore previous server state after failed to update the system server=one err=boom!"),
 		},
 	}
 
@@ -5908,7 +5946,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 					return &tc.repoGetByName, tc.repoGetByNameErr
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
-					return tc.repoUpdateErr
+					return tc.repoUpdateErrs.PopOrNil(t)
 				},
 			}
 
