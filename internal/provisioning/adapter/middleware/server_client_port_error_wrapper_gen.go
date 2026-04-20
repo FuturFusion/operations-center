@@ -37,7 +37,7 @@ func (_d ServerClientPortWithErrorWrapper) AddApplication(ctx context.Context, s
 }
 
 // Evacuate implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithErrorWrapper) Evacuate(ctx context.Context, server provisioning.Server, callback func(err error)) (err error) {
+func (_d ServerClientPortWithErrorWrapper) Evacuate(ctx context.Context, server provisioning.Server, callback func(ctx context.Context, err error)) (err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)
@@ -177,7 +177,7 @@ func (_d ServerClientPortWithErrorWrapper) Reboot(ctx context.Context, server pr
 }
 
 // Restore implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithErrorWrapper) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(err error)) (err error) {
+func (_d ServerClientPortWithErrorWrapper) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) (err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)

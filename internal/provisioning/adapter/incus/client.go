@@ -454,7 +454,7 @@ func (c client) UpdateUpdateConfig(ctx context.Context, server provisioning.Serv
 	return nil
 }
 
-func (c client) Evacuate(ctx context.Context, server provisioning.Server, callback func(err error)) error {
+func (c client) Evacuate(ctx context.Context, server provisioning.Server, callback func(ctx context.Context, err error)) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {
 		return err
@@ -469,7 +469,10 @@ func (c client) Evacuate(ctx context.Context, server provisioning.Server, callba
 	}
 
 	go func() {
-		callback(op.Wait())
+		// Use detached context for async background operation.
+		ctx := logger.DetachedContext(ctx)
+
+		callback(ctx, op.Wait())
 	}()
 
 	return nil
@@ -503,7 +506,7 @@ func (c client) Reboot(ctx context.Context, server provisioning.Server) error {
 	return nil
 }
 
-func (c client) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(err error)) error {
+func (c client) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {
 		return err
@@ -523,7 +526,10 @@ func (c client) Restore(ctx context.Context, server provisioning.Server, restore
 	}
 
 	go func() {
-		callback(op.Wait())
+		// Use detached context for async background operation.
+		ctx := logger.DetachedContext(ctx)
+
+		callback(ctx, op.Wait())
 	}()
 
 	return nil

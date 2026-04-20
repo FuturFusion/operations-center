@@ -76,7 +76,7 @@ func (_d ServerClientPortWithSlog) AddApplication(ctx context.Context, server pr
 }
 
 // Evacuate implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) Evacuate(ctx context.Context, server provisioning.Server, callback func(err error)) (err error) {
+func (_d ServerClientPortWithSlog) Evacuate(ctx context.Context, server provisioning.Server, callback func(ctx context.Context, err error)) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -563,7 +563,7 @@ func (_d ServerClientPortWithSlog) Reboot(ctx context.Context, server provisioni
 }
 
 // Restore implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(err error)) (err error) {
+func (_d ServerClientPortWithSlog) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
