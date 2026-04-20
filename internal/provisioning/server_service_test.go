@@ -5026,11 +5026,12 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 		argForce                                        bool
 		repoGetByName                                   provisioning.Server
 		repoGetByNameErr                                error
-		repoUpdateErr                                   error
+		repoUpdateErrs                                  queue.Errs
 		clientPoweroffErr                               error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
 
 		assertErr require.ErrorAssertionFunc
+		assertLog log.MatcherFunc
 	}{
 		{
 			name: "success - lifecycle operation permitted",
@@ -5045,6 +5046,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name:     "success - force",
@@ -5059,12 +5061,14 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: log.Noop,
 		},
 		{
 			name:             "error - repo.GetByName",
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - cluster lifecycle operation not permitted",
@@ -5082,6 +5086,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, "Lifecycle operation for server")
 			},
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - repo.Update",
@@ -5094,9 +5099,12 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
-			repoUpdateErr: boom.Error,
+			repoUpdateErrs: queue.Errs{
+				boom.Error,
+			},
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
 		},
 		{
 			name: "error - client.Poweroff",
@@ -5112,6 +5120,27 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 			clientPoweroffErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: log.Noop,
+		},
+		{
+			name: "error - client.Poweroff and reverter error",
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+			repoUpdateErrs: queue.Errs{
+				nil,
+				boom.Error,
+			},
+			clientPoweroffErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Match("Failed restore previous server state after failed to trigger poweroff server=one err=boom!"),
 		},
 	}
 
@@ -5123,9 +5152,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 					return &tc.repoGetByName, tc.repoGetByNameErr
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
-					require.Equal(t, api.ServerStatusOffline, server.Status)
-					require.Equal(t, api.ServerStatusDetailOfflineShutdown, server.StatusDetail)
-					return tc.repoUpdateErr
+					return tc.repoUpdateErrs.PopOrNil(t)
 				},
 			}
 

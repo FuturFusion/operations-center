@@ -1014,7 +1014,7 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 	slog.InfoContext(ctx, "Poweroff initiated", slog.String("server", name), slog.Bool("force", force))
 
 	var server *Server
-
+	var previousServer Server
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
 
@@ -1027,6 +1027,8 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
 
+		previousServer = server.Clone()
+
 		server.Status = api.ServerStatusOffline
 		server.StatusDetail = api.ServerStatusDetailOfflineShutdown
 
@@ -1035,17 +1037,28 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 			return fmt.Errorf("Failed to update server %q: %w", name, err)
 		}
 
-		// FIXME: triggers API call within a transaction!!
-		err = s.client.Poweroff(ctx, *server)
-		if err != nil {
-			return fmt.Errorf("Failed to poweroff server %q by name: %w", name, err)
-		}
-
 		return nil
 	})
 	if err != nil {
 		return err
 	}
+
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	reverter.Add(func() {
+		err := s.repo.Update(ctx, previousServer)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed restore previous server state after failed to trigger poweroff", slog.String("server", name), logger.Err(err))
+		}
+	})
+
+	err = s.client.Poweroff(ctx, *server)
+	if err != nil {
+		return fmt.Errorf("Failed to poweroff server %q by name: %w", name, err)
+	}
+
+	reverter.Success()
 
 	server.signalLifecycleEvent()
 
