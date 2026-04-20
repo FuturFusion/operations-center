@@ -257,9 +257,21 @@ type volatileServerState struct {
 	operationLastErr    error
 }
 
+func (v *volatileServerStates) retryCount(serverName string) int {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	s, ok := v.servers[serverName]
+	if !ok {
+		s = volatileServerState{}
+	}
+
+	return s.operationRetryCount
+}
+
 // start sets the volatile server state for the given server to in flight
 // with the given operation.
-func (v *volatileServerStates) start(serverName string, op operation) (int, bool) {
+func (v *volatileServerStates) start(serverName string, op operation) bool {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
@@ -269,7 +281,7 @@ func (v *volatileServerStates) start(serverName string, op operation) (int, bool
 	}
 
 	if s.inFlightOperation != operationNone {
-		return 0, false
+		return false
 	}
 
 	s.inFlightOperation = op
@@ -278,7 +290,7 @@ func (v *volatileServerStates) start(serverName string, op operation) (int, bool
 
 	v.servers[serverName] = s
 
-	return s.operationRetryCount, true
+	return true
 }
 
 // done sets the volatile server state for the given server and marks the
@@ -328,5 +340,10 @@ func (v *volatileServerStates) lastErr(serverName string) error {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	return v.servers[serverName].operationLastErr
+	s, ok := v.servers[serverName]
+	if !ok {
+		return nil
+	}
+
+	return s.operationLastErr
 }

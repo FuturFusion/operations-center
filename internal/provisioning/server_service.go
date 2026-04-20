@@ -921,25 +921,34 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 	reverter := revert.New()
 	defer reverter.Fail()
 
-	callback := func(err error) {
+	callback := func(ctx context.Context, err error) {
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to evacuate system", slog.String("name", name), logger.Err(err))
+		}
+
 		s.volatileServerStates.reset(name, operationEvacuation)
 	}
 
 	if clusterUpdate {
 		reverter.Add(func() {
-			s.volatileServerStates.done(name, operationEvacuation, nil)
+			s.volatileServerStates.done(name, operationEvacuation, fmt.Errorf("Evacuation reverted"))
 		})
 
-		attempts, ok := s.volatileServerStates.start(name, operationEvacuation)
+		attempts := s.volatileServerStates.retryCount(name)
+		if attempts >= 3 {
+			return fmt.Errorf("Failed to evacuate system in 3 attempts, lastErr: %v: %w", s.volatileServerStates.lastErr(name), domain.ErrTerminal)
+		}
+
+		ok := s.volatileServerStates.start(name, operationEvacuation)
 		if !ok {
 			return domain.NewRetryableErr(fmt.Errorf("server operation in flight"))
 		}
 
-		if attempts > 3 {
-			return fmt.Errorf("Failed to evacuate system in 3 attempts, lastErr: %v: %w", s.volatileServerStates.lastErr(name), domain.ErrTerminal)
-		}
+		callback = func(ctx context.Context, err error) {
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to evacuate system", slog.String("name", name), logger.Err(err))
+			}
 
-		callback = func(err error) {
 			s.volatileServerStates.done(name, operationEvacuation, err)
 		}
 	}
@@ -1053,7 +1062,7 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 		s.volatileServerStates.reset(name, operationEvacuation)
 	})
 
-	_, ok := s.volatileServerStates.start(name, operationReboot)
+	ok := s.volatileServerStates.start(name, operationReboot)
 	if !ok {
 		return domain.NewRetryableErr(fmt.Errorf("server operation in flight"))
 	}
@@ -1114,25 +1123,34 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 	reverter := revert.New()
 	defer reverter.Fail()
 
-	callback := func(err error) {
+	callback := func(ctx context.Context, err error) {
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to restore system", slog.String("name", name), logger.Err(err))
+		}
+
 		s.volatileServerStates.reset(name, operationRestore)
 	}
 
 	if clusterUpdate {
 		reverter.Add(func() {
-			s.volatileServerStates.done(name, operationRestore, nil)
+			s.volatileServerStates.done(name, operationRestore, fmt.Errorf("Restore reverted"))
 		})
 
-		attempts, ok := s.volatileServerStates.start(name, operationRestore)
+		attempts := s.volatileServerStates.retryCount(name)
+		if attempts >= 3 {
+			return fmt.Errorf("Failed to restore system in 3 attempts, lastErr: %v: %w", s.volatileServerStates.lastErr(name), domain.ErrTerminal)
+		}
+
+		ok := s.volatileServerStates.start(name, operationRestore)
 		if !ok {
 			return domain.NewRetryableErr(fmt.Errorf("server operation in flight"))
 		}
 
-		if attempts > 3 {
-			return fmt.Errorf("Failed to restore system in 3 attempts: %w", domain.ErrTerminal)
-		}
+		callback = func(ctx context.Context, err error) {
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to restore system", slog.String("name", name), logger.Err(err))
+			}
 
-		callback = func(err error) {
 			s.volatileServerStates.done(name, operationRestore, err)
 		}
 	}

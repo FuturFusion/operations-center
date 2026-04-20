@@ -62,6 +62,47 @@ func TestServer_signalLifecycleEvent(t *testing.T) {
 	}
 }
 
+func Test_volatileServerStates_retryCount(t *testing.T) {
+	tests := []struct {
+		name    string
+		servers map[string]volatileServerState
+
+		wantOK      bool
+		wantRetries int
+	}{
+		{
+			name:    "success",
+			servers: map[string]volatileServerState{},
+
+			wantRetries: 0,
+		},
+		{
+			name: "success - 2nd try",
+			servers: map[string]volatileServerState{
+				"one": {
+					inFlightOperation:   operationEvacuation,
+					operationRetryCount: 1,
+				},
+			},
+
+			wantRetries: 1,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			v := volatileServerStates{
+				mu:      sync.Mutex{},
+				servers: tc.servers,
+			}
+
+			retries := v.retryCount("one")
+
+			require.Equal(t, tc.wantRetries, retries)
+		})
+	}
+}
+
 func Test_volatileServerStates_start(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -94,10 +135,9 @@ func Test_volatileServerStates_start(t *testing.T) {
 				servers: tc.servers,
 			}
 
-			retries, ok := v.start("one", operationEvacuation)
+			ok := v.start("one", operationEvacuation)
 
 			require.Equal(t, tc.wantOK, ok)
-			require.Equal(t, tc.wantRetries, retries)
 		})
 	}
 }

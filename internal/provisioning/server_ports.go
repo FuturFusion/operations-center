@@ -75,10 +75,10 @@ type ServerClientPort interface {
 	UpdateProviderConfig(ctx context.Context, server Server, providerConfig ServerSystemProvider) error
 	GetUpdateConfig(ctx context.Context, server Server) (ServerSystemUpdate, error)
 	UpdateUpdateConfig(ctx context.Context, server Server, providerConfig ServerSystemUpdate) error
-	Evacuate(ctx context.Context, server Server, callback func(err error)) error
+	Evacuate(ctx context.Context, server Server, callback func(ctx context.Context, err error)) error
 	Poweroff(ctx context.Context, server Server) error
 	Reboot(ctx context.Context, server Server) error
-	Restore(ctx context.Context, server Server, restoreModeSkip bool, callback func(err error)) error
+	Restore(ctx context.Context, server Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) error
 	UpdateOS(ctx context.Context, server Server) error
 	AddApplication(ctx context.Context, server Server, application string) error
 	GetSystemKernel(ctx context.Context, server Server) (ServerSystemKernel, error)
