@@ -2974,7 +2974,7 @@ func TestServerService_PollServers(t *testing.T) {
 		name                        string
 		repoGetAllWithFilterServers provisioning.Servers
 		repoGetAllWithFilterErr     error
-		repoGetByNameErr            error
+		repoGetByNameErr            queue.Errs
 		clientPingErr               error
 
 		assertErr require.ErrorAssertionFunc
@@ -2994,13 +2994,20 @@ func TestServerService_PollServers(t *testing.T) {
 		{
 			name: "error - client Ping",
 			repoGetAllWithFilterServers: provisioning.Servers{
-				provisioning.Server{
+				{
 					Name:   "one",
 					Status: api.ServerStatusPending,
 				},
+				{
+					Name:   "two",
+					Status: api.ServerStatusReady,
+				},
 			},
-			repoGetByNameErr: boom.Error,
-			clientPingErr:    boom.Error,
+			repoGetByNameErr: queue.Errs{
+				boom.Error,
+				domain.NewRetryableErr(boom.Error),
+			},
+			clientPingErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -3013,7 +3020,7 @@ func TestServerService_PollServers(t *testing.T) {
 					return tc.repoGetAllWithFilterServers, tc.repoGetAllWithFilterErr
 				},
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
-					return nil, tc.repoGetByNameErr
+					return nil, tc.repoGetByNameErr.PopOrNil(t)
 				},
 			}
 
@@ -3026,7 +3033,8 @@ func TestServerService_PollServers(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, nil, tls.Certificate{})
+			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, nil, tls.Certificate{}, provisioningServer.WithWarningEmitter(provisioning.LogWarningService{}))
+
 			// Run test
 			err := serverSvc.PollServers(t.Context(), provisioning.ServerFilter{
 				Status: ptr.To(api.ServerStatusPending),
@@ -3766,6 +3774,39 @@ func TestServerService_PollServer(t *testing.T) {
 			assertErr: require.NoError,
 			assertLog: log.Empty,
 		},
+		{
+			name: "success - pending registration",
+			serverArg: provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusPending,
+				StatusDetail: api.ServerStatusDetailPendingRegistering,
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusPending,
+				StatusDetail: api.ServerStatusDetailPendingRegistering,
+			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
 
 		{
 			name: "error - client IsReady",
@@ -3923,8 +3964,9 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 			updateServerConfigArg: true,
 			repoGetByName: &provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusPending,
+				Name:    "one",
+				Status:  api.ServerStatusPending,
+				Channel: "stable",
 			},
 			clientGetOSData: api.OSData{
 				Network: incusosapi.SystemNetwork{
@@ -3947,7 +3989,7 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			assertLog: log.Match("update channel reported by server does not match expected update channel"),
+			assertLog: log.Match(`Update channel "testing" reported by server does not match expected update channel "stable"`),
 		},
 		{
 			name: "error - GetByName",
@@ -4009,7 +4051,7 @@ func TestServerService_PollServer(t *testing.T) {
 			runnerServerRegistrationRunErr: boom.Error,
 
 			assertErr: require.NoError,
-			assertLog: log.Contains("Failed to run server registration scriptlet server=one err=boom!"),
+			assertLog: log.Contains("Failed to run server registration scriptlet: boom!"),
 		},
 		{
 			name: "error - enrichServerWithVersionDetails",

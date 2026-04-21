@@ -36,6 +36,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/structs"
+	"github.com/FuturFusion/operations-center/internal/warning"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -47,6 +48,7 @@ type clusterService struct {
 	tokenSvc         provisioning.TokenService
 	inventorySyncers map[domain.ResourceType]provisioning.InventorySyncer
 	provisioner      provisioning.ClusterProvisioningPort
+	warning          provisioning.WarningServicePort
 
 	createClusterRetries      int
 	createClusterRetryTimeout time.Duration
@@ -83,6 +85,12 @@ func WithPendingUpdateRecheckInterval(d time.Duration) Option {
 	}
 }
 
+func WithWarningEmitter(warn provisioning.WarningServicePort) Option {
+	return func(s *clusterService) {
+		s.warning = warn
+	}
+}
+
 func New(
 	repo provisioning.ClusterRepo,
 	localartifact provisioning.ClusterArtifactRepo,
@@ -101,6 +109,7 @@ func New(
 		tokenSvc:         tokenSvc,
 		inventorySyncers: inventorySyncers,
 		provisioner:      provisioner,
+		warning:          provisioning.LogWarningService{},
 
 		createClusterRetries:      6,
 		createClusterRetryTimeout: 200 * time.Millisecond,
@@ -1149,7 +1158,7 @@ func (s *clusterService) Update(ctx context.Context, newCluster provisioning.Clu
 			server.Channel = previousChannel
 			err = s.serverSvc.Update(ctx, server, true, false)
 			if err != nil {
-				slog.WarnContext(ctx, "Failed to restore previous server state after failed to update member server of cluster", slog.String("cluster", newCluster.Name), slog.String("server", server.Name), logger.Err(err))
+				slog.ErrorContext(ctx, "Failed to restore previous server state after failed to update member server of cluster", slog.String("cluster", newCluster.Name), slog.String("server", server.Name), logger.Err(err))
 			}
 		})
 	}
@@ -1346,17 +1355,37 @@ func (s *clusterService) ResyncInventory(ctx context.Context) error {
 		return fmt.Errorf("Failed to get clusters while resyncing the inventory: %w", err)
 	}
 
+	var errs []error
 	for _, cluster := range clusters {
 		// Exit early, if context is done.
 		err = ctx.Err()
 		if err != nil {
-			return fmt.Errorf("Failed to resync inventory: %w", err)
+			errs = append(errs, err)
+			return fmt.Errorf("Failed to resync inventory: %w", errors.Join(errs...))
+		}
+
+		scope := api.WarningScope{
+			Scope:      "inventory_resync",
+			EntityType: "cluster",
+			Entity:     "cluster",
 		}
 
 		err = s.ResyncInventoryByName(ctx, cluster.Name)
 		if err != nil {
-			return fmt.Errorf("Failed to resync inventory: %w", err)
+			errs = append(errs, fmt.Errorf("Failed to resync inventory: %w", err))
+			s.warning.Emit(ctx, warning.NewWarning(
+				api.WarningTypeClusterInventoryResyncFailed,
+				scope,
+				err.Error(),
+			))
+			continue
 		}
+
+		s.warning.RemoveStale(ctx, scope, nil)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("Failed to resync inventory: %w", errors.Join(errs...))
 	}
 
 	return nil
@@ -1371,14 +1400,15 @@ func (s *clusterService) ResyncInventoryByName(ctx context.Context, name string)
 	// since there are no constraints in the DB between the different resource
 	// types. The data in the DB will become eventually consistent after the
 	// sync is completed.
+	var errs []error
 	for _, inventorySyncer := range s.inventorySyncers {
 		err := inventorySyncer.SyncCluster(ctx, name)
 		if err != nil {
-			return err
+			errs = append(errs, fmt.Errorf("Inventory sync for %T on cluster %q failed: %w", inventorySyncer, name, err))
 		}
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
 func (s *clusterService) IsInstanceLifecycleOperationPermitted(ctx context.Context, name string) bool {
@@ -1540,8 +1570,7 @@ func (s *clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNa
 				Cluster: &cluster.Name,
 			}, true)
 			if err != nil {
-				var retryableErr domain.ErrRetryable
-				if !errors.As(err, &retryableErr) {
+				if !domain.IsRetryableError(err) {
 					return fmt.Errorf("Failed to refresh server state information for cluster %q: %w", cluster.Name, err)
 				}
 			}
@@ -1792,10 +1821,22 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 
 	done := nextAction == nil
 	if !done {
+		scope := api.WarningScope{
+			Scope:      updateState,
+			EntityType: "cluster",
+			Entity:     cluster.Name,
+		}
 		// Trigger next update action on the target server
 		err = nextAction(ctx)
 		if err != nil {
 			if domain.IsRetryableError(err) {
+				s.warning.Emit(ctx,
+					warning.NewWarning(
+						api.WarningTypeClusterRollingUpdateNextAction,
+						scope,
+						fmt.Sprintf("Rolling cluster update next action: %v", err),
+					),
+				)
 				return nil
 			}
 
@@ -1810,6 +1851,8 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 
 			return fmt.Errorf("Failed to trigger next action for rolling update of cluster %q: %w", cluster.Name, err)
 		}
+
+		s.warning.RemoveStale(ctx, scope, nil)
 
 		return nil
 	}
@@ -2658,7 +2701,7 @@ func (s *clusterService) StartLifecycleEventsMonitor(ctx context.Context) error 
 	for _, cluster := range clusters {
 		cancel, err := s.startLifecycleEventHandler(ctx, cluster.Name)
 		if err != nil {
-			slog.WarnContext(ctx, "Failed to start lifecycle monitor", slog.String("cluster", cluster.Name), logger.Err(err))
+			slog.ErrorContext(ctx, "Failed to start lifecycle monitor", slog.String("cluster", cluster.Name), logger.Err(err))
 			continue
 		}
 
@@ -2673,7 +2716,7 @@ func (s *clusterService) StartLifecycleEventsMonitor(ctx context.Context) error 
 		case lifecycle.ClusterUpdateOperationCreate:
 			cancel, err := s.startLifecycleEventHandler(context.Background(), cum.Name)
 			if err != nil {
-				slog.WarnContext(ctx, "Failed to start lifecycle monitor", slog.String("cluster", cum.Name), logger.Err(err))
+				slog.ErrorContext(ctx, "Failed to start lifecycle monitor", slog.String("cluster", cum.Name), logger.Err(err))
 				return
 			}
 
@@ -2707,15 +2750,28 @@ func (s *clusterService) startLifecycleEventHandler(ctx context.Context, cluster
 			var errChan chan error
 			var err error
 
+			scope := api.WarningScope{
+				Scope:      "lifecycle_event_handler",
+				EntityType: "cluster",
+				Entity:     clusterName,
+			}
+
 		retry:
 			for backoff := range exponentialBackoff(s.lifecycleEventHandlerBackoffStart, s.lifecycleEventHandlerBackoffLimit) {
 				events, errChan, err = s.client.SubscribeLifecycleEvents(ctx, endpoint)
 				if err == nil {
+					s.warning.RemoveStale(ctx, scope, nil)
 					// Event stream re-established, break retry loop and start processing.
 					break
 				}
 
-				slog.WarnContext(ctx, "Failed to re-establish event stream", slog.String("cluster", clusterName), logger.Err(err))
+				s.warning.Emit(ctx,
+					warning.NewWarning(
+						api.WarningTypeUnreachable,
+						scope,
+						fmt.Sprintf("Failed to re-establish event stream: %v", err),
+					),
+				)
 
 				select {
 				case <-time.After(backoff):
@@ -2738,9 +2794,23 @@ func (s *clusterService) startLifecycleEventHandler(ctx context.Context, cluster
 						continue
 					}
 
+					scope := api.WarningScope{
+						Scope:      "life_cycle_inventory_resync",
+						EntityType: "cluster",
+						Entity:     clusterName,
+					}
+
 					err := inventorySyncer.ResyncByName(ctx, clusterName, event)
 					if err != nil {
-						slog.WarnContext(ctx, "Failed to resync", slog.String("cluster", clusterName), slog.String("action", string(event.Operation)), slog.Any("resource_type", event.ResourceType), slog.String("source", event.Source.String()), logger.Err(err))
+						s.warning.Emit(ctx,
+							warning.NewWarning(
+								api.WarningTypeClusterInventoryResyncFailed,
+								scope,
+								fmt.Sprintf("Failed to resync %q: %v", string(event.ResourceType), err),
+							),
+						)
+					} else {
+						s.warning.RemoveStale(ctx, scope, nil)
 					}
 
 				case err := <-errChan:

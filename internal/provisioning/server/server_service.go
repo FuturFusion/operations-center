@@ -31,6 +31,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/warning"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -42,6 +43,7 @@ type serverService struct {
 	clusterSvc provisioning.ClusterService
 	channelSvc provisioning.ChannelService
 	updateSvc  provisioning.UpdateService
+	warning    provisioning.WarningServicePort
 
 	httpClient *http.Client
 
@@ -72,6 +74,12 @@ func WithInitialConnectionDelay(delay time.Duration) Option {
 	}
 }
 
+func WithWarningEmitter(warn provisioning.WarningServicePort) Option {
+	return func(s *serverService) {
+		s.warning = warn
+	}
+}
+
 func (s *serverService) UpdateServerCertificate(ctx context.Context, serverCertificate tls.Certificate) error {
 	s.mu.Lock()
 	s.serverCertificate = serverCertificate
@@ -99,6 +107,7 @@ func New(
 		clusterSvc: clusterSvc,
 		channelSvc: channelSvc,
 		updateSvc:  updateSvc,
+		warning:    provisioning.LogWarningService{},
 		httpClient: &http.Client{},
 
 		serverCertificate: serverCertificate,
@@ -372,12 +381,26 @@ func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, serv
 		}
 	}
 
+	scope := api.WarningScope{
+		Scope:      "version_data",
+		EntityType: "server",
+		Entity:     server.Name,
+	}
+
 	if len(serverComponents) != 0 {
 		// This indicates, that for some components, we have not found any update.
 		// This is a possible case, e.g. if someone clears and refreshes all the
 		// updates and then queries servers, registered in Operations Center, before
 		// Operations Center has refreshed the Updates from upstream.
-		slog.WarnContext(ctx, "Failed to find updates for some components while enriching server record with update version information", slog.Any("remaining_server_components", serverComponents))
+		s.warning.Emit(ctx,
+			warning.NewWarning(
+				api.WarningTypeVersionDatailsMissing,
+				scope,
+				fmt.Sprintf("Failed to find updates for some components while enriching server record with update version information: %v", serverComponents),
+			),
+		)
+	} else {
+		s.warning.RemoveStale(ctx, scope, nil)
 	}
 
 	server.VersionData.Compute(latestAvailableVersions)
@@ -906,15 +929,34 @@ func (s *serverService) PollServers(ctx context.Context, serverFilter provisioni
 	}
 
 	var errs []error
+	var retryableErrs []error
 	for _, server := range servers {
 		err = s.PollServer(ctx, server, updateServerConfiguration)
-		if err != nil && !errors.Is(err, api.NotIncusOSError) {
-			errs = append(errs, err)
-			continue
+		if err != nil {
+			if domain.IsRetryableError(err) {
+				retryableErrs = append(retryableErrs, err)
+
+				continue
+			}
+
+			if !errors.Is(err, api.NotIncusOSError) {
+				errs = append(errs, err)
+				continue
+			}
 		}
 	}
 
-	return errors.Join(errs...)
+	if len(errs) > 0 {
+		// Fold retryable errors, since there are terminal errors.
+		if len(retryableErrs) > 0 {
+			errs = append(errs, errors.New(errors.Join(retryableErrs...).Error()))
+		}
+
+		return errors.Join(errs...)
+	}
+
+	// All errors, if any, are retryable, so it is ok to return them as retryable error.
+	return errors.Join(retryableErrs...)
 }
 
 func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool) error {
@@ -1532,6 +1574,12 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 	var err error
 	signalLifecycle := false
 
+	scope := api.WarningScope{
+		Scope:      "poll_server",
+		EntityType: "server",
+		Entity:     server.Name,
+	}
+
 	updatedServerCertificate, connTestErr := s.connectionTestWithCertificateUpdate(ctx, server, log)
 	if connTestErr != nil {
 		var retryableErr domain.ErrRetryable
@@ -1550,13 +1598,21 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 				log = log.With(slog.Any("status", server.Status))
 				switch updateServer.Status {
 				case api.ServerStatusUnknown:
-					log.WarnContext(ctx, "Server connection test failed")
+					s.warning.Emit(ctx, warning.NewWarning(
+						api.WarningTypeUnreachable,
+						scope,
+						"Server connection test failed (status unknown)",
+					))
 
 				case api.ServerStatusPending:
 					return fmt.Errorf("still pending: %w", connTestErr)
 
 				case api.ServerStatusReady:
-					log.WarnContext(ctx, "Server connection test failed")
+					s.warning.Emit(ctx, warning.NewWarning(
+						api.WarningTypeUnreachable,
+						scope,
+						"Server connection test failed (status ready)",
+					))
 
 					s.volatileServerStates.reset(server.Name, operationReboot)
 
@@ -1580,7 +1636,11 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 						log.DebugContext(ctx, "Server connection test failed")
 
 					case api.ServerStatusDetailOfflineUnresponsive:
-						log.WarnContext(ctx, "Server connection test failed")
+						s.warning.Emit(ctx, warning.NewWarning(
+							api.WarningTypeUnreachable,
+							scope,
+							"Server connection test failed (offline unresponsive)",
+						))
 					}
 				}
 
@@ -1599,6 +1659,8 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 
 		return connTestErr
 	}
+
+	s.warning.RemoveStale(ctx, scope, nil)
 
 	err = s.client.IsReady(ctx, server)
 	if err != nil {
@@ -1631,11 +1693,22 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 			return fmt.Errorf("Failed to get version data from server %q: %w", server.Name, err)
 		}
 
-		if server.VersionData.UpdateChannel != versionData.UpdateChannel {
-			log.WarnContext(ctx, "update channel reported by server does not match expected update channel",
-				slog.String("reported_channel", versionData.UpdateChannel),
-				slog.String("expected_channel", server.VersionData.UpdateChannel),
+		scope := api.WarningScope{
+			Scope:      "poll_server",
+			EntityType: "server",
+			Entity:     server.Name,
+		}
+
+		if server.Channel != versionData.UpdateChannel {
+			s.warning.Emit(ctx,
+				warning.NewWarning(
+					api.WarningTypeUpdateChannelMismatch,
+					scope,
+					fmt.Sprintf("Update channel %q reported by server does not match expected update channel %q", versionData.UpdateChannel, server.Channel),
+				),
 			)
+		} else {
+			s.warning.RemoveStale(ctx, scope, nil)
 		}
 
 		// For now, we ignore the error and we are fine to persist type "unknown",
@@ -1695,9 +1768,23 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 		}
 
 		if runServerRegistrationScriptlet {
+			scope := api.WarningScope{
+				Scope:      "poll_server",
+				EntityType: "server",
+				Entity:     server.Name,
+			}
+
 			err = s.scriptlet.ServerRegistrationRun(ctx, server)
 			if err != nil {
-				slog.WarnContext(ctx, "Failed to run server registration scriptlet", slog.String("server", server.Name), logger.Err(err))
+				s.warning.Emit(ctx,
+					warning.NewWarning(
+						api.WarningTypeServerRegistrationScriptletFailed,
+						scope,
+						fmt.Sprintf("Failed to run server registration scriptlet: %v", err),
+					),
+				)
+			} else {
+				s.warning.RemoveStale(ctx, scope, nil)
 			}
 		}
 
