@@ -18,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-	shellwords "github.com/mattn/go-shellwords"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 )
@@ -180,26 +179,18 @@ func runWithTimeout(t *testing.T, command string, timeout time.Duration, args ..
 func runWithContext(ctx context.Context, t *testing.T, command string, args ...any) cmdResponse {
 	t.Helper()
 
-	command = fmt.Sprintf(`bash -c %q`, command)
-	command = fmt.Sprintf(command, args...)
-	shellArgs, err := shellwords.Parse(command)
-	if err != nil {
-		return cmdResponse{
-			err: fmt.Errorf("run parse command %q: %w", command, err),
-		}
-	}
-
-	name := shellArgs[0]
-	if len(shellArgs) > 1 {
-		shellArgs = shellArgs[1:]
+	name := "bash"
+	cmdArgs := []string{
+		"-c",
+		fmt.Sprintf(command, args...),
 	}
 
 	resp := cmdResponse{
-		command: fmt.Sprintf("%s %s", name, strings.Join(shellArgs, " ")),
+		command: fmt.Sprintf("bash -c %q", fmt.Sprintf(command, args...)),
 		output:  &bytes.Buffer{},
 	}
 
-	cmd := exec.CommandContext(ctx, name, shellArgs...)
+	cmd := exec.CommandContext(ctx, name, cmdArgs...)
 
 	e2eGoCoverDir := os.Getenv("OPERATIONS_CENTER_E2E_GOCOVERDIR")
 	if e2eGoCoverDir != "" {
@@ -211,7 +202,7 @@ func runWithContext(ctx context.Context, t *testing.T, command string, args ...a
 	cmd.Stdout = resp.output
 	cmd.Stderr = resp.output
 
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		exitErr := &exec.ExitError{}
 		if !errors.As(err, &exitErr) {
