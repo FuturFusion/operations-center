@@ -123,7 +123,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 		logSink = io.MultiWriter(os.Stdout, logBuf)
 	}
 
-	err = logger.InitLogger(logSink, "", false, true, false)
+	err = logger.InitLogger(logSink, "", false, true, true)
 	require.NoError(t, err)
 
 	tmpDir := t.TempDir()
@@ -453,15 +453,16 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 	}
 
 	require.True(t, success)
-	log.Contains(`[1/8] update pending server \"one\"`)(t, logBuf)
-	log.Contains(`[2/8] updating server \"one\"`)(t, logBuf)
+	log.Contains(`[1/9] update pending server \"one\"`)(t, logBuf)
+	log.Contains(`[2/9] updating server \"one\"`)(t, logBuf)
 
-	log.Contains(`[3/8] evacuation pending server \"one\"`)(t, logBuf)
-	log.Contains(`[4/8] evacuating server \"one\"`)(t, logBuf)
-	log.Contains(`[5/8] in maintenance, reboot pending server \"one\"`)(t, logBuf)
-	log.Contains(`[6/8] in maintenance, rebooting server \"one\"`)(t, logBuf)
-	log.Contains(`[7/8] in maintenance, restore pending server \"one\"`)(t, logBuf)
-	log.Contains(`[8/8] restoring server \"one\"`)(t, logBuf)
+	log.Contains(`[3/9] evacuation pending server \"one\"`)(t, logBuf)
+	log.Contains(`[4/9] evacuating server \"one\"`)(t, logBuf)
+	log.Contains(`[5/9] in maintenance, reboot pending server \"one\"`)(t, logBuf)
+	log.Contains(`[6/9] in maintenance, rebooting server \"one\"`)(t, logBuf)
+	log.Contains(`[7/9] in maintenance, restore pending server \"one\"`)(t, logBuf)
+	log.Contains(`[8/9] restoring server \"one\"`)(t, logBuf)
+	log.Contains(`[9/9] post restore server \"one\"`)(t, logBuf)
 }
 
 func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
@@ -492,6 +493,11 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 		Status:        api.ClusterStatusReady,
 		ServerNames:   []string{"serverA", "serverB", "serverC"},
 		Channel:       "stable",
+		Config: api.ClusterConfig{
+			RollingRestart: api.ClusterConfigRollingRestart{
+				PostRestoreDelay: (4 * asyncActionsDelay).String(),
+			},
+		},
 	}
 
 	serverA := provisioning.Server{
@@ -648,7 +654,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 		logSink = io.MultiWriter(os.Stdout, logBuf)
 	}
 
-	err = logger.InitLogger(logSink, "", false, true, false)
+	err = logger.InitLogger(logSink, "", false, true, true)
 	require.NoError(t, err)
 
 	tmpDir := t.TempDir()
@@ -967,7 +973,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 	require.NoError(t, err)
 
 	success := false
-	for range 100 {
+	for range 150 {
 		c, err := clusterSvc.GetByName(ctx, "clusterA")
 		require.NoError(t, err)
 		if c.UpdateStatus.InProgressStatus.InProgress == api.ClusterUpdateInProgressInactive {
@@ -982,35 +988,38 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 	}
 
 	require.True(t, success)
-	log.Contains(`[1/24] update pending server \"serverA\"`)(t, logBuf)
-	log.Contains(`[2/24] updating server \"serverA\"`)(t, logBuf)
+	log.Contains(`[1/27] update pending server \"serverA\"`)(t, logBuf)
+	log.Contains(`[2/27] updating server \"serverA\"`)(t, logBuf)
 
-	log.Contains(`[3/24] update pending server \"serverB\"`)(t, logBuf)
-	log.Contains(`[4/24] updating server \"serverB\"`)(t, logBuf)
+	log.Contains(`[3/27] update pending server \"serverB\"`)(t, logBuf)
+	log.Contains(`[4/27] updating server \"serverB\"`)(t, logBuf)
 
-	log.Contains(`[5/24] update pending server \"serverC\"`)(t, logBuf)
-	log.Contains(`[6/24] updating server \"serverC\"`)(t, logBuf)
+	log.Contains(`[5/27] update pending server \"serverC\"`)(t, logBuf)
+	log.Contains(`[6/27] updating server \"serverC\"`)(t, logBuf)
 
-	log.Contains(`[7/24] evacuation pending server \"serverA\"`)(t, logBuf)
-	log.Contains(`[8/24] evacuating server \"serverA\"`)(t, logBuf)
-	log.Contains(`[9/24] in maintenance, reboot pending server \"serverA\"`)(t, logBuf)
-	log.Contains(`[10/24] in maintenance, rebooting server \"serverA\"`)(t, logBuf)
-	log.Contains(`[11/24] in maintenance, restore pending server \"serverA\"`)(t, logBuf)
-	log.Contains(`[12/24] restoring server \"serverA\"`)(t, logBuf)
+	log.Contains(`[7/27] evacuation pending server \"serverA\"`)(t, logBuf)
+	log.Contains(`[8/27] evacuating server \"serverA\"`)(t, logBuf)
+	log.Contains(`[9/27] in maintenance, reboot pending server \"serverA\"`)(t, logBuf)
+	log.Contains(`[10/27] in maintenance, rebooting server \"serverA\"`)(t, logBuf)
+	log.Contains(`[11/27] in maintenance, restore pending server \"serverA\"`)(t, logBuf)
+	log.Contains(`[12/27] restoring server \"serverA\"`)(t, logBuf)
+	log.Contains(`[13/27] post restore server \"serverA\"`)(t, logBuf)
 
-	log.Contains(`[13/24] evacuation pending server \"serverB\"`)(t, logBuf)
-	log.Contains(`[14/24] evacuating server \"serverB\"`)(t, logBuf)
-	log.Contains(`[15/24] in maintenance, reboot pending server \"serverB\"`)(t, logBuf)
-	log.Contains(`[16/24] in maintenance, rebooting server \"serverB\"`)(t, logBuf)
-	log.Contains(`[17/24] in maintenance, restore pending server \"serverB\"`)(t, logBuf)
-	log.Contains(`[18/24] restoring server \"serverB\"`)(t, logBuf)
+	log.Contains(`[14/27] evacuation pending server \"serverB\"`)(t, logBuf)
+	log.Contains(`[15/27] evacuating server \"serverB\"`)(t, logBuf)
+	log.Contains(`[16/27] in maintenance, reboot pending server \"serverB\"`)(t, logBuf)
+	log.Contains(`[17/27] in maintenance, rebooting server \"serverB\"`)(t, logBuf)
+	log.Contains(`[18/27] in maintenance, restore pending server \"serverB\"`)(t, logBuf)
+	log.Contains(`[19/27] restoring server \"serverB\"`)(t, logBuf)
+	log.Contains(`[20/27] post restore server \"serverB\"`)(t, logBuf)
 
-	log.Contains(`[19/24] evacuation pending server \"serverC\"`)(t, logBuf)
-	log.Contains(`[20/24] evacuating server \"serverC\"`)(t, logBuf)
-	log.Contains(`[21/24] in maintenance, reboot pending server \"serverC\"`)(t, logBuf)
-	log.Contains(`[22/24] in maintenance, rebooting server \"serverC\"`)(t, logBuf)
-	log.Contains(`[23/24] in maintenance, restore pending server \"serverC\"`)(t, logBuf)
-	log.Contains(`[24/24] restoring server \"serverC\"`)(t, logBuf)
+	log.Contains(`[21/27] evacuation pending server \"serverC\"`)(t, logBuf)
+	log.Contains(`[22/27] evacuating server \"serverC\"`)(t, logBuf)
+	log.Contains(`[23/27] in maintenance, reboot pending server \"serverC\"`)(t, logBuf)
+	log.Contains(`[24/27] in maintenance, rebooting server \"serverC\"`)(t, logBuf)
+	log.Contains(`[25/27] in maintenance, restore pending server \"serverC\"`)(t, logBuf)
+	log.Contains(`[26/27] restoring server \"serverC\"`)(t, logBuf)
+	log.Contains(`[27/27] post restore server \"serverC\"`)(t, logBuf)
 }
 
 func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {

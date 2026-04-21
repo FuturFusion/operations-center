@@ -1189,6 +1189,8 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
 
+		server.StatusDetail = api.ServerStatusDetailReadyRestoring
+
 		for i := range server.VersionData.Applications {
 			if server.VersionData.Applications[i].Name == string(images.UpdateFileComponentIncus) {
 				server.VersionData.Applications[i].InMaintenance = api.InMaintenanceRestoring
@@ -1220,6 +1222,39 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 	}
 
 	reverter.Success()
+
+	server.signalLifecycleEvent()
+
+	return nil
+}
+
+func (s *serverService) PostRestoreSystemDoneByName(ctx context.Context, name string) error {
+	var server *Server
+
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+
+		server, err = s.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+		}
+
+		if server.Type != api.ServerTypeIncus {
+			return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
+		}
+
+		server.StatusDetail = api.ServerStatusDetailNone
+
+		err = s.repo.Update(ctx, *server)
+		if err != nil {
+			return fmt.Errorf("Failed put server %q in restoring: %w", name, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
 
 	server.signalLifecycleEvent()
 
