@@ -73,6 +73,11 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/task"
 	"github.com/FuturFusion/operations-center/internal/version"
+	"github.com/FuturFusion/operations-center/internal/warning"
+	warningServiceMiddleware "github.com/FuturFusion/operations-center/internal/warning/middleware"
+	warningRepoMiddleware "github.com/FuturFusion/operations-center/internal/warning/repo/middleware"
+	warningSqlite "github.com/FuturFusion/operations-center/internal/warning/repo/sqlite"
+	warningEntities "github.com/FuturFusion/operations-center/internal/warning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/shared/api"
 	apisystem "github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -209,6 +214,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// Setup Services
+	warningSvc := d.setupWarningService(dbWithTransaction)
+
 	updateSvc, err := d.setupUpdatesService(ctx, dbWithTransaction)
 	if err != nil {
 		return err
@@ -217,7 +224,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	channelSvc := d.setupChannelService(dbWithTransaction, updateSvc)
 
 	tokenSvc := d.setupTokenService(dbWithTransaction, updateSvc, channelSvc)
-	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc)
+	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningSvc)
 	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc)
 	if err != nil {
 		return err
@@ -231,7 +238,16 @@ func (d *Daemon) Start(ctx context.Context) error {
 	d.systemSvc = d.setupSystemService(serverSvc)
 
 	// Setup API routes
-	serveMux, inventorySyncers := d.setupAPIRoutes(updateSvc, tokenSvc, serverSvc, clusterSvc, clusterTemplateSvc, channelSvc, dbWithTransaction)
+	serveMux, inventorySyncers := d.setupAPIRoutes(
+		updateSvc,
+		tokenSvc,
+		serverSvc,
+		clusterSvc,
+		clusterTemplateSvc,
+		channelSvc,
+		warningSvc,
+		dbWithTransaction,
+	)
 	inventorySyncers[domain.ResourceTypeServer] = serverSvc
 
 	clusterSvc.SetInventorySyncers(inventorySyncers)
@@ -279,7 +295,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// Background tasks
-	d.setupBackgroundTasks(ctx, updateSvc, serverSvc, clusterSvc)
+	d.setupBackgroundTasks(ctx, updateSvc, serverSvc, clusterSvc, warningSvc)
 
 	err = d.incusOSSelfRegister(ctx)
 	if err != nil {
@@ -341,6 +357,11 @@ func (d *Daemon) initDB(ctx context.Context) (dbdriver.DBTX, error) {
 	}
 
 	localartifactEntities.PreparedStmts, err = localartifactEntities.PrepareStmts(dbWithTransaction, false)
+	if err != nil {
+		return nil, err
+	}
+
+	warningEntities.PreparedStmts, err = warningEntities.PrepareStmts(dbWithTransaction, false)
 	if err != nil {
 		return nil, err
 	}
@@ -439,6 +460,18 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 	*d.authorizer = authzchain.New(authorizers...)
 
 	return errors.Join(errs...)
+}
+
+func (d *Daemon) setupWarningService(db dbdriver.DBTX) warning.WarningService {
+	warningSvc := warningServiceMiddleware.NewWarningServiceWithSlog(
+		warning.NewWarningService(
+			warningRepoMiddleware.NewWarningRepoWithSlog(
+				warningSqlite.NewWarning(db),
+			),
+		),
+	)
+
+	return warningSvc
 }
 
 func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (provisioning.UpdateService, error) {
@@ -551,7 +584,16 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 	)
 }
 
-func (d *Daemon) setupServerService(db dbdriver.DBTX, client provisioning.ServerClientPort, runner scriptlet.Runner, tokenSvc provisioning.TokenService, clusterSvc provisioning.ClusterService, channelSvc provisioning.ChannelService, updateSvc provisioning.UpdateService) provisioning.ServerService {
+func (d *Daemon) setupServerService(
+	db dbdriver.DBTX,
+	client provisioning.ServerClientPort,
+	runner scriptlet.Runner,
+	tokenSvc provisioning.TokenService,
+	clusterSvc provisioning.ClusterService,
+	channelSvc provisioning.ChannelService,
+	updateSvc provisioning.UpdateService
+	warningSvc provisioning.WarningEmitterPort,
+) provisioning.ServerService {
 	serverSvc := provisioningServer.New(
 		provisioningRepoMiddleware.NewServerRepoWithSlog(
 			provisioningSqlite.NewServer(db),
@@ -591,6 +633,7 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, client provisioning.Server
 		channelSvc,
 		updateSvc,
 		d.serverCertificate,
+		provisioningServer.WithWarningEmitter(warningSvc),
 	)
 
 	// Server service needs to learn about updates of the public Operations Center
@@ -753,6 +796,7 @@ func (d *Daemon) setupAPIRoutes(
 	clusterSvc provisioning.ClusterService,
 	clusterTemplateSvc provisioning.ClusterTemplateService,
 	channelSvc provisioning.ChannelService,
+	warningSvc warning.WarningService,
 	db dbdriver.DBTX,
 ) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
@@ -850,6 +894,9 @@ func (d *Daemon) setupAPIRoutes(
 
 	systemRouter := api10router.SubGroup("/system")
 	registerSystemHandler(systemRouter, d.authorizer, d.systemSvc)
+
+	warningRouter := api10router.SubGroup("/warnings")
+	registerWarningHandler(warningRouter, d.authorizer, warningSvc)
 
 	inventoryRouter := api10router.SubGroup("/inventory")
 
