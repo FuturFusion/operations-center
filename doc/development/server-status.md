@@ -65,6 +65,7 @@ stateDiagram-v2
     state "In maintenance (rebooting)" as UpdateInMaintenanceRebooting
     state "In maintenance (restore pending)" as UpdateInMaintenanceRestorePending
     state "Restoring" as UpdateRestoring
+    state "Post restore" as PostRestore
 
     UpdateReady --> UpdatePending: update available
     UpdatePending --> UpdateUpdating: update triggered
@@ -81,5 +82,6 @@ stateDiagram-v2
     UpdateInMaintenanceRebootPending --> UpdateInMaintenanceRebooting: trigger reboot
     UpdateInMaintenanceRebooting --> UpdateInMaintenanceRestorePending: self register or polling
     UpdateInMaintenanceRestorePending --> UpdateRestoring: restore triggered
-    UpdateRestoring --> UpdateReady: restore completed life cycle event received
+    UpdateRestoring --> PostRestore: restore completed life cycle event received
+    PostRestore --> UpdateReady: post restore delay elapsed
 ```
