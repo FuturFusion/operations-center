@@ -1601,6 +1601,11 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 		return connTestErr
 	}
 
+	err = s.client.IsReady(ctx, server)
+	if err != nil {
+		return err
+	}
+
 	var hardwareData api.HardwareData
 	var osData api.OSData
 	var versionData api.ServerVersionData

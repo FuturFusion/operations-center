@@ -192,6 +192,9 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 
 			return nil
 		},
+		IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
+			return nil
+		},
 		GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
 			return api.HardwareData{}, nil
 		},
@@ -725,6 +728,9 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 				return domain.NewRetryableErr(errors.New("rebooting"))
 			}
 
+			return nil
+		},
+		IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
 			return nil
 		},
 		GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {

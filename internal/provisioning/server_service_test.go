@@ -153,6 +153,9 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					return nil
 				},
+				IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
+					return nil
+				},
 				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
 					return api.HardwareData{}, nil
 				},
@@ -323,6 +326,9 @@ one
 
 			client := &adapterMock.ServerClientPortMock{
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return nil
+				},
+				IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
 					return nil
 				},
 				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
@@ -1333,6 +1339,9 @@ one
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					return errors.New("") // short cirquite pollServer, since we don't care about this part in this test.
 				},
+				IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
+					return nil
+				},
 				UpdateUpdateConfigFunc: func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemUpdate) error {
 					return nil
 				},
@@ -2214,6 +2223,9 @@ one
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					return nil
 				},
+				IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
+					return nil
+				},
 				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
 					return api.HardwareData{}, boom.Error // Since we do not care too much, if the server poll was successful, we always return an error here.
 				},
@@ -2559,6 +2571,9 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					return nil
 				},
+				IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
+					return nil
+				},
 				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
 					return api.HardwareData{}, nil
 				},
@@ -2702,6 +2717,9 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 
 			client := &adapterMock.ServerClientPortMock{
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return nil
+				},
+				IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
 					return nil
 				},
 				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
@@ -3001,6 +3019,9 @@ func TestServerService_PollServers(t *testing.T) {
 			client := &adapterMock.ServerClientPortMock{
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					return tc.clientPingErr
+				},
+				IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
+					return nil
 				},
 			}
 
@@ -3589,6 +3610,9 @@ foobar
 					_, err := queue.Pop(t, &tc.clientPing)
 					return err
 				},
+				IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
+					return nil
+				},
 			}
 
 			clusterSvc := &svcMock.ClusterServiceMock{
@@ -3626,6 +3650,7 @@ func TestServerService_PollServer(t *testing.T) {
 		name                         string
 		serverArg                    provisioning.Server
 		updateServerConfigArg        bool
+		clientIsReadyErr             error
 		clientGetResourcesErr        error
 		clientGetOSData              api.OSData
 		clientGetOSDataErr           error
@@ -3734,6 +3759,34 @@ func TestServerService_PollServer(t *testing.T) {
 			assertLog: log.Empty,
 		},
 
+		{
+			name: "error - client IsReady",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			updateServerConfigArg: true,
+			clientIsReadyErr:      boom.Error,
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
 		{
 			name: "error - client GetResources",
 			serverArg: provisioning.Server{
@@ -4005,6 +4058,9 @@ func TestServerService_PollServer(t *testing.T) {
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					return nil
 				},
+				IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.clientIsReadyErr
+				},
 				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
 					return api.HardwareData{}, tc.clientGetResourcesErr
 				},
@@ -4059,6 +4115,9 @@ func TestServerService_PollServer_in_transaction(t *testing.T) {
 
 	client := &adapterMock.ServerClientPortMock{
 		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+			return nil
+		},
+		IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
 			return nil
 		},
 	}
@@ -4232,6 +4291,9 @@ func TestServerService_ResyncByName(t *testing.T) {
 
 			client := &adapterMock.ServerClientPortMock{
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return nil
+				},
+				IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
 					return nil
 				},
 				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
@@ -6061,6 +6123,9 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				},
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					return errors.New("") // short cirquite pollServer, since we don't care about this part in this test.
+				},
+				IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
+					return nil
 				},
 				UpdateUpdateConfigFunc: func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemUpdate) error {
 					return nil
