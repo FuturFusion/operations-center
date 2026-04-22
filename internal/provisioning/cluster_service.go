@@ -12,6 +12,7 @@ import (
 	"net"
 	"slices"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -51,6 +52,8 @@ type clusterService struct {
 	lifecycleEventHandlerBackoffLimit time.Duration
 
 	clusterUpdatePendingUpdateRecheckInterval time.Duration
+
+	clusterUpdateControlLoopMu sync.Mutex
 }
 
 var _ ClusterService = &clusterService{}
@@ -143,7 +146,7 @@ func (s *clusterService) SetInventorySyncers(inventorySyncers map[domain.Resourc
 //     Create an "internal" network bridge on each server.
 //     Update the default profile in the default project to use incusbr0 for networking.
 //     Update the default profile in the internal project to use internal-mesh for networking.
-func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Cluster, err error) {
+func (s *clusterService) Create(ctx context.Context, newCluster Cluster) (_ Cluster, err error) {
 	if newCluster.Channel == "" {
 		newCluster.Channel = config.GetUpdates().ServerDefaultChannel
 	}
@@ -556,11 +559,11 @@ func determineClusterRoleAddress(server Server) (string, error) {
 	return net.JoinHostPort(ip.String(), "8443"), nil
 }
 
-func (s clusterService) GetAll(ctx context.Context) (Clusters, error) {
+func (s *clusterService) GetAll(ctx context.Context) (Clusters, error) {
 	return s.repo.GetAll(ctx)
 }
 
-func (s clusterService) GetAllWithFilter(ctx context.Context, filter ClusterFilter) (Clusters, error) {
+func (s *clusterService) GetAllWithFilter(ctx context.Context, filter ClusterFilter) (Clusters, error) {
 	var filterExpression *vm.Program
 	var err error
 
@@ -616,11 +619,11 @@ func (s clusterService) GetAllWithFilter(ctx context.Context, filter ClusterFilt
 	return clusters, nil
 }
 
-func (s clusterService) GetAllNames(ctx context.Context) ([]string, error) {
+func (s *clusterService) GetAllNames(ctx context.Context) ([]string, error) {
 	return s.repo.GetAllNames(ctx)
 }
 
-func (s clusterService) GetAllNamesWithFilter(ctx context.Context, filter ClusterFilter) ([]string, error) {
+func (s *clusterService) GetAllNamesWithFilter(ctx context.Context, filter ClusterFilter) ([]string, error) {
 	var filterExpression *vm.Program
 	var err error
 
@@ -665,7 +668,7 @@ func (s clusterService) GetAllNamesWithFilter(ctx context.Context, filter Cluste
 	return clusterIDs, nil
 }
 
-func (s clusterService) GetByName(ctx context.Context, name string) (*Cluster, error) {
+func (s *clusterService) GetByName(ctx context.Context, name string) (*Cluster, error) {
 	if name == "" {
 		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -692,7 +695,7 @@ func (s clusterService) GetByName(ctx context.Context, name string) (*Cluster, e
 	return cluster, nil
 }
 
-func (s clusterService) getClusterUpdateStatus(ctx context.Context, name string, clusterUpdateStatus *api.ClusterUpdateStatus) error {
+func (s *clusterService) getClusterUpdateStatus(ctx context.Context, name string, clusterUpdateStatus *api.ClusterUpdateStatus) error {
 	servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
 		Cluster: ptr.To(name),
 	})
@@ -725,7 +728,7 @@ func (s clusterService) getClusterUpdateStatus(ctx context.Context, name string,
 	return nil
 }
 
-func (s clusterService) Update(ctx context.Context, newCluster Cluster, updateServers bool) error {
+func (s *clusterService) Update(ctx context.Context, newCluster Cluster, updateServers bool) error {
 	err := newCluster.Validate()
 	if err != nil {
 		return err
@@ -795,7 +798,7 @@ func (s clusterService) Update(ctx context.Context, newCluster Cluster, updateSe
 	return nil
 }
 
-func (s clusterService) Rename(ctx context.Context, oldName string, newName string) error {
+func (s *clusterService) Rename(ctx context.Context, oldName string, newName string) error {
 	if oldName == "" {
 		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -818,7 +821,7 @@ func (s clusterService) Rename(ctx context.Context, oldName string, newName stri
 	return nil
 }
 
-func (s clusterService) DeleteByName(ctx context.Context, name string, force bool) error {
+func (s *clusterService) DeleteByName(ctx context.Context, name string, force bool) error {
 	if name == "" {
 		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -886,7 +889,7 @@ func (s clusterService) DeleteByName(ctx context.Context, name string, force boo
 	return nil
 }
 
-func (s clusterService) DeleteAndFactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error {
+func (s *clusterService) DeleteAndFactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error {
 	if name == "" {
 		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -976,7 +979,7 @@ func (s clusterService) DeleteAndFactoryResetByName(ctx context.Context, name st
 	return nil
 }
 
-func (s clusterService) ResyncInventory(ctx context.Context) error {
+func (s *clusterService) ResyncInventory(ctx context.Context) error {
 	clusters, err := s.GetAll(ctx)
 	if err != nil {
 		return fmt.Errorf("Failed to get clusters while resyncing the inventory: %w", err)
@@ -998,7 +1001,7 @@ func (s clusterService) ResyncInventory(ctx context.Context) error {
 	return nil
 }
 
-func (s clusterService) ResyncInventoryByName(ctx context.Context, name string) error {
+func (s *clusterService) ResyncInventoryByName(ctx context.Context, name string) error {
 	if name == "" {
 		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -1017,7 +1020,7 @@ func (s clusterService) ResyncInventoryByName(ctx context.Context, name string) 
 	return nil
 }
 
-func (s clusterService) IsInstanceLifecycleOperationPermitted(ctx context.Context, name string) bool {
+func (s *clusterService) IsInstanceLifecycleOperationPermitted(ctx context.Context, name string) bool {
 	if name == "" {
 		return true
 	}
@@ -1030,7 +1033,7 @@ func (s clusterService) IsInstanceLifecycleOperationPermitted(ctx context.Contex
 	return !cluster.IsUpdateInProgress()
 }
 
-func (s clusterService) LaunchClusterUpdate(ctx context.Context, name string, reboot bool) error {
+func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, reboot bool) error {
 	// Check, that no update is in progress for this cluster and set cluster
 	// update status to "in progress".
 	var cluster *Cluster
@@ -1141,7 +1144,10 @@ func (s clusterService) LaunchClusterUpdate(ctx context.Context, name string, re
 	return nil
 }
 
-func (s clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNameFilter *string) error {
+func (s *clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNameFilter *string) error {
+	s.clusterUpdateControlLoopMu.Lock()
+	defer s.clusterUpdateControlLoopMu.Unlock()
+
 	clusters, err := s.GetAllWithFilter(ctx, ClusterFilter{
 		Name:       clusterNameFilter,
 		Expression: ptr.To(`update_status.in_progress_status.in_progress != ""`),
@@ -1215,7 +1221,7 @@ func (s clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNam
 	return errors.Join(errs...)
 }
 
-func (s clusterService) executeRollingUpdate(ctx context.Context, cluster Cluster, servers Servers) error {
+func (s *clusterService) executeRollingUpdate(ctx context.Context, cluster Cluster, servers Servers) error {
 	log := slog.With(slog.String("cluster", cluster.Name))
 
 	// Trigger update on each server, applications get updated immediately,
@@ -1303,7 +1309,7 @@ func (s clusterService) executeRollingUpdate(ctx context.Context, cluster Cluste
 	return nil
 }
 
-func (s clusterService) executeRollingRestartNextStep(ctx context.Context, cluster Cluster, servers Servers) error {
+func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, cluster Cluster, servers Servers) error {
 	log := slog.With(slog.String("cluster", cluster.Name))
 
 	// Calculate, if we are done based on the current state of all servers and the desired target state and
@@ -1353,19 +1359,24 @@ func (s clusterService) executeRollingRestartNextStep(ctx context.Context, clust
 					continue
 				}
 
-				// Check if the post restore delay has passed.
-				postRestoreDelay, _ := time.ParseDuration(cluster.Config.RollingRestart.PostRestoreDelay) // Duration is validated on save, we ignore the error here.
-				if cluster.UpdateStatus.InProgressStatus.LastUpdated.Add(postRestoreDelay).Before(s.now()) {
-					restoreModeSkip := cluster.Config.RollingRestart.RestoreMode == "skip"
-					nextAction = func(ctx context.Context) error {
-						return s.serverSvc.RestoreSystemByName(ctx, server.Name, true, false, restoreModeSkip)
-					}
-				} else {
-					nextAction = noop
+				restoreModeSkip := cluster.Config.RollingRestart.RestoreMode == "skip"
+				nextAction = func(ctx context.Context) error {
+					return s.serverSvc.RestoreSystemByName(ctx, server.Name, true, false, restoreModeSkip)
 				}
 
 			case api.ServerUpdateStateInMaintenanceRestoring:
 				nextAction = noop
+
+			case api.ServerUpdateStateInMaintenancePostRestore:
+				// Check if the post restore delay has passed.
+				postRestoreDelay, _ := time.ParseDuration(cluster.Config.RollingRestart.PostRestoreDelay) // Duration is validated on save, we ignore the error here.
+				if server.LastStatusUpdated.Add(postRestoreDelay).Before(s.now()) {
+					nextAction = func(ctx context.Context) error {
+						return s.serverSvc.PostRestoreSystemDoneByName(ctx, server.Name)
+					}
+				} else {
+					nextAction = noop
+				}
 
 			default:
 				return fmt.Errorf("Server update state %q for %q (%s) is not supported", server.UpdateState(), server.Name, server.ConnectionURL)
@@ -1403,6 +1414,7 @@ func (s clusterService) executeRollingRestartNextStep(ctx context.Context, clust
 		case api.ServerUpdateStateEvacuating,
 			api.ServerUpdateStateInMaintenanceRebooting,
 			api.ServerUpdateStateInMaintenanceRestoring,
+			api.ServerUpdateStateInMaintenancePostRestore,
 			api.ServerUpdateStateRebootPending,
 			api.ServerUpdateStateRebooting:
 
@@ -1450,7 +1462,7 @@ func (s clusterService) executeRollingRestartNextStep(ctx context.Context, clust
 	return nil
 }
 
-func (s clusterService) updateInProgressStatus(ctx context.Context, clusterName string, inProgressStatus api.ClusterUpdateInProgressStatus) error {
+func (s *clusterService) updateInProgressStatus(ctx context.Context, clusterName string, inProgressStatus api.ClusterUpdateInProgressStatus) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		inProgressStatus.LastUpdated = s.now()
 
@@ -1471,6 +1483,8 @@ func (s clusterService) updateInProgressStatus(ctx context.Context, clusterName 
 }
 
 func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgressStatus, servers Servers) string {
+	const perServerSteps = 9
+
 	totalSteps := 0
 	pendingSteps := 0
 	currentStep := ""
@@ -1491,24 +1505,24 @@ func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgres
 		api.ClusterUpdateInProgressApplyUpdateWithReboot:
 		firstEvacuationPendingServer := ""
 		for _, server := range servers {
-			totalSteps += 8
+			totalSteps += perServerSteps
 
 			switch server.UpdateState() {
 			case api.ServerUpdateStateUpdatePending:
-				pendingSteps += 8
+				pendingSteps += perServerSteps
 				if currentServer == "" {
 					currentStep = server.UpdateState().String()
 					currentServer = server.Name
 				}
 
 			case api.ServerUpdateStateUpdating:
-				pendingSteps += 7
+				pendingSteps += perServerSteps - 1
 				currentStep = server.UpdateState().String()
 				currentServer = server.Name
 
 			case api.ServerUpdateStateEvacuationPending,
 				api.ServerUpdateStateEvacuating:
-				pendingSteps += 6
+				pendingSteps += perServerSteps - 2
 				// Don't set the currentServer here, since these servers are ready for evacuation, but we might still have
 				// servers, which are not yet done with updating.
 				if firstEvacuationPendingServer == "" {
@@ -1528,38 +1542,43 @@ func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgres
 
 	case api.ClusterUpdateInProgressRollingRestart:
 		for _, server := range servers {
-			totalSteps += 8
+			totalSteps += perServerSteps
 
 			switch server.UpdateState() {
 			case api.ServerUpdateStateEvacuationPending:
-				pendingSteps += 6
+				pendingSteps += perServerSteps - 2
 				if currentServer == "" {
 					currentStep = server.UpdateState().String()
 					currentServer = server.Name
 				}
 
 			case api.ServerUpdateStateEvacuating:
-				pendingSteps += 5
+				pendingSteps += perServerSteps - 3
 				currentStep = server.UpdateState().String()
 				currentServer = server.Name
 
 			case api.ServerUpdateStateInMaintenanceRebootPending:
-				pendingSteps += 4
+				pendingSteps += perServerSteps - 4
 				currentStep = server.UpdateState().String()
 				currentServer = server.Name
 
 			case api.ServerUpdateStateInMaintenanceRebooting:
-				pendingSteps += 3
+				pendingSteps += perServerSteps - 5
 				currentStep = server.UpdateState().String()
 				currentServer = server.Name
 
 			case api.ServerUpdateStateInMaintenanceRestorePending:
-				pendingSteps += 2
+				pendingSteps += perServerSteps - 6
 				currentStep = server.UpdateState().String()
 				currentServer = server.Name
 
 			case api.ServerUpdateStateInMaintenanceRestoring:
-				pendingSteps += 1
+				pendingSteps += perServerSteps - 7
+				currentStep = server.UpdateState().String()
+				currentServer = server.Name
+
+			case api.ServerUpdateStateInMaintenancePostRestore:
+				pendingSteps += perServerSteps - 8
 				currentStep = server.UpdateState().String()
 				currentServer = server.Name
 			}
@@ -1567,13 +1586,14 @@ func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgres
 	}
 
 	if pendingSteps > 0 {
-		return fmt.Sprintf("[%d/%d] %s server %q", totalSteps-pendingSteps+1, totalSteps, currentStep, currentServer)
+		format := fmt.Sprintf("[%%%[1]dd/%%%[1]dd] %%s server %%q", len(strconv.Itoa(totalSteps)))
+		return fmt.Sprintf(format, totalSteps-pendingSteps+1, totalSteps, currentStep, currentServer)
 	}
 
 	return ""
 }
 
-func (s clusterService) AbortClusterUpdate(ctx context.Context, name string) error {
+func (s *clusterService) AbortClusterUpdate(ctx context.Context, name string) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		cluster, err := s.repo.GetByName(ctx, name)
 		if err != nil {
@@ -1598,7 +1618,7 @@ func (s clusterService) AbortClusterUpdate(ctx context.Context, name string) err
 	return nil
 }
 
-func (s clusterService) AddServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
+func (s *clusterService) AddServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("Add VLAN tags to interface %q on cluster members for %q failed: %w", interfaceName, clusterName, err)
@@ -1674,7 +1694,7 @@ func (s clusterService) AddServerSystemNetworkVLANTags(ctx context.Context, clus
 	return nil
 }
 
-func (s clusterService) RemoveServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
+func (s *clusterService) RemoveServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("Remove VLAN tags from interface %q on cluster members for %q failed: %w", interfaceName, clusterName, err)
@@ -1749,7 +1769,7 @@ func (s clusterService) RemoveServerSystemNetworkVLANTags(ctx context.Context, c
 	return nil
 }
 
-func (s clusterService) UpdateSystemLogging(ctx context.Context, clusterName string, loggingConfig ServerSystemLogging) (err error) {
+func (s *clusterService) UpdateSystemLogging(ctx context.Context, clusterName string, loggingConfig ServerSystemLogging) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("Update logging for cluster members for %q failed: %w", clusterName, err)
@@ -1790,7 +1810,7 @@ func (s clusterService) UpdateSystemLogging(ctx context.Context, clusterName str
 	return nil
 }
 
-func (s clusterService) UpdateSystemKernel(ctx context.Context, clusterName string, kernelConfig ServerSystemKernel) (err error) {
+func (s *clusterService) UpdateSystemKernel(ctx context.Context, clusterName string, kernelConfig ServerSystemKernel) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("Update kernel for cluster members for %q failed: %w", clusterName, err)
@@ -1831,7 +1851,7 @@ func (s clusterService) UpdateSystemKernel(ctx context.Context, clusterName stri
 	return nil
 }
 
-func (s clusterService) AddApplication(ctx context.Context, clusterName string, applicationName string) (err error) {
+func (s *clusterService) AddApplication(ctx context.Context, clusterName string, applicationName string) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("Add application to cluster members for %q failed: %w", clusterName, err)
@@ -1853,7 +1873,7 @@ func (s clusterService) AddApplication(ctx context.Context, clusterName string, 
 	return nil
 }
 
-func (s clusterService) AddStorageTargetISCSI(ctx context.Context, clusterName string, target incusosapi.ServiceISCSITarget) (err error) {
+func (s *clusterService) AddStorageTargetISCSI(ctx context.Context, clusterName string, target incusosapi.ServiceISCSITarget) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("Add iscsi storage target to cluster members for %q failed: %w", clusterName, err)
@@ -1913,7 +1933,7 @@ func (s clusterService) AddStorageTargetISCSI(ctx context.Context, clusterName s
 	return nil
 }
 
-func (s clusterService) RemoveStorageTargetISCSI(ctx context.Context, clusterName string, target incusosapi.ServiceISCSITarget) (err error) {
+func (s *clusterService) RemoveStorageTargetISCSI(ctx context.Context, clusterName string, target incusosapi.ServiceISCSITarget) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("Remove iscsi storage target from cluster members for %q failed: %w", clusterName, err)
@@ -1975,7 +1995,7 @@ func (s clusterService) RemoveStorageTargetISCSI(ctx context.Context, clusterNam
 	return nil
 }
 
-func (s clusterService) AddStorageTargetMultipath(ctx context.Context, clusterName string, target string) (err error) {
+func (s *clusterService) AddStorageTargetMultipath(ctx context.Context, clusterName string, target string) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("Add multipath storage target to cluster members for %q failed: %w", clusterName, err)
@@ -2035,7 +2055,7 @@ func (s clusterService) AddStorageTargetMultipath(ctx context.Context, clusterNa
 	return nil
 }
 
-func (s clusterService) RemoveStorageTargetMultipath(ctx context.Context, clusterName string, target string) (err error) {
+func (s *clusterService) RemoveStorageTargetMultipath(ctx context.Context, clusterName string, target string) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("Remove multipath storage target from cluster members for %q failed: %w", clusterName, err)
@@ -2097,7 +2117,7 @@ func (s clusterService) RemoveStorageTargetMultipath(ctx context.Context, cluste
 	return nil
 }
 
-func (s clusterService) AddStorageTargetNVME(ctx context.Context, clusterName string, target incusosapi.ServiceNVMETarget) (err error) {
+func (s *clusterService) AddStorageTargetNVME(ctx context.Context, clusterName string, target incusosapi.ServiceNVMETarget) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("Add nvme storage target to cluster members for %q failed: %w", clusterName, err)
@@ -2157,7 +2177,7 @@ func (s clusterService) AddStorageTargetNVME(ctx context.Context, clusterName st
 	return nil
 }
 
-func (s clusterService) RemoveStorageTargetNVME(ctx context.Context, clusterName string, target incusosapi.ServiceNVMETarget) (err error) {
+func (s *clusterService) RemoveStorageTargetNVME(ctx context.Context, clusterName string, target incusosapi.ServiceNVMETarget) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("Remove nvme storage target from cluster members for %q failed: %w", clusterName, err)
@@ -2219,7 +2239,7 @@ func (s clusterService) RemoveStorageTargetNVME(ctx context.Context, clusterName
 	return nil
 }
 
-func (s clusterService) prepareBulkUpdate(ctx context.Context, clusterName string) (Servers, error) {
+func (s *clusterService) prepareBulkUpdate(ctx context.Context, clusterName string) (Servers, error) {
 	cluster, err := s.GetByName(ctx, clusterName)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get cluster %q: %w", clusterName, err)
@@ -2262,7 +2282,7 @@ func (s clusterService) prepareBulkUpdate(ctx context.Context, clusterName strin
 	return servers, nil
 }
 
-func (s clusterService) StartLifecycleEventsMonitor(ctx context.Context) error {
+func (s *clusterService) StartLifecycleEventsMonitor(ctx context.Context) error {
 	clusters, err := s.GetAll(ctx)
 	if err != nil {
 		return fmt.Errorf("Failed to initially load clusters for lifecycle events monitor: %w", err)
@@ -2312,7 +2332,7 @@ func (s clusterService) StartLifecycleEventsMonitor(ctx context.Context) error {
 	return nil
 }
 
-func (s clusterService) startLifecycleEventHandler(ctx context.Context, clusterName string) (context.CancelFunc, error) {
+func (s *clusterService) startLifecycleEventHandler(ctx context.Context, clusterName string) (context.CancelFunc, error) {
 	endpoint, err := s.GetEndpoint(ctx, clusterName)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get cluster endpoint for lifecycle event handler: %w", err)
@@ -2391,7 +2411,7 @@ func exponentialBackoff(start time.Duration, limit time.Duration) iter.Seq[time.
 	}
 }
 
-func (s clusterService) UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) error {
+func (s *clusterService) UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) error {
 	_, err := tls.X509KeyPair([]byte(certificatePEM), []byte(keyPEM))
 	if err != nil {
 		return domain.NewValidationErrf("Failed to validate key pair: %v", err)
@@ -2424,7 +2444,7 @@ func (s clusterService) UpdateCertificate(ctx context.Context, name string, cert
 	})
 }
 
-func (s clusterService) GetEndpoint(ctx context.Context, name string) (Endpoint, error) {
+func (s *clusterService) GetEndpoint(ctx context.Context, name string) (Endpoint, error) {
 	servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
 		Cluster: &name,
 	})
@@ -2435,7 +2455,7 @@ func (s clusterService) GetEndpoint(ctx context.Context, name string) (Endpoint,
 	return ClusterEndpoint(servers), nil
 }
 
-func (s clusterService) GetClusterArtifactAll(ctx context.Context, clusterName string) (ClusterArtifacts, error) {
+func (s *clusterService) GetClusterArtifactAll(ctx context.Context, clusterName string) (ClusterArtifacts, error) {
 	if clusterName == "" {
 		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -2443,7 +2463,7 @@ func (s clusterService) GetClusterArtifactAll(ctx context.Context, clusterName s
 	return s.localartifact.GetClusterArtifactAll(ctx, clusterName)
 }
 
-func (s clusterService) GetClusterArtifactAllNames(ctx context.Context, clusterName string) ([]string, error) {
+func (s *clusterService) GetClusterArtifactAllNames(ctx context.Context, clusterName string) ([]string, error) {
 	if clusterName == "" {
 		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -2451,7 +2471,7 @@ func (s clusterService) GetClusterArtifactAllNames(ctx context.Context, clusterN
 	return s.localartifact.GetClusterArtifactAllNames(ctx, clusterName)
 }
 
-func (s clusterService) GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (*ClusterArtifact, error) {
+func (s *clusterService) GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (*ClusterArtifact, error) {
 	if clusterName == "" {
 		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -2463,7 +2483,7 @@ func (s clusterService) GetClusterArtifactByName(ctx context.Context, clusterNam
 	return s.localartifact.GetClusterArtifactByName(ctx, clusterName, artifactName)
 }
 
-func (s clusterService) GetClusterArtifactFileByName(ctx context.Context, clusterName string, artifactName string, filename string) (*ClusterArtifactFile, error) {
+func (s *clusterService) GetClusterArtifactFileByName(ctx context.Context, clusterName string, artifactName string, filename string) (*ClusterArtifactFile, error) {
 	if filename == "" {
 		return nil, fmt.Errorf("Filename cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -2482,7 +2502,7 @@ func (s clusterService) GetClusterArtifactFileByName(ctx context.Context, cluste
 	return nil, fmt.Errorf("File %q not found in artifact %q for cluster %q: %w", filename, artifactName, clusterName, domain.ErrNotFound)
 }
 
-func (s clusterService) GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType ClusterArtifactArchiveType) (_ io.ReadCloser, size int, _ error) {
+func (s *clusterService) GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType ClusterArtifactArchiveType) (_ io.ReadCloser, size int, _ error) {
 	rc, size, err := s.localartifact.GetClusterArtifactArchiveByName(ctx, clusterName, artifactName, archiveType)
 	if err != nil {
 		return nil, 0, fmt.Errorf("Failed to get artifact %q for cluster %q: %w", artifactName, clusterName, err)

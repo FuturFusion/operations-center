@@ -372,6 +372,7 @@ type ExprServer struct {
 	Properties           api.ConfigMap            `json:"properties" expr:"properties"`
 	LastUpdated          time.Time                `json:"last_updated"           db:"update_timestamp" expr:"last_updated"`
 	LastSeen             time.Time                `json:"last_seen" expr:"last_seen"`
+	LastStatusUpdated    time.Time                `json:"last_status_updated" expr:"last_status_updated"`
 }
 
 func ToExprApiApplicationVersionData(a api.ApplicationVersionData) ExprApiApplicationVersionData {
@@ -818,5 +819,6 @@ func ToExprServer(s Server) ExprServer {
 		Properties:           s.Properties,
 		LastUpdated:          s.LastUpdated,
 		LastSeen:             s.LastSeen,
+		LastStatusUpdated:    s.LastStatusUpdated,
 	}
 }

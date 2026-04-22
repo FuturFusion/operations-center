@@ -154,7 +154,8 @@ const (
 
 	ServerStatusDetailPendingReconfiguring ServerStatusDetail = "re-configuring"
 
-	ServerStatusDetailReadyUpdating ServerStatusDetail = "updating"
+	ServerStatusDetailReadyUpdating  ServerStatusDetail = "updating"
+	ServerStatusDetailReadyRestoring ServerStatusDetail = "restoring"
 
 	ServerStatusDetailOfflineRebooting    ServerStatusDetail = "rebooting"
 	ServerStatusDetailOfflineShutdown     ServerStatusDetail = "shut down"
@@ -165,6 +166,7 @@ var serverStatusDetails = map[ServerStatusDetail]struct{}{
 	ServerStatusDetailNone:                 {},
 	ServerStatusDetailPendingReconfiguring: {},
 	ServerStatusDetailReadyUpdating:        {},
+	ServerStatusDetailReadyRestoring:       {},
 	ServerStatusDetailOfflineRebooting:     {},
 	ServerStatusDetailOfflineShutdown:      {},
 	ServerStatusDetailOfflineUnresponsive:  {},
@@ -661,7 +663,8 @@ const (
 	ServerUpdateStateInMaintenanceRebootPending  ServerUpdateState = "in maintenance, reboot pending"  // ServerStatusReady, NeedsUpdate: false, NeedsReboot: true, InMaintenance: InMaintenanceEvacuated
 	ServerUpdateStateInMaintenanceRebooting      ServerUpdateState = "in maintenance, rebooting"       // ServerStatusOffline, ServerStatusDetailOfflineRebooting, InMaintenance: InMaintenanceEvacuated
 	ServerUpdateStateInMaintenanceRestorePending ServerUpdateState = "in maintenance, restore pending" // ServerStatusReady, NeedsUpdate: false, InMaintenance: InMaintenanceEvacuated
-	ServerUpdateStateInMaintenanceRestoring      ServerUpdateState = "restoring"                       // ServerStatusReady, NeedsUpdate: false, InMaintenance: InMaintenanceRestoring
+	ServerUpdateStateInMaintenanceRestoring      ServerUpdateState = "restoring"                       // ServerStatusReady, ServerStatusDetailReadyRestoring, NeedsUpdate: false, InMaintenance: InMaintenanceRestoring
+	ServerUpdateStateInMaintenancePostRestore    ServerUpdateState = "post restore"                    // ServerStatusReady, ServerStatusDetailReadyRestoring, NeedsUpdate: false, InMaintenance: NotInMaintenance
 	ServerUpdateStateRebootPending               ServerUpdateState = "reboot pending"                  // ServerStatusReady, NeedsUpdate: false, NeedsReboot: true, IsIncusCluster: false, InMaintenance: NotInMaintenance
 	ServerUpdateStateRebooting                   ServerUpdateState = "rebooting"                       // ServerStatusOffline, ServerStatusDetailOfflineRebooting
 )
@@ -695,7 +698,8 @@ func (s Server) UpdateState() ServerUpdateState {
 
 	if !ptr.From(s.VersionData.NeedsUpdate) &&
 		!ptr.From(s.VersionData.NeedsReboot) &&
-		ptr.From(s.VersionData.InMaintenance) == NotInMaintenance {
+		ptr.From(s.VersionData.InMaintenance) == NotInMaintenance &&
+		((s.Status == ServerStatusReady && s.StatusDetail == ServerStatusDetailNone) || s.Status == ServerStatusOffline) {
 		return ServerUpdateStateUpToDate
 	}
 
@@ -709,6 +713,10 @@ func (s Server) UpdateState() ServerUpdateState {
 
 	case InMaintenanceRestoring:
 		return ServerUpdateStateInMaintenanceRestoring
+	}
+
+	if s.StatusDetail == ServerStatusDetailReadyRestoring {
+		return ServerUpdateStateInMaintenancePostRestore
 	}
 
 	if ptr.From(s.VersionData.NeedsReboot) {

@@ -121,6 +121,9 @@ func TestServerDatabaseActions(t *testing.T) {
 		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 			return nil
 		},
+		IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
+			return nil
+		},
 		GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
 			return api.HardwareData{}, nil
 		},

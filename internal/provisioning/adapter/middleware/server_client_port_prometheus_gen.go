@@ -206,6 +206,20 @@ func (_d ServerClientPortWithPrometheus) GetVersionData(ctx context.Context, ser
 	return _d.base.GetVersionData(ctx, server)
 }
 
+// IsReady implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) IsReady(ctx context.Context, server provisioning.Server) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "IsReady", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.IsReady(ctx, server)
+}
+
 // Ping implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithPrometheus) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
 	_since := time.Now()

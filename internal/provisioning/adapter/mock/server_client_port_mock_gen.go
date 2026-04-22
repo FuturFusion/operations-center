@@ -58,6 +58,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
 //				panic("mock out the GetVersionData method")
 //			},
+//			IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
+//				panic("mock out the IsReady method")
+//			},
 //			PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 //				panic("mock out the Ping method")
 //			},
@@ -133,6 +136,9 @@ type ServerClientPortMock struct {
 
 	// GetVersionDataFunc mocks the GetVersionData method.
 	GetVersionDataFunc func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error)
+
+	// IsReadyFunc mocks the IsReady method.
+	IsReadyFunc func(ctx context.Context, server provisioning.Server) error
 
 	// PingFunc mocks the Ping method.
 	PingFunc func(ctx context.Context, endpoint provisioning.Endpoint) error
@@ -257,6 +263,13 @@ type ServerClientPortMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
+		// IsReady holds details about calls to the IsReady method.
+		IsReady []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// Ping holds details about calls to the Ping method.
 		Ping []struct {
 			// Ctx is the ctx argument value.
@@ -359,6 +372,7 @@ type ServerClientPortMock struct {
 	lockGetSystemLogging     sync.RWMutex
 	lockGetUpdateConfig      sync.RWMutex
 	lockGetVersionData       sync.RWMutex
+	lockIsReady              sync.RWMutex
 	lockPing                 sync.RWMutex
 	lockPoweroff             sync.RWMutex
 	lockReboot               sync.RWMutex
@@ -809,6 +823,42 @@ func (mock *ServerClientPortMock) GetVersionDataCalls() []struct {
 	mock.lockGetVersionData.RLock()
 	calls = mock.calls.GetVersionData
 	mock.lockGetVersionData.RUnlock()
+	return calls
+}
+
+// IsReady calls IsReadyFunc.
+func (mock *ServerClientPortMock) IsReady(ctx context.Context, server provisioning.Server) error {
+	if mock.IsReadyFunc == nil {
+		panic("ServerClientPortMock.IsReadyFunc: method is nil but ServerClientPort.IsReady was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockIsReady.Lock()
+	mock.calls.IsReady = append(mock.calls.IsReady, callInfo)
+	mock.lockIsReady.Unlock()
+	return mock.IsReadyFunc(ctx, server)
+}
+
+// IsReadyCalls gets all the calls that were made to IsReady.
+// Check the length with:
+//
+//	len(mockedServerClientPort.IsReadyCalls())
+func (mock *ServerClientPortMock) IsReadyCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockIsReady.RLock()
+	calls = mock.calls.IsReady
+	mock.lockIsReady.RUnlock()
 	return calls
 }
 

@@ -77,6 +77,9 @@ func createClusterAndThenClusterUpdate(t *testing.T, tmpDir string) {
 	stopUpdate := timeTrack(t, "cluster update")
 	defer stopUpdate()
 
+	t.Log("Update post_restore_delay")
+	mustRun(t, `EDITOR='sed -i "s/    post_restore_delay:.*/    post_restore_delay: 20s/"' script -q -c '../bin/operations-center.linux.%s provisioning cluster edit incus-os-cluster' /dev/null`, cpuArch)
+
 	t.Log("Update cluster - trigger update")
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster update incus-os-cluster --reboot`, cpuArch)
 
@@ -110,7 +113,7 @@ func createClusterAndThenClusterUpdate(t *testing.T, tmpDir string) {
 			t.Fatalf("Update deadline reached: %v", ctx.Err())
 			return
 
-		case <-time.After(10 * time.Second):
+		case <-time.After(1 * time.Second):
 		}
 	}
 

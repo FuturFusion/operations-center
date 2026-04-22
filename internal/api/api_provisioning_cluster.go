@@ -354,14 +354,7 @@ func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	ctx, trans := transaction.Begin(r.Context())
-	defer func() {
-		rollbackErr := trans.Rollback()
-		if rollbackErr != nil {
-			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
-		}
-	}()
-
+	ctx := r.Context()
 	currentCluster, err := c.service.GetByName(ctx, name)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to get cluster %q: %w", name, err))
@@ -382,11 +375,6 @@ func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 	err = c.service.Update(ctx, *currentCluster, true)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating cluster %q: %w", name, err))
-	}
-
-	err = trans.Commit()
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/clusters/"+name)

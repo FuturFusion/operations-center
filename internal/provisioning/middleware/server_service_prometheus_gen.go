@@ -264,6 +264,20 @@ func (_d ServerServiceWithPrometheus) PollServers(ctx context.Context, serverFil
 	return _d.base.PollServers(ctx, serverFilter, updateServerConfiguration)
 }
 
+// PostRestoreSystemDoneByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) PostRestoreSystemDoneByName(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PostRestoreSystemDoneByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.PostRestoreSystemDoneByName(ctx, name)
+}
+
 // PoweroffSystemByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) PoweroffSystemByName(ctx context.Context, name string, force bool) (err error) {
 	_since := time.Now()

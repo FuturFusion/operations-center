@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/lxc/incus/v6/shared/revert"
+	"github.com/mattn/go-shellwords"
 )
 
 // Spawn the editor with a temporary YAML file for editing configs.
@@ -77,8 +77,12 @@ func Spawn(inPath string, inContent []byte) ([]byte, error) {
 		path = inPath
 	}
 
-	cmdParts := strings.Fields(editor)
-	cmd := exec.Command(cmdParts[0], append(cmdParts[1:], path)...)
+	args, err := shellwords.Parse(editor)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	cmd := exec.Command(args[0], append(args[1:], path)...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

@@ -39,6 +39,7 @@ type ServerService interface {
 	PoweroffSystemByName(ctx context.Context, name string, force bool) error
 	RebootSystemByName(ctx context.Context, name string, force bool) error
 	RestoreSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) error
+	PostRestoreSystemDoneByName(ctx context.Context, name string) error
 	UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error
 
 	GetSystemLogging(ctx context.Context, name string) (ServerSystemLogging, error)
@@ -63,6 +64,7 @@ type ServerRepo interface {
 
 type ServerClientPort interface {
 	Ping(ctx context.Context, endpoint Endpoint) error
+	IsReady(ctx context.Context, server Server) error
 	GetResources(ctx context.Context, endpoint Endpoint) (api.HardwareData, error)
 	GetOSData(ctx context.Context, endpoint Endpoint) (api.OSData, error)
 	GetVersionData(ctx context.Context, server Server) (api.ServerVersionData, error)

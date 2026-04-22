@@ -167,7 +167,7 @@ func TestServerVersionData_State(t *testing.T) {
 		},
 		{
 			status:        api.ServerStatusReady,
-			statusDetail:  api.ServerStatusDetailNone,
+			statusDetail:  api.ServerStatusDetailReadyRestoring,
 			cluster:       "one",
 			needsUpdate:   false,
 			needsReboot:   false,
@@ -175,6 +175,17 @@ func TestServerVersionData_State(t *testing.T) {
 			isTypeIncus:   true,
 
 			wantServerUpdateState: api.ServerUpdateStateInMaintenanceRestoring,
+		},
+		{
+			status:        api.ServerStatusReady,
+			statusDetail:  api.ServerStatusDetailReadyRestoring,
+			cluster:       "one",
+			needsUpdate:   false,
+			needsReboot:   false,
+			inMaintenance: api.NotInMaintenance,
+			isTypeIncus:   true,
+
+			wantServerUpdateState: api.ServerUpdateStateInMaintenancePostRestore,
 		},
 		{
 			status:        api.ServerStatusReady,

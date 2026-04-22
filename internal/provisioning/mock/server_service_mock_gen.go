@@ -72,6 +72,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			PollServersFunc: func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
 //				panic("mock out the PollServers method")
 //			},
+//			PostRestoreSystemDoneByNameFunc: func(ctx context.Context, name string) error {
+//				panic("mock out the PostRestoreSystemDoneByName method")
+//			},
 //			PoweroffSystemByNameFunc: func(ctx context.Context, name string, force bool) error {
 //				panic("mock out the PoweroffSystemByName method")
 //			},
@@ -177,6 +180,9 @@ type ServerServiceMock struct {
 
 	// PollServersFunc mocks the PollServers method.
 	PollServersFunc func(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error
+
+	// PostRestoreSystemDoneByNameFunc mocks the PostRestoreSystemDoneByName method.
+	PostRestoreSystemDoneByNameFunc func(ctx context.Context, name string) error
 
 	// PoweroffSystemByNameFunc mocks the PoweroffSystemByName method.
 	PoweroffSystemByNameFunc func(ctx context.Context, name string, force bool) error
@@ -351,6 +357,13 @@ type ServerServiceMock struct {
 			// UpdateServerConfiguration is the updateServerConfiguration argument value.
 			UpdateServerConfiguration bool
 		}
+		// PostRestoreSystemDoneByName holds details about calls to the PostRestoreSystemDoneByName method.
+		PostRestoreSystemDoneByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
 		// PoweroffSystemByName holds details about calls to the PoweroffSystemByName method.
 		PoweroffSystemByName []struct {
 			// Ctx is the ctx argument value.
@@ -517,6 +530,7 @@ type ServerServiceMock struct {
 	lockGetSystemUpdate              sync.RWMutex
 	lockPollServer                   sync.RWMutex
 	lockPollServers                  sync.RWMutex
+	lockPostRestoreSystemDoneByName  sync.RWMutex
 	lockPoweroffSystemByName         sync.RWMutex
 	lockRebootSystemByName           sync.RWMutex
 	lockRename                       sync.RWMutex
@@ -1125,6 +1139,42 @@ func (mock *ServerServiceMock) PollServersCalls() []struct {
 	mock.lockPollServers.RLock()
 	calls = mock.calls.PollServers
 	mock.lockPollServers.RUnlock()
+	return calls
+}
+
+// PostRestoreSystemDoneByName calls PostRestoreSystemDoneByNameFunc.
+func (mock *ServerServiceMock) PostRestoreSystemDoneByName(ctx context.Context, name string) error {
+	if mock.PostRestoreSystemDoneByNameFunc == nil {
+		panic("ServerServiceMock.PostRestoreSystemDoneByNameFunc: method is nil but ServerService.PostRestoreSystemDoneByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockPostRestoreSystemDoneByName.Lock()
+	mock.calls.PostRestoreSystemDoneByName = append(mock.calls.PostRestoreSystemDoneByName, callInfo)
+	mock.lockPostRestoreSystemDoneByName.Unlock()
+	return mock.PostRestoreSystemDoneByNameFunc(ctx, name)
+}
+
+// PostRestoreSystemDoneByNameCalls gets all the calls that were made to PostRestoreSystemDoneByName.
+// Check the length with:
+//
+//	len(mockedServerService.PostRestoreSystemDoneByNameCalls())
+func (mock *ServerServiceMock) PostRestoreSystemDoneByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockPostRestoreSystemDoneByName.RLock()
+	calls = mock.calls.PostRestoreSystemDoneByName
+	mock.lockPostRestoreSystemDoneByName.RUnlock()
 	return calls
 }
 
