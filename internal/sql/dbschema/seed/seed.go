@@ -77,17 +77,20 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 			}
 
 			servers = append(servers, serverName)
+			updatedAt := faker.Date()
 			_, err = serverRepo.Create(ctx, provisioning.Server{
-				Cluster:       &clusterName,
-				Name:          serverName,
-				Type:          api.ServerType(faker.RandomString([]string{"unknown", "incus", "migration-manager", "operations-center"})),
-				ConnectionURL: fmt.Sprintf("https://%s.domain.tdl", serverName),
-				Certificate:   string(certPEM),
-				HardwareData:  api.HardwareData{},
-				OSData:        api.OSData{},
-				Status:        api.ServerStatusReady,
-				LastUpdated:   faker.Date(),
-				Channel:       "stable",
+				Cluster:           &clusterName,
+				Name:              serverName,
+				Type:              api.ServerType(faker.RandomString([]string{"unknown", "incus", "migration-manager", "operations-center"})),
+				ConnectionURL:     fmt.Sprintf("https://%s.domain.tdl", serverName),
+				Certificate:       string(certPEM),
+				HardwareData:      api.HardwareData{},
+				OSData:            api.OSData{},
+				Status:            api.ServerStatusReady,
+				LastStatusUpdated: updatedAt,
+				LastUpdated:       updatedAt,
+				LastSeen:          updatedAt,
+				Channel:           "stable",
 			})
 			if err != nil {
 				return err
