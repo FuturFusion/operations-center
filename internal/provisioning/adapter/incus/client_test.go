@@ -451,6 +451,86 @@ func TestClientServer(t *testing.T) {
 
 	methods := []methodTestSetServer{
 		{
+			name: "IsReady",
+			clientCall: func(ctx context.Context, c clientPort, server provisioning.Server) (any, error) {
+				return nil, c.IsReady(ctx, server)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "environment": {
+      "uptime": 3600
+    }
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /os/1.0"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /os/1.0"},
+				},
+				{
+					name: "error - resource data invalid JSON",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /os/1.0"},
+				},
+				{
+					name: "error - not ready",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "environment": {
+      "uptime": 0
+    }
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: func(tt require.TestingT, err error, a ...any) {
+						require.True(tt, domain.IsRetryableError(err))
+					},
+					wantPaths: []string{"GET /os/1.0"},
+				},
+			},
+		},
+
+		{
 			name: "GetResources",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
 				return client.GetResources(ctx, target)

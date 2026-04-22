@@ -101,6 +101,36 @@ func (c client) Ping(ctx context.Context, endpoint provisioning.Endpoint) error 
 	return nil
 }
 
+func (c client) IsReady(ctx context.Context, server provisioning.Server) error {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return err
+	}
+
+	resp, _, err := client.RawQuery(http.MethodGet, "/os/1.0", http.NoBody, "")
+	if err != nil {
+		err = api.AsNotIncusOSError(err)
+
+		return fmt.Errorf("Get resources from %q (%s) failed: %w", server.GetName(), server.GetConnectionURL(), err)
+	}
+
+	var osData struct {
+		Environment struct {
+			Uptime int `json:"uptime"`
+		} `json:"environment"`
+	}
+	err = json.Unmarshal(resp.Metadata, &osData)
+	if err != nil {
+		return fmt.Errorf("Unexpected response metadata while fetching OS information from %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+	}
+
+	if osData.Environment.Uptime < 120 {
+		return domain.NewRetryableErr(fmt.Errorf("Server uptime is less than 120s"))
+	}
+
+	return nil
+}
+
 func (c client) GetResources(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
 	client, err := c.getClient(ctx, endpoint)
 	if err != nil {
