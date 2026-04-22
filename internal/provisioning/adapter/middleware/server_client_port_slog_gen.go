@@ -460,6 +460,40 @@ func (_d ServerClientPortWithSlog) GetVersionData(ctx context.Context, server pr
 	return _d._base.GetVersionData(ctx, server)
 }
 
+// IsReady implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) IsReady(ctx context.Context, server provisioning.Server) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling IsReady")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method IsReady returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method IsReady returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method IsReady finished")
+		}
+	}()
+	return _d._base.IsReady(ctx, server)
+}
+
 // Ping implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
 	log := slog.With()

@@ -146,6 +146,16 @@ func (_d ServerClientPortWithErrorWrapper) GetVersionData(ctx context.Context, s
 	return _d._base.GetVersionData(ctx, server)
 }
 
+// IsReady implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithErrorWrapper) IsReady(ctx context.Context, server provisioning.Server) (err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.IsReady(ctx, server)
+}
+
 // Ping implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithErrorWrapper) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
 	defer func() {
