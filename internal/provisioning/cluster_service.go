@@ -12,6 +12,7 @@ import (
 	"net"
 	"slices"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -1585,7 +1586,8 @@ func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgres
 	}
 
 	if pendingSteps > 0 {
-		return fmt.Sprintf("[%d/%d] %s server %q", totalSteps-pendingSteps+1, totalSteps, currentStep, currentServer)
+		format := fmt.Sprintf("[%%%[1]dd/%%%[1]dd] %%s server %%q", len(strconv.Itoa(totalSteps)))
+		return fmt.Sprintf(format, totalSteps-pendingSteps+1, totalSteps, currentStep, currentServer)
 	}
 
 	return ""

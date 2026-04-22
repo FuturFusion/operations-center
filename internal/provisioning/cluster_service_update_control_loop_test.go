@@ -994,18 +994,18 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 	}
 
 	require.True(t, success)
-	log.Contains(`[1/27] update pending server \"serverA\"`)(t, logBuf)
-	log.Contains(`[2/27] updating server \"serverA\"`)(t, logBuf)
+	log.Contains(`[ 1/27] update pending server \"serverA\"`)(t, logBuf)
+	log.Contains(`[ 2/27] updating server \"serverA\"`)(t, logBuf)
 
-	log.Contains(`[3/27] update pending server \"serverB\"`)(t, logBuf)
-	log.Contains(`[4/27] updating server \"serverB\"`)(t, logBuf)
+	log.Contains(`[ 3/27] update pending server \"serverB\"`)(t, logBuf)
+	log.Contains(`[ 4/27] updating server \"serverB\"`)(t, logBuf)
 
-	log.Contains(`[5/27] update pending server \"serverC\"`)(t, logBuf)
-	log.Contains(`[6/27] updating server \"serverC\"`)(t, logBuf)
+	log.Contains(`[ 5/27] update pending server \"serverC\"`)(t, logBuf)
+	log.Contains(`[ 6/27] updating server \"serverC\"`)(t, logBuf)
 
-	log.Contains(`[7/27] evacuation pending server \"serverA\"`)(t, logBuf)
-	log.Contains(`[8/27] evacuating server \"serverA\"`)(t, logBuf)
-	log.Contains(`[9/27] in maintenance, reboot pending server \"serverA\"`)(t, logBuf)
+	log.Contains(`[ 7/27] evacuation pending server \"serverA\"`)(t, logBuf)
+	log.Contains(`[ 8/27] evacuating server \"serverA\"`)(t, logBuf)
+	log.Contains(`[ 9/27] in maintenance, reboot pending server \"serverA\"`)(t, logBuf)
 	log.Contains(`[10/27] in maintenance, rebooting server \"serverA\"`)(t, logBuf)
 	log.Contains(`[11/27] in maintenance, restore pending server \"serverA\"`)(t, logBuf)
 	log.Contains(`[12/27] restoring server \"serverA\"`)(t, logBuf)
