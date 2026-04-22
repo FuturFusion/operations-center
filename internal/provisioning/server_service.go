@@ -135,6 +135,7 @@ func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer S
 
 		newServer.Status = api.ServerStatusPending
 		newServer.StatusDetail = api.ServerStatusDetailPendingReconfiguring
+		newServer.LastStatusUpdated = s.now()
 		newServer.LastSeen = s.now()
 		newServer.Channel = channel
 
@@ -481,7 +482,7 @@ func (s *serverService) UpdateSystemNetwork(ctx context.Context, name string, sy
 		updatedServer.OSData.Network = systemNetwork
 		updatedServer.Status = api.ServerStatusPending
 		updatedServer.StatusDetail = api.ServerStatusDetailPendingReconfiguring
-
+		updatedServer.LastStatusUpdated = s.now()
 		updatedServer.LastSeen = s.now()
 
 		err = s.Update(ctx, *updatedServer, true, false)
@@ -549,7 +550,7 @@ func (s *serverService) UpdateSystemStorage(ctx context.Context, name string, sy
 		updatedServer.OSData.Storage = systemStorage
 		updatedServer.Status = api.ServerStatusPending
 		updatedServer.StatusDetail = api.ServerStatusDetailPendingReconfiguring
-
+		updatedServer.LastStatusUpdated = s.now()
 		updatedServer.LastSeen = s.now()
 
 		err = s.Update(ctx, *updatedServer, true, false)
@@ -776,6 +777,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 				Certificate:         string(serverCert),
 				Status:              api.ServerStatusReady,
 				StatusDetail:        api.ServerStatusDetailNone,
+				LastStatusUpdated:   s.now(),
 				LastSeen:            s.now(),
 				Channel:             config.GetUpdates().ServerDefaultChannel,
 			}
@@ -795,6 +797,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 			server.Certificate = string(serverCert)
 			server.Status = api.ServerStatusReady
 			server.StatusDetail = api.ServerStatusDetailNone
+			server.LastStatusUpdated = s.now()
 			server.LastSeen = s.now()
 
 			upsert = func(ctx context.Context, server Server) error {
@@ -1031,6 +1034,7 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 
 		server.Status = api.ServerStatusOffline
 		server.StatusDetail = api.ServerStatusDetailOfflineShutdown
+		server.LastStatusUpdated = s.now()
 
 		err = s.Update(ctx, *server, false, false)
 		if err != nil {
@@ -1099,6 +1103,7 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 
 		server.Status = api.ServerStatusOffline
 		server.StatusDetail = api.ServerStatusDetailOfflineRebooting
+		server.LastStatusUpdated = s.now()
 
 		err = s.Update(ctx, *server, false, false)
 		if err != nil {
@@ -1190,6 +1195,7 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 		}
 
 		server.StatusDetail = api.ServerStatusDetailReadyRestoring
+		server.LastStatusUpdated = s.now()
 
 		for i := range server.VersionData.Applications {
 			if server.VersionData.Applications[i].Name == string(images.UpdateFileComponentIncus) {
@@ -1244,6 +1250,7 @@ func (s *serverService) PostRestoreSystemDoneByName(ctx context.Context, name st
 		}
 
 		server.StatusDetail = api.ServerStatusDetailNone
+		server.LastStatusUpdated = s.now()
 
 		err = s.repo.Update(ctx, *server)
 		if err != nil {
@@ -1289,6 +1296,7 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 		previousServer = server.Clone()
 
 		server.StatusDetail = api.ServerStatusDetailReadyUpdating
+		server.LastStatusUpdated = s.now()
 
 		err = s.Update(ctx, *server, false, false)
 		if err != nil {
@@ -1555,6 +1563,7 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 
 					updateServer.Status = api.ServerStatusOffline
 					updateServer.StatusDetail = api.ServerStatusDetailOfflineUnresponsive
+					updateServer.LastStatusUpdated = s.now()
 					err = s.repo.Update(ctx, *updateServer)
 					if err != nil {
 						return err
@@ -1649,11 +1658,11 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 		// of reboot or reconfiguration.
 		if server.Status != api.ServerStatusReady {
 			s.volatileServerStates.reset(server.Name, operationReboot)
+			server.Status = api.ServerStatusReady
 			server.StatusDetail = api.ServerStatusDetailNone
+			server.LastStatusUpdated = s.now()
 			signalLifecycle = true
 		}
-
-		server.Status = api.ServerStatusReady
 
 		if updateServerConfiguration {
 			server.HardwareData = hardwareData

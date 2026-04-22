@@ -41,6 +41,7 @@ type Server struct {
 	Properties           api.ConfigMap          `json:"properties"`
 	LastUpdated          time.Time              `json:"last_updated"           db:"update_timestamp"`
 	LastSeen             time.Time              `json:"last_seen"`
+	LastStatusUpdated    time.Time              `json:"last_status_updated"`
 }
 
 func (s Server) GetConnectionURL() string {
