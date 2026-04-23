@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -1131,6 +1133,90 @@ func (d *Daemon) setupBackgroundTasks(
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return renewACMEServerCertificateTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
+
+	// Start background task to check certificate validity of server and cluster certificates.
+	certificatesValidityCheckTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "Certificates validity check triggered")
+
+		clusters, err := clusterSvc.GetAll(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to get clusters during certificates validity check", logger.Err(err))
+		}
+
+		warnings := warning.Warnings{}
+		for _, cluster := range clusters {
+			if cluster.Certificate == nil {
+				continue
+			}
+
+			scope := api.WarningScope{
+				Scope:      "certificate_validity_check",
+				EntityType: "cluster",
+				Entity:     cluster.Name,
+			}
+
+			valid, err := certificateValidate(*cluster.Certificate)
+			if err != nil {
+				if valid {
+					warnings = append(warnings, warning.NewWarning(api.WarningTypeCertificateExpiration, scope, err.Error()))
+
+					continue
+				}
+
+				warnings = append(warnings, warning.NewWarning(api.WarningTypeCertificateInvalid, scope, err.Error()))
+			}
+		}
+
+		warningSvc.RemoveStale(ctx, api.WarningScope{
+			Scope:      "certificate_validity_check",
+			EntityType: "cluster",
+		}, warnings)
+
+		for _, w := range warnings {
+			warningSvc.Emit(ctx, w)
+		}
+
+		servers, err := serverSvc.GetAll(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to get servers during certificates validity check", logger.Err(err))
+		}
+
+		warnings = warning.Warnings{}
+		for _, server := range servers {
+			scope := api.WarningScope{
+				Scope:      "certificate_validity_check",
+				EntityType: "server",
+				Entity:     server.Name,
+			}
+
+			valid, err := certificateValidate(server.Certificate)
+			if err != nil {
+				if valid {
+					warnings = append(warnings, warning.NewWarning(api.WarningTypeCertificateExpiration, scope, err.Error()))
+
+					continue
+				}
+
+				warnings = append(warnings, warning.NewWarning(api.WarningTypeCertificateInvalid, scope, err.Error()))
+			}
+		}
+
+		warningSvc.RemoveStale(ctx, api.WarningScope{
+			Scope:      "certificate_validity_check",
+			EntityType: "server",
+		}, warnings)
+
+		for _, w := range warnings {
+			warningSvc.Emit(ctx, w)
+		}
+
+		slog.InfoContext(ctx, "Certificates validity check completed")
+	}
+
+	certificatesValidityCheckTaskStop, _ := task.Start(ctx, certificatesValidityCheckTask, task.Every(config.CertificatesValidityCheckInterval))
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return certificatesValidityCheckTaskStop(deadlineFrom(ctx, 10*time.Second))
+	})
 }
 
 func (d *Daemon) setupSocketListener(ctx context.Context) {
@@ -1374,4 +1460,30 @@ func (d *Daemon) Stop(ctx context.Context) error {
 	lifecycle.ServerLifecycleSignal.Reset()
 
 	return errors.Join(errs...)
+}
+
+func certificateValidate(certPEM string) (valid bool, _ error) {
+	certBlock, _ := pem.Decode([]byte(certPEM))
+	if certBlock == nil {
+		return false, fmt.Errorf("Certificate must be base64 encoded PEM certificate")
+	}
+
+	cert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return false, fmt.Errorf("Failed to parse x509 certificate: %w", err)
+	}
+
+	if time.Now().Before(cert.NotBefore) {
+		return false, fmt.Errorf("The provided certificate isn't valid yet")
+	}
+
+	if time.Now().After(cert.NotAfter) {
+		return false, fmt.Errorf("The provided certificate is expired")
+	}
+
+	if time.Now().Add(30 * 24 * time.Hour).After(cert.NotAfter) {
+		return true, fmt.Errorf("The provided cerificate expires within 30 days, expiration date: %s", cert.NotAfter.String())
+	}
+
+	return true, nil
 }
