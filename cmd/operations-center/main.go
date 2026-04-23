@@ -102,6 +102,12 @@ func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
 
 	app.AddCommand(systemCmd.Command())
 
+	warningCmd := cmds.CmdWarning{
+		OCClient: globalCmd.ocClient,
+	}
+
+	app.AddCommand(warningCmd.Command())
+
 	adminCmd := cmds.CmdAdmin{
 		OCClient: globalCmd.ocClient,
 	}
