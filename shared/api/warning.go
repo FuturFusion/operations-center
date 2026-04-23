@@ -33,6 +33,14 @@ const (
 	// the ACME certificate udpate.
 	WarningTypeACMECertificateUpdateFailed WarningType = "ACME certificate update failed"
 
+	// WarningTypeCertificateExpiration indicates that a certificate is soon to
+	// expire.
+	WarningTypeCertificateExpiration WarningType = "Certificate expiration"
+
+	// WarningTypeCertificateInvalid indicates a warning happening during
+	// validity check of certificates.
+	WarningTypeCertificateInvalid WarningType = "Certificate invalid"
+
 	// WarningTypeClusterInventoryResyncFailed indicates a warning during resync
 	// of a cluster's inventory.
 	WarningTypeClusterInventoryResyncFailed WarningType = "Inventory resync failed"
