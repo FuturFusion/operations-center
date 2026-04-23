@@ -9,10 +9,13 @@ import (
 	"io"
 	"iter"
 	"log/slog"
+	"maps"
 	"net"
+	"reflect"
 	"slices"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,6 +24,7 @@ import (
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus-os/incus-osd/api/images"
+	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -357,7 +361,7 @@ func (s *clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clus
 		// Ignore the error, the cluster role address has already been successfully determined for `core.https_address`.
 		clusterRoleAddress, _ := determineClusterRoleAddress(server)
 
-		err = s.client.JoinCluster(ctx, server, joinTokens[i], clusterRoleAddress, clusterEndpoint)
+		err = s.client.JoinCluster(ctx, server, joinTokens[i], clusterRoleAddress, clusterEndpoint, nil)
 		if err != nil {
 			return newCluster, fmt.Errorf("Failed to join cluster on %q: %w", server.Name, err)
 		}
@@ -557,6 +561,371 @@ func determineClusterRoleAddress(server Server) (string, error) {
 	}
 
 	return net.JoinHostPort(ip.String(), "8443"), nil
+}
+
+func (s *clusterService) AddServers(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool) error {
+	// Pre checks
+	cluster, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get cluster %q: %w", name, err)
+	}
+
+	if len(serverNames) == 0 {
+		return fmt.Errorf("Empty list of servers provided to join the cluster: %w", domain.ErrOperationNotPermitted)
+	}
+
+	// Make sure, the "to be added" servers are known and do have a configuration
+	// valid for clustering.
+	additionalServers := make([]Server, 0, len(serverNames))
+	for _, serverName := range serverNames {
+		server, err := s.serverSvc.GetByName(ctx, serverName)
+		if err != nil {
+			return fmt.Errorf("Failed to get server %q: %w", serverName, err)
+		}
+
+		if server.Cluster != nil {
+			return fmt.Errorf("Server %q is already part of cluster %q: %w", serverName, *server.Cluster, domain.ErrOperationNotPermitted)
+		}
+
+		if server.Status != api.ServerStatusReady {
+			return fmt.Errorf("Server %q is not in ready state and can therefore not be used for clustering: %w", serverName, domain.ErrOperationNotPermitted)
+		}
+
+		if cluster.Channel != server.Channel {
+			return fmt.Errorf("Server %q update channel %q does not match channel requested for cluster %q: %w", server.Name, server.Channel, cluster.Channel, domain.ErrOperationNotPermitted)
+		}
+
+		if ptr.From(server.VersionData.NeedsUpdate) || ptr.From(server.VersionData.NeedsReboot) || ptr.From(server.VersionData.InMaintenance) != api.NotInMaintenance {
+			return fmt.Errorf("Server %q not ready to be clustered (needs update: %t, needs reboot: %t, in maintenance: %v): %w", server.Name, ptr.From(server.VersionData.NeedsUpdate), ptr.From(server.VersionData.NeedsReboot), server.VersionData.InMaintenance.String(), domain.ErrOperationNotPermitted)
+		}
+
+		hasIncus := false
+		for _, app := range server.VersionData.Applications {
+			if app.Name == string(images.UpdateFileComponentIncus) {
+				hasIncus = true
+				break
+			}
+		}
+
+		if !hasIncus {
+			return fmt.Errorf("Server %q does not have application Incus: %w", server.Name, domain.ErrOperationNotPermitted)
+		}
+
+		additionalServers = append(additionalServers, *server)
+	}
+
+	currentClusterServers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+		Cluster: ptr.To(name),
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to get current servers of cluster %q: %w", name, err)
+	}
+
+	// Check configuration consistency.
+	isConsistent, reason, err := s.checkClusteringServerConsistency(ctx, append(currentClusterServers, additionalServers...))
+	if err != nil {
+		return fmt.Errorf("Failed to check cluster consistency for %q including the additional servers (%s): %w", name, strings.Join(serverNames, ","), err)
+	}
+
+	if !isConsistent {
+		return fmt.Errorf("Failed to add servers (%s) due to configuration inconsistencies: %s: %w", strings.Join(serverNames, ","), reason, domain.ErrOperationNotPermitted)
+	}
+
+	clusterEndpoint := currentClusterServers[0]
+	incusClient, err := s.client.IncusClient(ctx, clusterEndpoint)
+	if err != nil {
+		return fmt.Errorf("Failed to get incus client instance for cluster %q: %w", name, err)
+	}
+
+	// Query the existing server for the cluster config.
+	clusterConfig, _, err := incusClient.GetCluster()
+	if err != nil {
+		return fmt.Errorf("Failed to get cluster %q: %w", name, err)
+	}
+
+	// Get the missing values for the cluster config from one of the already clustered servers.
+	for i, memberConfig := range clusterConfig.MemberConfig {
+		switch memberConfig.Entity {
+		case "storage-pool":
+			storagePool, _, err := incusClient.UseTarget(clusterEndpoint.GetName()).GetStoragePool(memberConfig.Name)
+			if err != nil {
+				return fmt.Errorf("Failed to get storage pool details for %q on server %q: %w", memberConfig.Name, clusterEndpoint.GetName(), err)
+			}
+
+			clusterConfig.MemberConfig[i].Value = storagePool.Config[memberConfig.Key]
+
+		case "network":
+			network, _, err := incusClient.UseTarget(clusterEndpoint.GetName()).GetNetwork(memberConfig.Name)
+			if err != nil {
+				return fmt.Errorf("Failed to get network details for %q on server %q: %w", memberConfig.Name, clusterEndpoint.GetName(), err)
+			}
+
+			clusterConfig.MemberConfig[i].Value = network.Config[memberConfig.Key]
+		}
+	}
+
+	// Get join tokens on from the cluster, skip the bootstrap server.
+	joinTokens := make([]string, 0, len(additionalServers))
+	for _, server := range additionalServers {
+		joinToken, err := s.client.GetClusterJoinToken(ctx, clusterEndpoint, server.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to get cluster join token from cluster %q for server %q: %w", name, server.Name, err)
+		}
+
+		joinTokens = append(joinTokens, joinToken)
+	}
+
+	// Send the join tokens to the remaining servers to join the cluster.
+	for i, server := range additionalServers {
+		// Ignore the error, the cluster role address has already been successfully determined for `core.https_address`.
+		clusterRoleAddress, _ := determineClusterRoleAddress(server)
+
+		err = s.client.JoinCluster(ctx, server, joinTokens[i], clusterRoleAddress, clusterEndpoint, clusterConfig.MemberConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to join cluster %q for server %q: %w", cluster.Name, server.Name, err)
+		}
+	}
+
+	// Update server records.
+	for i := range additionalServers {
+		additionalServers[i].Cluster = &cluster.Name
+		additionalServers[i].ClusterCertificate = cluster.Certificate
+		additionalServers[i].ClusterConnectionURL = &cluster.ConnectionURL
+		additionalServers[i].Channel = cluster.Channel
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		// Validate again all listed servers are not yet part of cluster.
+		for _, server := range additionalServers {
+			currentServer, err := s.serverSvc.GetByName(ctx, server.Name)
+			if err != nil {
+				return fmt.Errorf("Failed to get server %q: %w", server.Name, err)
+			}
+
+			if currentServer.Cluster != nil {
+				return fmt.Errorf("Server %q was not part of a cluster, but is now part of %q: %w", server.Name, *server.Cluster, domain.ErrOperationNotPermitted)
+			}
+		}
+
+		// Update Server records in the repo.
+		for _, server := range additionalServers {
+			err = s.serverSvc.Update(ctx, server, true, true)
+			if err != nil {
+				return fmt.Errorf("Failed to update server record for %q: %w", server.Name, err)
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	if skipPostJoinOperations {
+		return nil
+	}
+
+	// Refresh OS Data, required for the detection of the network interface for
+	// the internal mesh.
+	for i, server := range additionalServers {
+		osData, err := s.client.GetOSData(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get OS data from %q: %w", server.Name, err)
+		}
+
+		additionalServers[i].OSData = osData
+	}
+
+	// Create local storage pool and the internal storage volumes for backup,
+	// images and logs and set the necessary server configuration.
+	for _, server := range additionalServers {
+		incusClient, err := s.client.IncusClient(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get incus client instance for server %q: %w", server.Name, err)
+		}
+
+		storageVolumes := []string{
+			"backups",
+			"images",
+			"logs",
+		}
+		for _, storageVolume := range storageVolumes {
+			err = incusClient.UseTarget(server.Name).CreateStoragePoolVolume("local", incusapi.StorageVolumesPost{
+				Name:        storageVolume,
+				Type:        "custom",
+				ContentType: "filesystem",
+				StorageVolumePut: incusapi.StorageVolumePut{
+					Description: fmt.Sprintf("Volume holding system %s", storageVolume),
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("Failed to create storage volume %q on %q: %w", storageVolume, server.Name, err)
+			}
+		}
+
+		err = s.client.SetServerConfig(ctx, server, map[string]string{
+			"storage.backups_volume": "local/backups",
+			"storage.images_volume":  "local/images",
+			"storage.logs_volume":    "local/logs",
+		})
+		if err != nil {
+			return fmt.Errorf("Failed to set config on server %q: %w", server.Name, err)
+		}
+	}
+
+	return nil
+}
+
+func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, servers []Server) (isConsistent bool, inconsistencyReason string, _ error) {
+	if len(servers) == 0 {
+		return false, "", fmt.Errorf("Unable to check clustering server consistency for empty servers list: %w", domain.ErrOperationNotPermitted)
+	}
+
+	if len(servers) == 1 {
+		// A single server is always consistent with it self.
+		return true, "", nil
+	}
+
+	// Compare OS version, installed applications and their versions.
+	applicationVersions := func(apps []api.ApplicationVersionData) map[string]string {
+		appNames := make(map[string]string, len(apps))
+		for _, app := range apps {
+			if app.Name == string(images.UpdateFileComponentGPUSupport) || app.Name == string(images.UpdateFileComponentDebug) {
+				continue
+			}
+
+			appNames[app.Name] = app.Version
+		}
+
+		return appNames
+	}
+
+	referenceOSVersion := servers[0].VersionData.OS.Version
+	referenceAppVersions := applicationVersions(servers[0].VersionData.Applications)
+	for _, server := range servers[1:] {
+		if referenceOSVersion != server.VersionData.OS.Version {
+			return false, fmt.Sprintf("OS version mismatch, found %q (%s) and %q (%s)", referenceOSVersion, servers[0].Name, server.VersionData.OS.Version, server.Name), nil
+		}
+
+		appVersions := applicationVersions(server.VersionData.Applications)
+		if !maps.Equal(referenceAppVersions, appVersions) {
+			return false, fmt.Sprintf("Application list mismatch, found %v (%s) and %v (%s)", referenceAppVersions, servers[0].Name, appVersions, server.Name), nil
+		}
+	}
+
+	// Compare network interface names and VLANs.
+	networkInterfaceNameAndVLANTags := func(ifaces []incusosapi.SystemNetworkInterface) map[string][]int {
+		ifaceNamesAndVLANTags := make(map[string][]int, len(ifaces))
+		for _, iface := range ifaces {
+			ifaceNamesAndVLANTags[iface.Name] = iface.VLANTags
+		}
+
+		return ifaceNamesAndVLANTags
+	}
+
+	referenceNetworkConfig, err := s.client.GetNetworkConfig(ctx, servers[0])
+	if err != nil {
+		return false, "", fmt.Errorf("Failed to get network configuration for server %q: %w", servers[0].Name, err)
+	}
+
+	// FIXME: what if, referenceNetworkConfig.Config == nil?
+	referenceNetworkInterfaceNamesAndVLANTags := networkInterfaceNameAndVLANTags(referenceNetworkConfig.Config.Interfaces)
+
+	for _, server := range servers[1:] {
+		networkConfig, err := s.client.GetNetworkConfig(ctx, server)
+		if err != nil {
+			return false, "", fmt.Errorf("Failed to get network configuration for server %q: %w", server.Name, err)
+		}
+
+		interfaceNamesAndVLANTags := networkInterfaceNameAndVLANTags(networkConfig.Config.Interfaces)
+
+		if !reflect.DeepEqual(referenceNetworkInterfaceNamesAndVLANTags, interfaceNamesAndVLANTags) {
+			return false, fmt.Sprintf("Network interface names and vlans configuration mismatch, found %v (%s) and %v (%s)", referenceNetworkInterfaceNamesAndVLANTags, servers[0].Name, interfaceNamesAndVLANTags, server.Name), nil
+		}
+	}
+
+	// Compare storage pools.
+	referenceStorageConfig, err := s.client.GetStorageConfig(ctx, servers[0])
+	if err != nil {
+		return false, "", fmt.Errorf("Failed to get storage configuration for server %q: %w", servers[0].Name, err)
+	}
+
+	for _, server := range servers[1:] {
+		storageConfig, err := s.client.GetStorageConfig(ctx, server)
+		if err != nil {
+			return false, "", fmt.Errorf("Failed to get storage configuration for server %q: %w", server.Name, err)
+		}
+
+		if !reflect.DeepEqual(referenceStorageConfig.Config, storageConfig.Config) {
+			return false, fmt.Sprintf("Storage pool configuration mismatch, found %v (%s) and %v (%s)", referenceStorageConfig.Config, servers[0].Name, storageConfig.Config, server.Name), nil
+		}
+	}
+
+	// Compare LVM service configuration.
+	seenSystemIDs := make([]int, 0, len(servers))
+	referenceLVMConfig, err := s.client.GetOSServiceLVM(ctx, servers[0])
+	if err != nil {
+		return false, "", fmt.Errorf("Failed to get LVM service configuration for server %q: %w", servers[0].Name, err)
+	}
+
+	seenSystemIDs = append(seenSystemIDs, referenceLVMConfig.Config.SystemID)
+
+	for _, server := range servers[1:] {
+		lvmConfig, err := s.client.GetOSServiceLVM(ctx, server)
+		if err != nil {
+			return false, "", fmt.Errorf("Failed to get LVM service configuration for server %q: %w", server.Name, err)
+		}
+
+		if referenceLVMConfig.Config.Enabled != lvmConfig.Config.Enabled {
+			return false, fmt.Sprintf("LVM enabled mismatch, found enabled %t (%s) and %t (%s)", referenceLVMConfig.Config.Enabled, servers[0].Name, lvmConfig.Config.Enabled, server.Name), nil
+		}
+
+		if !referenceLVMConfig.Config.Enabled {
+			continue
+		}
+
+		if slices.Contains(seenSystemIDs, lvmConfig.Config.SystemID) {
+			return false, fmt.Sprintf("LVM configuration mismatch, found multiple systems with system_id %d", lvmConfig.Config.SystemID), nil
+		}
+
+		seenSystemIDs = append(seenSystemIDs, lvmConfig.Config.SystemID)
+	}
+
+	// Compare multipath service configuration.
+	referenceMultipathConfig, err := s.client.GetOSServiceMultipath(ctx, servers[0])
+	if err != nil {
+		return false, "", fmt.Errorf("Failed to get multipath service configuration for server %q: %w", servers[0].Name, err)
+	}
+
+	for _, server := range servers[1:] {
+		multipathConfig, err := s.client.GetOSServiceMultipath(ctx, server)
+		if err != nil {
+			return false, "", fmt.Errorf("Failed to get multipath service configuration for server %q: %w", server.Name, err)
+		}
+
+		if !reflect.DeepEqual(referenceMultipathConfig.Config, multipathConfig.Config) {
+			return false, fmt.Sprintf("Multipath configuration mismatch, found %v (%s) and %v (%s)", referenceMultipathConfig.Config, servers[0].Name, multipathConfig.Config, server.Name), nil
+		}
+	}
+
+	// Compare NVME service configuration.
+	referenceNVMEConfig, err := s.client.GetOSServiceNVME(ctx, servers[0])
+	if err != nil {
+		return false, "", fmt.Errorf("Failed to get NVME service configuration for server %q: %w", servers[0].Name, err)
+	}
+
+	for _, server := range servers[1:] {
+		nvmeConfig, err := s.client.GetOSServiceNVME(ctx, server)
+		if err != nil {
+			return false, "", fmt.Errorf("Failed to get NVME service configuration for server %q: %w", server.Name, err)
+		}
+
+		if !reflect.DeepEqual(referenceNVMEConfig.Config, nvmeConfig.Config) {
+			return false, fmt.Sprintf("NVME configuration mismatch, found %v (%s) and %v (%s)", referenceNVMEConfig.Config, servers[0].Name, nvmeConfig.Config, server.Name), nil
+		}
+	}
+
+	return true, "", nil
 }
 
 func (s *clusterService) GetAll(ctx context.Context) (Clusters, error) {

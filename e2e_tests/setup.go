@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -47,24 +48,26 @@ func setupOperationsCenter(t *testing.T, tmpDir string) {
 	mustWaitUpdatesReady(t)
 }
 
-func setupIncusOSWithToken(t *testing.T, tmpDir string) {
-	t.Helper()
+func setupIncusOSWithToken(names []string) func(t *testing.T, tmpDir string) {
+	return func(t *testing.T, tmpDir string) {
+		t.Helper()
 
-	stop := timeTrack(t)
-	defer stop()
+		stop := timeTrack(t)
+		defer stop()
 
-	// Register cleanup
-	t.Cleanup(cleanupIncusOS(t))
+		// Register cleanup
+		t.Cleanup(cleanupIncusOS(t, names))
 
-	token := createProvisioningToken(t)
+		token := createProvisioningToken(t)
 
-	incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
+		incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
 
-	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
+		importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
 
-	createIncusOSInstances(t, incusOSPreseededISOFilename)
+		createIncusOSInstances(t, incusOSPreseededISOFilename, names)
 
-	printServerList(t)
+		printServerList(t)
+	}
 }
 
 func setupIncusOSWithTokenAndUpdateChannel(t *testing.T, tmpDir string) {
@@ -73,8 +76,10 @@ func setupIncusOSWithTokenAndUpdateChannel(t *testing.T, tmpDir string) {
 	stop := timeTrack(t)
 	defer stop()
 
+	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
+
 	// Register cleanup
-	t.Cleanup(cleanupIncusOS(t))
+	t.Cleanup(cleanupIncusOS(t, names))
 
 	token := createProvisioningTokenWithUpdateChannel(t, "prod", "")
 
@@ -82,7 +87,7 @@ func setupIncusOSWithTokenAndUpdateChannel(t *testing.T, tmpDir string) {
 
 	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
 
-	createIncusOSInstances(t, incusOSPreseededISOFilename)
+	createIncusOSInstances(t, incusOSPreseededISOFilename, names)
 
 	printServerList(t)
 }
@@ -103,8 +108,10 @@ func setupIncusOSFromManualUpload(t *testing.T, tmpDir string) {
 		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning update add %s/manual_update.tar`, strechedTimeout(5*time.Minute), cpuArch, tmpDir)
 	}
 
+	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
+
 	// Register cleanup
-	t.Cleanup(cleanupIncusOS(t))
+	t.Cleanup(cleanupIncusOS(t, names))
 
 	token := createProvisioningTokenWithUpdateChannel(t, "manual", "(local)")
 
@@ -112,7 +119,7 @@ func setupIncusOSFromManualUpload(t *testing.T, tmpDir string) {
 
 	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
 
-	createIncusOSInstances(t, incusOSPreseededISOFilename)
+	createIncusOSInstances(t, incusOSPreseededISOFilename, names)
 
 	printServerList(t)
 }
@@ -123,8 +130,10 @@ func setupIncusOSWithTokenSeed(t *testing.T, tmpDir string) {
 	stop := timeTrack(t)
 	defer stop()
 
+	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
+
 	// Register cleanup
-	t.Cleanup(cleanupIncusOS(t))
+	t.Cleanup(cleanupIncusOS(t, names))
 
 	token := createProvisioningToken(t)
 
@@ -132,12 +141,12 @@ func setupIncusOSWithTokenSeed(t *testing.T, tmpDir string) {
 
 	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
 
-	createIncusOSInstances(t, incusOSPreseededISOFilename)
+	createIncusOSInstances(t, incusOSPreseededISOFilename, names)
 
 	printServerList(t)
 }
 
-func cleanupIncusOS(t *testing.T) func() {
+func cleanupIncusOS(t *testing.T, names []string) func() {
 	t.Helper()
 
 	return func() {
@@ -152,26 +161,23 @@ func cleanupIncusOS(t *testing.T) func() {
 		stop := timeTrack(t, "cleanup IncusOS")
 		defer stop()
 
-		names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 		for _, name := range names {
 			resp := runWithContext(ctx, t, `incus remove --force %s`, name)
 			if !resp.Success() {
 				t.Error(resp.Error())
 				continue
 			}
+		}
 
-			resp = runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '.[] | select(.server_type == "incus") | .name'`, cpuArch)
+		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '.[] | select(.server_type == "incus") | .name'`, cpuArch)
+		if !resp.Success() {
+			t.Error(resp.Error())
+		}
+
+		for server := range strings.Lines(resp.OutputTrimmed()) {
+			resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning server remove %s`, cpuArch, server)
 			if !resp.Success() {
 				t.Error(resp.Error())
-				continue
-			}
-
-			for server := range strings.Lines(resp.Output()) {
-				resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning server remove %s`, cpuArch, server)
-				if !resp.Success() {
-					t.Error(resp.Error())
-					continue
-				}
 			}
 		}
 	}
@@ -467,13 +473,15 @@ func importIncusOSISOStorageVolume(t *testing.T, tmpDir string, incusOSPreseeded
 	}
 }
 
-func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
+func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string, names []string) {
 	t.Helper()
-
-	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 
 	stop := timeTrack(t)
 	defer stop()
+
+	existingServersResp := mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '[ .[] | select(.server_type == "incus" and .server_status == "ready") ] | length'`, cpuArch)
+	existingServers, err := strconv.ParseInt(existingServersResp.OutputTrimmed(), 10, 64)
+	require.NoError(t, err)
 
 	timeout := 10 * time.Minute
 	if !concurrentSetup {
@@ -582,7 +590,7 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 		})
 	}
 
-	err := errgrp.Wait()
+	err = errgrp.Wait()
 	require.NoError(t, err, "Failed to create IncusOS VMs for e2e test")
 
 	// Wait for instances to self update in Operations Center
@@ -590,7 +598,7 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 	defer instanceReadyCancel()
 
 	for {
-		operationsCenterSelfRegistered := runWithTimeout(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_type == "incus" and .server_status == "ready") ] | length == 3'`, 10*time.Second, cpuArch)
+		operationsCenterSelfRegistered := runWithTimeout(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_type == "incus" and .server_status == "ready") ] | length == %d'`, 10*time.Second, cpuArch, int(existingServers)+len(names))
 		require.NoError(t, operationsCenterSelfRegistered.err)
 
 		if operationsCenterSelfRegistered.Success() {
@@ -605,7 +613,7 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 		}
 	}
 
-	incusServers := mustRun(t, `incus list -f json | jq -r '.[] | select(.name != "OperationsCenter") | .name + "," + .state.os_info.hostname'`)
+	incusServers := mustRun(t, `incus list -f json | jq -r '.[] | select(.name as $n | %s | index($n) ) | .name + "," + .state.os_info.hostname'`, asJSON(t, names))
 	incusServerNameHostnamePairs := strings.Split(incusServers.OutputTrimmed(), "\n")
 	if len(names) != len(incusServerNameHostnamePairs) {
 		t.Fatalf("expected a server %v for each name %v", incusServerNameHostnamePairs, names)
@@ -616,6 +624,15 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string) {
 		nameHostnamePair := strings.SplitN(serverNameHostnamePair, ",", 2)
 		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning server rename %s %s`, 10*time.Second, cpuArch, nameHostnamePair[1], nameHostnamePair[0])
 	}
+}
+
+func asJSON(t *testing.T, in any) string {
+	t.Helper()
+
+	b, err := json.Marshal(in)
+	require.NoError(t, err)
+
+	return string(b)
 }
 
 func printServerList(t *testing.T) {

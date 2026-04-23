@@ -149,6 +149,41 @@ func (_d ClusterClientPortWithSlog) GetClusterNodeNames(ctx context.Context, end
 	return _d._base.GetClusterNodeNames(ctx, endpoint)
 }
 
+// GetNetworkConfig implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) GetNetworkConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemNetwork, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetNetworkConfig")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("v", v),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetNetworkConfig returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetNetworkConfig returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetNetworkConfig finished")
+		}
+	}()
+	return _d._base.GetNetworkConfig(ctx, server)
+}
+
 // GetOSData implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (oSData api.OSData, err error) {
 	log := slog.With()
@@ -217,6 +252,41 @@ func (_d ClusterClientPortWithSlog) GetOSServiceISCSI(ctx context.Context, serve
 		}
 	}()
 	return _d._base.GetOSServiceISCSI(ctx, server)
+}
+
+// GetOSServiceLVM implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) GetOSServiceLVM(ctx context.Context, server provisioning.Server) (serviceLVM api0.ServiceLVM, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetOSServiceLVM")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("serviceLVM", serviceLVM),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetOSServiceLVM returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetOSServiceLVM returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetOSServiceLVM finished")
+		}
+	}()
+	return _d._base.GetOSServiceLVM(ctx, server)
 }
 
 // GetOSServiceMultipath implements provisioning.ClusterClientPort.
@@ -324,8 +394,78 @@ func (_d ClusterClientPortWithSlog) GetRemoteCertificate(ctx context.Context, en
 	return _d._base.GetRemoteCertificate(ctx, endpoint)
 }
 
+// GetStorageConfig implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) GetStorageConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemStorage, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetStorageConfig")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("v", v),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetStorageConfig returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetStorageConfig returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetStorageConfig finished")
+		}
+	}()
+	return _d._base.GetStorageConfig(ctx, server)
+}
+
+// IncusClient implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) IncusClient(ctx context.Context, endpoint provisioning.Endpoint) (v provisioning.InstanceServer, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("endpoint", endpoint),
+		)
+	}
+	log.DebugContext(ctx, "=> calling IncusClient")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("v", v),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method IncusClient returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method IncusClient returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method IncusClient finished")
+		}
+	}()
+	return _d._base.IncusClient(ctx, endpoint)
+}
+
 // JoinCluster implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint) (err error) {
+func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint, config []api.ClusterMemberConfigKey) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -334,6 +474,7 @@ func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server prov
 			slog.String("joinToken", joinToken),
 			slog.String("serverAddressOfClusterRole", serverAddressOfClusterRole),
 			slog.Any("endpoint", endpoint),
+			slog.Any("config", config),
 		)
 	}
 	log.DebugContext(ctx, "=> calling JoinCluster")
@@ -358,7 +499,7 @@ func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server prov
 			log.DebugContext(ctx, "<= method JoinCluster finished")
 		}
 	}()
-	return _d._base.JoinCluster(ctx, server, joinToken, serverAddressOfClusterRole, endpoint)
+	return _d._base.JoinCluster(ctx, server, joinToken, serverAddressOfClusterRole, endpoint, config)
 }
 
 // Ping implements provisioning.ClusterClientPort.

@@ -148,6 +148,42 @@ func (_d ClusterServiceWithSlog) AddServerSystemNetworkVLANTags(ctx context.Cont
 	return _d._base.AddServerSystemNetworkVLANTags(ctx, clusterName, interfaceName, vlanTags)
 }
 
+// AddServers implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) AddServers(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Any("serverNames", serverNames),
+			slog.Bool("skipPostJoinOperations", skipPostJoinOperations),
+		)
+	}
+	log.DebugContext(ctx, "=> calling AddServers")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method AddServers returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method AddServers returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method AddServers finished")
+		}
+	}()
+	return _d._base.AddServers(ctx, name, serverNames, skipPostJoinOperations)
+}
+
 // AddStorageTargetISCSI implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) AddStorageTargetISCSI(ctx context.Context, clusterName string, target api.ServiceISCSITarget) (err error) {
 	log := slog.With()

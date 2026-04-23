@@ -79,5 +79,5 @@ func factoryResetCluster(t *testing.T, tmpDir string) {
 
 	// Assertions
 	assertIncusRemote(t, "incus-os-cluster-after-factory-reset")
-	assertInventory(t, "incus-os-cluster-after-factory-reset")
+	assertInventory(t, "incus-os-cluster-after-factory-reset", names)
 }

@@ -159,6 +159,28 @@ definitions:
         title: Cluster defines a cluster of servers running Hypervisor OS.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ClusterAddServersPost:
+        description: |-
+            ClusterAddServersPost represents a cluster add servers request containing
+            the names of the servers to be added to the cluster.
+        properties:
+            server_names:
+                description: Names of the servers to be added to the cluster.
+                example:
+                    - server1
+                    - server2
+                items:
+                    type: string
+                type: array
+                x-go-name: ServerNames
+            skip_post_join_operations:
+                description: |-
+                    If set to true, the post join operations (namely the creation of the local storage volumes for backups,
+                    images and logs) are skipped.
+                type: boolean
+                x-go-name: SkipPostJoinOperations
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     ClusterArtifact:
         properties:
             cluster:
@@ -270,7 +292,14 @@ definitions:
     ClusterConfigRollingRestart:
         properties:
             post_restore_delay:
-                $ref: '#/definitions/Duration'
+                description: |-
+                    PostRestoreDelay holds the time.Duration (as string, e.g. "15m"), that is
+                    waited between the resore of a server and the evacuation of the next
+                    server. This should be set if RestoreMode is kept at the default value in
+                    order to grant a cluster enough time to move previously evacuated instances
+                    back to their originating server.
+                type: string
+                x-go-name: PostRestoreDelay
             restore_mode:
                 description: |-
                     RestoreMode is the mode applied dring Incus restore operation. Valid
@@ -573,6 +602,10 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ClusterUpdateInProgressStatus:
         properties:
+            error:
+                description: Error contains the error description, if the cluster update failed permanently.
+                type: string
+                x-go-name: Error
             evacuated_before:
                 description: |-
                     EvacuatedBefore contains the list of server names of the servers, that have
@@ -660,14 +693,6 @@ definitions:
             gracefully handle numbers and bools.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
-    Duration:
-        description: |-
-            A Duration represents the elapsed time between two instants
-            as an int64 nanosecond count. The representation limits the
-            largest representable duration to approximately 290 years.
-        format: int64
-        type: integer
-        x-go-package: time
     HardwareData:
         properties:
             cpu:
@@ -7560,6 +7585,33 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Update the cluster
+            tags:
+                - clusters
+    /1.0/provisioning/clusters/{name}/:add-servers:
+        post:
+            consumes:
+                - application/json
+            description: Add servers to an existing cluster.
+            operationId: clusters_add_servers_post
+            parameters:
+                - description: Add servers request
+                  in: body
+                  name: cluster
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ClusterAddServersPost'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Add servers to an existing cluster
             tags:
                 - clusters
     /1.0/provisioning/clusters/{name}/:bulk-update:

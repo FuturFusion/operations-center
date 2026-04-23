@@ -13,6 +13,8 @@ import (
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus-os/incus-osd/api/images"
+	incusclient "github.com/lxc/incus/v6/client"
+	incusapi "github.com/lxc/incus/v6/shared/api"
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
@@ -3168,7 +3170,7 @@ func TestClusterService_Create(t *testing.T) {
 				GetClusterJoinTokenFunc: func(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (string, error) {
 					return tc.clientGetClusterJoinToken, tc.clientGetClusterJoinTokenErr
 				},
-				JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint) error {
+				JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, serverAddressOfClusterRole string, endpoint provisioning.Endpoint, config []api.ClusterMemberConfigKey) error {
 					return tc.clientJoinClusterErr
 				},
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
@@ -3246,6 +3248,3587 @@ func TestClusterService_Create(t *testing.T) {
 			require.Empty(t, tc.serverSvcGetByName)
 			require.Empty(t, tc.provisionerApply)
 			require.True(t, signalHandlerCalled, "expected signal handler to called, but it was not OR no call was expected, but it got called")
+		})
+	}
+}
+
+func TestClusterService_AddServers(t *testing.T) {
+	tests := []struct {
+		name                                  string
+		argServerNames                        []string
+		argSkipPostJoinOperations             bool
+		repoGetByName                         *provisioning.Cluster
+		repoGetByNameErr                      error
+		serverSvcGetByName                    []queue.Item[*provisioning.Server]
+		serverSvcGetAllWithFilter             provisioning.Servers
+		serverSvcGetAllWithFilterErr          error
+		clientGetNetworkConfigErr             error
+		clientIncusClientErr                  queue.Errs
+		incusClientGetCluster                 *incusapi.Cluster
+		incusClientGetClusterErr              error
+		incusClientGetStoragePool             *incusapi.StoragePool
+		incusClientGetStoragePoolErr          error
+		incusClientGetNetwork                 *incusapi.Network
+		incusClientGetNetworkErr              error
+		incusClientCreateStoragePoolVolumeErr error
+		clientGetClusterJoinTokenErr          error
+		clientJoinClusterErr                  error
+		clientGetOSData                       api.OSData
+		clientGetOSDataErr                    error
+		clientSetServerConfigErr              error
+		serverSvcUpdateErr                    error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:           "success",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				// Before update.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			incusClientGetCluster: &incusapi.Cluster{
+				MemberConfig: []incusapi.ClusterMemberConfigKey{
+					{
+						Entity: "storage-pool",
+						Name:   "local",
+						Key:    "source",
+					},
+					{
+						Entity: "network",
+						Name:   "incusbr0",
+						Key:    "nic",
+					},
+				},
+			},
+			incusClientGetStoragePool: &incusapi.StoragePool{
+				StoragePoolPut: incusapi.StoragePoolPut{
+					Config: incusapi.ConfigMap{
+						"source": "incus",
+					},
+				},
+			},
+			incusClientGetNetwork: &incusapi.Network{
+				NetworkPut: incusapi.NetworkPut{
+					Config: incusapi.ConfigMap{
+						"nic": "eth0",
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                      "success - skipPostJoinOperations",
+			argServerNames:            []string{"new"},
+			argSkipPostJoinOperations: true,
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				// Before update.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			incusClientGetCluster: &incusapi.Cluster{},
+
+			assertErr: require.NoError,
+		},
+
+		{
+			name:             "error - repo.GetByName",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - no additional servers provided to join the cluster",
+			argServerNames: []string{}, // no servers provided
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "Empty list of servers provided to join the cluster")
+			},
+		},
+		{
+			name:           "error - serverSvc.GetByName",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - additional server already clustered",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Cluster: ptr.To("some-cluster"), // server already clustered
+						Status:  api.ServerStatusOffline,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(true),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Server "new" is already part of cluster "some-cluster"`)
+			},
+		},
+		{
+			name:           "error - additional server wrong state",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusOffline, // invalid
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(true),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Server "new" is not in ready state and can therefore not be used for clustering`)
+			},
+		},
+		{
+			name:           "error - additional server wrong update channel",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "invalid", // mismatch
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(true),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Server "new" update channel "invalid" does not match channel requested for cluster "stable"`)
+			},
+		},
+		{
+			name:           "error - additional server needs update",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(true), // needs update
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Server "new" not ready to be clustered`)
+			},
+		},
+		{
+			name:           "error - additional server without incus",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "operations-center", // not incus
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Server "new" does not have application Incus`)
+			},
+		},
+		{
+			name:           "error - checkClusteringServerConsistency",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - checkClusteringServerConsistency",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfigErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - checkClusteringServerConsistency - version mismatch",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "2", // version mismatch
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "Failed to add servers (new) due to configuration inconsistencies")
+			},
+		},
+		{
+			name:           "error - client.IncusClient - 1st",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientIncusClientErr: queue.Errs{
+				boom.Error,
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - incusClient.GetCluster",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			incusClientGetClusterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - incusClient.GetStoragePool",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			incusClientGetCluster: &incusapi.Cluster{
+				MemberConfig: []incusapi.ClusterMemberConfigKey{
+					{
+						Entity: "storage-pool",
+						Name:   "local",
+						Key:    "source",
+					},
+				},
+			},
+			incusClientGetStoragePoolErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - incusClient.GetNetwork",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			incusClientGetCluster: &incusapi.Cluster{
+				MemberConfig: []incusapi.ClusterMemberConfigKey{
+					{
+						Entity: "network",
+						Name:   "incusbr0",
+						Key:    "nic",
+					},
+				},
+			},
+			incusClientGetStoragePool: &incusapi.StoragePool{
+				StoragePoolPut: incusapi.StoragePoolPut{
+					Config: incusapi.ConfigMap{
+						"source": "incus",
+					},
+				},
+			},
+			incusClientGetNetworkErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - client.GetClusterJoinToken",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			incusClientGetCluster:        &incusapi.Cluster{},
+			clientGetClusterJoinTokenErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - client.JoinCluster",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			incusClientGetCluster: &incusapi.Cluster{},
+			clientJoinClusterErr:  boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - serverSvc.GetByName - 2nd",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				// Before update.
+				{
+					Err: boom.Error,
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			incusClientGetCluster: &incusapi.Cluster{},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - serverSvc.GetByName - already clustered",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				// Before update.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Cluster: ptr.To("some-cluster"), // already clustered
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			incusClientGetCluster: &incusapi.Cluster{},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "was not part of a cluster, but is now part of")
+			},
+		},
+		{
+			name:           "error - serverSvc.Update",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				// Before update.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			incusClientGetCluster: &incusapi.Cluster{},
+			serverSvcUpdateErr:    boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - client.GetOSData",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				// Before update.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			incusClientGetCluster: &incusapi.Cluster{},
+			clientGetOSDataErr:    boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - client.IncusClient - 2nd",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				// Before update.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			incusClientGetCluster: &incusapi.Cluster{},
+			clientIncusClientErr: queue.Errs{
+				nil,
+				boom.Error,
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - incusClient.CreateStoragePoolVolume",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				// Before update.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			incusClientGetCluster:                 &incusapi.Cluster{},
+			incusClientCreateStoragePoolVolumeErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - client.SetServerConfig",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				// Before update.
+				{
+					Value: &provisioning.Server{
+						Name:    "new",
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							NeedsUpdate:   ptr.To(false),
+							NeedsReboot:   ptr.To(false),
+							InMaintenance: ptr.To(api.NotInMaintenance),
+							OS: api.OSVersionData{
+								Name:    "os",
+								Version: "1",
+							},
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			incusClientGetCluster:    &incusapi.Cluster{},
+			clientSetServerConfigErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			var incusClient *adapterMock.InstanceServerMock
+
+			incusClient = &adapterMock.InstanceServerMock{
+				GetClusterFunc: func() (*incusapi.Cluster, string, error) {
+					return tc.incusClientGetCluster, "", tc.incusClientGetClusterErr
+				},
+				UseTargetFunc: func(name string) incusclient.InstanceServer {
+					return incusClient
+				},
+				GetStoragePoolFunc: func(name string) (*incusapi.StoragePool, string, error) {
+					return tc.incusClientGetStoragePool, "", tc.incusClientGetStoragePoolErr
+				},
+				GetNetworkFunc: func(name string) (*incusapi.Network, string, error) {
+					return tc.incusClientGetNetwork, "", tc.incusClientGetNetworkErr
+				},
+				CreateStoragePoolVolumeFunc: func(pool string, volume incusapi.StorageVolumesPost) error {
+					return tc.incusClientCreateStoragePoolVolumeErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				GetNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemNetwork, error) {
+					return incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{},
+					}, tc.clientGetNetworkConfigErr
+				},
+				GetStorageConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemStorage, error) {
+					return provisioning.ServerSystemStorage{}, nil
+				},
+				GetOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceLVM, error) {
+					return incusosapi.ServiceLVM{}, nil
+				},
+				GetOSServiceMultipathFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceMultipath, error) {
+					return incusosapi.ServiceMultipath{}, nil
+				},
+				GetOSServiceNVMEFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceNVME, error) {
+					return incusosapi.ServiceNVME{}, nil
+				},
+				IncusClientFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (incusclient.InstanceServer, error) {
+					return incusClient, tc.clientIncusClientErr.PopOrNil(t)
+				},
+				GetClusterJoinTokenFunc: func(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (string, error) {
+					return "", tc.clientGetClusterJoinTokenErr
+				},
+				JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken, serverAddressOfClusterRole string, endpoint provisioning.Endpoint, config []api.ClusterMemberConfigKey) error {
+					return tc.clientJoinClusterErr
+				},
+				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
+					return tc.clientGetOSData, tc.clientGetOSDataErr
+				},
+				SetServerConfigFunc: func(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) error {
+					return tc.clientSetServerConfigErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return queue.Pop(t, &tc.serverSvcGetByName)
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.serverSvcGetAllWithFilter, tc.serverSvcGetAllWithFilterErr
+				},
+				UpdateFunc: func(ctx context.Context, server provisioning.Server, force, updateSystem bool) error {
+					return tc.serverSvcUpdateErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(
+				repo,
+				nil,
+				client,
+				serverSvc,
+				nil,
+				nil,
+				nil,
+			)
+
+			// Run test
+			err := clusterSvc.AddServers(t.Context(), "cluster", tc.argServerNames, tc.argSkipPostJoinOperations)
+
+			// Assert
+			tc.assertErr(t, err)
+
+			require.Empty(t, tc.serverSvcGetByName)
+			require.Empty(t, tc.clientIncusClientErr)
+		})
+	}
+}
+
+func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
+	tests := []struct {
+		name                        string
+		servers                     []provisioning.Server
+		clientGetNetworkConfig      []queue.Item[provisioning.ServerSystemNetwork]
+		clientGetStorageConfig      []queue.Item[provisioning.ServerSystemStorage]
+		clientGetOSServiceLVM       []queue.Item[incusosapi.ServiceLVM]
+		clientGetOSServiceMultipath []queue.Item[incusosapi.ServiceMultipath]
+		clientGetOSServiceNVME      []queue.Item[incusosapi.ServiceNVME]
+
+		assertErr               require.ErrorAssertionFunc
+		wantConsistent          bool
+		wantInconsistencyReason string
+	}{
+		{
+			name: "success - single server",
+			servers: []provisioning.Server{
+				{},
+			},
+
+			assertErr:      require.NoError,
+			wantConsistent: true,
+		},
+		{
+			name: "success",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "gpu-support",
+								Version: "1",
+							},
+							{
+								Name:    "debug",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+							// gpu-support and debug are missing, but this is ok.
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled: false,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled: false,
+						},
+					},
+				},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr:      require.NoError,
+			wantConsistent: true,
+		},
+
+		{
+			name:    "error - empty servers list",
+			servers: []provisioning.Server{},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(t, err, "Unable to check clustering server consistency for empty servers list")
+			},
+		},
+		{
+			name: "error - os version mismatch",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "2", // mismatch
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: "OS version mismatch",
+		},
+		{
+			name: "error - application list mismatch",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "2", // mismatch
+							},
+						},
+					},
+				},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: "Application list mismatch",
+		},
+		{
+			name: "error - client.GetNetworkConfig - reference",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.GetNetworkConfig",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - network config mismatch",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										2, // mismatch
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: "Network interface names and vlans configuration mismatch",
+		},
+		{
+			name: "error - client.GetStorageConfig - reference",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.GetStorageConfig",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - storage config mismatch",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "mismatch", // mismatch
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: "Storage pool configuration mismatch",
+		},
+		{
+			name: "error - client.GetOSServiceLVM - reference",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.GetOSServiceLVM",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - service LVM enabled mismatch",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled: false, // mismatch
+						},
+					},
+				},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: "LVM enabled mismatch",
+		},
+		{
+			name: "error - service LVM enabled mismatch",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1, // system ID conflict
+						},
+					},
+				},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: "LVM configuration mismatch, found multiple systems with system_id 1",
+		},
+		{
+			name: "error - client.GetOSServiceMultipath - reference",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.GetOSServiceMultipath",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - service Multipath not equal",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"bar"}, // mismatch
+						},
+					},
+				},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: "Multipath configuration mismatch",
+		},
+		{
+			name: "error - client.GetOSServiceNVME - reference",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.GetOSServiceNVME",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - service NVME not equal",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      0, // port mismatch
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: "NVME configuration mismatch",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			client := &adapterMock.ClusterClientPortMock{
+				GetNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemNetwork, error) {
+					return queue.Pop(t, &tc.clientGetNetworkConfig)
+				},
+				GetStorageConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemStorage, error) {
+					return queue.Pop(t, &tc.clientGetStorageConfig)
+				},
+				GetOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceLVM, error) {
+					return queue.Pop(t, &tc.clientGetOSServiceLVM)
+				},
+				GetOSServiceMultipathFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceMultipath, error) {
+					return queue.Pop(t, &tc.clientGetOSServiceMultipath)
+				},
+				GetOSServiceNVMEFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceNVME, error) {
+					return queue.Pop(t, &tc.clientGetOSServiceNVME)
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(
+				nil,
+				nil,
+				client,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+
+			// Run test
+			isConsistent, reason, err := clusterSvc.CheckClusteringServerConsistency(t.Context(), tc.servers)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantConsistent, isConsistent)
+			require.Contains(t, reason, tc.wantInconsistencyReason)
+
+			require.Empty(t, tc.clientGetNetworkConfig)
+			require.Empty(t, tc.clientGetStorageConfig)
+			require.Empty(t, tc.clientGetOSServiceLVM)
+			require.Empty(t, tc.clientGetOSServiceMultipath)
+			require.Empty(t, tc.clientGetOSServiceNVME)
 		})
 	}
 }

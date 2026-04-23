@@ -93,6 +93,13 @@ func (c *CmdCluster) Command() *cobra.Command {
 
 	cmd.AddCommand(clusterShowCmd.Command())
 
+	// Add servers to cluster
+	clusterAddServersCmd := cmdClusterAddServers{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(clusterAddServersCmd.Command())
+
 	// Resync
 	clusterResyncCmd := cmdClusterResync{
 		ocClient: c.OCClient,
@@ -738,6 +745,55 @@ func (c *cmdClusterShow) run(cmd *cobra.Command, args []string) error {
 		}
 
 		fmt.Printf("Properties:\n%s\n", render.Indent(4, string(propertiesYAML)))
+	}
+
+	return nil
+}
+
+// Cluster add servers.
+type cmdClusterAddServers struct {
+	ocClient *client.OperationsCenterClient
+
+	flagServerNames            []string
+	flagSkipPostJoinOperations bool
+}
+
+func (c *cmdClusterAddServers) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "add-servers <name>"
+	cmd.Short = "Add servers to an existing cluster"
+	cmd.Long = `Description:
+  Add servers to an existing cluster.
+`
+
+	const flagServerNames = "server-names"
+	cmd.Flags().StringSliceVarP(&c.flagServerNames, flagServerNames, "s", nil, "Server names of the cluster members to be added")
+	_ = cmd.MarkFlagRequired(flagServerNames)
+
+	cmd.Flags().BoolVar(&c.flagSkipPostJoinOperations, "skip-post-join", false, "if this flag is provided, the post join configuration operations are skipped for the newly joined servers")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdClusterAddServers) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdClusterAddServers) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.AddServersToCluster(cmd.Context(), name, c.flagServerNames, c.flagSkipPostJoinOperations)
+	if err != nil {
+		return err
 	}
 
 	return nil

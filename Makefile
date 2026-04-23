@@ -241,6 +241,7 @@ clean-e2e-test:
 	incus remove --force IncusOS01 || true
 	incus remove --force IncusOS02 || true
 	incus remove --force IncusOS03 || true
+	incus remove --force IncusOS04 || true
 	incus storage volume delete default IncusOS_OperationsCenter.iso || true
 	for i in $$(incus storage volume list default -f json | jq -r '.[] | select(.name | test("IncusOS-.*")) | .name'); do \
 		incus storage volume delete default $$i || true; \
@@ -254,6 +255,7 @@ clean-e2e-test-soft:
 	incus remove --force IncusOS01 || true
 	incus remove --force IncusOS02 || true
 	incus remove --force IncusOS03 || true
+	incus remove --force IncusOS04 || true
 	bin/operations-center.linux.amd64 provisioning cluster remove incus-os-cluster --force || true
 	bin/operations-center.linux.amd64 provisioning cluster remove incus-os-cluster-after-factory-reset --force || true
 	for i in $$(bin/operations-center.linux.amd64 provisioning server list -f json | jq -r '.[] | select(.server_type == "incus") | .name'); do \

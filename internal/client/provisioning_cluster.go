@@ -129,6 +129,18 @@ func (c OperationsCenterClient) RenameCluster(ctx context.Context, name string, 
 	return nil
 }
 
+func (c OperationsCenterClient) AddServersToCluster(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, ":add-servers"), nil, api.ClusterAddServersPost{
+		ServerNames:            serverNames,
+		SkipPostJoinOperations: skipPostJoinOperations,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) ResyncCluster(ctx context.Context, name string) error {
 	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, ":resync-inventory"), nil, nil)
 	if err != nil {

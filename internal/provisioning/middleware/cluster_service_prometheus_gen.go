@@ -83,6 +83,20 @@ func (_d ClusterServiceWithPrometheus) AddServerSystemNetworkVLANTags(ctx contex
 	return _d.base.AddServerSystemNetworkVLANTags(ctx, clusterName, interfaceName, vlanTags)
 }
 
+// AddServers implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) AddServers(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AddServers", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.AddServers(ctx, name, serverNames, skipPostJoinOperations)
+}
+
 // AddStorageTargetISCSI implements provisioning.ClusterService.
 func (_d ClusterServiceWithPrometheus) AddStorageTargetISCSI(ctx context.Context, clusterName string, target api.ServiceISCSITarget) (err error) {
 	_since := time.Now()

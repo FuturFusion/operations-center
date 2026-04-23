@@ -34,6 +34,9 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			AddServerSystemNetworkVLANTagsFunc: func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error {
 //				panic("mock out the AddServerSystemNetworkVLANTags method")
 //			},
+//			AddServersFunc: func(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool) error {
+//				panic("mock out the AddServers method")
+//			},
 //			AddStorageTargetISCSIFunc: func(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error {
 //				panic("mock out the AddStorageTargetISCSI method")
 //			},
@@ -148,6 +151,9 @@ type ClusterServiceMock struct {
 
 	// AddServerSystemNetworkVLANTagsFunc mocks the AddServerSystemNetworkVLANTags method.
 	AddServerSystemNetworkVLANTagsFunc func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error
+
+	// AddServersFunc mocks the AddServers method.
+	AddServersFunc func(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool) error
 
 	// AddStorageTargetISCSIFunc mocks the AddStorageTargetISCSI method.
 	AddStorageTargetISCSIFunc func(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error
@@ -276,6 +282,17 @@ type ClusterServiceMock struct {
 			InterfaceName string
 			// VlanTags is the vlanTags argument value.
 			VlanTags []int
+		}
+		// AddServers holds details about calls to the AddServers method.
+		AddServers []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// ServerNames is the serverNames argument value.
+			ServerNames []string
+			// SkipPostJoinOperations is the skipPostJoinOperations argument value.
+			SkipPostJoinOperations bool
 		}
 		// AddStorageTargetISCSI holds details about calls to the AddStorageTargetISCSI method.
 		AddStorageTargetISCSI []struct {
@@ -548,6 +565,7 @@ type ClusterServiceMock struct {
 	lockAbortClusterUpdate                    sync.RWMutex
 	lockAddApplication                        sync.RWMutex
 	lockAddServerSystemNetworkVLANTags        sync.RWMutex
+	lockAddServers                            sync.RWMutex
 	lockAddStorageTargetISCSI                 sync.RWMutex
 	lockAddStorageTargetMultipath             sync.RWMutex
 	lockAddStorageTargetNVME                  sync.RWMutex
@@ -700,6 +718,50 @@ func (mock *ClusterServiceMock) AddServerSystemNetworkVLANTagsCalls() []struct {
 	mock.lockAddServerSystemNetworkVLANTags.RLock()
 	calls = mock.calls.AddServerSystemNetworkVLANTags
 	mock.lockAddServerSystemNetworkVLANTags.RUnlock()
+	return calls
+}
+
+// AddServers calls AddServersFunc.
+func (mock *ClusterServiceMock) AddServers(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool) error {
+	if mock.AddServersFunc == nil {
+		panic("ClusterServiceMock.AddServersFunc: method is nil but ClusterService.AddServers was just called")
+	}
+	callInfo := struct {
+		Ctx                    context.Context
+		Name                   string
+		ServerNames            []string
+		SkipPostJoinOperations bool
+	}{
+		Ctx:                    ctx,
+		Name:                   name,
+		ServerNames:            serverNames,
+		SkipPostJoinOperations: skipPostJoinOperations,
+	}
+	mock.lockAddServers.Lock()
+	mock.calls.AddServers = append(mock.calls.AddServers, callInfo)
+	mock.lockAddServers.Unlock()
+	return mock.AddServersFunc(ctx, name, serverNames, skipPostJoinOperations)
+}
+
+// AddServersCalls gets all the calls that were made to AddServers.
+// Check the length with:
+//
+//	len(mockedClusterService.AddServersCalls())
+func (mock *ClusterServiceMock) AddServersCalls() []struct {
+	Ctx                    context.Context
+	Name                   string
+	ServerNames            []string
+	SkipPostJoinOperations bool
+} {
+	var calls []struct {
+		Ctx                    context.Context
+		Name                   string
+		ServerNames            []string
+		SkipPostJoinOperations bool
+	}
+	mock.lockAddServers.RLock()
+	calls = mock.calls.AddServers
+	mock.lockAddServers.RUnlock()
 	return calls
 }
 

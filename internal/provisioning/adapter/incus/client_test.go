@@ -16,6 +16,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	incusclient "github.com/lxc/incus/v6/client"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
@@ -3897,7 +3898,7 @@ func TestClientServer(t *testing.T) {
 		{
 			name: "JoinCluster",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
-				return nil, client.JoinCluster(ctx, target, "token", "10.10.10.10:8443", provisioning.ClusterEndpoint{})
+				return nil, client.JoinCluster(ctx, target, "token", "10.10.10.10:8443", provisioning.ClusterEndpoint{}, nil)
 			},
 			testCases: []methodTestCase{
 				{
@@ -3978,6 +3979,26 @@ func TestClientServer(t *testing.T) {
 
 					assertErr: require.Error,
 					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations//wait?timeout=-1"},
+				},
+			},
+		},
+
+		{
+			name: "IncusClient",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.IncusClient(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						require.Implements(t, (*incusclient.InstanceServer)(nil), res)
+						require.NotNil(t, res)
+					},
 				},
 			},
 		},
