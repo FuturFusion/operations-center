@@ -58,6 +58,8 @@ func setupIncusOSWithToken(names []string) func(t *testing.T, tmpDir string) {
 		// Register cleanup
 		t.Cleanup(cleanupIncusOS(t, names))
 
+		updateSystemSettingsWithRegistrationScriptlet(t, tmpDir)
+
 		token := createProvisioningToken(t)
 
 		incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
@@ -371,6 +373,15 @@ func setupLocalOperationsCenterConfig(t *testing.T) {
 	fmt.Println(resp.Output())
 
 	mustRun(t, `../bin/operations-center.linux.%s remote switch e2e-test`, cpuArch)
+}
+
+func updateSystemSettingsWithRegistrationScriptlet(t *testing.T, tmpDir string) {
+	t.Helper()
+
+	err := os.WriteFile(filepath.Join(tmpDir, "operations_center_settings.yaml"), operationsCenterSettingsWithRegistrationScriptletYAML, 0o600)
+	require.NoError(t, err)
+
+	mustRun(t, `../bin/operations-center.linux.%s system settings edit < %s/operations_center_settings.yaml`, cpuArch, tmpDir)
 }
 
 func createProvisioningToken(t *testing.T) string {

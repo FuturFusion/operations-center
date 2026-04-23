@@ -12,6 +12,8 @@ interface Props {
 const SystemSettingsForm: FC<Props> = ({ settings, onSubmit }) => {
   const formikInitialValues: SystemSettings = {
     log_level: settings?.log_level ?? "",
+    server_registration_scriptlet:
+      settings?.server_registration_scriptlet ?? "",
   };
 
   const formik = useFormik({
@@ -34,6 +36,7 @@ const SystemSettingsForm: FC<Props> = ({ settings, onSubmit }) => {
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               isInvalid={!!formik.errors.log_level && formik.touched.log_level}
+              disabled={formik.isSubmitting}
             >
               <option key="" value=""></option>
               {Object.values(LogLevel).map((value) => (
@@ -45,6 +48,22 @@ const SystemSettingsForm: FC<Props> = ({ settings, onSubmit }) => {
             <Form.Control.Feedback type="invalid">
               {formik.errors.log_level}
             </Form.Control.Feedback>
+          </Form.Group>
+          <Form.Group
+            className="mb-3"
+            controlId="server_registration_scriptlet"
+          >
+            <Form.Label>Server Registration Scriptlet</Form.Label>
+            <Form.Control
+              type="text"
+              as="textarea"
+              rows={10}
+              name="server_registration_scriptlet"
+              value={formik.values.server_registration_scriptlet}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              disabled={formik.isSubmitting}
+            />
           </Form.Group>
         </Form>
       </div>

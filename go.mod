@@ -172,7 +172,6 @@ require (
 	go.opentelemetry.io/otel/sdk v1.40.0 // indirect
 	go.opentelemetry.io/otel/trace v1.42.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
-	go.starlark.net v0.0.0-20260210143700-b62fd896b91b // indirect
 	go.uber.org/mock v0.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
@@ -229,6 +228,7 @@ require (
 	github.com/vektra/mockery/v3 v3.6.4
 	github.com/zclconf/go-cty v1.17.0
 	github.com/zitadel/oidc/v3 v3.45.5
+	go.starlark.net v0.0.0-20260210143700-b62fd896b91b
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.20.0
 	golang.org/x/text v0.35.0

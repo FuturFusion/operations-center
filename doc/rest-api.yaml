@@ -2570,6 +2570,10 @@ definitions:
                 description: Daemon log level.
                 type: string
                 x-go-name: LogLevel
+            server_registration_scriptlet:
+                description: ServerRegistrationScriptlet hold the server registration scriptlet.
+                type: string
+                x-go-name: ServerRegistrationScriptlet
         title: Settings represents global system settings.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
@@ -2582,6 +2586,10 @@ definitions:
                 description: Daemon log level.
                 type: string
                 x-go-name: LogLevel
+            server_registration_scriptlet:
+                description: ServerRegistrationScriptlet hold the server registration scriptlet.
+                type: string
+                x-go-name: ServerRegistrationScriptlet
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     SystemNetwork:

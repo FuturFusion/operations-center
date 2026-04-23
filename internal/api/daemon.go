@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	incusScriptlet "github.com/lxc/incus/v6/shared/scriptlet"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"golang.org/x/sync/errgroup"
 
@@ -36,6 +37,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/flasher"
 	provisioningIncusAdapter "github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
 	provisioningAdapterMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
 	provisioningServiceMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/middleware"
@@ -185,6 +187,21 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}()
 	})
 
+	client := provisioningIncusAdapter.New(
+		d.clientCertificate,
+		d.clientKey,
+	)
+
+	loader := incusScriptlet.NewLoader()
+	runner, err := scriptlet.New(loader,
+		provisioningAdapterMiddleware.NewScriptletClientPortWithSlog(
+			client,
+		),
+	)
+	if err != nil {
+		return err
+	}
+
 	// Setup Services
 	updateSvc, err := d.setupUpdatesService(ctx, dbWithTransaction)
 	if err != nil {
@@ -194,8 +211,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 	channelSvc := d.setupChannelService(dbWithTransaction, updateSvc)
 
 	tokenSvc := d.setupTokenService(dbWithTransaction, updateSvc, channelSvc)
-	serverSvc := d.setupServerService(dbWithTransaction, tokenSvc, nil, channelSvc, updateSvc)
-	clusterSvc, err := d.setupClusterService(dbWithTransaction, serverSvc, tokenSvc)
+	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc)
+	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc)
 	if err != nil {
 		return err
 	}
@@ -528,17 +545,14 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 	)
 }
 
-func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.TokenService, clusterSvc provisioning.ClusterService, channelSvc provisioning.ChannelService, updateSvc provisioning.UpdateService) provisioning.ServerService {
+func (d *Daemon) setupServerService(db dbdriver.DBTX, client provisioning.ServerClientPort, runner scriptlet.Runner, tokenSvc provisioning.TokenService, clusterSvc provisioning.ClusterService, channelSvc provisioning.ChannelService, updateSvc provisioning.UpdateService) provisioning.ServerService {
 	serverSvc := provisioning.NewServerService(
 		provisioningRepoMiddleware.NewServerRepoWithSlog(
 			provisioningSqlite.NewServer(db),
 		),
 		provisioningAdapterMiddleware.NewServerClientPortWithSlog(
 			provisioningAdapterMiddleware.NewServerClientPortWithErrorWrapper(
-				provisioningIncusAdapter.New(
-					d.clientCertificate,
-					d.clientKey,
-				),
+				client,
 				domain.RetryableWrapper(),
 			),
 			provisioningAdapterMiddleware.ServerClientPortWithSlogWithInformativeErrFunc(
@@ -565,6 +579,7 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 				},
 			),
 		),
+		runner,
 		tokenSvc,
 		clusterSvc,
 		channelSvc,
@@ -602,7 +617,7 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 	)
 }
 
-func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.ServerService, tokenSvc provisioning.TokenService) (provisioning.ClusterService, error) {
+func (d *Daemon) setupClusterService(db dbdriver.DBTX, client provisioning.ClusterClientPort, serverSvc provisioning.ServerService, tokenSvc provisioning.TokenService) (provisioning.ClusterService, error) {
 	localClusterArtifactRepo, err := provisioningClusterArtifactRepo.New(db, filepath.Join(d.env.VarDir(), "artifacts"))
 	if err != nil {
 		return nil, err
@@ -638,10 +653,7 @@ func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.Se
 			),
 			provisioningAdapterMiddleware.NewClusterClientPortWithSlog(
 				provisioningAdapterMiddleware.NewClusterClientPortWithErrorWrapper(
-					provisioningIncusAdapter.New(
-						d.clientCertificate,
-						d.clientKey,
-					),
+					client,
 					domain.RetryableWrapper(),
 				),
 				provisioningAdapterMiddleware.ClusterClientPortWithSlogWithInformativeErrFunc(func(err error) bool {

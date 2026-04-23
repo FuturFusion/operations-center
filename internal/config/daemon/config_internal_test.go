@@ -14,11 +14,12 @@ import (
 
 func Test_validate(t *testing.T) {
 	tests := []struct {
-		name                            string
-		oldCfg                          *config
-		cfg                             config
-		isIncusOS                       bool
-		updateValidateSignalListenerErr error
+		name                              string
+		oldCfg                            *config
+		cfg                               config
+		isIncusOS                         bool
+		updateValidateSignalListenerErr   error
+		settingsValidateSignalListenerErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -361,6 +362,20 @@ func Test_validate(t *testing.T) {
 
 			assertErr: require.Error,
 		},
+		{
+			name: "settings validation signal error",
+			cfg: config{
+				Settings: system.Settings{
+					SettingsPut: system.SettingsPut{
+						ServerRegistrationScriptlet: "invalid", // invalid script
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			settingsValidateSignalListenerErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
 	}
 
 	for _, tc := range tests {
@@ -376,6 +391,11 @@ func Test_validate(t *testing.T) {
 				return tc.updateValidateSignalListenerErr
 			}, tc.name)
 			defer lifecycle.UpdatesValidateSignal.RemoveListener(tc.name)
+
+			lifecycle.SettingsValidateSignal.AddListenerWithErr(func(ctx context.Context, su system.Settings) error {
+				return tc.settingsValidateSignalListenerErr
+			}, tc.name)
+			defer lifecycle.SettingsValidateSignal.RemoveListener(tc.name)
 
 			if tc.oldCfg != nil {
 				err := UpdateNetwork(t.Context(), tc.oldCfg.Network.NetworkPut)

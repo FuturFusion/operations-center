@@ -160,6 +160,9 @@ type Settings struct {
 type SettingsPut struct {
 	// Daemon log level.
 	LogLevel string `json:"log_level" yaml:"log_level"`
+
+	// ServerRegistrationScriptlet hold the server registration scriptlet.
+	ServerRegistrationScriptlet string `json:"server_registration_scriptlet" yaml:"server_registration_scriptlet"`
 }
 
 // Updates represents the system's updates configuration.

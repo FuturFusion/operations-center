@@ -18,6 +18,7 @@ github
 GitHub
 https
 Incus
+incusos
 IncusOS
 InitLocalPreseed
 IPv
@@ -30,6 +31,8 @@ linuxcontainers
 LVM
 MacOS
 multipath
+namespace
+namespaces
 nvme
 OIDC
 OpenFGA
@@ -43,8 +46,10 @@ resolvers
 resync
 Resync
 rollout
+scriptlet
 SHA
 sso
+starlark
 struct
 Terraform
 TLS

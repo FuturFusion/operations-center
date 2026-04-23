@@ -43,6 +43,7 @@ export interface SystemSecurityACME {
 
 export interface SystemSettings {
   log_level: string;
+  server_registration_scriptlet: string;
 }
 
 export interface SystemCertificate {

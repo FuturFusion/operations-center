@@ -36,6 +36,7 @@ import (
 type serverService struct {
 	repo       ServerRepo
 	client     ServerClientPort
+	scriptlet  ServerScriptletPort
 	tokenSvc   TokenService
 	clusterSvc ClusterService
 	channelSvc ChannelService
@@ -86,6 +87,7 @@ func (s *serverService) UpdateServerCertificate(ctx context.Context, serverCerti
 func NewServerService(
 	repo ServerRepo,
 	client ServerClientPort,
+	scriptlet ServerScriptletPort,
 	tokenSvc TokenService,
 	clusterSvc ClusterService,
 	channelSvc ChannelService,
@@ -96,6 +98,7 @@ func NewServerService(
 	serverSvc := &serverService{
 		repo:       repo,
 		client:     client,
+		scriptlet:  scriptlet,
 		tokenSvc:   tokenSvc,
 		clusterSvc: clusterSvc,
 		channelSvc: channelSvc,
@@ -134,7 +137,7 @@ func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer S
 		}
 
 		newServer.Status = api.ServerStatusPending
-		newServer.StatusDetail = api.ServerStatusDetailPendingReconfiguring
+		newServer.StatusDetail = api.ServerStatusDetailPendingRegistering
 		newServer.LastStatusUpdated = s.now()
 		newServer.LastSeen = s.now()
 		newServer.Channel = channel
@@ -1653,6 +1656,9 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 			return err
 		}
 
+		// Evaluate, if server registration scriptlet should be run before updating the state
+		runServerRegistrationScriptlet := server.Status == api.ServerStatusPending && server.StatusDetail == api.ServerStatusDetailPendingRegistering
+
 		server.LastSeen = s.now()
 
 		if updatedServerCertificate != "" {
@@ -1668,6 +1674,8 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 			server.LastStatusUpdated = s.now()
 			signalLifecycle = true
 		}
+
+		server.Status = api.ServerStatusReady
 
 		if updateServerConfiguration {
 			server.HardwareData = hardwareData
@@ -1687,6 +1695,13 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 						server.StatusDetail = api.ServerStatusDetailNone
 					}
 				}
+			}
+		}
+
+		if runServerRegistrationScriptlet {
+			err = s.scriptlet.ServerRegistrationRun(ctx, server)
+			if err != nil {
+				slog.WarnContext(ctx, "Failed to run server registration scriptlet", slog.String("server", server.Name), logger.Err(err))
 			}
 		}
 
