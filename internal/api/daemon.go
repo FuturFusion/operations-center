@@ -591,8 +591,8 @@ func (d *Daemon) setupServerService(
 	tokenSvc provisioning.TokenService,
 	clusterSvc provisioning.ClusterService,
 	channelSvc provisioning.ChannelService,
-	updateSvc provisioning.UpdateService
-	warningSvc provisioning.WarningEmitterPort,
+	updateSvc provisioning.UpdateService,
+	warningSvc provisioning.WarningServicePort,
 ) provisioning.ServerService {
 	serverSvc := provisioningServer.New(
 		provisioningRepoMiddleware.NewServerRepoWithSlog(
@@ -910,6 +910,7 @@ func (d *Daemon) setupBackgroundTasks(
 	updateSvc provisioning.UpdateService,
 	serverSvc provisioning.ServerService,
 	clusterSvc provisioning.ClusterService,
+	warningSvc warning.WarningService,
 ) {
 	if config.IsBackgroundTasksDisabled() {
 		return
@@ -919,16 +920,24 @@ func (d *Daemon) setupBackgroundTasks(
 	refreshUpdatesFromSourcesTask := func(ctx context.Context) {
 		slog.InfoContext(ctx, "Refresh updates triggered")
 		err := updateSvc.Refresh(ctx)
+		scope := api.WarningScope{
+			Scope:      "refresh",
+			EntityType: "update",
+			Entity:     "-",
+		}
 		if err != nil {
-			logCtx := slog.ErrorContext
-			if domain.IsRetryableError(err) {
-				logCtx = slog.DebugContext
-			}
-
-			logCtx(ctx, "Refresh updates failed", logger.Err(err))
+			warningSvc.Emit(ctx,
+				warning.NewWarning(
+					api.WarningTypeUpdateRefreshFailed,
+					scope,
+					fmt.Sprintf("Refresh update failed: %v", err),
+				),
+			)
 
 			return
 		}
+
+		warningSvc.RemoveStale(ctx, scope, nil)
 
 		slog.InfoContext(ctx, "Refresh updates completed")
 	}
@@ -1090,11 +1099,26 @@ func (d *Daemon) setupBackgroundTasks(
 	// Start background task to renew ACME server certificate.
 	renewACMEServerCertificateTask := func(ctx context.Context) {
 		slog.InfoContext(ctx, "ACME server certificate renewal triggered")
+
+		scope := api.WarningScope{
+			Scope:      "acme_certificate_update",
+			EntityType: "system",
+			Entity:     "operatons-center",
+		}
+
 		changed, err := d.systemSvc.TriggerCertificateRenew(ctx, false)
 		if err != nil {
-			slog.ErrorContext(ctx, "ACME server certificate renewal task failed", logger.Err(err))
+			warningSvc.Emit(ctx,
+				warning.NewWarning(
+					api.WarningTypeACMECertificateUpdateFailed,
+					scope,
+					fmt.Sprintf("ACME server certificate renewal task failed: %v", err),
+				),
+			)
 			return
 		}
+
+		warningSvc.RemoveStale(ctx, scope, nil)
 
 		if !changed {
 			slog.InfoContext(ctx, "ACME server certificate renewal completed, no change")
