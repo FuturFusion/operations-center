@@ -11,6 +11,7 @@ import { useNotification } from "context/notificationContext";
 import { formatDate } from "util/date";
 
 const Update = () => {
+  const refetchInterval = 10000; // 10 seconds
   const [showCleanupModal, setShowCleanupModal] = useState(false);
   const { notify } = useNotification();
   const queryClient = useQueryClient();
@@ -22,6 +23,7 @@ const Update = () => {
   } = useQuery({
     queryKey: ["updates"],
     queryFn: fetchUpdates,
+    refetchInterval: refetchInterval,
   });
 
   const handleRefresh = () => {
