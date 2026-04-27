@@ -1,4 +1,4 @@
-package provisioning
+package update
 
 import (
 	"testing"
@@ -10,6 +10,7 @@ import (
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
@@ -31,8 +32,8 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 
 	tests := []struct {
 		name                string
-		dbUpdates           Updates
-		originUpdates       Updates
+		dbUpdates           provisioning.Updates
+		originUpdates       provisioning.Updates
 		updateVersionsInUse map[string]bool
 
 		wantToDeleteIDs   []string
@@ -40,8 +41,8 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 	}{
 		{
 			name:          "nothing",
-			dbUpdates:     Updates{},
-			originUpdates: Updates{},
+			dbUpdates:     provisioning.Updates{},
+			originUpdates: provisioning.Updates{},
 
 			wantToDeleteIDs:   []string{},
 			wantToDownloadIDs: []string{},
@@ -51,7 +52,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 			// which caused new UUID for all updates. So the DB contained the same
 			// updates as the origin, but they had different UUID.
 			name: "updates with same date but different UUID",
-			dbUpdates: Updates{
+			dbUpdates: provisioning.Updates{
 				makeUpdate(t,
 					"01",
 					dateTime1,
@@ -74,7 +75,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 					allComponents,
 				),
 			},
-			originUpdates: Updates{
+			originUpdates: provisioning.Updates{
 				makeUpdate(t,
 					"04",
 					dateTime1,
@@ -108,7 +109,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 		},
 		{
 			name: "all updates from origin are newer",
-			dbUpdates: Updates{
+			dbUpdates: provisioning.Updates{
 				makeUpdate(t,
 					"01",
 					dateTime1,
@@ -133,7 +134,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 					allComponents,
 				),
 			},
-			originUpdates: Updates{
+			originUpdates: provisioning.Updates{
 				// Even though update 4 is newer than update 3, we always keep 1 update
 				// from DB and therefore update 4 is not downloaded.
 				makeUpdate(t,
@@ -171,7 +172,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 		},
 		{
 			name: "all updates from origin are newer - one update is in use",
-			dbUpdates: Updates{
+			dbUpdates: provisioning.Updates{
 				// Update is in use by a server and therefore kept.
 				makeUpdate(t,
 					"01",
@@ -197,7 +198,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 					allComponents,
 				),
 			},
-			originUpdates: Updates{
+			originUpdates: provisioning.Updates{
 				// Even though update 4 is newer than update 3, we always keep 1 update
 				// from DB and therefore update 4 is not downloaded.
 				makeUpdate(t,
@@ -236,7 +237,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 		},
 		{
 			name: "all updates from origin are already present in db",
-			dbUpdates: Updates{
+			dbUpdates: provisioning.Updates{
 				makeUpdate(t,
 					"01",
 					dateTime1,
@@ -259,7 +260,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 					allComponents,
 				),
 			},
-			originUpdates: Updates{
+			originUpdates: provisioning.Updates{
 				makeUpdate(t,
 					"01",
 					dateTime1,
@@ -289,7 +290,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 		},
 		{
 			name: "one pending update in DB for longer than grace time",
-			dbUpdates: Updates{
+			dbUpdates: provisioning.Updates{
 				makeUpdate(t,
 					"01",
 					dateTime1,
@@ -305,7 +306,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 					allComponents,
 				),
 			},
-			originUpdates:       Updates{},
+			originUpdates:       provisioning.Updates{},
 			updateVersionsInUse: map[string]bool{},
 
 			wantToDeleteIDs: []string{
@@ -315,7 +316,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 		},
 		{
 			name: "one pending update in DB for shorter than grace time",
-			dbUpdates: Updates{
+			dbUpdates: provisioning.Updates{
 				makeUpdate(t,
 					"01",
 					dateTime1,
@@ -331,7 +332,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 					allComponents,
 				),
 			},
-			originUpdates:       Updates{},
+			originUpdates:       provisioning.Updates{},
 			updateVersionsInUse: map[string]bool{},
 
 			wantToDeleteIDs:   []string{},
@@ -344,7 +345,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 			// used by channel "stable" and we already have 3 updates, it is deleted.
 			// For channel "prod" the oldest update (01) is deleted, since we still
 			// have 3 updates for this channel.
-			dbUpdates: Updates{
+			dbUpdates: provisioning.Updates{
 				makeUpdate(t,
 					"01",
 					dateTime1,
@@ -381,7 +382,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 					allComponents,
 				),
 			},
-			originUpdates: Updates{
+			originUpdates: provisioning.Updates{
 				makeUpdate(t,
 					"04",
 					dateTime4,
@@ -432,7 +433,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 			// have 3 component "incus", so this update is deleted.
 			// Update 03 adds the missing component for "os", so we have enough updates
 			// for each component and therefore updates 02 and 01 are deleted.
-			dbUpdates: Updates{
+			dbUpdates: provisioning.Updates{
 				makeUpdate(t,
 					"01",
 					dateTime1,
@@ -473,7 +474,7 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 					allComponents,
 				),
 			},
-			originUpdates: Updates{
+			originUpdates: provisioning.Updates{
 				makeUpdate(t,
 					"06",
 					dateTime6,
@@ -554,10 +555,10 @@ func makeUpdate(
 	status api.UpdateStatus,
 	channels []string,
 	components []images.UpdateFileComponent,
-) Update {
+) provisioning.Update {
 	t.Helper()
 
-	update := Update{
+	update := provisioning.Update{
 		UUID:        uuidgen.FromPattern(t, uuidPattern),
 		PublishedAt: publishedAndUpdatedAt,
 		Version:     uuidPattern,
@@ -568,11 +569,11 @@ func makeUpdate(
 
 	for _, component := range components {
 		update.Files = append(update.Files,
-			UpdateFile{
+			provisioning.UpdateFile{
 				Component: component,
 				Filename:  string(component) + ".raw.gz",
 			},
-			UpdateFile{
+			provisioning.UpdateFile{
 				Component: component,
 				Filename:  string(component) + ".manifest.json.gz",
 			},
@@ -619,7 +620,7 @@ func TestUpdateService_validateUpdatesConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			updateSvc := NewUpdateService(nil, nil, nil, nil)
+			updateSvc := New(nil, nil, nil, nil)
 
 			err := updateSvc.validateUpdatesConfig(t.Context(), system.Updates{
 				UpdatesPut: system.UpdatesPut{
