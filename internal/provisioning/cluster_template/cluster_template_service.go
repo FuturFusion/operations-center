@@ -1,4 +1,4 @@
-package provisioning
+package clustertemplate
 
 import (
 	"context"
@@ -8,17 +8,18 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type clusterTemplateService struct {
-	repo ClusterTemplateRepo
+	repo provisioning.ClusterTemplateRepo
 }
 
-var _ ClusterTemplateService = &clusterTemplateService{}
+var _ provisioning.ClusterTemplateService = &clusterTemplateService{}
 
-func NewClusterTemplateService(
-	repo ClusterTemplateRepo,
+func New(
+	repo provisioning.ClusterTemplateRepo,
 ) *clusterTemplateService {
 	clusterSvc := &clusterTemplateService{
 		repo: repo,
@@ -27,21 +28,21 @@ func NewClusterTemplateService(
 	return clusterSvc
 }
 
-func (s clusterTemplateService) Create(ctx context.Context, newClusterTemplate ClusterTemplate) (ClusterTemplate, error) {
+func (s clusterTemplateService) Create(ctx context.Context, newClusterTemplate provisioning.ClusterTemplate) (provisioning.ClusterTemplate, error) {
 	err := newClusterTemplate.Validate()
 	if err != nil {
-		return ClusterTemplate{}, err
+		return provisioning.ClusterTemplate{}, err
 	}
 
 	newClusterTemplate.ID, err = s.repo.Create(ctx, newClusterTemplate)
 	if err != nil {
-		return ClusterTemplate{}, err
+		return provisioning.ClusterTemplate{}, err
 	}
 
 	return newClusterTemplate, nil
 }
 
-func (s clusterTemplateService) GetAll(ctx context.Context) (ClusterTemplates, error) {
+func (s clusterTemplateService) GetAll(ctx context.Context) (provisioning.ClusterTemplates, error) {
 	return s.repo.GetAll(ctx)
 }
 
@@ -49,7 +50,7 @@ func (s clusterTemplateService) GetAllNames(ctx context.Context) ([]string, erro
 	return s.repo.GetAllNames(ctx)
 }
 
-func (s clusterTemplateService) GetByName(ctx context.Context, name string) (*ClusterTemplate, error) {
+func (s clusterTemplateService) GetByName(ctx context.Context, name string) (*provisioning.ClusterTemplate, error) {
 	if name == "" {
 		return nil, fmt.Errorf("Cluster template name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -57,7 +58,7 @@ func (s clusterTemplateService) GetByName(ctx context.Context, name string) (*Cl
 	return s.repo.GetByName(ctx, name)
 }
 
-func (s clusterTemplateService) Update(ctx context.Context, newClusterTemplate ClusterTemplate) error {
+func (s clusterTemplateService) Update(ctx context.Context, newClusterTemplate provisioning.ClusterTemplate) error {
 	err := newClusterTemplate.Validate()
 	if err != nil {
 		return err
