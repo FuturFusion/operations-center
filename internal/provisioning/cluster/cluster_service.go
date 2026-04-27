@@ -940,6 +940,72 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 	return true, "", nil
 }
 
+func (s *clusterService) RemoveServer(ctx context.Context, name string, serverName string, force bool) error {
+	servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
+		Cluster: ptr.To(name),
+	})
+	if err != nil {
+		return fmt.Errorf("Server removal failed while getting servers of cluster %q: %w", name, err)
+	}
+
+	if len(servers) <= 1 {
+		return fmt.Errorf("Cluster %q does not have enough servers for server removal: %w", name, domain.ErrOperationNotPermitted)
+	}
+
+	endpoint := servers[0]
+	if servers[0].Name == serverName {
+		endpoint = servers[1]
+	}
+
+	var previousServer provisioning.Server
+	var removedServer provisioning.Server
+	var found bool
+	for _, server := range servers {
+		if server.Name == serverName {
+			previousServer = server
+			removedServer = server.Clone()
+			found = true
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("Server removal failed, server %q is not part of the cluster %q: %w", serverName, name, domain.ErrNotFound)
+	}
+
+	incusClient, err := s.client.IncusClient(ctx, endpoint)
+	if err != nil {
+		return fmt.Errorf("Failed to get incus client for server %q: %w", endpoint.GetName(), err)
+	}
+
+	removedServer.Cluster = nil
+	removedServer.ClusterCertificate = nil
+	removedServer.ClusterConnectionURL = nil
+
+	err = s.serverSvc.Update(ctx, removedServer, true, false)
+	if err != nil {
+		return fmt.Errorf("Server removal failed to update server: %w", err)
+	}
+
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	reverter.Add(func() {
+		err = s.serverSvc.Update(ctx, previousServer, true, false)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to restore server state in DB after failed removal of server from cluster", slog.String("cluster", name), slog.String("server", serverName), logger.Err(err))
+		}
+	})
+
+	err = incusClient.DeleteClusterMember(serverName, force)
+	if err != nil {
+		return fmt.Errorf("Server removal failed: %w", err)
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
 func (s *clusterService) GetAll(ctx context.Context) (provisioning.Clusters, error) {
 	return s.repo.GetAll(ctx)
 }
