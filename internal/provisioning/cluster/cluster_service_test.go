@@ -6834,6 +6834,183 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 	}
 }
 
+func TestClusterService_RemoveServer(t *testing.T) {
+	tests := []struct {
+		name                              string
+		serverSvcGetAllWithFilter         provisioning.Servers
+		serverSvcGetAllWithFilterErr      error
+		clientIncusClientErr              error
+		serverSvcUpdateErr                queue.Errs
+		incusClientDeleteClusterMemberErr error
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name: "success",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "serverOne",
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:                         "error - serverSvc.GetAllWithFilter",
+			serverSvcGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - cluster minimum size",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "serverOne",
+				},
+				// cluster only has 1 server
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Cluster "one" does not have enough servers for server removal`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - server not part of cluster",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				// serverOne is not part of cluster
+				{
+					Name: "serverTwo",
+				},
+				{
+					Name: "serverThree",
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotFound)
+				require.ErrorContains(tt, err, `Server removal failed, server "serverOne" is not part of the cluster "one"`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - client.IncusClient",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "serverOne",
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			clientIncusClientErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - serverSvc.Update",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "serverOne",
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			serverSvcUpdateErr: queue.Errs{
+				boom.Error,
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - incusClient.DeleteClusterMember",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "serverOne",
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			incusClientDeleteClusterMemberErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - incusClient.DeleteClusterMember - revert error",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "serverOne",
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			serverSvcUpdateErr: queue.Errs{
+				nil,
+				boom.Error,
+			},
+			incusClientDeleteClusterMemberErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Contains("boom!"),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, true, true)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.serverSvcGetAllWithFilter, tc.serverSvcGetAllWithFilterErr
+				},
+				UpdateFunc: func(ctx context.Context, server provisioning.Server, force, updateSystem bool) error {
+					return tc.serverSvcUpdateErr.PopOrNil(t)
+				},
+			}
+
+			incusClient := &adapterMock.InstanceServerMock{
+				DeleteClusterMemberFunc: func(name string, force bool) error {
+					return tc.incusClientDeleteClusterMemberErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				IncusClientFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (provisioning.InstanceServer, error) {
+					return incusClient, tc.clientIncusClientErr
+				},
+			}
+
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
+
+			// Run test
+			err = clusterSvc.RemoveServer(context.Background(), "one", "serverOne", false)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+		})
+	}
+}
+
 func TestClusterService_GetAll(t *testing.T) {
 	tests := []struct {
 		name               string
