@@ -1,9 +1,8 @@
-package provisioning
+package channel
 
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"sort"
 
 	"github.com/google/uuid"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -18,14 +18,14 @@ import (
 )
 
 type channelService struct {
-	repo      ChannelRepo
-	serverSvc ServerService
-	updateSvc UpdateService
+	repo      provisioning.ChannelRepo
+	serverSvc provisioning.ServerService
+	updateSvc provisioning.UpdateService
 }
 
-var _ ChannelService = &channelService{}
+var _ provisioning.ChannelService = &channelService{}
 
-func NewChannelService(repo ChannelRepo, updateSvc UpdateService) *channelService {
+func New(repo provisioning.ChannelRepo, updateSvc provisioning.UpdateService) *channelService {
 	service := &channelService{
 		repo:      repo,
 		updateSvc: updateSvc,
@@ -36,32 +36,29 @@ func NewChannelService(repo ChannelRepo, updateSvc UpdateService) *channelServic
 	// between the config and the provisioning package.
 	listenerKey := uuid.New().String()
 	lifecycle.UpdatesValidateSignal.AddListenerWithErr(service.validateUpdatesConfig, listenerKey)
-	runtime.AddCleanup(service, func(listenerKey string) {
-		lifecycle.UpdatesValidateSignal.RemoveListener(listenerKey)
-	}, listenerKey)
 
 	return service
 }
 
-func (s *channelService) SetServerService(serverSvc ServerService) {
+func (s *channelService) SetServerService(serverSvc provisioning.ServerService) {
 	s.serverSvc = serverSvc
 }
 
-func (s *channelService) Create(ctx context.Context, newChannel Channel) (Channel, error) {
+func (s *channelService) Create(ctx context.Context, newChannel provisioning.Channel) (provisioning.Channel, error) {
 	err := newChannel.Validate()
 	if err != nil {
-		return Channel{}, err
+		return provisioning.Channel{}, err
 	}
 
 	newChannel.ID, err = s.repo.Create(ctx, newChannel)
 	if err != nil {
-		return Channel{}, err
+		return provisioning.Channel{}, err
 	}
 
 	return newChannel, nil
 }
 
-func (s *channelService) GetAll(ctx context.Context) (Channels, error) {
+func (s *channelService) GetAll(ctx context.Context) (provisioning.Channels, error) {
 	return s.repo.GetAll(ctx)
 }
 
@@ -69,7 +66,7 @@ func (s *channelService) GetAllNames(ctx context.Context) ([]string, error) {
 	return s.repo.GetAllNames(ctx)
 }
 
-func (s *channelService) GetByName(ctx context.Context, name string) (*Channel, error) {
+func (s *channelService) GetByName(ctx context.Context, name string) (*provisioning.Channel, error) {
 	if name == "" {
 		return nil, fmt.Errorf("Channel name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -77,7 +74,7 @@ func (s *channelService) GetByName(ctx context.Context, name string) (*Channel, 
 	return s.repo.GetByName(ctx, name)
 }
 
-func (s *channelService) Update(ctx context.Context, newChannel Channel) error {
+func (s *channelService) Update(ctx context.Context, newChannel provisioning.Channel) error {
 	err := newChannel.Validate()
 	if err != nil {
 		return err
@@ -144,7 +141,7 @@ func (s channelService) validateUpdatesConfig(ctx context.Context, su system.Upd
 }
 
 func (s channelService) GetChangelogByName(ctx context.Context, name string, architecture images.UpdateFileArchitecture) (api.UpdateChangelogs, error) {
-	updates, err := s.updateSvc.GetAllWithFilter(ctx, UpdateFilter{
+	updates, err := s.updateSvc.GetAllWithFilter(ctx, provisioning.UpdateFilter{
 		Channel: ptr.To(name),
 	})
 	if err != nil {
