@@ -62,7 +62,7 @@ certificates are available.
 
 | Configuration                   | Description                                                                                                   | Value(s) | Default |
 | :---                            | :---                                                                                                          | :---     | :---    |
-| `log_level`                     | Log level for Operations Center logs                                                                          | string   | `INFO`  |
+| `log_level`                     | Log level for Operations Center logs                                                                          | string   | `WARN`  |
 | `server_registration_scriptlet` | Scriptlet which is executed during server registration, see *Server registration scriptlet* below for details | string   |         |
 
 ### Server registration scriptlet
