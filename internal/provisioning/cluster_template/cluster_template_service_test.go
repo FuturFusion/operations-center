@@ -1,4 +1,4 @@
-package provisioning_test
+package clustertemplate_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	provisioningClusterTemplate "github.com/FuturFusion/operations-center/internal/provisioning/cluster_template"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -60,7 +61,7 @@ func TestClusterTemplateService_Create(t *testing.T) {
 				},
 			}
 
-			clusterTemplateSvc := provisioning.NewClusterTemplateService(repo)
+			clusterTemplateSvc := provisioningClusterTemplate.New(repo)
 
 			// Run test
 			_, err := clusterTemplateSvc.Create(t.Context(), tc.clusterTemplate)
@@ -112,7 +113,7 @@ func TestClusterTemplateService_GetAll(t *testing.T) {
 				},
 			}
 
-			clusterTemplateSvc := provisioning.NewClusterTemplateService(repo)
+			clusterTemplateSvc := provisioningClusterTemplate.New(repo)
 
 			// Run test
 			clusterTemplates, err := clusterTemplateSvc.GetAll(t.Context())
@@ -161,7 +162,7 @@ func TestClusterTemplateService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			clusterTemplateSvc := provisioning.NewClusterTemplateService(repo)
+			clusterTemplateSvc := provisioningClusterTemplate.New(repo)
 
 			// Run test
 			clusterTemplateIDs, err := clusterTemplateSvc.GetAllNames(t.Context())
@@ -217,7 +218,7 @@ func TestClusterTemplateService_GetByName(t *testing.T) {
 				},
 			}
 
-			clusterTempalteSvc := provisioning.NewClusterTemplateService(repo)
+			clusterTempalteSvc := provisioningClusterTemplate.New(repo)
 
 			// Run test
 			clusterTempalte, err := clusterTempalteSvc.GetByName(t.Context(), tc.nameArg)
@@ -276,7 +277,7 @@ func TestClusterTemplateService_Update(t *testing.T) {
 				},
 			}
 
-			clusterTempalteSvc := provisioning.NewClusterTemplateService(repo)
+			clusterTempalteSvc := provisioningClusterTemplate.New(repo)
 
 			// Run test
 			err := clusterTempalteSvc.Update(t.Context(), tc.clusterTemplate)
@@ -343,7 +344,7 @@ func TestClusterTemplateService_Rename(t *testing.T) {
 				},
 			}
 
-			clusterTemplateSvc := provisioning.NewClusterTemplateService(repo)
+			clusterTemplateSvc := provisioningClusterTemplate.New(repo)
 
 			// Run test
 			err := clusterTemplateSvc.Rename(t.Context(), tc.oldName, tc.newName)
@@ -394,7 +395,7 @@ func TestClusterTemplateService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			clusterTemplateSvc := provisioning.NewClusterTemplateService(repo)
+			clusterTemplateSvc := provisioningClusterTemplate.New(repo)
 
 			// Run test
 			err := clusterTemplateSvc.DeleteByName(t.Context(), tc.nameArg)
@@ -541,7 +542,7 @@ key: @VALUE@
 				},
 			}
 
-			clusterTemplateSvc := provisioning.NewClusterTemplateService(repo)
+			clusterTemplateSvc := provisioningClusterTemplate.New(repo)
 
 			// Run test
 			servicesConfig, applicationSeedConfig, err := clusterTemplateSvc.Apply(t.Context(), tc.nameArg, tc.templateVariables)

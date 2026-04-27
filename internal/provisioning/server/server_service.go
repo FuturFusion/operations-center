@@ -1,4 +1,4 @@
-package provisioning
+package server
 
 import (
 	"context"
@@ -26,6 +26,7 @@ import (
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -34,13 +35,13 @@ import (
 )
 
 type serverService struct {
-	repo       ServerRepo
-	client     ServerClientPort
-	scriptlet  ServerScriptletPort
-	tokenSvc   TokenService
-	clusterSvc ClusterService
-	channelSvc ChannelService
-	updateSvc  UpdateService
+	repo       provisioning.ServerRepo
+	client     provisioning.ServerClientPort
+	scriptlet  provisioning.ServerScriptletPort
+	tokenSvc   provisioning.TokenService
+	clusterSvc provisioning.ClusterService
+	channelSvc provisioning.ChannelService
+	updateSvc  provisioning.UpdateService
 
 	httpClient *http.Client
 
@@ -52,25 +53,20 @@ type serverService struct {
 	now                    func() time.Time
 	initialConnectionDelay time.Duration
 
-	selfUpdateSignal signals.Signal[Server]
+	selfUpdateSignal signals.Signal[provisioning.Server]
 }
 
-var _ ServerService = &serverService{}
+var _ provisioning.ServerService = &serverService{}
 
-// ErrSelfUpdateNotification is used as cause when the context is
-// cancelled while waiting for the update of the network config
-// to complete.
-var ErrSelfUpdateNotification = errors.New("self update notification")
+type Option func(s *serverService)
 
-type ServerServiceOption func(s *serverService)
-
-func ServerServiceWithNow(nowFunc func() time.Time) ServerServiceOption {
+func WithNow(nowFunc func() time.Time) Option {
 	return func(s *serverService) {
 		s.now = nowFunc
 	}
 }
 
-func ServerServiceWithInitialConnectionDelay(delay time.Duration) ServerServiceOption {
+func WithInitialConnectionDelay(delay time.Duration) Option {
 	return func(s *serverService) {
 		s.initialConnectionDelay = delay
 	}
@@ -84,16 +80,16 @@ func (s *serverService) UpdateServerCertificate(ctx context.Context, serverCerti
 	return s.SelfRegisterOperationsCenter(ctx)
 }
 
-func NewServerService(
-	repo ServerRepo,
-	client ServerClientPort,
-	scriptlet ServerScriptletPort,
-	tokenSvc TokenService,
-	clusterSvc ClusterService,
-	channelSvc ChannelService,
-	updateSvc UpdateService,
+func New(
+	repo provisioning.ServerRepo,
+	client provisioning.ServerClientPort,
+	scriptlet provisioning.ServerScriptletPort,
+	tokenSvc provisioning.TokenService,
+	clusterSvc provisioning.ClusterService,
+	channelSvc provisioning.ChannelService,
+	updateSvc provisioning.UpdateService,
 	serverCertificate tls.Certificate,
-	opts ...ServerServiceOption,
+	opts ...Option,
 ) *serverService {
 	serverSvc := &serverService{
 		repo:       repo,
@@ -115,7 +111,7 @@ func NewServerService(
 		now:                    time.Now,
 		initialConnectionDelay: 1 * time.Second,
 
-		selfUpdateSignal: signals.New[Server](),
+		selfUpdateSignal: signals.New[provisioning.Server](),
 	}
 
 	for _, opt := range opts {
@@ -125,11 +121,11 @@ func NewServerService(
 	return serverSvc
 }
 
-func (s *serverService) SetClusterService(clusterSvc ClusterService) {
+func (s *serverService) SetClusterService(clusterSvc provisioning.ClusterService) {
 	s.clusterSvc = clusterSvc
 }
 
-func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer Server) (Server, error) {
+func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer provisioning.Server) (provisioning.Server, error) {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		channel, err := s.tokenSvc.Consume(ctx, token)
 		if err != nil {
@@ -163,7 +159,7 @@ func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer S
 		return nil
 	})
 	if err != nil {
-		return Server{}, err
+		return provisioning.Server{}, err
 	}
 
 	// Perform initial connection test to server right after registration.
@@ -193,18 +189,18 @@ func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer S
 	return newServer, nil
 }
 
-func (s *serverService) GetAll(ctx context.Context) (Servers, error) {
-	return s.GetAllWithFilter(ctx, ServerFilter{})
+func (s *serverService) GetAll(ctx context.Context) (provisioning.Servers, error) {
+	return s.GetAllWithFilter(ctx, provisioning.ServerFilter{})
 }
 
-func (s *serverService) GetAllWithFilter(ctx context.Context, filter ServerFilter) (Servers, error) {
+func (s *serverService) GetAllWithFilter(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
 	var filterExpression *vm.Program
 	var err error
 
 	if filter.Expression != nil {
 		filterExpression, err = expr.Compile(
 			*filter.Expression,
-			expr.Env(ToExprServer(Server{})),
+			expr.Env(provisioning.ToExprServer(provisioning.Server{})),
 			expr.AsBool(),
 			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 			expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
@@ -214,7 +210,7 @@ func (s *serverService) GetAllWithFilter(ctx context.Context, filter ServerFilte
 		}
 	}
 
-	var servers Servers
+	var servers provisioning.Servers
 	if filter.Name == nil && filter.Cluster == nil && filter.Status == nil {
 		servers, err = s.repo.GetAll(ctx)
 	} else {
@@ -228,7 +224,7 @@ func (s *serverService) GetAllWithFilter(ctx context.Context, filter ServerFilte
 	if filter.Expression != nil {
 		n := 0
 		for i := range servers {
-			result, err := expr.Run(filterExpression, ToExprServer(servers[i]))
+			result, err := expr.Run(filterExpression, provisioning.ToExprServer(servers[i]))
 			if err != nil {
 				return nil, domain.NewValidationErrf("Failed to execute filter expression: %v", err)
 			}
@@ -258,7 +254,7 @@ func (s *serverService) GetAllNames(ctx context.Context) ([]string, error) {
 	return s.repo.GetAllNames(ctx)
 }
 
-func (s *serverService) GetAllNamesWithFilter(ctx context.Context, filter ServerFilter) ([]string, error) {
+func (s *serverService) GetAllNamesWithFilter(ctx context.Context, filter provisioning.ServerFilter) ([]string, error) {
 	var filterExpression *vm.Program
 	var err error
 
@@ -310,7 +306,7 @@ func (s *serverService) GetAllNamesWithFilter(ctx context.Context, filter Server
 	return serverIDs, nil
 }
 
-func (s *serverService) GetByName(ctx context.Context, name string) (*Server, error) {
+func (s *serverService) GetByName(ctx context.Context, name string) (*provisioning.Server, error) {
 	if name == "" {
 		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -328,8 +324,8 @@ func (s *serverService) GetByName(ctx context.Context, name string) (*Server, er
 	return server, nil
 }
 
-func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, server *Server) error {
-	updates, err := s.updateSvc.GetAllWithFilter(ctx, UpdateFilter{
+func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, server *provisioning.Server) error {
+	updates, err := s.updateSvc.GetAllWithFilter(ctx, provisioning.UpdateFilter{
 		Channel: &server.Channel,
 	})
 	if err != nil {
@@ -405,7 +401,7 @@ func availableVersionGreaterThan(currentVersion string, availableVersion string)
 
 // Update writes the new server state to the DB and pushes the changed
 // settings to the system as well, if updateSystem argument is set to true.
-func (s *serverService) Update(ctx context.Context, server Server, force bool, updateSystem bool) error {
+func (s *serverService) Update(ctx context.Context, server provisioning.Server, force bool, updateSystem bool) error {
 	err := server.Validate()
 	if err != nil {
 		return fmt.Errorf("Failed to validate server for update: %w", err)
@@ -414,7 +410,7 @@ func (s *serverService) Update(ctx context.Context, server Server, force bool, u
 	reverter := revert.New()
 	defer reverter.Fail()
 
-	var previousServer *Server
+	var previousServer *provisioning.Server
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
 		previousServer, err = s.repo.GetByName(ctx, server.Name)
@@ -465,9 +461,9 @@ func (s *serverService) Update(ctx context.Context, server Server, force bool, u
 	return nil
 }
 
-func (s *serverService) UpdateSystemNetwork(ctx context.Context, name string, systemNetwork ServerSystemNetwork) (err error) {
-	server := &Server{}
-	updatedServer := &Server{}
+func (s *serverService) UpdateSystemNetwork(ctx context.Context, name string, systemNetwork provisioning.ServerSystemNetwork) (err error) {
+	server := &provisioning.Server{}
+	updatedServer := &provisioning.Server{}
 
 	reverter := revert.New()
 	defer reverter.Fail()
@@ -511,20 +507,20 @@ func (s *serverService) UpdateSystemNetwork(ctx context.Context, name string, sy
 
 	// Listen to self update signal for the case, when the network update prevents the response for the regular update call.
 	signalHandlerKey := uuid.New().String()
-	s.selfUpdateSignal.AddListener(func(_ context.Context, inServer Server) {
+	s.selfUpdateSignal.AddListener(func(_ context.Context, inServer provisioning.Server) {
 		if inServer.Name == server.Name {
 			// Received self update from the updated server. Cancel potientiall hanging update config request.
-			cancel(ErrSelfUpdateNotification)
+			cancel(provisioning.ErrSelfUpdateNotification)
 			s.selfUpdateSignal.RemoveListener(signalHandlerKey)
 		}
 	}, signalHandlerKey)
 	defer s.selfUpdateSignal.RemoveListener(signalHandlerKey)
 
 	err = s.client.UpdateNetworkConfig(ctx, *updatedServer)
-	// If context is cancelled with cause ErrSelfUpdateNotification, the self update
+	// If context is cancelled with cause provisioning.ErrSelfUpdateNotification, the self update
 	// call has been processed and the operations was successful.
 	// Therefore this is not considered an error.
-	if err != nil && !errors.Is(context.Cause(ctx), ErrSelfUpdateNotification) {
+	if err != nil && !errors.Is(context.Cause(ctx), provisioning.ErrSelfUpdateNotification) {
 		return err
 	}
 
@@ -533,9 +529,9 @@ func (s *serverService) UpdateSystemNetwork(ctx context.Context, name string, sy
 	return nil
 }
 
-func (s *serverService) UpdateSystemStorage(ctx context.Context, name string, systemStorage ServerSystemStorage) (err error) {
-	server := &Server{}
-	updatedServer := &Server{}
+func (s *serverService) UpdateSystemStorage(ctx context.Context, name string, systemStorage provisioning.ServerSystemStorage) (err error) {
+	server := &provisioning.Server{}
+	updatedServer := &provisioning.Server{}
 
 	reverter := revert.New()
 	defer reverter.Fail()
@@ -584,21 +580,21 @@ func (s *serverService) UpdateSystemStorage(ctx context.Context, name string, sy
 	return nil
 }
 
-func (s *serverService) GetSystemProvider(ctx context.Context, name string) (ServerSystemProvider, error) {
+func (s *serverService) GetSystemProvider(ctx context.Context, name string) (provisioning.ServerSystemProvider, error) {
 	server, err := s.GetByName(ctx, name)
 	if err != nil {
-		return ServerSystemProvider{}, fmt.Errorf("Failed to get server %q: %w", name, err)
+		return provisioning.ServerSystemProvider{}, fmt.Errorf("Failed to get server %q: %w", name, err)
 	}
 
 	providerConfig, err := s.client.GetProviderConfig(ctx, *server)
 	if err != nil {
-		return ServerSystemProvider{}, err
+		return provisioning.ServerSystemProvider{}, err
 	}
 
 	return providerConfig, nil
 }
 
-func (s *serverService) UpdateSystemProvider(ctx context.Context, name string, providerConfig ServerSystemProvider) error {
+func (s *serverService) UpdateSystemProvider(ctx context.Context, name string, providerConfig provisioning.ServerSystemProvider) error {
 	server, err := s.GetByName(ctx, name)
 	if err != nil {
 		return fmt.Errorf("Failed to get server %q: %w", name, err)
@@ -612,21 +608,21 @@ func (s *serverService) UpdateSystemProvider(ctx context.Context, name string, p
 	return nil
 }
 
-func (s *serverService) GetSystemUpdate(ctx context.Context, name string) (ServerSystemUpdate, error) {
+func (s *serverService) GetSystemUpdate(ctx context.Context, name string) (provisioning.ServerSystemUpdate, error) {
 	server, err := s.GetByName(ctx, name)
 	if err != nil {
-		return ServerSystemUpdate{}, fmt.Errorf("Failed to get server %q: %w", name, err)
+		return provisioning.ServerSystemUpdate{}, fmt.Errorf("Failed to get server %q: %w", name, err)
 	}
 
 	updateConfig, err := s.client.GetUpdateConfig(ctx, *server)
 	if err != nil {
-		return ServerSystemUpdate{}, fmt.Errorf("Failed to get update config from %q: %w", server.Name, err)
+		return provisioning.ServerSystemUpdate{}, fmt.Errorf("Failed to get update config from %q: %w", server.Name, err)
 	}
 
 	return updateConfig, nil
 }
 
-func (s *serverService) UpdateSystemUpdate(ctx context.Context, name string, updateConfig ServerSystemUpdate) error {
+func (s *serverService) UpdateSystemUpdate(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) error {
 	_, err := s.channelSvc.GetByName(ctx, updateConfig.Config.Channel)
 	if err != nil {
 		return fmt.Errorf("Failed to get channel %q: %w", name, err)
@@ -637,7 +633,7 @@ func (s *serverService) UpdateSystemUpdate(ctx context.Context, name string, upd
 		return fmt.Errorf("Failed to get server %q: %w", name, err)
 	}
 
-	serverSystemUpdate := ServerSystemUpdate{
+	serverSystemUpdate := provisioning.ServerSystemUpdate{
 		Config: incusosapi.SystemUpdateConfig{
 			AutoReboot: false, // forced by Operations Center
 			// For now, the only setting that we allow to be changed by the user is the Update Channel.
@@ -664,12 +660,12 @@ func (s *serverService) UpdateSystemUpdate(ctx context.Context, name string, upd
 	return nil
 }
 
-func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUpdate) error {
+func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisioning.ServerSelfUpdate) error {
 	if serverUpdate.Self {
 		return s.SelfRegisterOperationsCenter(ctx)
 	}
 
-	var server *Server
+	var server *provisioning.Server
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -734,11 +730,11 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfU
 }
 
 func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error {
-	var server Server
+	var server provisioning.Server
 	pollAfterCreate := false
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		servers, err := s.repo.GetAllWithFilter(ctx, ServerFilter{
+		servers, err := s.repo.GetAllWithFilter(ctx, provisioning.ServerFilter{
 			Type: ptr.To(api.ServerTypeOperationsCenter),
 		})
 		if err != nil {
@@ -767,12 +763,12 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 			Host:   net.JoinHostPort(operationsCenterRESTAddressHost, operationsCenterRESTAddressPort),
 		}).String()
 
-		var upsert func(context.Context, Server) error
+		var upsert func(context.Context, provisioning.Server) error
 
 		if len(servers) == 0 {
 			// Create server entry
 
-			server = Server{
+			server = provisioning.Server{
 				Name:                api.ServerNameOperationsCenter,
 				Type:                api.ServerTypeOperationsCenter,
 				ConnectionURL:       connectionURL,
@@ -785,7 +781,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 				Channel:             config.GetUpdates().ServerDefaultChannel,
 			}
 
-			upsert = func(ctx context.Context, server Server) error {
+			upsert = func(ctx context.Context, server provisioning.Server) error {
 				_, err := s.repo.Create(ctx, server)
 				return err
 			}
@@ -803,7 +799,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 			server.LastStatusUpdated = s.now()
 			server.LastSeen = s.now()
 
-			upsert = func(ctx context.Context, server Server) error {
+			upsert = func(ctx context.Context, server provisioning.Server) error {
 				return s.repo.Update(ctx, server)
 			}
 		}
@@ -903,7 +899,7 @@ func (s *serverService) DeleteByName(ctx context.Context, name string) error {
 //   - Periodic connectivity test for all pending servers in the inventory.
 //   - Periodic update of server configuration data (network, security, resources)
 //   - Executed prior to cluster wide bulk operations to refresh the inventory and as connection test
-func (s *serverService) PollServers(ctx context.Context, serverFilter ServerFilter, updateServerConfiguration bool) error {
+func (s *serverService) PollServers(ctx context.Context, serverFilter provisioning.ServerFilter, updateServerConfiguration bool) error {
 	servers, err := s.repo.GetAllWithFilter(ctx, serverFilter)
 	if err != nil {
 		return fmt.Errorf("Failed to get servers for polling: %w", err)
@@ -959,8 +955,8 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 		}
 	}
 
-	var server *Server
-	var previousServer Server
+	var server *provisioning.Server
+	var previousServer provisioning.Server
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
 
@@ -1011,7 +1007,7 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 
 	reverter.Success()
 
-	server.signalLifecycleEvent()
+	server.SignalLifecycleEvent()
 
 	return nil
 }
@@ -1019,8 +1015,8 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, force bool) error {
 	slog.InfoContext(ctx, "Poweroff initiated", slog.String("server", name), slog.Bool("force", force))
 
-	var server *Server
-	var previousServer Server
+	var server *provisioning.Server
+	var previousServer provisioning.Server
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
 
@@ -1067,7 +1063,7 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 
 	reverter.Success()
 
-	server.signalLifecycleEvent()
+	server.SignalLifecycleEvent()
 
 	return nil
 }
@@ -1087,8 +1083,8 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 		return domain.NewRetryableErr(fmt.Errorf("server operation in flight"))
 	}
 
-	var server *Server
-	var previousServer Server
+	var server *provisioning.Server
+	var previousServer provisioning.Server
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -1133,7 +1129,7 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 
 	reverter.Success()
 
-	server.signalLifecycleEvent()
+	server.SignalLifecycleEvent()
 
 	return nil
 }
@@ -1176,8 +1172,8 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 		}
 	}
 
-	var server *Server
-	var previousServer Server
+	var server *provisioning.Server
+	var previousServer provisioning.Server
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -1232,13 +1228,13 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 
 	reverter.Success()
 
-	server.signalLifecycleEvent()
+	server.SignalLifecycleEvent()
 
 	return nil
 }
 
 func (s *serverService) PostRestoreSystemDoneByName(ctx context.Context, name string) error {
-	var server *Server
+	var server *provisioning.Server
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -1266,7 +1262,7 @@ func (s *serverService) PostRestoreSystemDoneByName(ctx context.Context, name st
 		return err
 	}
 
-	server.signalLifecycleEvent()
+	server.SignalLifecycleEvent()
 
 	return nil
 }
@@ -1277,8 +1273,8 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 	reverter := revert.New()
 	defer reverter.Fail()
 
-	var server *Server
-	var previousServer Server
+	var server *provisioning.Server
+	var previousServer provisioning.Server
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -1344,26 +1340,26 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 
 	reverter.Success()
 
-	server.signalLifecycleEvent()
+	server.SignalLifecycleEvent()
 
 	return nil
 }
 
-func (s *serverService) GetSystemLogging(ctx context.Context, name string) (ServerSystemLogging, error) {
+func (s *serverService) GetSystemLogging(ctx context.Context, name string) (provisioning.ServerSystemLogging, error) {
 	server, err := s.GetByName(ctx, name)
 	if err != nil {
-		return ServerSystemLogging{}, fmt.Errorf("Failed to get server %q by name: %w", name, err)
+		return provisioning.ServerSystemLogging{}, fmt.Errorf("Failed to get server %q by name: %w", name, err)
 	}
 
 	loggingConfig, err := s.client.GetSystemLogging(ctx, *server)
 	if err != nil {
-		return ServerSystemLogging{}, fmt.Errorf("Failed to get logging config for server %q: %w", name, err)
+		return provisioning.ServerSystemLogging{}, fmt.Errorf("Failed to get logging config for server %q: %w", name, err)
 	}
 
 	return loggingConfig, nil
 }
 
-func (s *serverService) UpdateSystemLogging(ctx context.Context, name string, loggingConfig ServerSystemLogging) error {
+func (s *serverService) UpdateSystemLogging(ctx context.Context, name string, loggingConfig provisioning.ServerSystemLogging) error {
 	server, err := s.GetByName(ctx, name)
 	if err != nil {
 		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
@@ -1377,21 +1373,21 @@ func (s *serverService) UpdateSystemLogging(ctx context.Context, name string, lo
 	return nil
 }
 
-func (s *serverService) GetSystemKernel(ctx context.Context, name string) (ServerSystemKernel, error) {
+func (s *serverService) GetSystemKernel(ctx context.Context, name string) (provisioning.ServerSystemKernel, error) {
 	server, err := s.GetByName(ctx, name)
 	if err != nil {
-		return ServerSystemKernel{}, fmt.Errorf("Failed to get server %q by name: %w", name, err)
+		return provisioning.ServerSystemKernel{}, fmt.Errorf("Failed to get server %q by name: %w", name, err)
 	}
 
 	kernelConfig, err := s.client.GetSystemKernel(ctx, *server)
 	if err != nil {
-		return ServerSystemKernel{}, fmt.Errorf("Failed to get kernel config for server %q: %w", name, err)
+		return provisioning.ServerSystemKernel{}, fmt.Errorf("Failed to get kernel config for server %q: %w", name, err)
 	}
 
 	return kernelConfig, nil
 }
 
-func (s *serverService) UpdateSystemKernel(ctx context.Context, name string, kernelConfig ServerSystemKernel) error {
+func (s *serverService) UpdateSystemKernel(ctx context.Context, name string, kernelConfig provisioning.ServerSystemKernel) error {
 	server, err := s.GetByName(ctx, name)
 	if err != nil {
 		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
@@ -1419,7 +1415,7 @@ func (s *serverService) AddApplication(ctx context.Context, name string, applica
 	return nil
 }
 
-// ResyncByName implements the InventorySyncer interface. Since we sync a server
+// ResyncByName implements the provisioning.InventorySyncer interface. Since we sync a server
 // resource, the cluster name (2nd argument) is not relevant and we purely
 // rely on the Source.Name attribute from the LifecycleEvent to determine
 // the target server.
@@ -1457,7 +1453,7 @@ func (s *serverService) ResyncByName(ctx context.Context, _ string, event domain
 	return nil
 }
 
-func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *Server, inMaintenance api.InMaintenanceState) error {
+func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *provisioning.Server, inMaintenance api.InMaintenanceState) error {
 	if server.Type != api.ServerTypeIncus {
 		return nil
 	}
@@ -1474,7 +1470,7 @@ func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *Ser
 		return fmt.Errorf("Failed to update servers in maintenance state: %w", err)
 	}
 
-	server.signalLifecycleEvent()
+	server.SignalLifecycleEvent()
 
 	return nil
 }
@@ -1489,7 +1485,7 @@ func (s *serverService) GetChangelogByName(ctx context.Context, name string) (ap
 		return api.UpdateChangelog{}, nil
 	}
 
-	updates, err := s.updateSvc.GetAllWithFilter(ctx, UpdateFilter{
+	updates, err := s.updateSvc.GetAllWithFilter(ctx, provisioning.UpdateFilter{
 		Channel: ptr.To(server.Channel),
 	})
 	if err != nil {
@@ -1526,7 +1522,7 @@ func (s *serverService) GetChangelogByName(ctx context.Context, name string) (ap
 	return changelog, nil
 }
 
-func (s *serverService) PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error {
+func (s *serverService) PollServer(ctx context.Context, server provisioning.Server, updateServerConfiguration bool) error {
 	log := slog.With(slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 
 	if transaction.IsActive(ctx) {
@@ -1541,7 +1537,7 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 		var retryableErr domain.ErrRetryable
 		if errors.As(connTestErr, &retryableErr) {
 			// Query the server again for updating in a transaction.
-			var updateServer *Server
+			var updateServer *provisioning.Server
 
 			err = transaction.Do(ctx, func(ctx context.Context) error {
 				var err error
@@ -1595,7 +1591,7 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 			}
 
 			if signalLifecycle {
-				updateServer.signalLifecycleEvent()
+				updateServer.SignalLifecycleEvent()
 			}
 
 			return nil
@@ -1625,7 +1621,7 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 			return fmt.Errorf("Failed to get os data from server %q: %w", server.Name, err)
 		}
 
-		serverConnectionURL, err = determineManagementRoleURL(osData)
+		serverConnectionURL, err = provisioning.DetermineManagementRoleURL(osData)
 		if err != nil {
 			return err
 		}
@@ -1712,13 +1708,13 @@ func (s *serverService) PollServer(ctx context.Context, server Server, updateSer
 	}
 
 	if signalLifecycle {
-		server.signalLifecycleEvent()
+		server.SignalLifecycleEvent()
 	}
 
 	return nil
 }
 
-func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context, server Server, log *slog.Logger) (updatedServerCertificate string, _ error) {
+func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context, server provisioning.Server, log *slog.Logger) (updatedServerCertificate string, _ error) {
 	// Since we re-try frequently, we only grant a short timeout for the
 	// connection attept.
 	ctxWithTimeout, cancelFunc := context.WithTimeout(ctx, 1*time.Second)

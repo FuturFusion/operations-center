@@ -12,7 +12,7 @@ func Test_teeReadCloserer(t *testing.T) {
 	dst := make([]byte, len(src))
 	rb := io.NopCloser(bytes.NewBuffer(src))
 	wb := new(bytes.Buffer)
-	r := newTeeReadCloser(rb, wb)
+	r := NewTeeReadCloser(rb, wb)
 	defer func() { _ = r.Close() }()
 
 	n, err := io.ReadFull(r, dst)
@@ -36,7 +36,7 @@ func Test_teeReadCloserer(t *testing.T) {
 	rb = io.NopCloser(bytes.NewBuffer(src))
 	pr, pw := io.Pipe()
 	_ = pr.Close()
-	r = newTeeReadCloser(rb, pw)
+	r = NewTeeReadCloser(rb, pw)
 	defer func() { _ = r.Close() }()
 
 	n, err = io.ReadFull(r, dst)

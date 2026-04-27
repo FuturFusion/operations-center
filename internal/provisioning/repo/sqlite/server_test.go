@@ -13,9 +13,13 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
+	provisioningChannel "github.com/FuturFusion/operations-center/internal/provisioning/channel"
+	provisioningCluster "github.com/FuturFusion/operations-center/internal/provisioning/cluster"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	provisioningServer "github.com/FuturFusion/operations-center/internal/provisioning/server"
+	provisioningUpdate "github.com/FuturFusion/operations-center/internal/provisioning/update"
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
@@ -208,13 +212,13 @@ func TestServerDatabaseActions(t *testing.T) {
 	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
 
-	cannelSvc := provisioning.NewChannelService(sqlite.NewChannel(tx), nil)
-	updateSvc := provisioning.NewUpdateService(sqlite.NewUpdate(tx), nil, nil, nil)
+	cannelSvc := provisioningChannel.New(sqlite.NewChannel(tx), nil)
+	updateSvc := provisioningUpdate.New(sqlite.NewUpdate(tx), nil, nil, nil)
 
 	server := sqlite.NewServer(tx)
-	serverSvc := provisioning.NewServerService(server, serverClient, nil, nil, nil, cannelSvc, updateSvc, tls.Certificate{})
+	serverSvc := provisioningServer.New(server, serverClient, nil, nil, nil, cannelSvc, updateSvc, tls.Certificate{})
 
-	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(tx), localArtifactRepo, clusterClient, serverSvc, nil, nil, terraformProvisioner)
+	clusterSvc := provisioningCluster.New(sqlite.NewCluster(tx), localArtifactRepo, clusterClient, serverSvc, nil, nil, terraformProvisioner)
 
 	// Add server
 	_, err = server.Create(ctx, serverA)

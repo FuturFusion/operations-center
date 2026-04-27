@@ -1,4 +1,4 @@
-package provisioning
+package cluster
 
 import (
 	"testing"
@@ -6,19 +6,20 @@ import (
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func Test_determineManagementAddress(t *testing.T) {
 	tests := []struct {
 		name      string
-		serverArg Server
+		serverArg provisioning.Server
 
 		want string
 	}{
 		{
 			name: "from management role",
-			serverArg: Server{
+			serverArg: provisioning.Server{
 				ConnectionURL: "https://10.10.10.10:8443",
 				OSData: api.OSData{
 					Network: incusosapi.SystemNetwork{
@@ -42,7 +43,7 @@ func Test_determineManagementAddress(t *testing.T) {
 		},
 		{
 			name: "without management role",
-			serverArg: Server{
+			serverArg: provisioning.Server{
 				ConnectionURL: "https://10.10.10.10:8443",
 				OSData: api.OSData{
 					Network: incusosapi.SystemNetwork{
@@ -76,14 +77,14 @@ func Test_determineManagementAddress(t *testing.T) {
 func Test_determineClusterAddress(t *testing.T) {
 	tests := []struct {
 		name      string
-		serverArg Server
+		serverArg provisioning.Server
 
 		assertErr require.ErrorAssertionFunc
 		want      string
 	}{
 		{
 			name: "from cluster role",
-			serverArg: Server{
+			serverArg: provisioning.Server{
 				OSData: api.OSData{
 					Network: incusosapi.SystemNetwork{
 						State: incusosapi.SystemNetworkState{
@@ -107,7 +108,7 @@ func Test_determineClusterAddress(t *testing.T) {
 		},
 		{
 			name: "from management role fallback",
-			serverArg: Server{
+			serverArg: provisioning.Server{
 				OSData: api.OSData{
 					Network: incusosapi.SystemNetwork{
 						State: incusosapi.SystemNetworkState{
@@ -131,7 +132,7 @@ func Test_determineClusterAddress(t *testing.T) {
 		},
 		{
 			name: "without cluster and management role",
-			serverArg: Server{
+			serverArg: provisioning.Server{
 				OSData: api.OSData{
 					Network: incusosapi.SystemNetwork{
 						State: incusosapi.SystemNetworkState{
@@ -153,7 +154,7 @@ func Test_determineClusterAddress(t *testing.T) {
 		},
 		{
 			name: "cluster role set on interface without ip",
-			serverArg: Server{
+			serverArg: provisioning.Server{
 				OSData: api.OSData{
 					Network: incusosapi.SystemNetwork{
 						State: incusosapi.SystemNetworkState{

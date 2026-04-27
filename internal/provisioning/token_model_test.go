@@ -218,3 +218,40 @@ func TestTokenImageSeeds_Scan(t *testing.T) {
 		})
 	}
 }
+
+func TestTokenSeed_Validate(t *testing.T) {
+	tests := []struct {
+		name      string
+		tokenSeed provisioning.TokenSeed
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "valid",
+			tokenSeed: provisioning.TokenSeed{
+				Name: "name",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - name empty",
+			tokenSeed: provisioning.TokenSeed{
+				Name: "", // invalid, name empty
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.tokenSeed.Validate()
+
+			tc.assertErr(t, err)
+		})
+	}
+}

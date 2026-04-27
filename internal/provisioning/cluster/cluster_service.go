@@ -1,4 +1,4 @@
-package provisioning
+package cluster
 
 import (
 	"context"
@@ -30,6 +30,7 @@ import (
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -39,13 +40,13 @@ import (
 )
 
 type clusterService struct {
-	repo             ClusterRepo
-	localartifact    ClusterArtifactRepo
-	client           ClusterClientPort
-	serverSvc        ServerService
-	tokenSvc         TokenService
-	inventorySyncers map[domain.ResourceType]InventorySyncer
-	provisioner      ClusterProvisioningPort
+	repo             provisioning.ClusterRepo
+	localartifact    provisioning.ClusterArtifactRepo
+	client           provisioning.ClusterClientPort
+	serverSvc        provisioning.ServerService
+	tokenSvc         provisioning.TokenService
+	inventorySyncers map[domain.ResourceType]provisioning.InventorySyncer
+	provisioner      provisioning.ClusterProvisioningPort
 
 	createClusterRetries      int
 	createClusterRetryTimeout time.Duration
@@ -60,37 +61,37 @@ type clusterService struct {
 	clusterUpdateControlLoopMu sync.Mutex
 }
 
-var _ ClusterService = &clusterService{}
+var _ provisioning.ClusterService = &clusterService{}
 
-type ClusterServiceOption func(s *clusterService)
+type Option func(s *clusterService)
 
-func WithClusterServiceCreateClusterRetryTimeout(timeout time.Duration) ClusterServiceOption {
+func WithCreateRetryTimeout(timeout time.Duration) Option {
 	return func(s *clusterService) {
 		s.createClusterRetryTimeout = timeout
 	}
 }
 
-func WithClusterServiceNow(nowFunc func() time.Time) ClusterServiceOption {
+func WithNow(nowFunc func() time.Time) Option {
 	return func(s *clusterService) {
 		s.now = nowFunc
 	}
 }
 
-func WithClusterServicePendingUpdateRecheckInterval(d time.Duration) ClusterServiceOption {
+func WithPendingUpdateRecheckInterval(d time.Duration) Option {
 	return func(s *clusterService) {
 		s.clusterUpdatePendingUpdateRecheckInterval = d
 	}
 }
 
-func NewClusterService(
-	repo ClusterRepo,
-	localartifact ClusterArtifactRepo,
-	client ClusterClientPort,
-	serverSvc ServerService,
-	tokenSvc TokenService,
-	inventorySyncers map[domain.ResourceType]InventorySyncer,
-	provisioner ClusterProvisioningPort,
-	opts ...ClusterServiceOption,
+func New(
+	repo provisioning.ClusterRepo,
+	localartifact provisioning.ClusterArtifactRepo,
+	client provisioning.ClusterClientPort,
+	serverSvc provisioning.ServerService,
+	tokenSvc provisioning.TokenService,
+	inventorySyncers map[domain.ResourceType]provisioning.InventorySyncer,
+	provisioner provisioning.ClusterProvisioningPort,
+	opts ...Option,
 ) *clusterService {
 	clusterSvc := &clusterService{
 		repo:             repo,
@@ -119,7 +120,7 @@ func NewClusterService(
 	return clusterSvc
 }
 
-func (s *clusterService) SetInventorySyncers(inventorySyncers map[domain.ResourceType]InventorySyncer) {
+func (s *clusterService) SetInventorySyncers(inventorySyncers map[domain.ResourceType]provisioning.InventorySyncer) {
 	(*s).inventorySyncers = inventorySyncers
 }
 
@@ -150,18 +151,18 @@ func (s *clusterService) SetInventorySyncers(inventorySyncers map[domain.Resourc
 //     Create an "internal" network bridge on each server.
 //     Update the default profile in the default project to use incusbr0 for networking.
 //     Update the default profile in the internal project to use internal-mesh for networking.
-func (s *clusterService) Create(ctx context.Context, newCluster Cluster) (_ Cluster, err error) {
+func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Cluster) (_ provisioning.Cluster, err error) {
 	if newCluster.Channel == "" {
 		newCluster.Channel = config.GetUpdates().ServerDefaultChannel
 	}
 
 	err = newCluster.ValidateCreate()
 	if err != nil {
-		return Cluster{}, err
+		return provisioning.Cluster{}, err
 	}
 
-	var bootstrapServer Server
-	var servers []Server
+	var bootstrapServer provisioning.Server
+	var servers []provisioning.Server
 
 	// 1st DB transaction.
 	err = transaction.Do(ctx, func(ctx context.Context) error {
@@ -302,7 +303,7 @@ func (s *clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clus
 			return newCluster, fmt.Errorf("Failed to set cluster.https_address and core.https_address on %q: %w", server.Name, err)
 		}
 
-		servers[i].ConnectionURL, err = determineManagementRoleURL(server.OSData)
+		servers[i].ConnectionURL, err = provisioning.DetermineManagementRoleURL(server.OSData)
 		if err != nil {
 			return newCluster, err
 		}
@@ -319,8 +320,8 @@ func (s *clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clus
 
 	// From now on, use the cluster certificate to connect to the cluster instead
 	// of the certificate of the bootstrap server.
-	clusterEndpoint := ClusterEndpoint{
-		Server{
+	clusterEndpoint := provisioning.ClusterEndpoint{
+		provisioning.Server{
 			ConnectionURL:        bootstrapServer.ConnectionURL,
 			Cluster:              &newCluster.Name,
 			ClusterCertificate:   &clusterCertificate,
@@ -423,7 +424,7 @@ func (s *clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clus
 	}
 
 	// Perform post-clustering initialization using provisioner (Terraform).
-	temporaryPath, cleanup, err := s.provisioner.Init(ctx, newCluster.Name, ClusterProvisioningConfig{
+	temporaryPath, cleanup, err := s.provisioner.Init(ctx, newCluster.Name, provisioning.ClusterProvisioningConfig{
 		ClusterEndpoint: clusterEndpoint,
 		Servers:         servers,
 		Cluster:         newCluster,
@@ -462,7 +463,7 @@ func (s *clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clus
 					return newCluster, fmt.Errorf("Failed to poll server %q: %w", servers[0].Name, err)
 				}
 
-				updatedServers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+				updatedServers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
 					Cluster: &newCluster.Name,
 					Name:    &bootstrapServer.Name,
 				})
@@ -478,8 +479,8 @@ func (s *clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clus
 
 				newCluster.Certificate = updatedServers[0].ClusterCertificate
 
-				clusterEndpoint = ClusterEndpoint{
-					Server{
+				clusterEndpoint = provisioning.ClusterEndpoint{
+					provisioning.Server{
 						ConnectionURL:        updatedServers[0].ConnectionURL,
 						Cluster:              &newCluster.Name,
 						ClusterCertificate:   updatedServers[0].ClusterCertificate,
@@ -511,7 +512,7 @@ func (s *clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clus
 		break
 	}
 
-	_, err = s.localartifact.CreateClusterArtifactFromPath(ctx, ClusterArtifact{
+	_, err = s.localartifact.CreateClusterArtifactFromPath(ctx, provisioning.ClusterArtifact{
 		Cluster:     newCluster.Name,
 		Name:        "terraform-configuration",
 		Description: "Initial terraform configuration used for post-clustering.",
@@ -533,7 +534,7 @@ func (s *clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clus
 	return newCluster, nil
 }
 
-func determineManagementRoleAddress(server Server) string {
+func determineManagementRoleAddress(server provisioning.Server) string {
 	ip := server.OSData.Network.State.GetInterfaceAddressByRole(incusosapi.SystemNetworkInterfaceRoleManagement)
 	if ip == nil {
 		return ":8443"
@@ -542,16 +543,7 @@ func determineManagementRoleAddress(server Server) string {
 	return net.JoinHostPort(ip.String(), "8443")
 }
 
-func determineManagementRoleURL(osdata api.OSData) (string, error) {
-	ip := osdata.Network.State.GetInterfaceAddressByRole(incusosapi.SystemNetworkInterfaceRoleManagement)
-	if ip == nil {
-		return "", fmt.Errorf(`Failed to determine an IP address for the network interface with "management" role`)
-	}
-
-	return "https://" + net.JoinHostPort(ip.String(), "8443"), nil
-}
-
-func determineClusterRoleAddress(server Server) (string, error) {
+func determineClusterRoleAddress(server provisioning.Server) (string, error) {
 	ip := server.OSData.Network.State.GetInterfaceAddressByRole(incusosapi.SystemNetworkInterfaceRoleCluster)
 	if ip == nil {
 		ip = server.OSData.Network.State.GetInterfaceAddressByRole(incusosapi.SystemNetworkInterfaceRoleManagement)
@@ -576,7 +568,7 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 
 	// Make sure, the "to be added" servers are known and do have a configuration
 	// valid for clustering.
-	additionalServers := make([]Server, 0, len(serverNames))
+	additionalServers := make([]provisioning.Server, 0, len(serverNames))
 	for _, serverName := range serverNames {
 		server, err := s.serverSvc.GetByName(ctx, serverName)
 		if err != nil {
@@ -614,7 +606,7 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 		additionalServers = append(additionalServers, *server)
 	}
 
-	currentClusterServers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+	currentClusterServers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
 		Cluster: ptr.To(name),
 	})
 	if err != nil {
@@ -776,7 +768,7 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 	return nil
 }
 
-func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, servers []Server) (isConsistent bool, inconsistencyReason string, _ error) {
+func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, servers []provisioning.Server) (isConsistent bool, inconsistencyReason string, _ error) {
 	if len(servers) == 0 {
 		return false, "", fmt.Errorf("Unable to check clustering server consistency for empty servers list: %w", domain.ErrOperationNotPermitted)
 	}
@@ -928,18 +920,18 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 	return true, "", nil
 }
 
-func (s *clusterService) GetAll(ctx context.Context) (Clusters, error) {
+func (s *clusterService) GetAll(ctx context.Context) (provisioning.Clusters, error) {
 	return s.repo.GetAll(ctx)
 }
 
-func (s *clusterService) GetAllWithFilter(ctx context.Context, filter ClusterFilter) (Clusters, error) {
+func (s *clusterService) GetAllWithFilter(ctx context.Context, filter provisioning.ClusterFilter) (provisioning.Clusters, error) {
 	var filterExpression *vm.Program
 	var err error
 
 	if filter.Expression != nil {
 		filterExpression, err = expr.Compile(
 			*filter.Expression,
-			expr.Env(ToExprCluster(Cluster{})),
+			expr.Env(provisioning.ToExprCluster(provisioning.Cluster{})),
 			expr.AsBool(),
 			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 			expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
@@ -949,17 +941,17 @@ func (s *clusterService) GetAllWithFilter(ctx context.Context, filter ClusterFil
 		}
 	}
 
-	var clusters Clusters
+	var clusters provisioning.Clusters
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		clusters, err = s.repo.GetAll(ctx)
 		if err != nil {
 			return err
 		}
 
-		var filteredClusters Clusters
+		var filteredClusters provisioning.Clusters
 		if filter.Expression != nil {
 			for _, cluster := range clusters {
-				result, err := expr.Run(filterExpression, ToExprCluster(cluster))
+				result, err := expr.Run(filterExpression, provisioning.ToExprCluster(cluster))
 				if err != nil {
 					return domain.NewValidationErrf("Failed to execute filter expression: %v", err)
 				}
@@ -992,7 +984,7 @@ func (s *clusterService) GetAllNames(ctx context.Context) ([]string, error) {
 	return s.repo.GetAllNames(ctx)
 }
 
-func (s *clusterService) GetAllNamesWithFilter(ctx context.Context, filter ClusterFilter) ([]string, error) {
+func (s *clusterService) GetAllNamesWithFilter(ctx context.Context, filter provisioning.ClusterFilter) ([]string, error) {
 	var filterExpression *vm.Program
 	var err error
 
@@ -1037,12 +1029,12 @@ func (s *clusterService) GetAllNamesWithFilter(ctx context.Context, filter Clust
 	return clusterIDs, nil
 }
 
-func (s *clusterService) GetByName(ctx context.Context, name string) (*Cluster, error) {
+func (s *clusterService) GetByName(ctx context.Context, name string) (*provisioning.Cluster, error) {
 	if name == "" {
 		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	var cluster *Cluster
+	var cluster *provisioning.Cluster
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
 		cluster, err = s.repo.GetByName(ctx, name)
@@ -1065,7 +1057,7 @@ func (s *clusterService) GetByName(ctx context.Context, name string) (*Cluster, 
 }
 
 func (s *clusterService) getClusterUpdateStatus(ctx context.Context, name string, clusterUpdateStatus *api.ClusterUpdateStatus) error {
-	servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+	servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
 		Cluster: ptr.To(name),
 	})
 	if err != nil {
@@ -1097,14 +1089,14 @@ func (s *clusterService) getClusterUpdateStatus(ctx context.Context, name string
 	return nil
 }
 
-func (s *clusterService) Update(ctx context.Context, newCluster Cluster, updateServers bool) error {
+func (s *clusterService) Update(ctx context.Context, newCluster provisioning.Cluster, updateServers bool) error {
 	err := newCluster.Validate()
 	if err != nil {
 		return err
 	}
 
-	var previousCluster *Cluster
-	var servers Servers
+	var previousCluster *provisioning.Cluster
+	var servers provisioning.Servers
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		previousCluster, err = s.repo.GetByName(ctx, newCluster.Name)
@@ -1122,7 +1114,7 @@ func (s *clusterService) Update(ctx context.Context, newCluster Cluster, updateS
 		}
 
 		// Get servers of cluster and update "channel" to same value as cluster.
-		servers, err = s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+		servers, err = s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
 			Cluster: &newCluster.Name,
 		})
 		if err != nil {
@@ -1228,7 +1220,7 @@ func (s *clusterService) DeleteByName(ctx context.Context, name string, force bo
 			return fmt.Errorf("Delete for cluster with invalid state: %w", domain.ErrOperationNotPermitted)
 		}
 
-		servers, err := s.serverSvc.GetAllNamesWithFilter(ctx, ServerFilter{
+		servers, err := s.serverSvc.GetAllNamesWithFilter(ctx, provisioning.ServerFilter{
 			Cluster: &name,
 		})
 		if err != nil {
@@ -1263,7 +1255,7 @@ func (s *clusterService) DeleteAndFactoryResetByName(ctx context.Context, name s
 		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+	servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
 		Cluster: ptr.To(name),
 	})
 	if err != nil {
@@ -1281,7 +1273,7 @@ func (s *clusterService) DeleteAndFactoryResetByName(ctx context.Context, name s
 		}
 	}
 
-	var seed TokenImageSeedConfigs
+	var seed provisioning.TokenImageSeedConfigs
 	if tokenID != nil && tokenSeedName != nil {
 		tokenSeed, err := s.tokenSvc.GetTokenSeedByName(ctx, *tokenID, *tokenSeedName)
 		if err != nil {
@@ -1292,7 +1284,7 @@ func (s *clusterService) DeleteAndFactoryResetByName(ctx context.Context, name s
 	}
 
 	if tokenID == nil {
-		token, err := s.tokenSvc.Create(ctx, Token{
+		token, err := s.tokenSvc.Create(ctx, provisioning.Token{
 			Description:   fmt.Sprintf("Factory reset of cluster %q", name),
 			UsesRemaining: len(servers),
 			ExpireAt:      time.Now().Add(1 * time.Hour),
@@ -1306,7 +1298,7 @@ func (s *clusterService) DeleteAndFactoryResetByName(ctx context.Context, name s
 	}
 
 	if tokenSeedName == nil {
-		seed = TokenImageSeedConfigs{
+		seed = provisioning.TokenImageSeedConfigs{
 			Applications: api.SeedApplications{
 				Version: "1",
 				Applications: []api.SeedApplication{
@@ -1405,7 +1397,7 @@ func (s *clusterService) IsInstanceLifecycleOperationPermitted(ctx context.Conte
 func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, reboot bool) error {
 	// Check, that no update is in progress for this cluster and set cluster
 	// update status to "in progress".
-	var cluster *Cluster
+	var cluster *provisioning.Cluster
 	var updateDone bool
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -1464,7 +1456,7 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 	})
 
 	// Refresh all status information for all servers.
-	err = s.serverSvc.PollServers(ctx, ServerFilter{
+	err = s.serverSvc.PollServers(ctx, provisioning.ServerFilter{
 		Cluster: ptr.To(name),
 	}, true)
 	if err != nil {
@@ -1474,7 +1466,7 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 	// Make sure, cluster is ready for a rolling update. This is the case if:
 	//   * All servers are in ready state with no update currently running.
 	//   * None of the servers is in maintenance.
-	servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+	servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
 		Cluster: ptr.To(name),
 	})
 	if err == nil && len(servers) == 0 {
@@ -1517,7 +1509,7 @@ func (s *clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNa
 	s.clusterUpdateControlLoopMu.Lock()
 	defer s.clusterUpdateControlLoopMu.Unlock()
 
-	clusters, err := s.GetAllWithFilter(ctx, ClusterFilter{
+	clusters, err := s.GetAllWithFilter(ctx, provisioning.ClusterFilter{
 		Name:       clusterNameFilter,
 		Expression: ptr.To(`update_status.in_progress_status.in_progress != ""`),
 	})
@@ -1544,7 +1536,7 @@ func (s *clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNa
 			}
 
 			// Refresh all status information for all servers.
-			err := s.serverSvc.PollServers(ctx, ServerFilter{
+			err := s.serverSvc.PollServers(ctx, provisioning.ServerFilter{
 				Cluster: &cluster.Name,
 			}, true)
 			if err != nil {
@@ -1555,7 +1547,7 @@ func (s *clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNa
 			}
 
 			// Get updated server state information.
-			servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+			servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
 				Cluster: &cluster.Name,
 			})
 			if err == nil && len(servers) == 0 {
@@ -1590,7 +1582,7 @@ func (s *clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNa
 	return errors.Join(errs...)
 }
 
-func (s *clusterService) executeRollingUpdate(ctx context.Context, cluster Cluster, servers Servers) error {
+func (s *clusterService) executeRollingUpdate(ctx context.Context, cluster provisioning.Cluster, servers provisioning.Servers) error {
 	log := slog.With(slog.String("cluster", cluster.Name))
 
 	// Trigger update on each server, applications get updated immediately,
@@ -1672,13 +1664,13 @@ func (s *clusterService) executeRollingUpdate(ctx context.Context, cluster Clust
 
 	if emitLifecycleSignal {
 		// Use last server as the triggering server, since it was most likely the last one that was updated.
-		servers[len(servers)-1].signalLifecycleEvent()
+		servers[len(servers)-1].SignalLifecycleEvent()
 	}
 
 	return nil
 }
 
-func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, cluster Cluster, servers Servers) error {
+func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, cluster provisioning.Cluster, servers provisioning.Servers) error {
 	log := slog.With(slog.String("cluster", cluster.Name))
 
 	// Calculate, if we are done based on the current state of all servers and the desired target state and
@@ -1851,7 +1843,7 @@ func (s *clusterService) updateInProgressStatus(ctx context.Context, clusterName
 	})
 }
 
-func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgressStatus, servers Servers) string {
+func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgressStatus, servers provisioning.Servers) string {
 	const perServerSteps = 9
 
 	totalSteps := 0
@@ -2138,7 +2130,7 @@ func (s *clusterService) RemoveServerSystemNetworkVLANTags(ctx context.Context, 
 	return nil
 }
 
-func (s *clusterService) UpdateSystemLogging(ctx context.Context, clusterName string, loggingConfig ServerSystemLogging) (err error) {
+func (s *clusterService) UpdateSystemLogging(ctx context.Context, clusterName string, loggingConfig provisioning.ServerSystemLogging) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("Update logging for cluster members for %q failed: %w", clusterName, err)
@@ -2155,7 +2147,7 @@ func (s *clusterService) UpdateSystemLogging(ctx context.Context, clusterName st
 	defer reverter.Fail()
 
 	for _, server := range servers {
-		var currentLoggingConfig ServerSystemLogging
+		var currentLoggingConfig provisioning.ServerSystemLogging
 		currentLoggingConfig, err = s.serverSvc.GetSystemLogging(ctx, server.Name)
 		if err != nil {
 			return fmt.Errorf("Failed to get current logging config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
@@ -2179,7 +2171,7 @@ func (s *clusterService) UpdateSystemLogging(ctx context.Context, clusterName st
 	return nil
 }
 
-func (s *clusterService) UpdateSystemKernel(ctx context.Context, clusterName string, kernelConfig ServerSystemKernel) (err error) {
+func (s *clusterService) UpdateSystemKernel(ctx context.Context, clusterName string, kernelConfig provisioning.ServerSystemKernel) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("Update kernel for cluster members for %q failed: %w", clusterName, err)
@@ -2196,7 +2188,7 @@ func (s *clusterService) UpdateSystemKernel(ctx context.Context, clusterName str
 	defer reverter.Fail()
 
 	for _, server := range servers {
-		var currentKernelConfig ServerSystemKernel
+		var currentKernelConfig provisioning.ServerSystemKernel
 		currentKernelConfig, err = s.serverSvc.GetSystemKernel(ctx, server.Name)
 		if err != nil {
 			return fmt.Errorf("Failed to get current kernel config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
@@ -2608,7 +2600,7 @@ func (s *clusterService) RemoveStorageTargetNVME(ctx context.Context, clusterNam
 	return nil
 }
 
-func (s *clusterService) prepareBulkUpdate(ctx context.Context, clusterName string) (Servers, error) {
+func (s *clusterService) prepareBulkUpdate(ctx context.Context, clusterName string) (provisioning.Servers, error) {
 	cluster, err := s.GetByName(ctx, clusterName)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get cluster %q: %w", clusterName, err)
@@ -2619,14 +2611,14 @@ func (s *clusterService) prepareBulkUpdate(ctx context.Context, clusterName stri
 	}
 
 	// Update the current server states in the DB, serves as a connection test at the same time.
-	err = s.serverSvc.PollServers(ctx, ServerFilter{
+	err = s.serverSvc.PollServers(ctx, provisioning.ServerFilter{
 		Cluster: ptr.To(clusterName),
 	}, true)
 	if err != nil {
 		return nil, fmt.Errorf("Polling of cluster members failed: %w", err)
 	}
 
-	servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+	servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
 		Cluster: ptr.To(clusterName),
 	})
 	if err != nil {
@@ -2813,18 +2805,18 @@ func (s *clusterService) UpdateCertificate(ctx context.Context, name string, cer
 	})
 }
 
-func (s *clusterService) GetEndpoint(ctx context.Context, name string) (Endpoint, error) {
-	servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+func (s *clusterService) GetEndpoint(ctx context.Context, name string) (provisioning.Endpoint, error) {
+	servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
 		Cluster: &name,
 	})
 	if err != nil {
-		return ClusterEndpoint{}, err
+		return provisioning.ClusterEndpoint{}, err
 	}
 
-	return ClusterEndpoint(servers), nil
+	return provisioning.ClusterEndpoint(servers), nil
 }
 
-func (s *clusterService) GetClusterArtifactAll(ctx context.Context, clusterName string) (ClusterArtifacts, error) {
+func (s *clusterService) GetClusterArtifactAll(ctx context.Context, clusterName string) (provisioning.ClusterArtifacts, error) {
 	if clusterName == "" {
 		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -2840,7 +2832,7 @@ func (s *clusterService) GetClusterArtifactAllNames(ctx context.Context, cluster
 	return s.localartifact.GetClusterArtifactAllNames(ctx, clusterName)
 }
 
-func (s *clusterService) GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (*ClusterArtifact, error) {
+func (s *clusterService) GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (*provisioning.ClusterArtifact, error) {
 	if clusterName == "" {
 		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -2852,7 +2844,7 @@ func (s *clusterService) GetClusterArtifactByName(ctx context.Context, clusterNa
 	return s.localartifact.GetClusterArtifactByName(ctx, clusterName, artifactName)
 }
 
-func (s *clusterService) GetClusterArtifactFileByName(ctx context.Context, clusterName string, artifactName string, filename string) (*ClusterArtifactFile, error) {
+func (s *clusterService) GetClusterArtifactFileByName(ctx context.Context, clusterName string, artifactName string, filename string) (*provisioning.ClusterArtifactFile, error) {
 	if filename == "" {
 		return nil, fmt.Errorf("Filename cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -2871,7 +2863,7 @@ func (s *clusterService) GetClusterArtifactFileByName(ctx context.Context, clust
 	return nil, fmt.Errorf("File %q not found in artifact %q for cluster %q: %w", filename, artifactName, clusterName, domain.ErrNotFound)
 }
 
-func (s *clusterService) GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType ClusterArtifactArchiveType) (_ io.ReadCloser, size int, _ error) {
+func (s *clusterService) GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType provisioning.ClusterArtifactArchiveType) (_ io.ReadCloser, size int, _ error) {
 	rc, size, err := s.localartifact.GetClusterArtifactArchiveByName(ctx, clusterName, artifactName, archiveType)
 	if err != nil {
 		return nil, 0, fmt.Errorf("Failed to get artifact %q for cluster %q: %w", artifactName, clusterName, err)

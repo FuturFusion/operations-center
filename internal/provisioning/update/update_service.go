@@ -1,4 +1,4 @@
-package provisioning
+package update
 
 import (
 	"archive/tar"
@@ -26,6 +26,7 @@ import (
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -41,35 +42,35 @@ const (
 )
 
 type updateService struct {
-	repo               UpdateRepo
-	filesRepo          UpdateFilesRepo
-	source             UpdateSourcePort
-	serverSvc          ServerService
+	repo               provisioning.UpdateRepo
+	filesRepo          provisioning.UpdateFilesRepo
+	source             provisioning.UpdateSourcePort
+	serverSvc          provisioning.ServerService
 	latestLimit        int
 	pendingGracePeriod time.Duration
 }
 
-var _ UpdateService = &updateService{}
+var _ provisioning.UpdateService = &updateService{}
 
-type UpdateServiceOption func(service *updateService)
+type Option func(service *updateService)
 
-func UpdateServiceWithLatestLimit(limit int) UpdateServiceOption {
+func WithLatestLimit(limit int) Option {
 	return func(service *updateService) {
 		service.latestLimit = limit
 	}
 }
 
-func UpdateServiceWithPendingGracePeriod(pendingGracePeriod time.Duration) UpdateServiceOption {
+func WithPendingGracePeriod(pendingGracePeriod time.Duration) Option {
 	return func(service *updateService) {
 		service.pendingGracePeriod = pendingGracePeriod
 	}
 }
 
-func (s *updateService) SetServerService(serverSvc ServerService) {
+func (s *updateService) SetServerService(serverSvc provisioning.ServerService) {
 	s.serverSvc = serverSvc
 }
 
-func NewUpdateService(repo UpdateRepo, filesRepo UpdateFilesRepo, source UpdateSourcePort, serverSvc ServerService, opts ...UpdateServiceOption) *updateService {
+func New(repo provisioning.UpdateRepo, filesRepo provisioning.UpdateFilesRepo, source provisioning.UpdateSourcePort, serverSvc provisioning.ServerService, opts ...Option) *updateService {
 	service := &updateService{
 		repo:               repo,
 		filesRepo:          filesRepo,
@@ -175,7 +176,7 @@ func (s updateService) Prune(ctx context.Context) error {
 	var fileRepoErrs []error
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		updates, err := s.repo.GetAllWithFilter(ctx, UpdateFilter{
+		updates, err := s.repo.GetAllWithFilter(ctx, provisioning.UpdateFilter{
 			Status: ptr.To(api.UpdateStatusPending),
 		})
 		if err != nil {
@@ -232,7 +233,7 @@ func (s updateService) Prune(ctx context.Context) error {
 	return nil
 }
 
-func (s updateService) GetAll(ctx context.Context) (Updates, error) {
+func (s updateService) GetAll(ctx context.Context) (provisioning.Updates, error) {
 	updates, err := s.repo.GetAll(ctx)
 	if err != nil {
 		return nil, err
@@ -247,9 +248,9 @@ func (s updateService) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
 	return s.repo.GetAllUUIDs(ctx)
 }
 
-func (s updateService) GetAllWithFilter(ctx context.Context, filter UpdateFilter) (Updates, error) {
+func (s updateService) GetAllWithFilter(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
 	var err error
-	var updates Updates
+	var updates provisioning.Updates
 
 	if filter.UUID == nil && filter.Origin == nil && filter.Status == nil && filter.Channel == nil {
 		updates, err = s.repo.GetAll(ctx)
@@ -284,11 +285,11 @@ func (s updateService) GetAllWithFilter(ctx context.Context, filter UpdateFilter
 	return updates, nil
 }
 
-func (s updateService) GetByUUID(ctx context.Context, id uuid.UUID) (*Update, error) {
+func (s updateService) GetByUUID(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
 	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s updateService) GetAllUUIDsWithFilter(ctx context.Context, filter UpdateFilter) ([]uuid.UUID, error) {
+func (s updateService) GetAllUUIDsWithFilter(ctx context.Context, filter provisioning.UpdateFilter) ([]uuid.UUID, error) {
 	if filter.UpstreamChannel == nil {
 		updateIDs, err := s.repo.GetAllUUIDs(ctx)
 		if err != nil {
@@ -315,7 +316,7 @@ func (s updateService) GetAllUUIDsWithFilter(ctx context.Context, filter UpdateF
 	return updateIDs, nil
 }
 
-func (s updateService) GetUpdatesByAssignedChannelName(ctx context.Context, channelName string) (Updates, error) {
+func (s updateService) GetUpdatesByAssignedChannelName(ctx context.Context, channelName string) (provisioning.Updates, error) {
 	updates, err := s.repo.GetUpdatesByAssignedChannelName(ctx, channelName)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get updates by channel %q: %w", channelName, err)
@@ -324,7 +325,7 @@ func (s updateService) GetUpdatesByAssignedChannelName(ctx context.Context, chan
 	return updates, err
 }
 
-func (s updateService) Update(ctx context.Context, update Update) error {
+func (s updateService) Update(ctx context.Context, update provisioning.Update) error {
 	err := update.Validate()
 	if err != nil {
 		return fmt.Errorf("Failed to validate update: %w", err)
@@ -356,7 +357,7 @@ func (s updateService) GetChangelog(ctx context.Context, currentID uuid.UUID, pr
 		return api.UpdateChangelog{}, fmt.Errorf("Failed to get current update %q: %w", currentID.String(), err)
 	}
 
-	prior := &Update{}
+	prior := &provisioning.Update{}
 	if priorID != uuid.Nil {
 		prior, err = s.GetByUUID(ctx, priorID)
 		if err != nil {
@@ -420,7 +421,7 @@ func (s updateService) GetChangelog(ctx context.Context, currentID uuid.UUID, pr
 	return changelog, nil
 }
 
-func (s updateService) readManifest(ctx context.Context, update Update, filename string, manifest *manifests.IncusOSManifest) (err error) {
+func (s updateService) readManifest(ctx context.Context, update provisioning.Update, filename string, manifest *manifests.IncusOSManifest) (err error) {
 	var manifestFileGz io.ReadCloser
 
 	manifestFileGz, _, err = s.filesRepo.Get(ctx, update, filename)
@@ -452,7 +453,7 @@ func (s updateService) readManifest(ctx context.Context, update Update, filename
 }
 
 func (s updateService) GetChangelogByChannel(ctx context.Context, currentUUID uuid.UUID, channelName string, upstream bool, architecture images.UpdateFileArchitecture) (api.UpdateChangelog, error) {
-	updateFilter := UpdateFilter{}
+	updateFilter := provisioning.UpdateFilter{}
 	if upstream {
 		updateFilter.UpstreamChannel = ptr.To(channelName)
 	} else {
@@ -496,7 +497,7 @@ func (s updateService) GetChangelogByChannel(ctx context.Context, currentUUID uu
 	return changelog, nil
 }
 
-func (s updateService) GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (UpdateFiles, error) {
+func (s updateService) GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (provisioning.UpdateFiles, error) {
 	update, err := s.repo.GetByUUID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -572,7 +573,7 @@ func (s updateService) Refresh(ctx context.Context) error {
 		originUpdates[i].Channels = []string{config.GetUpdates().UpdatesDefaultChannel}
 	}
 
-	toDownloadUpdates := make([]Update, 0, len(originUpdates))
+	toDownloadUpdates := make([]provisioning.Update, 0, len(originUpdates))
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		servers, err := s.serverSvc.GetAll(ctx)
 		if err != nil {
@@ -589,7 +590,7 @@ func (s updateService) Refresh(ctx context.Context) error {
 			return fmt.Errorf("Failed to get all updates from repository: %w", err)
 		}
 
-		var toDeleteUpdates []Update
+		var toDeleteUpdates []provisioning.Update
 		toDeleteUpdates, toDownloadUpdates = s.determineToDeleteAndToDownloadUpdates(dbUpdates, originUpdates, updateVersionsInUse)
 
 		// Remove updates marked for removal.
@@ -639,7 +640,7 @@ func (s updateService) Refresh(ctx context.Context) error {
 
 	for _, update := range toDownloadUpdates {
 		// Make sure, we do have enough space left in the files repository before downloading the files.
-		err = s.isSpaceAvailable(ctx, []Update{update})
+		err = s.isSpaceAvailable(ctx, []provisioning.Update{update})
 		if err != nil {
 			return err
 		}
@@ -661,7 +662,7 @@ func (s updateService) Refresh(ctx context.Context) error {
 
 				if updateFile.Sha256 != "" {
 					h = sha256.New()
-					teeStream = newTeeReadCloser(stream, h)
+					teeStream = provisioning.NewTeeReadCloser(stream, h)
 				}
 
 				commit, cancel, err := s.filesRepo.Put(ctx, update, updateFile.Filename, teeStream)
@@ -717,7 +718,7 @@ func (s updateService) validateUpdatesConfig(ctx context.Context, su system.Upda
 	if su.FilterExpression != "" {
 		_, err := expr.Compile(
 			su.FilterExpression,
-			expr.Env(ToExprUpdate(Update{})),
+			expr.Env(provisioning.ToExprUpdate(provisioning.Update{})),
 			expr.AsBool(),
 			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 			expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
@@ -730,7 +731,7 @@ func (s updateService) validateUpdatesConfig(ctx context.Context, su system.Upda
 	if su.FileFilterExpression != "" {
 		_, err := expr.Compile(
 			su.FileFilterExpression,
-			UpdateFileExprEnvFrom(UpdateFile{}).ExprCompileOptions()...,
+			UpdateFileExprEnvFrom(provisioning.UpdateFile{}).ExprCompileOptions()...,
 		)
 		if err != nil {
 			return domain.NewValidationErrf(`Invalid config, failed to compile file filter expression: %v`, err)
@@ -740,7 +741,7 @@ func (s updateService) validateUpdatesConfig(ctx context.Context, su system.Upda
 	return nil
 }
 
-func (s updateService) filterUpdatesByFilterExpression(updates Updates) (Updates, error) {
+func (s updateService) filterUpdatesByFilterExpression(updates provisioning.Updates) (provisioning.Updates, error) {
 	if config.GetUpdates().FilterExpression != "" {
 		// The filter expression is already compiled as part of the validation
 		// of the config so we can assume the filter expression to compile without
@@ -748,7 +749,7 @@ func (s updateService) filterUpdatesByFilterExpression(updates Updates) (Updates
 		// If not the case, the Run call will fail with a "program is nil" error.
 		filterExpression, _ := expr.Compile(
 			config.GetUpdates().FilterExpression,
-			expr.Env(ToExprUpdate(Update{})),
+			expr.Env(provisioning.ToExprUpdate(provisioning.Update{})),
 			expr.AsBool(),
 			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
 			expr.Function("toFloat64", expropts.ToFloat64, new(func(any) float64)),
@@ -756,7 +757,7 @@ func (s updateService) filterUpdatesByFilterExpression(updates Updates) (Updates
 
 		n := 0
 		for i := range updates {
-			result, err := expr.Run(filterExpression, ToExprUpdate(updates[i]))
+			result, err := expr.Run(filterExpression, provisioning.ToExprUpdate(updates[i]))
 			if err != nil {
 				return nil, err
 			}
@@ -830,7 +831,7 @@ func (u UpdateFileExprEnv) ExprCompileOptions() []expr.Option {
 	}
 }
 
-func UpdateFileExprEnvFrom(u UpdateFile) UpdateFileExprEnv {
+func UpdateFileExprEnvFrom(u provisioning.UpdateFile) UpdateFileExprEnv {
 	return UpdateFileExprEnv{
 		Filename:     u.Filename,
 		Size:         u.Size,
@@ -841,7 +842,7 @@ func UpdateFileExprEnvFrom(u UpdateFile) UpdateFileExprEnv {
 	}
 }
 
-func (s updateService) filterUpdateFileByFilterExpression(updates Updates) (Updates, error) {
+func (s updateService) filterUpdateFileByFilterExpression(updates provisioning.Updates) (provisioning.Updates, error) {
 	if config.GetUpdates().FileFilterExpression != "" {
 		// The file filter expression is already compiled as part of the validation
 		// of the config so we can assume the filter expression to compile without
@@ -849,7 +850,7 @@ func (s updateService) filterUpdateFileByFilterExpression(updates Updates) (Upda
 		// If not the case, the Run call will fail with a "program is nil" error.
 		fileFilterExpression, _ := expr.Compile(
 			config.GetUpdates().FileFilterExpression,
-			UpdateFileExprEnvFrom(UpdateFile{}).ExprCompileOptions()...,
+			UpdateFileExprEnvFrom(provisioning.UpdateFile{}).ExprCompileOptions()...,
 		)
 
 		for i := range updates {
@@ -879,9 +880,9 @@ func (s updateService) filterUpdateFileByFilterExpression(updates Updates) (Upda
 // upstream as well as the list of updates, that are to be removed from the DB.
 //
 // This implements the logic described in the function description of the Refresh method.
-func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []Update, originUpdates []Update, updateVersionsInUse map[string]bool) (toDeleteUpdates []Update, toDownloadUpdates []Update) {
+func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []provisioning.Update, originUpdates []provisioning.Update, updateVersionsInUse map[string]bool) (toDeleteUpdates []provisioning.Update, toDownloadUpdates []provisioning.Update) {
 	// Merge dbUpdates and originUpdates to the desired end state.
-	mergedUpdates := make([]Update, 0, len(dbUpdates)+len(originUpdates))
+	mergedUpdates := make([]provisioning.Update, 0, len(dbUpdates)+len(originUpdates))
 	mergedUpdates = append(mergedUpdates, dbUpdates...)
 	for _, originUpdate := range originUpdates {
 		// Add updates from origin to the merged updates list, if they are not yet present.
@@ -924,8 +925,8 @@ func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []Update,
 	// a slot for the most recent update from the DB.
 	mostRecentInDBFound := len(dbUpdates) == 0
 
-	toDeleteUpdates = make([]Update, 0, len(dbUpdates))
-	toDownloadUpdates = make([]Update, 0, len(originUpdates))
+	toDeleteUpdates = make([]provisioning.Update, 0, len(dbUpdates))
+	toDownloadUpdates = make([]provisioning.Update, 0, len(originUpdates))
 	updateCount := 0
 	for _, update := range mergedUpdates {
 		// Mark updates in state pending for more than the defined grace time for deletion.
@@ -991,7 +992,7 @@ func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []Update,
 
 // providesMissingComponentsForChannels checks for all required components in all channels, if the given update
 // does provide anything currently missing. If this is the case, true is returned, otherwise the return value is false.
-func providesMissingComponentsForChannels(requiredComponents map[string]map[images.UpdateFileComponent]int, update Update) bool {
+func providesMissingComponentsForChannels(requiredComponents map[string]map[images.UpdateFileComponent]int, update provisioning.Update) bool {
 	for _, file := range update.Files {
 		for _, channel := range update.Channels {
 			count, ok := requiredComponents[channel][file.Component]
@@ -1006,7 +1007,7 @@ func providesMissingComponentsForChannels(requiredComponents map[string]map[imag
 
 // updateRequiredComponents updates the requiredComponents for all components and for all channels, a given update
 // covers.
-func updateRequiredComponents(requiredComponents map[string]map[images.UpdateFileComponent]int, update Update) {
+func updateRequiredComponents(requiredComponents map[string]map[images.UpdateFileComponent]int, update provisioning.Update) {
 	seenComponents := make(map[images.UpdateFileComponent]bool, len(images.UpdateFileComponents))
 	for _, file := range update.Files {
 		if seenComponents[file.Component] {
@@ -1021,7 +1022,7 @@ func updateRequiredComponents(requiredComponents map[string]map[images.UpdateFil
 	}
 }
 
-func (s updateService) isSpaceAvailable(ctx context.Context, downloadUpdates []Update) error {
+func (s updateService) isSpaceAvailable(ctx context.Context, downloadUpdates []provisioning.Update) error {
 	var requiredSpaceTotal int
 	for _, update := range downloadUpdates {
 		for _, file := range update.Files {

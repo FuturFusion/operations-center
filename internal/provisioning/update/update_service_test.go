@@ -1,4 +1,4 @@
-package provisioning_test
+package update_test
 
 import (
 	"archive/tar"
@@ -28,6 +28,7 @@ import (
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
+	provisioningUpdate "github.com/FuturFusion/operations-center/internal/provisioning/update"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
@@ -90,11 +91,11 @@ func TestUpdateFileExprEnv_ExprCompileOptions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			fileFilterExpression, err := expr.Compile(
 				tc.filterExpression,
-				provisioning.UpdateFileExprEnvFrom(provisioning.UpdateFile{}).ExprCompileOptions()...,
+				provisioningUpdate.UpdateFileExprEnvFrom(provisioning.UpdateFile{}).ExprCompileOptions()...,
 			)
 			require.NoError(t, err)
 
-			result, err := expr.Run(fileFilterExpression, provisioning.UpdateFileExprEnvFrom(provisioning.UpdateFile{}))
+			result, err := expr.Run(fileFilterExpression, provisioningUpdate.UpdateFileExprEnvFrom(provisioning.UpdateFile{}))
 			tc.assertErr(t, err)
 			require.Equal(t, tc.want, result)
 		})
@@ -185,7 +186,7 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
+			updateSvc := provisioningUpdate.New(repo, repoUpdateFiles, nil, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -276,7 +277,7 @@ func TestUpdateService_CleanupAll(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
+			updateSvc := provisioningUpdate.New(repo, repoUpdateFiles, nil, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -435,7 +436,7 @@ func TestUpdateService_Prune(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
+			updateSvc := provisioningUpdate.New(repo, repoUpdateFiles, nil, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -479,7 +480,7 @@ func TestUpdateService_GetAll(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
+			updateSvc := provisioningUpdate.New(repo, nil, nil, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -585,7 +586,7 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
+			serverSvc := provisioningUpdate.New(repo, nil, nil, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -632,7 +633,7 @@ func TestUpdateService_GetAllUUIDs(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
+			updateSvc := provisioningUpdate.New(repo, nil, nil, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -718,7 +719,7 @@ func TestUpdateService_GetAllUUIDsWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
+			serverSvc := provisioningUpdate.New(repo, nil, nil, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -773,7 +774,7 @@ func TestUpdateService_GetUpdatesByAssignedChannelName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
+			serverSvc := provisioningUpdate.New(repo, nil, nil, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -820,7 +821,7 @@ func TestUpdateService_GetByUUID(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
+			updateSvc := provisioningUpdate.New(repo, nil, nil, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -897,7 +898,7 @@ func TestUpdateService_Update(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
+			updateSvc := provisioningUpdate.New(repo, nil, nil, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -1357,7 +1358,7 @@ func TestUpdateService_GetChangelog(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
+			updateSvc := provisioningUpdate.New(repo, repoUpdateFiles, nil, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -1732,7 +1733,7 @@ func TestUpdateService_GetChangelogByChannel(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
+			updateSvc := provisioningUpdate.New(repo, repoUpdateFiles, nil, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -1791,7 +1792,7 @@ func TestUpdateService_GetUpdateAllFiles(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil, nil, nil)
+			updateSvc := provisioningUpdate.New(repo, nil, nil, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -1890,7 +1891,7 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil, nil)
+			updateSvc := provisioningUpdate.New(repo, repoUpdateFiles, nil, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -3039,13 +3040,13 @@ func TestUpdateService_Refresh(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			updateSvc := provisioning.NewUpdateService(
+			updateSvc := provisioningUpdate.New(
 				repo,
 				repoUpdateFiles,
 				source,
 				nil,
-				provisioning.UpdateServiceWithLatestLimit(1),
-				provisioning.UpdateServiceWithPendingGracePeriod(24*time.Hour),
+				provisioningUpdate.WithLatestLimit(1),
+				provisioningUpdate.WithPendingGracePeriod(24*time.Hour),
 			)
 			updateSvc.SetServerService(serverSvc)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)

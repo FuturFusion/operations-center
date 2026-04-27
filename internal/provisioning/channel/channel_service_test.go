@@ -1,4 +1,4 @@
-package provisioning_test
+package channel_test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	provisioningChannel "github.com/FuturFusion/operations-center/internal/provisioning/channel"
 	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
@@ -66,7 +67,7 @@ func TestChannelService_Create(t *testing.T) {
 				},
 			}
 
-			channelSvc := provisioning.NewChannelService(repo, nil)
+			channelSvc := provisioningChannel.New(repo, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -119,7 +120,7 @@ func TestChannelService_GetAll(t *testing.T) {
 				},
 			}
 
-			channelSvc := provisioning.NewChannelService(repo, nil)
+			channelSvc := provisioningChannel.New(repo, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -169,7 +170,7 @@ func TestChannelService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			channelSvc := provisioning.NewChannelService(repo, nil)
+			channelSvc := provisioningChannel.New(repo, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -224,7 +225,7 @@ func TestUpdateService_GetChannelByName(t *testing.T) {
 				},
 			}
 
-			channelSvc := provisioning.NewChannelService(repo, nil)
+			channelSvc := provisioningChannel.New(repo, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -284,7 +285,7 @@ func TestChannelService_Update(t *testing.T) {
 				},
 			}
 
-			channelSvc := provisioning.NewChannelService(repo, nil)
+			channelSvc := provisioningChannel.New(repo, nil)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test
@@ -395,7 +396,7 @@ func TestChannelService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			channelSvc := provisioning.NewChannelService(repo, updateSvc)
+			channelSvc := provisioningChannel.New(repo, updateSvc)
 			channelSvc.SetServerService(serverSvc)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
@@ -620,7 +621,7 @@ func TestChannelService_GetChangelog(t *testing.T) {
 				},
 			}
 
-			channelSvc := provisioning.NewChannelService(nil, updateSvc)
+			channelSvc := provisioningChannel.New(nil, updateSvc)
 			t.Cleanup(lifecycle.UpdatesValidateSignal.Reset)
 
 			// Run test

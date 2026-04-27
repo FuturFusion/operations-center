@@ -274,7 +274,7 @@ func TestUpdatesSort(t *testing.T) {
 				},
 				provisioning.Update{
 					ID:      1,
-					Version: "1",
+					Version: "not numberic",
 				},
 				provisioning.Update{
 					ID:      3,
@@ -287,11 +287,11 @@ func TestUpdatesSort(t *testing.T) {
 					Version: "3",
 				},
 				provisioning.Update{
-					ID:      1,
-					Version: "1",
+					ID:      2,
+					Version: "not numberic",
 				},
 				provisioning.Update{
-					ID:      2,
+					ID:      1,
 					Version: "not numberic",
 				},
 			},
@@ -300,7 +300,7 @@ func TestUpdatesSort(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			sort.Sort(tc.in)
+			sort.Stable(tc.in)
 
 			require.Equal(t, tc.want, tc.in)
 		})

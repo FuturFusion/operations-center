@@ -4,11 +4,14 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/url"
-	"sync"
 	"time"
+
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
@@ -152,7 +155,7 @@ func (s Server) UpdateState() api.ServerUpdateState {
 
 var signalLifecycleEventDelay = 3 * time.Second
 
-func (s Server) signalLifecycleEvent() {
+func (s Server) SignalLifecycleEvent() {
 	go func() {
 		// Defer lifecycle signal a bit, let the triggering event complete first.
 		time.Sleep(signalLifecycleEventDelay)
@@ -238,113 +241,16 @@ type ServerSystemKernel = api.ServerSystemKernel
 
 type ServerSystemLogging = api.ServerSystemLogging
 
-type operation int
+// ErrSelfUpdateNotification is used as cause when the context is
+// cancelled while waiting for the update of the network config
+// to complete.
+var ErrSelfUpdateNotification = errors.New("self update notification")
 
-const (
-	operationNone operation = iota
-	operationEvacuation
-	operationReboot
-	operationRestore
-)
-
-type volatileServerStates struct {
-	mu      sync.Mutex
-	servers map[string]volatileServerState
-}
-
-type volatileServerState struct {
-	inFlightOperation   operation
-	operationRetryCount int
-	operationLastErr    error
-}
-
-func (v *volatileServerStates) retryCount(serverName string) int {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-
-	s, ok := v.servers[serverName]
-	if !ok {
-		s = volatileServerState{}
+func DetermineManagementRoleURL(osdata api.OSData) (string, error) {
+	ip := osdata.Network.State.GetInterfaceAddressByRole(incusosapi.SystemNetworkInterfaceRoleManagement)
+	if ip == nil {
+		return "", fmt.Errorf(`Failed to determine an IP address for the network interface with "management" role`)
 	}
 
-	return s.operationRetryCount
-}
-
-// start sets the volatile server state for the given server to in flight
-// with the given operation.
-func (v *volatileServerStates) start(serverName string, op operation) bool {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-
-	s, ok := v.servers[serverName]
-	if !ok {
-		s = volatileServerState{}
-	}
-
-	if s.inFlightOperation != operationNone {
-		return false
-	}
-
-	s.inFlightOperation = op
-	s.operationRetryCount++
-	s.operationLastErr = nil
-
-	v.servers[serverName] = s
-
-	return true
-}
-
-// done sets the volatile server state for the given server and marks the
-// previously in flight operation as completed.
-func (v *volatileServerStates) done(serverName string, op operation, err error) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-
-	s, ok := v.servers[serverName]
-	if !ok {
-		s = volatileServerState{}
-	}
-
-	if s.inFlightOperation != op {
-		return
-	}
-
-	s.inFlightOperation = operationNone
-	s.operationLastErr = err
-
-	v.servers[serverName] = s
-}
-
-// reset resets all operation related state.
-func (v *volatileServerStates) reset(serverName string, op operation) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-
-	s, ok := v.servers[serverName]
-	if !ok {
-		s = volatileServerState{}
-	}
-
-	if s.inFlightOperation != op {
-		return
-	}
-
-	s.inFlightOperation = operationNone
-	s.operationRetryCount = 0
-	s.operationLastErr = nil
-
-	v.servers[serverName] = s
-}
-
-// lastErr returns the last recorded error for a given server operation.
-func (v *volatileServerStates) lastErr(serverName string) error {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-
-	s, ok := v.servers[serverName]
-	if !ok {
-		return nil
-	}
-
-	return s.operationLastErr
+	return "https://" + net.JoinHostPort(ip.String(), "8443"), nil
 }

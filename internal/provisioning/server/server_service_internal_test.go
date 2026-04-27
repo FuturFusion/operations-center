@@ -1,4 +1,4 @@
-package provisioning
+package server
 
 import (
 	"testing"

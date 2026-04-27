@@ -1,4 +1,4 @@
-package provisioning_test
+package cluster_test
 
 import (
 	"bytes"
@@ -21,10 +21,12 @@ import (
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
+	provisioningCluster "github.com/FuturFusion/operations-center/internal/provisioning/cluster"
 	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	provisioningServer "github.com/FuturFusion/operations-center/internal/provisioning/server"
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
@@ -415,10 +417,10 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 		},
 	}
 
-	serverSvc := provisioning.NewServerService(serverDB, serverClient, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{})
+	serverSvc := provisioningServer.New(serverDB, serverClient, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{})
 
-	clusterSvc := provisioning.NewClusterService(clusterDB, nil, nil, serverSvc, nil, nil, nil,
-		provisioning.WithClusterServicePendingUpdateRecheckInterval(controlLoopInterval),
+	clusterSvc := provisioningCluster.New(clusterDB, nil, nil, serverSvc, nil, nil, nil,
+		provisioningCluster.WithPendingUpdateRecheckInterval(controlLoopInterval),
 	)
 
 	serverSvc.SetClusterService(clusterSvc)
@@ -953,10 +955,10 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 		},
 	}
 
-	serverSvc := provisioning.NewServerService(serverDB, serverClient, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{})
+	serverSvc := provisioningServer.New(serverDB, serverClient, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{})
 
-	clusterSvc := provisioning.NewClusterService(clusterDB, nil, nil, serverSvc, nil, nil, nil,
-		provisioning.WithClusterServicePendingUpdateRecheckInterval(controlLoopInterval),
+	clusterSvc := provisioningCluster.New(clusterDB, nil, nil, serverSvc, nil, nil, nil,
+		provisioningCluster.WithPendingUpdateRecheckInterval(controlLoopInterval),
 	)
 
 	serverSvc.SetClusterService(clusterSvc)
@@ -1984,7 +1986,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil)
 
 			// Run test
 			err := clusterSvc.ClusterUpdateControlLoop(t.Context(), nil)

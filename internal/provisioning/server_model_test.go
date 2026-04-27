@@ -3,6 +3,7 @@ package provisioning_test
 import (
 	"testing"
 
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -355,6 +356,38 @@ func TestServer_Getters(t *testing.T) {
 	require.Equal(t, *server.ClusterCertificate, server.GetCertificate())
 }
 
+func TestServer_Clone(t *testing.T) {
+	server := provisioning.Server{
+		Name:    "name",
+		Cluster: ptr.To("cluster"),
+		Type:    api.ServerTypeIncus,
+		Status:  api.ServerStatusReady,
+		VersionData: api.ServerVersionData{
+			Applications: []api.ApplicationVersionData{
+				{
+					Name: "one",
+				},
+				{
+					Name: "two",
+				},
+			},
+		},
+	}
+
+	cloned := server.Clone()
+
+	require.Equal(t, server, cloned)
+
+	// Mutate the source
+	server.Name = "new name"
+	server.VersionData.Applications[0].Name = "new"
+	server.VersionData.Applications = server.VersionData.Applications[:1]
+
+	require.NotEqual(t, server.Name, cloned.Name)
+	require.NotEqual(t, server.VersionData.Applications[0].Name, cloned.VersionData.Applications[0].Name)
+	require.NotEqual(t, len(server.VersionData.Applications), len(cloned.VersionData.Applications))
+}
+
 func TestServer_GetServerName(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -399,6 +432,65 @@ func TestServer_GetServerName(t *testing.T) {
 			tc.assertErr(t, err)
 
 			require.Equal(t, tc.serverName, serverName)
+		})
+	}
+}
+
+func TestDetermineManagementRoleURL(t *testing.T) {
+	tests := []struct {
+		name string
+		in   api.OSData
+
+		assertErr require.ErrorAssertionFunc
+		want      string
+	}{
+		{
+			name: "success",
+			in: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"1.2.3.4",
+								},
+								Roles: []string{incusosapi.SystemNetworkInterfaceRoleManagement},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			want:      "https://1.2.3.4:8443",
+		},
+		{
+			name: "error",
+			in: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"1.2.3.4",
+								},
+								Roles: []string{},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := provisioning.DetermineManagementRoleURL(tc.in)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, got)
 		})
 	}
 }

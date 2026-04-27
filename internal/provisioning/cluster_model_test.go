@@ -202,6 +202,48 @@ func TestCluster_ValidateCreate(t *testing.T) {
 	}
 }
 
+func TestCluster_IsUpdateInProgress(t *testing.T) {
+	tests := []struct {
+		name    string
+		cluster provisioning.Cluster
+
+		want bool
+	}{
+		{
+			name: "in progress",
+			cluster: provisioning.Cluster{
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressApplyUpdateWithReboot,
+					},
+				},
+			},
+
+			want: true,
+		},
+		{
+			name: "not in progress",
+			cluster: provisioning.Cluster{
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+
+			want: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.cluster.IsUpdateInProgress()
+
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func TestCluster_Filter(t *testing.T) {
 	tests := []struct {
 		name   string

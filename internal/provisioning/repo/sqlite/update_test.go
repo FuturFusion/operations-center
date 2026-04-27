@@ -11,6 +11,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	provisioningChannel "github.com/FuturFusion/operations-center/internal/provisioning/channel"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
@@ -88,7 +89,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
 
-	cannelSvc := provisioning.NewChannelService(sqlite.NewChannel(tx), nil)
+	cannelSvc := provisioningChannel.New(sqlite.NewChannel(tx), nil)
 
 	update := sqlite.NewUpdate(tx)
 
