@@ -99,6 +99,13 @@ func populate(t *testing.T, v reflect.Value, depth map[reflect.Type]int, maxDept
 		require.Failf(t, "Unexpected reflect.Kind", "Kind: %%v Name: %%v", v.Kind(), v.Type().Name())
 	}
 }
+
+func Test_fromPtr(t *testing.T) {
+	var i *int
+	zeroI := fromPtr(i)
+
+	require.Zero(t, zeroI)
+}
 `
 
 // UtilHelpers holds the content of the utils_expr_gen.go file.
