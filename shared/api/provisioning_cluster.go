@@ -392,6 +392,16 @@ type ClusterAddServersPost struct {
 	SkipPostJoinOperations bool `json:"skip_post_join_operations" yaml:"skip_post_join_operations"`
 }
 
+// ClusterRemoveServerPost represents a remove server from a cluster request
+// containing the name of the server to be removed from the cluster.
+//
+// swagger:model
+type ClusterRemoveServerPost struct {
+	// Name of the server to be removed from the cluster.
+	// Example: "server1"
+	ServerName string `json:"server_name" yaml:"server_name"`
+}
+
 type ClusterMemberConfigKey = incusapi.ClusterMemberConfigKey
 
 // ClusterBulkUpdatePost represents a cluster bulk update request containing
