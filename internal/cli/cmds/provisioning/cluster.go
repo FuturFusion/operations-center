@@ -100,6 +100,13 @@ func (c *CmdCluster) Command() *cobra.Command {
 
 	cmd.AddCommand(clusterAddServersCmd.Command())
 
+	// Remove server from cluster
+	clusterRemoveServerCmd := cmdClusterRemoveServer{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(clusterRemoveServerCmd.Command())
+
 	// Resync
 	clusterResyncCmd := cmdClusterResync{
 		ocClient: c.OCClient,
@@ -792,6 +799,55 @@ func (c *cmdClusterAddServers) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	err := c.ocClient.AddServersToCluster(cmd.Context(), name, c.flagServerNames, c.flagSkipPostJoinOperations)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Cluster remove server.
+type cmdClusterRemoveServer struct {
+	ocClient *client.OperationsCenterClient
+
+	flagServerName string
+	flagForce      bool
+}
+
+func (c *cmdClusterRemoveServer) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "remove-server <name>"
+	cmd.Short = "Remove server from a cluster"
+	cmd.Long = `Description:
+  Remove server from a cluster.
+`
+
+	const flagServerName = "server-name"
+	cmd.Flags().StringVar(&c.flagServerName, flagServerName, "", "Server name of the cluster member to be removed")
+	_ = cmd.MarkFlagRequired(flagServerName)
+
+	cmd.Flags().BoolVar(&c.flagForce, "force", false, "force removing a server, even if the cluster is degraded")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdClusterRemoveServer) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdClusterRemoveServer) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.RemoveServerFromCluster(cmd.Context(), name, c.flagServerName, c.flagForce)
 	if err != nil {
 		return err
 	}
