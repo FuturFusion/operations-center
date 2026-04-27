@@ -876,6 +876,42 @@ func (_d ClusterServiceWithSlog) LaunchClusterUpdate(ctx context.Context, name s
 	return _d._base.LaunchClusterUpdate(ctx, name, reboot)
 }
 
+// RemoveServer implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) RemoveServer(ctx context.Context, name string, serverName string, force bool) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.String("serverName", serverName),
+			slog.Bool("force", force),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RemoveServer")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method RemoveServer returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method RemoveServer returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method RemoveServer finished")
+		}
+	}()
+	return _d._base.RemoveServer(ctx, name, serverName, force)
+}
+
 // RemoveServerSystemNetworkVLANTags implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) RemoveServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
 	log := slog.With()
