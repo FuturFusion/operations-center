@@ -1,4 +1,4 @@
-package provisioning_test
+package cluster_test
 
 import (
 	"bytes"
@@ -25,6 +25,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
+	provisioningCluster "github.com/FuturFusion/operations-center/internal/provisioning/cluster"
 	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -3225,7 +3226,7 @@ func TestClusterService_Create(t *testing.T) {
 				lifecycle.ClusterUpdateSignal = oldClusterUpdateSignal
 			}()
 
-			clusterSvc := provisioning.NewClusterService(
+			clusterSvc := provisioningCluster.New(
 				repo,
 				localArtifactRepo,
 				client,
@@ -3233,7 +3234,7 @@ func TestClusterService_Create(t *testing.T) {
 				nil,
 				map[domain.ResourceType]provisioning.InventorySyncer{domain.ResourceTypeImage: inventorySyncer},
 				provisioner,
-				provisioning.WithClusterServiceCreateClusterRetryTimeout(0),
+				provisioningCluster.WithCreateRetryTimeout(0),
 			)
 
 			var signalHandlerCalled bool
@@ -4798,7 +4799,7 @@ func TestClusterService_AddServers(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(
+			clusterSvc := provisioningCluster.New(
 				repo,
 				nil,
 				client,
@@ -6806,7 +6807,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(
+			clusterSvc := provisioningCluster.New(
 				nil,
 				nil,
 				client,
@@ -6878,7 +6879,7 @@ func TestClusterService_GetAll(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			clusters, err := clusterSvc.GetAll(context.Background())
@@ -7076,7 +7077,7 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetAllWithFilter(context.Background(), tc.filter)
@@ -7125,7 +7126,7 @@ func TestClusterService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			clusterNames, err := clusterSvc.GetAllNames(context.Background())
@@ -7219,7 +7220,7 @@ func TestClusterService_GetAllNamesWithFilter(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			clusterIDs, err := clusterSvc.GetAllNamesWithFilter(context.Background(), tc.filter)
@@ -7423,7 +7424,7 @@ func TestClusterService_GetByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetByName(context.Background(), tc.nameArg)
@@ -7638,7 +7639,7 @@ func TestClusterService_Update(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.Update(context.Background(), tc.cluster, tc.argUpdateServers)
@@ -7720,7 +7721,7 @@ func TestClusterService_Rename(t *testing.T) {
 				lifecycle.ClusterUpdateSignal = oldClusterUpdateSignal
 			}()
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil)
 
 			var signalHandlerCalled bool
 			lifecycle.ClusterUpdateSignal.AddListener(tc.signalHandler(t, &signalHandlerCalled))
@@ -7882,7 +7883,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				lifecycle.ClusterUpdateSignal = oldClusterUpdateSignal
 			}()
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil)
 
 			var signalHandlerCalled bool
 			lifecycle.ClusterUpdateSignal.AddListener(tc.signalHandler(t, &signalHandlerCalled))
@@ -8178,7 +8179,7 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 				lifecycle.ClusterUpdateSignal = oldClusterUpdateSignal
 			}()
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, tokenSvc, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, tokenSvc, nil, nil)
 
 			var signalHandlerCalled bool
 			lifecycle.ClusterUpdateSignal.AddListener(tc.signalHandler(t, &signalHandlerCalled))
@@ -8272,7 +8273,7 @@ func TestClusterService_ResyncInventory(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil)
 			clusterSvc.SetInventorySyncers(map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer})
 
 			// Run test
@@ -8323,7 +8324,7 @@ func TestClusterService_ResyncInventoryByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(nil, nil, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(nil, nil, nil, nil, nil, nil, nil)
 			clusterSvc.SetInventorySyncers(map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer})
 
 			// Run test
@@ -8405,7 +8406,7 @@ func TestClusterService_IsInstanceLifecycleOperationPermitted(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil)
 
 			// Run test
 			got := clusterSvc.IsInstanceLifecycleOperationPermitted(t.Context(), tc.argName)
@@ -9295,11 +9296,11 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil,
-				provisioning.WithClusterServiceNow(func() time.Time {
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil,
+				provisioningCluster.WithNow(func() time.Time {
 					return fixedTime
 				}),
-				provisioning.WithClusterServicePendingUpdateRecheckInterval(0),
+				provisioningCluster.WithPendingUpdateRecheckInterval(0),
 			)
 
 			// Run test
@@ -9365,8 +9366,8 @@ func TestClusterService_AbortClusterUpdate(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil,
-				provisioning.WithClusterServiceNow(func() time.Time {
+			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil,
+				provisioningCluster.WithNow(func() time.Time {
 					return fixedTime
 				}),
 			)
@@ -9821,7 +9822,7 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.AddServerSystemNetworkVLANTags(context.Background(), tc.nameArg, tc.interfaceNameArg, tc.vlanTagsArg)
@@ -10162,7 +10163,7 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.RemoveServerSystemNetworkVLANTags(context.Background(), tc.nameArg, tc.interfaceNameArg, tc.vlanTagsArg)
@@ -10445,7 +10446,7 @@ func TestClusterService_UpdateSystemLogging(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.UpdateSystemLogging(context.Background(), tc.nameArg, tc.loggingConfigArg)
@@ -10729,7 +10730,7 @@ func TestClusterService_UpdateSystemKernel(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.UpdateSystemKernel(context.Background(), tc.nameArg, tc.kernelConfigArg)
@@ -10924,7 +10925,7 @@ func TestClusterService_AddApplication(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil)
 
 			// Run test
 			err := clusterSvc.AddApplication(context.Background(), tc.nameArg, tc.applicationNameArg)
@@ -11259,7 +11260,7 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.AddStorageTargetISCSI(context.Background(), tc.nameArg, tc.targetArg)
@@ -11624,7 +11625,7 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.RemoveStorageTargetISCSI(context.Background(), tc.nameArg, tc.targetArg)
@@ -11935,7 +11936,7 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.AddStorageTargetMultipath(context.Background(), tc.nameArg, tc.targetArg)
@@ -12246,7 +12247,7 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.RemoveStorageTargetMultipath(context.Background(), tc.nameArg, tc.targetArg)
@@ -12583,7 +12584,7 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.AddStorageTargetNVME(context.Background(), tc.nameArg, tc.targetArg)
@@ -12948,7 +12949,7 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.RemoveStorageTargetNVME(context.Background(), tc.nameArg, tc.targetArg)
@@ -13241,7 +13242,7 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, map[domain.ResourceType]provisioning.InventorySyncer{domain.ResourceTypeImage: inventorySyncer}, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, map[domain.ResourceType]provisioning.InventorySyncer{domain.ResourceTypeImage: inventorySyncer}, nil)
 
 			// Run test
 			err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)
@@ -13359,7 +13360,7 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 				lifecycle.ClusterUpdateSignal = oldClusterUpdateSignal
 			}()
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer}, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer}, nil)
 
 			// Run test
 			err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)
@@ -13496,7 +13497,7 @@ func TestClusterService_UpdateCertificate(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
 
 			// Run test
 			err := clusterSvc.UpdateCertificate(context.Background(), "cluster", tc.certificatePEM, tc.keyPEM)
@@ -13564,7 +13565,7 @@ func TestClusterService_GetClusterArtifactAll(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(nil, artifactsRepo, nil, nil, nil, nil, nil)
 
 			// Run test
 			artifacts, err := clusterSvc.GetClusterArtifactAll(context.Background(), tc.argClusterName)
@@ -13623,7 +13624,7 @@ func TestClusterService_GetClusterArtifactAllNames(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(nil, artifactsRepo, nil, nil, nil, nil, nil)
 
 			// Run test
 			names, err := clusterSvc.GetClusterArtifactAllNames(context.Background(), tc.argClusterName)
@@ -13699,7 +13700,7 @@ func TestClusterService_GetClusterArtifactByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(nil, artifactsRepo, nil, nil, nil, nil, nil)
 
 			// Run test
 			got, err := clusterSvc.GetClusterArtifactByName(context.Background(), tc.argClusterName, tc.argArtifactName)
@@ -13799,7 +13800,7 @@ func TestClusterService_GetClusterArtifactFileByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(nil, artifactsRepo, nil, nil, nil, nil, nil)
 
 			// Run test
 			got, err := clusterSvc.GetClusterArtifactFileByName(context.Background(), tc.argClusterName, tc.argArtifactName, tc.argFilename)
@@ -13864,7 +13865,7 @@ func TestClusterService_GetClusterArtifactArchiveByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(nil, artifactsRepo, nil, nil, nil, nil, nil)
 
 			zipArchiveType, ok := provisioning.ClusterArtifactArchiveTypes[provisioning.ClusterArtifactArchiveTypeExtZip]
 			require.True(t, ok)
