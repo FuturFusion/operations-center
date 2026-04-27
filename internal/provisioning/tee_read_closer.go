@@ -2,7 +2,7 @@ package provisioning
 
 import "io"
 
-func newTeeReadCloser(r io.ReadCloser, w io.Writer) io.ReadCloser {
+func NewTeeReadCloser(r io.ReadCloser, w io.Writer) io.ReadCloser {
 	return &teeReadCloser{r, w}
 }
 
