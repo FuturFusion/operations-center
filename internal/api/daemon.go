@@ -40,6 +40,9 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
+	provisioningChannel "github.com/FuturFusion/operations-center/internal/provisioning/channel"
+	provisioningCluster "github.com/FuturFusion/operations-center/internal/provisioning/cluster"
+	provisioningClusterTemplate "github.com/FuturFusion/operations-center/internal/provisioning/cluster_template"
 	provisioningServiceMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/middleware"
 	provisioningClusterArtifactRepo "github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact"
 	localartifactEntities "github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact/entities"
@@ -47,6 +50,9 @@ import (
 	provisioningRepoMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/repo/middleware"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	provisioningEntities "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	provisioningServer "github.com/FuturFusion/operations-center/internal/provisioning/server"
+	provisioningToken "github.com/FuturFusion/operations-center/internal/provisioning/token"
+	provisioningUpdate "github.com/FuturFusion/operations-center/internal/provisioning/update"
 	"github.com/FuturFusion/operations-center/internal/security/authn"
 	authnoidc "github.com/FuturFusion/operations-center/internal/security/authn/oidc"
 	authntls "github.com/FuturFusion/operations-center/internal/security/authn/tls"
@@ -449,8 +455,8 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 		repoUpdateFiles.UpdateConfig(ctx, cfg.SignatureVerificationRootCA)
 	})
 
-	updateServiceOptions := []provisioning.UpdateServiceOption{
-		provisioning.UpdateServiceWithLatestLimit(3),
+	updateServiceOptions := []provisioningUpdate.Option{
+		provisioningUpdate.WithLatestLimit(3),
 	}
 
 	updateServer := updateserver.New(
@@ -470,7 +476,7 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 		lifecycle.UpdatesUpdateSignal.RemoveListener(listenerKey)
 	}, listenerKey)
 
-	updateSvcBase := provisioning.NewUpdateService(
+	updateSvcBase := provisioningUpdate.New(
 		provisioningRepoMiddleware.NewUpdateRepoWithSlog(
 			provisioningSqlite.NewUpdate(db),
 			provisioningRepoMiddleware.UpdateRepoWithSlogWithInformativeErrFunc(
@@ -524,7 +530,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 	})
 
 	return provisioningServiceMiddleware.NewTokenServiceWithSlog(
-		provisioning.NewTokenService(
+		provisioningToken.New(
 			provisioningRepoMiddleware.NewTokenRepoWithSlog(
 				provisioningSqlite.NewToken(db),
 			),
@@ -546,7 +552,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 }
 
 func (d *Daemon) setupServerService(db dbdriver.DBTX, client provisioning.ServerClientPort, runner scriptlet.Runner, tokenSvc provisioning.TokenService, clusterSvc provisioning.ClusterService, channelSvc provisioning.ChannelService, updateSvc provisioning.UpdateService) provisioning.ServerService {
-	serverSvc := provisioning.NewServerService(
+	serverSvc := provisioningServer.New(
 		provisioningRepoMiddleware.NewServerRepoWithSlog(
 			provisioningSqlite.NewServer(db),
 		),
@@ -644,7 +650,7 @@ func (d *Daemon) setupClusterService(db dbdriver.DBTX, client provisioning.Clust
 	}
 
 	return provisioningServiceMiddleware.NewClusterServiceWithSlog(
-		provisioning.NewClusterService(
+		provisioningCluster.New(
 			provisioningRepoMiddleware.NewClusterRepoWithSlog(
 				provisioningSqlite.NewCluster(db),
 			),
@@ -685,7 +691,7 @@ func (d *Daemon) setupClusterService(db dbdriver.DBTX, client provisioning.Clust
 
 func (d *Daemon) setupClusterTemplateService(db dbdriver.DBTX) provisioning.ClusterTemplateService {
 	return provisioningServiceMiddleware.NewClusterTemplateServiceWithSlog(
-		provisioning.NewClusterTemplateService(
+		provisioningClusterTemplate.New(
 			provisioningRepoMiddleware.NewClusterTemplateRepoWithSlog(
 				provisioningSqlite.NewClusterTemplate(db),
 			),
@@ -705,7 +711,7 @@ func (d *Daemon) setupClusterTemplateService(db dbdriver.DBTX) provisioning.Clus
 
 func (d *Daemon) setupChannelService(db dbdriver.DBTX, updateSvc provisioning.UpdateService) provisioning.ChannelService {
 	return provisioningServiceMiddleware.NewChannelServiceWithSlog(
-		provisioning.NewChannelService(
+		provisioningChannel.New(
 			provisioningRepoMiddleware.NewChannelRepoWithSlog(
 				provisioningSqlite.NewChannel(db),
 			),
