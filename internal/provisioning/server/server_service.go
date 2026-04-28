@@ -1393,6 +1393,89 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 	return nil
 }
 
+func (s *serverService) FactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error {
+	if name == "" {
+		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q: %w", name, err)
+	}
+
+	if server.Type == api.ServerTypeOperationsCenter {
+		return fmt.Errorf("Factory reset of Operations Center: %w", domain.ErrOperationNotPermitted)
+	}
+
+	if server.Type == api.ServerTypeIncus && server.Cluster != nil {
+		return fmt.Errorf("Factory reset of clustered server: %w", domain.ErrOperationNotPermitted)
+	}
+
+	err = s.client.Ping(ctx, server)
+	if err != nil {
+		return fmt.Errorf("Pre factory reset connection test to server %q: %w", name, err)
+	}
+
+	var seed provisioning.TokenImageSeedConfigs
+	if tokenID != nil && tokenSeedName != nil {
+		tokenSeed, err := s.tokenSvc.GetTokenSeedByName(ctx, *tokenID, *tokenSeedName)
+		if err != nil {
+			return fmt.Errorf("Pre factory reset failed to get token seed: %w", err)
+		}
+
+		seed = tokenSeed.Seeds
+	}
+
+	if tokenID == nil {
+		token, err := s.tokenSvc.Create(ctx, provisioning.Token{
+			Description:   fmt.Sprintf("Factory reset of server %q", name),
+			UsesRemaining: 1,
+			ExpireAt:      time.Now().Add(1 * time.Hour),
+			AutoRemove:    true,
+		})
+		if err != nil {
+			return fmt.Errorf("Pre factory reset failed to get a provisioning token: %w", err)
+		}
+
+		tokenID = &token.UUID
+	}
+
+	if tokenSeedName == nil {
+		seed = provisioning.TokenImageSeedConfigs{
+			Applications: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus",
+					},
+				},
+			},
+			Incus: api.SeedIncus{
+				Version:       "1",
+				ApplyDefaults: false,
+			},
+		}
+	}
+
+	providerConfig, err := s.tokenSvc.GetTokenProviderConfig(ctx, *tokenID)
+	if err != nil {
+		return fmt.Errorf("Pre factory reset failed to get provider config: %w", err)
+	}
+
+	// TODO: First try with allowTPMResetFailure = false and later retry with true, if an error occurs. Print an warning in this case.
+	err = s.client.SystemFactoryReset(ctx, server, false, seed, *providerConfig)
+	if err != nil {
+		return fmt.Errorf("Factory reset on server %s: %w", server.Name, err)
+	}
+
+	err = s.repo.DeleteByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Factory reset failed to remove server from inventory: %w", err)
+	}
+
+	return nil
+}
+
 func (s *serverService) GetSystemLogging(ctx context.Context, name string) (provisioning.ServerSystemLogging, error) {
 	server, err := s.GetByName(ctx, name)
 	if err != nil {

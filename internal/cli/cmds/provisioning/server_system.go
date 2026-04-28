@@ -1,6 +1,9 @@
 package provisioning
 
 import (
+	"fmt"
+
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
@@ -40,6 +43,13 @@ func (c *cmdServerSystem) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(serverEvacuateCmd.Command())
+
+	// Factory reset
+	serverFactoryResetCmd := cmdServerFactoryReset{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverFactoryResetCmd.Command())
 
 	// Poweroff
 	serverPoweroffCmd := cmdServerPoweroff{
@@ -118,6 +128,72 @@ func (c *cmdServerEvacuate) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	err := c.ocClient.EvacuateServerSystem(cmd.Context(), name, c.flagForce)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Factory reset server.
+type cmdServerFactoryReset struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdServerFactoryReset) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "factory-reset <name> [<token> [<token-seed-name>]]"
+	cmd.Short = "Factory reset a server"
+	cmd.Long = `Description:
+  Factory reset a server
+
+  Factory resets a server. The server record including all associated inventory
+  information is removed from operations center. Additionally a factory reset is
+  performed on the server.
+
+  For the factory reset an optional token and the name of a token seed can
+  be provided. If they are not provided, Operations Center will generate a
+  token and use default seed values.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerFactoryReset) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 3)
+	if exit {
+		return err
+	}
+
+	if len(args) > 1 {
+		_, err := uuid.Parse(args[1])
+		if err != nil {
+			return fmt.Errorf("Failed to parse token: %w", err)
+		}
+	}
+
+	if len(args) > 2 {
+		if args[2] == "" {
+			return fmt.Errorf("Invalid token seed name: empty string")
+		}
+	}
+
+	return nil
+}
+
+func (c *cmdServerFactoryReset) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	tokenArgs := make([]string, 0, 2)
+	if len(args) > 1 {
+		tokenArgs = args[1:]
+	}
+
+	err := c.ocClient.FactoryResetServerSystem(cmd.Context(), name, tokenArgs...)
 	if err != nil {
 		return err
 	}

@@ -6292,6 +6292,212 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 	}
 }
 
+func TestServerService_FactoryResetByName(t *testing.T) {
+	tests := []struct {
+		name                              string
+		argName                           string
+		argTokenID                        *uuid.UUID
+		argTokenSeedName                  *string
+		repoGetByName                     provisioning.Server
+		repoGetByNameErr                  error
+		clientPingErr                     error
+		clientSystemFactoryResetErr       error
+		tokenSvcGetTokenSeedByName        *provisioning.TokenSeed
+		tokenSvcGetTokenSeedByNameErr     error
+		tokenSvcCreate                    provisioning.Token
+		tokenSvcCreateErr                 error
+		tokenSvcGetTokenProviderConfig    *api.TokenProviderConfig
+		tokenSvcGetTokenProviderConfigErr error
+		repoDeleteByNameErr               error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:    "success - without tokenID and without tokenSeedName",
+			argName: "one",
+			repoGetByName: provisioning.Server{
+				Name: "server01",
+				Type: api.ServerTypeIncus,
+			},
+			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "success - with tokenID and tokenSeedName",
+			argName:          "one",
+			argTokenID:       ptr.To(uuidgen.FromPattern(t, "1")),
+			argTokenSeedName: ptr.To("some_seed"),
+			repoGetByName: provisioning.Server{
+				Name: "server01",
+				Type: api.ServerTypeIncus,
+			},
+			tokenSvcGetTokenSeedByName:     &provisioning.TokenSeed{},
+			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "error - empty name",
+			argName: "",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+			},
+		},
+		{
+			name:    "error - repo.GetByName",
+			argName: "one",
+			repoGetByName: provisioning.Server{
+				Name: "server01",
+				Type: api.ServerTypeIncus,
+			},
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - operations center",
+			argName: "one",
+			repoGetByName: provisioning.Server{
+				Name: "operations-center",
+				Type: api.ServerTypeOperationsCenter,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+			},
+		},
+		{
+			name:    "error - incus clustered",
+			argName: "one",
+			repoGetByName: provisioning.Server{
+				Name:    "server01",
+				Cluster: ptr.To("cluster"),
+				Type:    api.ServerTypeIncus,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+			},
+		},
+		{
+			name:    "error - client.Ping",
+			argName: "one",
+			repoGetByName: provisioning.Server{
+				Name: "server01",
+				Type: api.ServerTypeIncus,
+			},
+			clientPingErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:             "error - tokenSvc.GetTokenSeedByName",
+			argName:          "one",
+			argTokenID:       ptr.To(uuidgen.FromPattern(t, "1")),
+			argTokenSeedName: ptr.To("some_seed"),
+			repoGetByName: provisioning.Server{
+				Name: "server01",
+				Type: api.ServerTypeIncus,
+			},
+			tokenSvcGetTokenSeedByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - tokenSvc.Create",
+			argName: "one",
+			repoGetByName: provisioning.Server{
+				Name: "server01",
+				Type: api.ServerTypeIncus,
+			},
+			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{},
+			tokenSvcCreateErr:              boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - tokenSvc.GetTokenProviderConfig",
+			argName: "one",
+			repoGetByName: provisioning.Server{
+				Name: "server01",
+				Type: api.ServerTypeIncus,
+			},
+			tokenSvcGetTokenProviderConfigErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - client.SystemFactoryReset",
+			argName: "one",
+			repoGetByName: provisioning.Server{
+				Name: "server01",
+				Type: api.ServerTypeIncus,
+			},
+			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{},
+			clientSystemFactoryResetErr:    boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - repo.DeleteByName",
+			argName: "one",
+			repoGetByName: provisioning.Server{
+				Name: "server01",
+				Type: api.ServerTypeIncus,
+			},
+			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{},
+			repoDeleteByNameErr:            boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &tc.repoGetByName, tc.repoGetByNameErr
+				},
+				DeleteByNameFunc: func(ctx context.Context, name string) error {
+					return tc.repoDeleteByNameErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return tc.clientPingErr
+				},
+				SystemFactoryResetFunc: func(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error {
+					return tc.clientSystemFactoryResetErr
+				},
+			}
+
+			tokenSvc := &svcMock.TokenServiceMock{
+				GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+					return tc.tokenSvcGetTokenSeedByName, tc.tokenSvcGetTokenSeedByNameErr
+				},
+				CreateFunc: func(ctx context.Context, token provisioning.Token) (provisioning.Token, error) {
+					return tc.tokenSvcCreate, tc.tokenSvcCreateErr
+				},
+				GetTokenProviderConfigFunc: func(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error) {
+					return tc.tokenSvcGetTokenProviderConfig, tc.tokenSvcGetTokenProviderConfigErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(repo, client, nil, tokenSvc, nil, nil, nil, tls.Certificate{})
+
+			// Run test
+			err := serverSvc.FactoryResetByName(t.Context(), tc.argName, tc.argTokenID, tc.argTokenSeedName)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestServerService_GetSystemLogging(t *testing.T) {
 	tests := []struct {
 		name                      string

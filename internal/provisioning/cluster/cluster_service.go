@@ -1278,7 +1278,7 @@ func (s *clusterService) DeleteAndFactoryResetByName(ctx context.Context, name s
 	for _, server := range servers {
 		err = s.client.Ping(ctx, server)
 		if err != nil {
-			return fmt.Errorf("Pre factory reset connection test to server %s: %w", server.Name, err)
+			return fmt.Errorf("Pre factory reset connection test to server %q: %w", server.Name, err)
 		}
 	}
 

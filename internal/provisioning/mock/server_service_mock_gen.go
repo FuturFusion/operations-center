@@ -36,6 +36,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			EvacuateSystemByNameFunc: func(ctx context.Context, name string, clusterUpdate bool, force bool) error {
 //				panic("mock out the EvacuateSystemByName method")
 //			},
+//			FactoryResetByNameFunc: func(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error {
+//				panic("mock out the FactoryResetByName method")
+//			},
 //			GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
 //				panic("mock out the GetAll method")
 //			},
@@ -144,6 +147,9 @@ type ServerServiceMock struct {
 
 	// EvacuateSystemByNameFunc mocks the EvacuateSystemByName method.
 	EvacuateSystemByNameFunc func(ctx context.Context, name string, clusterUpdate bool, force bool) error
+
+	// FactoryResetByNameFunc mocks the FactoryResetByName method.
+	FactoryResetByNameFunc func(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Servers, error)
@@ -272,6 +278,17 @@ type ServerServiceMock struct {
 			ClusterUpdate bool
 			// Force is the force argument value.
 			Force bool
+		}
+		// FactoryResetByName holds details about calls to the FactoryResetByName method.
+		FactoryResetByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// TokenID is the tokenID argument value.
+			TokenID *uuid.UUID
+			// TokenSeedName is the tokenSeedName argument value.
+			TokenSeedName *string
 		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
@@ -518,6 +535,7 @@ type ServerServiceMock struct {
 	lockCreate                       sync.RWMutex
 	lockDeleteByName                 sync.RWMutex
 	lockEvacuateSystemByName         sync.RWMutex
+	lockFactoryResetByName           sync.RWMutex
 	lockGetAll                       sync.RWMutex
 	lockGetAllNames                  sync.RWMutex
 	lockGetAllNamesWithFilter        sync.RWMutex
@@ -707,6 +725,50 @@ func (mock *ServerServiceMock) EvacuateSystemByNameCalls() []struct {
 	mock.lockEvacuateSystemByName.RLock()
 	calls = mock.calls.EvacuateSystemByName
 	mock.lockEvacuateSystemByName.RUnlock()
+	return calls
+}
+
+// FactoryResetByName calls FactoryResetByNameFunc.
+func (mock *ServerServiceMock) FactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error {
+	if mock.FactoryResetByNameFunc == nil {
+		panic("ServerServiceMock.FactoryResetByNameFunc: method is nil but ServerService.FactoryResetByName was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		Name          string
+		TokenID       *uuid.UUID
+		TokenSeedName *string
+	}{
+		Ctx:           ctx,
+		Name:          name,
+		TokenID:       tokenID,
+		TokenSeedName: tokenSeedName,
+	}
+	mock.lockFactoryResetByName.Lock()
+	mock.calls.FactoryResetByName = append(mock.calls.FactoryResetByName, callInfo)
+	mock.lockFactoryResetByName.Unlock()
+	return mock.FactoryResetByNameFunc(ctx, name, tokenID, tokenSeedName)
+}
+
+// FactoryResetByNameCalls gets all the calls that were made to FactoryResetByName.
+// Check the length with:
+//
+//	len(mockedServerService.FactoryResetByNameCalls())
+func (mock *ServerServiceMock) FactoryResetByNameCalls() []struct {
+	Ctx           context.Context
+	Name          string
+	TokenID       *uuid.UUID
+	TokenSeedName *string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		Name          string
+		TokenID       *uuid.UUID
+		TokenSeedName *string
+	}
+	mock.lockFactoryResetByName.RLock()
+	calls = mock.calls.FactoryResetByName
+	mock.lockFactoryResetByName.RUnlock()
 	return calls
 }
 

@@ -96,6 +96,20 @@ func (_d ServerServiceWithPrometheus) EvacuateSystemByName(ctx context.Context, 
 	return _d.base.EvacuateSystemByName(ctx, name, clusterUpdate, force)
 }
 
+// FactoryResetByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) FactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "FactoryResetByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.FactoryResetByName(ctx, name, tokenID, tokenSeedName)
+}
+
 // GetAll implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) GetAll(ctx context.Context) (servers provisioning.Servers, err error) {
 	_since := time.Now()

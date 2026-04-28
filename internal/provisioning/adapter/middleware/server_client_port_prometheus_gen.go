@@ -276,6 +276,20 @@ func (_d ServerClientPortWithPrometheus) Restore(ctx context.Context, server pro
 	return _d.base.Restore(ctx, server, restoreModeSkip, callback)
 }
 
+// SystemFactoryReset implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) SystemFactoryReset(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "SystemFactoryReset", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.SystemFactoryReset(ctx, endpoint, allowTPMResetFailure, seeds, providerConfig)
+}
+
 // UpdateNetworkConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithPrometheus) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) (err error) {
 	_since := time.Now()

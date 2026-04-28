@@ -57,6 +57,7 @@ func registerProvisioningServerHandler(router Router, authorizer *authz.Authoriz
 	router.HandleFunc("POST /{name}/:resync", response.With(handler.serverResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}/changelog", response.With(handler.serverChangelogGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("POST /{name}/system/:evacuate", response.With(handler.serverSystemEvacuatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/system/:factory-reset", response.With(handler.serverSystemFactoryResetPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/system/:poweroff", response.With(handler.serverSystemPoweroffPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/system/:reboot", response.With(handler.serverSystemRebootPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/system/:restore", response.With(handler.serverSystemRestorePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
@@ -848,6 +849,65 @@ func (s *serverHandler) serverSystemEvacuatePost(r *http.Request) response.Respo
 	err := s.service.EvacuateSystemByName(r.Context(), name, false, force)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to evacuate server %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/servers/{name}/system/:factory-reset servers_system_factory_reset server_system_factory_reset_post
+//
+//	Factory reset server
+//
+//	Triggers a factory reset operation on the server.
+//
+//	---
+//	parameters:
+//	  - in: query
+//	    name: token
+//	    description: Token UUID
+//	    type: string
+//	    example: f1710b8e-cd77-4336-897a-96ff0e0ed529
+//	  - in: query
+//	    name: tokenSeedName
+//	    description: Token seed name for the given token.
+//	    type: string
+//	    example: token-seed-name
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverSystemFactoryResetPost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	var tokenID *uuid.UUID
+	var tokenSeedName *string
+
+	if r.URL.Query().Get("tokenSeedName") != "" {
+		tokenSeedName = ptr.To(r.URL.Query().Get("tokenSeedName"))
+	}
+
+	if r.URL.Query().Get("token") != "" {
+		token, err := uuid.Parse(r.URL.Query().Get("token"))
+		if err != nil {
+			tokenID = nil
+			tokenSeedName = nil
+		} else {
+			tokenID = &token
+		}
+	}
+
+	err := s.service.FactoryResetByName(r.Context(), name, tokenID, tokenSeedName)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to factory reset server %q: %w", name, err))
 	}
 
 	return response.EmptySyncResponse
