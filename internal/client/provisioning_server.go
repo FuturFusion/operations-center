@@ -125,6 +125,31 @@ func (c OperationsCenterClient) EvacuateServerSystem(ctx context.Context, name s
 	return nil
 }
 
+// FactoryResetServerSystem triggers a factory reset of a server. This
+// operation triggers a factory reset for the IncusOS server.
+// This operation takes up to 2 optional arguments:
+//
+//   - token - if present, this token will be used in the factory reset seed instead of a freshly generated token.
+//   - token seed name - if present, the seed information assigned to the given token seed is used instead of the default seed.
+func (c OperationsCenterClient) FactoryResetServerSystem(ctx context.Context, name string, args ...string) error {
+	query := url.Values{}
+
+	if len(args) > 0 {
+		query.Add("token", args[0])
+	}
+
+	if len(args) > 1 {
+		query.Add("tokenSeedName", args[1])
+	}
+
+	_, err := c.DoRequest(ctx, http.MethodDelete, path.Join("/provisioning/servers", name, "system/:factory-reset"), query, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) PoweroffServerSystem(ctx context.Context, name string, force bool) error {
 	query := url.Values{}
 	if force {

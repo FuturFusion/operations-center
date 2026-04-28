@@ -91,7 +91,7 @@ func (c OperationsCenterClient) DeleteCluster(ctx context.Context, name string, 
 	return nil
 }
 
-// FactoryResetCluster triggers a factory reset of a cluster. This operations
+// FactoryResetCluster triggers a factory reset of a cluster. This operation
 // removes the servers and the cluster form Operations Center inventory
 // and triggers a factory reset for all the IncusOS servers.
 // This operation takes up to 2 optional arguments:
