@@ -400,10 +400,6 @@ type ClusterRemoveServerPost struct {
 	// Name of the server to be removed from the cluster.
 	// Example: "server1"
 	ServerName string `json:"server_name" yaml:"server_name"`
-
-	// Force removing a member, even if degraded.
-	// Example: false
-	Force bool `json:"force" yaml:"force"`
 }
 
 type ClusterMemberConfigKey = incusapi.ClusterMemberConfigKey
