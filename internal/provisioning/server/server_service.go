@@ -661,6 +661,12 @@ func (s *serverService) UpdateSystemUpdate(ctx context.Context, name string, upd
 }
 
 func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisioning.ServerSelfUpdate) error {
+	// For now, only network config changed events are supported (in legacy format without cause and with cause explicitly defined).
+	// This allows IncusOS to trigger more self update events without causeing issues in OC until these events are properly handled.
+	if serverUpdate.Cause != api.ServerSelfUpdateCauseDefault && serverUpdate.Cause != api.ServerSelfUpdateCauseNetworkConfigChanged {
+		return nil
+	}
+
 	if serverUpdate.Self {
 		return s.SelfRegisterOperationsCenter(ctx)
 	}

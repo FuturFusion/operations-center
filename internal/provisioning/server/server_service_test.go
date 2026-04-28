@@ -2424,6 +2424,44 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			assertLog: log.Empty,
 		},
 		{
+			name: "success - cause network config changed",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one-new/",
+				Cause:                     api.ServerSelfUpdateCauseNetworkConfigChanged,
+				AuthenticationCertificate: serverCertificate.Leaf,
+			},
+			repoGetByCertificateServer: &provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate:   string(serverCertPEM),
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+		{
+			name: "success - with other cause",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one-new/",
+				Cause:                     api.ServerSelfUpdateCause("other-cause"),
+				AuthenticationCertificate: serverCertificate.Leaf,
+			},
+			repoGetByCertificateServer: &provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate:   string(serverCertPEM),
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+		{
 			name: "success - rebooting",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
 				ConnectionURL:             "http://one-new/",
