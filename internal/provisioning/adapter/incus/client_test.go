@@ -468,6 +468,26 @@ func TestClientServer(t *testing.T) {
 								responseBody: []byte(`{
   "metadata": {
     "environment": {
+      "system_is_ready": true
+    }
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /os/1.0"},
+				},
+				{
+					name: "success - compatibility if system_not_ready not present",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "environment": {
       "uptime": 3600
     }
   }
@@ -510,6 +530,28 @@ func TestClientServer(t *testing.T) {
 				},
 				{
 					name: "error - not ready",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "environment": {
+      "system_is_ready": false
+    }
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: func(tt require.TestingT, err error, a ...any) {
+						require.True(tt, domain.IsRetryableError(err))
+					},
+					wantPaths: []string{"GET /os/1.0"},
+				},
+				{
+					name: "error - not ready (legacy check based on uptime)",
 					response: []queue.Item[response]{
 						{
 							Value: response{

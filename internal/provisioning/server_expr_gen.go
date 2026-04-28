@@ -78,6 +78,7 @@ type ExprOsapiSystemNetworkDNS struct {
 	Hostname      string   `json:"hostname"                 yaml:"hostname" expr:"hostname"`
 	Nameservers   []string `json:"nameservers,omitempty"    yaml:"nameservers,omitempty" expr:"nameservers"`
 	SearchDomains []string `json:"search_domains,omitempty" yaml:"search_domains,omitempty" expr:"search_domains"`
+	DNSOverTLS    bool     `json:"dns_over_tls,omitempty"   yaml:"dns_over_tls,omitempty" expr:"dns_over_tls"`
 }
 
 type ExprOsapiSystemNetworkEthernet struct {
@@ -284,6 +285,7 @@ type ExprOsapiSystemStorageDrive struct {
 	Removable       bool                              `json:"removable"              yaml:"removable" expr:"removable"`
 	Remote          bool                              `json:"remote"                 yaml:"remote" expr:"remote"`
 	WWN             string                            `json:"wwn,omitempty"          yaml:"wwn,omitempty" expr:"wwn"`
+	WWNID           string                            `json:"wwn_id,omitempty"       yaml:"wwn_id,omitempty" expr:"wwn_id"`
 	SMART           *ExprOsapiSystemStorageDriveSMART `json:"smart,omitempty"        yaml:"smart,omitempty" expr:"smart"`
 	MemberPool      string                            `json:"member_pool,omitempty"  yaml:"member_pool,omitempty" expr:"member_pool"`
 	Encrypted       bool                              `json:"encrypted,omitempty"    yaml:"encrypted,omitempty" expr:"encrypted"`
@@ -459,6 +461,7 @@ func ToExprOsapiSystemNetworkDNS(s osapi.SystemNetworkDNS) ExprOsapiSystemNetwor
 		Hostname:      s.Hostname,
 		Nameservers:   s.Nameservers,
 		SearchDomains: s.SearchDomains,
+		DNSOverTLS:    s.DNSOverTLS,
 	}
 }
 
@@ -717,6 +720,7 @@ func ToExprOsapiSystemStorageDrive(s osapi.SystemStorageDrive) ExprOsapiSystemSt
 		Removable:       s.Removable,
 		Remote:          s.Remote,
 		WWN:             s.WWN,
+		WWNID:           s.WWNID,
 		SMART:           toPtr(ToExprOsapiSystemStorageDriveSMART(fromPtr(s.SMART))),
 		MemberPool:      s.MemberPool,
 		Encrypted:       s.Encrypted,
