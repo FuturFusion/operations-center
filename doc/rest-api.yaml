@@ -457,6 +457,18 @@ definitions:
                 x-go-name: Properties
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ClusterRemoveServerPost:
+        description: |-
+            ClusterRemoveServerPost represents a remove server from a cluster request
+            containing the name of the server to be removed from the cluster.
+        properties:
+            server_name:
+                description: Name of the server to be removed from the cluster.
+                example: '"server1"'
+                type: string
+                x-go-name: ServerName
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     ClusterTemplate:
         description: |-
             ClusterTemplate defines a template, which can be used to form a cluster
@@ -7797,6 +7809,33 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Cancel an ongoing cluster wide update of servers
+            tags:
+                - clusters
+    /1.0/provisioning/clusters/{name}/:remove-server:
+        post:
+            consumes:
+                - application/json
+            description: Remove a server from a cluster.
+            operationId: clusters_remove_server_post
+            parameters:
+                - description: Remove server request
+                  in: body
+                  name: cluster
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ClusterRemoveServerPost'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Remove a server from a cluster
             tags:
                 - clusters
     /1.0/provisioning/clusters/{name}/:resync-inventory:
