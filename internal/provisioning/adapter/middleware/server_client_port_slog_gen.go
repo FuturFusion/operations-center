@@ -632,6 +632,43 @@ func (_d ServerClientPortWithSlog) Restore(ctx context.Context, server provision
 	return _d._base.Restore(ctx, server, restoreModeSkip, callback)
 }
 
+// SystemFactoryReset implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) SystemFactoryReset(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("endpoint", endpoint),
+			slog.Bool("allowTPMResetFailure", allowTPMResetFailure),
+			slog.Any("seeds", seeds),
+			slog.Any("providerConfig", providerConfig),
+		)
+	}
+	log.DebugContext(ctx, "=> calling SystemFactoryReset")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method SystemFactoryReset returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method SystemFactoryReset returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method SystemFactoryReset finished")
+		}
+	}()
+	return _d._base.SystemFactoryReset(ctx, endpoint, allowTPMResetFailure, seeds, providerConfig)
+}
+
 // UpdateNetworkConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) (err error) {
 	log := slog.With()

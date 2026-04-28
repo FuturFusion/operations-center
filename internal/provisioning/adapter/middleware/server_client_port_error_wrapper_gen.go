@@ -196,6 +196,16 @@ func (_d ServerClientPortWithErrorWrapper) Restore(ctx context.Context, server p
 	return _d._base.Restore(ctx, server, restoreModeSkip, callback)
 }
 
+// SystemFactoryReset implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithErrorWrapper) SystemFactoryReset(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) (err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.SystemFactoryReset(ctx, endpoint, allowTPMResetFailure, seeds, providerConfig)
+}
+
 // UpdateNetworkConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithErrorWrapper) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) (err error) {
 	defer func() {

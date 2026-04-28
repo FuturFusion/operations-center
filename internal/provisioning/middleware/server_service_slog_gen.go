@@ -183,6 +183,42 @@ func (_d ServerServiceWithSlog) EvacuateSystemByName(ctx context.Context, name s
 	return _d._base.EvacuateSystemByName(ctx, name, clusterUpdate, force)
 }
 
+// FactoryResetByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) FactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Any("tokenID", tokenID),
+			slog.Any("tokenSeedName", tokenSeedName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling FactoryResetByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method FactoryResetByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method FactoryResetByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method FactoryResetByName finished")
+		}
+	}()
+	return _d._base.FactoryResetByName(ctx, name, tokenID, tokenSeedName)
+}
+
 // GetAll implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetAll(ctx context.Context) (servers provisioning.Servers, err error) {
 	log := slog.With()

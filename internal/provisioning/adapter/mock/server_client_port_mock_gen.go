@@ -73,6 +73,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) error {
 //				panic("mock out the Restore method")
 //			},
+//			SystemFactoryResetFunc: func(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error {
+//				panic("mock out the SystemFactoryReset method")
+//			},
 //			UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the UpdateNetworkConfig method")
 //			},
@@ -151,6 +154,9 @@ type ServerClientPortMock struct {
 
 	// RestoreFunc mocks the Restore method.
 	RestoreFunc func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) error
+
+	// SystemFactoryResetFunc mocks the SystemFactoryReset method.
+	SystemFactoryResetFunc func(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error
 
 	// UpdateNetworkConfigFunc mocks the UpdateNetworkConfig method.
 	UpdateNetworkConfigFunc func(ctx context.Context, server provisioning.Server) error
@@ -302,6 +308,19 @@ type ServerClientPortMock struct {
 			// Callback is the callback argument value.
 			Callback func(ctx context.Context, err error)
 		}
+		// SystemFactoryReset holds details about calls to the SystemFactoryReset method.
+		SystemFactoryReset []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
+			// AllowTPMResetFailure is the allowTPMResetFailure argument value.
+			AllowTPMResetFailure bool
+			// Seeds is the seeds argument value.
+			Seeds provisioning.TokenImageSeedConfigs
+			// ProviderConfig is the providerConfig argument value.
+			ProviderConfig api.TokenProviderConfig
+		}
 		// UpdateNetworkConfig holds details about calls to the UpdateNetworkConfig method.
 		UpdateNetworkConfig []struct {
 			// Ctx is the ctx argument value.
@@ -377,6 +396,7 @@ type ServerClientPortMock struct {
 	lockPoweroff             sync.RWMutex
 	lockReboot               sync.RWMutex
 	lockRestore              sync.RWMutex
+	lockSystemFactoryReset   sync.RWMutex
 	lockUpdateNetworkConfig  sync.RWMutex
 	lockUpdateOS             sync.RWMutex
 	lockUpdateProviderConfig sync.RWMutex
@@ -1011,6 +1031,54 @@ func (mock *ServerClientPortMock) RestoreCalls() []struct {
 	mock.lockRestore.RLock()
 	calls = mock.calls.Restore
 	mock.lockRestore.RUnlock()
+	return calls
+}
+
+// SystemFactoryReset calls SystemFactoryResetFunc.
+func (mock *ServerClientPortMock) SystemFactoryReset(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error {
+	if mock.SystemFactoryResetFunc == nil {
+		panic("ServerClientPortMock.SystemFactoryResetFunc: method is nil but ServerClientPort.SystemFactoryReset was just called")
+	}
+	callInfo := struct {
+		Ctx                  context.Context
+		Endpoint             provisioning.Endpoint
+		AllowTPMResetFailure bool
+		Seeds                provisioning.TokenImageSeedConfigs
+		ProviderConfig       api.TokenProviderConfig
+	}{
+		Ctx:                  ctx,
+		Endpoint:             endpoint,
+		AllowTPMResetFailure: allowTPMResetFailure,
+		Seeds:                seeds,
+		ProviderConfig:       providerConfig,
+	}
+	mock.lockSystemFactoryReset.Lock()
+	mock.calls.SystemFactoryReset = append(mock.calls.SystemFactoryReset, callInfo)
+	mock.lockSystemFactoryReset.Unlock()
+	return mock.SystemFactoryResetFunc(ctx, endpoint, allowTPMResetFailure, seeds, providerConfig)
+}
+
+// SystemFactoryResetCalls gets all the calls that were made to SystemFactoryReset.
+// Check the length with:
+//
+//	len(mockedServerClientPort.SystemFactoryResetCalls())
+func (mock *ServerClientPortMock) SystemFactoryResetCalls() []struct {
+	Ctx                  context.Context
+	Endpoint             provisioning.Endpoint
+	AllowTPMResetFailure bool
+	Seeds                provisioning.TokenImageSeedConfigs
+	ProviderConfig       api.TokenProviderConfig
+} {
+	var calls []struct {
+		Ctx                  context.Context
+		Endpoint             provisioning.Endpoint
+		AllowTPMResetFailure bool
+		Seeds                provisioning.TokenImageSeedConfigs
+		ProviderConfig       api.TokenProviderConfig
+	}
+	mock.lockSystemFactoryReset.RLock()
+	calls = mock.calls.SystemFactoryReset
+	mock.lockSystemFactoryReset.RUnlock()
 	return calls
 }
 
