@@ -7667,6 +7667,38 @@ paths:
             summary: Bulk update to all cluster members
             tags:
                 - clusters
+    /1.0/provisioning/clusters/{name}/:cancel-update:
+        post:
+            description: Cancel an ongoing cluster wide update of servers.
+            operationId: cluster_cancel_update_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Empty response
+                    schema:
+                        description: Sync response
+                        properties:
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Cancel an ongoing cluster wide update of servers
+            tags:
+                - clusters
     /1.0/provisioning/clusters/{name}/:resync-inventory:
         post:
             description: Resync the inventory of a specific cluster.
@@ -8174,6 +8206,37 @@ paths:
             summary: Evacuate server
             tags:
                 - servers_system_evacuate
+    /1.0/provisioning/servers/{name}/system/:factory-reset:
+        post:
+            description: Triggers a factory reset operation on the server.
+            operationId: server_system_factory_reset_post
+            parameters:
+                - description: Token UUID
+                  example: f1710b8e-cd77-4336-897a-96ff0e0ed529
+                  in: query
+                  name: token
+                  type: string
+                - description: Token seed name for the given token.
+                  example: token-seed-name
+                  in: query
+                  name: tokenSeedName
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Factory reset server
+            tags:
+                - servers_system_factory_reset
     /1.0/provisioning/servers/{name}/system/:poweroff:
         post:
             description: Triggers a poweroff operation on the server.
