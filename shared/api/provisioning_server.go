@@ -820,6 +820,13 @@ func (s Server) RecommendedAction() ServerAction {
 	return ServerActionNone
 }
 
+type ServerSelfUpdateCause string
+
+const (
+	ServerSelfUpdateCauseDefault              ServerSelfUpdateCause = "" // Empty string is threated as network config changed for backwards compatibility reasons.
+	ServerSelfUpdateCauseNetworkConfigChanged ServerSelfUpdateCause = "network-config-changed"
+)
+
 // ServerSelfUpdate defines a self update request of a server.
 //
 // swagger:model
@@ -827,6 +834,10 @@ type ServerSelfUpdate struct {
 	// URL, hostname or IP address of the server endpoint.
 	// Example: https://incus.local:6443
 	ConnectionURL string `json:"connection_url" yaml:"connection_url"`
+
+	// Cause holds the identifier of the source event, which triggered the self update.
+	// Example: network-config-changed
+	Cause ServerSelfUpdateCause `json:"cause" yaml:"cause"`
 }
 
 // ServerRegistrationResponse defines the response to a successful server registration.
