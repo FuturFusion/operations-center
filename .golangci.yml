@@ -24,6 +24,7 @@ linters:
     - unparam
     - unused
     - whitespace
+    - wsl_v5
   settings:
     errcheck:
       exclude-functions:
@@ -167,6 +168,14 @@ linters:
         # this has become an established standard in Incus and since we are building
         # on top of Incus, we inherit the same style of capitalized error messages.
         - -ST1005
+    wsl_v5:
+      case-max-lines: 1
+      default: none
+      enable:
+        - err
+        - leading-whitespace
+        - trailing-whitespace
+        - after-block
   exclusions:
     generated: lax
     rules:
