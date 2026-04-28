@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -73,6 +75,11 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/task"
 	"github.com/FuturFusion/operations-center/internal/version"
+	"github.com/FuturFusion/operations-center/internal/warning"
+	warningServiceMiddleware "github.com/FuturFusion/operations-center/internal/warning/middleware"
+	warningRepoMiddleware "github.com/FuturFusion/operations-center/internal/warning/repo/middleware"
+	warningSqlite "github.com/FuturFusion/operations-center/internal/warning/repo/sqlite"
+	warningEntities "github.com/FuturFusion/operations-center/internal/warning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/shared/api"
 	apisystem "github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -209,6 +216,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// Setup Services
+	warningSvc := d.setupWarningService(dbWithTransaction)
+
 	updateSvc, err := d.setupUpdatesService(ctx, dbWithTransaction)
 	if err != nil {
 		return err
@@ -217,7 +226,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	channelSvc := d.setupChannelService(dbWithTransaction, updateSvc)
 
 	tokenSvc := d.setupTokenService(dbWithTransaction, updateSvc, channelSvc)
-	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc)
+	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningSvc)
 	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc)
 	if err != nil {
 		return err
@@ -231,7 +240,16 @@ func (d *Daemon) Start(ctx context.Context) error {
 	d.systemSvc = d.setupSystemService(serverSvc)
 
 	// Setup API routes
-	serveMux, inventorySyncers := d.setupAPIRoutes(updateSvc, tokenSvc, serverSvc, clusterSvc, clusterTemplateSvc, channelSvc, dbWithTransaction)
+	serveMux, inventorySyncers := d.setupAPIRoutes(
+		updateSvc,
+		tokenSvc,
+		serverSvc,
+		clusterSvc,
+		clusterTemplateSvc,
+		channelSvc,
+		warningSvc,
+		dbWithTransaction,
+	)
 	inventorySyncers[domain.ResourceTypeServer] = serverSvc
 
 	clusterSvc.SetInventorySyncers(inventorySyncers)
@@ -279,7 +297,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// Background tasks
-	d.setupBackgroundTasks(ctx, updateSvc, serverSvc, clusterSvc)
+	d.setupBackgroundTasks(ctx, updateSvc, serverSvc, clusterSvc, warningSvc)
 
 	err = d.incusOSSelfRegister(ctx)
 	if err != nil {
@@ -341,6 +359,11 @@ func (d *Daemon) initDB(ctx context.Context) (dbdriver.DBTX, error) {
 	}
 
 	localartifactEntities.PreparedStmts, err = localartifactEntities.PrepareStmts(dbWithTransaction, false)
+	if err != nil {
+		return nil, err
+	}
+
+	warningEntities.PreparedStmts, err = warningEntities.PrepareStmts(dbWithTransaction, false)
 	if err != nil {
 		return nil, err
 	}
@@ -439,6 +462,18 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 	*d.authorizer = authzchain.New(authorizers...)
 
 	return errors.Join(errs...)
+}
+
+func (d *Daemon) setupWarningService(db dbdriver.DBTX) warning.WarningService {
+	warningSvc := warningServiceMiddleware.NewWarningServiceWithSlog(
+		warning.NewWarningService(
+			warningRepoMiddleware.NewWarningRepoWithSlog(
+				warningSqlite.NewWarning(db),
+			),
+		),
+	)
+
+	return warningSvc
 }
 
 func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (provisioning.UpdateService, error) {
@@ -551,7 +586,16 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 	)
 }
 
-func (d *Daemon) setupServerService(db dbdriver.DBTX, client provisioning.ServerClientPort, runner scriptlet.Runner, tokenSvc provisioning.TokenService, clusterSvc provisioning.ClusterService, channelSvc provisioning.ChannelService, updateSvc provisioning.UpdateService) provisioning.ServerService {
+func (d *Daemon) setupServerService(
+	db dbdriver.DBTX,
+	client provisioning.ServerClientPort,
+	runner scriptlet.Runner,
+	tokenSvc provisioning.TokenService,
+	clusterSvc provisioning.ClusterService,
+	channelSvc provisioning.ChannelService,
+	updateSvc provisioning.UpdateService,
+	warningSvc provisioning.WarningServicePort,
+) provisioning.ServerService {
 	serverSvc := provisioningServer.New(
 		provisioningRepoMiddleware.NewServerRepoWithSlog(
 			provisioningSqlite.NewServer(db),
@@ -591,6 +635,7 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, client provisioning.Server
 		channelSvc,
 		updateSvc,
 		d.serverCertificate,
+		provisioningServer.WithWarningEmitter(warningSvc),
 	)
 
 	// Server service needs to learn about updates of the public Operations Center
@@ -753,6 +798,7 @@ func (d *Daemon) setupAPIRoutes(
 	clusterSvc provisioning.ClusterService,
 	clusterTemplateSvc provisioning.ClusterTemplateService,
 	channelSvc provisioning.ChannelService,
+	warningSvc warning.WarningService,
 	db dbdriver.DBTX,
 ) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
@@ -851,6 +897,9 @@ func (d *Daemon) setupAPIRoutes(
 	systemRouter := api10router.SubGroup("/system")
 	registerSystemHandler(systemRouter, d.authorizer, d.systemSvc)
 
+	warningRouter := api10router.SubGroup("/warnings")
+	registerWarningHandler(warningRouter, d.authorizer, warningSvc)
+
 	inventoryRouter := api10router.SubGroup("/inventory")
 
 	inventorySyncers := registerInventoryRoutes(db, clusterSvc, serverClientProvider, d.authorizer, inventoryRouter)
@@ -863,6 +912,7 @@ func (d *Daemon) setupBackgroundTasks(
 	updateSvc provisioning.UpdateService,
 	serverSvc provisioning.ServerService,
 	clusterSvc provisioning.ClusterService,
+	warningSvc warning.WarningService,
 ) {
 	if config.IsBackgroundTasksDisabled() {
 		return
@@ -872,16 +922,24 @@ func (d *Daemon) setupBackgroundTasks(
 	refreshUpdatesFromSourcesTask := func(ctx context.Context) {
 		slog.InfoContext(ctx, "Refresh updates triggered")
 		err := updateSvc.Refresh(ctx)
+		scope := api.WarningScope{
+			Scope:      "refresh",
+			EntityType: "update",
+			Entity:     "-",
+		}
 		if err != nil {
-			logCtx := slog.ErrorContext
-			if domain.IsRetryableError(err) {
-				logCtx = slog.DebugContext
-			}
-
-			logCtx(ctx, "Refresh updates failed", logger.Err(err))
+			warningSvc.Emit(ctx,
+				warning.NewWarning(
+					api.WarningTypeUpdateRefreshFailed,
+					scope,
+					fmt.Sprintf("Refresh update failed: %v", err),
+				),
+			)
 
 			return
 		}
+
+		warningSvc.RemoveStale(ctx, scope, nil)
 
 		slog.InfoContext(ctx, "Refresh updates completed")
 	}
@@ -1043,11 +1101,26 @@ func (d *Daemon) setupBackgroundTasks(
 	// Start background task to renew ACME server certificate.
 	renewACMEServerCertificateTask := func(ctx context.Context) {
 		slog.InfoContext(ctx, "ACME server certificate renewal triggered")
+
+		scope := api.WarningScope{
+			Scope:      "acme_certificate_update",
+			EntityType: "system",
+			Entity:     "operatons-center",
+		}
+
 		changed, err := d.systemSvc.TriggerCertificateRenew(ctx, false)
 		if err != nil {
-			slog.ErrorContext(ctx, "ACME server certificate renewal task failed", logger.Err(err))
+			warningSvc.Emit(ctx,
+				warning.NewWarning(
+					api.WarningTypeACMECertificateUpdateFailed,
+					scope,
+					fmt.Sprintf("ACME server certificate renewal task failed: %v", err),
+				),
+			)
 			return
 		}
+
+		warningSvc.RemoveStale(ctx, scope, nil)
 
 		if !changed {
 			slog.InfoContext(ctx, "ACME server certificate renewal completed, no change")
@@ -1059,6 +1132,90 @@ func (d *Daemon) setupBackgroundTasks(
 	renewACMEServerCertificateTaskStop, _ := task.Start(ctx, renewACMEServerCertificateTask, task.Every(config.ACMEServerCertificateRenewInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return renewACMEServerCertificateTaskStop(deadlineFrom(ctx, 10*time.Second))
+	})
+
+	// Start background task to check certificate validity of server and cluster certificates.
+	certificatesValidityCheckTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "Certificates validity check triggered")
+
+		clusters, err := clusterSvc.GetAll(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to get clusters during certificates validity check", logger.Err(err))
+		}
+
+		warnings := warning.Warnings{}
+		for _, cluster := range clusters {
+			if cluster.Certificate == nil {
+				continue
+			}
+
+			scope := api.WarningScope{
+				Scope:      "certificate_validity_check",
+				EntityType: "cluster",
+				Entity:     cluster.Name,
+			}
+
+			valid, err := certificateValidate(*cluster.Certificate)
+			if err != nil {
+				if valid {
+					warnings = append(warnings, warning.NewWarning(api.WarningTypeCertificateExpiration, scope, err.Error()))
+
+					continue
+				}
+
+				warnings = append(warnings, warning.NewWarning(api.WarningTypeCertificateInvalid, scope, err.Error()))
+			}
+		}
+
+		warningSvc.RemoveStale(ctx, api.WarningScope{
+			Scope:      "certificate_validity_check",
+			EntityType: "cluster",
+		}, warnings)
+
+		for _, w := range warnings {
+			warningSvc.Emit(ctx, w)
+		}
+
+		servers, err := serverSvc.GetAll(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to get servers during certificates validity check", logger.Err(err))
+		}
+
+		warnings = warning.Warnings{}
+		for _, server := range servers {
+			scope := api.WarningScope{
+				Scope:      "certificate_validity_check",
+				EntityType: "server",
+				Entity:     server.Name,
+			}
+
+			valid, err := certificateValidate(server.Certificate)
+			if err != nil {
+				if valid {
+					warnings = append(warnings, warning.NewWarning(api.WarningTypeCertificateExpiration, scope, err.Error()))
+
+					continue
+				}
+
+				warnings = append(warnings, warning.NewWarning(api.WarningTypeCertificateInvalid, scope, err.Error()))
+			}
+		}
+
+		warningSvc.RemoveStale(ctx, api.WarningScope{
+			Scope:      "certificate_validity_check",
+			EntityType: "server",
+		}, warnings)
+
+		for _, w := range warnings {
+			warningSvc.Emit(ctx, w)
+		}
+
+		slog.InfoContext(ctx, "Certificates validity check completed")
+	}
+
+	certificatesValidityCheckTaskStop, _ := task.Start(ctx, certificatesValidityCheckTask, task.Every(config.CertificatesValidityCheckInterval))
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return certificatesValidityCheckTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
 }
 
@@ -1303,4 +1460,30 @@ func (d *Daemon) Stop(ctx context.Context) error {
 	lifecycle.ServerLifecycleSignal.Reset()
 
 	return errors.Join(errs...)
+}
+
+func certificateValidate(certPEM string) (valid bool, _ error) {
+	certBlock, _ := pem.Decode([]byte(certPEM))
+	if certBlock == nil {
+		return false, fmt.Errorf("Certificate must be base64 encoded PEM certificate")
+	}
+
+	cert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return false, fmt.Errorf("Failed to parse x509 certificate: %w", err)
+	}
+
+	if time.Now().Before(cert.NotBefore) {
+		return false, fmt.Errorf("The provided certificate isn't valid yet")
+	}
+
+	if time.Now().After(cert.NotAfter) {
+		return false, fmt.Errorf("The provided certificate is expired")
+	}
+
+	if time.Now().Add(30 * 24 * time.Hour).After(cert.NotAfter) {
+		return true, fmt.Errorf("The provided cerificate expires within 30 days, expiration date: %s", cert.NotAfter.String())
+	}
+
+	return true, nil
 }

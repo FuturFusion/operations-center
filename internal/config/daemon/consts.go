@@ -40,6 +40,9 @@ const (
 	// ACME server certificate renew interval.
 	ACMEServerCertificateRenewInterval = 24 * time.Hour
 
+	// Certificate validity check interval.
+	CertificatesValidityCheckInterval = 24 * time.Hour
+
 	// Filename of the client certificate.
 	ClientCertificateFilename = "client.crt"
 

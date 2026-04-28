@@ -4014,6 +4014,95 @@ definitions:
                 x-go-name: UpdatesDefaultChannel
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    Warning:
+        properties:
+            count:
+                description: Number of times the warning has been seen.
+                example: 10
+                format: int64
+                type: integer
+                x-go-name: Count
+            first_occurrence:
+                description: |-
+                    First time the warning occurred for the first time, that is, the timestamp
+                    when the respective warning has been seen or observed by Operations Center
+                    for the first time. RFC3339 format.
+                example: "2025-01-01 01:00:00"
+                format: date-time
+                type: string
+                x-go-name: FirstOccurrence
+            last_occurrence:
+                description: |-
+                    Most recent time the warning occurred, that is, the timestamp when the
+                    respective warning has been seen or observed by Operations Center for the
+                    last time. RFC3339 format.
+                example: "2025-01-01 01:00:00"
+                format: date-time
+                type: string
+                x-go-name: LastOccurrence
+            last_updated:
+                description: LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
+                example: "2024-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: LastUpdated
+            messages:
+                description: Messages associated with the warning type.
+                example: list of messages
+                items:
+                    type: string
+                type: array
+                x-go-name: Messages
+            scope:
+                $ref: '#/definitions/WarningScope'
+            status:
+                $ref: '#/definitions/WarningStatus'
+            type:
+                $ref: '#/definitions/WarningType'
+            uuid:
+                description: Unique identifier of the warning.
+                example: a2095069-a527-4b2a-ab23-1739325dcac7
+                format: uuid
+                type: string
+                x-go-name: UUID
+        title: Warning represents a record of a warning.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    WarningPut:
+        properties:
+            status:
+                $ref: '#/definitions/WarningStatus'
+        title: WarningPut represents configurable properties of a warning.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    WarningScope:
+        properties:
+            entity:
+                description: Name of the entity.
+                example: mySource
+                type: string
+                x-go-name: Entity
+            entity_type:
+                description: Entity the warning relates to.
+                example: source
+                type: string
+                x-go-name: EntityType
+            scope:
+                description: Action scope of the warning.
+                example: sync
+                type: string
+                x-go-name: Scope
+        title: WarningScope represents a scope for a warning.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    WarningStatus:
+        title: WarningStatus is the acknowledgement status of a warning.
+        type: string
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    WarningType:
+        title: WarningType represents a warning message group.
+        type: string
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
 paths:
     /:
         get:
@@ -9770,4 +9859,103 @@ paths:
             summary: Update the system's updates configuration
             tags:
                 - system
+    /1.0/warnings:
+        get:
+            description: Returns a list of warnings (structs).
+            operationId: warnings_get_recursion
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API warnings
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of warnings
+                                items:
+                                    $ref: '#/definitions/Warning'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the warnings
+            tags:
+                - warnings
+    /1.0/warnings/{uuid}:
+        get:
+            description: Gets a specific warning.
+            operationId: warning_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Warning
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/Warning'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the warning
+            tags:
+                - warnings
+        put:
+            consumes:
+                - application/json
+            description: Updates the warning definition.
+            operationId: warning_put
+            parameters:
+                - description: Warning definition
+                  in: body
+                  name: warning
+                  required: true
+                  schema:
+                    $ref: '#/definitions/WarningPut'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update the warning
+            tags:
+                - warnings
 swagger: "2.0"

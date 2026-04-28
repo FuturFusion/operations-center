@@ -421,6 +421,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 
 	clusterSvc := provisioningCluster.New(clusterDB, nil, nil, serverSvc, nil, nil, nil,
 		provisioningCluster.WithPendingUpdateRecheckInterval(controlLoopInterval),
+		provisioningCluster.WithWarningEmitter(provisioning.LogWarningService{}),
 	)
 
 	serverSvc.SetClusterService(clusterSvc)

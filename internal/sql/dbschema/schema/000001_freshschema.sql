@@ -344,6 +344,23 @@ CREATE TABLE cluster_artifacts (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
 );
 
+CREATE TABLE warnings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  uuid TEXT NOT NULL,
+  type TEXT NOT NULL,
+  scope TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity TEXT NOT NULL,
+  status TEXT NOT NULL,
+  messages TEXT NOT NULL,
+  count INTEGER NOT NULL,
+  first_occurrence DATETIME NOT NULL,
+  last_occurrence DATETIME NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (uuid),
+  UNIQUE (type, scope, entity_type, entity)
+);
+
 CREATE VIEW resources AS
     SELECT 'image' AS kind, images.id, clusters.name AS cluster_name, NULL AS server_name, images.project_name, NULL AS parent_name, images.name, images.object, images.last_updated
     FROM images
@@ -408,4 +425,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (33, strftime("%s"));
+INSERT INTO schema (version, updated_at) VALUES (34, strftime("%s"));
