@@ -562,6 +562,7 @@ func (s *serverHandler) serverPutSelf(r *http.Request) response.Response {
 	err = s.service.SelfUpdate(r.Context(), provisioning.ServerSelfUpdate{
 		ConnectionURL:             serverUpdate.ConnectionURL,
 		AuthenticationCertificate: r.TLS.PeerCertificates[0],
+		Cause:                     serverUpdate.Cause,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed self-updating from server %q: %w", r.RemoteAddr, err))
@@ -579,6 +580,7 @@ func (s *serverHandler) serverPutSelfUnixSocket(r *http.Request) response.Respon
 
 	err = s.service.SelfUpdate(r.Context(), provisioning.ServerSelfUpdate{
 		ConnectionURL: serverUpdate.ConnectionURL,
+		Cause:         serverUpdate.Cause,
 		Self:          true,
 	})
 	if err != nil {
