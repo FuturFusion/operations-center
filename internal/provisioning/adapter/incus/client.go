@@ -116,7 +116,9 @@ func (c client) IsReady(ctx context.Context, server provisioning.Server) error {
 
 	var osData struct {
 		Environment struct {
-			Uptime int `json:"uptime"`
+			// TODO: Checking uptime is kept for backwards compatibility for now.
+			Uptime        int   `json:"uptime"`
+			SystemIsReady *bool `json:"system_is_ready"`
 		} `json:"environment"`
 	}
 	err = json.Unmarshal(resp.Metadata, &osData)
@@ -124,8 +126,17 @@ func (c client) IsReady(ctx context.Context, server provisioning.Server) error {
 		return fmt.Errorf("Unexpected response metadata while fetching OS information from %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 	}
 
-	if osData.Environment.Uptime < 120 {
-		return domain.NewRetryableErr(fmt.Errorf("Server uptime is less than 120s"))
+	// Legacy mode based on uptime
+	if osData.Environment.SystemIsReady == nil {
+		if osData.Environment.Uptime < 120 {
+			return domain.NewRetryableErr(fmt.Errorf("Server uptime is less than 120s"))
+		}
+
+		return nil
+	}
+
+	if !ptr.From(osData.Environment.SystemIsReady) {
+		return domain.NewRetryableErr(fmt.Errorf("Server is not yet ready"))
 	}
 
 	return nil
