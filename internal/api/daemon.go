@@ -934,60 +934,56 @@ func (d *Daemon) setupBackgroundTasks(
 		return nil
 	})
 
-	// Start background task to poll servers in pending, updating or rebooting state to become available.
-	pollPendingServersTask := func(ctx context.Context) {
-		slog.InfoContext(ctx, "Polling for pending, updating and rebooting servers triggered")
-		err := serverSvc.PollServers(ctx, provisioning.ServerFilter{
+	// Start background task to poll servers in pending state to become available.
+	d.startBackgroundPollingTask(
+		ctx,
+		serverSvc,
+		"pending",
+		provisioning.ServerFilter{
 			Status: ptr.To(api.ServerStatusPending),
-		}, true)
-		if err != nil {
-			logCtx := slog.ErrorContext
-			if domain.IsRetryableError(err) {
-				logCtx = slog.DebugContext
-			}
+		},
+		true,
+		config.PendingServerPollInterval,
+	)
 
-			logCtx(ctx, "Polling for pending servers failed", logger.Err(err))
-
-			return
-		}
-
-		err = serverSvc.PollServers(ctx, provisioning.ServerFilter{
+	// Start background task to poll servers in updating state to become available.
+	d.startBackgroundPollingTask(
+		ctx,
+		serverSvc,
+		"updating",
+		provisioning.ServerFilter{
 			Status:       ptr.To(api.ServerStatusReady),
 			StatusDetail: ptr.To(api.ServerStatusDetailReadyUpdating),
-		}, true)
-		if err != nil {
-			logCtx := slog.ErrorContext
-			if domain.IsRetryableError(err) {
-				logCtx = slog.DebugContext
-			}
+		},
+		false,
+		config.UpdatingServerPollInterval,
+	)
 
-			logCtx(ctx, "Polling for updating servers failed", logger.Err(err))
-
-			return
-		}
-
-		err = serverSvc.PollServers(ctx, provisioning.ServerFilter{
+	// Start background task to poll servers in rebooting state to become available.
+	d.startBackgroundPollingTask(
+		ctx,
+		serverSvc,
+		"rebooting",
+		provisioning.ServerFilter{
 			Status:       ptr.To(api.ServerStatusOffline),
 			StatusDetail: ptr.To(api.ServerStatusDetailOfflineRebooting),
-		}, true)
-		if err != nil {
-			logCtx := slog.ErrorContext
-			if domain.IsRetryableError(err) {
-				logCtx = slog.DebugContext
-			}
+		},
+		false,
+		config.RebootingServerPollInterval,
+	)
 
-			logCtx(ctx, "Polling for rebooting servers failed", logger.Err(err))
-
-			return
-		}
-
-		slog.InfoContext(ctx, "Polling for pending, updating and rebooting servers completed")
-	}
-
-	pollPendingServersTaskStop, _ := task.Start(ctx, pollPendingServersTask, task.Every(config.PendingServerPollInterval))
-	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		return pollPendingServersTaskStop(deadlineFrom(ctx, 1*time.Second))
-	})
+	// Start background task to poll servers in unresponsive state to become available.
+	d.startBackgroundPollingTask(
+		ctx,
+		serverSvc,
+		"unresponsive",
+		provisioning.ServerFilter{
+			Status:       ptr.To(api.ServerStatusOffline),
+			StatusDetail: ptr.To(api.ServerStatusDetailOfflineUnresponsive),
+		},
+		false,
+		config.UnresponsiveServerPollInterval,
+	)
 
 	// Start background task to test connectivity and update configuration with servers in ready state.
 	pollReadyServersTask := func(ctx context.Context) {
@@ -1059,6 +1055,37 @@ func (d *Daemon) setupBackgroundTasks(
 	renewACMEServerCertificateTaskStop, _ := task.Start(ctx, renewACMEServerCertificateTask, task.Every(config.ACMEServerCertificateRenewInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return renewACMEServerCertificateTaskStop(deadlineFrom(ctx, 10*time.Second))
+	})
+}
+
+func (d *Daemon) startBackgroundPollingTask(
+	ctx context.Context,
+	serverSvc provisioning.ServerService,
+	stateDescription string,
+	serverFilter provisioning.ServerFilter,
+	updateServerConfiguration bool,
+	interval time.Duration,
+) {
+	pollRestoringServersTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "Polling servers triggered", slog.String("state_description", stateDescription))
+		err := serverSvc.PollServers(ctx, serverFilter, updateServerConfiguration)
+		if err != nil {
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "Polling servers failed", slog.String("state_description", stateDescription), logger.Err(err))
+
+			return
+		}
+
+		slog.InfoContext(ctx, "Polling servers completed", slog.String("state_description", stateDescription))
+	}
+
+	pollRestoringServersTaskStop, _ := task.Start(ctx, pollRestoringServersTask, task.Every(interval))
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return pollRestoringServersTaskStop(deadlineFrom(ctx, 1*time.Second))
 	})
 }
 
