@@ -7667,6 +7667,38 @@ paths:
             summary: Bulk update to all cluster members
             tags:
                 - clusters
+    /1.0/provisioning/clusters/{name}/:cancel-update:
+        post:
+            description: Cancel an ongoing cluster wide update of servers.
+            operationId: cluster_cancel_update_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Empty response
+                    schema:
+                        description: Sync response
+                        properties:
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Cancel an ongoing cluster wide update of servers
+            tags:
+                - clusters
     /1.0/provisioning/clusters/{name}/:resync-inventory:
         post:
             description: Resync the inventory of a specific cluster.
