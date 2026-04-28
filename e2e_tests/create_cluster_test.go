@@ -16,6 +16,9 @@ func createCluster() func(t *testing.T, tmpDir string) {
 	return createClusterWithChannelName("stable")
 }
 
+// TODO: add end 2 end test, where a server also gets removed, make sure, the server is reachable by OC after the removal from the cluster.
+// TODO: server will re-register, but with its original ID and not with the name it might have gotten as part of a rename
+
 func createClusterAndAddServer() func(t *testing.T, tmpDir string) {
 	return func(t *testing.T, tmpDir string) {
 		t.Helper()
