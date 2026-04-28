@@ -618,7 +618,7 @@ func (c *clusterHandler) clusterRemoveServerPost(r *http.Request) response.Respo
 		return response.BadRequest(err)
 	}
 
-	err = c.service.RemoveServer(r.Context(), name, removeServerRequest.ServerName, removeServerRequest.Force)
+	err = c.service.RemoveServer(r.Context(), name, removeServerRequest.ServerName)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to remove server %q from cluster %q: %w", removeServerRequest.ServerName, name, err))
 	}
