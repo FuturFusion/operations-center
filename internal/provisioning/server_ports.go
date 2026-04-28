@@ -41,6 +41,7 @@ type ServerService interface {
 	RestoreSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) error
 	PostRestoreSystemDoneByName(ctx context.Context, name string) error
 	UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error
+	FactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error
 
 	GetSystemLogging(ctx context.Context, name string) (ServerSystemLogging, error)
 	UpdateSystemLogging(ctx context.Context, name string, loggingConfig ServerSystemLogging) error
@@ -82,6 +83,7 @@ type ServerClientPort interface {
 	Reboot(ctx context.Context, server Server) error
 	Restore(ctx context.Context, server Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) error
 	UpdateOS(ctx context.Context, server Server) error
+	SystemFactoryReset(ctx context.Context, endpoint Endpoint, allowTPMResetFailure bool, seeds TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error
 	AddApplication(ctx context.Context, server Server, application string) error
 	GetSystemKernel(ctx context.Context, server Server) (ServerSystemKernel, error)
 	UpdateSystemKernel(ctx context.Context, server Server, config ServerSystemKernel) error
