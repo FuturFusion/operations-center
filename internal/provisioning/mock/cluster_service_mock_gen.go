@@ -97,7 +97,7 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			LaunchClusterUpdateFunc: func(ctx context.Context, name string, reboot bool) error {
 //				panic("mock out the LaunchClusterUpdate method")
 //			},
-//			RemoveServerFunc: func(ctx context.Context, name string, serverName string, force bool) error {
+//			RemoveServerFunc: func(ctx context.Context, name string, serverName string) error {
 //				panic("mock out the RemoveServer method")
 //			},
 //			RemoveServerSystemNetworkVLANTagsFunc: func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error {
@@ -219,7 +219,7 @@ type ClusterServiceMock struct {
 	LaunchClusterUpdateFunc func(ctx context.Context, name string, reboot bool) error
 
 	// RemoveServerFunc mocks the RemoveServer method.
-	RemoveServerFunc func(ctx context.Context, name string, serverName string, force bool) error
+	RemoveServerFunc func(ctx context.Context, name string, serverName string) error
 
 	// RemoveServerSystemNetworkVLANTagsFunc mocks the RemoveServerSystemNetworkVLANTags method.
 	RemoveServerSystemNetworkVLANTagsFunc func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error
@@ -468,8 +468,6 @@ type ClusterServiceMock struct {
 			Name string
 			// ServerName is the serverName argument value.
 			ServerName string
-			// Force is the force argument value.
-			Force bool
 		}
 		// RemoveServerSystemNetworkVLANTags holds details about calls to the RemoveServerSystemNetworkVLANTags method.
 		RemoveServerSystemNetworkVLANTags []struct {
@@ -1544,7 +1542,7 @@ func (mock *ClusterServiceMock) LaunchClusterUpdateCalls() []struct {
 }
 
 // RemoveServer calls RemoveServerFunc.
-func (mock *ClusterServiceMock) RemoveServer(ctx context.Context, name string, serverName string, force bool) error {
+func (mock *ClusterServiceMock) RemoveServer(ctx context.Context, name string, serverName string) error {
 	if mock.RemoveServerFunc == nil {
 		panic("ClusterServiceMock.RemoveServerFunc: method is nil but ClusterService.RemoveServer was just called")
 	}
@@ -1552,17 +1550,15 @@ func (mock *ClusterServiceMock) RemoveServer(ctx context.Context, name string, s
 		Ctx        context.Context
 		Name       string
 		ServerName string
-		Force      bool
 	}{
 		Ctx:        ctx,
 		Name:       name,
 		ServerName: serverName,
-		Force:      force,
 	}
 	mock.lockRemoveServer.Lock()
 	mock.calls.RemoveServer = append(mock.calls.RemoveServer, callInfo)
 	mock.lockRemoveServer.Unlock()
-	return mock.RemoveServerFunc(ctx, name, serverName, force)
+	return mock.RemoveServerFunc(ctx, name, serverName)
 }
 
 // RemoveServerCalls gets all the calls that were made to RemoveServer.
@@ -1573,13 +1569,11 @@ func (mock *ClusterServiceMock) RemoveServerCalls() []struct {
 	Ctx        context.Context
 	Name       string
 	ServerName string
-	Force      bool
 } {
 	var calls []struct {
 		Ctx        context.Context
 		Name       string
 		ServerName string
-		Force      bool
 	}
 	mock.lockRemoveServer.RLock()
 	calls = mock.calls.RemoveServer

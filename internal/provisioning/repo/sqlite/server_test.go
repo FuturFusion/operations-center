@@ -218,7 +218,7 @@ func TestServerDatabaseActions(t *testing.T) {
 	server := sqlite.NewServer(tx)
 	serverSvc := provisioningServer.New(server, serverClient, nil, nil, nil, cannelSvc, updateSvc, tls.Certificate{})
 
-	clusterSvc := provisioningCluster.New(sqlite.NewCluster(tx), localArtifactRepo, clusterClient, serverSvc, nil, nil, terraformProvisioner)
+	clusterSvc := provisioningCluster.New(sqlite.NewCluster(tx), localArtifactRepo, clusterClient, serverSvc, nil, nil, terraformProvisioner, nil)
 
 	// Add server
 	_, err = server.Create(ctx, serverA)
