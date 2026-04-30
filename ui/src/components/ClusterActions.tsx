@@ -12,6 +12,7 @@ import { useNotification } from "context/notificationContext";
 import { Cluster } from "types/cluster";
 import { ClusterUpdateInProgress } from "util/cluster";
 import { downloadFile } from "util/util";
+import ClusterAddServerBtn from "components/ClusterAddServerBtn";
 import ClusterCancelUpdateBtn from "components/ClusterCancelUpdateBtn";
 import ClusterUpdateBtn from "components/ClusterUpdateBtn";
 
@@ -117,6 +118,7 @@ const ClusterActions: FC<Props> = ({ cluster }) => {
         show={showBulkActionModal}
         handleClose={() => setShowBulkActionModal(false)}
       />
+      <ClusterAddServerBtn cluster={cluster} />
     </div>
   );
 };
