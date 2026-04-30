@@ -186,7 +186,13 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, nil, serverCertificate,
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, serverCertificate,
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 			)
 
@@ -367,9 +373,15 @@ one
 				},
 			}
 
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
 			token := uuid.MustParse("686d2a12-20f9-11f0-82c6-7fff26bab0c4")
 
-			serverSvc := provisioningServer.New(repo, client, nil, tokenSvc, nil, nil, nil, tls.Certificate{},
+			serverSvc := provisioningServer.New(repo, client, nil, tokenSvc, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithInitialConnectionDelay(0), // Disable delay for initial connection test
 			)
@@ -2642,7 +2654,13 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, nil, serverCertificate,
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, serverCertificate,
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithInitialConnectionDelay(1*time.Millisecond),
 			)
@@ -3677,7 +3695,13 @@ foobar
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, runner, nil, nil, nil, nil, tls.Certificate{},
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioningServer.New(repo, client, runner, nil, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithHTTPClient(httpsServer.Client()),
 			)
@@ -3713,6 +3737,7 @@ func TestServerService_PollServer(t *testing.T) {
 		repoGetByName                  *provisioning.Server
 		repoGetByNameErr               error
 		repoUpdateErr                  error
+		updateSvcGetAllWithFilter      provisioning.Updates
 		updateSvcGetAllWithFilterErr   error
 
 		assertErr require.ErrorAssertionFunc
@@ -3781,7 +3806,7 @@ func TestServerService_PollServer(t *testing.T) {
 			assertLog: log.Empty,
 		},
 		{
-			name: "success - pending update",
+			name: "success - updating",
 			serverArg: provisioning.Server{
 				Name:   "one",
 				Status: api.ServerStatusPending,
@@ -3837,6 +3862,71 @@ func TestServerService_PollServer(t *testing.T) {
 									"management",
 								},
 							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+		{
+			name: "success - evacuated",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailReadyEvacuating,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name:          "incus",
+							Version:       "1",
+							InMaintenance: api.InMaintenanceEvacuated,
+						},
+					},
+				},
+			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetVersionData: api.ServerVersionData{
+				Applications: []api.ApplicationVersionData{
+					{
+						Name:          string(images.UpdateFileComponentIncus),
+						Version:       "1",
+						InMaintenance: api.InMaintenanceEvacuated,
+					},
+				},
+			},
+			updateSvcGetAllWithFilter: provisioning.Updates{
+				{
+					UUID:     uuidgen.FromPattern(t, "1"),
+					Version:  "1",
+					Channels: []string{"stable"},
+					Files: provisioning.UpdateFiles{
+						{
+							Component: images.UpdateFileComponentOS,
+						},
+						{
+							Component: images.UpdateFileComponentIncus,
 						},
 					},
 				},
@@ -4121,8 +4211,8 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 			updateSvcGetAllWithFilterErr: boom.Error,
 
-			assertErr: require.NoError, // no error is returned, just a warning is logged.
-			assertLog: log.Match("Failed to enrich server with version details"),
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
 		},
 		{
 			name: "error - Update",
@@ -4205,7 +4295,7 @@ func TestServerService_PollServer(t *testing.T) {
 
 			updateSvc := &svcMock.UpdateServiceMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
-					return provisioning.Updates{}, tc.updateSvcGetAllWithFilterErr
+					return tc.updateSvcGetAllWithFilter, tc.updateSvcGetAllWithFilterErr
 				},
 			}
 
@@ -4250,7 +4340,13 @@ func TestServerService_PollServer_in_transaction(t *testing.T) {
 		},
 	}
 
-	serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, nil, tls.Certificate{})
+	updateSvc := &svcMock.UpdateServiceMock{
+		GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+			return provisioning.Updates{}, nil
+		},
+	}
+
+	serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{})
 
 	// Run test
 	err = transaction.Do(t.Context(), func(ctx context.Context) error {
@@ -4377,7 +4473,19 @@ func TestServerService_ResyncByName(t *testing.T) {
 			name:                  "error - pollServer",
 			resourceTypeArg:       domain.ResourceTypeServer,
 			lifecycleOperationArg: domain.LifecycleOperationUpdate,
-			repoUpdateErr:         boom.Error,
+			repoGetByName: provisioning.Server{
+				Name:   "incus",
+				Type:   api.ServerTypeIncus,
+				Status: api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: string(images.UpdateFileComponentIncus),
+						},
+					},
+				},
+			},
+			repoUpdateErr: boom.Error,
 
 			assertErr:    boom.ErrorIs,
 			wantLastSeen: fixedDate,

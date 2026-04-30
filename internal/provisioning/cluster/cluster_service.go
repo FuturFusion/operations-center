@@ -1620,6 +1620,11 @@ func (s *clusterService) executeRollingUpdate(ctx context.Context, cluster provi
 	// updates for the applications and the next OS.
 	for _, server := range servers {
 		if !ptr.From(server.VersionData.NeedsUpdate) {
+			if server.StatusDetail == api.ServerStatusDetailReadyUpdating {
+				// Server status detail needs to be updated first, not yet ready to proceed.
+				return nil
+			}
+
 			continue
 		}
 

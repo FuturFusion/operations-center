@@ -91,6 +91,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 			},
 			NeedsUpdate:   ptr.To(true),
 			InMaintenance: ptr.To(api.NotInMaintenance),
+			UpdateChannel: "stable",
 		},
 		Status:       api.ServerStatusReady,
 		StatusDetail: api.ServerStatusDetailNone,
@@ -112,6 +113,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 				InMaintenance: api.NotInMaintenance,
 			},
 		},
+		UpdateChannel: "stable",
 	}
 	serverRebooting := false
 
@@ -248,6 +250,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 							InMaintenance: api.NotInMaintenance,
 						},
 					},
+					UpdateChannel: "stable",
 				}
 			}()
 
@@ -268,6 +271,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 						InMaintenance: api.NotInMaintenance,
 					},
 				},
+				UpdateChannel: "stable",
 			}
 
 			return nil
@@ -293,6 +297,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 							InMaintenance: api.InMaintenanceEvacuated,
 						},
 					},
+					UpdateChannel: "stable",
 				}
 
 				callback(t.Context(), nil)
@@ -315,6 +320,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 						InMaintenance: api.InMaintenanceEvacuating,
 					},
 				},
+				UpdateChannel: "stable",
 			}
 
 			return nil
@@ -340,6 +346,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 							InMaintenance: api.InMaintenanceEvacuated,
 						},
 					},
+					UpdateChannel: "stable",
 				}
 
 				serverRebooting = false
@@ -362,6 +369,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 						InMaintenance: api.InMaintenanceEvacuated,
 					},
 				},
+				UpdateChannel: "stable",
 			}
 
 			serverRebooting = true
@@ -389,6 +397,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 							InMaintenance: api.NotInMaintenance,
 						},
 					},
+					UpdateChannel: "stable",
 				}
 
 				callback(t.Context(), nil)
@@ -411,6 +420,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 						InMaintenance: api.InMaintenanceRestoring,
 					},
 				},
+				UpdateChannel: "stable",
 			}
 
 			return nil
@@ -530,6 +540,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 			},
 			NeedsUpdate:   ptr.To(true),
 			InMaintenance: ptr.To(api.NotInMaintenance),
+			UpdateChannel: "stable",
 		},
 		Status:       api.ServerStatusReady,
 		StatusDetail: api.ServerStatusDetailNone,
@@ -560,6 +571,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 			},
 			NeedsUpdate:   ptr.To(true),
 			InMaintenance: ptr.To(api.NotInMaintenance),
+			UpdateChannel: "stable",
 		},
 		Status:       api.ServerStatusReady,
 		StatusDetail: api.ServerStatusDetailNone,
@@ -590,6 +602,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 			},
 			NeedsUpdate:   ptr.To(true),
 			InMaintenance: ptr.To(api.NotInMaintenance),
+			UpdateChannel: "stable",
 		},
 		Status:       api.ServerStatusReady,
 		StatusDetail: api.ServerStatusDetailNone,
@@ -598,7 +611,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 
 	serverVersionDataMu := sync.Mutex{}
 	serverVersionData := map[string]api.ServerVersionData{
-		"one": {
+		"serverA": {
 			OS: api.OSVersionData{
 				Name:        "incusos",
 				Version:     "1",
@@ -612,8 +625,9 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 					InMaintenance: api.NotInMaintenance,
 				},
 			},
+			UpdateChannel: "stable",
 		},
-		"two": {
+		"serverB": {
 			OS: api.OSVersionData{
 				Name:        "incusos",
 				Version:     "1",
@@ -627,8 +641,9 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 					InMaintenance: api.NotInMaintenance,
 				},
 			},
+			UpdateChannel: "stable",
 		},
-		"three": {
+		"serverC": {
 			OS: api.OSVersionData{
 				Name:        "incusos",
 				Version:     "1",
@@ -642,12 +657,13 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 					InMaintenance: api.NotInMaintenance,
 				},
 			},
+			UpdateChannel: "stable",
 		},
 	}
 	serverRebooting := map[string]bool{
-		"one":   false,
-		"two":   false,
-		"three": false,
+		"serverA": false,
+		"serverB": false,
+		"serverC": false,
 	}
 
 	// Setup
@@ -787,6 +803,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 							InMaintenance: api.NotInMaintenance,
 						},
 					},
+					UpdateChannel: "stable",
 				}
 			}()
 
@@ -807,6 +824,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 						InMaintenance: api.NotInMaintenance,
 					},
 				},
+				UpdateChannel: "stable",
 			}
 
 			return nil
@@ -832,6 +850,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 							InMaintenance: api.InMaintenanceEvacuated,
 						},
 					},
+					UpdateChannel: "stable",
 				}
 
 				callback(t.Context(), nil)
@@ -854,6 +873,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 						InMaintenance: api.InMaintenanceEvacuating,
 					},
 				},
+				UpdateChannel: "stable",
 			}
 
 			return nil
@@ -879,6 +899,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 							InMaintenance: api.InMaintenanceEvacuated,
 						},
 					},
+					UpdateChannel: "stable",
 				}
 
 				serverRebooting[server.Name] = false
@@ -901,6 +922,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 						InMaintenance: api.InMaintenanceEvacuated,
 					},
 				},
+				UpdateChannel: "stable",
 			}
 
 			serverRebooting[server.Name] = true
@@ -928,6 +950,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 							InMaintenance: api.NotInMaintenance,
 						},
 					},
+					UpdateChannel: "stable",
 				}
 
 				callback(t.Context(), nil)
@@ -950,6 +973,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 						InMaintenance: api.InMaintenanceRestoring,
 					},
 				},
+				UpdateChannel: "stable",
 			}
 
 			return nil
