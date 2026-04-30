@@ -582,6 +582,8 @@ func assertWebsocketEventsInventoryUpdate(t *testing.T, clusterName string) {
 func assertClusterMembers(t *testing.T, clusterName string, clusterMembers []string) {
 	t.Helper()
 
+	printServerList(t)
+
 	servers := mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '[ .[] | select(.cluster == %q and .server_type == "incus" and .server_status == "ready" and (.name as $n | %s | index($n) ) ) ] | .[].name'`, cpuArch, clusterName, asJSON(t, clusterMembers))
 	serverNames := strings.Split(servers.OutputTrimmed(), "\n")
 	if len(clusterMembers) != len(serverNames) {
