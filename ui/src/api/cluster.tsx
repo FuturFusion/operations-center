@@ -217,3 +217,18 @@ export const downloadArtifactFile = (
       .catch(reject);
   });
 };
+
+export const clusterAddServers = (
+  name: string,
+  body: string,
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/clusters/${name}/:add-servers`, {
+      method: "POST",
+      body: body,
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
