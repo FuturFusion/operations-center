@@ -1023,6 +1023,9 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
 
+		server.StatusDetail = api.ServerStatusDetailReadyEvacuating
+		server.LastStatusUpdated = s.now()
+
 		for i := range server.VersionData.Applications {
 			if server.VersionData.Applications[i].Name == string(images.UpdateFileComponentIncus) {
 				server.VersionData.Applications[i].InMaintenance = api.InMaintenanceEvacuating
@@ -1589,6 +1592,11 @@ func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *pro
 		return nil
 	}
 
+	if inMaintenance == api.InMaintenanceEvacuated {
+		server.StatusDetail = api.ServerStatusDetailNone
+		server.LastStatusUpdated = s.now()
+	}
+
 	for i := range server.VersionData.Applications {
 		if server.VersionData.Applications[i].Name == string(images.UpdateFileComponentIncus) {
 			server.VersionData.Applications[i].InMaintenance = inMaintenance
@@ -1809,7 +1817,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 	// potential updates, that happened since we queried for the list of servers
 	// in pending state.
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		server, err := s.repo.GetByName(ctx, server.Name)
+		server, err := s.GetByName(ctx, server.Name)
 		if err != nil {
 			return err
 		}
@@ -1835,25 +1843,35 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 
 		server.Status = api.ServerStatusReady
 
+		// If an evacuation has been triggered, check if the evaucation is done.
+		if server.StatusDetail == api.ServerStatusDetailReadyEvacuating {
+			for i := range server.VersionData.Applications {
+				if server.VersionData.Applications[i].Name == string(images.UpdateFileComponentIncus) {
+					if server.VersionData.Applications[i].InMaintenance == api.InMaintenanceEvacuated {
+						server.StatusDetail = api.ServerStatusDetailNone
+						server.LastStatusUpdated = s.now()
+					}
+
+					break
+				}
+			}
+		}
+
+		// If an update has been triggered, check if an update is still needed.
+		// If not, updating is done.
+		if server.StatusDetail == api.ServerStatusDetailReadyUpdating {
+			if !ptr.From(server.VersionData.NeedsUpdate) {
+				server.StatusDetail = api.ServerStatusDetailNone
+				server.LastStatusUpdated = s.now()
+			}
+		}
+
 		if updateServerConfiguration {
 			server.HardwareData = hardwareData
 			server.OSData = osData
 			server.VersionData = versionData
 			server.Type = serverType
 			server.ConnectionURL = serverConnectionURL
-
-			// If an update has been triggered, check if an update is still needed.
-			// If not, updating is done.
-			if server.StatusDetail == api.ServerStatusDetailReadyUpdating {
-				err = s.enrichServerWithVersionDetails(ctx, server)
-				if err != nil {
-					slog.WarnContext(ctx, "Failed to enrich server with version details", logger.Err(err))
-				} else {
-					if !ptr.From(server.VersionData.NeedsUpdate) {
-						server.StatusDetail = api.ServerStatusDetailNone
-					}
-				}
-			}
 		}
 
 		if runServerRegistrationScriptlet {

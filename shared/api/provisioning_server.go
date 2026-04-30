@@ -155,8 +155,9 @@ const (
 	ServerStatusDetailPendingRegistering   ServerStatusDetail = "registering"
 	ServerStatusDetailPendingReconfiguring ServerStatusDetail = "re-configuring"
 
-	ServerStatusDetailReadyUpdating  ServerStatusDetail = "updating"
-	ServerStatusDetailReadyRestoring ServerStatusDetail = "restoring"
+	ServerStatusDetailReadyUpdating   ServerStatusDetail = "updating"
+	ServerStatusDetailReadyEvacuating ServerStatusDetail = "evacuating"
+	ServerStatusDetailReadyRestoring  ServerStatusDetail = "restoring"
 
 	ServerStatusDetailOfflineRebooting    ServerStatusDetail = "rebooting"
 	ServerStatusDetailOfflineShutdown     ServerStatusDetail = "shut down"
@@ -168,6 +169,7 @@ var serverStatusDetails = map[ServerStatusDetail]struct{}{
 	ServerStatusDetailPendingRegistering:   {},
 	ServerStatusDetailPendingReconfiguring: {},
 	ServerStatusDetailReadyUpdating:        {},
+	ServerStatusDetailReadyEvacuating:      {},
 	ServerStatusDetailReadyRestoring:       {},
 	ServerStatusDetailOfflineRebooting:     {},
 	ServerStatusDetailOfflineShutdown:      {},

@@ -31,6 +31,21 @@ const (
 	// Interval in which servers in pending state are queried.
 	PendingServerPollInterval = 1 * time.Minute
 
+	// Interval in which servers in updating state are queried.
+	UpdatingServerPollInterval = 30 * time.Second
+
+	// Interval in which servers in evacuating state are queried.
+	EvacuatingServerPollInterval = 30 * time.Second
+
+	// Interval in which servers in restoring state are queried.
+	RestoringServerPollInterval = 30 * time.Second
+
+	// Interval in which servers in rebooting state are quieried.
+	RebootingServerPollInterval = 30 * time.Second
+
+	// Interval in which servers in unresponsive state are queried.
+	UnresponsiveServerPollInterval = 10 * time.Second
+
 	// Interval in which the server state and configuration is updated in
 	// Operations Center. Since collecting this information might be an expensive
 	// operation on the servers, this information should not be quieried
