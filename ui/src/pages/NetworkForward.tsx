@@ -40,34 +40,36 @@ const NetworkForward = () => {
     "Last updated",
   ];
   const rows = network_forwards.map((item) => {
-    return [
-      {
-        content: (
-          <ObjectIncusLink
-            cluster={item.cluster}
-            objectName={item.name}
-            incusPath={`/ui/project/${item.project_name}/network/${item.parent_name}/forwards`}
-          />
-        ),
-        sortKey: item.name,
-      },
-      {
-        content: item.parent_name,
-        sortKey: item.parent_name,
-      },
-      {
-        content: item.project_name,
-        sortKey: item.project_name,
-      },
-      {
-        content: <ClusterLink cluster={item.cluster} />,
-        sortKey: item.cluster,
-      },
-      {
-        content: formatDate(item.last_updated),
-        sortKey: item.last_updated,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <ObjectIncusLink
+              cluster={item.cluster}
+              objectName={item.name}
+              incusPath={`/ui/project/${item.project_name}/network/${item.parent_name}/forwards`}
+            />
+          ),
+          sortKey: item.name,
+        },
+        {
+          content: item.parent_name,
+          sortKey: item.parent_name,
+        },
+        {
+          content: item.project_name,
+          sortKey: item.project_name,
+        },
+        {
+          content: <ClusterLink cluster={item.cluster} />,
+          sortKey: item.cluster,
+        },
+        {
+          content: formatDate(item.last_updated),
+          sortKey: item.last_updated,
+        },
+      ],
+    };
   });
 
   return (

@@ -28,30 +28,32 @@ const Channel = () => {
 
   const headers = ["Name", "Description", "Last updated", "Actions"];
   const rows = channels.map((item) => {
-    return [
-      {
-        content: (
-          <Link
-            to={`/ui/provisioning/channels/${item.name}`}
-            className="data-table-link"
-          >
-            {item.name}
-          </Link>
-        ),
-        sortKey: item.name,
-      },
-      {
-        content: item.description,
-        sortKey: item.description,
-      },
-      {
-        content: formatDate(item.last_updated),
-        sortKey: item.last_updated,
-      },
-      {
-        content: <ChannelActions channel={item} />,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <Link
+              to={`/ui/provisioning/channels/${item.name}`}
+              className="data-table-link"
+            >
+              {item.name}
+            </Link>
+          ),
+          sortKey: item.name,
+        },
+        {
+          content: item.description,
+          sortKey: item.description,
+        },
+        {
+          content: formatDate(item.last_updated),
+          sortKey: item.last_updated,
+        },
+        {
+          content: <ChannelActions channel={item} />,
+        },
+      ],
+    };
   });
 
   return (

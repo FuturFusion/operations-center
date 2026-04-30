@@ -45,43 +45,45 @@ const StorageBucket = () => {
     "Last updated",
   ];
   const rows = buckets.map((item) => {
-    return [
-      {
-        content: (
-          <ObjectIncusLink
-            cluster={item.cluster}
-            objectName={item.name}
-            incusPath={`/ui/project/${item.project_name}/storage-pools/${item.parent_name}/buckets/${item.name}`}
-          />
-        ),
-        sortKey: item.name,
-      },
-      {
-        content: item.parent_name,
-        sortKey: item.parent_name,
-      },
-      {
-        content: (
-          <ProjectIncusLink
-            cluster={item.cluster}
-            project={item.project_name}
-          />
-        ),
-        sortKey: item.project_name,
-      },
-      {
-        content: <ClusterLink cluster={item.cluster} />,
-        sortKey: item.cluster,
-      },
-      {
-        content: <ServerLink server={item.server} />,
-        sortKey: item.server,
-      },
-      {
-        content: formatDate(item.last_updated),
-        sortKey: item.last_updated,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <ObjectIncusLink
+              cluster={item.cluster}
+              objectName={item.name}
+              incusPath={`/ui/project/${item.project_name}/storage-pools/${item.parent_name}/buckets/${item.name}`}
+            />
+          ),
+          sortKey: item.name,
+        },
+        {
+          content: item.parent_name,
+          sortKey: item.parent_name,
+        },
+        {
+          content: (
+            <ProjectIncusLink
+              cluster={item.cluster}
+              project={item.project_name}
+            />
+          ),
+          sortKey: item.project_name,
+        },
+        {
+          content: <ClusterLink cluster={item.cluster} />,
+          sortKey: item.cluster,
+        },
+        {
+          content: <ServerLink server={item.server} />,
+          sortKey: item.server,
+        },
+        {
+          content: formatDate(item.last_updated),
+          sortKey: item.last_updated,
+        },
+      ],
+    };
   });
 
   return (

@@ -2,15 +2,20 @@ import { FC, ReactNode, useState, useRef } from "react";
 import { Col, Form, Row, Table } from "react-bootstrap";
 import { MdArrowDropDown, MdArrowDropUp } from "react-icons/md";
 
-export interface DataTableRow {
+interface DataTableCol {
   content: ReactNode | string;
   sortKey?: string | number;
   class?: string;
 }
 
+export interface DataTableRow {
+  additional_data?: ReactNode | string;
+  cols: DataTableCol[];
+}
+
 interface Props {
   headers: string[];
-  rows: DataTableRow[][];
+  rows: DataTableRow[];
 }
 
 const DataTable: FC<Props> = ({ headers, rows }) => {
@@ -32,7 +37,7 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
     if (
       column !== "" &&
       rows.length > 0 &&
-      rows[0][itemIndex].sortKey !== undefined
+      rows[0].cols[itemIndex].sortKey !== undefined
     ) {
       return true;
     }
@@ -43,8 +48,8 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
     rows.sort((a, b) => {
       const itemIndex = headersMap.current[sortProps.column];
 
-      const aSortKey = a[itemIndex].sortKey;
-      const bSortKey = b[itemIndex].sortKey;
+      const aSortKey = a.cols[itemIndex].sortKey;
+      const bSortKey = b.cols[itemIndex].sortKey;
 
       // If the sortKey property is missing on any item, then do not perform sorting.
       if (aSortKey === undefined || bSortKey === undefined) {
@@ -133,7 +138,7 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
 
   const generateRows = () => {
     const dataRows = paginatedData.map((rowItem, rowIndex) => {
-      const row = rowItem.map((item, index) => {
+      const row = rowItem.cols.map((item, index) => {
         return (
           <td className={item.class} key={index}>
             {item.content}
@@ -141,7 +146,21 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
         );
       });
 
-      return <tr key={rowIndex}>{row}</tr>;
+      return (
+        <>
+          <tr
+            key={rowIndex}
+            className={rowItem.additional_data ? "no-bottom-border" : ""}
+          >
+            {row}
+          </tr>
+          {rowItem.additional_data && (
+            <tr key={rowIndex} className="additional-data-row">
+              <td colSpan={rowItem.cols.length}>{rowItem.additional_data}</td>
+            </tr>
+          )}
+        </>
+      );
     });
 
     return <>{dataRows}</>;

@@ -35,35 +35,37 @@ const NetworkACL = () => {
 
   const headers = ["Name", "Project", "Cluster", "Last updated"];
   const rows = acls.map((item) => {
-    return [
-      {
-        content: (
-          <ObjectIncusLink
-            cluster={item.cluster}
-            objectName={item.name}
-            incusPath={`/ui/project/${item.project_name}/network-acl/${item.name}`}
-          />
-        ),
-        sortKey: item.name,
-      },
-      {
-        content: (
-          <ProjectIncusLink
-            cluster={item.cluster}
-            project={item.project_name}
-          />
-        ),
-        sortKey: item.project_name,
-      },
-      {
-        content: <ClusterLink cluster={item.cluster} />,
-        sortKey: item.cluster,
-      },
-      {
-        content: formatDate(item.last_updated),
-        sortKey: item.last_updated,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <ObjectIncusLink
+              cluster={item.cluster}
+              objectName={item.name}
+              incusPath={`/ui/project/${item.project_name}/network-acl/${item.name}`}
+            />
+          ),
+          sortKey: item.name,
+        },
+        {
+          content: (
+            <ProjectIncusLink
+              cluster={item.cluster}
+              project={item.project_name}
+            />
+          ),
+          sortKey: item.project_name,
+        },
+        {
+          content: <ClusterLink cluster={item.cluster} />,
+          sortKey: item.cluster,
+        },
+        {
+          content: formatDate(item.last_updated),
+          sortKey: item.last_updated,
+        },
+      ],
+    };
   });
 
   return (

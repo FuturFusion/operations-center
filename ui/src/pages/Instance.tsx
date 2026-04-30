@@ -37,39 +37,41 @@ const Instance = () => {
 
   const headers = ["Name", "Project", "Cluster", "Server", "Last updated"];
   const rows = instances.map((item) => {
-    return [
-      {
-        content: (
-          <ObjectIncusLink
-            cluster={item.cluster}
-            objectName={item.name}
-            incusPath={`/ui/project/${item.project_name}/instance/${item.name}`}
-          />
-        ),
-        sortKey: item.name,
-      },
-      {
-        content: (
-          <ProjectIncusLink
-            cluster={item.cluster}
-            project={item.project_name}
-          />
-        ),
-        sortKey: item.project_name,
-      },
-      {
-        content: <ClusterLink cluster={item.cluster} />,
-        sortKey: item.cluster,
-      },
-      {
-        content: <ServerLink server={item.server} />,
-        sortKey: item.server,
-      },
-      {
-        content: formatDate(item.last_updated),
-        sortKey: item.last_updated,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <ObjectIncusLink
+              cluster={item.cluster}
+              objectName={item.name}
+              incusPath={`/ui/project/${item.project_name}/instance/${item.name}`}
+            />
+          ),
+          sortKey: item.name,
+        },
+        {
+          content: (
+            <ProjectIncusLink
+              cluster={item.cluster}
+              project={item.project_name}
+            />
+          ),
+          sortKey: item.project_name,
+        },
+        {
+          content: <ClusterLink cluster={item.cluster} />,
+          sortKey: item.cluster,
+        },
+        {
+          content: <ServerLink server={item.server} />,
+          sortKey: item.server,
+        },
+        {
+          content: formatDate(item.last_updated),
+          sortKey: item.last_updated,
+        },
+      ],
+    };
   });
 
   return (

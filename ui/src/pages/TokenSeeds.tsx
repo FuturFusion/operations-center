@@ -30,30 +30,32 @@ const TokenSeeds = () => {
   const headers = ["Name", "Public", "Last updated", ""];
 
   const rows = seeds.map((item) => {
-    return [
-      {
-        content: (
-          <Link
-            to={`/ui/provisioning/tokens/${uuid}/seeds/${item.name}`}
-            className="data-table-link"
-          >
-            {item.name}
-          </Link>
-        ),
-        sortKey: item.name,
-      },
-      {
-        content: item.public ? "Yes" : "No",
-        sortKey: item.public ? "Yes" : "No",
-      },
-      {
-        content: formatDate(item.last_updated || ""),
-        sortKey: item.last_updated,
-      },
-      {
-        content: <TokenSeedActions seed={item} />,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <Link
+              to={`/ui/provisioning/tokens/${uuid}/seeds/${item.name}`}
+              className="data-table-link"
+            >
+              {item.name}
+            </Link>
+          ),
+          sortKey: item.name,
+        },
+        {
+          content: item.public ? "Yes" : "No",
+          sortKey: item.public ? "Yes" : "No",
+        },
+        {
+          content: formatDate(item.last_updated || ""),
+          sortKey: item.last_updated,
+        },
+        {
+          content: <TokenSeedActions seed={item} />,
+        },
+      ],
+    };
   });
 
   return (

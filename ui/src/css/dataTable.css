@@ -17,9 +17,8 @@
   border-bottom: 1px solid #ccc;
 }
 
-/* Change background color on hover */
-.data-table tbody tr:hover {
-  background-color: #D3D3D3;
+.additional-data-row:hover {
+  --bs-table-hover-bg: white !important;
 }
 
 .data-table-link {
@@ -29,4 +28,8 @@
 .page-control {
   width: 50px !important;
   display: inline-block !important;
+}
+
+tr.no-bottom-border td {
+  border-bottom: none !important;
 }

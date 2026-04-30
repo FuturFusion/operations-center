@@ -40,28 +40,30 @@ const NetworkLoadBalancer = () => {
     "Last updated",
   ];
   const rows = load_balancers.map((item) => {
-    return [
-      {
-        content: item.name,
-        sortKey: item.name,
-      },
-      {
-        content: item.parent_name,
-        sortKey: item.parent_name,
-      },
-      {
-        content: item.project_name,
-        sortKey: item.project_name,
-      },
-      {
-        content: <ClusterLink cluster={item.cluster} />,
-        sortKey: item.cluster,
-      },
-      {
-        content: formatDate(item.last_updated),
-        sortKey: item.last_updated,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: item.name,
+          sortKey: item.name,
+        },
+        {
+          content: item.parent_name,
+          sortKey: item.parent_name,
+        },
+        {
+          content: item.project_name,
+          sortKey: item.project_name,
+        },
+        {
+          content: <ClusterLink cluster={item.cluster} />,
+          sortKey: item.cluster,
+        },
+        {
+          content: formatDate(item.last_updated),
+          sortKey: item.last_updated,
+        },
+      ],
+    };
   });
 
   return (

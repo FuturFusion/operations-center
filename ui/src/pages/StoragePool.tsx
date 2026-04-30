@@ -30,30 +30,32 @@ const StoragePool = () => {
 
   const headers = ["Name", "Driver", "Cluster", "Last updated"];
   const rows = pools.map((item) => {
-    return [
-      {
-        content: (
-          <ObjectIncusLink
-            cluster={item.cluster}
-            objectName={item.name}
-            incusPath={`/ui/project/default/storage/pool/${item.name}`}
-          />
-        ),
-        sortKey: item.name,
-      },
-      {
-        content: item.object.driver,
-        sortKey: item.object.driver,
-      },
-      {
-        content: <ClusterLink cluster={item.cluster} />,
-        sortKey: item.cluster,
-      },
-      {
-        content: formatDate(item.last_updated),
-        sortKey: item.last_updated,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <ObjectIncusLink
+              cluster={item.cluster}
+              objectName={item.name}
+              incusPath={`/ui/project/default/storage/pool/${item.name}`}
+            />
+          ),
+          sortKey: item.name,
+        },
+        {
+          content: item.object.driver,
+          sortKey: item.object.driver,
+        },
+        {
+          content: <ClusterLink cluster={item.cluster} />,
+          sortKey: item.cluster,
+        },
+        {
+          content: formatDate(item.last_updated),
+          sortKey: item.last_updated,
+        },
+      ],
+    };
   });
 
   return (

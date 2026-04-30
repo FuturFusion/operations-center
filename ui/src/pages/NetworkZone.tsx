@@ -34,29 +34,31 @@ const NetworkZone = () => {
 
   const headers = ["Name", "Project", "Cluster", "Last updated"];
   const rows = zones.map((item) => {
-    return [
-      {
-        content: item.name,
-        sortKey: item.name,
-      },
-      {
-        content: (
-          <ProjectIncusLink
-            cluster={item.cluster}
-            project={item.project_name}
-          />
-        ),
-        sortKey: item.project_name,
-      },
-      {
-        content: <ClusterLink cluster={item.cluster} />,
-        sortKey: item.cluster,
-      },
-      {
-        content: formatDate(item.last_updated),
-        sortKey: item.last_updated,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: item.name,
+          sortKey: item.name,
+        },
+        {
+          content: (
+            <ProjectIncusLink
+              cluster={item.cluster}
+              project={item.project_name}
+            />
+          ),
+          sortKey: item.project_name,
+        },
+        {
+          content: <ClusterLink cluster={item.cluster} />,
+          sortKey: item.cluster,
+        },
+        {
+          content: formatDate(item.last_updated),
+          sortKey: item.last_updated,
+        },
+      ],
+    };
   });
 
   return (
