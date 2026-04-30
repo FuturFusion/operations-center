@@ -44,40 +44,42 @@ const ClusterArtifacts = () => {
   const headers = ["Name", "Description", "Last updated", ""];
 
   const rows = artifacts.map((item) => {
-    return [
-      {
-        content: (
-          <Link
-            to={`/ui/provisioning/clusters/${name}/artifacts/${item.name}/files`}
-            className="data-table-link"
-          >
-            {item.name}
-          </Link>
-        ),
-        sortKey: item.name,
-      },
-      {
-        content: item.description,
-        sortKey: item.description,
-      },
-      {
-        content: item.last_updated,
-        sortKey: item.last_updated,
-      },
-      {
-        content: (
-          <MdOutlineFileDownload
-            size={25}
-            title="Download artifact"
-            style={actionStyle}
-            onClick={() => {
-              onDownloadArtifact(item.name);
-            }}
-          />
-        ),
-        sortKey: "",
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <Link
+              to={`/ui/provisioning/clusters/${name}/artifacts/${item.name}/files`}
+              className="data-table-link"
+            >
+              {item.name}
+            </Link>
+          ),
+          sortKey: item.name,
+        },
+        {
+          content: item.description,
+          sortKey: item.description,
+        },
+        {
+          content: item.last_updated,
+          sortKey: item.last_updated,
+        },
+        {
+          content: (
+            <MdOutlineFileDownload
+              size={25}
+              title="Download artifact"
+              style={actionStyle}
+              onClick={() => {
+                onDownloadArtifact(item.name);
+              }}
+            />
+          ),
+          sortKey: "",
+        },
+      ],
+    };
   });
 
   return <DataTable headers={headers} rows={rows} />;

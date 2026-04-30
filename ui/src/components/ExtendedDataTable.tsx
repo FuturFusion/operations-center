@@ -4,7 +4,7 @@ import { DataTableRow } from "components/DataTable";
 
 interface Props {
   headers: string[];
-  rows: DataTableRow[][];
+  rows: DataTableRow[];
   isLoading: boolean;
   error: Error | null;
 }

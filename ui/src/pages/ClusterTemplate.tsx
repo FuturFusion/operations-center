@@ -33,27 +33,29 @@ const ClusterTemplate = () => {
 
   const headers = ["Name", "Description", "Last updated"];
   const rows = templates.map((item) => {
-    return [
-      {
-        content: (
-          <Link
-            to={`/ui/provisioning/cluster-templates/${item.name}`}
-            className="data-table-link"
-          >
-            {item.name}
-          </Link>
-        ),
-        sortKey: item.name,
-      },
-      {
-        content: item.description,
-        sortKey: item.description,
-      },
-      {
-        content: formatDate(item.last_updated || ""),
-        sortKey: item.last_updated,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <Link
+              to={`/ui/provisioning/cluster-templates/${item.name}`}
+              className="data-table-link"
+            >
+              {item.name}
+            </Link>
+          ),
+          sortKey: item.name,
+        },
+        {
+          content: item.description,
+          sortKey: item.description,
+        },
+        {
+          content: formatDate(item.last_updated || ""),
+          sortKey: item.last_updated,
+        },
+      ],
+    };
   });
 
   return (

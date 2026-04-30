@@ -34,34 +34,36 @@ const Token = () => {
     "Actions",
   ];
   const rows = tokens.map((item) => {
-    return [
-      {
-        content: (
-          <Link
-            to={`/ui/provisioning/tokens/${item.uuid}`}
-            className="data-table-link"
-          >
-            {item.uuid}
-          </Link>
-        ),
-        sortKey: item.uuid,
-      },
-      {
-        content: item.description,
-        sortKey: item.description,
-      },
-      {
-        content: formatDate(item.expire_at || ""),
-        sortKey: item.expire_at,
-      },
-      {
-        content: item.uses_remaining,
-        sortKey: item.uses_remaining,
-      },
-      {
-        content: <TokenActions token={item} />,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <Link
+              to={`/ui/provisioning/tokens/${item.uuid}`}
+              className="data-table-link"
+            >
+              {item.uuid}
+            </Link>
+          ),
+          sortKey: item.uuid,
+        },
+        {
+          content: item.description,
+          sortKey: item.description,
+        },
+        {
+          content: formatDate(item.expire_at || ""),
+          sortKey: item.expire_at,
+        },
+        {
+          content: item.uses_remaining,
+          sortKey: item.uses_remaining,
+        },
+        {
+          content: <TokenActions token={item} />,
+        },
+      ],
+    };
   });
 
   return (

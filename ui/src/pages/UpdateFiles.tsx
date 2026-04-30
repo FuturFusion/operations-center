@@ -29,32 +29,34 @@ const UpdateFiles = () => {
   const headers = ["Filename", "Size", "Component", "Type", "Architecture", ""];
 
   const rows = files.map((item) => {
-    return [
-      {
-        content: <UpdateFileLink uuid={uuid} filename={item.filename} />,
-        sortKey: item.filename,
-      },
-      {
-        content: bytesToHumanReadable(item.size),
-        sortKey: item.size,
-      },
-      {
-        content: item.component,
-        sortKey: item.component,
-      },
-      {
-        content: item.type,
-        sortKey: item.type,
-      },
-      {
-        content: item.architecture,
-        sortKey: item.architecture,
-      },
-      {
-        content: <BsHash title={item.sha256} style={{ cursor: "pointer" }} />,
-        sortKey: item.sha256,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: <UpdateFileLink uuid={uuid} filename={item.filename} />,
+          sortKey: item.filename,
+        },
+        {
+          content: bytesToHumanReadable(item.size),
+          sortKey: item.size,
+        },
+        {
+          content: item.component,
+          sortKey: item.component,
+        },
+        {
+          content: item.type,
+          sortKey: item.type,
+        },
+        {
+          content: item.architecture,
+          sortKey: item.architecture,
+        },
+        {
+          content: <BsHash title={item.sha256} style={{ cursor: "pointer" }} />,
+          sortKey: item.sha256,
+        },
+      ],
+    };
   });
 
   return <DataTable headers={headers} rows={rows} />;

@@ -35,6 +35,8 @@ import Update from "pages/Update";
 import UpdateDetail from "pages/UpdateDetail";
 import ChannelCreate from "pages/ChannelCreate";
 import ChannelDetail from "pages/ChannelDetail";
+import Warning from "pages/Warning";
+import WarningDetail from "pages/WarningDetail";
 
 function App() {
   const { isAuthenticated, isAuthLoading } = useAuth();
@@ -204,6 +206,15 @@ function App() {
             <Route
               path="/ui/provisioning/channels/:name/:activeTab"
               element={<ChannelDetail />}
+            />
+            <Route path="/ui/provisioning/warnings" element={<Warning />} />
+            <Route
+              path="/ui/provisioning/warnings/:uuid"
+              element={<WarningDetail />}
+            />
+            <Route
+              path="/ui/provisioning/warnings/:uuid/:activeTab"
+              element={<WarningDetail />}
             />
           </Routes>
           <Notification />

@@ -48,31 +48,33 @@ const ClusterArtifactFiles = () => {
   const headers = ["Name", "Mime type", "Size"];
   const rows =
     artifact?.files.map((item) => {
-      return [
-        {
-          content: (
-            <a
-              href="#"
-              className="data-table-link"
-              onClick={(e) => {
-                e.preventDefault();
-                onDownloadFile(item.name);
-              }}
-            >
-              {item.name}
-            </a>
-          ),
-          sortKey: item.name,
-        },
-        {
-          content: item.mime_type,
-          sortKey: item.mime_type,
-        },
-        {
-          content: bytesToHumanReadable(item.size),
-          sortKey: item.size,
-        },
-      ];
+      return {
+        cols: [
+          {
+            content: (
+              <a
+                href="#"
+                className="data-table-link"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onDownloadFile(item.name);
+                }}
+              >
+                {item.name}
+              </a>
+            ),
+            sortKey: item.name,
+          },
+          {
+            content: item.mime_type,
+            sortKey: item.mime_type,
+          },
+          {
+            content: bytesToHumanReadable(item.size),
+            sortKey: item.size,
+          },
+        ],
+      };
     }) ?? [];
 
   return (

@@ -30,22 +30,24 @@ const Project = () => {
 
   const headers = ["Name", "Cluster", "Last updated"];
   const rows = projects.map((item) => {
-    return [
-      {
-        content: (
-          <ProjectIncusLink cluster={item.cluster} project={item.name} />
-        ),
-        sortKey: item.name,
-      },
-      {
-        content: <ClusterLink cluster={item.cluster} />,
-        sortKey: item.cluster,
-      },
-      {
-        content: formatDate(item.last_updated),
-        sortKey: item.last_updated,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <ProjectIncusLink cluster={item.cluster} project={item.name} />
+          ),
+          sortKey: item.name,
+        },
+        {
+          content: <ClusterLink cluster={item.cluster} />,
+          sortKey: item.cluster,
+        },
+        {
+          content: formatDate(item.last_updated),
+          sortKey: item.last_updated,
+        },
+      ],
+    };
   });
 
   return (

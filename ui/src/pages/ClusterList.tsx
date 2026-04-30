@@ -33,50 +33,52 @@ const Cluster = () => {
 
   const headers = ["Name", "Description / Properties", "Status", "Actions"];
   const rows = clusters.map((item) => {
-    return [
-      {
-        content: [
-          <Link
-            to={`/ui/provisioning/clusters/${item.name}`}
-            className="data-table-link"
-            title="Cluster details"
-          >
-            {item.name}
-          </Link>,
-          <Link
-            to={item.connection_url}
-            target="_blank"
-            className="data-table-link"
-            title="Access server through external URL"
-          >
-            <BsLink45Deg color="grey" size={25} />
-          </Link>,
-        ],
-        sortKey: item.name,
-      },
-      {
-        content: (
-          <>
-            {item.description}
-            <br />
-            {item.properties &&
-              Object.entries(item.properties).map(([key, value]) => [
-                <Badge bg="primary">
-                  {key}:{value}
-                </Badge>,
-                <span> </span>,
-              ])}
-          </>
-        ),
-      },
-      {
-        content: <ClusterStatus cluster={item} />,
-        sortKey: item.status,
-      },
-      {
-        content: <ClusterActions cluster={item} />,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: [
+            <Link
+              to={`/ui/provisioning/clusters/${item.name}`}
+              className="data-table-link"
+              title="Cluster details"
+            >
+              {item.name}
+            </Link>,
+            <Link
+              to={item.connection_url}
+              target="_blank"
+              className="data-table-link"
+              title="Access server through external URL"
+            >
+              <BsLink45Deg color="grey" size={25} />
+            </Link>,
+          ],
+          sortKey: item.name,
+        },
+        {
+          content: (
+            <>
+              {item.description}
+              <br />
+              {item.properties &&
+                Object.entries(item.properties).map(([key, value]) => [
+                  <Badge bg="primary">
+                    {key}:{value}
+                  </Badge>,
+                  <span> </span>,
+                ])}
+            </>
+          ),
+        },
+        {
+          content: <ClusterStatus cluster={item} />,
+          sortKey: item.status,
+        },
+        {
+          content: <ClusterActions cluster={item} />,
+        },
+      ],
+    };
   });
 
   return (

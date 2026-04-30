@@ -43,38 +43,40 @@ const Image = () => {
     "Last updated",
   ];
   const rows = images.map((item) => {
-    return [
-      {
-        content: (
-          <ObjectIncusLink
-            cluster={item.cluster}
-            objectName={item.object.fingerprint.slice(0, 12)}
-            incusPath={`/ui/project/${item.project_name}/images`}
-          />
-        ),
-        sortKey: item.object.fingerprint,
-      },
-      {
-        content: item.object.properties?.description,
-        sortKey: item.object.properties?.description,
-      },
-      {
-        content: item.object.type,
-        sortKey: item.object.type,
-      },
-      {
-        content: item.project_name,
-        sortKey: item.project_name,
-      },
-      {
-        content: item.cluster,
-        sortKey: item.cluster,
-      },
-      {
-        content: formatDate(item.last_updated),
-        sortKey: item.last_updated,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <ObjectIncusLink
+              cluster={item.cluster}
+              objectName={item.object.fingerprint.slice(0, 12)}
+              incusPath={`/ui/project/${item.project_name}/images`}
+            />
+          ),
+          sortKey: item.object.fingerprint,
+        },
+        {
+          content: item.object.properties?.description,
+          sortKey: item.object.properties?.description,
+        },
+        {
+          content: item.object.type,
+          sortKey: item.object.type,
+        },
+        {
+          content: item.project_name,
+          sortKey: item.project_name,
+        },
+        {
+          content: item.cluster,
+          sortKey: item.cluster,
+        },
+        {
+          content: formatDate(item.last_updated),
+          sortKey: item.last_updated,
+        },
+      ],
+    };
   });
 
   return (

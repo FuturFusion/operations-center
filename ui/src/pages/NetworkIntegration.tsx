@@ -29,24 +29,26 @@ const NetworkIntegration = () => {
 
   const headers = ["Name", "Type", "Cluster", "Last updated"];
   const rows = network_integrations.map((item) => {
-    return [
-      {
-        content: item.name,
-        sortKey: item.name,
-      },
-      {
-        content: item.object.type,
-        sortKey: item.object.type,
-      },
-      {
-        content: <ClusterLink cluster={item.cluster} />,
-        sortKey: item.cluster,
-      },
-      {
-        content: formatDate(item.last_updated),
-        sortKey: item.last_updated,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: item.name,
+          sortKey: item.name,
+        },
+        {
+          content: item.object.type,
+          sortKey: item.object.type,
+        },
+        {
+          content: <ClusterLink cluster={item.cluster} />,
+          sortKey: item.cluster,
+        },
+        {
+          content: formatDate(item.last_updated),
+          sortKey: item.last_updated,
+        },
+      ],
+    };
   });
 
   return (

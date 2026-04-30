@@ -74,40 +74,42 @@ const Update = () => {
     "Actions",
   ];
   const rows = updates.map((item) => {
-    return [
-      {
-        content: (
-          <Link
-            to={`/ui/provisioning/updates/${item.uuid}`}
-            className="data-table-link"
-          >
-            {item.version}
-          </Link>
-        ),
-        sortKey: item.version,
-      },
-      {
-        content: formatDate(item.published_at),
-        sortKey: item.published_at,
-      },
-      {
-        content: item.severity,
-        sortKey: item.severity,
-      },
-      {
-        content: (item.upstream_channels ?? []).join(", "),
-      },
-      {
-        content: (item.channels ?? []).join(", "),
-      },
-      {
-        content: item.update_status,
-        sortKey: item.update_status,
-      },
-      {
-        content: <UpdateActions update={item} />,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <Link
+              to={`/ui/provisioning/updates/${item.uuid}`}
+              className="data-table-link"
+            >
+              {item.version}
+            </Link>
+          ),
+          sortKey: item.version,
+        },
+        {
+          content: formatDate(item.published_at),
+          sortKey: item.published_at,
+        },
+        {
+          content: item.severity,
+          sortKey: item.severity,
+        },
+        {
+          content: (item.upstream_channels ?? []).join(", "),
+        },
+        {
+          content: (item.channels ?? []).join(", "),
+        },
+        {
+          content: item.update_status,
+          sortKey: item.update_status,
+        },
+        {
+          content: <UpdateActions update={item} />,
+        },
+      ],
+    };
   });
 
   return (

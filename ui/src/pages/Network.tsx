@@ -35,39 +35,41 @@ const Network = () => {
 
   const headers = ["Name", "Type", "Project", "Cluster", "Last updated"];
   const rows = networks.map((item) => {
-    return [
-      {
-        content: (
-          <ObjectIncusLink
-            cluster={item.cluster}
-            objectName={item.name}
-            incusPath={`/ui/project/${item.project_name}/network/${item.name}`}
-          />
-        ),
-        sortKey: item.name,
-      },
-      {
-        content: item.object.type,
-        sortKey: item.object.type,
-      },
-      {
-        content: (
-          <ProjectIncusLink
-            cluster={item.cluster}
-            project={item.project_name}
-          />
-        ),
-        sortKey: item.project_name,
-      },
-      {
-        content: <ClusterLink cluster={item.cluster} />,
-        sortKey: item.cluster,
-      },
-      {
-        content: formatDate(item.last_updated),
-        sortKey: item.last_updated,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <ObjectIncusLink
+              cluster={item.cluster}
+              objectName={item.name}
+              incusPath={`/ui/project/${item.project_name}/network/${item.name}`}
+            />
+          ),
+          sortKey: item.name,
+        },
+        {
+          content: item.object.type,
+          sortKey: item.object.type,
+        },
+        {
+          content: (
+            <ProjectIncusLink
+              cluster={item.cluster}
+              project={item.project_name}
+            />
+          ),
+          sortKey: item.project_name,
+        },
+        {
+          content: <ClusterLink cluster={item.cluster} />,
+          sortKey: item.cluster,
+        },
+        {
+          content: formatDate(item.last_updated),
+          sortKey: item.last_updated,
+        },
+      ],
+    };
   });
 
   return (
