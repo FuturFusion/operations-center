@@ -6,7 +6,7 @@ require-template-schema-exists: false
 force-file-write: true
 include-auto-generated: true
 include-interface-regex: "(.+Repo|.+Port|.*ServerClient|.+Service|InventorySyncer|Environment|InstanceServer)"
-exclude-interface-regex: "(Image|Instance|InventoryAggregate|Network|NetworkACL|NetworkAddressSet|NetworkForward|NetworkIntegration|NetworkLoadBalancer|NetworkPeer|NetworkZone|Profile|Project|StorageBucket|StoragePool|StorageVolume)Service"
+exclude-interface-regex: "(Image|Instance|Network|NetworkACL|NetworkAddressSet|NetworkForward|NetworkIntegration|NetworkLoadBalancer|NetworkPeer|NetworkZone|Profile|Project|StorageBucket|StoragePool|StorageVolume)Service"
 dir: >-
   {{- $targetDir := "mock" -}}
   {{- if and (.InterfaceName | hasSuffix "ServerClient") -}}
