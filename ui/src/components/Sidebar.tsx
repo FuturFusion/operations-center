@@ -10,6 +10,7 @@ import {
   MdOutlineInventory2,
   MdOutlineSettings,
   MdOutlineSystemUpdateAlt,
+  MdWarningAmber,
 } from "react-icons/md";
 import {
   RiArticleLine,
@@ -143,6 +144,11 @@ const Sidebar = () => {
     updates: {
       id: "updates",
       to: "/ui/provisioning/updates-view",
+      menu: ["", ""],
+    },
+    warnings: {
+      id: "warnings",
+      to: "/ui/provisioning/warnings",
       menu: ["", ""],
     },
     settings: {
@@ -328,6 +334,14 @@ const Sidebar = () => {
                   isActive={isItemActive("updates")}
                 >
                   <MdOutlineSystemUpdateAlt /> Updates
+                </NavItemLink>
+              </Nav.Item>
+              <Nav.Item>
+                <NavItemLink
+                  item={menuItems["warnings"]}
+                  isActive={isItemActive("warnings")}
+                >
+                  <MdWarningAmber /> Warnings
                 </NavItemLink>
               </Nav.Item>
             </>
