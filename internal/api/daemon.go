@@ -1017,6 +1017,32 @@ func (d *Daemon) setupBackgroundTasks(
 		config.UpdatingServerPollInterval,
 	)
 
+	// Start background task to poll servers in evacuating state to become available.
+	d.startBackgroundPollingTask(
+		ctx,
+		serverSvc,
+		"evacuating",
+		provisioning.ServerFilter{
+			Status:       ptr.To(api.ServerStatusReady),
+			StatusDetail: ptr.To(api.ServerStatusDetailReadyEvacuating),
+		},
+		false,
+		config.EvacuatingServerPollInterval,
+	)
+
+	// Start background task to poll servers in restoring state to become available.
+	d.startBackgroundPollingTask(
+		ctx,
+		serverSvc,
+		"restoring",
+		provisioning.ServerFilter{
+			Status:       ptr.To(api.ServerStatusReady),
+			StatusDetail: ptr.To(api.ServerStatusDetailReadyRestoring),
+		},
+		false,
+		config.RestoringServerPollInterval,
+	)
+
 	// Start background task to poll servers in rebooting state to become available.
 	d.startBackgroundPollingTask(
 		ctx,
