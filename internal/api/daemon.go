@@ -1422,12 +1422,20 @@ func (d *Daemon) incusOSSelfPoll(ctx context.Context, serverSvc provisioning.Ser
 
 	slog.DebugContext(ctx, "Self poll server status on IncusOS to update own inventory record")
 
-	serverSelf, err := serverSvc.GetByName(ctx, api.ServerNameOperationsCenter)
+	operationCenters, err := serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
+		Type: ptr.To(api.ServerTypeOperationsCenter),
+	})
 	if err != nil {
 		return fmt.Errorf("Failed to get self server instance: %w", err)
 	}
 
-	err = serverSvc.PollServer(ctx, *serverSelf, true)
+	if len(operationCenters) != 1 {
+		return fmt.Errorf(`Expected exactly 1 server of type "operations-center", got: %d`, len(operationCenters))
+	}
+
+	serverSelf := operationCenters[0]
+
+	err = serverSvc.PollServer(ctx, serverSelf, true)
 	if err != nil {
 		return fmt.Errorf("Failed to self poll server instalce: %w", err)
 	}
