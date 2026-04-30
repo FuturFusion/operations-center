@@ -34,6 +34,12 @@ const (
 	// Interval in which servers in updating state are queried.
 	UpdatingServerPollInterval = 30 * time.Second
 
+	// Interval in which servers in evacuating state are queried.
+	EvacuatingServerPollInterval = 30 * time.Second
+
+	// Interval in which servers in restoring state are queried.
+	RestoringServerPollInterval = 30 * time.Second
+
 	// Interval in which servers in rebooting state are quieried.
 	RebootingServerPollInterval = 30 * time.Second
 
