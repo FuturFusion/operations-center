@@ -15,30 +15,15 @@ import (
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 )
 
-func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverClient inventory.ServerClient, authorizer *authz.Authorizer, inventoryRouter Router) map[domain.ResourceType]provisioning.InventorySyncer {
+func registerInventoryRoutes(
+	db dbdriver.DBTX,
+	clusterSvc provisioning.ClusterService,
+	serverClient inventory.ServerClient,
+	authorizer *authz.Authorizer,
+	inventoryRouter Router,
+	inventoryInventoryAggregateSvc inventory.InventoryAggregateService,
+) map[domain.ResourceType]provisioning.InventorySyncer {
 	// Service
-	inventoryInventoryAggregateSvc := inventoryServiceMiddleware.NewInventoryAggregateServiceWithSlog(
-		inventory.NewInventoryAggregateService(
-			inventoryRepoMiddleware.NewInventoryAggregateRepoWithSlog(
-				inventorySqlite.NewInventoryAggregate(db),
-				inventoryRepoMiddleware.InventoryAggregateRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
-			),
-		),
-		inventoryServiceMiddleware.InventoryAggregateServiceWithSlogWithInformativeErrFunc(
-			func(err error) bool {
-				// Treat retryable errors as informational.
-				if domain.IsRetryableError(err) {
-					return true
-				}
-
-				return false
-			},
-		),
-	)
 
 	inventoryImageSvc := inventoryServiceMiddleware.NewImageServiceWithSlog(
 		inventory.NewImageService(
