@@ -2702,6 +2702,9 @@ definitions:
         x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemNetworkDNS:
         properties:
+            dns_over_tls:
+                type: boolean
+                x-go-name: DNSOverTLS
             domain:
                 type: string
                 x-go-name: Domain
@@ -3330,6 +3333,9 @@ definitions:
             wwn:
                 type: string
                 x-go-name: WWN
+            wwn_id:
+                type: string
+                x-go-name: WWNID
         title: SystemStorageDrive defines a struct that holds information about a specific drive.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
