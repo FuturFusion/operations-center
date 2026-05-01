@@ -101,13 +101,14 @@ func clusterCleanup(t *testing.T) func() {
 		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[].name'`, cpuArch)
 		if !resp.Success() {
 			t.Error(resp.Error())
-		} else {
-			for cluster := range strings.Lines(resp.Output()) {
-				cluster = strings.TrimSpace(cluster)
-				resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning cluster remove %s --force`, cpuArch, cluster)
-				if !resp.Success() {
-					t.Error(resp.Error())
-				}
+			return
+		}
+
+		for cluster := range strings.Lines(resp.Output()) {
+			cluster = strings.TrimSpace(cluster)
+			resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning cluster remove %s --force`, cpuArch, cluster)
+			if !resp.Success() {
+				t.Error(resp.Error())
 			}
 		}
 	}
