@@ -7245,7 +7245,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 				UpdateFunc: func(ctx context.Context, server provisioning.Server, force, updateSystem bool) error {
 					return tc.serverSvcUpdateErr.PopOrNil(t)
 				},
-				FactoryResetByNameFunc: func(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error {
+				FactoryResetByNameFunc: func(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string, force bool) error {
 					return tc.serverSvcFactoryResetByNameErr
 				},
 			}

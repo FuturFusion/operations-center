@@ -1083,7 +1083,7 @@ func (s *clusterService) RemoveServer(ctx context.Context, name string, serverNa
 	}
 
 	// Perform factory reset on the removed server.
-	err = s.serverSvc.FactoryResetByName(ctx, serverName, nil, nil)
+	err = s.serverSvc.FactoryResetByName(ctx, serverName, nil, nil, true)
 	if err != nil {
 		return fmt.Errorf("Failed to trigger factory set on server %q: %w", serverName, err)
 	}
