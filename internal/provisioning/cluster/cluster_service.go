@@ -65,6 +65,9 @@ type clusterService struct {
 
 	clusterUpdatePendingUpdateRecheckInterval time.Duration
 
+	removeServerFactoryResetWaitDelay         time.Duration
+	removeServerDeleteClusterMemberRetryDelay time.Duration
+
 	clusterUpdateControlLoopMu sync.Mutex
 }
 
@@ -93,6 +96,18 @@ func WithNow(nowFunc func() time.Time) Option {
 func WithPendingUpdateRecheckInterval(d time.Duration) Option {
 	return func(s *clusterService) {
 		s.clusterUpdatePendingUpdateRecheckInterval = d
+	}
+}
+
+func WithRemoveServerFactoryResetWaitDelay(delay time.Duration) Option {
+	return func(s *clusterService) {
+		s.removeServerFactoryResetWaitDelay = delay
+	}
+}
+
+func WithRemoveServerDeleteClusterMemberRetryDelay(delay time.Duration) Option {
+	return func(s *clusterService) {
+		s.removeServerDeleteClusterMemberRetryDelay = delay
 	}
 }
 
@@ -136,6 +151,9 @@ func New(
 		lifecycleEventHandlerBackoffLimit: 60 * time.Second,
 
 		clusterUpdatePendingUpdateRecheckInterval: 60 * time.Second,
+
+		removeServerFactoryResetWaitDelay:         10 * time.Second,
+		removeServerDeleteClusterMemberRetryDelay: 5 * time.Second,
 	}
 
 	for _, opt := range opts {
@@ -1088,23 +1106,36 @@ func (s *clusterService) RemoveServer(ctx context.Context, name string, serverNa
 		return fmt.Errorf("Failed to trigger factory set on server %q: %w", serverName, err)
 	}
 
+	// Wait for the factory reset to take place.
+	time.Sleep(s.removeServerFactoryResetWaitDelay)
+
 	// Forcefully remove the server from the cluster.
-	err = incusClient.DeleteClusterMember(serverName, true)
+	err = s.deleteClusterMemberWithRetry(ctx, serverName, 1*time.Minute, incusClient)
 	if err != nil {
-		return fmt.Errorf("Server removal failed: %w", err)
-	}
-
-	// Update the state in the DB as the final step, since a correct DB entry is required for the steps before (namely FactoryResetByName).
-	removedServer.Cluster = nil
-	removedServer.ClusterCertificate = nil
-	removedServer.ClusterConnectionURL = nil
-
-	err = s.serverSvc.Update(ctx, removedServer, true, false)
-	if err != nil {
-		return fmt.Errorf("Server removal failed to update server: %w", err)
+		return fmt.Errorf("Server removal failed after %v: %w", 1*time.Minute, err)
 	}
 
 	return nil
+}
+
+func (s *clusterService) deleteClusterMemberWithRetry(ctx context.Context, serverName string, timeout time.Duration, incusClient provisioning.InstanceServer) error {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	var err error
+	for {
+		err = incusClient.DeleteClusterMember(serverName, true)
+		if err == nil {
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return errors.Join(ctx.Err(), err)
+
+		case <-time.After(s.removeServerDeleteClusterMemberRetryDelay):
+		}
+	}
 }
 
 func (s *clusterService) GetAll(ctx context.Context) (provisioning.Clusters, error) {

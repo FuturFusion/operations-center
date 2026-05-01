@@ -7074,27 +7074,6 @@ func TestClusterService_RemoveServer(t *testing.T) {
 			assertLog: log.Empty,
 		},
 		{
-			name: "error - serverSvc.Update",
-			serverSvcGetAllWithFilter: provisioning.Servers{
-				{
-					Name:   "serverOne",
-					Status: api.ServerStatusReady,
-					VersionData: api.ServerVersionData{
-						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
-					},
-				},
-				{
-					Name: "serverTwo",
-				},
-			},
-			serverSvcUpdateErr: queue.Errs{
-				boom.Error,
-			},
-
-			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
-		},
-		{
 			name: "error - incusClient.GetClusterMember",
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
@@ -7314,10 +7293,16 @@ func TestClusterService_RemoveServer(t *testing.T) {
 				},
 				nil,
 				inventorySvc,
+				provisioningCluster.WithRemoveServerFactoryResetWaitDelay(0),
+				provisioningCluster.WithRemoveServerDeleteClusterMemberRetryDelay(0),
 			)
 
+			// Context with timeout for incusClient.DeleteClusterMember test.
+			ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+			defer cancel()
+
 			// Run test
-			err = clusterSvc.RemoveServer(context.Background(), "one", "serverOne")
+			err = clusterSvc.RemoveServer(ctx, "one", "serverOne")
 
 			// Assert
 			tc.assertErr(t, err)
