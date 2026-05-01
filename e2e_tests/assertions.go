@@ -286,6 +286,20 @@ func assertOperationsCenterCliSystem(t *testing.T) {
 	require.True(t, success, "operations-center cli system assertions failed")
 }
 
+func assertOperationsCenterCliUpdateCleanupAndRefresh(t *testing.T) {
+	t.Helper()
+
+	mustRun(t, `../bin/operations-center.linux.%s provisioning update cleanup`, cpuArch)
+
+	// assert no updates
+	mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -e -r '. | length == 0'`, cpuArch)
+
+	mustRun(t, `../bin/operations-center.linux.%s provisioning update refresh`, cpuArch)
+
+	// wait for updates to become ready
+	mustWaitUpdatesReady(t)
+}
+
 func assertIncusRemote(t *testing.T, clusterName string, serverNames []string) {
 	t.Helper()
 

@@ -10,6 +10,12 @@ func basicOperationsCenterInteractions(t *testing.T, tmpDir string) {
 	assertOperationsCenterCliSystem(t)
 }
 
+func basicOperationsCenterInteractionsUpdatesCleanupAndRefresh(t *testing.T, tmpDir string) {
+	t.Helper()
+
+	assertOperationsCenterCliUpdateCleanupAndRefresh(t)
+}
+
 func registerServer(t *testing.T, tmpDir string) {
 	t.Helper()
 
