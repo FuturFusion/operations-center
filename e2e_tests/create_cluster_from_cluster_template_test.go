@@ -62,7 +62,7 @@ func createClusterFromTemplate(t *testing.T, tmpDir string) {
 	mustRun(t, "../bin/operations-center.linux.%s provisioning cluster add incus-os-cluster https://%s --server-names %s --cluster-template incus-os-cluster --cluster-template-variables %s", cpuArch, net.JoinHostPort(instanceIPs[0], "8443"), servers, filepath.Join(tmpDir, "variables.yaml"))
 
 	// Assertions
-	assertIncusRemote(t, "incus-os-cluster")
+	assertIncusRemote(t, "incus-os-cluster", names)
 	assertInventory(t, "incus-os-cluster", names)
 	assertTerraformArtifact(t, "incus-os-cluster")
 	assertWebsocketEventsInventoryUpdate(t, "incus-os-cluster")

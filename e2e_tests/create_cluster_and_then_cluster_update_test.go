@@ -56,7 +56,7 @@ func createClusterAndThenClusterUpdate(t *testing.T, tmpDir string) {
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add %s https://%s --server-names %s --channel prod --services-config %s --application-seed-config %s`, cpuArch, clusterName, net.JoinHostPort(instanceIPs[0], "8443"), servers, filepath.Join(tmpDir, "services.yaml"), filepath.Join(tmpDir, "application.yaml"))
 
 	// Assertions
-	assertIncusRemote(t, clusterName)
+	assertIncusRemote(t, clusterName, names)
 	assertInventory(t, clusterName, names)
 	assertTerraformArtifact(t, clusterName)
 	assertWebsocketEventsInventoryUpdate(t, clusterName)
