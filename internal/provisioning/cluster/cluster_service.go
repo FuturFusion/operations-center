@@ -50,8 +50,9 @@ type clusterService struct {
 	provisioner      provisioning.ClusterProvisioningPort
 	warning          provisioning.WarningServicePort
 
-	createClusterRetries      int
-	createClusterRetryTimeout time.Duration
+	createClusterRetries                   int
+	createClusterRetryTimeout              time.Duration
+	createClusterCertificateNotBeforeDelay time.Duration
 
 	now func() time.Time
 
@@ -70,6 +71,12 @@ type Option func(s *clusterService)
 func WithCreateRetryTimeout(timeout time.Duration) Option {
 	return func(s *clusterService) {
 		s.createClusterRetryTimeout = timeout
+	}
+}
+
+func WithCreateClusterCertificateNotBeforeDelay(delay time.Duration) Option {
+	return func(s *clusterService) {
+		s.createClusterCertificateNotBeforeDelay = delay
 	}
 }
 
@@ -111,8 +118,9 @@ func New(
 		provisioner:      provisioner,
 		warning:          provisioning.LogWarningService{},
 
-		createClusterRetries:      6,
-		createClusterRetryTimeout: 200 * time.Millisecond,
+		createClusterRetries:                   6,
+		createClusterRetryTimeout:              200 * time.Millisecond,
+		createClusterCertificateNotBeforeDelay: 5 * time.Second,
 
 		now: time.Now,
 
@@ -365,6 +373,9 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 
 		joinTokens = append(joinTokens, joinToken)
 	}
+
+	// Make sure, the cluster certificate is already valid ("not before date" has passed).
+	time.Sleep(s.createClusterCertificateNotBeforeDelay)
 
 	// Send the join tokens to the remaining servers to join the cluster.
 	for i, server := range servers[1:] {
