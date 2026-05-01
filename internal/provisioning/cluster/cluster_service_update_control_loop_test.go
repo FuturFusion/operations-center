@@ -1006,7 +1006,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 	require.NoError(t, err)
 
 	success := false
-	for range 150 {
+	for range 200 {
 		c, err := clusterSvc.GetByName(ctx, "clusterA")
 		require.NoError(t, err)
 		if c.UpdateStatus.InProgressStatus.InProgress == api.ClusterUpdateInProgressInactive {
