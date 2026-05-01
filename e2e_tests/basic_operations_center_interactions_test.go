@@ -8,6 +8,7 @@ func basicOperationsCenterInteractions(t *testing.T, tmpDir string) {
 	assertOperationsCenterCliAdmin(t)
 	assertOperationsCenterCliQuery(t)
 	assertOperationsCenterCliSystem(t)
+	assertOperationsCenterCliProvisioningTokenSeed(t, tmpDir)
 }
 
 func basicOperationsCenterInteractionsUpdatesCleanupAndRefresh(t *testing.T, tmpDir string) {
