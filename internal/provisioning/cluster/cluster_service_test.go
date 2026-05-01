@@ -7227,29 +7227,6 @@ func TestClusterService_RemoveServer(t *testing.T) {
 			assertErr: boom.ErrorIs,
 			assertLog: log.Empty,
 		},
-		{
-			name: "error - incusClient.DeleteClusterMember - revert error",
-			serverSvcGetAllWithFilter: provisioning.Servers{
-				{
-					Name:   "serverOne",
-					Status: api.ServerStatusReady,
-					VersionData: api.ServerVersionData{
-						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
-					},
-				},
-				{
-					Name: "serverTwo",
-				},
-			},
-			serverSvcUpdateErr: queue.Errs{
-				nil,
-				boom.Error,
-			},
-			incusClientDeleteClusterMemberErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-			assertLog: log.Contains("boom!"),
-		},
 	}
 
 	for _, tc := range tests {

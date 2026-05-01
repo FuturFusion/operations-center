@@ -965,12 +965,10 @@ func (s *clusterService) RemoveServer(ctx context.Context, name string, serverNa
 		endpoint = servers[1]
 	}
 
-	var previousServer provisioning.Server
 	var removedServer provisioning.Server
 	var found bool
 	for _, server := range servers {
 		if server.Name == serverName {
-			previousServer = server
 			removedServer = server.Clone()
 			found = true
 		}
@@ -1044,25 +1042,6 @@ func (s *clusterService) RemoveServer(ctx context.Context, name string, serverNa
 		return fmt.Errorf("Failed to get incus client for server %q: %w", endpoint.GetName(), err)
 	}
 
-	removedServer.Cluster = nil
-	removedServer.ClusterCertificate = nil
-	removedServer.ClusterConnectionURL = nil
-
-	err = s.serverSvc.Update(ctx, removedServer, true, false)
-	if err != nil {
-		return fmt.Errorf("Server removal failed to update server: %w", err)
-	}
-
-	reverter := revert.New()
-	defer reverter.Fail()
-
-	reverter.Add(func() {
-		err = s.serverSvc.Update(ctx, previousServer, true, false)
-		if err != nil {
-			slog.ErrorContext(ctx, "Failed to restore server state in DB after failed removal of server from cluster", slog.String("cluster", name), slog.String("server", serverName), logger.Err(err))
-		}
-	})
-
 	// Assign "database-client" role to server.
 	memberConfig, etag, err := incusClient.GetClusterMember(serverName)
 	if err != nil {
@@ -1115,7 +1094,15 @@ func (s *clusterService) RemoveServer(ctx context.Context, name string, serverNa
 		return fmt.Errorf("Server removal failed: %w", err)
 	}
 
-	reverter.Success()
+	// Update the state in the DB as the final step, since a correct DB entry is required for the steps before (namely FactoryResetByName).
+	removedServer.Cluster = nil
+	removedServer.ClusterCertificate = nil
+	removedServer.ClusterConnectionURL = nil
+
+	err = s.serverSvc.Update(ctx, removedServer, true, false)
+	if err != nil {
+		return fmt.Errorf("Server removal failed to update server: %w", err)
+	}
 
 	return nil
 }
