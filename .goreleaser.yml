@@ -18,10 +18,9 @@ archives:
     wrap_in_directory: false
     strip_binary_directory: true
     name_template: >-
-      {{- .Binary }}_
-      {{- .Version }}_
+      {{- .Binary }}.
       {{- if eq .Os "darwin" }}macos
-      {{- else }}{{ .Os }}{{ end }}_
+      {{- else }}{{ .Os }}{{ end }}.
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "arm64" }}aarch64
       {{- else }}{{ .Arch }}{{ end }}
