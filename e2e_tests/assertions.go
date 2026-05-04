@@ -3,6 +3,8 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -298,6 +300,110 @@ func assertOperationsCenterCliUpdateCleanupAndRefresh(t *testing.T) {
 
 	// wait for updates to become ready
 	mustWaitUpdatesReady(t)
+}
+
+func assertOperationsCenterCliProvisioningTokenSeed(t *testing.T, tmpDir string) {
+	t.Helper()
+
+	t.Log("Assert operations-center cli provisioning token seed")
+
+	t.Cleanup(tokenSeedCleanup(t))
+
+	// Create token.
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token add --description "CRUD" --uses 1 --lifetime 1h`, cpuArch)
+	tokenResp := mustRun(t, `../bin/operations-center.linux.%s provisioning token list -f json | jq -r '.[] | select(.description == "CRUD") | .uuid'`, cpuArch)
+	token := tokenResp.OutputTrimmed()
+
+	err := os.WriteFile(filepath.Join(tmpDir, "incusos_seed.yaml"), incusOSSeedFileYAMLTemplate, 0o600)
+	require.NoError(t, err)
+
+	// Create seed.
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed add %s test %s/incusos_seed.yaml`, cpuArch, token, tmpDir)
+
+	// List seeds.
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed list %s -f json | jq -e -r '. | length == 1'`, cpuArch, token)
+
+	// Show seed
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed show %s test`, cpuArch, token)
+
+	// Edit seed.
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed edit %s test < %s/incusos_seed.yaml`, cpuArch, token, tmpDir)
+
+	// Remove seed
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed remove %s test`, cpuArch, token)
+
+	// Create seed.
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed add %s test2 %s/incusos_seed.yaml`, cpuArch, token, tmpDir)
+
+	// Remove token with seed.
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token remove %s`, cpuArch, token)
+}
+
+func tokenSeedCleanup(t *testing.T) func() {
+	t.Helper()
+
+	return func() {
+		if noCleanup || (noCleanupOnError && t.Failed()) {
+			return
+		}
+
+		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
+		defer cancel()
+
+		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning token list -f json | jq -r '.[] | select(.description == "CRUD") | .uuid'`, cpuArch)
+		if !resp.Success() {
+			return
+		}
+
+		token := resp.OutputTrimmed()
+		resp = runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning token remove %s || true`, cpuArch, token)
+		if !resp.Success() {
+			t.Error(resp.Error())
+			return
+		}
+	}
+}
+
+func assertOperationsCenterCliProvisioningClusterTemplate(t *testing.T, tmpDir string) {
+	t.Helper()
+
+	t.Log("Assert operations-center cli provisioning cluster-template")
+
+	// Create cluster template.
+	err := os.WriteFile(filepath.Join(tmpDir, "services_template.yaml"), incusOSClusterServicesConfigTemplate, 0o600)
+	require.NoError(t, err)
+
+	clientCertificate := getClientCertificate(t)
+
+	err = os.WriteFile(
+		filepath.Join(tmpDir, "application_template.yaml"),
+		replacePlaceholders(
+			incusOSClusterApplicationConfigTemplate,
+			map[string]string{
+				"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 6)),
+			},
+		),
+		0o600,
+	)
+	require.NoError(t, err)
+
+	err = os.WriteFile(filepath.Join(tmpDir, "variable_definition.yaml"), incusOSClusterTemplateVariableDefinition, 0o600)
+	require.NoError(t, err)
+
+	err = os.WriteFile(filepath.Join(tmpDir, "variables.yaml"), incusOSClusterTemplateVariables, 0o600)
+	require.NoError(t, err)
+
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster-template add test --services-config %s --application-seed-config %s --variables %s --description "Cluster template for incus-os-cluster"`, cpuArch, filepath.Join(tmpDir, "services_template.yaml"), filepath.Join(tmpDir, "application_template.yaml"), filepath.Join(tmpDir, "variable_definition.yaml"))
+
+	// List cluster template.
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster-template list -f json | jq -e -r '. | length == 1'`, cpuArch)
+
+	// Show cluster template.
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster-template show test`, cpuArch)
+
+	// Remove cluster template.
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster-template remove test`, cpuArch)
 }
 
 func assertIncusRemote(t *testing.T, clusterName string, serverNames []string) {

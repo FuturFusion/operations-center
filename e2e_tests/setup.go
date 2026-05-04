@@ -436,11 +436,7 @@ func createIncusOSPreseededISO(t *testing.T, tmpDir string, token string) string
 		stop := timeTrack(t)
 		defer stop()
 
-		incusOSSeedFileYAML := replacePlaceholders(incusOSSeedFileYAMLTemplate,
-			map[string]string{},
-		)
-
-		err := os.WriteFile(filepath.Join(tmpDir, "incusos_seed.yaml"), incusOSSeedFileYAML, 0o600)
+		err := os.WriteFile(filepath.Join(tmpDir, "incusos_seed.yaml"), incusOSSeedFileYAMLTemplate, 0o600)
 		require.NoError(t, err)
 
 		mustRunWithTimeout(t, `../bin/operations-center.linux.%[1]s provisioning token get-image %[2]s %[3]s/%[4]s %[3]s/incusos_seed.yaml`, 10*time.Minute, cpuArch, token, tmpDir, incusOSPreseededISOFilename)
@@ -457,11 +453,7 @@ func createIncusOSPreseededISOFromTokenSeed(t *testing.T, tmpDir string, token s
 		stop := timeTrack(t)
 		defer stop()
 
-		incusOSSeedFileYAML := replacePlaceholders(incusOSSeedFileYAMLTemplate,
-			map[string]string{},
-		)
-
-		err := os.WriteFile(filepath.Join(tmpDir, "incusos_seed.yaml"), incusOSSeedFileYAML, 0o600)
+		err := os.WriteFile(filepath.Join(tmpDir, "incusos_seed.yaml"), incusOSSeedFileYAMLTemplate, 0o600)
 		require.NoError(t, err)
 
 		t.Cleanup(cleanupTokenSeed(t, token))

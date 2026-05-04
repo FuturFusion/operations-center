@@ -144,13 +144,14 @@ func prodChannelCleanup(t *testing.T) func() {
 		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -r '.[] | select(.channels | index("prod")) | .uuid'`, cpuArch)
 		if !resp.Success() {
 			t.Error(resp.Error())
-		} else {
-			for updateUUID := range strings.Lines(resp.Output()) {
-				updateUUID = strings.TrimSpace(updateUUID)
-				resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning update assign-channels %s --channel stable`, cpuArch, updateUUID)
-				if !resp.Success() {
-					t.Error(resp.Error())
-				}
+			return
+		}
+
+		for updateUUID := range strings.Lines(resp.Output()) {
+			updateUUID = strings.TrimSpace(updateUUID)
+			resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning update assign-channels %s --channel stable`, cpuArch, updateUUID)
+			if !resp.Success() {
+				t.Error(resp.Error())
 			}
 		}
 	}
