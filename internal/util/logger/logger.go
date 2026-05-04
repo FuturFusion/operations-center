@@ -259,5 +259,5 @@ func Err(err error) slog.Attr {
 }
 
 func AddStacktrace() slog.Attr {
-	return slog.Bool("add-stacktrace", true)
+	return slog.Bool("add_stacktrace", true)
 }
