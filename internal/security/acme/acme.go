@@ -91,7 +91,7 @@ func UpdateCertificate(
 	cfg system.SecurityACME,
 	force bool,
 ) (*system.CertificatePost, error) {
-	log := slog.With(slog.String("domain", cfg.Domain), slog.String("caURL", cfg.CAURL), slog.String("challenge", string(cfg.Challenge)))
+	log := slog.With(slog.String("domain", cfg.Domain), slog.String("ca_url", cfg.CAURL), slog.String("challenge", string(cfg.Challenge)))
 	if cfg.Domain == "" || cfg.Email == "" || cfg.CAURL == "" || !cfg.AgreeTOS {
 		return nil, nil
 	}
