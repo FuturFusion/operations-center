@@ -88,7 +88,7 @@ endif
 .PHONY: lint
 lint:
 ifeq ($(shell command -v golangci-lint),)
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$($(GO) env GOPATH)/bin
+	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $$($(GO) env GOPATH)/bin
 endif
 	golangci-lint run ./...
 	run-parts $(shell run-parts -V >/dev/null 2>&1 && echo -n "--verbose --exit-on-error --regex '\.sh$$'") scripts/lint
