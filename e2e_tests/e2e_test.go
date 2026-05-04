@@ -35,7 +35,16 @@ func TestE2E_WithToken_CreateCluster(t *testing.T) {
 		t,
 		"token - create cluster",
 		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
-		createCluster(),
+		createCluster([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
+	)
+}
+
+func TestE2E_WithToken_CreateSingleNodeCluster(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - create single node cluster",
+		setupIncusOSWithToken([]string{"IncusOS01"}),
+		createCluster([]string{"IncusOS01"}),
 	)
 }
 
@@ -80,7 +89,7 @@ func TestE2E_WithTokenSeed_CreateCluster(t *testing.T) {
 		t,
 		"token seed - create cluster",
 		setupIncusOSWithTokenSeed,
-		createCluster(),
+		createCluster([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
 	)
 }
 
@@ -98,7 +107,7 @@ func TestE2E_FromManualUpload_CreateCluster(t *testing.T) {
 		t,
 		"download update - upload update - create channel - assign manual uploaded update - create cluster",
 		setupIncusOSFromManualUpload,
-		createClusterWithChannelName("manual"),
+		createClusterWithChannelName("manual", []string{"IncusOS01", "IncusOS02", "IncusOS03"}),
 	)
 }
 

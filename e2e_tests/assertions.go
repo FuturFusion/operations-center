@@ -286,7 +286,7 @@ func assertOperationsCenterCliSystem(t *testing.T) {
 	require.True(t, success, "operations-center cli system assertions failed")
 }
 
-func assertIncusRemote(t *testing.T, clusterName string) {
+func assertIncusRemote(t *testing.T, clusterName string, serverNames []string) {
 	t.Helper()
 
 	t.Log("Add incus remote")
@@ -307,7 +307,7 @@ func assertIncusRemote(t *testing.T, clusterName string) {
 		mustRunWithContext(ctx, t, `incus remote remove %s`, clusterName)
 	})
 
-	mustRun(t, `incus cluster list %s: -f json | jq -r -e '. | length == 3'`, clusterName)
+	mustRun(t, `incus cluster list %s: -f json | jq -r -e '. | length == %d'`, clusterName, len(serverNames))
 }
 
 func assertInventory(t *testing.T, clusterName string, names []string) {
@@ -329,9 +329,9 @@ func assertInventory(t *testing.T, clusterName string, names []string) {
 	}
 
 	resp = run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.cluster == "%s" and .server_type == "incus" and .server_status == "ready") ] | length == %d'`, cpuArch, clusterName, len(names))
-	require.NoError(t, resp.err, "expect 3 incus servers in ready state")
+	require.NoError(t, resp.err, "expect %d incus servers in ready state", len(names))
 	if !resp.Success() {
-		t.Error("expect 3 incus servers in ready state")
+		t.Errorf("expect %d incus servers in ready state", len(names))
 		success = false
 		fmt.Println("====[ Server List ]====")
 		resp := mustRun(t, "../bin/operations-center.linux.%s provisioning server list", cpuArch)

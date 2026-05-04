@@ -12,15 +12,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createCluster() func(t *testing.T, tmpDir string) {
-	return createClusterWithChannelName("stable")
+func createCluster(serverNames []string) func(t *testing.T, tmpDir string) {
+	return createClusterWithChannelName("stable", serverNames)
 }
 
 func createClusterAndAddServer() func(t *testing.T, tmpDir string) {
 	return func(t *testing.T, tmpDir string) {
 		t.Helper()
 
-		createClusterWithChannelName("stable")(t, tmpDir)
+		createClusterWithChannelName("stable", []string{"IncusOS01", "IncusOS02", "IncusOS03"})(t, tmpDir)
 
 		// Update LVM settings.
 		err := os.WriteFile(filepath.Join(tmpDir, "lvm_enable.yaml"), incusOSServiceLVMConfig, 0o600)
@@ -36,7 +36,7 @@ func createClusterAndAddServer() func(t *testing.T, tmpDir string) {
 	}
 }
 
-func createClusterWithChannelName(channelName string) func(t *testing.T, tmpDir string) {
+func createClusterWithChannelName(channelName string, serverNames []string) func(t *testing.T, tmpDir string) {
 	return func(t *testing.T, tmpDir string) {
 		t.Helper()
 
@@ -67,19 +67,17 @@ func createClusterWithChannelName(channelName string) func(t *testing.T, tmpDir 
 		)
 		require.NoError(t, err)
 
-		names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
+		instanceIPs, _ := mustGetInstanceIPAndNames(t, serverNames)
 
-		instanceIPs, _ := mustGetInstanceIPAndNames(t, names)
-
-		servers := strings.Join(names, " --server-names ")
+		servers := strings.Join(serverNames, " --server-names ")
 
 		// Run test
 		t.Log("Create cluster")
 		mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add incus-os-cluster https://%s --server-names %s --channel %s --services-config %s --application-seed-config %s`, cpuArch, net.JoinHostPort(instanceIPs[0], "8443"), servers, channelName, filepath.Join(tmpDir, "services.yaml"), filepath.Join(tmpDir, "application.yaml"))
 
 		// Assertions
-		assertIncusRemote(t, "incus-os-cluster")
-		assertInventory(t, "incus-os-cluster", names)
+		assertIncusRemote(t, "incus-os-cluster", serverNames)
+		assertInventory(t, "incus-os-cluster", serverNames)
 		assertTerraformArtifact(t, "incus-os-cluster")
 		assertWebsocketEventsInventoryUpdate(t, "incus-os-cluster")
 	}

@@ -78,6 +78,6 @@ func factoryResetCluster(t *testing.T, tmpDir string) {
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add incus-os-cluster-after-factory-reset https://%s --server-names %s --services-config %s --application-seed-config %s`, cpuArch, net.JoinHostPort(instanceIPs[0], "8443"), servers, filepath.Join(tmpDir, "services.yaml"), filepath.Join(tmpDir, "application-post-factory-reset.yaml"))
 
 	// Assertions
-	assertIncusRemote(t, "incus-os-cluster-after-factory-reset")
+	assertIncusRemote(t, "incus-os-cluster-after-factory-reset", names)
 	assertInventory(t, "incus-os-cluster-after-factory-reset", names)
 }
