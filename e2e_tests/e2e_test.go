@@ -13,8 +13,19 @@ func TestE2E_WithToken_SetupOnly(t *testing.T) {
 	runE2ETest(
 		t,
 		"token - basic operations center interactions",
-		setupIncusOSWithToken([]string{"IncusOS01"}),
+		func(t *testing.T, tmpDir string) {
+			t.Helper()
+		},
 		basicOperationsCenterInteractions,
+	)
+}
+
+func TestE2E_WithToken_RegisterServer(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - basic operations center interactions",
+		setupIncusOSWithToken([]string{"IncusOS01"}),
+		registerServer,
 	)
 }
 
