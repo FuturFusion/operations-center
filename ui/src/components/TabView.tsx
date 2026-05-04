@@ -35,7 +35,7 @@ const TabView: FC<TabViewProps> = ({
 
   return (
     <Tabs
-      defaultActiveKey={activeKey}
+      activeKey={activeKey}
       id="uncontrolled-tab-example"
       className="mb-3"
       onSelect={(key) => onSelect(key)}

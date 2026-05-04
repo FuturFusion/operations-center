@@ -6,6 +6,7 @@ import {
   deleteClusterTemplate,
   fetchClusterTemplate,
 } from "api/cluster_template";
+import Breadcrumbs from "components/Breadcrumbs";
 import ModalWindow from "components/ModalWindow";
 import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
@@ -67,6 +68,7 @@ const ClusterTemplateDetail = () => {
 
   return (
     <div className="d-flex flex-column">
+      <Breadcrumbs />
       <div className="scroll-container flex-grow-1 p-3">
         <TabView
           defaultTab="overview"

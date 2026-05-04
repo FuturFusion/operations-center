@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router";
 import { fetchUpdate } from "api/update";
+import Breadcrumbs from "components/Breadcrumbs";
 import TabView from "components/TabView";
 import UpdateConfiguration from "pages/UpdateConfiguration";
 import UpdateFiles from "pages/UpdateFiles";
@@ -47,6 +48,7 @@ const UpdateDetail = () => {
 
   return (
     <div className="d-flex flex-column">
+      <Breadcrumbs />
       <div className="scroll-container flex-grow-1 p-3">
         <TabView
           defaultTab="overview"

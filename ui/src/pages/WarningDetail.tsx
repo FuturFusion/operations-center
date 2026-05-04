@@ -2,6 +2,7 @@ import Button from "react-bootstrap/Button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router";
 import { fetchWarning, updateWarning } from "api/warnings";
+import Breadcrumbs from "components/Breadcrumbs";
 import WarningOverview from "components/WarningOverview";
 import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
@@ -58,6 +59,7 @@ const WarningDetail = () => {
 
   return (
     <div className="d-flex flex-column">
+      <Breadcrumbs />
       <div className="scroll-container flex-grow-1 p-3">
         <TabView
           defaultTab="overview"

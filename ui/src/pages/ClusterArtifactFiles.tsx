@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { downloadArtifactFile, fetchClusterArtifact } from "api/cluster";
+import Breadcrumbs from "components/Breadcrumbs";
 import DataTable from "components/DataTable";
 import { useNotification } from "context/notificationContext";
 import { bytesToHumanReadable, downloadFile } from "util/util";
@@ -80,6 +81,7 @@ const ClusterArtifactFiles = () => {
   return (
     <>
       <div className="d-flex flex-column">
+        <Breadcrumbs />
         <div className="scroll-container flex-grow-1">
           <DataTable headers={headers} rows={rows} />
         </div>

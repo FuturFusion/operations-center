@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
 import { useNotification } from "context/notificationContext";
 import { createToken } from "api/token";
+import Breadcrumbs from "components/Breadcrumbs";
 import TokenForm from "components/TokenForm";
 import { TokenFormValues } from "types/token";
 
@@ -25,6 +26,7 @@ const TokenCreate = () => {
 
   return (
     <div className="d-flex flex-column">
+      <Breadcrumbs />
       <div className="scroll-container flex-grow-1 p-3">
         <TokenForm onSubmit={onSubmit} />
       </div>

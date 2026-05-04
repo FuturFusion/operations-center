@@ -3,6 +3,7 @@ import { Button } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { deleteChannel, fetchChannel } from "api/channel";
+import Breadcrumbs from "components/Breadcrumbs";
 import ModalWindow from "components/ModalWindow";
 import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
@@ -64,6 +65,7 @@ const ChannelDetail = () => {
 
   return (
     <div className="d-flex flex-column">
+      <Breadcrumbs />
       <div className="scroll-container flex-grow-1 p-3">
         <TabView
           defaultTab="overview"

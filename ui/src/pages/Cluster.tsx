@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from "react-router";
+import Breadcrumbs from "components/Breadcrumbs";
 import TabView from "components/TabView";
 import ClusterList from "pages/ClusterList";
 import ClusterTemplate from "pages/ClusterTemplate";
@@ -22,6 +23,7 @@ const Cluster = () => {
 
   return (
     <div className="d-flex flex-column">
+      <Breadcrumbs />
       <div className="scroll-container flex-grow-1 p-3">
         <TabView
           defaultTab="clusters"

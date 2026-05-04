@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router";
 import { createCluster } from "api/cluster";
+import Breadcrumbs from "components/Breadcrumbs";
 import TabView from "components/TabView";
 import ClusterCreateForm from "components/ClusterCreateForm";
 import { useNotification } from "context/notificationContext";
@@ -40,6 +41,7 @@ const ClusterCreate = () => {
 
   return (
     <div className="d-flex flex-column">
+      <Breadcrumbs />
       <div className="scroll-container flex-grow-1 p-3">
         <TabView
           defaultTab="manual"
