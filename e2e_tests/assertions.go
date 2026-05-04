@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -157,39 +158,128 @@ func assertOperationsCenterCliSystem(t *testing.T) {
 
 	t.Log("Assert operations-center cli system")
 
+	// system network show (backup original value
+	resp = mustRun(t, `../bin/operations-center.linux.%s system network show`, cpuArch)
+	matches := regexp.MustCompile("(?m)^address: (.*)$").FindAllStringSubmatch(resp.Output(), -1)
+	if len(matches) != 1 || len(matches[0]) != 2 {
+		t.Fatalf("address match not found, got: %v", matches)
+	}
+
+	previousAddress := matches[0][1]
+
+	// system network edit
+	resp = run(t, `EDITOR='sed -i "s|^address: .*|address: https://127.0.0.1:8443|"' script -q -c '../bin/operations-center.linux.%s system network edit' /dev/null`, cpuArch)
+	require.NoError(t, resp.err, "expect operations-center system network edit to work")
+	if !resp.Success() {
+		t.Errorf("expect operations-center system network edit to work")
+		success = false
+		fmt.Println(resp.Output())
+	}
+
+	// system network show
 	resp = run(t, `../bin/operations-center.linux.%s system network show`, cpuArch)
-	require.NoError(t, resp.err, "expect operations center system network show to work")
+	require.NoError(t, resp.err, "expect operations-center system network show to work")
 	if !resp.Success() {
-		t.Errorf("expect operations center system network show to work")
+		t.Errorf("expect operations-center system network show to work")
 		success = false
-		resp = mustRun(t, "../bin/operations-center.linux.%s system network show", cpuArch)
+		fmt.Println(resp.Output())
+	} else {
+		require.Contains(t, resp.Output(), "address: https://127.0.0.1:8443")
+	}
+
+	// system network edit (reset)
+	resp = run(t, `EDITOR='sed -i "s|^address: .*|address: %s|"' script -q -c '../bin/operations-center.linux.%s system network edit' /dev/null`, previousAddress, cpuArch)
+	require.NoError(t, resp.err, "expect operations-center system network edit to work")
+	if !resp.Success() {
+		t.Errorf("expect operations-center system network edit to work")
+		success = false
 		fmt.Println(resp.Output())
 	}
 
+	// system security edit
+	resp = run(t, `EDITOR='sed -i "/^trusted_tls_client_cert_fingerprints:/a\\  - ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"' script -q -c '../bin/operations-center.linux.%s system security edit' /dev/null`, cpuArch)
+	require.NoError(t, resp.err, "expect operations-center system security edit to work")
+	if !resp.Success() {
+		t.Errorf("expect operations-center system security edit to work")
+		success = false
+		fmt.Println(resp.Output())
+	}
+
+	// system security show
 	resp = run(t, `../bin/operations-center.linux.%s system security show`, cpuArch)
-	require.NoError(t, resp.err, "expect operations center system security show to work")
+	require.NoError(t, resp.err, "expect operations-center system security show to work")
 	if !resp.Success() {
-		t.Errorf("expect operations center system security show to work")
+		t.Errorf("expect operations-center system security show to work")
 		success = false
-		resp = mustRun(t, "../bin/operations-center.linux.%s system security show", cpuArch)
+		fmt.Println(resp.Output())
+	} else {
+		require.Contains(t, resp.Output(), "  - ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+	}
+
+	// system security edit (reset)
+	resp = run(t, `EDITOR='sed -i "/^  - ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff/d"' script -q -c '../bin/operations-center.linux.%s system security edit' /dev/null`, cpuArch)
+	require.NoError(t, resp.err, "expect operations-center system security edit to work")
+	if !resp.Success() {
+		t.Errorf("expect operations-center system security edit to work")
+		success = false
 		fmt.Println(resp.Output())
 	}
 
+	// system settings edit
+	resp = run(t, `EDITOR='sed -i "s|^log_level: .*|log_level: ERROR|"' script -q -c '../bin/operations-center.linux.%s system settings edit' /dev/null`, cpuArch)
+	require.NoError(t, resp.err, "expect operations-center system settings edit to work")
+	if !resp.Success() {
+		t.Errorf("expect operations-center system settings edit to work")
+		success = false
+		fmt.Println(resp.Output())
+	}
+
+	// system settings show
 	resp = run(t, `../bin/operations-center.linux.%s system settings show`, cpuArch)
-	require.NoError(t, resp.err, "expect operations center system settings show to work")
+	require.NoError(t, resp.err, "expect operations-center system settings show to work")
 	if !resp.Success() {
-		t.Errorf("expect operations center system settings show to work")
+		t.Errorf("expect operations-center system settings show to work")
 		success = false
-		resp = mustRun(t, "../bin/operations-center.linux.%s system settings show", cpuArch)
+		fmt.Println(resp.Output())
+	} else {
+		require.Contains(t, resp.Output(), "log_level: ERROR")
+	}
+
+	// system settings edit (reset)
+	resp = run(t, `EDITOR='sed -i "s|^log_level: .*|log_level: INFO|"' script -q -c '../bin/operations-center.linux.%s system settings edit' /dev/null`, cpuArch)
+	require.NoError(t, resp.err, "expect operations-center system settings edit to work")
+	if !resp.Success() {
+		t.Errorf("expect operations-center system settings edit to work")
+		success = false
 		fmt.Println(resp.Output())
 	}
 
-	resp = run(t, `../bin/operations-center.linux.%s system updates show`, cpuArch)
-	require.NoError(t, resp.err, "expect operations center system updates show to work")
+	// system updates edit
+	resp = run(t, `EDITOR='sed -i "s|^filter_expression: .*|filter_expression: \"true\"|"' script -q -c '../bin/operations-center.linux.%s system updates edit' /dev/null`, cpuArch)
+	require.NoError(t, resp.err, "expect operations-center system updates edit to work")
 	if !resp.Success() {
-		t.Errorf("expect operations center system updates show to work")
+		t.Errorf("expect operations-center system updates edit to work")
 		success = false
-		resp = mustRun(t, "../bin/operations-center.linux.%s system updates show", cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	// system updates show
+	resp = run(t, `../bin/operations-center.linux.%s system updates show`, cpuArch)
+	require.NoError(t, resp.err, "expect operations-center system updates show to work")
+	if !resp.Success() {
+		t.Errorf("expect operations-center system updates show to work")
+		success = false
+		fmt.Println(resp.Output())
+	} else {
+		require.Contains(t, resp.Output(), `filter_expression: "true"`)
+	}
+
+	// system updates edit (reset)
+	resp = run(t, `EDITOR='sed -i "s|^filter_expression: .*|filter_expression: '\''\"stable\" in upstream_channels'\''|"' script -q -c '../bin/operations-center.linux.%s system updates edit' /dev/null`, cpuArch)
+	require.NoError(t, resp.err, "expect operations-center system updates edit to work")
+	if !resp.Success() {
+		t.Errorf("expect operations-center system updates edit to work")
+		success = false
 		fmt.Println(resp.Output())
 	}
 
