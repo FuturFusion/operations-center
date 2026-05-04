@@ -3,6 +3,7 @@ import { Button } from "react-bootstrap";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router";
 import { deleteToken, fetchToken } from "api/token";
+import Breadcrumbs from "components/Breadcrumbs";
 import ModalWindow from "components/ModalWindow";
 import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
@@ -70,6 +71,7 @@ const TokenDetail = () => {
 
   return (
     <div className="d-flex flex-column">
+      <Breadcrumbs />
       <div className="scroll-container flex-grow-1 p-3">
         <TabView
           defaultTab="overview"

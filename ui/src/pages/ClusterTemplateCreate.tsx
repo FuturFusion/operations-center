@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
 import { useNotification } from "context/notificationContext";
 import { createClusterTemplate } from "api/cluster_template";
+import Breadcrumbs from "components/Breadcrumbs";
 import ClusterTemplateForm from "components/ClusterTemplateForm";
 import { ClusterTemplateFormValues } from "types/cluster_template";
 
@@ -25,6 +26,7 @@ const ClusterTemplateCreate = () => {
 
   return (
     <div className="d-flex flex-column">
+      <Breadcrumbs />
       <div className="scroll-container flex-grow-1 p-3">
         <ClusterTemplateForm onSubmit={onSubmit} />
       </div>

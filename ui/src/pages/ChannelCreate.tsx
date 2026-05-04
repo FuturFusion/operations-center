@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
 import { useNotification } from "context/notificationContext";
 import { createChannel } from "api/channel";
+import Breadcrumbs from "components/Breadcrumbs";
 import ChannelForm from "components/ChannelForm";
 import type { Channel } from "types/channel";
 
@@ -25,6 +26,7 @@ const ChannelCreate = () => {
 
   return (
     <div className="d-flex flex-column">
+      <Breadcrumbs />
       <div className="scroll-container flex-grow-1 p-3">
         <ChannelForm onSubmit={onSubmit} />
       </div>

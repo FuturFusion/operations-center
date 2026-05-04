@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from "react-router";
+import Breadcrumbs from "components/Breadcrumbs";
 import TabView from "components/TabView";
 import UpdateList from "pages/UpdateList";
 import Channel from "pages/Channel";
@@ -22,6 +23,7 @@ const Update = () => {
 
   return (
     <div className="d-flex flex-column">
+      <Breadcrumbs />
       <div className="scroll-container flex-grow-1 p-3">
         <TabView
           defaultTab="images"

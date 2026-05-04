@@ -3,6 +3,7 @@ import { Button, Form } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { deleteCluster, fetchCluster } from "api/cluster";
+import Breadcrumbs from "components/Breadcrumbs";
 import LoadingButton from "components/LoadingButton";
 import ModalWindow from "components/ModalWindow";
 import TabView from "components/TabView";
@@ -78,6 +79,7 @@ const ClusterDetail = () => {
 
   return (
     <div className="d-flex flex-column">
+      <Breadcrumbs />
       <div className="scroll-container flex-grow-1 p-3">
         <TabView
           defaultTab="overview"

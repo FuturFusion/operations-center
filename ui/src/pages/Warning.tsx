@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { fetchWarnings } from "api/warnings";
+import Breadcrumbs from "components/Breadcrumbs";
 import DataTable from "components/DataTable";
 import { formatDate } from "util/date";
 
@@ -80,6 +81,7 @@ const Warning = () => {
 
   return (
     <div className="d-flex flex-column">
+      <Breadcrumbs />
       <div className="scroll-container flex-grow-1 p-3">
         <DataTable headers={headers} rows={rows} />
       </div>
