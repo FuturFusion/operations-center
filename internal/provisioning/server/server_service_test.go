@@ -179,7 +179,9 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 					}, nil
 				},
 				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
-					return api.ServerVersionData{}, nil
+					return api.ServerVersionData{
+						UpdateChannel: "stable",
+					}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
 					return api.ServerTypeIncus, nil
@@ -384,6 +386,7 @@ one
 			serverSvc := provisioningServer.New(repo, client, nil, tokenSvc, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithInitialConnectionDelay(0), // Disable delay for initial connection test
+				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
 			// Run test
@@ -1098,7 +1101,9 @@ func TestServerService_GetByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, updateSvc, tls.Certificate{})
+			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
+			)
 
 			// Run test
 			server, err := serverSvc.GetByName(t.Context(), tc.nameArg)
@@ -1350,7 +1355,7 @@ one
 
 			client := &adapterMock.ServerClientPortMock{
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
-					return errors.New("") // short cirquite pollServer, since we don't care about this part in this test.
+					return errors.New("") // short circuit pollServer, since we don't care about this part in this test.
 				},
 				IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
 					return nil
@@ -2647,7 +2652,9 @@ func TestServerService_SelfUpdate(t *testing.T) {
 					}, nil
 				},
 				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
-					return api.ServerVersionData{}, nil
+					return api.ServerVersionData{
+						UpdateChannel: "stable",
+					}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
 					return api.ServerTypeIncus, nil
@@ -2801,7 +2808,9 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 					}, nil
 				},
 				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
-					return api.ServerVersionData{}, nil
+					return api.ServerVersionData{
+						UpdateChannel: "stable",
+					}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
 					return api.ServerTypeIncus, nil
@@ -3089,7 +3098,9 @@ func TestServerService_PollServers(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, nil, tls.Certificate{}, provisioningServer.WithWarningEmitter(provisioning.LogWarningService{}))
+			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, nil, tls.Certificate{},
+				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
+			)
 
 			// Run test
 			err := serverSvc.PollServers(t.Context(), provisioning.ServerFilter{
@@ -4346,7 +4357,9 @@ func TestServerService_PollServer_in_transaction(t *testing.T) {
 		},
 	}
 
-	serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{})
+	serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+		provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
+	)
 
 	// Run test
 	err = transaction.Do(t.Context(), func(ctx context.Context) error {
@@ -4554,7 +4567,9 @@ func TestServerService_ResyncByName(t *testing.T) {
 					}, nil
 				},
 				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
-					return api.ServerVersionData{}, nil
+					return api.ServerVersionData{
+						UpdateChannel: "stable",
+					}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
 					return api.ServerTypeIncus, nil
@@ -4569,6 +4584,7 @@ func TestServerService_ResyncByName(t *testing.T) {
 
 			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, serverCertificate,
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
+				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
 			// Run test
@@ -5299,7 +5315,9 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{})
+			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
+				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
+			)
 
 			if tc.initVolatileServerState != nil {
 				tc.initVolatileServerState(serverSvc)
@@ -5475,7 +5493,9 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{})
+			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
+				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
+			)
 
 			// Run test
 			err = serverSvc.PoweroffSystemByName(t.Context(), "one", tc.argForce)
@@ -5669,7 +5689,9 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{})
+			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
+				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
+			)
 
 			if tc.initVolatileServerState != nil {
 				tc.initVolatileServerState(serverSvc)
@@ -6022,7 +6044,9 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{})
+			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
+				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
+			)
 
 			if tc.initVolatileServerState != nil {
 				tc.initVolatileServerState(serverSvc)
@@ -6123,7 +6147,9 @@ func TestServerService_PostRestoreSystemDoneByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, updateSvc, tls.Certificate{})
+			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
+			)
 
 			// Run test
 			err := serverSvc.PostRestoreSystemDoneByName(t.Context(), "one")
@@ -6358,7 +6384,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 					return tc.clientUpdateOSErr
 				},
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
-					return errors.New("") // short cirquite pollServer, since we don't care about this part in this test.
+					return errors.New("") // short circuit pollServer, since we don't care about this part in this test.
 				},
 				IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
 					return nil
@@ -6386,7 +6412,9 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, channelSvc, updateSvc, tls.Certificate{})
+			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, channelSvc, updateSvc, tls.Certificate{},
+				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
+			)
 
 			// Run test
 			err = serverSvc.UpdateSystemByName(t.Context(), "one", tc.argUpdateRequest, tc.argForce)

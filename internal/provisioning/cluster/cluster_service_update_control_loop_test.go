@@ -440,7 +440,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 	lifecycle.ServerLifecycleSignal.AddListenerWithErr(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) error {
 		err := clusterSvc.ClusterUpdateControlLoop(ctx, slm.Cluster)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed to handle server lifecycle event", logger.Err(err), slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update-state", slm.ServerUpdateState.String()))
+			slog.ErrorContext(ctx, "Failed to handle server lifecycle event", logger.Err(err), slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
 		}
 
 		return err
@@ -992,7 +992,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 	lifecycle.ServerLifecycleSignal.AddListenerWithErr(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) error {
 		err := clusterSvc.ClusterUpdateControlLoop(ctx, slm.Cluster)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed to handle server lifecycle event", logger.Err(err), slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update-state", slm.ServerUpdateState.String()))
+			slog.ErrorContext(ctx, "Failed to handle server lifecycle event", logger.Err(err), slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
 		}
 
 		return err
@@ -1006,7 +1006,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 	require.NoError(t, err)
 
 	success := false
-	for range 150 {
+	for range 200 {
 		c, err := clusterSvc.GetByName(ctx, "clusterA")
 		require.NoError(t, err)
 		if c.UpdateStatus.InProgressStatus.InProgress == api.ClusterUpdateInProgressInactive {

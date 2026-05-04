@@ -1790,12 +1790,6 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 			return fmt.Errorf("Failed to get version data from server %q: %w", server.Name, err)
 		}
 
-		scope := api.WarningScope{
-			Scope:      "poll_server",
-			EntityType: "server",
-			Entity:     server.Name,
-		}
-
 		if server.Channel != versionData.UpdateChannel {
 			s.warning.Emit(ctx,
 				warning.NewWarning(
@@ -1804,8 +1798,6 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 					fmt.Sprintf("Update channel %q reported by server does not match expected update channel %q", versionData.UpdateChannel, server.Channel),
 				),
 			)
-		} else {
-			s.warning.RemoveStale(ctx, scope, nil)
 		}
 
 		// For now, we ignore the error and we are fine to persist type "unknown",

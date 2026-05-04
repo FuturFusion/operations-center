@@ -3235,6 +3235,7 @@ func TestClusterService_Create(t *testing.T) {
 				map[domain.ResourceType]provisioning.InventorySyncer{domain.ResourceTypeImage: inventorySyncer},
 				provisioner,
 				provisioningCluster.WithCreateRetryTimeout(0),
+				provisioningCluster.WithCreateClusterCertificateNotBeforeDelay(0),
 			)
 
 			var signalHandlerCalled bool

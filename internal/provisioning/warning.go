@@ -32,3 +32,15 @@ func (LogWarningService) Emit(ctx context.Context, warn warning.Warning) {
 func (LogWarningService) RemoveStale(_ context.Context, _ api.WarningScope, _ warning.Warnings) {
 	_ = true // no-op
 }
+
+type NoopWarningService struct{}
+
+var _ WarningServicePort = NoopWarningService{}
+
+func (NoopWarningService) Emit(ctx context.Context, warn warning.Warning) {
+	_ = true // no-op
+}
+
+func (NoopWarningService) RemoveStale(_ context.Context, _ api.WarningScope, _ warning.Warnings) {
+	_ = true // no-op
+}
