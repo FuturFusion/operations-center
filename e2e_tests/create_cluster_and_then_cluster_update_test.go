@@ -52,13 +52,19 @@ func createClusterAndThenClusterUpdate(t *testing.T, tmpDir string) {
 
 	// Run test
 	t.Log("Create cluster")
-	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add incus-os-cluster https://%s --server-names %s --channel prod --services-config %s --application-seed-config %s`, cpuArch, net.JoinHostPort(instanceIPs[0], "8443"), servers, filepath.Join(tmpDir, "services.yaml"), filepath.Join(tmpDir, "application.yaml"))
+	clusterName := "incus-os-cluster"
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add %s https://%s --server-names %s --channel prod --services-config %s --application-seed-config %s`, cpuArch, clusterName, net.JoinHostPort(instanceIPs[0], "8443"), servers, filepath.Join(tmpDir, "services.yaml"), filepath.Join(tmpDir, "application.yaml"))
 
 	// Assertions
-	assertIncusRemote(t, "incus-os-cluster")
-	assertInventory(t, "incus-os-cluster", names)
-	assertTerraformArtifact(t, "incus-os-cluster")
-	assertWebsocketEventsInventoryUpdate(t, "incus-os-cluster")
+	assertIncusRemote(t, clusterName)
+	assertInventory(t, clusterName, names)
+	assertTerraformArtifact(t, clusterName)
+	assertWebsocketEventsInventoryUpdate(t, clusterName)
+
+	t.Log("Start some small VMs for the cluster to have some minimal workload.")
+	for i := range names {
+		mustRun(t, `incus launch --vm images:alpine/edge %s:mini-alpine-%d -c limits.cpu=1 -c limits.memory=256MiB -c security.secureboot=false -c migration.stateful=true`, clusterName, i)
+	}
 
 	t.Cleanup(prodChannelCleanup(t))
 
@@ -89,12 +95,12 @@ func createClusterAndThenClusterUpdate(t *testing.T, tmpDir string) {
 	previousUpdateStatusDescription := ""
 
 	for {
-		resp := mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "incus-os-cluster") | .update_status.in_progress_status.in_progress'`, cpuArch)
+		resp := mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.in_progress'`, cpuArch, clusterName)
 		if resp.OutputTrimmed() == "" {
 			break
 		}
 
-		resp = mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "incus-os-cluster") | .update_status.in_progress_status.status_description // ""'`, cpuArch)
+		resp = mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.status_description // ""'`, cpuArch, clusterName)
 		statusDescription := resp.OutputTrimmed()
 
 		if statusDescription != previousUpdateStatusDescription {
