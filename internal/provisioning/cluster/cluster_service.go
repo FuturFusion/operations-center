@@ -2104,7 +2104,7 @@ func (s *clusterService) AddServerSystemNetworkVLANTags(ctx context.Context, clu
 			server.OSData.Network.Config = currentNetworkConfig[server.Name]
 			revertErr := s.client.UpdateNetworkConfig(ctx, server)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated network configuration", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.ConnectionURL), slog.Any("vlan-tags", vlanTags), slog.Any("root-cause", err))
+				slog.ErrorContext(ctx, "Failed to revert previously updated network configuration", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.ConnectionURL), slog.Any("vlan_tags", vlanTags), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -2179,7 +2179,7 @@ func (s *clusterService) RemoveServerSystemNetworkVLANTags(ctx context.Context, 
 			server.OSData.Network.Config = currentNetworkConfig[server.Name]
 			revertErr := s.client.UpdateNetworkConfig(ctx, server)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated network configuration", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.ConnectionURL), slog.Any("vlan-tags", vlanTags), slog.Any("root-cause", err))
+				slog.ErrorContext(ctx, "Failed to revert previously updated network configuration", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.ConnectionURL), slog.Any("vlan_tags", vlanTags), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -2220,7 +2220,7 @@ func (s *clusterService) UpdateSystemLogging(ctx context.Context, clusterName st
 		reverter.Add(func() {
 			revertErr := s.serverSvc.UpdateSystemLogging(ctx, server.Name, currentLoggingConfig)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated logging config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("logging-config", currentLoggingConfig), slog.Any("root-cause", err))
+				slog.ErrorContext(ctx, "Failed to revert previously updated logging config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("logging_config", currentLoggingConfig), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -2261,7 +2261,7 @@ func (s *clusterService) UpdateSystemKernel(ctx context.Context, clusterName str
 		reverter.Add(func() {
 			revertErr := s.serverSvc.UpdateSystemKernel(ctx, server.Name, currentKernelConfig)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated kernel config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("kernel-config", currentKernelConfig), slog.Any("root-cause", err))
+				slog.ErrorContext(ctx, "Failed to revert previously updated kernel config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("kernel_config", currentKernelConfig), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -2343,7 +2343,7 @@ func (s *clusterService) AddStorageTargetISCSI(ctx context.Context, clusterName 
 		reverter.Add(func() {
 			revertErr := s.client.UpdateOSService(ctx, server, "iscsi", currentISCSIConfig)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated iscsi service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentISCSIConfig), slog.Any("root-cause", err))
+				slog.ErrorContext(ctx, "Failed to revert previously updated iscsi service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentISCSIConfig), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -2405,7 +2405,7 @@ func (s *clusterService) RemoveStorageTargetISCSI(ctx context.Context, clusterNa
 		reverter.Add(func() {
 			revertErr := s.client.UpdateOSService(ctx, server, "iscsi", currentISCSIConfig)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated iscsi service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentISCSIConfig), slog.Any("root-cause", err))
+				slog.ErrorContext(ctx, "Failed to revert previously updated iscsi service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentISCSIConfig), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -2465,7 +2465,7 @@ func (s *clusterService) AddStorageTargetMultipath(ctx context.Context, clusterN
 		reverter.Add(func() {
 			revertErr := s.client.UpdateOSService(ctx, server, "multipath", currentMultipathConfig)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated multipath service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentMultipathConfig), slog.Any("root-cause", err))
+				slog.ErrorContext(ctx, "Failed to revert previously updated multipath service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentMultipathConfig), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -2527,7 +2527,7 @@ func (s *clusterService) RemoveStorageTargetMultipath(ctx context.Context, clust
 		reverter.Add(func() {
 			revertErr := s.client.UpdateOSService(ctx, server, "multipath", currentMultipathConfig)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated multipath service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentMultipathConfig), slog.Any("root-cause", err))
+				slog.ErrorContext(ctx, "Failed to revert previously updated multipath service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentMultipathConfig), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -2587,7 +2587,7 @@ func (s *clusterService) AddStorageTargetNVME(ctx context.Context, clusterName s
 		reverter.Add(func() {
 			revertErr := s.client.UpdateOSService(ctx, server, "nvme", currentNVMEConfig)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated nvme service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentNVMEConfig), slog.Any("root-cause", err))
+				slog.ErrorContext(ctx, "Failed to revert previously updated nvme service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentNVMEConfig), slog.Any("root_cause", err))
 			}
 		})
 	}
@@ -2649,7 +2649,7 @@ func (s *clusterService) RemoveStorageTargetNVME(ctx context.Context, clusterNam
 		reverter.Add(func() {
 			revertErr := s.client.UpdateOSService(ctx, server, "nvme", currentNVMEConfig)
 			if revertErr != nil {
-				slog.ErrorContext(ctx, "Failed to revert previously updated nvme service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service-config", currentNVMEConfig), slog.Any("root-cause", err))
+				slog.ErrorContext(ctx, "Failed to revert previously updated nvme service config", logger.Err(revertErr), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("target", target), slog.Any("service_config", currentNVMEConfig), slog.Any("root_cause", err))
 			}
 		})
 	}
