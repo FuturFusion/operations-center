@@ -5,10 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -709,13 +711,79 @@ func strechedTimeout(timeout time.Duration) time.Duration {
 	return time.Duration(float64(timeout) * timeoutStretchFactor)
 }
 
+var debugOutput = &bytes.Buffer{}
+
 // debugf prints debug messages to stdout, if the global debug variable is true.
 // This can be configured by the
 // OPERATIONS_CENTER_E2E_TEST_DEBUG env var.
 func debugf(format string, args ...any) {
-	if !debug {
-		return
+	var out io.Writer = debugOutput
+
+	if debug {
+		out = os.Stdout
 	}
 
-	fmt.Println(indent(fmt.Sprintf(format, args...), "debug: "))
+	// We don't care about errors here.
+	_, _ = fmt.Fprintln(out, indent(fmt.Sprintf(format, args...), "debug: "))
+}
+
+func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
+	t.Helper()
+
+	return func() {
+		// Print additional debug information in the case of an error.
+		if !t.Failed() {
+			return
+		}
+
+		if !noCleanup && !noCleanupOnError {
+			// Cleanup happened, so there is little use in collecting debug information, since most of it is gone anyway.
+			return
+		}
+
+		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
+		defer cancel()
+
+		timestamp := time.Now().Format("2006-01-02-15-04-05")
+
+		fmt.Println("===[ DEBUG OUTPUT ]===")
+		debugOutputFilename := filepath.Join(tmpDir, fmt.Sprintf("debug_output_%s.log", timestamp))
+		fmt.Printf("Debug output saved in %q\n", debugOutputFilename)
+		err := os.WriteFile(debugOutputFilename, debugOutput.Bytes(), 0o600)
+		if err != nil {
+			t.Errorf("Failed to write debug output to %q: %v", debugOutputFilename, err)
+		}
+
+		operationsCenterJournalFilename := filepath.Join(tmpDir, fmt.Sprintf("operations-center_journal_%s.log", timestamp))
+		fmt.Printf("operations-center journal saved in %q\n", operationsCenterJournalFilename)
+		resp := runWithContext(ctx, t, `incus exec OperationsCenter -- journalctl -u operations-center -n 1000`)
+		if !resp.Success() {
+			t.Error(resp.Error())
+		} else {
+			err = os.WriteFile(operationsCenterJournalFilename, resp.output.Bytes(), 0o600)
+			if err != nil {
+				t.Errorf("Failed to write operations-center journal to %q: %v", operationsCenterJournalFilename, err)
+			}
+		}
+
+		resp = runWithContext(ctx, t, `incus list -f json | jq -r '.[] | select(.name | test("Incus.*")) | .name'`)
+		if !resp.Success() {
+			t.Error(resp.Error())
+		} else {
+			for instance := range strings.Lines(resp.OutputTrimmed()) {
+				incusJournalFilename := filepath.Join(tmpDir, fmt.Sprintf("incus_%s_journal_%s.log", instance, timestamp))
+				fmt.Printf("incus %q journal saved in %q\n", instance, incusJournalFilename)
+				resp := runWithContext(ctx, t, `incus exec %s -- journalctl -u incus -n 1000`, instance)
+				if !resp.Success() {
+					t.Error(resp.Error())
+				} else {
+					err = os.WriteFile(incusJournalFilename, resp.output.Bytes(), 0o600)
+					if err != nil {
+						t.Errorf("Failed to write incus %q journal to %q: %v", instance, incusJournalFilename, err)
+					}
+				}
+			}
+		}
+	}
 }

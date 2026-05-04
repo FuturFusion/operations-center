@@ -65,11 +65,19 @@ jobs:
           FLAKY_SKIP_ON_FAIL: "true"
           OPERATIONS_CENTER_E2E_TEST: "true"
           OPERATIONS_CENTER_E2E_TEST_CONCURRENT_SETUP: "true"
+          OPERATIONS_CENTER_E2E_TEST_TMP_DIR: "${{ github.workspace }}/tmp-e2e"
         run: |
           set -o pipefail
-          go test -v ./e2e_tests -timeout 180m | tee e2e_tests.out
+          mkdir -p ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}
+          go test -v ./e2e_tests -timeout 180m | tee ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/e2e_tests.out
 
       - name: Show logs on failure
         if: failure()
+        env:
+          OPERATIONS_CENTER_E2E_TEST_TMP_DIR: "${{ github.workspace }}/tmp-e2e"
         run: |
-          cat e2e_tests.out && false
+          cat ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/e2e_tests.out || true
+          echo
+          echo "===[ DEBUG OUTPUT ]==="
+          cat ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/*.log || true
+          exit 1

@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"strconv"
@@ -105,6 +106,9 @@ func runE2ETest(
 	}
 
 	tmpDir := setupE2ETest(t)
+
+	debugOutput = &bytes.Buffer{}
+	t.Cleanup(onTestFailDebugOutput(t, tmpDir))
 
 	stop := timeTrack(t, name)
 	defer stop()
