@@ -55,6 +55,7 @@ func createClusterAndAddServerAndRemoveServer() func(t *testing.T, tmpDir string
 
 		// Assertions
 		assertClusterMembers(t, "incus-os-cluster", []string{"IncusOS01", "IncusOS02", "IncusOS04"})
+		assertRemovedServerToReappear(t)
 	}
 }
 
