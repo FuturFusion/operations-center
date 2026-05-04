@@ -30,6 +30,17 @@ func TestE2E_WithToken_RegisterServer(t *testing.T) {
 	)
 }
 
+func TestE2E_UpdatesCleanupAndRefresh(t *testing.T) {
+	runE2ETest(
+		t,
+		"updates cleanup and refresh",
+		func(t *testing.T, tmpDir string) {
+			t.Helper()
+		},
+		basicOperationsCenterInteractionsUpdatesCleanupAndRefresh,
+	)
+}
+
 func TestE2E_WithToken_CreateCluster(t *testing.T) {
 	runE2ETest(
 		t,
