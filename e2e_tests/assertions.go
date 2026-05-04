@@ -365,6 +365,47 @@ func tokenSeedCleanup(t *testing.T) func() {
 	}
 }
 
+func assertOperationsCenterCliProvisioningClusterTemplate(t *testing.T, tmpDir string) {
+	t.Helper()
+
+	t.Log("Assert operations-center cli provisioning cluster-template")
+
+	// Create cluster template.
+	err := os.WriteFile(filepath.Join(tmpDir, "services_template.yaml"), incusOSClusterServicesConfigTemplate, 0o600)
+	require.NoError(t, err)
+
+	clientCertificate := getClientCertificate(t)
+
+	err = os.WriteFile(
+		filepath.Join(tmpDir, "application_template.yaml"),
+		replacePlaceholders(
+			incusOSClusterApplicationConfigTemplate,
+			map[string]string{
+				"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 6)),
+			},
+		),
+		0o600,
+	)
+	require.NoError(t, err)
+
+	err = os.WriteFile(filepath.Join(tmpDir, "variable_definition.yaml"), incusOSClusterTemplateVariableDefinition, 0o600)
+	require.NoError(t, err)
+
+	err = os.WriteFile(filepath.Join(tmpDir, "variables.yaml"), incusOSClusterTemplateVariables, 0o600)
+	require.NoError(t, err)
+
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster-template add test --services-config %s --application-seed-config %s --variables %s --description "Cluster template for incus-os-cluster"`, cpuArch, filepath.Join(tmpDir, "services_template.yaml"), filepath.Join(tmpDir, "application_template.yaml"), filepath.Join(tmpDir, "variable_definition.yaml"))
+
+	// List cluster template.
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster-template list -f json | jq -e -r '. | length == 1'`, cpuArch)
+
+	// Show cluster template.
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster-template show test`, cpuArch)
+
+	// Remove cluster template.
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster-template remove test`, cpuArch)
+}
+
 func assertIncusRemote(t *testing.T, clusterName string, serverNames []string) {
 	t.Helper()
 
