@@ -232,16 +232,10 @@ e2e-test-list:
 	$(GO) test -list '^TestE2E' ./e2e_tests/
 
 .PHONY: clean-e2e-test
-clean-e2e-test:
+clean-e2e-test: clean-e2e-test-soft
 	rm -rf $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)
 	rm -rf $$HOME/.config/operations-center/
-	incus remote remove incus-os-cluster || true
-	incus remote remove incus-os-cluster-after-factory-reset || true
 	incus remove --force OperationsCenter || true
-	incus remove --force IncusOS01 || true
-	incus remove --force IncusOS02 || true
-	incus remove --force IncusOS03 || true
-	incus remove --force IncusOS04 || true
 	incus storage volume delete default IncusOS_OperationsCenter.iso || true
 	for i in $$(incus storage volume list default -f json | jq -r '.[] | select(.name | test("IncusOS-.*")) | .name'); do \
 		incus storage volume delete default $$i || true; \
@@ -263,4 +257,7 @@ clean-e2e-test-soft:
 	done
 	for i in $$(bin/operations-center.linux.amd64 provisioning update list -f json | jq -r '.[] | .uuid'); do \
 		bin/operations-center provisioning update assign-channels $$i --channel stable || true; \
+	done
+	for i in $$(bin/operations-center.linux.amd64 provisioning token list -f json | jq -r '.[] | select(.description == "CRUD") | .uuid'); do \
+		bin/operations-center.linux.amd64 provisioning token remove $$i || true; \
 	done
