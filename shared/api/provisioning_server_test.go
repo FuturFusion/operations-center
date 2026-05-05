@@ -284,7 +284,7 @@ func TestServerVersionData_State(t *testing.T) {
 
 			if tc.isTypeIncus {
 				server.VersionData.Applications = append(server.VersionData.Applications, api.ApplicationVersionData{
-					Name: string(images.UpdateFileComponentIncus),
+					Name: "incus",
 				})
 			}
 
@@ -462,7 +462,7 @@ func TestServerVersionData_RecommendedAction(t *testing.T) {
 
 			if tc.isTypeIncus {
 				server.VersionData.Applications = append(server.VersionData.Applications, api.ApplicationVersionData{
-					Name: string(images.UpdateFileComponentIncus),
+					Name: "incus",
 				})
 			}
 
