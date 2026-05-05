@@ -232,3 +232,18 @@ export const clusterAddServers = (
       .catch(reject);
   });
 };
+
+export const clusterRemoveServer = (
+  name: string,
+  body: string,
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/clusters/${name}/:remove-servers`, {
+      method: "POST",
+      body: body,
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};

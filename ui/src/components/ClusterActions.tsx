@@ -14,6 +14,7 @@ import { ClusterUpdateInProgress } from "util/cluster";
 import { downloadFile } from "util/util";
 import ClusterAddServerBtn from "components/ClusterAddServerBtn";
 import ClusterCancelUpdateBtn from "components/ClusterCancelUpdateBtn";
+import ClusterRemoveServerBtn from "components/ClusterRemoveServerBtn";
 import ClusterUpdateBtn from "components/ClusterUpdateBtn";
 
 interface Props {
@@ -119,6 +120,7 @@ const ClusterActions: FC<Props> = ({ cluster }) => {
         handleClose={() => setShowBulkActionModal(false)}
       />
       <ClusterAddServerBtn cluster={cluster} />
+      <ClusterRemoveServerBtn cluster={cluster} />
     </div>
   );
 };
