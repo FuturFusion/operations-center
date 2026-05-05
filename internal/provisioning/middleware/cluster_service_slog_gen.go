@@ -877,13 +877,13 @@ func (_d ClusterServiceWithSlog) LaunchClusterUpdate(ctx context.Context, name s
 }
 
 // RemoveServer implements provisioning.ClusterService.
-func (_d ClusterServiceWithSlog) RemoveServer(ctx context.Context, name string, serverName string) (err error) {
+func (_d ClusterServiceWithSlog) RemoveServer(ctx context.Context, name string, removedServerNames []string) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
-			slog.String("serverName", serverName),
+			slog.Any("removedServerNames", removedServerNames),
 		)
 	}
 	log.DebugContext(ctx, "=> calling RemoveServer")
@@ -908,7 +908,7 @@ func (_d ClusterServiceWithSlog) RemoveServer(ctx context.Context, name string, 
 			log.DebugContext(ctx, "<= method RemoveServer finished")
 		}
 	}()
-	return _d._base.RemoveServer(ctx, name, serverName)
+	return _d._base.RemoveServer(ctx, name, removedServerNames)
 }
 
 // RemoveServerSystemNetworkVLANTags implements provisioning.ClusterService.
