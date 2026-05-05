@@ -1,15 +1,15 @@
-import { FC, KeyboardEvent, useMemo, useState } from "react";
+import { FC, useMemo, useState } from "react";
 import { MdAddCircleOutline } from "react-icons/md";
 import { clusterAddServers } from "api/cluster";
 import LoadingButton from "components/LoadingButton";
 import ModalWindow from "components/ModalWindow";
+import ServerSelect from "components/ServerSelect";
 import { useNotification } from "context/notificationContext";
 import { useServers } from "context/useServers";
 import { Cluster } from "types/cluster";
 import { useQueryClient } from "@tanstack/react-query";
 import { Form } from "react-bootstrap";
 import { ServerType } from "util/server";
-import { handleCtrlA } from "util/util";
 
 interface Props {
   cluster: Cluster;
@@ -68,11 +68,6 @@ const ClusterAddServerBtn: FC<Props> = ({ cluster, recommended }) => {
       });
   };
 
-  const handleServersKeyDown = (e: KeyboardEvent<HTMLSelectElement>) => {
-    e.preventDefault();
-    setServerNames(filteredServers?.map((s) => s.name) ?? []);
-  };
-
   return (
     <>
       <MdAddCircleOutline
@@ -104,25 +99,12 @@ const ClusterAddServerBtn: FC<Props> = ({ cluster, recommended }) => {
           <div className="my-3">
             <Form.Group className="mb-4" controlId="serverNames">
               <Form.Label>Servers</Form.Label>
-              <Form.Select
-                multiple
-                value={serverNames}
-                onChange={(e) => {
-                  const selected = Array.from(
-                    e.target.selectedOptions,
-                    (option) => option.value,
-                  );
-                  setServerNames(selected);
-                }}
-                onKeyDown={handleCtrlA(handleServersKeyDown)}
+              <ServerSelect
+                selected={serverNames}
+                servers={filteredServers ?? []}
                 disabled={opInProgress}
-              >
-                {filteredServers?.map((server) => (
-                  <option key={server.name} value={server.name}>
-                    {server.name}
-                  </option>
-                ))}
-              </Form.Select>
+                onChange={(values: string[]) => setServerNames(values)}
+              />
             </Form.Group>
             <Form.Group
               controlId="skipPostJoin"
