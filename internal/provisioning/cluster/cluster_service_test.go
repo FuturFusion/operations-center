@@ -7302,7 +7302,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 			defer cancel()
 
 			// Run test
-			err = clusterSvc.RemoveServer(ctx, "one", "serverOne")
+			err = clusterSvc.RemoveServer(ctx, "one", []string{"serverOne"})
 
 			// Assert
 			tc.assertErr(t, err)
