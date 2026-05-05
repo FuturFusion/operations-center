@@ -188,14 +188,10 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 func TestServerService_Create(t *testing.T) {
 	config.InitTest(t, &envMock.EnvironmentMock{}, nil)
 
-	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
-
 	tests := []struct {
-		name               string
-		server             provisioning.Server
-		repoCreateErr      error
-		tokenSvcConsumeErr error
-		repoUpdateErr      error
+		name   string
+		server provisioning.Server
+		setup  func(*createMocks)
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -206,8 +202,13 @@ func TestServerService_Create(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:               "error - token consume",
-			tokenSvcConsumeErr: boom.Error,
+			name:   "error - token consume",
+			server: validServer(t, withType(api.ServerType(""))),
+			setup: func(m *createMocks) {
+				m.tokenSvc.ConsumeFunc = func(_ context.Context, _ uuid.UUID) (string, error) {
+					return "", boom.Error
+				}
+			},
 
 			assertErr: boom.ErrorIs,
 		},
@@ -224,16 +225,24 @@ func TestServerService_Create(t *testing.T) {
 			assertErr: errassert.ValidationErrorContains("Remote operations centers can not be registered"),
 		},
 		{
-			name:          "error - repo.Create",
-			server:        validServer(t),
-			repoCreateErr: boom.Error,
+			name:   "error - repo.Create",
+			server: validServer(t),
+			setup: func(m *createMocks) {
+				m.repo.CreateFunc = func(_ context.Context, _ provisioning.Server) (int64, error) {
+					return 0, boom.Error
+				}
+			},
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:          "error - Ping",
-			server:        validServer(t),
-			repoUpdateErr: boom.Error,
+			name:   "error - Ping",
+			server: validServer(t),
+			setup: func(m *createMocks) {
+				m.repo.UpdateFunc = func(_ context.Context, _ provisioning.Server) error {
+					return boom.Error
+				}
+			},
 
 			assertErr: require.NoError, // Error of connection test is only logged, we can not assert it here.
 		},
@@ -242,77 +251,16 @@ func TestServerService_Create(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &repoMock.ServerRepoMock{
-				CreateFunc: func(ctx context.Context, in provisioning.Server) (int64, error) {
-					require.Equal(t, fixedDate, in.LastSeen)
-					return 1, tc.repoCreateErr
-				},
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
-					return &provisioning.Server{}, nil
-				},
-				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
-					return tc.repoUpdateErr
-				},
-			}
+			m, fixedDate := initCreateMocks(t, tc.setup)
 
-			client := &adapterMock.ServerClientPortMock{
-				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
-					return nil
-				},
-				IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
-					return nil
-				},
-				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
-					return api.HardwareData{}, nil
-				},
-				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
-					return api.OSData{
-						Network: incusosapi.SystemNetwork{
-							State: incusosapi.SystemNetworkState{
-								Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
-									"eth0": {
-										Addresses: []string{
-											"192.168.0.100",
-										},
-										Roles: []string{
-											"management",
-										},
-									},
-								},
-							},
-						},
-					}, nil
-				},
-				GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
-					return api.ServerVersionData{}, nil
-				},
-				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
-					return api.ServerTypeIncus, nil
-				},
-			}
-
-			tokenSvc := &svcMock.TokenServiceMock{
-				ConsumeFunc: func(ctx context.Context, id uuid.UUID) (string, error) {
-					return "stable", tc.tokenSvcConsumeErr
-				},
-			}
-
-			updateSvc := &svcMock.UpdateServiceMock{
-				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
-					return provisioning.Updates{}, nil
-				},
-			}
-
-			token := uuid.MustParse("686d2a12-20f9-11f0-82c6-7fff26bab0c4")
-
-			serverSvc := provisioningServer.New(repo, client, nil, tokenSvc, nil, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(m.repo, m.client, nil, m.tokenSvc, nil, nil, m.updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithInitialConnectionDelay(0), // Disable delay for initial connection test
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
 			// Run test
-			_, err := serverSvc.Create(t.Context(), token, tc.server)
+			_, err := serverSvc.Create(t.Context(), uuidgen.FromPattern(t, "1"), tc.server)
 
 			// Assert
 			tc.assertErr(t, err)
