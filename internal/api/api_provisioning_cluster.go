@@ -35,7 +35,7 @@ func registerProvisioningClusterHandler(router Router, authorizer *authz.Authori
 	router.HandleFunc("DELETE /{name}", response.With(handler.clusterDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{name}", response.With(handler.clusterPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/:add-servers", response.With(handler.clusterAddServersPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
-	router.HandleFunc("POST /{name}/:remove-server", response.With(handler.clusterRemoveServerPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/:remove-servers", response.With(handler.clusterRemoveServerPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/:bulk-update", response.With(handler.clusterBulkUpdatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/:resync-inventory", response.With(handler.clusterResyncInventoryPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/:update", response.With(handler.clusterUpdatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
@@ -566,26 +566,26 @@ func (c *clusterHandler) clusterPost(r *http.Request) response.Response {
 func (c *clusterHandler) clusterAddServersPost(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	var addServerRequest api.ClusterAddServersPost
+	var addServersRequest api.ClusterAddServersPost
 
-	err := json.NewDecoder(r.Body).Decode(&addServerRequest)
+	err := json.NewDecoder(r.Body).Decode(&addServersRequest)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
-	err = c.service.AddServers(r.Context(), name, addServerRequest.ServerNames, addServerRequest.SkipPostJoinOperations)
+	err = c.service.AddServers(r.Context(), name, addServersRequest.ServerNames, addServersRequest.SkipPostJoinOperations)
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed adding servers %v to cluster %q: %w", addServerRequest.ServerNames, name, err))
+		return response.SmartError(fmt.Errorf("Failed adding servers %v to cluster %q: %w", addServersRequest.ServerNames, name, err))
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/clusters/"+name)
 }
 
-// swagger:operation POST /1.0/provisioning/clusters/{name}/:remove-server clusters clusters_remove_server_post
+// swagger:operation POST /1.0/provisioning/clusters/{name}/:remove-servers clusters clusters_remove_servers_post
 //
-//	Remove a server from a cluster
+//	Remove servers from a cluster
 //
-//	Remove a server from a cluster.
+//	Remove servers from a cluster.
 //
 //	---
 //	consumes:
@@ -595,10 +595,10 @@ func (c *clusterHandler) clusterAddServersPost(r *http.Request) response.Respons
 //	parameters:
 //	  - in: body
 //	    name: cluster
-//	    description: Remove server request
+//	    description: Remove servers request
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/ClusterRemoveServerPost"
+//	      $ref: "#/definitions/ClusterRemoveServersPost"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -611,16 +611,16 @@ func (c *clusterHandler) clusterAddServersPost(r *http.Request) response.Respons
 func (c *clusterHandler) clusterRemoveServerPost(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	var removeServerRequest api.ClusterRemoveServerPost
+	var removeServersRequest api.ClusterRemoveServersPost
 
-	err := json.NewDecoder(r.Body).Decode(&removeServerRequest)
+	err := json.NewDecoder(r.Body).Decode(&removeServersRequest)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
-	err = c.service.RemoveServer(r.Context(), name, removeServerRequest.ServerName)
+	err = c.service.RemoveServer(r.Context(), name, removeServersRequest.ServerNames)
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to remove server %q from cluster %q: %w", removeServerRequest.ServerName, name, err))
+		return response.SmartError(fmt.Errorf("Failed to remove servers %v from cluster %q: %w", removeServersRequest.ServerNames, name, err))
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/clusters/"+name)
