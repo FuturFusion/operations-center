@@ -457,16 +457,18 @@ definitions:
                 x-go-name: Properties
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
-    ClusterRemoveServerPost:
+    ClusterRemoveServersPost:
         description: |-
-            ClusterRemoveServerPost represents a remove server from a cluster request
+            ClusterRemoveServersPost represents a remove server from a cluster request
             containing the name of the server to be removed from the cluster.
         properties:
-            server_name:
+            server_names:
                 description: Name of the server to be removed from the cluster.
                 example: '"server1"'
-                type: string
-                x-go-name: ServerName
+                items:
+                    type: string
+                type: array
+                x-go-name: ServerNames
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ClusterTemplate:
@@ -7811,19 +7813,19 @@ paths:
             summary: Cancel an ongoing cluster wide update of servers
             tags:
                 - clusters
-    /1.0/provisioning/clusters/{name}/:remove-server:
+    /1.0/provisioning/clusters/{name}/:remove-servers:
         post:
             consumes:
                 - application/json
-            description: Remove a server from a cluster.
-            operationId: clusters_remove_server_post
+            description: Remove servers from a cluster.
+            operationId: clusters_remove_servers_post
             parameters:
-                - description: Remove server request
+                - description: Remove servers request
                   in: body
                   name: cluster
                   required: true
                   schema:
-                    $ref: '#/definitions/ClusterRemoveServerPost'
+                    $ref: '#/definitions/ClusterRemoveServersPost'
             produces:
                 - application/json
             responses:
@@ -7835,7 +7837,7 @@ paths:
                     $ref: '#/responses/Forbidden'
                 "500":
                     $ref: '#/responses/InternalServerError'
-            summary: Remove a server from a cluster
+            summary: Remove servers from a cluster
             tags:
                 - clusters
     /1.0/provisioning/clusters/{name}/:resync-inventory:
