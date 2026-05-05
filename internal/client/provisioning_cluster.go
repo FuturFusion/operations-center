@@ -141,9 +141,9 @@ func (c OperationsCenterClient) AddServersToCluster(ctx context.Context, name st
 	return nil
 }
 
-func (c OperationsCenterClient) RemoveServerFromCluster(ctx context.Context, name string, serverName string) error {
-	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, ":remove-server"), nil, api.ClusterRemoveServerPost{
-		ServerName: serverName,
+func (c OperationsCenterClient) RemoveServerFromCluster(ctx context.Context, name string, serverNames []string) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, ":remove-servers"), nil, api.ClusterRemoveServersPost{
+		ServerNames: serverNames,
 	})
 	if err != nil {
 		return err
