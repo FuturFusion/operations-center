@@ -16,6 +16,7 @@ import (
 type ClusterService interface {
 	Create(ctx context.Context, cluster Cluster) (Cluster, error)
 	AddServers(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool) error
+	RemoveServer(ctx context.Context, name string, removedServerNames []string) error
 	GetAll(ctx context.Context) (Clusters, error)
 	GetAllWithFilter(ctx context.Context, filter ClusterFilter) (Clusters, error)
 	GetAllNames(ctx context.Context) ([]string, error)

@@ -59,12 +59,12 @@ func TestE2E_WithToken_CreateSingleNodeCluster(t *testing.T) {
 	)
 }
 
-func TestE2E_WithToken_CreateClusterAndAddServer(t *testing.T) {
+func TestE2E_WithToken_CreateClusterAndAddServerAndRemoveServer(t *testing.T) {
 	runE2ETest(
 		t,
 		"token - create cluster",
 		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"}),
-		createClusterAndAddServer(),
+		createClusterAndAddServerAndRemoveServer(),
 	)
 }
 

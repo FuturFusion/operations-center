@@ -184,7 +184,7 @@ func (_d ServerServiceWithSlog) EvacuateSystemByName(ctx context.Context, name s
 }
 
 // FactoryResetByName implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) FactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) (err error) {
+func (_d ServerServiceWithSlog) FactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string, force bool) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -192,6 +192,7 @@ func (_d ServerServiceWithSlog) FactoryResetByName(ctx context.Context, name str
 			slog.String("name", name),
 			slog.Any("tokenID", tokenID),
 			slog.Any("tokenSeedName", tokenSeedName),
+			slog.Bool("force", force),
 		)
 	}
 	log.DebugContext(ctx, "=> calling FactoryResetByName")
@@ -216,7 +217,7 @@ func (_d ServerServiceWithSlog) FactoryResetByName(ctx context.Context, name str
 			log.DebugContext(ctx, "<= method FactoryResetByName finished")
 		}
 	}()
-	return _d._base.FactoryResetByName(ctx, name, tokenID, tokenSeedName)
+	return _d._base.FactoryResetByName(ctx, name, tokenID, tokenSeedName, force)
 }
 
 // GetAll implements provisioning.ServerService.

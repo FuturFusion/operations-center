@@ -22,6 +22,8 @@ import (
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
+	"github.com/FuturFusion/operations-center/internal/inventory"
+	inventoryServiceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
@@ -3234,6 +3236,7 @@ func TestClusterService_Create(t *testing.T) {
 				nil,
 				map[domain.ResourceType]provisioning.InventorySyncer{domain.ResourceTypeImage: inventorySyncer},
 				provisioner,
+				nil,
 				provisioningCluster.WithCreateRetryTimeout(0),
 				provisioningCluster.WithCreateClusterCertificateNotBeforeDelay(0),
 			)
@@ -4805,6 +4808,7 @@ func TestClusterService_AddServers(t *testing.T) {
 				nil,
 				client,
 				serverSvc,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -6816,6 +6820,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 
 			// Run test
@@ -6831,6 +6836,477 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 			require.Empty(t, tc.clientGetOSServiceLVM)
 			require.Empty(t, tc.clientGetOSServiceMultipath)
 			require.Empty(t, tc.clientGetOSServiceNVME)
+		})
+	}
+}
+
+func TestClusterService_RemoveServer(t *testing.T) {
+	tests := []struct {
+		name                                  string
+		serverSvcGetAllWithFilter             provisioning.Servers
+		serverSvcGetAllWithFilterErr          error
+		inventorySyncerErr                    error
+		inventorySvcGetAllWithFilter          inventory.InventoryAggregates
+		inventorySvcGetAllWithFilterErr       error
+		clientIncusClientErr                  error
+		serverSvcUpdateErr                    queue.Errs
+		incusClientGetClusterMemberErr        error
+		incusClientUpdateClusterMemberErr     error
+		incusClientGetServerErr               error
+		incusClientUpdateServerErr            error
+		incusClientDeleteStoragePoolVolumeErr error
+		serverSvcFactoryResetByNameErr        error
+		incusClientDeleteClusterMemberErr     error
+
+		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name: "success",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			inventorySvcGetAllWithFilter: inventory.InventoryAggregates{
+				{
+					StorageVolumes: inventory.StorageVolumes{
+						{
+							Name: "custom/backups",
+						},
+						{
+							Name: "custom/images",
+						},
+						{
+							Name: "custom/logs",
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+
+		{
+			name:                         "error - serverSvc.GetAllWithFilter",
+			serverSvcGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - cluster minimum size",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "serverOne",
+				},
+				// cluster only has 1 server
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Cluster "one" does not have enough servers for server removal`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - server not part of cluster",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				// serverOne is not part of cluster
+				{
+					Name: "serverTwo",
+				},
+				{
+					Name: "serverThree",
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotFound)
+				require.ErrorContains(tt, err, `Server removal failed, server "serverOne" is not part of the cluster "one"`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - server not evacuated",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Server removal failed, server "serverOne" is not in state evacuated`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - ResyncInventoryByName",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			inventorySyncerErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - inventorySvc.GetAllWithFilter",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			inventorySvcGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - local resources - instances",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			inventorySvcGetAllWithFilter: inventory.InventoryAggregates{
+				{
+					Instances: inventory.Instances{
+						{
+							Name: "instance",
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Server removal failed, server "serverOne" still has instances`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - local resources - storage volumes",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			inventorySvcGetAllWithFilter: inventory.InventoryAggregates{
+				{
+					StorageVolumes: inventory.StorageVolumes{
+						{
+							Name: "custom/some_volume",
+						},
+						{
+							Name: "image/some_image",
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Server removal failed, server "serverOne" still has custom volumes`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - client.IncusClient",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			clientIncusClientErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - incusClient.GetClusterMember",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			incusClientGetClusterMemberErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - incusClient.UpdateClusterMember",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			incusClientUpdateClusterMemberErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - incusClient.GetServer",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			incusClientGetServerErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - incusClient.UpdateServer",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			incusClientUpdateServerErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - incusClient.DeleteStoragePoolVolume",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			incusClientDeleteStoragePoolVolumeErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - serverSvc.FactoryResetByName",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			serverSvcFactoryResetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - incusClient.DeleteClusterMember",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			incusClientDeleteClusterMemberErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, true, true)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.serverSvcGetAllWithFilter, tc.serverSvcGetAllWithFilterErr
+				},
+				UpdateFunc: func(ctx context.Context, server provisioning.Server, force, updateSystem bool) error {
+					return tc.serverSvcUpdateErr.PopOrNil(t)
+				},
+				FactoryResetByNameFunc: func(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string, force bool) error {
+					return tc.serverSvcFactoryResetByNameErr
+				},
+			}
+
+			var incusClient *adapterMock.InstanceServerMock
+			incusClient = &adapterMock.InstanceServerMock{
+				GetClusterMemberFunc: func(name string) (*incusapi.ClusterMember, string, error) {
+					return &incusapi.ClusterMember{}, "", tc.incusClientGetClusterMemberErr
+				},
+				UpdateClusterMemberFunc: func(name string, member incusapi.ClusterMemberPut, ETag string) error {
+					return tc.incusClientUpdateClusterMemberErr
+				},
+				UseTargetFunc: func(name string) incusclient.InstanceServer {
+					return incusClient
+				},
+				GetServerFunc: func() (*incusapi.Server, string, error) {
+					return &incusapi.Server{
+						ServerUntrusted: incusapi.ServerUntrusted{
+							ServerPut: incusapi.ServerPut{
+								Config: incusapi.ConfigMap{
+									"storage.backups": "local/backups",
+									"storage.images":  "local/images",
+									"storage.logs":    "local/logs",
+								},
+							},
+						},
+					}, "", tc.incusClientGetServerErr
+				},
+				UpdateServerFunc: func(server incusapi.ServerPut, ETag string) error {
+					return tc.incusClientUpdateServerErr
+				},
+				DeleteStoragePoolVolumeFunc: func(pool, volType, name string) error {
+					return tc.incusClientDeleteStoragePoolVolumeErr
+				},
+				DeleteClusterMemberFunc: func(name string, force bool) error {
+					return tc.incusClientDeleteClusterMemberErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				IncusClientFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (provisioning.InstanceServer, error) {
+					return incusClient, tc.clientIncusClientErr
+				},
+			}
+
+			inventorySvc := &inventoryServiceMock.InventoryAggregateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.InventoryAggregateFilter) (inventory.InventoryAggregates, error) {
+					return tc.inventorySvcGetAllWithFilter, tc.inventorySvcGetAllWithFilterErr
+				},
+			}
+
+			inventorySyncer := &serviceMock.InventorySyncerMock{
+				SyncClusterFunc: func(ctx context.Context, clusterName string) error {
+					return tc.inventorySyncerErr
+				},
+			}
+
+			clusterSvc := provisioningCluster.New(
+				repo,
+				nil,
+				client,
+				serverSvc,
+				nil,
+				map[domain.ResourceType]provisioning.InventorySyncer{
+					"test": inventorySyncer,
+				},
+				nil,
+				inventorySvc,
+				provisioningCluster.WithRemoveServerFactoryResetWaitDelay(0),
+				provisioningCluster.WithRemoveServerDeleteClusterMemberRetryDelay(0),
+			)
+
+			// Context with timeout for incusClient.DeleteClusterMember test.
+			ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+			defer cancel()
+
+			// Run test
+			err = clusterSvc.RemoveServer(ctx, "one", []string{"serverOne"})
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
 		})
 	}
 }
@@ -6880,7 +7356,7 @@ func TestClusterService_GetAll(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			clusters, err := clusterSvc.GetAll(context.Background())
@@ -7078,7 +7554,7 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetAllWithFilter(context.Background(), tc.filter)
@@ -7127,7 +7603,7 @@ func TestClusterService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			clusterNames, err := clusterSvc.GetAllNames(context.Background())
@@ -7221,7 +7697,7 @@ func TestClusterService_GetAllNamesWithFilter(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			clusterIDs, err := clusterSvc.GetAllNamesWithFilter(context.Background(), tc.filter)
@@ -7425,7 +7901,7 @@ func TestClusterService_GetByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetByName(context.Background(), tc.nameArg)
@@ -7640,7 +8116,7 @@ func TestClusterService_Update(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.Update(context.Background(), tc.cluster, tc.argUpdateServers)
@@ -7722,7 +8198,7 @@ func TestClusterService_Rename(t *testing.T) {
 				lifecycle.ClusterUpdateSignal = oldClusterUpdateSignal
 			}()
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil, nil)
 
 			var signalHandlerCalled bool
 			lifecycle.ClusterUpdateSignal.AddListener(tc.signalHandler(t, &signalHandlerCalled))
@@ -7884,7 +8360,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				lifecycle.ClusterUpdateSignal = oldClusterUpdateSignal
 			}()
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil, nil)
 
 			var signalHandlerCalled bool
 			lifecycle.ClusterUpdateSignal.AddListener(tc.signalHandler(t, &signalHandlerCalled))
@@ -8180,7 +8656,7 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 				lifecycle.ClusterUpdateSignal = oldClusterUpdateSignal
 			}()
 
-			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, tokenSvc, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, tokenSvc, nil, nil, nil)
 
 			var signalHandlerCalled bool
 			lifecycle.ClusterUpdateSignal.AddListener(tc.signalHandler(t, &signalHandlerCalled))
@@ -8274,8 +8750,12 @@ func TestClusterService_ResyncInventory(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil)
-			clusterSvc.SetInventorySyncers(map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer})
+			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil, nil)
+			clusterSvc.SetInventorySyncers(
+				map[domain.ResourceType]provisioning.InventorySyncer{
+					"test": inventorySyncer,
+				},
+			)
 
 			// Run test
 			err := clusterSvc.ResyncInventory(tc.ctx)
@@ -8325,7 +8805,7 @@ func TestClusterService_ResyncInventoryByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(nil, nil, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(nil, nil, nil, nil, nil, nil, nil, nil)
 			clusterSvc.SetInventorySyncers(map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer})
 
 			// Run test
@@ -8407,7 +8887,7 @@ func TestClusterService_IsInstanceLifecycleOperationPermitted(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil, nil)
 
 			// Run test
 			got := clusterSvc.IsInstanceLifecycleOperationPermitted(t.Context(), tc.argName)
@@ -9297,7 +9777,7 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil,
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil, nil,
 				provisioningCluster.WithNow(func() time.Time {
 					return fixedTime
 				}),
@@ -9367,7 +9847,7 @@ func TestClusterService_AbortClusterUpdate(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil,
+			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil, nil,
 				provisioningCluster.WithNow(func() time.Time {
 					return fixedTime
 				}),
@@ -9823,7 +10303,7 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.AddServerSystemNetworkVLANTags(context.Background(), tc.nameArg, tc.interfaceNameArg, tc.vlanTagsArg)
@@ -10164,7 +10644,7 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.RemoveServerSystemNetworkVLANTags(context.Background(), tc.nameArg, tc.interfaceNameArg, tc.vlanTagsArg)
@@ -10447,7 +10927,7 @@ func TestClusterService_UpdateSystemLogging(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.UpdateSystemLogging(context.Background(), tc.nameArg, tc.loggingConfigArg)
@@ -10731,7 +11211,7 @@ func TestClusterService_UpdateSystemKernel(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.UpdateSystemKernel(context.Background(), tc.nameArg, tc.kernelConfigArg)
@@ -10926,7 +11406,7 @@ func TestClusterService_AddApplication(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil, nil)
 
 			// Run test
 			err := clusterSvc.AddApplication(context.Background(), tc.nameArg, tc.applicationNameArg)
@@ -11261,7 +11741,7 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.AddStorageTargetISCSI(context.Background(), tc.nameArg, tc.targetArg)
@@ -11626,7 +12106,7 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.RemoveStorageTargetISCSI(context.Background(), tc.nameArg, tc.targetArg)
@@ -11937,7 +12417,7 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.AddStorageTargetMultipath(context.Background(), tc.nameArg, tc.targetArg)
@@ -12248,7 +12728,7 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.RemoveStorageTargetMultipath(context.Background(), tc.nameArg, tc.targetArg)
@@ -12585,7 +13065,7 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.AddStorageTargetNVME(context.Background(), tc.nameArg, tc.targetArg)
@@ -12950,7 +13430,7 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
 
 			// Run test
 			err = clusterSvc.RemoveStorageTargetNVME(context.Background(), tc.nameArg, tc.targetArg)
@@ -13243,7 +13723,16 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, map[domain.ResourceType]provisioning.InventorySyncer{domain.ResourceTypeImage: inventorySyncer}, nil)
+			clusterSvc := provisioningCluster.New(
+				repo,
+				nil,
+				client,
+				serverSvc,
+				nil,
+				map[domain.ResourceType]provisioning.InventorySyncer{domain.ResourceTypeImage: inventorySyncer},
+				nil,
+				nil,
+			)
 
 			// Run test
 			err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)
@@ -13361,7 +13850,16 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 				lifecycle.ClusterUpdateSignal = oldClusterUpdateSignal
 			}()
 
-			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer}, nil)
+			clusterSvc := provisioningCluster.New(
+				repo,
+				nil,
+				client,
+				serverSvc,
+				nil,
+				map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer},
+				nil,
+				nil,
+			)
 
 			// Run test
 			err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)
@@ -13498,7 +13996,7 @@ func TestClusterService_UpdateCertificate(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(repo, nil, client, serverSvc, nil, nil, nil, nil)
 
 			// Run test
 			err := clusterSvc.UpdateCertificate(context.Background(), "cluster", tc.certificatePEM, tc.keyPEM)
@@ -13566,7 +14064,7 @@ func TestClusterService_GetClusterArtifactAll(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(nil, artifactsRepo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(nil, artifactsRepo, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			artifacts, err := clusterSvc.GetClusterArtifactAll(context.Background(), tc.argClusterName)
@@ -13625,7 +14123,7 @@ func TestClusterService_GetClusterArtifactAllNames(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(nil, artifactsRepo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(nil, artifactsRepo, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			names, err := clusterSvc.GetClusterArtifactAllNames(context.Background(), tc.argClusterName)
@@ -13701,7 +14199,7 @@ func TestClusterService_GetClusterArtifactByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(nil, artifactsRepo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(nil, artifactsRepo, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			got, err := clusterSvc.GetClusterArtifactByName(context.Background(), tc.argClusterName, tc.argArtifactName)
@@ -13801,7 +14299,7 @@ func TestClusterService_GetClusterArtifactFileByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(nil, artifactsRepo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(nil, artifactsRepo, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			got, err := clusterSvc.GetClusterArtifactFileByName(context.Background(), tc.argClusterName, tc.argArtifactName, tc.argFilename)
@@ -13866,7 +14364,7 @@ func TestClusterService_GetClusterArtifactArchiveByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(nil, artifactsRepo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioningCluster.New(nil, artifactsRepo, nil, nil, nil, nil, nil, nil)
 
 			zipArchiveType, ok := provisioning.ClusterArtifactArchiveTypes[provisioning.ClusterArtifactArchiveTypeExtZip]
 			require.True(t, ok)

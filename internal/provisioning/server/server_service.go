@@ -1394,7 +1394,7 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 	return nil
 }
 
-func (s *serverService) FactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error {
+func (s *serverService) FactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string, force bool) error {
 	if name == "" {
 		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -1408,7 +1408,7 @@ func (s *serverService) FactoryResetByName(ctx context.Context, name string, tok
 		return fmt.Errorf("Factory reset of Operations Center: %w", domain.ErrOperationNotPermitted)
 	}
 
-	if server.Type == api.ServerTypeIncus && server.Cluster != nil {
+	if server.Type == api.ServerTypeIncus && server.Cluster != nil && !force {
 		return fmt.Errorf("Factory reset of clustered server: %w", domain.ErrOperationNotPermitted)
 	}
 

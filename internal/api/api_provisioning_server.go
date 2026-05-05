@@ -905,7 +905,7 @@ func (s *serverHandler) serverSystemFactoryResetPost(r *http.Request) response.R
 		}
 	}
 
-	err := s.service.FactoryResetByName(r.Context(), name, tokenID, tokenSeedName)
+	err := s.service.FactoryResetByName(r.Context(), name, tokenID, tokenSeedName, false)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to factory reset server %q: %w", name, err))
 	}

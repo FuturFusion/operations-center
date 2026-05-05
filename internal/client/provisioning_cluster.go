@@ -141,6 +141,17 @@ func (c OperationsCenterClient) AddServersToCluster(ctx context.Context, name st
 	return nil
 }
 
+func (c OperationsCenterClient) RemoveServerFromCluster(ctx context.Context, name string, serverNames []string) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, ":remove-servers"), nil, api.ClusterRemoveServersPost{
+		ServerNames: serverNames,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) ResyncCluster(ctx context.Context, name string) error {
 	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, ":resync-inventory"), nil, nil)
 	if err != nil {

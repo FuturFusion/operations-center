@@ -31,6 +31,10 @@ import (
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
+	"github.com/FuturFusion/operations-center/internal/inventory"
+	inventoryServiceMiddleware "github.com/FuturFusion/operations-center/internal/inventory/middleware"
+	inventoryRepoMiddleware "github.com/FuturFusion/operations-center/internal/inventory/repo/middleware"
+	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	inventoryEntities "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite/entities"
 	inventoryIncusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
 	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
@@ -218,6 +222,29 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// Setup Services
 	warningSvc := d.setupWarningService(dbWithTransaction)
 
+	inventoryInventoryAggregateSvc := inventoryServiceMiddleware.NewInventoryAggregateServiceWithSlog(
+		inventory.NewInventoryAggregateService(
+			inventoryRepoMiddleware.NewInventoryAggregateRepoWithSlog(
+				inventorySqlite.NewInventoryAggregate(dbWithTransaction),
+				inventoryRepoMiddleware.InventoryAggregateRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
+			),
+		),
+		inventoryServiceMiddleware.InventoryAggregateServiceWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				// Treat retryable errors as informational.
+				if domain.IsRetryableError(err) {
+					return true
+				}
+
+				return false
+			},
+		),
+	)
+
 	updateSvc, err := d.setupUpdatesService(ctx, dbWithTransaction)
 	if err != nil {
 		return err
@@ -227,7 +254,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	tokenSvc := d.setupTokenService(dbWithTransaction, updateSvc, channelSvc)
 	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningSvc)
-	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc)
+	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc)
 	if err != nil {
 		return err
 	}
@@ -248,6 +275,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		clusterTemplateSvc,
 		channelSvc,
 		warningSvc,
+		inventoryInventoryAggregateSvc,
 		dbWithTransaction,
 	)
 	inventorySyncers[domain.ResourceTypeServer] = serverSvc
@@ -668,7 +696,13 @@ func (d *Daemon) setupServerService(
 	)
 }
 
-func (d *Daemon) setupClusterService(db dbdriver.DBTX, client provisioning.ClusterClientPort, serverSvc provisioning.ServerService, tokenSvc provisioning.TokenService) (provisioning.ClusterService, error) {
+func (d *Daemon) setupClusterService(
+	db dbdriver.DBTX,
+	client provisioning.ClusterClientPort,
+	serverSvc provisioning.ServerService,
+	tokenSvc provisioning.TokenService,
+	inventoryAggregateSvc inventory.InventoryAggregateService,
+) (provisioning.ClusterService, error) {
 	localClusterArtifactRepo, err := provisioningClusterArtifactRepo.New(db, filepath.Join(d.env.VarDir(), "artifacts"))
 	if err != nil {
 		return nil, err
@@ -720,6 +754,7 @@ func (d *Daemon) setupClusterService(db dbdriver.DBTX, client provisioning.Clust
 			tokenSvc,
 			nil,
 			terraformProvisioner,
+			inventoryAggregateSvc,
 		),
 		provisioningServiceMiddleware.ClusterServiceWithSlogWithInformativeErrFunc(
 			func(err error) bool {
@@ -799,6 +834,7 @@ func (d *Daemon) setupAPIRoutes(
 	clusterTemplateSvc provisioning.ClusterTemplateService,
 	channelSvc provisioning.ChannelService,
 	warningSvc warning.WarningService,
+	inventoryInventoryAggregateSvc inventory.InventoryAggregateService,
 	db dbdriver.DBTX,
 ) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
@@ -902,7 +938,7 @@ func (d *Daemon) setupAPIRoutes(
 
 	inventoryRouter := api10router.SubGroup("/inventory")
 
-	inventorySyncers := registerInventoryRoutes(db, clusterSvc, serverClientProvider, d.authorizer, inventoryRouter)
+	inventorySyncers := registerInventoryRoutes(db, clusterSvc, serverClientProvider, d.authorizer, inventoryRouter, inventoryInventoryAggregateSvc)
 
 	return serveMux, inventorySyncers
 }

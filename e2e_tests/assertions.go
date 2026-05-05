@@ -582,9 +582,25 @@ func assertWebsocketEventsInventoryUpdate(t *testing.T, clusterName string) {
 func assertClusterMembers(t *testing.T, clusterName string, clusterMembers []string) {
 	t.Helper()
 
+	printServerList(t)
+
 	servers := mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '[ .[] | select(.cluster == %q and .server_type == "incus" and .server_status == "ready" and (.name as $n | %s | index($n) ) ) ] | .[].name'`, cpuArch, clusterName, asJSON(t, clusterMembers))
 	serverNames := strings.Split(servers.OutputTrimmed(), "\n")
 	if len(clusterMembers) != len(serverNames) {
 		t.Fatalf("expected cluster %q to have a server %v for each name %v", clusterName, serverNames, clusterMembers)
+	}
+}
+
+func assertRemovedServerToReappear(t *testing.T) {
+	t.Helper()
+
+	t.Log("Wait for removed server to reappear in Operations Center after factory reset")
+	ok, err := waitForSuccessWithTimeout(t, "instance list", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.cluster == "" and .server_type == "incus") | .name ] | length == 1'`, strechedTimeout(3*time.Minute), cpuArch)
+	require.NoError(t, err, "expect 1 not clustered server")
+	if !ok {
+		fmt.Println("====[ Server List ]====")
+		resp := mustRun(t, "../bin/operations-center.linux.%s provisioning server list", cpuArch)
+		fmt.Println(resp.Output())
+		t.FailNow()
 	}
 }

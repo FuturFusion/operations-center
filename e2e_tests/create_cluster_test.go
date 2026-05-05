@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -16,11 +17,13 @@ func createCluster(serverNames []string) func(t *testing.T, tmpDir string) {
 	return createClusterWithChannelName("stable", serverNames)
 }
 
-func createClusterAndAddServer() func(t *testing.T, tmpDir string) {
+func createClusterAndAddServerAndRemoveServer() func(t *testing.T, tmpDir string) {
 	return func(t *testing.T, tmpDir string) {
 		t.Helper()
 
 		createClusterWithChannelName("stable", []string{"IncusOS01", "IncusOS02", "IncusOS03"})(t, tmpDir)
+
+		printServerList(t)
 
 		// Update LVM settings.
 		err := os.WriteFile(filepath.Join(tmpDir, "lvm_enable.yaml"), incusOSServiceLVMConfig, 0o600)
@@ -33,6 +36,26 @@ func createClusterAndAddServer() func(t *testing.T, tmpDir string) {
 
 		// Assertions
 		assertClusterMembers(t, "incus-os-cluster", []string{"IncusOS01", "IncusOS02", "IncusOS03", "IncusOS04"})
+
+		// Evacuate IncusOS03.
+		mustRun(t, `../bin/operations-center.linux.%s provisioning server system evacuate IncusOS03`, cpuArch)
+
+		t.Log("Wait for server to be evacuated")
+		ok, err := waitForSuccessWithTimeout(t, "server evacuated", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '.[] | select(.name == "IncusOS03") | .version_data.in_maintenance == 2'`, 2*time.Minute, cpuArch)
+		require.NoError(t, err, "expect IncusOS03 to be evacuated")
+		if !ok {
+			fmt.Println("====[ Instance List ]====")
+			resp := mustRun(t, "../bin/operations-center.linux.%s inventory instance list", cpuArch)
+			fmt.Println(resp.Output())
+			t.FailNow()
+		}
+
+		// Remove IncusOS03 from cluster.
+		mustRun(t, `../bin/operations-center.linux.%s provisioning cluster remove-servers incus-os-cluster --server-names IncusOS03`, cpuArch)
+
+		// Assertions
+		assertClusterMembers(t, "incus-os-cluster", []string{"IncusOS01", "IncusOS02", "IncusOS04"})
+		assertRemovedServerToReappear(t)
 	}
 }
 

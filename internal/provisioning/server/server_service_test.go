@@ -6625,7 +6625,7 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			serverSvc := provisioningServer.New(repo, client, nil, tokenSvc, nil, nil, nil, tls.Certificate{})
 
 			// Run test
-			err := serverSvc.FactoryResetByName(t.Context(), tc.argName, tc.argTokenID, tc.argTokenSeedName)
+			err := serverSvc.FactoryResetByName(t.Context(), tc.argName, tc.argTokenID, tc.argTokenSeedName, false)
 
 			// Assert
 			tc.assertErr(t, err)

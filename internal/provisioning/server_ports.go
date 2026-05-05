@@ -41,7 +41,7 @@ type ServerService interface {
 	RestoreSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) error
 	PostRestoreSystemDoneByName(ctx context.Context, name string) error
 	UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error
-	FactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error
+	FactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string, force bool) error
 
 	GetSystemLogging(ctx context.Context, name string) (ServerSystemLogging, error)
 	UpdateSystemLogging(ctx context.Context, name string, loggingConfig ServerSystemLogging) error

@@ -36,7 +36,7 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			EvacuateSystemByNameFunc: func(ctx context.Context, name string, clusterUpdate bool, force bool) error {
 //				panic("mock out the EvacuateSystemByName method")
 //			},
-//			FactoryResetByNameFunc: func(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error {
+//			FactoryResetByNameFunc: func(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string, force bool) error {
 //				panic("mock out the FactoryResetByName method")
 //			},
 //			GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
@@ -149,7 +149,7 @@ type ServerServiceMock struct {
 	EvacuateSystemByNameFunc func(ctx context.Context, name string, clusterUpdate bool, force bool) error
 
 	// FactoryResetByNameFunc mocks the FactoryResetByName method.
-	FactoryResetByNameFunc func(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error
+	FactoryResetByNameFunc func(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string, force bool) error
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Servers, error)
@@ -289,6 +289,8 @@ type ServerServiceMock struct {
 			TokenID *uuid.UUID
 			// TokenSeedName is the tokenSeedName argument value.
 			TokenSeedName *string
+			// Force is the force argument value.
+			Force bool
 		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
@@ -729,7 +731,7 @@ func (mock *ServerServiceMock) EvacuateSystemByNameCalls() []struct {
 }
 
 // FactoryResetByName calls FactoryResetByNameFunc.
-func (mock *ServerServiceMock) FactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error {
+func (mock *ServerServiceMock) FactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string, force bool) error {
 	if mock.FactoryResetByNameFunc == nil {
 		panic("ServerServiceMock.FactoryResetByNameFunc: method is nil but ServerService.FactoryResetByName was just called")
 	}
@@ -738,16 +740,18 @@ func (mock *ServerServiceMock) FactoryResetByName(ctx context.Context, name stri
 		Name          string
 		TokenID       *uuid.UUID
 		TokenSeedName *string
+		Force         bool
 	}{
 		Ctx:           ctx,
 		Name:          name,
 		TokenID:       tokenID,
 		TokenSeedName: tokenSeedName,
+		Force:         force,
 	}
 	mock.lockFactoryResetByName.Lock()
 	mock.calls.FactoryResetByName = append(mock.calls.FactoryResetByName, callInfo)
 	mock.lockFactoryResetByName.Unlock()
-	return mock.FactoryResetByNameFunc(ctx, name, tokenID, tokenSeedName)
+	return mock.FactoryResetByNameFunc(ctx, name, tokenID, tokenSeedName, force)
 }
 
 // FactoryResetByNameCalls gets all the calls that were made to FactoryResetByName.
@@ -759,12 +763,14 @@ func (mock *ServerServiceMock) FactoryResetByNameCalls() []struct {
 	Name          string
 	TokenID       *uuid.UUID
 	TokenSeedName *string
+	Force         bool
 } {
 	var calls []struct {
 		Ctx           context.Context
 		Name          string
 		TokenID       *uuid.UUID
 		TokenSeedName *string
+		Force         bool
 	}
 	mock.lockFactoryResetByName.RLock()
 	calls = mock.calls.FactoryResetByName
