@@ -1025,7 +1025,7 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 		server.LastStatusUpdated = s.now()
 
 		for i := range server.VersionData.Applications {
-			if server.VersionData.Applications[i].Name == string(images.UpdateFileComponentIncus) {
+			if domain.IsApplicationNameIncusKind(server.VersionData.Applications[i].Name) {
 				server.VersionData.Applications[i].InMaintenance = api.InMaintenanceEvacuating
 				break
 			}
@@ -1246,7 +1246,7 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 		server.LastStatusUpdated = s.now()
 
 		for i := range server.VersionData.Applications {
-			if server.VersionData.Applications[i].Name == string(images.UpdateFileComponentIncus) {
+			if domain.IsApplicationNameIncusKind(server.VersionData.Applications[i].Name) {
 				server.VersionData.Applications[i].InMaintenance = api.InMaintenanceRestoring
 				break
 			}
@@ -1596,7 +1596,7 @@ func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *pro
 	}
 
 	for i := range server.VersionData.Applications {
-		if server.VersionData.Applications[i].Name == string(images.UpdateFileComponentIncus) {
+		if domain.IsApplicationNameIncusKind(server.VersionData.Applications[i].Name) {
 			server.VersionData.Applications[i].InMaintenance = inMaintenance
 			break
 		}
@@ -1836,7 +1836,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 		// If an evacuation has been triggered, check if the evaucation is done.
 		if server.StatusDetail == api.ServerStatusDetailReadyEvacuating {
 			for i := range server.VersionData.Applications {
-				if server.VersionData.Applications[i].Name == string(images.UpdateFileComponentIncus) {
+				if domain.IsApplicationNameIncusKind(server.VersionData.Applications[i].Name) {
 					if server.VersionData.Applications[i].InMaintenance == api.InMaintenanceEvacuated {
 						server.StatusDetail = api.ServerStatusDetailNone
 						server.LastStatusUpdated = s.now()
