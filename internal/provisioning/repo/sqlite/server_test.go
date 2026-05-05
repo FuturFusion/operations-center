@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
-	"github.com/lxc/incus-os/incus-osd/api/images"
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
 
@@ -78,7 +77,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		VersionData: api.ServerVersionData{
 			Applications: []api.ApplicationVersionData{
 				{
-					Name:    string(images.UpdateFileComponentIncus),
+					Name:    "incus",
 					Version: "1",
 				},
 			},
