@@ -27,7 +27,7 @@ provider "incus" {
   // Automatically accept the Incus remote's certificate.
   // If this is not set to true, you must accept the certificate out of band of Terraform.
   // This can also be set with the INCUS_ACCEPT_SERVER_CERTIFICATE environment variable.
-  accept_remote_certificate = true
+  //accept_remote_certificate = true
 
   default_remote = "{{ .ClusterName }}"
 
