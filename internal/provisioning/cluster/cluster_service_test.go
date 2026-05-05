@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
-	"github.com/lxc/incus-os/incus-osd/api/images"
 	incusclient "github.com/lxc/incus/v6/client"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	incustls "github.com/lxc/incus/v6/shared/tls"
@@ -98,7 +97,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -130,7 +129,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -162,7 +161,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -178,7 +177,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -298,7 +297,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -330,7 +329,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -362,7 +361,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -395,7 +394,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentOperationsCenter), // not incus application
+									Name:    "operations-center", // not incus application
 									Version: "1",
 								},
 							},
@@ -427,7 +426,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -443,7 +442,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "2", // Incus application version mismatch
 								},
 							},
@@ -455,6 +454,54 @@ func TestClusterService_Create(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, `Incus version is not the same on all servers, found "1" and "2"`)
+			},
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name: "error - incus application name mismatch",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus-lts-7.0", // Incus application mismatch
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Incus application is not the same on all servers, found "incus" and "incus-lts-7.0"`)
 			},
 			signalHandler: requireNoCallSignalHandler,
 		},
@@ -475,7 +522,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -491,7 +538,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -522,7 +569,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -538,7 +585,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -570,7 +617,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -586,7 +633,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -620,7 +667,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -636,7 +683,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -672,7 +719,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -688,7 +735,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -725,7 +772,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -741,7 +788,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -777,7 +824,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -793,7 +840,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -823,7 +870,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -853,7 +900,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -898,7 +945,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -930,7 +977,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -981,7 +1028,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1019,7 +1066,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1077,7 +1124,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1109,7 +1156,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1159,7 +1206,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1191,7 +1238,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1242,7 +1289,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1274,7 +1321,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1325,7 +1372,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1357,7 +1404,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1408,7 +1455,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1440,7 +1487,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1492,7 +1539,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1524,7 +1571,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1556,7 +1603,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1592,7 +1639,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1624,7 +1671,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1656,7 +1703,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1672,7 +1719,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1707,7 +1754,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1739,7 +1786,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1771,7 +1818,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1787,7 +1834,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1822,7 +1869,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1854,7 +1901,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1886,7 +1933,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1902,7 +1949,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1937,7 +1984,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -1969,7 +2016,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2001,7 +2048,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2017,7 +2064,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2052,7 +2099,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2084,7 +2131,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2116,7 +2163,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2132,7 +2179,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2171,7 +2218,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2203,7 +2250,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2235,7 +2282,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2251,7 +2298,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2299,7 +2346,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2331,7 +2378,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2363,7 +2410,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2379,7 +2426,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2419,7 +2466,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2451,7 +2498,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2483,7 +2530,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2499,7 +2546,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2539,7 +2586,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2571,7 +2618,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2603,7 +2650,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2619,7 +2666,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2665,7 +2712,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2697,7 +2744,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2729,7 +2776,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2745,7 +2792,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2788,7 +2835,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2820,7 +2867,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2852,7 +2899,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2868,7 +2915,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2911,7 +2958,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2943,7 +2990,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2975,7 +3022,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -2991,7 +3038,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -3029,7 +3076,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -3061,7 +3108,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -3093,7 +3140,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
@@ -3109,7 +3156,7 @@ func TestClusterService_Create(t *testing.T) {
 						VersionData: api.ServerVersionData{
 							Applications: []api.ApplicationVersionData{
 								{
-									Name:    string(images.UpdateFileComponentIncus),
+									Name:    "incus",
 									Version: "1",
 								},
 							},
