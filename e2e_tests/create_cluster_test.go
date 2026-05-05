@@ -51,7 +51,7 @@ func createClusterAndAddServerAndRemoveServer() func(t *testing.T, tmpDir string
 		}
 
 		// Remove IncusOS03 from cluster.
-		mustRun(t, `../bin/operations-center.linux.%s provisioning cluster remove-server incus-os-cluster --server-name IncusOS03`, cpuArch)
+		mustRun(t, `../bin/operations-center.linux.%s provisioning cluster remove-servers incus-os-cluster --server-names IncusOS03`, cpuArch)
 
 		// Assertions
 		assertClusterMembers(t, "incus-os-cluster", []string{"IncusOS01", "IncusOS02", "IncusOS04"})
