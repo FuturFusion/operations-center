@@ -3921,7 +3921,7 @@ func TestServerService_PollServer(t *testing.T) {
 			clientGetVersionData: api.ServerVersionData{
 				Applications: []api.ApplicationVersionData{
 					{
-						Name:          string(images.UpdateFileComponentIncus),
+						Name:          "incus",
 						Version:       "1",
 						InMaintenance: api.InMaintenanceEvacuated,
 					},
@@ -4423,7 +4423,7 @@ func TestServerService_ResyncByName(t *testing.T) {
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
-							Name: string(images.UpdateFileComponentIncus),
+							Name: "incus",
 						},
 					},
 				},
@@ -4442,7 +4442,7 @@ func TestServerService_ResyncByName(t *testing.T) {
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
-							Name: string(images.UpdateFileComponentIncus),
+							Name: "incus",
 						},
 					},
 				},
@@ -4493,7 +4493,7 @@ func TestServerService_ResyncByName(t *testing.T) {
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
-							Name: string(images.UpdateFileComponentIncus),
+							Name: "incus",
 						},
 					},
 				},
@@ -4514,7 +4514,7 @@ func TestServerService_ResyncByName(t *testing.T) {
 				VersionData: api.ServerVersionData{
 					Applications: []api.ApplicationVersionData{
 						{
-							Name: string(images.UpdateFileComponentIncus),
+							Name: "incus",
 						},
 					},
 				},

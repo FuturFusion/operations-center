@@ -12,6 +12,7 @@ import (
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
@@ -487,7 +488,7 @@ func (s *ServerVersionData) Compute(latestAvailableVersions map[images.UpdateFil
 
 	// InMaintenance is the InMaintenance state of Incus.
 	for _, application := range s.Applications {
-		if application.Name == string(images.UpdateFileComponentIncus) {
+		if domain.IsApplicationNameIncusKind(application.Name) {
 			s.InMaintenance = &application.InMaintenance
 			break
 		}
@@ -727,7 +728,7 @@ func (s Server) UpdateState() ServerUpdateState {
 		isClusteredIncus := false
 		if s.Cluster != "" {
 			for _, app := range s.VersionData.Applications {
-				if app.Name == string(images.UpdateFileComponentIncus) {
+				if domain.IsApplicationNameIncusKind(app.Name) {
 					isClusteredIncus = true
 					break
 				}
@@ -792,7 +793,7 @@ func (s Server) RecommendedAction() ServerAction {
 		isClusteredIncus := false
 		if s.Cluster != "" {
 			for _, app := range s.VersionData.Applications {
-				if app.Name == string(images.UpdateFileComponentIncus) {
+				if domain.IsApplicationNameIncusKind(app.Name) {
 					isClusteredIncus = true
 					break
 				}

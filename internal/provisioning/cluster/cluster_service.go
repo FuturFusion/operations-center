@@ -222,6 +222,7 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 		// Validate all listed servers are already known and do have configuration
 		// valid for clustering.
 		incusVersions := make([]string, 0, len(newCluster.ServerNames))
+		incusApplicationNames := make([]string, 0, len(newCluster.ServerNames))
 		for _, serverName := range newCluster.ServerNames {
 			server, err := s.serverSvc.GetByName(ctx, serverName)
 			if err != nil {
@@ -246,8 +247,9 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 
 			hasIncus := false
 			for _, app := range server.VersionData.Applications {
-				if app.Name == string(images.UpdateFileComponentIncus) {
+				if domain.IsApplicationNameIncusKind(app.Name) {
 					incusVersions = append(incusVersions, app.Version)
+					incusApplicationNames = append(incusApplicationNames, app.Name)
 					hasIncus = true
 					break
 				}
@@ -264,6 +266,13 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 		for _, incusVersion := range incusVersions {
 			if bootstrapIncusVersion != incusVersion {
 				return fmt.Errorf("Incus version is not the same on all servers, found %q and %q: %w", bootstrapIncusVersion, incusVersion, domain.ErrOperationNotPermitted)
+			}
+		}
+
+		bootstrapIncusApplicationName := incusApplicationNames[0]
+		for _, incusApplicationName := range incusApplicationNames {
+			if bootstrapIncusApplicationName != incusApplicationName {
+				return fmt.Errorf("Incus application is not the same on all servers, found %q and %q: %w", bootstrapIncusApplicationName, incusApplicationName, domain.ErrOperationNotPermitted)
 			}
 		}
 
@@ -639,7 +648,7 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 
 		hasIncus := false
 		for _, app := range server.VersionData.Applications {
-			if app.Name == string(images.UpdateFileComponentIncus) {
+			if domain.IsApplicationNameIncusKind(app.Name) {
 				hasIncus = true
 				break
 			}
