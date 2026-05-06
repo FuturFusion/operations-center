@@ -69,10 +69,12 @@ func IsRetryableError(err error) bool {
 // The original error can not be matched other than string comparison.
 var retryableIncusConnectErrors = regexp.MustCompile(`context deadline exceeded|Unable to connect to:.*\(.*(context cancelled|connection refused).*\)`)
 
-// context deadline exceeded
-
 func RetryableWrapper() func(err error) error {
 	return func(err error) error {
+		if err == nil {
+			return nil
+		}
+
 		// Connection errors are retryable.
 		if errors.Is(err, syscall.ECONNREFUSED) ||
 			errors.Is(err, io.EOF) ||
