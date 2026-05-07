@@ -296,6 +296,9 @@ func assertOperationsCenterCliUpdateCleanupAndRefresh(t *testing.T) {
 	// assert no updates
 	mustRun(t, `../bin/operations-center.linux.%s provisioning update list -f json | jq -e -r '. | length == 0'`, cpuArch)
 
+	// Give Operations Center a little bit of time to update disk usage metadata
+	time.Sleep(strechedTimeout(10 * time.Second))
+
 	mustRun(t, `../bin/operations-center.linux.%s provisioning update refresh`, cpuArch)
 
 	// wait for updates to become ready
