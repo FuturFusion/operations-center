@@ -1300,6 +1300,13 @@ func (s *serverService) PostRestoreSystemDoneByName(ctx context.Context, name st
 		server.StatusDetail = api.ServerStatusDetailNone
 		server.LastStatusUpdated = s.now()
 
+		for i := range server.VersionData.Applications {
+			if domain.IsApplicationNameIncusKind(server.VersionData.Applications[i].Name) {
+				server.VersionData.Applications[i].InMaintenance = api.NotInMaintenance
+				break
+			}
+		}
+
 		err = s.repo.Update(ctx, *server)
 		if err != nil {
 			return fmt.Errorf("Failed put server %q in restoring: %w", name, err)
