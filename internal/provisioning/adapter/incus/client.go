@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
-	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/lxc/incus-os/incus-osd/api/seed"
 	incus "github.com/lxc/incus/v6/client"
 	incusapi "github.com/lxc/incus/v6/shared/api"
@@ -271,7 +270,7 @@ func (c client) GetVersionData(ctx context.Context, server provisioning.Server) 
 		}
 
 		inMaintenance := api.NotInMaintenance
-		if applicationName == string(images.UpdateFileComponentIncus) && server.Cluster != nil {
+		if domain.IsApplicationNameIncusKind(applicationName) && server.Cluster != nil {
 			member, _, err := client.GetClusterMember(server.Name)
 			if err != nil {
 				return api.ServerVersionData{}, fmt.Errorf("Failed to get Incus cluster member details for %q (%s): %w", server.Name, server.GetConnectionURL(), err)
