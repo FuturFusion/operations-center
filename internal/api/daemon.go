@@ -910,6 +910,9 @@ func (d *Daemon) setupAPIRoutes(
 	)
 	registerAPI10Handler(api10router)
 
+	internalRouter := api10router.SubGroup("/internal")
+	registerInternalHandler(internalRouter, d.authorizer, db)
+
 	provisioningRouter := api10router.SubGroup("/provisioning")
 
 	provisioningTokenRouter := provisioningRouter.SubGroup("/tokens")
