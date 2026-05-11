@@ -1597,6 +1597,19 @@ func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *pro
 		return nil
 	}
 
+	// If restoring is happening outside of a rolling cluster update, skip post restore phase.
+	if server.Cluster != nil {
+		cluster, err := s.clusterSvc.GetByName(ctx, *server.Cluster)
+		if err != nil {
+			return fmt.Errorf("Failed to get cluster for server %q: %w", server.Name, err)
+		}
+
+		if !cluster.IsUpdateInProgress() {
+			server.StatusDetail = api.ServerStatusDetailNone
+			server.LastStatusUpdated = s.now()
+		}
+	}
+
 	if inMaintenance == api.InMaintenanceEvacuated {
 		server.StatusDetail = api.ServerStatusDetailNone
 		server.LastStatusUpdated = s.now()
@@ -1851,6 +1864,21 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 
 					break
 				}
+			}
+		}
+
+		// If restoring is happening outside of a rolling cluster update, skip post restore phase.
+		if ptr.From(server.VersionData.InMaintenance) == api.NotInMaintenance &&
+			server.StatusDetail == api.ServerStatusDetailReadyRestoring &&
+			server.Cluster != nil {
+			cluster, err := s.clusterSvc.GetByName(ctx, *server.Cluster)
+			if err != nil {
+				return fmt.Errorf("Failed to get cluster for server %q: %w", server.Name, err)
+			}
+
+			if !cluster.IsUpdateInProgress() {
+				server.StatusDetail = api.ServerStatusDetailNone
+				server.LastStatusUpdated = s.now()
 			}
 		}
 
