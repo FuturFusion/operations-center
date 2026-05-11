@@ -684,17 +684,18 @@ func (s *serverService) UpdateSystemUpdate(ctx context.Context, name string, upd
 }
 
 func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisioning.ServerSelfUpdate) error {
-	// For now, only network config changed events are supported (in legacy format without cause and with cause explicitly defined).
-	// This allows IncusOS to trigger more self update events without causeing issues in OC until these events are properly handled.
-	if serverUpdate.Cause != api.ServerSelfUpdateCauseDefault && serverUpdate.Cause != api.ServerSelfUpdateCauseNetworkConfigChanged {
-		return nil
-	}
-
 	if serverUpdate.Self {
+		// For Operations Center it self, only network config changed events are supported
+		// (in legacy format without cause and with cause explicitly defined).
+		if serverUpdate.Cause != api.ServerSelfUpdateCauseDefault && serverUpdate.Cause != api.ServerSelfUpdateCauseNetworkConfigChanged {
+			return nil
+		}
+
 		return s.SelfRegisterOperationsCenter(ctx)
 	}
 
 	var server *provisioning.Server
+	var triggerBackgroundPolling bool
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -713,7 +714,42 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 			return fmt.Errorf("Failed to get server by certificate: %w", err)
 		}
 
-		server.ConnectionURL = serverUpdate.ConnectionURL
+		switch serverUpdate.Cause {
+		case api.ServerSelfUpdateCauseDefault, api.ServerSelfUpdateCauseNetworkConfigChanged:
+			server.ConnectionURL = serverUpdate.ConnectionURL
+			triggerBackgroundPolling = true
+
+		case api.ServerSelfUpdateCauseSystemIsReady:
+			server.Status = api.ServerStatusReady
+			server.StatusDetail = api.ServerStatusDetailNone
+			server.LastStatusUpdated = s.now()
+
+		case api.ServerSelfUpdateCauseOSUpdateApplied:
+			server.StatusDetail = api.ServerStatusDetailReadyUpdating
+			server.LastStatusUpdated = s.now()
+
+		case api.ServerSelfUpdateCauseApplicationUpdateApplied:
+			server.StatusDetail = api.ServerStatusDetailReadyUpdating
+			server.LastStatusUpdated = s.now()
+
+		case api.ServerSelfUpdateCauseNetworkInterfaceStateChanged:
+			triggerBackgroundPolling = true
+
+		case api.ServerSelfUpdateCauseStorageConfigChanged:
+
+		case api.ServerSelfUpdateCauseSystemRebootTriggered:
+			server.Status = api.ServerStatusOffline
+			server.StatusDetail = api.ServerStatusDetailOfflineRebooting
+			server.LastStatusUpdated = s.now()
+
+		case api.ServerSelfUpdateCauseShutdownTriggered:
+			server.Status = api.ServerStatusOffline
+			server.StatusDetail = api.ServerStatusDetailOfflineShutdown
+			server.LastStatusUpdated = s.now()
+
+		default:
+			return fmt.Errorf("Undefined server update cause %q: %w", serverUpdate.Cause, domain.ErrOperationNotPermitted)
+		}
 
 		err = server.Validate()
 		if err != nil {
@@ -731,29 +767,31 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 		return err
 	}
 
-	go func() {
-		var err error
-		ctx := context.Background()
-		log := slog.With(slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
+	if triggerBackgroundPolling {
+		go func() {
+			var err error
+			ctx := context.Background()
+			log := slog.With(slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 
-		for i := range 10 {
-			time.Sleep(s.initialConnectionDelay)
+			for i := range 10 {
+				time.Sleep(s.initialConnectionDelay)
 
-			err = s.PollServer(ctx, *server, true)
-			if err == nil {
-				break
+				err = s.PollServer(ctx, *server, true)
+				if err == nil {
+					break
+				}
+
+				log.DebugContext(ctx, "Failed to poll server after self update", logger.Err(err), slog.Int("count", i))
 			}
 
-			log.DebugContext(ctx, "Failed to poll server after self update", logger.Err(err), slog.Int("count", i))
-		}
+			if err != nil {
+				log.ErrorContext(ctx, "Failed to update server configuration after self update", logger.Err(err))
+				return
+			}
 
-		if err != nil {
-			log.ErrorContext(ctx, "Failed to update server configuration after self update", logger.Err(err))
-			return
-		}
-
-		s.selfUpdateSignal.Emit(ctx, *server)
-	}()
+			s.selfUpdateSignal.Emit(ctx, *server)
+		}()
+	}
 
 	return nil
 }
