@@ -826,8 +826,15 @@ func (s Server) RecommendedAction() ServerAction {
 type ServerSelfUpdateCause string
 
 const (
-	ServerSelfUpdateCauseDefault              ServerSelfUpdateCause = "" // Empty string is threated as network config changed for backwards compatibility reasons.
-	ServerSelfUpdateCauseNetworkConfigChanged ServerSelfUpdateCause = "network-config-changed"
+	ServerSelfUpdateCauseDefault                      ServerSelfUpdateCause = "" // Empty string is threated as network config changed for backwards compatibility reasons.
+	ServerSelfUpdateCauseNetworkConfigChanged         ServerSelfUpdateCause = "network-config-changed"
+	ServerSelfUpdateCauseSystemIsReady                ServerSelfUpdateCause = "system-is-ready"
+	ServerSelfUpdateCauseOSUpdateApplied              ServerSelfUpdateCause = "os-update-applied"
+	ServerSelfUpdateCauseApplicationUpdateApplied     ServerSelfUpdateCause = "application-update-applied"
+	ServerSelfUpdateCauseNetworkInterfaceStateChanged ServerSelfUpdateCause = "network-interface-state-changed"
+	ServerSelfUpdateCauseStorageConfigChanged         ServerSelfUpdateCause = "storage-config-changed"
+	ServerSelfUpdateCauseSystemRebootTriggered        ServerSelfUpdateCause = "system-reboot-triggered"
+	ServerSelfUpdateCauseShutdownTriggered            ServerSelfUpdateCause = "system-shutdown-triggered"
 )
 
 // ServerSelfUpdate defines a self update request of a server.
