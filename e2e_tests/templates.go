@@ -50,6 +50,7 @@ applications:
     - name: incus
     - name: debug
 network:
+  version: "1"
   interfaces:
     - name: enp5s0
       hwaddr: enp5s0
