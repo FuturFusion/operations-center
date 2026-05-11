@@ -3938,6 +3938,8 @@ func TestServerService_PollServer(t *testing.T) {
 		runnerServerRegistrationRunErr error
 		repoGetByName                  *provisioning.Server
 		repoGetByNameErr               error
+		clusterSvcGetByName            *provisioning.Cluster
+		clusterSvcGetByNameErr         error
 		repoUpdateErr                  error
 		updateSvcGetAllWithFilter      provisioning.Updates
 		updateSvcGetAllWithFilterErr   error
@@ -4130,6 +4132,40 @@ func TestServerService_PollServer(t *testing.T) {
 						{
 							Component: images.UpdateFileComponentIncus,
 						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+		{
+			name: "success - restoring",
+			serverArg: provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailReadyRestoring,
+			},
+			updateServerConfigArg: false,
+			repoGetByName: &provisioning.Server{
+				Name:         "one",
+				Cluster:      ptr.To("cluster"),
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailReadyRestoring,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name:          "incus",
+							Version:       "1",
+							InMaintenance: api.NotInMaintenance,
+						},
+					},
+				},
+			},
+			clusterSvcGetByName: &provisioning.Cluster{
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
 					},
 				},
 			},
@@ -4448,6 +4484,34 @@ func TestServerService_PollServer(t *testing.T) {
 			assertErr: boom.ErrorIs,
 			assertLog: log.Empty,
 		},
+		{
+			name: "error - clusterSvc.GetByName",
+			serverArg: provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailReadyRestoring,
+			},
+			updateServerConfigArg: false,
+			repoGetByName: &provisioning.Server{
+				Name:         "one",
+				Cluster:      ptr.To("cluster"),
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailReadyRestoring,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name:          "incus",
+							Version:       "1",
+							InMaintenance: api.NotInMaintenance,
+						},
+					},
+				},
+			},
+			clusterSvcGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
 	}
 
 	for _, tc := range tests {
@@ -4495,13 +4559,19 @@ func TestServerService_PollServer(t *testing.T) {
 				},
 			}
 
+			clusterSvc := &svcMock.ClusterServiceMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.clusterSvcGetByName, tc.clusterSvcGetByNameErr
+				},
+			}
+
 			updateSvc := &svcMock.UpdateServiceMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
 					return tc.updateSvcGetAllWithFilter, tc.updateSvcGetAllWithFilterErr
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, runner, nil, nil, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(repo, client, runner, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 			)
 
@@ -4575,12 +4645,14 @@ func TestServerService_ResyncByName(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
-		name                  string
-		resourceTypeArg       domain.ResourceType
-		lifecycleOperationArg domain.LifecycleOperation
-		repoGetByName         provisioning.Server
-		repoGetByNameErr      error
-		repoUpdateErr         error
+		name                   string
+		resourceTypeArg        domain.ResourceType
+		lifecycleOperationArg  domain.LifecycleOperation
+		repoGetByName          provisioning.Server
+		repoGetByNameErr       error
+		clusterSvcGetByName    *provisioning.Cluster
+		clusterSvcGetByNameErr error
+		repoUpdateErr          error
 
 		assertErr    require.ErrorAssertionFunc
 		wantLastSeen time.Time
@@ -4642,6 +4714,33 @@ func TestServerService_ResyncByName(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name:                  "success - restore operation not part of cluster wide rolling update",
+			resourceTypeArg:       domain.ResourceTypeServer,
+			lifecycleOperationArg: domain.LifecycleOperationRestore,
+			repoGetByName: provisioning.Server{
+				Name:    "incus",
+				Cluster: ptr.To("cluster"),
+				Type:    api.ServerTypeIncus,
+				Status:  api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			clusterSvcGetByName: &provisioning.Cluster{
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressInactive,
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name:                  "success - evacuate operation - non incus",
 			resourceTypeArg:       domain.ResourceTypeServer,
 			lifecycleOperationArg: domain.LifecycleOperationEvacuate,
@@ -4670,6 +4769,27 @@ func TestServerService_ResyncByName(t *testing.T) {
 			resourceTypeArg:       domain.ResourceTypeServer,
 			lifecycleOperationArg: domain.LifecycleOperationUpdate,
 			repoGetByNameErr:      boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                  "error - clusterSvc.GetByName",
+			resourceTypeArg:       domain.ResourceTypeServer,
+			lifecycleOperationArg: domain.LifecycleOperationRestore,
+			repoGetByName: provisioning.Server{
+				Name:    "incus",
+				Cluster: ptr.To("cluster"),
+				Type:    api.ServerTypeIncus,
+				Status:  api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus",
+						},
+					},
+				},
+			},
+			clusterSvcGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -4767,13 +4887,19 @@ func TestServerService_ResyncByName(t *testing.T) {
 				},
 			}
 
+			clusterSvc := &svcMock.ClusterServiceMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.clusterSvcGetByName, tc.clusterSvcGetByNameErr
+				},
+			}
+
 			updateSvc := &svcMock.UpdateServiceMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
 					return provisioning.Updates{}, nil
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, serverCertificate,
+			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, serverCertificate,
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
