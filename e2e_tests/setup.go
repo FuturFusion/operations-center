@@ -285,6 +285,7 @@ func installOperationsCenterVM(t *testing.T) {
 		mustRun(t, `incus init --empty --vm OperationsCenter -c security.secureboot=false -c limits.cpu=%s -c limits.memory=%s -d root,size=%s`, cpuCount, memorySize, diskSize)
 		mustRun(t, `incus config device add OperationsCenter vtpm tpm`)
 		mustRun(t, `incus config device add OperationsCenter boot-media disk pool=default source=IncusOS_OperationsCenter.iso boot.priority=10`)
+		mustRun(t, `incus config set OperationsCenter systemd.credential.fully-enable-incus-agent=true`)
 		mustRun(t, `incus start OperationsCenter`)
 
 		t.Log("Waiting for Operations Center to complete installation")
@@ -534,6 +535,11 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string, na
 				}
 
 				err = fmtRunErr(runWithContext(errgrpctx, t, `incus config device add %s boot-media disk pool=default source=%s boot.priority=10`, name, incusOSPreseededISOFilename))
+				if err != nil {
+					return err
+				}
+
+				err = fmtRunErr(runWithContext(errgrpctx, t, `incus config set %s systemd.credential.fully-enable-incus-agent=true`, name))
 				if err != nil {
 					return err
 				}

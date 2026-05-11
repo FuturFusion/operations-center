@@ -316,10 +316,50 @@ operations-center provisioning token add --description "IncusOS Cluster Tutorial
 operations-center provisioning token list
 ```
 
+```{note}
+By default, IncusOS will prefer IPv6 connectivity if available and after the
+installation, Incus will only be available on the IPv6 address by default. If
+you want to use IPv4 or both instead, you can create a seed file with network
+configuration to enable Incus management an all IP addresses.
+
+Create a seed file `pre-seed.yaml` for the pre-seeded installation ISO with the
+following content:
+
+````yaml
+network:
+  version: "1"
+  interfaces:
+    - name: enp5s0
+      hwaddr: enp5s0
+      required_for_online: both
+      addresses:
+      - dhcp4
+      - dhcp6
+      - slaac
+incus:
+  version: "1"
+  preseed:
+    config:
+      core.https_address: ":8443"
+````
+
+Optionally add the OIDC client configuration in the `incus.preseed.config` section:
+
+````yaml
+incus:
+  preseed:
+    config:
+      oidc.claim: "preferred_username"
+      oidc.client.id: "<your_client_id>"
+      oidc.issuer: "https://sso.linuxcontainers.org"
+      oidc.scopes: "openid,offline_access"
+````
+```
+
 Now get the pre-seeded installation ISO (this process may take a while):
 
 ```shell
-operations-center provisioning token get-image <token> ~/Downloads/IncusOS.iso --architecture x86_64 --type iso
+operations-center provisioning token get-image <token> ~/Downloads/IncusOS.iso pre-seed.yaml --architecture x86_64 --type iso
 ```
 
 ````
@@ -477,6 +517,18 @@ certificates:
     description: "Client certificate for accessing the cluster"
     certificate: |-
       <paste your client certificate here>
+config:
+  core.https_address: ":8443"
+```
+
+Optionally add the OIDC client configuration in the `config` section:
+
+```yaml
+config:
+  oidc.claim: "preferred_username"
+  oidc.client.id: "<your_client_id>"
+  oidc.issuer: "https://sso.linuxcontainers.org"
+  oidc.scopes: "openid,offline_access"
 ```
 
 For the clustering step, the respective [servers](../reference/server.md),
@@ -568,7 +620,7 @@ there.
 ```{note}
 If the clustering fails, the cluster can be removed from Operations Center and
 all the servers can be reset (factory reset) with the following command:
-`operations-center provisioning cluster remove tutorial-incusos-cluster --mode=factory-reset`.
+`operations-center provisioning cluster factory-reset tutorial-incusos-cluster`.
 
 After this command, wait for all the servers to register again with Operations
 Center. You can check the status with: `operations-center provisioning server list`.
@@ -592,7 +644,7 @@ Note down the connection URL and the fingerprint of the cluster for the next ste
 In order to access the newly created Incus cluster, add it as a remote to Incus:
 
 ```shell
-incus remote add tutorial-incusos-cluster <connection-url>
+incus remote add tutorial-incusos-cluster <connection-url> --auth-type tls
 incus remote switch tutorial-incusos-cluster
 ```
 
@@ -680,7 +732,7 @@ operations-center inventory profile list
 Navigate to the respective section of interest in the *Inventory*.
 
 ````
-`````{tabs}
+`````
 
 ## Start Over
 
@@ -700,6 +752,13 @@ incus remote remove tutorial-incusos-cluster
 
 Since we are running the IncusOS instances as VM inside of Incus, you may enter
 the respective VM with `incus exec <vm-name> -- bash` to inspect and debug.
+
+For this to work, you have to fully enable `incus-agent` support in the virtual
+machine by running the following command before starting the VM:
+
+```shell
+incus config set <vm> systemd.credential.fully-enable-incus-agent=true
+```
 
 See also the [Debugging](https://linuxcontainers.org/incus-os/docs/main/contributing/#debugging)
 section in the IncusOS documentation.
