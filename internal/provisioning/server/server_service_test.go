@@ -2419,8 +2419,10 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		repoUpdateErr              error
 		repoGetByNameErr           error
 
-		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertErr              require.ErrorAssertionFunc
+		assertLog              func(t *testing.T, logBuf *bytes.Buffer)
+		wantServerStatus       api.ServerStatus
+		wantServerStatusDetail api.ServerStatusDetail
 	}{
 		{
 			name: "success",
@@ -2437,8 +2439,10 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				Channel:       "stable",
 			},
 
-			assertErr: require.NoError,
-			assertLog: log.Empty,
+			assertErr:              require.NoError,
+			assertLog:              log.Empty,
+			wantServerStatus:       api.ServerStatusReady,
+			wantServerStatusDetail: api.ServerStatusDetailNone,
 		},
 		{
 			name: "success - cause network config changed",
@@ -2456,14 +2460,16 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				Channel:       "stable",
 			},
 
-			assertErr: require.NoError,
-			assertLog: log.Empty,
+			assertErr:              require.NoError,
+			assertLog:              log.Empty,
+			wantServerStatus:       api.ServerStatusReady,
+			wantServerStatusDetail: api.ServerStatusDetailNone,
 		},
 		{
-			name: "success - with other cause",
+			name: "success - cause system is ready",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
 				ConnectionURL:             "http://one-new/",
-				Cause:                     api.ServerSelfUpdateCause("other-cause"),
+				Cause:                     api.ServerSelfUpdateCauseSystemIsReady,
 				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
@@ -2475,8 +2481,136 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				Channel:       "stable",
 			},
 
-			assertErr: require.NoError,
-			assertLog: log.Empty,
+			assertErr:              require.NoError,
+			assertLog:              log.Empty,
+			wantServerStatus:       api.ServerStatusReady,
+			wantServerStatusDetail: api.ServerStatusDetailNone,
+		},
+		{
+			name: "success - cause OS update applied",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one-new/",
+				Cause:                     api.ServerSelfUpdateCauseOSUpdateApplied,
+				AuthenticationCertificate: serverCertificate.Leaf,
+			},
+			repoGetByCertificateServer: &provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate:   string(serverCertPEM),
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
+			},
+
+			assertErr:              require.NoError,
+			assertLog:              log.Empty,
+			wantServerStatus:       api.ServerStatusReady,
+			wantServerStatusDetail: api.ServerStatusDetailReadyUpdating,
+		},
+		{
+			name: "success - cause application update applied",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one-new/",
+				Cause:                     api.ServerSelfUpdateCauseApplicationUpdateApplied,
+				AuthenticationCertificate: serverCertificate.Leaf,
+			},
+			repoGetByCertificateServer: &provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate:   string(serverCertPEM),
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
+			},
+
+			assertErr:              require.NoError,
+			assertLog:              log.Empty,
+			wantServerStatus:       api.ServerStatusReady,
+			wantServerStatusDetail: api.ServerStatusDetailReadyUpdating,
+		},
+		{
+			name: "success - cause OS update applied",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one-new/",
+				Cause:                     api.ServerSelfUpdateCauseNetworkInterfaceStateChanged,
+				AuthenticationCertificate: serverCertificate.Leaf,
+			},
+			repoGetByCertificateServer: &provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate:   string(serverCertPEM),
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
+			},
+
+			assertErr:              require.NoError,
+			assertLog:              log.Empty,
+			wantServerStatus:       api.ServerStatusReady,
+			wantServerStatusDetail: api.ServerStatusDetailNone,
+		},
+		{
+			name: "success - cause OS update applied",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one-new/",
+				Cause:                     api.ServerSelfUpdateCauseStorageConfigChanged,
+				AuthenticationCertificate: serverCertificate.Leaf,
+			},
+			repoGetByCertificateServer: &provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate:   string(serverCertPEM),
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
+			},
+
+			assertErr:              require.NoError,
+			assertLog:              log.Empty,
+			wantServerStatus:       api.ServerStatusReady,
+			wantServerStatusDetail: api.ServerStatusDetailNone,
+		},
+		{
+			name: "success - cause OS update applied",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one-new/",
+				Cause:                     api.ServerSelfUpdateCauseSystemRebootTriggered,
+				AuthenticationCertificate: serverCertificate.Leaf,
+			},
+			repoGetByCertificateServer: &provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate:   string(serverCertPEM),
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
+			},
+
+			assertErr:              require.NoError,
+			assertLog:              log.Empty,
+			wantServerStatus:       api.ServerStatusOffline,
+			wantServerStatusDetail: api.ServerStatusDetailOfflineRebooting,
+		},
+		{
+			name: "success - cause OS update applied",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one-new/",
+				Cause:                     api.ServerSelfUpdateCauseShutdownTriggered,
+				AuthenticationCertificate: serverCertificate.Leaf,
+			},
+			repoGetByCertificateServer: &provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate:   string(serverCertPEM),
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
+			},
+
+			assertErr:              require.NoError,
+			assertLog:              log.Empty,
+			wantServerStatus:       api.ServerStatusOffline,
+			wantServerStatusDetail: api.ServerStatusDetailOfflineShutdown,
 		},
 		{
 			name: "success - rebooting",
@@ -2494,13 +2628,37 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				Channel:       "stable",
 			},
 
-			assertErr: require.NoError,
-			assertLog: log.Empty,
+			assertErr:              require.NoError,
+			assertLog:              log.Empty,
+			wantServerStatus:       api.ServerStatusOffline,
+			wantServerStatusDetail: api.ServerStatusDetailOfflineRebooting,
 		},
 		{
 			name: "success - operations center self update",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
 				Self: true,
+			},
+			repoGetAllWithFilter: provisioning.Servers{
+				{
+					Name:          "one",
+					ConnectionURL: "http://one/",
+					Certificate:   string(serverCertPEM),
+					Type:          api.ServerTypeOperationsCenter,
+					Status:        api.ServerStatusReady,
+					Channel:       "stable",
+				},
+			},
+
+			assertErr:              require.NoError,
+			assertLog:              log.Empty,
+			wantServerStatus:       api.ServerStatusReady,
+			wantServerStatusDetail: api.ServerStatusDetailNone,
+		},
+		{
+			name: "success - operations center self update - other cause",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				Self:  true,
+				Cause: api.ServerSelfUpdateCause("other-cause"),
 			},
 			repoGetAllWithFilter: provisioning.Servers{
 				{
@@ -2541,6 +2699,28 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			assertLog: log.Empty,
 		},
 		{
+			name: "error - undefined update cause",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one-new/",
+				Cause:                     api.ServerSelfUpdateCause("other-cause"),
+				AuthenticationCertificate: serverCertificate.Leaf,
+			},
+			repoGetByCertificateServer: &provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate:   string(serverCertPEM),
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Undefined server update cause "other-cause"`)
+			},
+			assertLog: log.Empty,
+		},
+		{
 			name: "error - validation",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
 				ConnectionURL:             ":|//", // invalid URL
@@ -2577,8 +2757,10 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 			repoUpdateErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertErr:              boom.ErrorIs,
+			assertLog:              log.Empty,
+			wantServerStatus:       api.ServerStatusReady,
+			wantServerStatusDetail: api.ServerStatusDetailNone,
 		},
 		{
 			name: "error - repo.GetByName",
@@ -2596,8 +2778,10 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 			repoGetByNameErr: boom.Error,
 
-			assertErr: require.NoError, // handled async in Goroutine, error is logged.
-			assertLog: log.Contains("Failed to update server configuration after self update"),
+			assertErr:              require.NoError, // handled async in Goroutine, error is logged.
+			assertLog:              log.Contains("Failed to update server configuration after self update"),
+			wantServerStatus:       api.ServerStatusReady,
+			wantServerStatusDetail: api.ServerStatusDetailNone,
 		},
 	}
 
@@ -2607,6 +2791,9 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			logBuf := &bytes.Buffer{}
 			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
+
+			var gotServerStatus api.ServerStatus
+			var gotServerStatusDetail api.ServerStatusDetail
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -2619,6 +2806,8 @@ func TestServerService_SelfUpdate(t *testing.T) {
 					return tc.repoGetByCertificateServer, tc.repoGetByCertificateErr
 				},
 				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					gotServerStatus = in.Status
+					gotServerStatusDetail = in.StatusDetail
 					return tc.repoUpdateErr
 				},
 			}
@@ -2678,6 +2867,8 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			tc.assertLog(t, logBuf)
+			require.Equal(t, tc.wantServerStatus, gotServerStatus)
+			require.Equal(t, tc.wantServerStatusDetail, gotServerStatusDetail)
 		})
 	}
 }
