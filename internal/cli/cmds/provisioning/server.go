@@ -5,10 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"strings"
 	"time"
 
+	"github.com/lxc/incus-os/incus-osd/cli"
 	"github.com/lxc/incus/v6/shared/termios"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -90,6 +94,13 @@ func (c *CmdServer) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(serverChangelogCmd.Command())
+
+	// OS
+	serverOSCmd := cmdServerOS{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(serverOSCmd.Command())
 
 	// System
 	serverSystemCmd := cmdServerSystem{
@@ -589,4 +600,33 @@ func (c *cmdServerChangelog) run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Changelog:\n%s\n", render.Indent(4, string(changelogYAML)))
 
 	return nil
+}
+
+// OS server.
+type cmdServerOS struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdServerOS) Command() *cobra.Command {
+	args := &cli.Args{
+		SupportsTarget:    false,
+		SupportsRemote:    true,
+		DefaultListFormat: "table",
+		DoHTTP: func(remote string, req *http.Request) (*http.Response, error) {
+			var err error
+
+			if remote == "" {
+				return nil, fmt.Errorf("Remote is not optional, provide the server name with a subsequent colon, e.g. server1:")
+			}
+
+			req.URL, err = url.Parse(c.ocClient.GetBaseAddr() + path.Join("/1.0/provisioning/servers/", remote, req.URL.String()))
+			if err != nil {
+				return nil, err
+			}
+
+			return c.ocClient.DoHTTP(req)
+		},
+	}
+
+	return cli.NewCommand(args)
 }
