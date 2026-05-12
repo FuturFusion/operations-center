@@ -29,7 +29,7 @@ func createClusterAndAddServerAndRemoveServer() func(t *testing.T, tmpDir string
 		err := os.WriteFile(filepath.Join(tmpDir, "lvm_enable.yaml"), incusOSServiceLVMConfig, 0o600)
 		require.NoError(t, err)
 
-		mustRunWithTimeout(t, `incus exec IncusOS04 -- incus admin os service edit lvm < %s`, strechedTimeout(10*time.Minute), filepath.Join(tmpDir, "lvm_enable.yaml"))
+		mustRun(t, `../bin/operations-center.linux.%s provisioning server os service edit IncusOS04:lvm < %s`, cpuArch, filepath.Join(tmpDir, "lvm_enable.yaml"))
 
 		// Add IncusOS04 to cluster.
 		mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add-servers incus-os-cluster --server-names IncusOS04`, cpuArch)

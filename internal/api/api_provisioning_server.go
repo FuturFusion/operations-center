@@ -5,9 +5,13 @@ import (
 	"encoding/pem"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"path"
 	"strconv"
 
 	"github.com/google/uuid"
+	localtls "github.com/lxc/incus/v6/shared/tls"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -20,13 +24,25 @@ import (
 
 type serverHandler struct {
 	service           provisioning.ServerService
+	preNamePrefix     string
 	clientCertificate string
+	clientKey         string
+	clientCA          string
 }
 
-func registerProvisioningServerHandler(router Router, authorizer *authz.Authorizer, service provisioning.ServerService, clientCertificate string) {
+func registerProvisioningServerHandler(
+	router Router,
+	preNamePrefix string,
+	authorizer *authz.Authorizer,
+	service provisioning.ServerService,
+	clientCertificate string,
+	clientKey string,
+) {
 	handler := &serverHandler{
+		preNamePrefix:     preNamePrefix,
 		service:           service,
 		clientCertificate: clientCertificate,
+		clientKey:         clientKey,
 	}
 
 	// Creating new servers (POST requests for servers) is authenticated using
@@ -56,6 +72,8 @@ func registerProvisioningServerHandler(router Router, authorizer *authz.Authoriz
 	router.HandleFunc("POST /{name}", response.With(handler.serverPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/:resync", response.With(handler.serverResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}/changelog", response.With(handler.serverChangelogGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("/{name}/os", response.With(handler.serverOSProxy, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("/{name}/os/", response.With(handler.serverOSProxy, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/system/:evacuate", response.With(handler.serverSystemEvacuatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/system/:factory-reset", response.With(handler.serverSystemFactoryResetPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/system/:poweroff", response.With(handler.serverSystemPoweroffPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
@@ -811,6 +829,58 @@ func (s *serverHandler) serverChangelogGet(r *http.Request) response.Response {
 		true,
 		changelog,
 	)
+}
+
+func (s *serverHandler) serverOSProxy(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	server, err := s.service.GetByName(r.Context(), name)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to get server %q: %w", name, err))
+	}
+
+	connectionURL, err := url.Parse(server.GetConnectionURL())
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Invalid connection URL %q for server: %q: %w", server.GetConnectionURL(), name, err))
+	}
+
+	tlsConfig, err := localtls.GetTLSConfigMem(s.clientCertificate, s.clientKey, s.clientCA, server.GetCertificate(), false)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to get TLS config for %q: %w", name, err))
+	}
+
+	// If we don't have a certificate, the certificate is from a trusted root.
+	// Ensure the server name to match in this case.
+	if server.GetCertificate() == "" {
+		tlsConfig.ServerName = connectionURL.Hostname()
+	}
+
+	// Prepare the proxy.
+	proxy := &httputil.ReverseProxy{
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+
+			// Bypass system proxy for communication to IncusOS servers.
+			Proxy: func(r *http.Request) (*url.URL, error) {
+				return nil, nil
+			},
+		},
+		Director: func(r *http.Request) {
+			r.URL.Scheme = "https"
+			r.URL.Host = connectionURL.Host
+		},
+	}
+
+	// Allow IncusOS to adjust the returned paths to the prefix used by the proxy.
+	prefix := path.Join(s.preNamePrefix, name)
+	r.Header.Add("X-IncusOS-Proxy", prefix)
+
+	// Handle the request.
+	return response.ManualResponse(func(w http.ResponseWriter) error {
+		http.StripPrefix(prefix, proxy).ServeHTTP(w, r)
+
+		return nil
+	})
 }
 
 // swagger:operation POST /1.0/provisioning/servers/{name}/system/:evacuate servers_system_evacuate server_system_evacuate_post
