@@ -925,7 +925,14 @@ func (d *Daemon) setupAPIRoutes(
 	registerProvisioningClusterTemplateHandler(provisioningClusterTemplateRouter, d.authorizer, clusterTemplateSvc)
 
 	provisioningServerRouter := provisioningRouter.SubGroup("/servers")
-	registerProvisioningServerHandler(provisioningServerRouter, d.authorizer, serverSvc, d.clientCertificate)
+	registerProvisioningServerHandler(
+		provisioningServerRouter,
+		"/1.0/provisioning/servers",
+		d.authorizer,
+		serverSvc,
+		d.clientCertificate,
+		d.clientKey,
+	)
 
 	provisioningUpdateRouter := provisioningRouter.SubGroup("/updates")
 	registerUpdateHandler(provisioningUpdateRouter, d.authorizer, updateSvc)
