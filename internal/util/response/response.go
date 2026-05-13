@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -355,7 +356,7 @@ func (r readCloserResponse) Render(w http.ResponseWriter) error {
 		w.Header().Set("Content-Length", strconv.Itoa(r.fileSize))
 	}
 
-	_, err := io.Copy(writer, r.rc)
+	_, err := file.SafeCopy(writer, r.rc)
 	if err != nil {
 		return err
 	}
