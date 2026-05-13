@@ -192,7 +192,7 @@ func copyFile(src string, dst string) (_ int64, err error) {
 		err = errors.Join(err, destination.Close())
 	}()
 
-	nBytes, err := io.Copy(destination, source)
+	nBytes, err := file.SafeCopy(destination, source)
 	return nBytes, err
 }
 
@@ -281,7 +281,7 @@ func (c clusterArtifact) GetClusterArtifactArchiveByName(ctx context.Context, cl
 			return nil, 0, fmt.Errorf("Failed to open source file %q: %w", sourceFilename, err)
 		}
 
-		_, err = io.Copy(zipFileWriter, sourceFile)
+		_, err = file.SafeCopy(zipFileWriter, sourceFile)
 		if err != nil {
 			return nil, 0, fmt.Errorf("Failed to copy content from source file %q to zip archive: %w", sourceFilename, err)
 		}
