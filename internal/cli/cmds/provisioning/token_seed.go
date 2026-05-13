@@ -532,7 +532,7 @@ func (c *cmdTokenSeedGetImage) run(cmd *cobra.Command, args []string) (err error
 
 	progress, writer := progressWriter(targetFile, format, quiet)
 
-	size, err := io.Copy(writer, imageReader)
+	size, err := file.SafeCopy(writer, imageReader)
 	if err != nil {
 		return err
 	}
