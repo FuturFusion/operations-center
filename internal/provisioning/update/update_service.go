@@ -29,6 +29,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -1088,7 +1089,7 @@ func (s updateService) downloadFile(ctx context.Context, update provisioning.Upd
 
 	if updateFile.Sha256 != "" {
 		h = sha256.New()
-		teeStream = provisioning.NewTeeReadCloser(stream, h)
+		teeStream = file.NewTeeReadCloser(stream, h)
 	}
 
 	commit, cancel, err := s.filesRepo.Put(ctx, update, updateFile.Filename, teeStream)
