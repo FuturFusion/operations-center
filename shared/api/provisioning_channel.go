@@ -17,7 +17,7 @@ type ChannelPut struct {
 //
 // swagger:model
 type ChannelPost struct {
-	ChannelPut
+	ChannelPut `yaml:",inline"`
 
 	// Name of the channel.
 	// Example: stable
@@ -28,7 +28,7 @@ type ChannelPost struct {
 //
 // swagger:model
 type Channel struct {
-	ChannelPost
+	ChannelPost `yaml:",inline"`
 
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
