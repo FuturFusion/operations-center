@@ -28,6 +28,7 @@ structname: "{{ .InterfaceName }}WithSlog"
 pkgname: middleware
 packages:
   github.com/FuturFusion/operations-center/internal/inventory:
+  github.com/FuturFusion/operations-center/internal/image:
   github.com/FuturFusion/operations-center/internal/provisioning:
   github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet:
   github.com/FuturFusion/operations-center/internal/system:
