@@ -361,6 +361,19 @@ CREATE TABLE warnings (
   UNIQUE (type, scope, entity_type, entity)
 );
 
+CREATE TABLE incus_images (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  operating_system TEXT NOT NULL,
+  release TEXT NOT NULL,
+  architecture TEXT NOT NULL,
+  variant TEXT NOT NULL,
+  versions TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (operating_system, release, variant, architecture)
+);
+
 CREATE VIEW resources AS
     SELECT 'image' AS kind, images.id, clusters.name AS cluster_name, NULL AS server_name, images.project_name, NULL AS parent_name, images.name, images.object, images.last_updated
     FROM images
@@ -425,4 +438,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (34, strftime("%s"));
+INSERT INTO schema (version, updated_at) VALUES (35, strftime("%s"));
