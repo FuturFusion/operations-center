@@ -14,6 +14,7 @@ import (
 //generate-expr: IncusImage
 
 type IncusImage struct {
+	ID          int64  `json:"-"`
 	Name        string `json:"name" db:"primary=yes"`
 	Description string `json:"description"`
 
@@ -22,7 +23,7 @@ type IncusImage struct {
 	Architecture    string `json:"arch"`
 	Variant         string `json:"variant"`
 
-	Versions map[string]api.IncusImageVersion `json:"versions"`
+	Versions api.IncusImageVersions `json:"versions"`
 
 	LastUpdated time.Time `json:"-" expr:"last_updated" db:"update_timestamp"`
 }
