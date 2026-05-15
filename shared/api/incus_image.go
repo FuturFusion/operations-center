@@ -1,6 +1,11 @@
 package api
 
-import "time"
+import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
+	"time"
+)
 
 // IncusImagePut represents the fields available for update for an incus image.
 //
@@ -83,4 +88,39 @@ type IncusImageVersionItem struct {
 
 	// Size holds the size in bytes of the file.
 	Size int64 `json:"size" yaml:"size"`
+}
+
+type IncusImageVersions map[string]IncusImageVersion
+
+// Value implements the sql driver.Valuer interface.
+func (i IncusImageVersions) Value() (driver.Value, error) {
+	return json.Marshal(i)
+}
+
+// Scan implements the sql.Scanner interface.
+func (i *IncusImageVersions) Scan(value any) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid incus image versions")
+	}
+
+	switch v := value.(type) {
+	case string:
+		if len(v) == 0 {
+			*i = IncusImageVersions{}
+			return nil
+		}
+
+		return json.Unmarshal([]byte(v), i)
+
+	case []byte:
+		if len(v) == 0 {
+			*i = IncusImageVersions{}
+			return nil
+		}
+
+		return json.Unmarshal(v, i)
+
+	default:
+		return fmt.Errorf("type %T is not supported for incus image versions", value)
+	}
 }
