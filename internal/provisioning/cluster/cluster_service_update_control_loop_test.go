@@ -463,7 +463,9 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 		}
 
 		err = clusterSvc.ClusterUpdateControlLoop(ctx, nil)
-		require.NoError(t, err)
+		if !domain.IsRetryableError(err) {
+			require.NoError(t, err)
+		}
 
 		time.Sleep(controlLoopInterval)
 	}
@@ -1015,7 +1017,9 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 		}
 
 		err = clusterSvc.ClusterUpdateControlLoop(ctx, nil)
-		require.NoError(t, err)
+		if !domain.IsRetryableError(err) {
+			require.NoError(t, err)
+		}
 
 		time.Sleep(controlLoopInterval)
 	}

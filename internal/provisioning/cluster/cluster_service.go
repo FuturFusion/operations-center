@@ -1769,7 +1769,11 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 }
 
 func (s *clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNameFilter *string) error {
-	s.clusterUpdateControlLoopMu.Lock()
+	ok := s.clusterUpdateControlLoopMu.TryLock()
+	if !ok {
+		return domain.NewRetryableErr(fmt.Errorf("Failed to optain cluster update control loop mutex"))
+	}
+
 	defer s.clusterUpdateControlLoopMu.Unlock()
 
 	clusters, err := s.GetAllWithFilter(ctx, provisioning.ClusterFilter{
