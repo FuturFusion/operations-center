@@ -1,8 +1,34 @@
 package server
 
-import "sync"
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"sync"
+
+	"github.com/FuturFusion/operations-center/internal/util/logger"
+)
 
 type operation int
+
+func (o operation) String() string {
+	switch o {
+	case operationNone:
+		return "None"
+
+	case operationEvacuation:
+		return "Evacuation"
+
+	case operationReboot:
+		return "Reboot"
+
+	case operationRestore:
+		return "Restore"
+
+	default:
+		return fmt.Sprintf("Undefined %d", o)
+	}
+}
 
 const (
 	operationNone operation = iota
@@ -36,7 +62,9 @@ func (v *volatileServerStates) retryCount(serverName string) int {
 
 // start sets the volatile server state for the given server to in flight
 // with the given operation.
-func (v *volatileServerStates) start(serverName string, op operation) bool {
+func (v *volatileServerStates) start(ctx context.Context, serverName string, op operation) bool {
+	slog.DebugContext(ctx, "volatile server state start", slog.String("server", serverName), slog.String("operation", op.String()))
+
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
@@ -60,7 +88,9 @@ func (v *volatileServerStates) start(serverName string, op operation) bool {
 
 // done sets the volatile server state for the given server and marks the
 // previously in flight operation as completed.
-func (v *volatileServerStates) done(serverName string, op operation, err error) {
+func (v *volatileServerStates) done(ctx context.Context, serverName string, op operation, err error) {
+	slog.DebugContext(ctx, "volatile server state done", slog.String("server", serverName), slog.String("operation", op.String()), logger.Err(err))
+
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
@@ -80,7 +110,28 @@ func (v *volatileServerStates) done(serverName string, op operation, err error) 
 }
 
 // reset resets all operation related state.
-func (v *volatileServerStates) reset(serverName string, op operation) {
+func (v *volatileServerStates) resetAll(ctx context.Context, serverName string) {
+	slog.DebugContext(ctx, "volatile server state reset all", slog.String("server", serverName))
+
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	s, ok := v.servers[serverName]
+	if !ok {
+		s = volatileServerState{}
+	}
+
+	s.inFlightOperation = operationNone
+	s.operationRetryCount = 0
+	s.operationLastErr = nil
+
+	v.servers[serverName] = s
+}
+
+// reset resets all operation related state if the operation matches.
+func (v *volatileServerStates) reset(ctx context.Context, serverName string, op operation) {
+	slog.DebugContext(ctx, "volatile server state reset", slog.String("server", serverName), slog.String("operation", op.String()))
+
 	v.mu.Lock()
 	defer v.mu.Unlock()
 

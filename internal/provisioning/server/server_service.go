@@ -721,15 +721,16 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 
 		case api.ServerSelfUpdateCauseSystemIsReady:
 			server.Status = api.ServerStatusReady
+			s.volatileServerStates.resetAll(ctx, server.Name)
 			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastStatusUpdated = s.now()
 
 		case api.ServerSelfUpdateCauseOSUpdateApplied:
-			server.StatusDetail = api.ServerStatusDetailReadyUpdating
+			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastStatusUpdated = s.now()
 
 		case api.ServerSelfUpdateCauseApplicationUpdateApplied:
-			server.StatusDetail = api.ServerStatusDetailReadyUpdating
+			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastStatusUpdated = s.now()
 
 		case api.ServerSelfUpdateCauseNetworkInterfaceStateChanged:
@@ -1012,12 +1013,12 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 			slog.ErrorContext(ctx, "Failed to evacuate system", slog.String("name", name), logger.Err(err))
 		}
 
-		s.volatileServerStates.reset(name, operationEvacuation)
+		s.volatileServerStates.reset(ctx, name, operationEvacuation)
 	}
 
 	if clusterUpdate {
 		reverter.Add(func() {
-			s.volatileServerStates.done(name, operationEvacuation, fmt.Errorf("Evacuation reverted"))
+			s.volatileServerStates.done(ctx, name, operationEvacuation, fmt.Errorf("Evacuation reverted"))
 		})
 
 		attempts := s.volatileServerStates.retryCount(name)
@@ -1025,7 +1026,7 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 			return fmt.Errorf("Failed to evacuate system in 3 attempts, lastErr: %v: %w", s.volatileServerStates.lastErr(name), domain.ErrTerminal)
 		}
 
-		ok := s.volatileServerStates.start(name, operationEvacuation)
+		ok := s.volatileServerStates.start(ctx, name, operationEvacuation)
 		if !ok {
 			return domain.NewRetryableErr(fmt.Errorf("server operation in flight"))
 		}
@@ -1033,9 +1034,9 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 		callback = func(ctx context.Context, err error) {
 			if err != nil {
 				slog.ErrorContext(ctx, "Failed to evacuate system", slog.String("name", name), logger.Err(err))
+				s.volatileServerStates.done(ctx, name, operationEvacuation, err)
+				return
 			}
-
-			s.volatileServerStates.done(name, operationEvacuation, err)
 		}
 	}
 
@@ -1162,10 +1163,10 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 	defer reverter.Fail()
 
 	reverter.Add(func() {
-		s.volatileServerStates.reset(name, operationEvacuation)
+		s.volatileServerStates.reset(ctx, name, operationReboot)
 	})
 
-	ok := s.volatileServerStates.start(name, operationReboot)
+	ok := s.volatileServerStates.start(ctx, name, operationReboot)
 	if !ok {
 		return domain.NewRetryableErr(fmt.Errorf("server operation in flight"))
 	}
@@ -1232,12 +1233,12 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 			slog.ErrorContext(ctx, "Failed to restore system", slog.String("name", name), logger.Err(err))
 		}
 
-		s.volatileServerStates.reset(name, operationRestore)
+		s.volatileServerStates.reset(ctx, name, operationRestore)
 	}
 
 	if clusterUpdate {
 		reverter.Add(func() {
-			s.volatileServerStates.done(name, operationRestore, fmt.Errorf("Restore reverted"))
+			s.volatileServerStates.done(ctx, name, operationRestore, fmt.Errorf("Restore reverted"))
 		})
 
 		attempts := s.volatileServerStates.retryCount(name)
@@ -1245,7 +1246,7 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 			return fmt.Errorf("Failed to restore system in 3 attempts, lastErr: %v: %w", s.volatileServerStates.lastErr(name), domain.ErrTerminal)
 		}
 
-		ok := s.volatileServerStates.start(name, operationRestore)
+		ok := s.volatileServerStates.start(ctx, name, operationRestore)
 		if !ok {
 			return domain.NewRetryableErr(fmt.Errorf("server operation in flight"))
 		}
@@ -1253,9 +1254,9 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 		callback = func(ctx context.Context, err error) {
 			if err != nil {
 				slog.ErrorContext(ctx, "Failed to restore system", slog.String("name", name), logger.Err(err))
+				s.volatileServerStates.done(ctx, name, operationRestore, err)
+				return
 			}
-
-			s.volatileServerStates.done(name, operationRestore, err)
 		}
 	}
 
@@ -1610,11 +1611,11 @@ func (s *serverService) ResyncByName(ctx context.Context, _ string, event domain
 
 	switch event.Operation {
 	case domain.LifecycleOperationEvacuate:
-		s.volatileServerStates.reset(server.Name, operationEvacuation)
+		s.volatileServerStates.reset(ctx, server.Name, operationEvacuation)
 		err = s.handleMaintenanceUpdate(ctx, server, api.InMaintenanceEvacuated)
 
 	case domain.LifecycleOperationRestore:
-		s.volatileServerStates.reset(server.Name, operationRestore)
+		s.volatileServerStates.reset(ctx, server.Name, operationRestore)
 		err = s.handleMaintenanceUpdate(ctx, server, api.NotInMaintenance)
 
 	case domain.LifecycleOperationUpdate:
@@ -1767,7 +1768,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 						"Server connection test failed (status ready)",
 					))
 
-					s.volatileServerStates.reset(server.Name, operationReboot)
+					s.volatileServerStates.reset(ctx, server.Name, operationReboot)
 
 					updateServer.Status = api.ServerStatusOffline
 					updateServer.StatusDetail = api.ServerStatusDetailOfflineUnresponsive
@@ -1882,7 +1883,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 		// Clear status detail, if previous state was not ready, e.g. because
 		// of reboot or reconfiguration.
 		if server.Status != api.ServerStatusReady {
-			s.volatileServerStates.reset(server.Name, operationReboot)
+			s.volatileServerStates.reset(ctx, server.Name, operationReboot)
 			server.Status = api.ServerStatusReady
 			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastStatusUpdated = s.now()
@@ -1898,6 +1899,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 					if server.VersionData.Applications[i].InMaintenance == api.InMaintenanceEvacuated {
 						server.StatusDetail = api.ServerStatusDetailNone
 						server.LastStatusUpdated = s.now()
+						s.volatileServerStates.reset(ctx, server.Name, operationEvacuation)
 					}
 
 					break

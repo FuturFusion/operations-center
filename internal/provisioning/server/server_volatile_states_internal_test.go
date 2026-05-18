@@ -9,6 +9,41 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 )
 
+func Test_operation_String(t *testing.T) {
+	tests := []struct {
+		name string
+		op   operation
+	}{
+		{
+			name: "None",
+			op:   operationNone,
+		},
+		{
+			name: "Evacuation",
+			op:   operationEvacuation,
+		},
+		{
+			name: "Reboot",
+			op:   operationReboot,
+		},
+		{
+			name: "Restore",
+			op:   operationRestore,
+		},
+		{
+			name: "Undefined 99",
+			op:   operation(99),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.op.String()
+			require.Equal(t, tc.name, got)
+		})
+	}
+}
+
 func Test_volatileServerStates_retryCount(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -82,7 +117,7 @@ func Test_volatileServerStates_start(t *testing.T) {
 				servers: tc.servers,
 			}
 
-			ok := v.start("one", operationEvacuation)
+			ok := v.start(t.Context(), "one", operationEvacuation)
 
 			require.Equal(t, tc.wantOK, ok)
 		})
@@ -135,7 +170,7 @@ func Test_volatileServerStates_done(t *testing.T) {
 				servers: tc.servers,
 			}
 
-			v.done("one", operationEvacuation, tc.err)
+			v.done(t.Context(), "one", operationEvacuation, tc.err)
 
 			v.mu.Lock()
 			require.Equal(t, tc.wantInFlightOperation, v.servers["one"].inFlightOperation)
@@ -173,7 +208,46 @@ func Test_volatileServerStates_reset(t *testing.T) {
 				servers: tc.servers,
 			}
 
-			v.reset("one", operationEvacuation)
+			v.reset(t.Context(), "one", operationEvacuation)
+
+			v.mu.Lock()
+			require.Equal(t, operationNone, v.servers["one"].inFlightOperation)
+			require.Equal(t, 0, v.servers["one"].operationRetryCount)
+			v.mu.Unlock()
+
+			require.NoError(t, v.lastErr("one"))
+		})
+	}
+}
+
+func Test_volatileServerStates_resetAll(t *testing.T) {
+	tests := []struct {
+		name    string
+		servers map[string]volatileServerState
+		err     error
+	}{
+		{
+			name: "success",
+			servers: map[string]volatileServerState{
+				"one": {
+					inFlightOperation: operationEvacuation,
+				},
+			},
+		},
+		{
+			name:    "empty state - wrong operation",
+			servers: map[string]volatileServerState{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			v := volatileServerStates{
+				mu:      sync.Mutex{},
+				servers: tc.servers,
+			}
+
+			v.resetAll(t.Context(), "one")
 
 			v.mu.Lock()
 			require.Equal(t, operationNone, v.servers["one"].inFlightOperation)

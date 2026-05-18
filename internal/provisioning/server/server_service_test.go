@@ -2440,7 +2440,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 
 			assertErr:              require.NoError,
-			assertLog:              log.Empty,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus:       api.ServerStatusReady,
 			wantServerStatusDetail: api.ServerStatusDetailNone,
 		},
@@ -2461,7 +2461,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 
 			assertErr:              require.NoError,
-			assertLog:              log.Empty,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus:       api.ServerStatusReady,
 			wantServerStatusDetail: api.ServerStatusDetailNone,
 		},
@@ -2482,7 +2482,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 
 			assertErr:              require.NoError,
-			assertLog:              log.Empty,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus:       api.ServerStatusReady,
 			wantServerStatusDetail: api.ServerStatusDetailNone,
 		},
@@ -2503,9 +2503,9 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 
 			assertErr:              require.NoError,
-			assertLog:              log.Empty,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus:       api.ServerStatusReady,
-			wantServerStatusDetail: api.ServerStatusDetailReadyUpdating,
+			wantServerStatusDetail: api.ServerStatusDetailNone,
 		},
 		{
 			name: "success - cause application update applied",
@@ -2524,12 +2524,12 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 
 			assertErr:              require.NoError,
-			assertLog:              log.Empty,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus:       api.ServerStatusReady,
-			wantServerStatusDetail: api.ServerStatusDetailReadyUpdating,
+			wantServerStatusDetail: api.ServerStatusDetailNone,
 		},
 		{
-			name: "success - cause OS update applied",
+			name: "success - cause network interface state changed",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
 				ConnectionURL:             "http://one-new/",
 				Cause:                     api.ServerSelfUpdateCauseNetworkInterfaceStateChanged,
@@ -2545,12 +2545,12 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 
 			assertErr:              require.NoError,
-			assertLog:              log.Empty,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus:       api.ServerStatusReady,
 			wantServerStatusDetail: api.ServerStatusDetailNone,
 		},
 		{
-			name: "success - cause OS update applied",
+			name: "success - cause storage config changed",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
 				ConnectionURL:             "http://one-new/",
 				Cause:                     api.ServerSelfUpdateCauseStorageConfigChanged,
@@ -2566,12 +2566,12 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 
 			assertErr:              require.NoError,
-			assertLog:              log.Empty,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus:       api.ServerStatusReady,
 			wantServerStatusDetail: api.ServerStatusDetailNone,
 		},
 		{
-			name: "success - cause OS update applied",
+			name: "success - cause system reboot triggered",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
 				ConnectionURL:             "http://one-new/",
 				Cause:                     api.ServerSelfUpdateCauseSystemRebootTriggered,
@@ -2587,12 +2587,12 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 
 			assertErr:              require.NoError,
-			assertLog:              log.Empty,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus:       api.ServerStatusOffline,
 			wantServerStatusDetail: api.ServerStatusDetailOfflineRebooting,
 		},
 		{
-			name: "success - cause OS update applied",
+			name: "success - cause shutdown triggered",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
 				ConnectionURL:             "http://one-new/",
 				Cause:                     api.ServerSelfUpdateCauseShutdownTriggered,
@@ -2608,7 +2608,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 
 			assertErr:              require.NoError,
-			assertLog:              log.Empty,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus:       api.ServerStatusOffline,
 			wantServerStatusDetail: api.ServerStatusDetailOfflineShutdown,
 		},
@@ -2629,7 +2629,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 
 			assertErr:              require.NoError,
-			assertLog:              log.Empty,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus:       api.ServerStatusOffline,
 			wantServerStatusDetail: api.ServerStatusDetailOfflineRebooting,
 		},
@@ -2650,7 +2650,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 
 			assertErr:              require.NoError,
-			assertLog:              log.Empty,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus:       api.ServerStatusReady,
 			wantServerStatusDetail: api.ServerStatusDetailNone,
 		},
@@ -2672,7 +2672,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "error - repo.GetByCertificate not found",
@@ -2685,7 +2685,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthorized)
 			},
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "error - repo.GetByCertificate",
@@ -2696,7 +2696,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "error - undefined update cause",
@@ -2718,7 +2718,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, `Undefined server update cause "other-cause"`)
 			},
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "error - validation",
@@ -2739,7 +2739,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "error - repo.UpdateByID",
@@ -2758,7 +2758,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoUpdateErr: boom.Error,
 
 			assertErr:              boom.ErrorIs,
-			assertLog:              log.Empty,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus:       api.ServerStatusReady,
 			wantServerStatusDetail: api.ServerStatusDetailNone,
 		},
@@ -3359,7 +3359,7 @@ foobar
 			},
 
 			assertErr: require.NoError,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			assertServerCertificate: `-----BEGIN CERTIFICATE-----
 foobar
 -----END CERTIFICATE-----`,
@@ -3414,7 +3414,7 @@ foobar
 				var retryableErr domain.ErrRetryable
 				require.ErrorAs(t, err, &retryableErr)
 			},
-			assertLog:        log.Empty,
+			assertLog:        log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus: api.ServerStatusPending,
 		},
 		{
@@ -3443,7 +3443,7 @@ foobar
 				var retryableErr domain.ErrRetryable
 				require.ErrorAs(t, err, &retryableErr)
 			},
-			assertLog:        log.Empty,
+			assertLog:        log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus: api.ServerStatusOffline,
 		},
 		{
@@ -3524,7 +3524,7 @@ foobar
 				var retryableErr domain.ErrRetryable
 				require.ErrorAs(t, err, &retryableErr)
 			},
-			assertLog:        log.Empty,
+			assertLog:        log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus: api.ServerStatusPending,
 		},
 		{
@@ -3567,7 +3567,7 @@ foobar
 			},
 
 			assertErr: require.NoError,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			assertServerCertificate: `-----BEGIN CERTIFICATE-----
 foobar
 -----END CERTIFICATE-----`,
@@ -3635,7 +3635,7 @@ foobar
 			clusterSvcGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "error - cluster now has publicly valid certificate - clusterSvc.Update",
@@ -3662,7 +3662,7 @@ foobar
 			clusterSvcUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "success - standalone server now has publicly valid certificate",
@@ -3698,7 +3698,7 @@ foobar
 			},
 
 			assertErr: require.NoError,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			assertServerCertificate: func() string {
 				return string(
 					pem.EncodeToMemory(
@@ -3976,7 +3976,7 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "success - without config update",
@@ -4007,7 +4007,7 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "success - updating",
@@ -4039,7 +4039,7 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "success - pending registration",
@@ -4072,7 +4072,7 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "success - evacuated",
@@ -4137,7 +4137,7 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "success - restoring",
@@ -4171,7 +4171,7 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 
 		{
@@ -4200,7 +4200,7 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 
 			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "error - client GetResources",
@@ -4228,7 +4228,7 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 
 			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "error - client GetOSData",
@@ -4256,7 +4256,7 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 
 			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "error - server without ip address on management interface",
@@ -4291,7 +4291,7 @@ func TestServerService_PollServer(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Failed to determine an IP address for the network interface with "management" role`)
 			},
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "error - client GetVersionData",
@@ -4319,7 +4319,7 @@ func TestServerService_PollServer(t *testing.T) {
 			clientGetVersionDataErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "error - update channel mismatch",
@@ -4383,7 +4383,7 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 
 			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "error - pending update with server registration scriptlet error",
@@ -4450,7 +4450,7 @@ func TestServerService_PollServer(t *testing.T) {
 			updateSvcGetAllWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "error - Update",
@@ -4482,7 +4482,7 @@ func TestServerService_PollServer(t *testing.T) {
 			repoUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
 			name: "error - clusterSvc.GetByName",
@@ -4510,7 +4510,7 @@ func TestServerService_PollServer(t *testing.T) {
 			clusterSvcGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 	}
 
@@ -5422,6 +5422,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 					},
 				},
 			},
+			clientEvacuateErr: boom.Error,
 			doCallback: func(f func(ctx context.Context, err error)) {
 				f(t.Context(), nil)
 			},
@@ -6151,6 +6152,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 					},
 				},
 			},
+			clientRestoreErr: boom.Error,
 			doCallback: func(f func(ctx context.Context, err error)) {
 				f(t.Context(), nil)
 			},
