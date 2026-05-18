@@ -22,6 +22,33 @@ func Empty(t *testing.T, logBuf *bytes.Buffer) {
 	require.Empty(t, logBuf.String())
 }
 
+var IgnorePatternDebugLines = "[0-9TZ:-]+ DBG.*"
+
+func EmptyWithIgnorePattern(pattern string) func(t *testing.T, logBuf *bytes.Buffer) {
+	return func(t *testing.T, logBuf *bytes.Buffer) {
+		t.Helper()
+
+		re, err := regexp.Compile(pattern)
+		require.NoError(t, err)
+
+		lines := strings.Split(logBuf.String(), "\n")
+
+		out := lines[:0]
+
+		for _, line := range lines {
+			if re.MatchString(line) {
+				continue
+			}
+
+			out = append(out, line)
+		}
+
+		filteredLog := strings.Join(out, "\n")
+
+		require.Empty(t, filteredLog)
+	}
+}
+
 func Contains(want string) func(t *testing.T, logBuf *bytes.Buffer) {
 	return func(t *testing.T, logBuf *bytes.Buffer) {
 		t.Helper()
