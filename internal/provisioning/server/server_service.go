@@ -1883,7 +1883,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 		// Clear status detail, if previous state was not ready, e.g. because
 		// of reboot or reconfiguration.
 		if server.Status != api.ServerStatusReady {
-			s.volatileServerStates.reset(ctx, server.Name, operationReboot)
+			s.volatileServerStates.resetAll(ctx, server.Name)
 			server.Status = api.ServerStatusReady
 			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastStatusUpdated = s.now()
