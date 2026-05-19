@@ -30,7 +30,23 @@ func (c cluster) Create(ctx context.Context, in provisioning.Cluster) (int64, er
 }
 
 func (c cluster) GetAll(ctx context.Context) (provisioning.Clusters, error) {
-	clusters, err := entities.GetClusters(ctx, transaction.GetDBTX(ctx, c.db))
+	return c.getAllWithFilter(ctx, nil)
+}
+
+func (c cluster) GetAllWithFilter(ctx context.Context, filter provisioning.ClusterFilter) (provisioning.Clusters, error) {
+	return c.getAllWithFilter(ctx, &filter)
+}
+
+func (c cluster) getAllWithFilter(ctx context.Context, filter *provisioning.ClusterFilter) (provisioning.Clusters, error) {
+	var clusters provisioning.Clusters
+	var err error
+
+	if filter == nil {
+		clusters, err = entities.GetClusters(ctx, transaction.GetDBTX(ctx, c.db))
+	} else {
+		clusters, err = entities.GetClusters(ctx, transaction.GetDBTX(ctx, c.db), *filter)
+	}
+
 	if err != nil {
 		return nil, err
 	}
