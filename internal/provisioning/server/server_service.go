@@ -725,14 +725,17 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 			s.volatileServerStates.resetAll(ctx, server.Name)
 			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastStatusUpdated = s.now()
+			triggerBackgroundPolling = true
 
 		case api.ServerSelfUpdateCauseOSUpdateApplied:
 			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastStatusUpdated = s.now()
+			triggerBackgroundPolling = true
 
 		case api.ServerSelfUpdateCauseApplicationUpdateApplied:
 			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastStatusUpdated = s.now()
+			triggerBackgroundPolling = true
 
 		case api.ServerSelfUpdateCauseNetworkInterfaceStateChanged:
 			triggerBackgroundPolling = true
