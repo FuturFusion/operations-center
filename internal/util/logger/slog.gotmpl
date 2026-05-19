@@ -139,7 +139,7 @@ func New{{$decorator}}(base {{ $srcPkgQualifier }}{{ $wrapper.Name }}, opts ...{
 				log.DebugContext(ctx, "<= method {{$method.Name}} finished")
 			{{end -}}
 		}()
-		{{ $method.ReturnStatement }} _d._base.{{ $method.Name }}({{ $method.ArgCallList }})
+		{{ $method.ReturnStatement }} _d._base.{{ $method.Call }}
 	}
 {{ end }}
 
