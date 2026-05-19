@@ -65,7 +65,7 @@ func New{{ $decorator }}(base {{ $srcPkgQualifier }}{{ $wrapper.Name }}, instanc
 				{{ end }}
 				{{ $wrapper.Name | camelcase }}DurationSummaryVec.WithLabelValues(_d.instanceName, "{{ $method.Name }}", result).Observe(time.Since(_since).Seconds())
 			}()
-		{{ $method.ReturnStatement }} _d.base.{{ $method.Name }}({{ $method.ArgCallList }})
+		{{ $method.ReturnStatement }} _d.base.{{ $method.Call }}
 	}
 {{ end -}}
 
