@@ -737,6 +737,8 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 			s.volatileServerStates.resetAll(ctx, server.Name)
 			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastStatusUpdated = s.now()
+			server.VersionData.OS.NeedsReboot = false
+
 			triggerBackgroundPolling = true
 
 		case api.ServerSelfUpdateCauseOSUpdateApplied:
