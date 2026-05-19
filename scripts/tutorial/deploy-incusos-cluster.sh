@@ -197,6 +197,9 @@ for i in $(seq 1 ${INSTANCE_COUNT}); do
   incus wait ${INSTANCE_NAME} agent
   while ! incus exec ${INSTANCE_NAME} -- bash -c "journalctl -b -u incus-osd | grep -q 'System is ready'"; do echo -n "."; sleep 1; done; echo ""
 
+  # Allow some time for the server to register in operations-center
+  sleep 10
+
   ## Rename IncusOS Servers
   echo "====[ Renaming ${INSTANCE_NAME} in OperationsCenter ]===="
   INSTANCE_ID=$(operations-center provisioning server list -f json | jq -r '.[] | select(.name != "operations-center" and (.name | test("^IncusOS[0-9]+$") | not ) ) | .name')
