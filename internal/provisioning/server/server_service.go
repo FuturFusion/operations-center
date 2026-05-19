@@ -115,6 +115,7 @@ func New(
 		volatileServerStates: &volatileServerStates{
 			mu:      sync.Mutex{},
 			servers: map[string]volatileServerState{},
+			now:     time.Now,
 		},
 
 		now:                    time.Now,

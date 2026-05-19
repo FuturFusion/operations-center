@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
 type operation int
@@ -37,15 +39,19 @@ const (
 	operationRestore
 )
 
+const autoResetDelay = 5 * time.Minute
+
 type volatileServerStates struct {
 	mu      sync.Mutex
 	servers map[string]volatileServerState
+	now     func() time.Time
 }
 
 type volatileServerState struct {
 	inFlightOperation   operation
 	operationRetryCount int
 	operationLastErr    error
+	startTime           *time.Time
 }
 
 func (v *volatileServerStates) retryCount(serverName string) int {
@@ -73,6 +79,14 @@ func (v *volatileServerStates) start(ctx context.Context, serverName string, op 
 		s = volatileServerState{}
 	}
 
+	if s.startTime != nil && s.startTime.Before(v.now().Add(-autoResetDelay)) {
+		// auto reset
+		s.inFlightOperation = operationNone
+		s.operationRetryCount = 0
+		s.operationLastErr = nil
+		s.startTime = nil
+	}
+
 	if s.inFlightOperation != operationNone {
 		return false
 	}
@@ -80,6 +94,10 @@ func (v *volatileServerStates) start(ctx context.Context, serverName string, op 
 	s.inFlightOperation = op
 	s.operationRetryCount++
 	s.operationLastErr = nil
+
+	if s.startTime == nil {
+		s.startTime = ptr.To(v.now())
+	}
 
 	v.servers[serverName] = s
 
@@ -124,6 +142,7 @@ func (v *volatileServerStates) resetAll(ctx context.Context, serverName string) 
 	s.inFlightOperation = operationNone
 	s.operationRetryCount = 0
 	s.operationLastErr = nil
+	s.startTime = nil
 
 	v.servers[serverName] = s
 }
@@ -147,6 +166,7 @@ func (v *volatileServerStates) reset(ctx context.Context, serverName string, op 
 	s.inFlightOperation = operationNone
 	s.operationRetryCount = 0
 	s.operationLastErr = nil
+	s.startTime = nil
 
 	v.servers[serverName] = s
 }
