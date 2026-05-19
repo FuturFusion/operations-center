@@ -36,6 +36,9 @@ var _ provisioning.ClusterRepo = &ClusterRepoMock{}
 //			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
 //				panic("mock out the GetAllNames method")
 //			},
+//			GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ClusterFilter) (provisioning.Clusters, error) {
+//				panic("mock out the GetAllWithFilter method")
+//			},
 //			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
 //				panic("mock out the GetByName method")
 //			},
@@ -66,6 +69,9 @@ type ClusterRepoMock struct {
 
 	// GetAllNamesFunc mocks the GetAllNames method.
 	GetAllNamesFunc func(ctx context.Context) ([]string, error)
+
+	// GetAllWithFilterFunc mocks the GetAllWithFilter method.
+	GetAllWithFilterFunc func(ctx context.Context, filter provisioning.ClusterFilter) (provisioning.Clusters, error)
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Cluster, error)
@@ -109,6 +115,13 @@ type ClusterRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// GetAllWithFilter holds details about calls to the GetAllWithFilter method.
+		GetAllWithFilter []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Filter is the filter argument value.
+			Filter provisioning.ClusterFilter
+		}
 		// GetByName holds details about calls to the GetByName method.
 		GetByName []struct {
 			// Ctx is the ctx argument value.
@@ -133,14 +146,15 @@ type ClusterRepoMock struct {
 			Cluster provisioning.Cluster
 		}
 	}
-	lockCreate       sync.RWMutex
-	lockDeleteByName sync.RWMutex
-	lockExistsByName sync.RWMutex
-	lockGetAll       sync.RWMutex
-	lockGetAllNames  sync.RWMutex
-	lockGetByName    sync.RWMutex
-	lockRename       sync.RWMutex
-	lockUpdate       sync.RWMutex
+	lockCreate           sync.RWMutex
+	lockDeleteByName     sync.RWMutex
+	lockExistsByName     sync.RWMutex
+	lockGetAll           sync.RWMutex
+	lockGetAllNames      sync.RWMutex
+	lockGetAllWithFilter sync.RWMutex
+	lockGetByName        sync.RWMutex
+	lockRename           sync.RWMutex
+	lockUpdate           sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -312,6 +326,42 @@ func (mock *ClusterRepoMock) GetAllNamesCalls() []struct {
 	mock.lockGetAllNames.RLock()
 	calls = mock.calls.GetAllNames
 	mock.lockGetAllNames.RUnlock()
+	return calls
+}
+
+// GetAllWithFilter calls GetAllWithFilterFunc.
+func (mock *ClusterRepoMock) GetAllWithFilter(ctx context.Context, filter provisioning.ClusterFilter) (provisioning.Clusters, error) {
+	if mock.GetAllWithFilterFunc == nil {
+		panic("ClusterRepoMock.GetAllWithFilterFunc: method is nil but ClusterRepo.GetAllWithFilter was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Filter provisioning.ClusterFilter
+	}{
+		Ctx:    ctx,
+		Filter: filter,
+	}
+	mock.lockGetAllWithFilter.Lock()
+	mock.calls.GetAllWithFilter = append(mock.calls.GetAllWithFilter, callInfo)
+	mock.lockGetAllWithFilter.Unlock()
+	return mock.GetAllWithFilterFunc(ctx, filter)
+}
+
+// GetAllWithFilterCalls gets all the calls that were made to GetAllWithFilter.
+// Check the length with:
+//
+//	len(mockedClusterRepo.GetAllWithFilterCalls())
+func (mock *ClusterRepoMock) GetAllWithFilterCalls() []struct {
+	Ctx    context.Context
+	Filter provisioning.ClusterFilter
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Filter provisioning.ClusterFilter
+	}
+	mock.lockGetAllWithFilter.RLock()
+	calls = mock.calls.GetAllWithFilter
+	mock.lockGetAllWithFilter.RUnlock()
 	return calls
 }
 
