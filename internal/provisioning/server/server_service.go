@@ -220,7 +220,7 @@ func (s *serverService) GetAllWithFilter(ctx context.Context, filter provisionin
 	}
 
 	var servers provisioning.Servers
-	if filter.Name == nil && filter.Cluster == nil && filter.Status == nil {
+	if filter.IsEmpty() {
 		servers, err = s.repo.GetAll(ctx)
 	} else {
 		servers, err = s.repo.GetAllWithFilter(ctx, filter)
