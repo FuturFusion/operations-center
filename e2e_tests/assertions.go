@@ -43,7 +43,7 @@ func assertServerRegistrationScriptletEffects(t *testing.T) {
 	if !resp.Success() {
 		t.Errorf("expect server description to be set by server registration scriptlet")
 		success = false
-		resp = mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '.[] | select(.name == "IncusOS01")`, cpuArch)
+		resp = mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '.[] | select(.name == "IncusOS01")'`, cpuArch)
 		fmt.Println(resp.Output())
 	}
 
