@@ -58,7 +58,7 @@ func TestServerVersionData_Value(t *testing.T) {
 	}, svdNew)
 }
 
-func TestServerVersionData_State(t *testing.T) {
+func TestServerVersionData_UpdateState(t *testing.T) {
 	tests := []struct {
 		status        api.ServerStatus
 		statusDetail  api.ServerStatusDetail
