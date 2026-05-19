@@ -59,6 +59,7 @@ type ClusterService interface {
 type ClusterRepo interface {
 	Create(ctx context.Context, cluster Cluster) (int64, error)
 	GetAll(ctx context.Context) (Clusters, error)
+	GetAllWithFilter(ctx context.Context, filter ClusterFilter) (Clusters, error)
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Cluster, error)
 	ExistsByName(ctx context.Context, name string) (bool, error)
