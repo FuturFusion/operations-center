@@ -1351,6 +1351,8 @@ func (s *serverService) PostRestoreSystemDoneByName(ctx context.Context, name st
 			return fmt.Errorf("Failed put server %q in restoring: %w", name, err)
 		}
 
+		s.volatileServerStates.reset(ctx, name, operationRestore)
+
 		return nil
 	})
 	if err != nil {
@@ -1900,6 +1902,19 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 						server.StatusDetail = api.ServerStatusDetailNone
 						server.LastStatusUpdated = s.now()
 						s.volatileServerStates.reset(ctx, server.Name, operationEvacuation)
+					}
+
+					break
+				}
+			}
+		}
+
+		// If a restore has been triggered, check if the restore is done.
+		if server.StatusDetail == api.ServerStatusDetailReadyRestoring {
+			for i := range server.VersionData.Applications {
+				if domain.IsApplicationNameIncusKind(server.VersionData.Applications[i].Name) {
+					if server.VersionData.Applications[i].InMaintenance == api.NotInMaintenance {
+						s.volatileServerStates.reset(ctx, server.Name, operationRestore)
 					}
 
 					break
