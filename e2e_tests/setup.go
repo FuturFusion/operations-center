@@ -653,3 +653,13 @@ func printServerList(t *testing.T) {
 	resp := mustRun(t, "../bin/operations-center.linux.%s provisioning server list", cpuArch)
 	fmt.Println(resp.Output())
 }
+
+func printUpdateList(t *testing.T) {
+	t.Helper()
+
+	stop := timeTrack(t)
+	defer stop()
+
+	resp := mustRun(t, "../bin/operations-center.linux.%s provisioning update list", cpuArch)
+	fmt.Println(resp.Output())
+}
