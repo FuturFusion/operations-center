@@ -3,9 +3,11 @@ package server
 import (
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 )
 
@@ -86,6 +88,8 @@ func Test_volatileServerStates_retryCount(t *testing.T) {
 }
 
 func Test_volatileServerStates_start(t *testing.T) {
+	fixedTime := time.Date(2026, 5, 19, 9, 9, 0, 0, time.UTC)
+
 	tests := []struct {
 		name    string
 		servers map[string]volatileServerState
@@ -108,6 +112,18 @@ func Test_volatileServerStates_start(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "operation ongoing - auto reset",
+			servers: map[string]volatileServerState{
+				"one": {
+					inFlightOperation: operationRestore,
+					startTime:         ptr.To(fixedTime.Add(-(autoResetDelay + 1*time.Minute))),
+				},
+			},
+
+			wantOK:      true,
+			wantRetries: 1,
+		},
 	}
 
 	for _, tc := range tests {
@@ -115,6 +131,7 @@ func Test_volatileServerStates_start(t *testing.T) {
 			v := volatileServerStates{
 				mu:      sync.Mutex{},
 				servers: tc.servers,
+				now:     func() time.Time { return fixedTime },
 			}
 
 			ok := v.start(t.Context(), "one", operationEvacuation)

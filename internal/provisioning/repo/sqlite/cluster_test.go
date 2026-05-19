@@ -105,6 +105,18 @@ func TestClusterDatabaseActions(t *testing.T) {
 	clusterB.LastUpdated = dbClusterB.LastUpdated
 	require.Equal(t, clusterB, *dbClusterB)
 
+	// Exists
+	exists, err := cluster.ExistsByName(ctx, "one")
+	require.NoError(t, err)
+	require.True(t, exists)
+
+	// Get all with filter
+	clusters, err = cluster.GetAllWithFilter(ctx, provisioning.ClusterFilter{
+		Name: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, clusters, 1)
+
 	// Test updating a cluster.
 	clusterB.ConnectionURL = "https://foobar.com"
 	err = cluster.Update(ctx, clusterB)

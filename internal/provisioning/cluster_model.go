@@ -116,6 +116,10 @@ type ClusterFilter struct {
 	Expression *string `db:"ignore"`
 }
 
+func (f ClusterFilter) IsEmpty() bool {
+	return f.Name == nil
+}
+
 func (f ClusterFilter) AppendToURLValues(query url.Values) url.Values {
 	if f.Expression != nil {
 		query.Add("filter", *f.Expression)

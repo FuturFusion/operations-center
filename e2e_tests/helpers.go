@@ -448,6 +448,8 @@ func mustWaitUpdatesReady(t *testing.T) {
 	}
 
 	t.Logf("Updates present Operations Center after %ds", count)
+
+	printUpdateList(t)
 }
 
 func mustWaitIncusOSReady(t *testing.T, names []string) {

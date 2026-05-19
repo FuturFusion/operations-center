@@ -35,6 +35,8 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+const rebootStatusUpdateGracePeriod = 30 * time.Second
+
 type serverService struct {
 	repo       provisioning.ServerRepo
 	client     provisioning.ServerClientPort
@@ -56,6 +58,8 @@ type serverService struct {
 	initialConnectionDelay time.Duration
 
 	selfUpdateSignal signals.Signal[provisioning.Server]
+
+	rebootStatusUpdateGracePeriod time.Duration
 }
 
 var _ provisioning.ServerService = &serverService{}
@@ -77,6 +81,12 @@ func WithInitialConnectionDelay(delay time.Duration) Option {
 func WithWarningEmitter(warn provisioning.WarningServicePort) Option {
 	return func(s *serverService) {
 		s.warning = warn
+	}
+}
+
+func WithRebootStatusUpdateGracePeriod(rebootStatusUpdateGracePeriod time.Duration) Option {
+	return func(s *serverService) {
+		s.rebootStatusUpdateGracePeriod = rebootStatusUpdateGracePeriod
 	}
 }
 
@@ -115,12 +125,15 @@ func New(
 		volatileServerStates: &volatileServerStates{
 			mu:      sync.Mutex{},
 			servers: map[string]volatileServerState{},
+			now:     time.Now,
 		},
 
 		now:                    time.Now,
 		initialConnectionDelay: 1 * time.Second,
 
 		selfUpdateSignal: signals.New[provisioning.Server](),
+
+		rebootStatusUpdateGracePeriod: rebootStatusUpdateGracePeriod,
 	}
 
 	for _, opt := range opts {
@@ -220,7 +233,7 @@ func (s *serverService) GetAllWithFilter(ctx context.Context, filter provisionin
 	}
 
 	var servers provisioning.Servers
-	if filter.Name == nil && filter.Cluster == nil && filter.Status == nil {
+	if filter.IsEmpty() {
 		servers, err = s.repo.GetAll(ctx)
 	} else {
 		servers, err = s.repo.GetAllWithFilter(ctx, filter)
@@ -708,10 +721,10 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 		server, err = s.repo.GetByCertificate(ctx, string(authenticationCertificatePEM))
 		if err != nil {
 			if errors.Is(err, domain.ErrNotFound) {
-				return domain.ErrNotAuthorized
+				return fmt.Errorf("Failed to find server (%s) with cause %q by certificate: %w", serverUpdate.ConnectionURL, serverUpdate.Cause, domain.ErrNotAuthorized)
 			}
 
-			return fmt.Errorf("Failed to get server by certificate: %w", err)
+			return fmt.Errorf("Failed to get server (%s) with cause %q by certificate: %w", serverUpdate.ConnectionURL, serverUpdate.Cause, err)
 		}
 
 		switch serverUpdate.Cause {
@@ -724,14 +737,19 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 			s.volatileServerStates.resetAll(ctx, server.Name)
 			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastStatusUpdated = s.now()
+			server.VersionData.OS.NeedsReboot = false
+
+			triggerBackgroundPolling = true
 
 		case api.ServerSelfUpdateCauseOSUpdateApplied:
 			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastStatusUpdated = s.now()
+			triggerBackgroundPolling = true
 
 		case api.ServerSelfUpdateCauseApplicationUpdateApplied:
 			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastStatusUpdated = s.now()
+			triggerBackgroundPolling = true
 
 		case api.ServerSelfUpdateCauseNetworkInterfaceStateChanged:
 			triggerBackgroundPolling = true
@@ -1351,6 +1369,8 @@ func (s *serverService) PostRestoreSystemDoneByName(ctx context.Context, name st
 			return fmt.Errorf("Failed put server %q in restoring: %w", name, err)
 		}
 
+		s.volatileServerStates.reset(ctx, name, operationRestore)
+
 		return nil
 	})
 	if err != nil {
@@ -1821,6 +1841,12 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 		return err
 	}
 
+	if server.Status == api.ServerStatusOffline &&
+		server.StatusDetail == api.ServerStatusDetailOfflineRebooting &&
+		server.LastStatusUpdated.After(s.now().Add(-s.rebootStatusUpdateGracePeriod)) {
+		return domain.NewRetryableErr(fmt.Errorf("still rebooting (in reboot grace period)"))
+	}
+
 	var hardwareData api.HardwareData
 	var osData api.OSData
 	var versionData api.ServerVersionData
@@ -1883,7 +1909,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 		// Clear status detail, if previous state was not ready, e.g. because
 		// of reboot or reconfiguration.
 		if server.Status != api.ServerStatusReady {
-			s.volatileServerStates.reset(ctx, server.Name, operationReboot)
+			s.volatileServerStates.resetAll(ctx, server.Name)
 			server.Status = api.ServerStatusReady
 			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastStatusUpdated = s.now()
@@ -1900,6 +1926,19 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 						server.StatusDetail = api.ServerStatusDetailNone
 						server.LastStatusUpdated = s.now()
 						s.volatileServerStates.reset(ctx, server.Name, operationEvacuation)
+					}
+
+					break
+				}
+			}
+		}
+
+		// If a restore has been triggered, check if the restore is done.
+		if server.StatusDetail == api.ServerStatusDetailReadyRestoring {
+			for i := range server.VersionData.Applications {
+				if domain.IsApplicationNameIncusKind(server.VersionData.Applications[i].Name) {
+					if server.VersionData.Applications[i].InMaintenance == api.NotInMaintenance {
+						s.volatileServerStates.reset(ctx, server.Name, operationRestore)
 					}
 
 					break

@@ -1007,7 +1007,7 @@ func (d *Daemon) setupBackgroundTasks(
 		if err != nil {
 			logCtx := slog.ErrorContext
 			if domain.IsRetryableError(err) {
-				logCtx = slog.DebugContext
+				logCtx = slog.InfoContext
 			}
 
 			logCtx(ctx, "Cluster update control loop failed", logger.Err(err))
@@ -1029,7 +1029,7 @@ func (d *Daemon) setupBackgroundTasks(
 		if err != nil {
 			logCtx := slog.ErrorContext
 			if domain.IsRetryableError(err) {
-				logCtx = slog.DebugContext
+				logCtx = slog.InfoContext
 			}
 
 			logCtx(ctx, "Failed to handle server lifecycle event", logger.Err(err), slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))

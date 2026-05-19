@@ -189,6 +189,15 @@ type ServerFilter struct {
 	Expression   *string `db:"ignore"`
 }
 
+func (f ServerFilter) IsEmpty() bool {
+	return f.Name == nil &&
+		f.Cluster == nil &&
+		f.Status == nil &&
+		f.StatusDetail == nil &&
+		f.Certificate == nil &&
+		f.Type == nil
+}
+
 func (f ServerFilter) AppendToURLValues(query url.Values) url.Values {
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)

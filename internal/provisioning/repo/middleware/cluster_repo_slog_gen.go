@@ -211,6 +211,41 @@ func (_d ClusterRepoWithSlog) GetAllNames(ctx context.Context) (strings []string
 	return _d._base.GetAllNames(ctx)
 }
 
+// GetAllWithFilter implements provisioning.ClusterRepo.
+func (_d ClusterRepoWithSlog) GetAllWithFilter(ctx context.Context, filter provisioning.ClusterFilter) (clusters provisioning.Clusters, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetAllWithFilter")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("clusters", clusters),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByName implements provisioning.ClusterRepo.
 func (_d ClusterRepoWithSlog) GetByName(ctx context.Context, name string) (cluster *provisioning.Cluster, err error) {
 	log := slog.With()

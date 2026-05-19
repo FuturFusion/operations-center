@@ -307,13 +307,15 @@ func TestServer_Filter(t *testing.T) {
 		name   string
 		filter provisioning.ServerFilter
 
-		want string
+		want      string
+		wantEmpty bool
 	}{
 		{
 			name:   "empty filter",
 			filter: provisioning.ServerFilter{},
 
-			want: ``,
+			want:      ``,
+			wantEmpty: true,
 		},
 		{
 			name: "complete filter",
@@ -325,13 +327,15 @@ func TestServer_Filter(t *testing.T) {
 				Expression:  ptr.To("true"),
 			},
 
-			want: `certificate=certificate&cluster=cluster&filter=true&status=ready&type=incus`,
+			want:      `certificate=certificate&cluster=cluster&filter=true&status=ready&type=incus`,
+			wantEmpty: false,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			require.Equal(t, tc.want, tc.filter.String())
+			require.Equal(t, tc.wantEmpty, tc.filter.IsEmpty())
 		})
 	}
 }

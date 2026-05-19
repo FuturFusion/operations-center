@@ -107,6 +107,20 @@ func (_d ClusterRepoWithPrometheus) GetAllNames(ctx context.Context) (strings []
 	return _d.base.GetAllNames(ctx)
 }
 
+// GetAllWithFilter implements provisioning.ClusterRepo.
+func (_d ClusterRepoWithPrometheus) GetAllWithFilter(ctx context.Context, filter provisioning.ClusterFilter) (clusters provisioning.Clusters, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByName implements provisioning.ClusterRepo.
 func (_d ClusterRepoWithPrometheus) GetByName(ctx context.Context, name string) (cluster *provisioning.Cluster, err error) {
 	_since := time.Now()

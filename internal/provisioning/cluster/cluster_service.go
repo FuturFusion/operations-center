@@ -1185,7 +1185,12 @@ func (s *clusterService) GetAllWithFilter(ctx context.Context, filter provisioni
 
 	var clusters provisioning.Clusters
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		clusters, err = s.repo.GetAll(ctx)
+		if filter.IsEmpty() {
+			clusters, err = s.repo.GetAll(ctx)
+		} else {
+			clusters, err = s.repo.GetAllWithFilter(ctx, filter)
+		}
+
 		if err != nil {
 			return err
 		}
