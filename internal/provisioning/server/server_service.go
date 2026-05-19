@@ -35,6 +35,8 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+const rebootStatusUpdateGracePeriod = 30 * time.Second
+
 type serverService struct {
 	repo       provisioning.ServerRepo
 	client     provisioning.ServerClientPort
@@ -56,6 +58,8 @@ type serverService struct {
 	initialConnectionDelay time.Duration
 
 	selfUpdateSignal signals.Signal[provisioning.Server]
+
+	rebootStatusUpdateGracePeriod time.Duration
 }
 
 var _ provisioning.ServerService = &serverService{}
@@ -77,6 +81,12 @@ func WithInitialConnectionDelay(delay time.Duration) Option {
 func WithWarningEmitter(warn provisioning.WarningServicePort) Option {
 	return func(s *serverService) {
 		s.warning = warn
+	}
+}
+
+func WithRebootStatusUpdateGracePeriod(rebootStatusUpdateGracePeriod time.Duration) Option {
+	return func(s *serverService) {
+		s.rebootStatusUpdateGracePeriod = rebootStatusUpdateGracePeriod
 	}
 }
 
@@ -122,6 +132,8 @@ func New(
 		initialConnectionDelay: 1 * time.Second,
 
 		selfUpdateSignal: signals.New[provisioning.Server](),
+
+		rebootStatusUpdateGracePeriod: rebootStatusUpdateGracePeriod,
 	}
 
 	for _, opt := range opts {
@@ -709,10 +721,10 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 		server, err = s.repo.GetByCertificate(ctx, string(authenticationCertificatePEM))
 		if err != nil {
 			if errors.Is(err, domain.ErrNotFound) {
-				return domain.ErrNotAuthorized
+				return fmt.Errorf("Failed to find server (%s) with cause %q by certificate: %w", serverUpdate.ConnectionURL, serverUpdate.Cause, domain.ErrNotAuthorized)
 			}
 
-			return fmt.Errorf("Failed to get server by certificate: %w", err)
+			return fmt.Errorf("Failed to get server (%s) with cause %q by certificate: %w", serverUpdate.ConnectionURL, serverUpdate.Cause, err)
 		}
 
 		switch serverUpdate.Cause {
@@ -1825,6 +1837,12 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 	err = s.client.IsReady(ctx, server)
 	if err != nil {
 		return err
+	}
+
+	if server.Status == api.ServerStatusOffline &&
+		server.StatusDetail == api.ServerStatusDetailOfflineRebooting &&
+		server.LastStatusUpdated.After(s.now().Add(-s.rebootStatusUpdateGracePeriod)) {
+		return domain.NewRetryableErr(fmt.Errorf("still rebooting (in reboot grace period)"))
 	}
 
 	var hardwareData api.HardwareData
