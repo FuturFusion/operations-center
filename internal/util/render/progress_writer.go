@@ -1,4 +1,4 @@
-package provisioning
+package render
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"github.com/lxc/incus/v6/shared/units"
 )
 
-func progressWriter(target io.WriteCloser, format string, quiet bool) (*cli.ProgressRenderer, io.WriteCloser) {
+func ProgressWriter(target io.WriteCloser, format string, quiet bool) (*cli.ProgressRenderer, io.WriteCloser) {
 	progress := &cli.ProgressRenderer{
 		Format: format,
 		Quiet:  quiet,
