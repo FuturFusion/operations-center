@@ -6,6 +6,7 @@ package mock
 
 import (
 	"context"
+	"io"
 	"mime/multipart"
 	"sync"
 
@@ -40,6 +41,9 @@ var _ image.ImageIncusService = &ImageIncusServiceMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*image.IncusImage, error) {
 //				panic("mock out the GetByName method")
 //			},
+//			GetVersionFileByNameFunc: func(ctx context.Context, name string, version string, filename string) (io.ReadCloser, int64, error) {
+//				panic("mock out the GetVersionFileByName method")
+//			},
 //		}
 //
 //		// use mockedImageIncusService in code that requires image.ImageIncusService
@@ -64,6 +68,9 @@ type ImageIncusServiceMock struct {
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*image.IncusImage, error)
+
+	// GetVersionFileByNameFunc mocks the GetVersionFileByName method.
+	GetVersionFileByNameFunc func(ctx context.Context, name string, version string, filename string) (io.ReadCloser, int64, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -111,13 +118,25 @@ type ImageIncusServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// GetVersionFileByName holds details about calls to the GetVersionFileByName method.
+		GetVersionFileByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// Version is the version argument value.
+			Version string
+			// Filename is the filename argument value.
+			Filename string
+		}
 	}
-	lockAddVersion          sync.RWMutex
-	lockDeleteByName        sync.RWMutex
-	lockDeleteVersionByName sync.RWMutex
-	lockGetAll              sync.RWMutex
-	lockGetAllNames         sync.RWMutex
-	lockGetByName           sync.RWMutex
+	lockAddVersion           sync.RWMutex
+	lockDeleteByName         sync.RWMutex
+	lockDeleteVersionByName  sync.RWMutex
+	lockGetAll               sync.RWMutex
+	lockGetAllNames          sync.RWMutex
+	lockGetByName            sync.RWMutex
+	lockGetVersionFileByName sync.RWMutex
 }
 
 // AddVersion calls AddVersionFunc.
@@ -337,5 +356,49 @@ func (mock *ImageIncusServiceMock) GetByNameCalls() []struct {
 	mock.lockGetByName.RLock()
 	calls = mock.calls.GetByName
 	mock.lockGetByName.RUnlock()
+	return calls
+}
+
+// GetVersionFileByName calls GetVersionFileByNameFunc.
+func (mock *ImageIncusServiceMock) GetVersionFileByName(ctx context.Context, name string, version string, filename string) (io.ReadCloser, int64, error) {
+	if mock.GetVersionFileByNameFunc == nil {
+		panic("ImageIncusServiceMock.GetVersionFileByNameFunc: method is nil but ImageIncusService.GetVersionFileByName was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Name     string
+		Version  string
+		Filename string
+	}{
+		Ctx:      ctx,
+		Name:     name,
+		Version:  version,
+		Filename: filename,
+	}
+	mock.lockGetVersionFileByName.Lock()
+	mock.calls.GetVersionFileByName = append(mock.calls.GetVersionFileByName, callInfo)
+	mock.lockGetVersionFileByName.Unlock()
+	return mock.GetVersionFileByNameFunc(ctx, name, version, filename)
+}
+
+// GetVersionFileByNameCalls gets all the calls that were made to GetVersionFileByName.
+// Check the length with:
+//
+//	len(mockedImageIncusService.GetVersionFileByNameCalls())
+func (mock *ImageIncusServiceMock) GetVersionFileByNameCalls() []struct {
+	Ctx      context.Context
+	Name     string
+	Version  string
+	Filename string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Name     string
+		Version  string
+		Filename string
+	}
+	mock.lockGetVersionFileByName.RLock()
+	calls = mock.calls.GetVersionFileByName
+	mock.lockGetVersionFileByName.RUnlock()
 	return calls
 }
