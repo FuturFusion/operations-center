@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"mime/multipart"
 
@@ -246,4 +247,42 @@ func (_d ImageIncusServiceWithSlog) GetByName(ctx context.Context, name string) 
 		}
 	}()
 	return _d._base.GetByName(ctx, name)
+}
+
+// GetVersionFileByName implements image.ImageIncusService.
+func (_d ImageIncusServiceWithSlog) GetVersionFileByName(ctx context.Context, name string, version string, filename string) (readCloser io.ReadCloser, size int64, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.String("version", version),
+			slog.String("filename", filename),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetVersionFileByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("readCloser", readCloser),
+				slog.Int64("size", size),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetVersionFileByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetVersionFileByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetVersionFileByName finished")
+		}
+	}()
+	return _d._base.GetVersionFileByName(ctx, name, version, filename)
 }

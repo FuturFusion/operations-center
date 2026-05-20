@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"context"
+	"io"
 	"mime/multipart"
 	"time"
 
@@ -120,4 +121,18 @@ func (_d ImageIncusServiceWithPrometheus) GetByName(ctx context.Context, name st
 		imageIncusServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByName", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetByName(ctx, name)
+}
+
+// GetVersionFileByName implements image.ImageIncusService.
+func (_d ImageIncusServiceWithPrometheus) GetVersionFileByName(ctx context.Context, name string, version string, filename string) (readCloser io.ReadCloser, size int64, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		imageIncusServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetVersionFileByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetVersionFileByName(ctx, name, version, filename)
 }
