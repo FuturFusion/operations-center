@@ -13,6 +13,7 @@ type ImageIncusService interface {
 	GetByName(ctx context.Context, name string) (*IncusImage, error)
 	DeleteByName(ctx context.Context, name string) error
 	DeleteVersionByName(ctx context.Context, name string, version string) error
+	GetVersionFileByName(ctx context.Context, name string, version string, filename string) (_ io.ReadCloser, size int64, _ error)
 }
 
 type ImageIncusRepo interface {

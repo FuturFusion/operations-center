@@ -298,3 +298,29 @@ func (s *imageIncusService) DeleteVersionByName(ctx context.Context, name string
 
 	return nil
 }
+
+func (s *imageIncusService) GetVersionFileByName(ctx context.Context, name string, version string, filename string) (_ io.ReadCloser, size int64, _ error) {
+	if name == "" {
+		return nil, 0, fmt.Errorf("Incus image name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	if version == "" {
+		return nil, 0, fmt.Errorf("Incus image version cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	if filename == "" {
+		return nil, 0, fmt.Errorf("Filename cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	img, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return nil, 0, fmt.Errorf("Failed to get incus image %q: %w", name, err)
+	}
+
+	rc, size, err := s.filesRepo.Get(ctx, img, version, filename)
+	if err != nil {
+		return nil, 0, fmt.Errorf("Failed get file %q for image %q and version %q: %w", filename, name, version, err)
+	}
+
+	return rc, size, nil
+}
