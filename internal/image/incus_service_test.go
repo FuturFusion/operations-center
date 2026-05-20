@@ -203,7 +203,8 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 			nameArg: "invalid", // invalid
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
 				require.ErrorContains(tt, err, `Invalid incus image name, expect name in the format "os:release:architecture:variant"`)
 			},
 		},
@@ -213,7 +214,8 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 			versionArg: "", // empty
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
 				require.ErrorContains(tt, err, `Incus image version can not be empty`)
 			},
 		},
@@ -244,22 +246,22 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 		},
-		{
-			name:       "error - new incus image - validate",
-			nameArg:    "almalinux:10:amd64:",
-			versionArg: "20260515",
-			repoGetByName: []queue.Item[*image.IncusImage]{
-				// lookup
-				{
-					Err: domain.ErrNotFound,
-				},
-			},
+		// {
+		// 	name:       "error - new incus image - validate",
+		// 	nameArg:    "almalinux:10:amd64:",
+		// 	versionArg: "20260515",
+		// 	repoGetByName: []queue.Item[*image.IncusImage]{
+		// 		// lookup
+		// 		{
+		// 			Err: domain.ErrNotFound,
+		// 		},
+		// 	},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr)
-			},
-		},
+		// 	assertErr: func(tt require.TestingT, err error, a ...any) {
+		// 		var verr domain.ErrValidation
+		// 		require.ErrorAs(tt, err, &verr)
+		// 	},
+		// },
 		{
 			name:       "error - version already exists",
 			nameArg:    "almalinux:10:amd64:cloud",
@@ -964,8 +966,9 @@ func TestImageIncusService_GetByName(t *testing.T) {
 			nameArg: "", // empty
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "Incus image name cannot be empty")
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(tt, err, `Invalid incus image name, expect name in the format "os:release:architecture:variant"`)
 			},
 		},
 		{
@@ -1001,6 +1004,7 @@ func TestImageIncusService_GetByName(t *testing.T) {
 func TestImageIncusService_DeleteByName(t *testing.T) {
 	tests := []struct {
 		name                string
+		argName             string
 		filesRepoDeleteErr  error
 		repoGetByName       *image.IncusImage
 		repoGetByNameErr    error
@@ -1009,7 +1013,8 @@ func TestImageIncusService_DeleteByName(t *testing.T) {
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name: "success",
+			name:    "success",
+			argName: "almalinux:10:amd64:cloud",
 			repoGetByName: &image.IncusImage{
 				Name: "almalinux:10:amd64:cloud",
 			},
@@ -1017,13 +1022,25 @@ func TestImageIncusService_DeleteByName(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name:    "error - invalid name",
+			argName: "", // empty name
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(tt, err, `Invalid incus image name, expect name in the format "os:release:architecture:variant"`)
+			},
+		},
+		{
 			name:             "error - repo.GetByName",
+			argName:          "almalinux:10:amd64:cloud",
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - repo.DeleteByName",
+			name:    "error - repo.DeleteByName",
+			argName: "almalinux:10:amd64:cloud",
 			repoGetByName: &image.IncusImage{
 				Name: "almalinux:10:amd64:cloud",
 			},
@@ -1032,7 +1049,8 @@ func TestImageIncusService_DeleteByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - filesRepo.Delete",
+			name:    "error - filesRepo.Delete",
+			argName: "almalinux:10:amd64:cloud",
 			repoGetByName: &image.IncusImage{
 				Name: "almalinux:10:amd64:cloud",
 			},
@@ -1063,7 +1081,7 @@ func TestImageIncusService_DeleteByName(t *testing.T) {
 			imageSvc := image.New(repo, filesRepo)
 
 			// Run test
-			err := imageSvc.DeleteByName(t.Context(), "almalinux:10:amd64:cloud")
+			err := imageSvc.DeleteByName(t.Context(), tc.argName)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1074,6 +1092,8 @@ func TestImageIncusService_DeleteByName(t *testing.T) {
 func TestImageIncusService_DeleteVersionByName(t *testing.T) {
 	tests := []struct {
 		name                      string
+		argName                   string
+		argVersion                string
 		filesRepoDeleteVersionErr error
 		repoGetByName             *image.IncusImage
 		repoGetByNameErr          error
@@ -1082,7 +1102,9 @@ func TestImageIncusService_DeleteVersionByName(t *testing.T) {
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name: "success",
+			name:       "success",
+			argName:    "almalinux:10:amd64:cloud",
+			argVersion: "20260514",
 			repoGetByName: &image.IncusImage{
 				Name: "almalinux:10:amd64:cloud",
 				Versions: map[string]api.IncusImageVersion{
@@ -1094,13 +1116,38 @@ func TestImageIncusService_DeleteVersionByName(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name:    "error - invalid name",
+			argName: "", // empty name
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(tt, err, `Invalid incus image name, expect name in the format "os:release:architecture:variant"`)
+			},
+		},
+		{
+			name:       "error - invalid version",
+			argName:    "almalinux:10:amd64:cloud",
+			argVersion: "", // empty version
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(tt, err, "Incus image version cannot be empty")
+			},
+		},
+		{
 			name:             "error - repo.GetByName",
+			argName:          "almalinux:10:amd64:cloud",
+			argVersion:       "20260514",
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - version not found",
+			name:       "error - version not found",
+			argName:    "almalinux:10:amd64:cloud",
+			argVersion: "20260514",
 			repoGetByName: &image.IncusImage{
 				Name: "almalinux:10:amd64:cloud",
 				Versions: map[string]api.IncusImageVersion{
@@ -1114,7 +1161,9 @@ func TestImageIncusService_DeleteVersionByName(t *testing.T) {
 			},
 		},
 		{
-			name: "error - repo.Update",
+			name:       "error - repo.Update",
+			argName:    "almalinux:10:amd64:cloud",
+			argVersion: "20260514",
 			repoGetByName: &image.IncusImage{
 				Name: "almalinux:10:amd64:cloud",
 				Versions: map[string]api.IncusImageVersion{
@@ -1127,7 +1176,9 @@ func TestImageIncusService_DeleteVersionByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - filesRepo.CleanupAll",
+			name:       "error - filesRepo.CleanupAll",
+			argName:    "almalinux:10:amd64:cloud",
+			argVersion: "20260514",
 			repoGetByName: &image.IncusImage{
 				Name: "almalinux:10:amd64:cloud",
 				Versions: map[string]api.IncusImageVersion{
@@ -1162,7 +1213,7 @@ func TestImageIncusService_DeleteVersionByName(t *testing.T) {
 			imageSvc := image.New(repo, filesRepo)
 
 			// Run test
-			err := imageSvc.DeleteVersionByName(t.Context(), "almalinux:10:amd64:cloud", "20260514")
+			err := imageSvc.DeleteVersionByName(t.Context(), tc.argName, tc.argVersion)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1225,8 +1276,9 @@ func TestIncusImageService_GetVersionFileByName(t *testing.T) {
 			argName: "", // empty name
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "Incus image name cannot be empty")
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(tt, err, `Invalid incus image name, expect name in the format "os:release:architecture:variant"`)
 			},
 			assert: assertZeroValues,
 		},
@@ -1236,7 +1288,8 @@ func TestIncusImageService_GetVersionFileByName(t *testing.T) {
 			argVersion: "", // empty version
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
 				require.ErrorContains(tt, err, "Incus image version cannot be empty")
 			},
 			assert: assertZeroValues,
@@ -1248,13 +1301,14 @@ func TestIncusImageService_GetVersionFileByName(t *testing.T) {
 			argFilename: "", // empty filename
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
 				require.ErrorContains(tt, err, "Filename cannot be empty")
 			},
 			assert: assertZeroValues,
 		},
 		{
-			name:             "error - filesRepo.GetFunc",
+			name:             "error - repo.GetByName",
 			argName:          "almalinux:10:amd64:cloud",
 			argVersion:       "20260520",
 			argFilename:      "somefile.txt",

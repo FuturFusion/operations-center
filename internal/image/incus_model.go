@@ -3,6 +3,7 @@ package image
 import (
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -29,9 +30,9 @@ type IncusImage struct {
 }
 
 func (i IncusImage) Validate() error {
-	nameParts := strings.Split(i.Name, ":")
-	if len(nameParts) != 4 {
-		return domain.NewValidationErrf(`Invalid incus image name, expect name in the format "os:release:architecture:variant"`)
+	err := validateIncusImageName(i.Name)
+	if err != nil {
+		return err
 	}
 
 	if i.OperatingSystem == "" {
@@ -42,9 +43,8 @@ func (i IncusImage) Validate() error {
 		return domain.NewValidationErrf("Invalid incus image, release can not be empty")
 	}
 
-	// TODO: validate for valid architectures
-	if i.Architecture == "" {
-		return domain.NewValidationErrf("Invalid incus image, architecture can not be empty")
+	if !slices.Contains([]string{"amd64", "arm64", "armhf", "riscv64"}, i.Architecture) {
+		return domain.NewValidationErrf("Invalid incus image, architecture is not supported")
 	}
 
 	if i.Variant == "" {
@@ -53,6 +53,31 @@ func (i IncusImage) Validate() error {
 
 	if i.Name != strings.Join([]string{i.OperatingSystem, i.Release, i.Architecture, i.Variant}, ":") {
 		return domain.NewValidationErrf(`Invalid incus image, name needs to match "os:release:architecture:variant"`)
+	}
+
+	return nil
+}
+
+func validateIncusImageName(name string) error {
+	nameParts := strings.Split(name, ":")
+	if len(nameParts) != 4 {
+		return domain.NewValidationErrf(`Invalid incus image name, expect name in the format "os:release:architecture:variant"`)
+	}
+
+	if nameParts[0] == "" {
+		return domain.NewValidationErrf("Invalid incus image, operating system can not be empty")
+	}
+
+	if nameParts[1] == "" {
+		return domain.NewValidationErrf("Invalid incus image, release can not be empty")
+	}
+
+	if !slices.Contains([]string{"amd64", "arm64", "armhf", "riscv64"}, nameParts[2]) {
+		return domain.NewValidationErrf("Invalid incus image, architecture is not supported")
+	}
+
+	if nameParts[3] == "" {
+		return domain.NewValidationErrf("Invalid incus image, variant can not be empty")
 	}
 
 	return nil
