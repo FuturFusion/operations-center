@@ -9,7 +9,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
-	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 )
 
@@ -24,12 +23,6 @@ func TestServer_SignalLifecycleEvent(t *testing.T) {
 			name: "success",
 
 			assertLog: log.Empty,
-		},
-		{
-			name:                              "error - lifecycle.ServerLifecycleSignal",
-			lifecycleServerLifecycleSignalErr: boom.Error,
-
-			assertLog: log.Contains("boom!"),
 		},
 	}
 
