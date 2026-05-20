@@ -4441,6 +4441,24 @@ paths:
             summary: Add an incus image version
             tags:
                 - incus_image
+    /1.0/image/incus/{name}/{version}/{filename}:
+        get:
+            description: Gets a specific file from an incus image version.
+            operationId: incus_image_version_file_get
+            produces:
+                - application/octet-stream
+            responses:
+                "200":
+                    description: File content.
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get a specific file from an incus image version
+            tags:
+                - incus_image
     /1.0/image/incus?recursion=1:
         get:
             description: Returns a list of incus images (structs).
