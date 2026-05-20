@@ -3,6 +3,7 @@ package image
 import (
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/lxc/incus/v6/shared/units"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/maps"
 	"github.com/FuturFusion/operations-center/internal/util/multipartstreamer"
 	"github.com/FuturFusion/operations-center/internal/util/render"
@@ -68,6 +70,13 @@ func (c *CmdIncusImage) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(incusImageVersionRemoveCmd.Command())
+
+	// Get File
+	incusImageVersionGetFileCmd := cmdIncusImageVersionGetFile{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(incusImageVersionGetFileCmd.Command())
 
 	return cmd
 }
@@ -315,6 +324,74 @@ func (c *cmdIncusImageVersionRemove) run(cmd *cobra.Command, args []string) erro
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+// Get incus image version file.
+type cmdIncusImageVersionGetFile struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdIncusImageVersionGetFile) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "file <name> <version> <filename> <target-filename>"
+	cmd.Short = "Get incus image version file"
+	cmd.Long = `Description:
+  Get a file of an incus image version.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdIncusImageVersionGetFile) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 4, 4)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdIncusImageVersionGetFile) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+	version := args[1]
+	filename := args[2]
+	targetFilename := args[3]
+
+	if file.PathExists(targetFilename) {
+		return fmt.Errorf("target file %q already exists", targetFilename)
+	}
+
+	targetFile, err := os.OpenFile(targetFilename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		return err
+	}
+
+	defer targetFile.Close()
+
+	fileReader, err := c.ocClient.GetIncusImageVersionFile(cmd.Context(), name, version, filename)
+	if err != nil {
+		return err
+	}
+
+	defer fileReader.Close()
+
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	format := fmt.Sprintf("Fetching file %q for image %q, version %q: %%s", filename, name, version)
+
+	progress, writer := render.ProgressWriter(targetFile, format, quiet)
+
+	size, err := file.SafeCopy(writer, fileReader)
+	if err != nil {
+		return err
+	}
+
+	progress.Done(fmt.Sprintf("Successfully written %s to %q ", units.GetByteSizeString(size, 2), targetFilename))
 
 	return nil
 }
