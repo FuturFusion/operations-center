@@ -724,7 +724,7 @@ func (c *cmdUpdateFileGet) run(cmd *cobra.Command, args []string) error {
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	format := fmt.Sprintf("Fetching file %q for update %s: %%s", sourceFilename, id)
 
-	progress, writer := progressWriter(targetFile, format, quiet)
+	progress, writer := render.ProgressWriter(targetFile, format, quiet)
 
 	size, err := file.SafeCopy(writer, imageReader)
 	if err != nil {
