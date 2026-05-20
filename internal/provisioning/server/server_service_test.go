@@ -4203,6 +4203,22 @@ func TestServerService_PollServer(t *testing.T) {
 			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
+			name: "error - server in status offline grace period",
+			serverArg: provisioning.Server{
+				Name:              "one",
+				Status:            api.ServerStatusOffline,
+				StatusDetail:      api.ServerStatusDetailOfflineRebooting,
+				LastStatusUpdated: fixedDate.Add(-2 * time.Second),
+			},
+			updateServerConfigArg: true,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.True(tt, domain.IsRetryableError(err))
+				require.ErrorContains(tt, err, "still rebooting (in reboot grace period)")
+			},
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+		},
+		{
 			name: "error - client GetResources",
 			serverArg: provisioning.Server{
 				Name:   "one",
@@ -4573,6 +4589,7 @@ func TestServerService_PollServer(t *testing.T) {
 
 			serverSvc := provisioningServer.New(repo, client, runner, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
+				provisioningServer.WithRebootStatusUpdateGracePeriod(5*time.Second),
 			)
 
 			// Run test
