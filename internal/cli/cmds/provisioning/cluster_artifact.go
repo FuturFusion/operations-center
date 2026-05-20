@@ -73,7 +73,7 @@ type cmdClusterArtifactList struct {
 
 func (c *cmdClusterArtifactList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "list"
+	cmd.Use = "list <clusterName>"
 	cmd.Short = "List available cluster artifacts"
 	cmd.Long = `Description:
   List the available cluster artifacts.
