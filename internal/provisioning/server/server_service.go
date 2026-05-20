@@ -1141,7 +1141,7 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 		server.StatusDetail = api.ServerStatusDetailOfflineShutdown
 		server.LastStatusUpdated = s.now()
 
-		err = s.Update(ctx, *server, false, false)
+		err = s.repo.Update(ctx, *server)
 		if err != nil {
 			return fmt.Errorf("Failed to update server %q: %w", name, err)
 		}
@@ -1210,7 +1210,7 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 		server.StatusDetail = api.ServerStatusDetailOfflineRebooting
 		server.LastStatusUpdated = s.now()
 
-		err = s.Update(ctx, *server, false, false)
+		err = s.repo.Update(ctx, *server)
 		if err != nil {
 			return fmt.Errorf("Failed to update server %q: %w", name, err)
 		}
