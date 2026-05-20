@@ -27,7 +27,7 @@ func registerImageIncusHandler(router Router, authorizer *authz.Authorizer, serv
 	router.HandleFunc("DELETE /{name}", response.With(handler.incusImageDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{name}/{version}", response.With(handler.incusImageVersionPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{name}/{version}", response.With(handler.incusImageVersionDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
-	router.HandleFunc("GET /{name}/{version}/{file}", response.With(handler.incusImageVersionFileGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{name}/{version}/{filename}", response.With(handler.incusImageVersionFileGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 }
 
 // swagger:operation GET /1.0/image/incus incus_images incus_images_get
@@ -334,7 +334,41 @@ func (i *imageIncusHandler) incusImageVersionDelete(r *http.Request) response.Re
 	return response.EmptySyncResponse
 }
 
+// swagger:operation GET /1.0/image/incus/{name}/{version}/{filename} incus_image incus_image_version_file_get
+//
+//	Get a specific file from an incus image version
+//
+//	Gets a specific file from an incus image version.
+//
+//	---
+//	produces:
+//	  - "application/octet-stream"
+//	responses:
+//	  "200":
+//	    description: File content.
+//	    "application/octet-stream":
+//	      schema:
+//	        type: string
+//	        format: binary
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func (i *imageIncusHandler) incusImageVersionFileGet(r *http.Request) response.Response {
-	// Download a file from a given incus image version
-	return response.NotImplemented(fmt.Errorf("not implemented"))
+	name := r.PathValue("name")
+	version := r.PathValue("version")
+	filename := r.PathValue("filename")
+
+	rc, size, err := i.service.GetVersionFileByName(r.Context(), name, version, filename)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to get file %q for incus image %q, version %q: %w", filename, name, version, err))
+	}
+
+	headers := map[string]string{
+		"Content-Type": "application/octet-stream",
+	}
+
+	return response.ReadCloserResponse(r, rc, false, filename, int(size), headers)
 }
