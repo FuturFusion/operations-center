@@ -1024,7 +1024,9 @@ func (d *Daemon) setupBackgroundTasks(
 	})
 
 	// Trigger ClusterUpdateControlLoop also from server lifecycle events.
-	lifecycle.ServerLifecycleSignal.AddListenerWithErr(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) error {
+	lifecycle.ServerLifecycleSignal.AddListener(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) {
+		slog.InfoContext(ctx, "Server lifecycle event triggered", slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
+
 		err := clusterSvc.ClusterUpdateControlLoop(ctx, slm.Cluster)
 		if err != nil {
 			logCtx := slog.ErrorContext
@@ -1033,9 +1035,11 @@ func (d *Daemon) setupBackgroundTasks(
 			}
 
 			logCtx(ctx, "Failed to handle server lifecycle event", logger.Err(err), slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
+
+			return
 		}
 
-		return nil
+		slog.InfoContext(ctx, "Server lifecycle event completed", slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
 	})
 
 	// Start background task to poll servers in pending state to become available.

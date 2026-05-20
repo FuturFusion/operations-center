@@ -733,6 +733,11 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 			triggerBackgroundPolling = true
 
 		case api.ServerSelfUpdateCauseSystemIsReady:
+			// Ensure, the registration scriptlet is executed on initial registration.
+			if server.Status == api.ServerStatusPending && server.StatusDetail == api.ServerStatusDetailPendingRegistering {
+				break
+			}
+
 			server.Status = api.ServerStatusReady
 			s.volatileServerStates.resetAll(ctx, server.Name)
 			server.StatusDetail = api.ServerStatusDetailNone
@@ -1141,7 +1146,7 @@ func (s *serverService) PoweroffSystemByName(ctx context.Context, name string, f
 		server.StatusDetail = api.ServerStatusDetailOfflineShutdown
 		server.LastStatusUpdated = s.now()
 
-		err = s.Update(ctx, *server, false, false)
+		err = s.repo.Update(ctx, *server)
 		if err != nil {
 			return fmt.Errorf("Failed to update server %q: %w", name, err)
 		}
@@ -1210,7 +1215,7 @@ func (s *serverService) RebootSystemByName(ctx context.Context, name string, for
 		server.StatusDetail = api.ServerStatusDetailOfflineRebooting
 		server.LastStatusUpdated = s.now()
 
-		err = s.Update(ctx, *server, false, false)
+		err = s.repo.Update(ctx, *server)
 		if err != nil {
 			return fmt.Errorf("Failed to update server %q: %w", name, err)
 		}

@@ -2466,6 +2466,28 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			wantServerStatusDetail: api.ServerStatusDetailNone,
 		},
 		{
+			name: "success - cause system is ready for system in pending registering state",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one-new/",
+				Cause:                     api.ServerSelfUpdateCauseSystemIsReady,
+				AuthenticationCertificate: serverCertificate.Leaf,
+			},
+			repoGetByCertificateServer: &provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate:   string(serverCertPEM),
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusPending,
+				StatusDetail:  api.ServerStatusDetailPendingRegistering,
+				Channel:       "stable",
+			},
+
+			assertErr:              require.NoError,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerStatus:       api.ServerStatusPending,
+			wantServerStatusDetail: api.ServerStatusDetailPendingRegistering,
+		},
+		{
 			name: "success - cause system is ready",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
 				ConnectionURL:             "http://one-new/",
@@ -4203,6 +4225,22 @@ func TestServerService_PollServer(t *testing.T) {
 			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
+			name: "error - server in status offline grace period",
+			serverArg: provisioning.Server{
+				Name:              "one",
+				Status:            api.ServerStatusOffline,
+				StatusDetail:      api.ServerStatusDetailOfflineRebooting,
+				LastStatusUpdated: fixedDate.Add(-2 * time.Second),
+			},
+			updateServerConfigArg: true,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.True(tt, domain.IsRetryableError(err))
+				require.ErrorContains(tt, err, "still rebooting (in reboot grace period)")
+			},
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+		},
+		{
 			name: "error - client GetResources",
 			serverArg: provisioning.Server{
 				Name:   "one",
@@ -4573,6 +4611,7 @@ func TestServerService_PollServer(t *testing.T) {
 
 			serverSvc := provisioningServer.New(repo, client, runner, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
+				provisioningServer.WithRebootStatusUpdateGracePeriod(5*time.Second),
 			)
 
 			// Run test

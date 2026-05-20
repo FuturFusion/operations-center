@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net"
 	"net/url"
 	"time"
@@ -15,7 +14,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
-	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -169,10 +167,7 @@ func (s Server) SignalLifecycleEvent() {
 			ServerUpdateState: s.UpdateState(),
 		}
 
-		err := lifecycle.ServerLifecycleSignal.TryEmit(ctx, slm)
-		if err != nil {
-			slog.ErrorContext(ctx, "Signal lifecycle event failed", logger.Err(err), slog.Any("server_lifecycle_message", slm))
-		}
+		lifecycle.ServerLifecycleSignal.Emit(ctx, slm)
 	}()
 }
 
