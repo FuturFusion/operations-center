@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -68,4 +69,18 @@ func (c OperationsCenterClient) DeleteIncusImageVersion(ctx context.Context, nam
 	}
 
 	return nil
+}
+
+func (c OperationsCenterClient) GetIncusImageVersionFile(ctx context.Context, name string, version string, filename string) (io.ReadCloser, error) {
+	resp, err := c.doRequestRawResponse(ctx, http.MethodGet, path.Join("/image/incus", name, version, filename), nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		_, err = processResponse(resp)
+		return nil, err
+	}
+
+	return resp.Body, nil
 }
