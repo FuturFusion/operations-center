@@ -733,6 +733,11 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 			triggerBackgroundPolling = true
 
 		case api.ServerSelfUpdateCauseSystemIsReady:
+			// Ensure, the registration scriptlet is executed on initial registration.
+			if server.Status == api.ServerStatusPending && server.StatusDetail == api.ServerStatusDetailPendingRegistering {
+				break
+			}
+
 			server.Status = api.ServerStatusReady
 			s.volatileServerStates.resetAll(ctx, server.Name)
 			server.StatusDetail = api.ServerStatusDetailNone
