@@ -35,14 +35,16 @@ func New(repo ImageIncusRepo, filesRepo ImageIncusFileRepo) *imageIncusService {
 }
 
 func (s *imageIncusService) AddVersion(ctx context.Context, name string, versionIdentifier string, mr *multipart.Reader) (err error) {
-	nameParts := strings.Split(name, ":")
-	if len(nameParts) != 4 {
-		return fmt.Errorf(`Invalid incus image name, expect name in the format "os:release:architecture:variant": %w`, domain.ErrOperationNotPermitted)
+	err = validateIncusImageName(name)
+	if err != nil {
+		return err
 	}
 
 	if versionIdentifier == "" {
-		return fmt.Errorf(`Incus image version can not be empty: %w`, domain.ErrOperationNotPermitted)
+		return domain.NewValidationErrf("Incus image version can not be empty")
 	}
+
+	nameParts := strings.Split(name, ":")
 
 	img, err := s.repo.GetByName(ctx, name)
 	if err != nil {
@@ -58,11 +60,6 @@ func (s *imageIncusService) AddVersion(ctx context.Context, name string, version
 			Variant:         nameParts[3],
 			Description:     fmt.Sprintf("%s %s (%s) (%s)", nameParts[0], nameParts[1], nameParts[3], nameParts[2]),
 			Versions:        make(map[string]api.IncusImageVersion, 1),
-		}
-
-		err = img.Validate()
-		if err != nil {
-			return err
 		}
 
 		_, err = s.repo.Create(ctx, *img)
@@ -228,8 +225,9 @@ func (s *imageIncusService) GetAllNames(ctx context.Context) ([]string, error) {
 }
 
 func (s *imageIncusService) GetByName(ctx context.Context, name string) (*IncusImage, error) {
-	if name == "" {
-		return nil, fmt.Errorf("Incus image name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	err := validateIncusImageName(name)
+	if err != nil {
+		return nil, err
 	}
 
 	img, err := s.repo.GetByName(ctx, name)
@@ -241,7 +239,12 @@ func (s *imageIncusService) GetByName(ctx context.Context, name string) (*IncusI
 }
 
 func (s *imageIncusService) DeleteByName(ctx context.Context, name string) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	err := validateIncusImageName(name)
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		img, err := s.repo.GetByName(ctx, name)
 		if err != nil {
 			return fmt.Errorf("Failed to get incus image %q: %w", name, err)
@@ -267,7 +270,16 @@ func (s *imageIncusService) DeleteByName(ctx context.Context, name string) error
 }
 
 func (s *imageIncusService) DeleteVersionByName(ctx context.Context, name string, versionIdentifier string) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	err := validateIncusImageName(name)
+	if err != nil {
+		return err
+	}
+
+	if versionIdentifier == "" {
+		return domain.NewValidationErrf("Incus image version cannot be empty")
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		img, err := s.repo.GetByName(ctx, name)
 		if err != nil {
 			return fmt.Errorf("Failed to get incus image %q: %w", name, err)
@@ -300,16 +312,17 @@ func (s *imageIncusService) DeleteVersionByName(ctx context.Context, name string
 }
 
 func (s *imageIncusService) GetVersionFileByName(ctx context.Context, name string, version string, filename string) (_ io.ReadCloser, size int64, _ error) {
-	if name == "" {
-		return nil, 0, fmt.Errorf("Incus image name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	err := validateIncusImageName(name)
+	if err != nil {
+		return nil, 0, err
 	}
 
 	if version == "" {
-		return nil, 0, fmt.Errorf("Incus image version cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, 0, domain.NewValidationErrf("Incus image version cannot be empty")
 	}
 
 	if filename == "" {
-		return nil, 0, fmt.Errorf("Filename cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, 0, domain.NewValidationErrf("Filename cannot be empty")
 	}
 
 	img, err := s.repo.GetByName(ctx, name)

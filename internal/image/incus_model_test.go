@@ -40,6 +40,50 @@ func TestIncusImage_Validate(t *testing.T) {
 			},
 		},
 		{
+			name: "error - os empty in name",
+			image: image.IncusImage{
+				Name: ":10:amd64:cloud", // os empty in name
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - release empty in name",
+			image: image.IncusImage{
+				Name: "almalinux::amd64:cloud", // release empty in name
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - architecture unknown",
+			image: image.IncusImage{
+				Name: "almalinux:10:invalid:cloud", // architecture unknown
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - variant empty in name",
+			image: image.IncusImage{
+				Name: "almalinux:10:amd64:", // variant empty in name
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
 			name: "error - empty operating system",
 			image: image.IncusImage{
 				Name:            "almalinux:10:amd64:cloud",
