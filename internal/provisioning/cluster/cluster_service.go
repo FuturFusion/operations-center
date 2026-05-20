@@ -68,7 +68,8 @@ type clusterService struct {
 	removeServerFactoryResetWaitDelay         time.Duration
 	removeServerDeleteClusterMemberRetryDelay time.Duration
 
-	clusterUpdateControlLoopMu sync.Mutex
+	clusterUpdateControlLoopMu        sync.Mutex
+	clusterUpdateControlLoopClusterMu map[string]*sync.Mutex
 }
 
 var _ provisioning.ClusterService = &clusterService{}
@@ -154,6 +155,8 @@ func New(
 
 		removeServerFactoryResetWaitDelay:         10 * time.Second,
 		removeServerDeleteClusterMemberRetryDelay: 5 * time.Second,
+
+		clusterUpdateControlLoopClusterMu: map[string]*sync.Mutex{},
 	}
 
 	for _, opt := range opts {
@@ -1774,13 +1777,6 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 }
 
 func (s *clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNameFilter *string) error {
-	ok := s.clusterUpdateControlLoopMu.TryLock()
-	if !ok {
-		return domain.NewRetryableErr(fmt.Errorf("Failed to optain cluster update control loop mutex"))
-	}
-
-	defer s.clusterUpdateControlLoopMu.Unlock()
-
 	clusters, err := s.GetAllWithFilter(ctx, provisioning.ClusterFilter{
 		Name:       clusterNameFilter,
 		Expression: ptr.To(`update_status.in_progress_status.in_progress != ""`),
@@ -1792,6 +1788,23 @@ func (s *clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNa
 	var errs []error
 	for _, cluster := range clusters {
 		err := func() error {
+			// Get and try to obtain the per cluster mutex.
+			s.clusterUpdateControlLoopMu.Lock()
+			mu, ok := s.clusterUpdateControlLoopClusterMu[cluster.Name]
+			if !ok {
+				mu = &sync.Mutex{}
+				s.clusterUpdateControlLoopClusterMu[cluster.Name] = mu
+			}
+
+			s.clusterUpdateControlLoopMu.Unlock()
+
+			ok = mu.TryLock()
+			if !ok {
+				return domain.NewRetryableErr(fmt.Errorf("Failed to optain cluster update control loop mutex for cluster %q", cluster.Name))
+			}
+
+			defer mu.Unlock()
+
 			log := slog.With(slog.String("cluster", cluster.Name))
 			log.InfoContext(ctx,
 				"Cluster rolling update control loop started",
