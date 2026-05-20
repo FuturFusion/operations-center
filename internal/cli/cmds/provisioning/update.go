@@ -3,7 +3,6 @@ package provisioning
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
@@ -724,9 +724,9 @@ func (c *cmdUpdateFileGet) run(cmd *cobra.Command, args []string) error {
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	format := fmt.Sprintf("Fetching file %q for update %s: %%s", sourceFilename, id)
 
-	progress, writer := progressWriter(targetFile, format, quiet)
+	progress, writer := render.ProgressWriter(targetFile, format, quiet)
 
-	size, err := io.Copy(writer, imageReader)
+	size, err := file.SafeCopy(writer, imageReader)
 	if err != nil {
 		return err
 	}

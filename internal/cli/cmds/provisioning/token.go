@@ -3,7 +3,6 @@ package provisioning
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strconv"
 	"time"
@@ -443,9 +442,9 @@ func (c *cmdTokenGetImage) run(cmd *cobra.Command, args []string) (err error) {
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	format := fmt.Sprintf("Fetching image for token %s: %%s", id)
 
-	progress, writer := progressWriter(targetFile, format, quiet)
+	progress, writer := render.ProgressWriter(targetFile, format, quiet)
 
-	size, err := io.Copy(writer, imageReader)
+	size, err := file.SafeCopy(writer, imageReader)
 	if err != nil {
 		return err
 	}

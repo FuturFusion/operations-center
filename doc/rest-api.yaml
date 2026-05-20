@@ -735,6 +735,122 @@ definitions:
         format: int64
         type: integer
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    IncusImage:
+        properties:
+            arch:
+                description: Architecture the incus image is built for.
+                example: amd64
+                type: string
+                x-go-name: Architecture
+            description:
+                description: Description of the incus image.
+                type: string
+                x-go-name: Description
+            last_updated:
+                description: LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
+                example: "2024-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: LastUpdated
+            name:
+                description: Name of the incus image in the format "os:release:architecture:variant".
+                example: almalinux:10:amd64:cloud
+                type: string
+                x-go-name: Name
+            os:
+                description: OperatingSystem of the incus image.
+                example: almalinux
+                type: string
+                x-go-name: OperatingSystem
+            release:
+                description: Release of the operating system of the incus image.
+                example: "10"
+                type: string
+                x-go-name: Release
+            variant:
+                description: Variant of the incus image.
+                example: default
+                type: string
+                x-go-name: Variant
+            versions:
+                additionalProperties:
+                    $ref: '#/definitions/IncusImageVersion'
+                description: Versions of the incus image.
+                type: object
+                x-go-name: Versions
+        title: IncusImage defines an incus image.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    IncusImagePut:
+        properties:
+            description:
+                description: Description of the incus image.
+                type: string
+                x-go-name: Description
+        title: IncusImagePut represents the fields available for update for an incus image.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    IncusImageVersion:
+        properties:
+            items:
+                additionalProperties:
+                    $ref: '#/definitions/IncusImageVersionItem'
+                description: |-
+                    Items of the incus image version. This is the file artifacts, that are
+                    available for a given incus image version.
+                type: object
+                x-go-name: Items
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    IncusImageVersionItem:
+        properties:
+            combined_disk-kvm-img_sha256:
+                description: |-
+                    CombinedSha256DiskKvmImg holds the combinded sha256 hash of the incus image
+                    versions metadata ("incus.tar.xz") and the "disk.qcow2" image.
+                type: string
+                x-go-name: CombinedSha256DiskKvmImg
+            combined_rootxz_sha256:
+                description: |-
+                    CombinedSha256RootXz holds the combinded sha256 hash of the incus image
+                    versions metadata ("incus.tar.xz") and the "root.tar.xz" image.
+                type: string
+                x-go-name: CombinedSha256RootXz
+            combined_sha256:
+                description: |-
+                    CombinedSha256 holds the combinded sha256 hash of the incus image
+                    versions metadata ("incus.tar.xz") and the "root.tar.xz" image.
+                type: string
+                x-go-name: CombinedSha256
+            combined_squashfs_sha256:
+                description: |-
+                    CombinedSha256SquashFs holds the combinded sha256 hash of the incus image
+                    versions metadata ("incus.tar.xz") and the "root.squashfs" image.
+                type: string
+                x-go-name: CombinedSha256SquashFs
+            ftype:
+                description: |-
+                    FileType holds the file type. This defaults to the file name like
+                    incus.tar.xz. Special file types are "squashfs" and "disk-kvm.img".
+                type: string
+                x-go-name: FileType
+            path:
+                description: |-
+                    Path, relative to the repositories root folder, where the particular
+                    file artifact is stored.
+                type: string
+                x-go-name: Path
+            sha256:
+                description: HashSha256 holds the sha256 has of the file.
+                type: string
+                x-go-name: HashSha256
+            size:
+                description: Size holds the size in bytes of the file.
+                format: int64
+                type: integer
+                x-go-name: Size
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     Network:
         properties:
             address:
@@ -4193,6 +4309,193 @@ paths:
             summary: Get the server environment
             tags:
                 - server
+    /1.0/image/incus:
+        get:
+            description: Returns a list of incus images (URLs).
+            operationId: incus_images_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API incus images
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of incus images
+                                example: |-
+                                    [
+                                      "/1.0/image/incus/almalinux:10:amd64:default",
+                                      "/1.0/image/incus/almalinux:10:amd64:cloud"
+                                    ]
+                                items:
+                                    type: string
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the list of incus images
+            tags:
+                - incus_images
+    /1.0/image/incus/{name}:
+        delete:
+            description: Removes the incus image.
+            operationId: incus_image_delete
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Delete the incus image
+            tags:
+                - incus_image
+        get:
+            description: Gets a specific incus image.
+            operationId: incus_image_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Incus image
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/IncusImage'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the incus image
+            tags:
+                - incus_image
+    /1.0/image/incus/{name}/{version}:
+        delete:
+            description: Removes the incus image version.
+            operationId: incus_image_version_delete
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Delete the incus image version
+            tags:
+                - incus_image
+        post:
+            consumes:
+                - multipart/form-data
+            description: |-
+                Add a new incus image version. Also creates the incus image, if it does not
+                exist.
+            operationId: incus_images_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Add an incus image version
+            tags:
+                - incus_image
+    /1.0/image/incus/{name}/{version}/{filename}:
+        get:
+            description: Gets a specific file from an incus image version.
+            operationId: incus_image_version_file_get
+            produces:
+                - application/octet-stream
+            responses:
+                "200":
+                    description: File content.
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get a specific file from an incus image version
+            tags:
+                - incus_image
+    /1.0/image/incus?recursion=1:
+        get:
+            description: Returns a list of incus images (structs).
+            operationId: incus_get_recursion
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API incus images
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of incus
+                                items:
+                                    $ref: '#/definitions/IncusImage'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the list of incus images
+            tags:
+                - incus
     /1.0/inventory/images:
         get:
             description: Returns a list of images (list of relative URLs).

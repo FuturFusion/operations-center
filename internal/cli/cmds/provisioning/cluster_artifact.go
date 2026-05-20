@@ -3,7 +3,6 @@ package provisioning
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"time"
 
@@ -254,9 +253,9 @@ func (c *cmdClusterArtifactGetArchive) run(cmd *cobra.Command, args []string) er
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	format := fmt.Sprintf("Fetching artifact %q archive for cluster %q: %%s", artifactName, clusterName)
 
-	progress, writer := progressWriter(targetFile, format, quiet)
+	progress, writer := render.ProgressWriter(targetFile, format, quiet)
 
-	size, err := io.Copy(writer, archiveReader)
+	size, err := file.SafeCopy(writer, archiveReader)
 	if err != nil {
 		return err
 	}
@@ -322,9 +321,9 @@ func (c *cmdClusterArtifactGetFile) run(cmd *cobra.Command, args []string) error
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	format := fmt.Sprintf("Fetching file %q for artifact %q of cluster %q: %%s", filename, artifactName, clusterName)
 
-	progress, writer := progressWriter(targetFile, format, quiet)
+	progress, writer := render.ProgressWriter(targetFile, format, quiet)
 
-	size, err := io.Copy(writer, fileReader)
+	size, err := file.SafeCopy(writer, fileReader)
 	if err != nil {
 		return err
 	}

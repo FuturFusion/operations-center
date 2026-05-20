@@ -29,6 +29,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -375,12 +376,12 @@ func (s updateService) GetChangelog(ctx context.Context, currentID uuid.UUID, pr
 		Components:     map[string]images.ChangelogEntries{},
 	}
 
-	for _, file := range current.Files {
-		if file.Type != images.UpdateFileTypeImageManifest {
+	for _, f := range current.Files {
+		if f.Type != images.UpdateFileTypeImageManifest {
 			continue
 		}
 
-		parts := strings.Split(file.Filename, "/")
+		parts := strings.Split(f.Filename, "/")
 		if len(parts) != 2 {
 			// invalid filename
 			continue
@@ -397,14 +398,14 @@ func (s updateService) GetChangelog(ctx context.Context, currentID uuid.UUID, pr
 		var currentManifest manifests.IncusOSManifest
 		var priorManifest manifests.IncusOSManifest
 
-		err = s.readManifest(ctx, *current, file.Filename, &currentManifest)
+		err = s.readManifest(ctx, *current, f.Filename, &currentManifest)
 		if err != nil {
 			return api.UpdateChangelog{}, fmt.Errorf("Failed to read manifest of component %q for current update %q (%s): %w", componentName, currentID.String(), current.Version, err)
 		}
 
 		if priorID != uuid.Nil {
 			// Replace the version string, if any, in the filename to use the previous version.
-			priorFilename := strings.Replace(file.Filename, "_"+current.Version, "_"+prior.Version, 1)
+			priorFilename := strings.Replace(f.Filename, "_"+current.Version, "_"+prior.Version, 1)
 
 			err = s.readManifest(ctx, *prior, priorFilename, &priorManifest)
 			if err != nil {
@@ -518,8 +519,8 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 	}
 
 	found := false
-	for _, file := range update.Files {
-		if filename == file.Filename {
+	for _, f := range update.Files {
+		if filename == f.Filename {
 			found = true
 			break
 		}
@@ -1024,9 +1025,9 @@ func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []provisi
 // providesMissingComponentsForChannels checks for all required components in all channels, if the given update
 // does provide anything currently missing. If this is the case, true is returned, otherwise the return value is false.
 func providesMissingComponentsForChannels(requiredComponents map[string]map[images.UpdateFileComponent]int, update provisioning.Update) bool {
-	for _, file := range update.Files {
+	for _, f := range update.Files {
 		for _, channel := range update.Channels {
-			count, ok := requiredComponents[channel][file.Component]
+			count, ok := requiredComponents[channel][f.Component]
 			if ok && count > 0 {
 				return true
 			}
@@ -1040,15 +1041,15 @@ func providesMissingComponentsForChannels(requiredComponents map[string]map[imag
 // covers.
 func updateRequiredComponents(requiredComponents map[string]map[images.UpdateFileComponent]int, update provisioning.Update) {
 	seenComponents := make(map[images.UpdateFileComponent]bool, len(images.UpdateFileComponents))
-	for _, file := range update.Files {
-		if seenComponents[file.Component] {
+	for _, f := range update.Files {
+		if seenComponents[f.Component] {
 			continue
 		}
 
-		seenComponents[file.Component] = true
+		seenComponents[f.Component] = true
 
 		for _, channel := range update.Channels {
-			requiredComponents[channel][file.Component]--
+			requiredComponents[channel][f.Component]--
 		}
 	}
 }
@@ -1056,8 +1057,8 @@ func updateRequiredComponents(requiredComponents map[string]map[images.UpdateFil
 func (s updateService) isSpaceAvailable(ctx context.Context, downloadUpdates []provisioning.Update) error {
 	var requiredSpaceTotal int
 	for _, update := range downloadUpdates {
-		for _, file := range update.Files {
-			requiredSpaceTotal += file.Size
+		for _, f := range update.Files {
+			requiredSpaceTotal += f.Size
 		}
 	}
 
@@ -1088,7 +1089,7 @@ func (s updateService) downloadFile(ctx context.Context, update provisioning.Upd
 
 	if updateFile.Sha256 != "" {
 		h = sha256.New()
-		teeStream = provisioning.NewTeeReadCloser(stream, h)
+		teeStream = file.NewTeeReadCloser(stream, h)
 	}
 
 	commit, cancel, err := s.filesRepo.Put(ctx, update, updateFile.Filename, teeStream)
