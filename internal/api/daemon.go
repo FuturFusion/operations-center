@@ -221,6 +221,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Setup Services
 	warningSvc := d.setupWarningService(dbWithTransaction)
+	// TODO: Temporary use log only warn service.
+	warningLogEmitter := provisioning.LogWarningService{}
 
 	inventoryInventoryAggregateSvc := inventoryServiceMiddleware.NewInventoryAggregateServiceWithSlog(
 		inventory.NewInventoryAggregateService(
@@ -253,7 +255,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	channelSvc := d.setupChannelService(dbWithTransaction, updateSvc)
 
 	tokenSvc := d.setupTokenService(dbWithTransaction, updateSvc, channelSvc)
-	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningSvc)
+	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter)
 	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc)
 	if err != nil {
 		return err
@@ -325,7 +327,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// Background tasks
-	d.setupBackgroundTasks(ctx, updateSvc, serverSvc, clusterSvc, warningSvc)
+	d.setupBackgroundTasks(ctx, updateSvc, serverSvc, clusterSvc, warningLogEmitter)
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	err = d.incusOSSelfRegister(timeoutCtx)
@@ -962,7 +964,7 @@ func (d *Daemon) setupBackgroundTasks(
 	updateSvc provisioning.UpdateService,
 	serverSvc provisioning.ServerService,
 	clusterSvc provisioning.ClusterService,
-	warningSvc warning.WarningService,
+	warningSvc warning.WarningEmitter,
 ) {
 	if config.IsBackgroundTasksDisabled() {
 		return

@@ -8,6 +8,11 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+type WarningEmitter interface {
+	Emit(ctx context.Context, w Warning)
+	RemoveStale(ctx context.Context, scope api.WarningScope, newWarnings Warnings)
+}
+
 type WarningService interface {
 	GetAll(ctx context.Context) (Warnings, error)
 	GetByScopeAndType(ctx context.Context, scope api.WarningScope, wType api.WarningType) (Warnings, error)
@@ -15,8 +20,7 @@ type WarningService interface {
 	UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.WarningStatus) (*Warning, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 
-	Emit(ctx context.Context, w Warning)
-	RemoveStale(ctx context.Context, scope api.WarningScope, newWarnings Warnings)
+	WarningEmitter
 }
 
 type WarningRepo interface {
