@@ -301,6 +301,14 @@ func (d *Daemon) Start(ctx context.Context) error {
 	group, errgroupCtx := errgroup.WithContext(context.Background())
 	d.errgroup = group
 
+	// If the network configuration changes, we need to reload the API server on TCP.
+	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, sn apisystem.Network) {
+		err := d.setupTCPListener(ctx, sn)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to reload network config", logger.Err(err))
+		}
+	})
+
 	// API server on unix socket
 	d.setupSocketListener(ctx)
 
@@ -309,14 +317,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
-	// If the network configuration changes, we need to reload the API server on TCP.
-	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, sn apisystem.Network) {
-		err := d.setupTCPListener(ctx, sn)
-		if err != nil {
-			slog.ErrorContext(ctx, "Failed to reload network config", logger.Err(err))
-		}
-	})
 
 	// Start cluster lifecycle events monitor.
 	err = clusterSvc.StartLifecycleEventsMonitor(ctx)
