@@ -232,7 +232,10 @@ func (u *updateServer) SourceConnectionTest(ctx context.Context, baseURL string,
 	// New instance of updateServer with provided baseURL and signatureVerificationCA
 	// used temporarily for the verification only.
 	updateSvr := New(baseURL, signatureVerificationRootCA, u.tokenProvider)
-	_, err := updateSvr.fetchAndVerifyIndexSJSON(ctx)
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := updateSvr.fetchAndVerifyIndexSJSON(timeoutCtx)
 	if err != nil {
 		return fmt.Errorf(`Failed to fetch index.sjson: %w`, err)
 	}
