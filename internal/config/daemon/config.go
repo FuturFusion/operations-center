@@ -63,12 +63,14 @@ func Init(vardir enver) error {
 
 	env = vardir
 
-	err := loadConfig()
+	ctx := context.Background()
+
+	err := loadConfig(ctx)
 	if err != nil {
 		return fmt.Errorf("Failed to initialize global config: %w", err)
 	}
 
-	err = validateAndSave(globalConfigInstance)
+	err = validateAndSave(ctx, globalConfigInstance)
 	if err != nil {
 		return fmt.Errorf("Failed to persist initialized global config: %w", err)
 	}
@@ -89,7 +91,7 @@ func initInternalConfig() {
 	}
 }
 
-func loadConfig() error {
+func loadConfig(ctx context.Context) error {
 	cfg := config{}
 
 	err := yaml.Unmarshal(defaultConfig, &cfg)
@@ -119,7 +121,7 @@ func loadConfig() error {
 		return fmt.Errorf("Invalid network config: %w", err)
 	}
 
-	err = validate(cfg)
+	err = validate(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("Invalid config: %w", err)
 	}
@@ -149,7 +151,7 @@ func UpdateNetwork(ctx context.Context, cfg system.NetworkPut) error {
 		return err
 	}
 
-	err = validateAndSave(newCfg)
+	err = validateAndSave(ctx, newCfg)
 	if err != nil {
 		return err
 	}
@@ -231,7 +233,7 @@ func UpdateSecurity(ctx context.Context, cfg system.SecurityPut) error {
 	isTrustedHTTPSProxiesChanged := !slices.Equal(currentCfg.TrustedHTTPSProxies, newCfg.Security.TrustedHTTPSProxies)
 	isACMEChanged := acme.ACMEConfigChanged(currentCfg.ACME, newCfg.Security.ACME)
 
-	err := validateAndSave(newCfg)
+	err := validateAndSave(ctx, newCfg)
 	if err != nil {
 		return err
 	}
@@ -272,7 +274,7 @@ func UpdateSettings(ctx context.Context, cfg system.SettingsPut) error {
 
 	isLogLevelChanged := globalConfigInstance.Settings.LogLevel != newCfg.Settings.LogLevel
 
-	err := validateAndSave(newCfg)
+	err := validateAndSave(ctx, newCfg)
 	if err != nil {
 		return err
 	}
@@ -308,7 +310,7 @@ func UpdateUpdates(ctx context.Context, cfg system.UpdatesPut) error {
 	newCfg := globalConfigInstance
 	newCfg.Updates.UpdatesPut = cfg
 
-	err := validateAndSave(newCfg)
+	err := validateAndSave(ctx, newCfg)
 	if err != nil {
 		return err
 	}
@@ -322,9 +324,9 @@ func UpdateUpdates(ctx context.Context, cfg system.UpdatesPut) error {
 	return nil
 }
 
-func validateAndSave(cfg config) error {
+func validateAndSave(ctx context.Context, cfg config) error {
 	applyDefaults(&cfg)
-	err := validate(cfg)
+	err := validate(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("Failed to validate configuration: %w", err)
 	}
@@ -376,7 +378,7 @@ func saveToDisk(cfg config) error {
 	return nil
 }
 
-func validate(cfg config) error {
+func validate(ctx context.Context, cfg config) error {
 	// Network configuration
 	err := validateNetworkConfig(cfg.Network)
 	if err != nil {
@@ -402,7 +404,7 @@ func validate(cfg config) error {
 
 	// This is not ideal, but we can not have a direct dependency from the config
 	// onto the provisioning package, because we get a dependency cycle otherwise.
-	err = lifecycle.UpdatesValidateSignal.TryEmit(context.Background(), cfg.Updates)
+	err = lifecycle.UpdatesValidateSignal.TryEmit(ctx, cfg.Updates)
 	if err != nil {
 		return err
 	}
@@ -448,7 +450,7 @@ func validate(cfg config) error {
 	// This is not ideal, but we can not have a direct dependency from the config
 	// onto the provisioning adapter package, because we get a dependency cycle
 	// otherwise.
-	err = lifecycle.SettingsValidateSignal.TryEmit(context.Background(), cfg.Settings)
+	err = lifecycle.SettingsValidateSignal.TryEmit(ctx, cfg.Settings)
 	if err != nil {
 		return err
 	}
