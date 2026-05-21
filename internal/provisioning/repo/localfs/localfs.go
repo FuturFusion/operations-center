@@ -31,10 +31,10 @@ import (
 )
 
 type localfs struct {
-	configUpdateMu *sync.Mutex
-
 	storageDir string
+
 	verifier   signature.Verifier
+	verifierMu *sync.Mutex
 }
 
 var _ provisioning.UpdateFilesRepo = localfs{}
@@ -46,9 +46,9 @@ func New(storageDir string, signatureVerificationRootCA string) (*localfs, error
 	}
 
 	return &localfs{
-		configUpdateMu: &sync.Mutex{},
-		storageDir:     storageDir,
-		verifier:       signature.NewVerifier([]byte(signatureVerificationRootCA)),
+		verifierMu: &sync.Mutex{},
+		storageDir: storageDir,
+		verifier:   signature.NewVerifier([]byte(signatureVerificationRootCA)),
 	}, nil
 }
 
@@ -266,7 +266,9 @@ func (l localfs) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (
 
 	// Verify update.sjson signature.
 	filename := filepath.Join(tmpDir, "update.sjson")
+	l.verifierMu.Lock()
 	verifiedUpdateJSONBody, err := l.verifier.VerifyFile(filename)
+	l.verifierMu.Unlock()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to verify signature for %q: %w", filename, err)
 	}
@@ -496,8 +498,8 @@ func verifyUpdateFiles(ctx context.Context, destDir string, updateManifest *prov
 }
 
 func (l *localfs) UpdateConfig(_ context.Context, signatureVerificationRootCA string) {
-	l.configUpdateMu.Lock()
-	defer l.configUpdateMu.Unlock()
+	l.verifierMu.Lock()
+	defer l.verifierMu.Unlock()
 
 	l.verifier = signature.NewVerifier([]byte(signatureVerificationRootCA))
 }
