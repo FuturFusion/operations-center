@@ -327,12 +327,16 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// Background tasks
 	d.setupBackgroundTasks(ctx, updateSvc, serverSvc, clusterSvc, warningSvc)
 
-	err = d.incusOSSelfRegister(ctx)
+	timeoutCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	err = d.incusOSSelfRegister(timeoutCtx)
+	cancel()
 	if err != nil {
 		return fmt.Errorf("IncusOS self registration: %w", err)
 	}
 
-	err = d.incusOSSelfPoll(ctx, serverSvc)
+	timeoutCtx, cancel = context.WithTimeout(ctx, 3*time.Second)
+	err = d.incusOSSelfPoll(timeoutCtx, serverSvc)
+	cancel()
 	if err != nil {
 		slog.WarnContext(ctx, "IncusOS startup self poll", logger.Err(err))
 	}
