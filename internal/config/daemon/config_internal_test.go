@@ -411,7 +411,7 @@ func Test_validate(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			err := validate(tc.cfg)
+			err := validate(t.Context(), tc.cfg)
 
 			tc.assertErr(t, err)
 		})

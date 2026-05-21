@@ -3,6 +3,7 @@ package channel
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sort"
 
 	"github.com/google/uuid"
@@ -36,6 +37,9 @@ func New(repo provisioning.ChannelRepo, updateSvc provisioning.UpdateService) *c
 	// between the config and the provisioning package.
 	listenerKey := uuid.New().String()
 	lifecycle.UpdatesValidateSignal.AddListenerWithErr(service.validateUpdatesConfig, listenerKey)
+	runtime.AddCleanup(service, func(listenerKey string) {
+		lifecycle.UpdatesValidateSignal.RemoveListener(listenerKey)
+	}, listenerKey)
 
 	return service
 }

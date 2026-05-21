@@ -63,12 +63,14 @@ func Init(vardir enver) error {
 
 	env = vardir
 
-	err := loadConfig()
+	ctx := context.Background()
+
+	err := loadConfig(ctx)
 	if err != nil {
 		return fmt.Errorf("Failed to initialize global config: %w", err)
 	}
 
-	err = validateAndSave(globalConfigInstance)
+	err = validateAndSave(ctx, globalConfigInstance)
 	if err != nil {
 		return fmt.Errorf("Failed to persist initialized global config: %w", err)
 	}
@@ -89,7 +91,7 @@ func initInternalConfig() {
 	}
 }
 
-func loadConfig() error {
+func loadConfig(ctx context.Context) error {
 	cfg := config{}
 
 	err := yaml.Unmarshal(defaultConfig, &cfg)
@@ -119,7 +121,7 @@ func loadConfig() error {
 		return fmt.Errorf("Invalid network config: %w", err)
 	}
 
-	err = validate(cfg)
+	err = validate(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("Invalid config: %w", err)
 	}
@@ -149,7 +151,7 @@ func UpdateNetwork(ctx context.Context, cfg system.NetworkPut) error {
 		return err
 	}
 
-	err = validateAndSave(newCfg)
+	err = validateAndSave(ctx, newCfg)
 	if err != nil {
 		return err
 	}
@@ -217,22 +219,26 @@ func GetSecurity() system.Security {
 }
 
 func UpdateSecurity(ctx context.Context, cfg system.SecurityPut) error {
+	globalConfigInstanceMu.Lock()
+	unlock := unlockOnce(&globalConfigInstanceMu)
+	defer unlock()
+
 	newCfg := globalConfigInstance
 	newCfg.Security.SecurityPut = cfg
 
-	currentCfg := GetSecurity()
+	currentCfg := globalConfigInstance.Security
 
 	isTrustedTLSClientCertFingerprintsChanged := !slices.Equal(currentCfg.TrustedTLSClientCertFingerprints, newCfg.Security.TrustedTLSClientCertFingerprints)
 	isSecurityConfigChanged := isTrustedTLSClientCertFingerprintsChanged || currentCfg.OIDC != newCfg.Security.OIDC || currentCfg.OpenFGA != newCfg.Security.OpenFGA
 	isTrustedHTTPSProxiesChanged := !slices.Equal(currentCfg.TrustedHTTPSProxies, newCfg.Security.TrustedHTTPSProxies)
 	isACMEChanged := acme.ACMEConfigChanged(currentCfg.ACME, newCfg.Security.ACME)
 
-	globalConfigInstanceMu.Lock()
-	err := validateAndSave(newCfg)
-	globalConfigInstanceMu.Unlock()
+	err := validateAndSave(ctx, newCfg)
 	if err != nil {
 		return err
 	}
+
+	unlock()
 
 	if isSecurityConfigChanged {
 		lifecycle.SecurityUpdateSignal.Emit(ctx, system.Security{
@@ -260,20 +266,23 @@ func GetSettings() system.Settings {
 
 func UpdateSettings(ctx context.Context, cfg system.SettingsPut) error {
 	globalConfigInstanceMu.Lock()
-	defer globalConfigInstanceMu.Unlock()
+	unlock := unlockOnce(&globalConfigInstanceMu)
+	defer unlock()
 
 	newCfg := globalConfigInstance
 	newCfg.Settings.SettingsPut = cfg
 
 	isLogLevelChanged := globalConfigInstance.Settings.LogLevel != newCfg.Settings.LogLevel
 
-	err := validateAndSave(newCfg)
+	err := validateAndSave(ctx, newCfg)
 	if err != nil {
 		return err
 	}
 
+	unlock()
+
 	if isLogLevelChanged {
-		err = logger.SetLogLevel(logger.ParseLevel(globalConfigInstance.Settings.LogLevel))
+		err = logger.SetLogLevel(logger.ParseLevel(newCfg.Settings.LogLevel))
 		if err != nil {
 			return err
 		}
@@ -301,7 +310,7 @@ func UpdateUpdates(ctx context.Context, cfg system.UpdatesPut) error {
 	newCfg := globalConfigInstance
 	newCfg.Updates.UpdatesPut = cfg
 
-	err := validateAndSave(newCfg)
+	err := validateAndSave(ctx, newCfg)
 	if err != nil {
 		return err
 	}
@@ -315,9 +324,9 @@ func UpdateUpdates(ctx context.Context, cfg system.UpdatesPut) error {
 	return nil
 }
 
-func validateAndSave(cfg config) error {
+func validateAndSave(ctx context.Context, cfg config) error {
 	applyDefaults(&cfg)
-	err := validate(cfg)
+	err := validate(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("Failed to validate configuration: %w", err)
 	}
@@ -369,9 +378,9 @@ func saveToDisk(cfg config) error {
 	return nil
 }
 
-func validate(cfg config) error {
+func validate(ctx context.Context, cfg config) error {
 	// Network configuration
-	err := ValidateNetworkConfig(cfg.Network)
+	err := validateNetworkConfig(cfg.Network)
 	if err != nil {
 		return err
 	}
@@ -395,7 +404,7 @@ func validate(cfg config) error {
 
 	// This is not ideal, but we can not have a direct dependency from the config
 	// onto the provisioning package, because we get a dependency cycle otherwise.
-	err = lifecycle.UpdatesValidateSignal.TryEmit(context.Background(), cfg.Updates)
+	err = lifecycle.UpdatesValidateSignal.TryEmit(ctx, cfg.Updates)
 	if err != nil {
 		return err
 	}
@@ -441,7 +450,7 @@ func validate(cfg config) error {
 	// This is not ideal, but we can not have a direct dependency from the config
 	// onto the provisioning adapter package, because we get a dependency cycle
 	// otherwise.
-	err = lifecycle.SettingsValidateSignal.TryEmit(context.Background(), cfg.Settings)
+	err = lifecycle.SettingsValidateSignal.TryEmit(ctx, cfg.Settings)
 	if err != nil {
 		return err
 	}
@@ -450,6 +459,13 @@ func validate(cfg config) error {
 }
 
 func ValidateNetworkConfig(cfg system.Network) error {
+	globalConfigInstanceMu.Lock()
+	defer globalConfigInstanceMu.Unlock()
+
+	return validateNetworkConfig(cfg)
+}
+
+func validateNetworkConfig(cfg system.Network) error {
 	isRestServerAddressChanged := globalConfigInstance.Network.RestServerAddress != cfg.RestServerAddress
 	if env.IsIncusOS() && isRestServerAddressChanged && cfg.RestServerAddress == "" {
 		return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" can not be empty when running on IncusOS`)

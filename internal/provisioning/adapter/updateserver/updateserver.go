@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"path"
 	"sort"
@@ -18,6 +19,7 @@ import (
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/signature"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -28,13 +30,12 @@ type tokenProvider interface {
 }
 
 type updateServer struct {
-	configUpdateMu *sync.Mutex
-
+	configUpdateMu              *sync.Mutex
 	baseURL                     string
 	signatureVerificationRootCA string
-	client                      *http.Client
 	verifier                    signature.Verifier
 
+	client        *http.Client
 	tokenProvider tokenProvider
 }
 
@@ -70,8 +71,12 @@ type Update struct {
 	URL         string                              `json:"url"`
 }
 
-func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Updates, error) {
-	if u.baseURL == "" {
+func (u *updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Updates, error) {
+	u.configUpdateMu.Lock()
+	baseURL := u.baseURL
+	u.configUpdateMu.Unlock()
+
+	if baseURL == "" {
 		return nil, nil
 	}
 
@@ -131,10 +136,14 @@ func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Up
 }
 
 func (u *updateServer) fetchAndVerifyIndexSJSON(ctx context.Context) ([]byte, error) {
-	indexURL := u.baseURL + "/index.sjson"
+	u.configUpdateMu.Lock()
+	baseURL := u.baseURL
+	u.configUpdateMu.Unlock()
+
+	indexURL := baseURL + "/index.sjson"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, indexURL, http.NoBody)
 	if err != nil {
-		return nil, fmt.Errorf("GetLatest: %w", err)
+		return nil, fmt.Errorf("Failed to create request for %q: %w", indexURL, err)
 	}
 
 	token, err := u.tokenProvider.GetToken(ctx)
@@ -146,6 +155,8 @@ func (u *updateServer) fetchAndVerifyIndexSJSON(ctx context.Context) ([]byte, er
 		} else {
 			req.Header.Add("X-IncusOS-Authentication", token)
 		}
+	} else {
+		slog.WarnContext(ctx, "Failed to get token from IncusOS", logger.Err(err))
 	}
 
 	resp, err := u.client.Do(req)
@@ -161,10 +172,12 @@ func (u *updateServer) fetchAndVerifyIndexSJSON(ctx context.Context) ([]byte, er
 
 	contentSig, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("GetLatest: %w", err)
+		return nil, fmt.Errorf(`Failed to read "index.sjson" response: %w`, err)
 	}
 
+	u.configUpdateMu.Lock()
 	contentVerified, err := u.verifier.Verify(contentSig)
+	u.configUpdateMu.Unlock()
 	if err != nil {
 		return nil, fmt.Errorf(`Failed to verify signature of "index.sjson": %w`, err)
 	}
@@ -191,8 +204,12 @@ func uuidFromUpdateServer(update Update) uuid.UUID {
 // GetUpdateFileByFilenameUnverified returns an io.ReadCloser that reads the contents of the specified release asset.
 // It is the caller's responsibility to close the ReadCloser.
 // It is the caller's responsibility to verify the received data, e.g. using a hash.
-func (u updateServer) GetUpdateFileByFilenameUnverified(ctx context.Context, inUpdate provisioning.Update, filename string) (io.ReadCloser, int, error) {
-	updateURL := u.baseURL + path.Join(inUpdate.URL, filename)
+func (u *updateServer) GetUpdateFileByFilenameUnverified(ctx context.Context, inUpdate provisioning.Update, filename string) (io.ReadCloser, int, error) {
+	u.configUpdateMu.Lock()
+	baseURL := u.baseURL
+	u.configUpdateMu.Unlock()
+
+	updateURL := baseURL + path.Join(inUpdate.URL, filename)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, updateURL, http.NoBody)
 	if err != nil {
 		return nil, 0, fmt.Errorf("GetUpdateFileByFilename: %w", err)
@@ -224,15 +241,22 @@ func (u *updateServer) UpdateConfig(_ context.Context, baseURL string, signature
 	u.verifier = signature.NewVerifier([]byte(signatureVerificationRootCA))
 }
 
-func (u *updateServer) SourceConnectionTest(ctx context.Context, baseURL string, signatureVerificationRootCA string) error {
-	if strings.TrimSuffix(u.baseURL, "/") == strings.TrimSuffix(baseURL, "/") && u.signatureVerificationRootCA == signatureVerificationRootCA {
+func (u *updateServer) SourceConnectionTest(ctx context.Context, newBaseURL string, newSignatureVerificationRootCA string) error {
+	u.configUpdateMu.Lock()
+	baseURL, signatureVerificationRootCA := u.baseURL, u.signatureVerificationRootCA
+	u.configUpdateMu.Unlock()
+
+	if strings.TrimSuffix(baseURL, "/") == strings.TrimSuffix(newBaseURL, "/") && signatureVerificationRootCA == newSignatureVerificationRootCA {
 		return nil
 	}
 
 	// New instance of updateServer with provided baseURL and signatureVerificationCA
 	// used temporarily for the verification only.
-	updateSvr := New(baseURL, signatureVerificationRootCA, u.tokenProvider)
-	_, err := updateSvr.fetchAndVerifyIndexSJSON(ctx)
+	updateSvr := New(newBaseURL, newSignatureVerificationRootCA, u.tokenProvider)
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := updateSvr.fetchAndVerifyIndexSJSON(timeoutCtx)
 	if err != nil {
 		return fmt.Errorf(`Failed to fetch index.sjson: %w`, err)
 	}
