@@ -320,12 +320,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
-	// Start cluster lifecycle events monitor.
-	err = clusterSvc.StartLifecycleEventsMonitor(ctx)
-	if err != nil {
-		return err
-	}
-
 	timeoutCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	err = d.incusOSSelfRegister(timeoutCtx)
 	cancel()
@@ -338,6 +332,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 	cancel()
 	if err != nil {
 		slog.WarnContext(ctx, "IncusOS startup self poll", logger.Err(err))
+	}
+
+	// Start cluster lifecycle events monitor.
+	err = clusterSvc.StartLifecycleEventsMonitor(ctx)
+	if err != nil {
+		return err
 	}
 
 	// Background tasks
