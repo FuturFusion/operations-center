@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"path"
 	"sort"
@@ -18,6 +19,7 @@ import (
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/signature"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -141,7 +143,7 @@ func (u *updateServer) fetchAndVerifyIndexSJSON(ctx context.Context) ([]byte, er
 	indexURL := baseURL + "/index.sjson"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, indexURL, http.NoBody)
 	if err != nil {
-		return nil, fmt.Errorf("GetLatest: %w", err)
+		return nil, fmt.Errorf("Failed to create request for %q: %w", indexURL, err)
 	}
 
 	token, err := u.tokenProvider.GetToken(ctx)
@@ -153,6 +155,8 @@ func (u *updateServer) fetchAndVerifyIndexSJSON(ctx context.Context) ([]byte, er
 		} else {
 			req.Header.Add("X-IncusOS-Authentication", token)
 		}
+	} else {
+		slog.WarnContext(ctx, "Failed to get token from IncusOS", logger.Err(err))
 	}
 
 	resp, err := u.client.Do(req)
@@ -168,7 +172,7 @@ func (u *updateServer) fetchAndVerifyIndexSJSON(ctx context.Context) ([]byte, er
 
 	contentSig, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("GetLatest: %w", err)
+		return nil, fmt.Errorf(`Failed to read "index.sjson" response: %w`, err)
 	}
 
 	u.configUpdateMu.Lock()
