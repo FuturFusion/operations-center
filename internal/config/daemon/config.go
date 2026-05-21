@@ -217,22 +217,26 @@ func GetSecurity() system.Security {
 }
 
 func UpdateSecurity(ctx context.Context, cfg system.SecurityPut) error {
+	globalConfigInstanceMu.Lock()
+	unlock := unlockOnce(&globalConfigInstanceMu)
+	defer unlock()
+
 	newCfg := globalConfigInstance
 	newCfg.Security.SecurityPut = cfg
 
-	currentCfg := GetSecurity()
+	currentCfg := globalConfigInstance.Security
 
 	isTrustedTLSClientCertFingerprintsChanged := !slices.Equal(currentCfg.TrustedTLSClientCertFingerprints, newCfg.Security.TrustedTLSClientCertFingerprints)
 	isSecurityConfigChanged := isTrustedTLSClientCertFingerprintsChanged || currentCfg.OIDC != newCfg.Security.OIDC || currentCfg.OpenFGA != newCfg.Security.OpenFGA
 	isTrustedHTTPSProxiesChanged := !slices.Equal(currentCfg.TrustedHTTPSProxies, newCfg.Security.TrustedHTTPSProxies)
 	isACMEChanged := acme.ACMEConfigChanged(currentCfg.ACME, newCfg.Security.ACME)
 
-	globalConfigInstanceMu.Lock()
 	err := validateAndSave(newCfg)
-	globalConfigInstanceMu.Unlock()
 	if err != nil {
 		return err
 	}
+
+	unlock()
 
 	if isSecurityConfigChanged {
 		lifecycle.SecurityUpdateSignal.Emit(ctx, system.Security{
@@ -260,7 +264,8 @@ func GetSettings() system.Settings {
 
 func UpdateSettings(ctx context.Context, cfg system.SettingsPut) error {
 	globalConfigInstanceMu.Lock()
-	defer globalConfigInstanceMu.Unlock()
+	unlock := unlockOnce(&globalConfigInstanceMu)
+	defer unlock()
 
 	newCfg := globalConfigInstance
 	newCfg.Settings.SettingsPut = cfg
@@ -272,8 +277,10 @@ func UpdateSettings(ctx context.Context, cfg system.SettingsPut) error {
 		return err
 	}
 
+	unlock()
+
 	if isLogLevelChanged {
-		err = logger.SetLogLevel(logger.ParseLevel(globalConfigInstance.Settings.LogLevel))
+		err = logger.SetLogLevel(logger.ParseLevel(newCfg.Settings.LogLevel))
 		if err != nil {
 			return err
 		}
@@ -371,7 +378,7 @@ func saveToDisk(cfg config) error {
 
 func validate(cfg config) error {
 	// Network configuration
-	err := ValidateNetworkConfig(cfg.Network)
+	err := validateNetworkConfig(cfg.Network)
 	if err != nil {
 		return err
 	}
@@ -450,6 +457,13 @@ func validate(cfg config) error {
 }
 
 func ValidateNetworkConfig(cfg system.Network) error {
+	globalConfigInstanceMu.Lock()
+	defer globalConfigInstanceMu.Unlock()
+
+	return validateNetworkConfig(cfg)
+}
+
+func validateNetworkConfig(cfg system.Network) error {
 	isRestServerAddressChanged := globalConfigInstance.Network.RestServerAddress != cfg.RestServerAddress
 	if env.IsIncusOS() && isRestServerAddressChanged && cfg.RestServerAddress == "" {
 		return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" can not be empty when running on IncusOS`)
