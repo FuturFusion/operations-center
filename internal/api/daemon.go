@@ -221,6 +221,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Setup Services
 	warningSvc := d.setupWarningService(dbWithTransaction)
+	// TODO: Temporary use log only warn service.
+	warningLogEmitter := provisioning.LogWarningService{}
 
 	inventoryInventoryAggregateSvc := inventoryServiceMiddleware.NewInventoryAggregateServiceWithSlog(
 		inventory.NewInventoryAggregateService(
@@ -253,7 +255,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	channelSvc := d.setupChannelService(dbWithTransaction, updateSvc)
 
 	tokenSvc := d.setupTokenService(dbWithTransaction, updateSvc, channelSvc)
-	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningSvc)
+	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter)
 	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc)
 	if err != nil {
 		return err
@@ -301,6 +303,14 @@ func (d *Daemon) Start(ctx context.Context) error {
 	group, errgroupCtx := errgroup.WithContext(context.Background())
 	d.errgroup = group
 
+	// If the network configuration changes, we need to reload the API server on TCP.
+	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, sn apisystem.Network) {
+		err := d.setupTCPListener(ctx, sn)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to reload network config", logger.Err(err))
+		}
+	})
+
 	// API server on unix socket
 	d.setupSocketListener(ctx)
 
@@ -310,13 +320,19 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
-	// If the network configuration changes, we need to reload the API server on TCP.
-	lifecycle.NetworkUpdateSignal.AddListener(func(ctx context.Context, sn apisystem.Network) {
-		err := d.setupTCPListener(ctx, sn)
-		if err != nil {
-			slog.ErrorContext(ctx, "Failed to reload network config", logger.Err(err))
-		}
-	})
+	timeoutCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	err = d.incusOSSelfRegister(timeoutCtx)
+	cancel()
+	if err != nil {
+		return fmt.Errorf("IncusOS self registration: %w", err)
+	}
+
+	timeoutCtx, cancel = context.WithTimeout(ctx, 3*time.Second)
+	err = d.incusOSSelfPoll(timeoutCtx, serverSvc)
+	cancel()
+	if err != nil {
+		slog.WarnContext(ctx, "IncusOS startup self poll", logger.Err(err))
+	}
 
 	// Start cluster lifecycle events monitor.
 	err = clusterSvc.StartLifecycleEventsMonitor(ctx)
@@ -325,17 +341,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// Background tasks
-	d.setupBackgroundTasks(ctx, updateSvc, serverSvc, clusterSvc, warningSvc)
-
-	err = d.incusOSSelfRegister(ctx)
-	if err != nil {
-		return fmt.Errorf("IncusOS self registration: %w", err)
-	}
-
-	err = d.incusOSSelfPoll(ctx, serverSvc)
-	if err != nil {
-		slog.WarnContext(ctx, "IncusOS startup self poll", logger.Err(err))
-	}
+	d.setupBackgroundTasks(ctx, updateSvc, serverSvc, clusterSvc, warningLogEmitter)
 
 	// Finalize daemon start
 	// Wait for immediate errors during startup.
@@ -958,7 +964,7 @@ func (d *Daemon) setupBackgroundTasks(
 	updateSvc provisioning.UpdateService,
 	serverSvc provisioning.ServerService,
 	clusterSvc provisioning.ClusterService,
-	warningSvc warning.WarningService,
+	warningSvc warning.WarningEmitter,
 ) {
 	if config.IsBackgroundTasksDisabled() {
 		return
