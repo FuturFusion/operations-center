@@ -411,7 +411,9 @@ func Test_validate(t *testing.T) {
 				require.NoError(t, err)
 			}
 
+			globalConfigInstanceMu.Lock()
 			err := validate(t.Context(), tc.cfg)
+			globalConfigInstanceMu.Unlock()
 
 			tc.assertErr(t, err)
 		})

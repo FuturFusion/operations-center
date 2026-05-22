@@ -221,8 +221,9 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Setup Services
 	warningSvc := d.setupWarningService(dbWithTransaction)
-	// TODO: Temporary use log only warn service.
-	warningLogEmitter := provisioning.LogWarningService{}
+	// Temporary use log only warn service.
+	// warningLogEmitter := provisioning.LogWarningService{}
+	warningLogEmitter := warningSvc
 
 	inventoryInventoryAggregateSvc := inventoryServiceMiddleware.NewInventoryAggregateServiceWithSlog(
 		inventory.NewInventoryAggregateService(
