@@ -139,24 +139,28 @@ func GetNetwork() system.Network {
 }
 
 func UpdateNetwork(ctx context.Context, cfg system.NetworkPut) error {
-	globalConfigInstanceMu.Lock()
-	unlock := unlockOnce(&globalConfigInstanceMu)
-	defer unlock()
+	err := func() error {
+		globalConfigInstanceMu.Lock()
+		defer globalConfigInstanceMu.Unlock()
 
-	var err error
+		var err error
 
-	newCfg := globalConfigInstance
-	newCfg.Network.NetworkPut, err = NetworkSetDefaults(cfg)
+		newCfg := globalConfigInstance
+		newCfg.Network.NetworkPut, err = NetworkSetDefaults(cfg)
+		if err != nil {
+			return err
+		}
+
+		err = validateAndSave(ctx, newCfg)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}()
 	if err != nil {
 		return err
 	}
-
-	err = validateAndSave(ctx, newCfg)
-	if err != nil {
-		return err
-	}
-
-	unlock()
 
 	lifecycle.NetworkUpdateSignal.Emit(ctx, system.Network{
 		NetworkPut: cfg,
@@ -219,26 +223,36 @@ func GetSecurity() system.Security {
 }
 
 func UpdateSecurity(ctx context.Context, cfg system.SecurityPut) error {
-	globalConfigInstanceMu.Lock()
-	unlock := unlockOnce(&globalConfigInstanceMu)
-	defer unlock()
+	var (
+		isSecurityConfigChanged      bool
+		isTrustedHTTPSProxiesChanged bool
+		isACMEChanged                bool
+	)
 
-	newCfg := globalConfigInstance
-	newCfg.Security.SecurityPut = cfg
+	err := func() error {
+		globalConfigInstanceMu.Lock()
+		defer globalConfigInstanceMu.Unlock()
 
-	currentCfg := globalConfigInstance.Security
+		newCfg := globalConfigInstance
+		newCfg.Security.SecurityPut = cfg
 
-	isTrustedTLSClientCertFingerprintsChanged := !slices.Equal(currentCfg.TrustedTLSClientCertFingerprints, newCfg.Security.TrustedTLSClientCertFingerprints)
-	isSecurityConfigChanged := isTrustedTLSClientCertFingerprintsChanged || currentCfg.OIDC != newCfg.Security.OIDC || currentCfg.OpenFGA != newCfg.Security.OpenFGA
-	isTrustedHTTPSProxiesChanged := !slices.Equal(currentCfg.TrustedHTTPSProxies, newCfg.Security.TrustedHTTPSProxies)
-	isACMEChanged := acme.ACMEConfigChanged(currentCfg.ACME, newCfg.Security.ACME)
+		currentCfg := globalConfigInstance.Security
 
-	err := validateAndSave(ctx, newCfg)
+		isTrustedTLSClientCertFingerprintsChanged := !slices.Equal(currentCfg.TrustedTLSClientCertFingerprints, newCfg.Security.TrustedTLSClientCertFingerprints)
+		isSecurityConfigChanged = isTrustedTLSClientCertFingerprintsChanged || currentCfg.OIDC != newCfg.Security.OIDC || currentCfg.OpenFGA != newCfg.Security.OpenFGA
+		isTrustedHTTPSProxiesChanged = !slices.Equal(currentCfg.TrustedHTTPSProxies, newCfg.Security.TrustedHTTPSProxies)
+		isACMEChanged = acme.ACMEConfigChanged(currentCfg.ACME, newCfg.Security.ACME)
+
+		err := validateAndSave(ctx, newCfg)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}()
 	if err != nil {
 		return err
 	}
-
-	unlock()
 
 	if isSecurityConfigChanged {
 		lifecycle.SecurityUpdateSignal.Emit(ctx, system.Security{
@@ -265,21 +279,30 @@ func GetSettings() system.Settings {
 }
 
 func UpdateSettings(ctx context.Context, cfg system.SettingsPut) error {
-	globalConfigInstanceMu.Lock()
-	unlock := unlockOnce(&globalConfigInstanceMu)
-	defer unlock()
+	var (
+		isLogLevelChanged bool
+		newCfg            config
+	)
 
-	newCfg := globalConfigInstance
-	newCfg.Settings.SettingsPut = cfg
+	err := func() error {
+		globalConfigInstanceMu.Lock()
+		defer globalConfigInstanceMu.Unlock()
 
-	isLogLevelChanged := globalConfigInstance.Settings.LogLevel != newCfg.Settings.LogLevel
+		newCfg = globalConfigInstance
+		newCfg.Settings.SettingsPut = cfg
 
-	err := validateAndSave(ctx, newCfg)
+		isLogLevelChanged = globalConfigInstance.Settings.LogLevel != newCfg.Settings.LogLevel
+
+		err := validateAndSave(ctx, newCfg)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}()
 	if err != nil {
 		return err
 	}
-
-	unlock()
 
 	if isLogLevelChanged {
 		err = logger.SetLogLevel(logger.ParseLevel(newCfg.Settings.LogLevel))
@@ -303,19 +326,23 @@ func GetUpdates() system.Updates {
 }
 
 func UpdateUpdates(ctx context.Context, cfg system.UpdatesPut) error {
-	globalConfigInstanceMu.Lock()
-	unlock := unlockOnce(&globalConfigInstanceMu)
-	defer unlock()
+	err := func() error {
+		globalConfigInstanceMu.Lock()
+		defer globalConfigInstanceMu.Unlock()
 
-	newCfg := globalConfigInstance
-	newCfg.Updates.UpdatesPut = cfg
+		newCfg := globalConfigInstance
+		newCfg.Updates.UpdatesPut = cfg
 
-	err := validateAndSave(ctx, newCfg)
+		err := validateAndSave(ctx, newCfg)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}()
 	if err != nil {
 		return err
 	}
-
-	unlock()
 
 	lifecycle.UpdatesUpdateSignal.Emit(ctx, system.Updates{
 		UpdatesPut: cfg,
@@ -402,13 +429,6 @@ func validate(ctx context.Context, cfg config) error {
 		return domain.NewValidationErrf(`Invalid config, pem decode for "updates.signature_verification_root_ca" failed`)
 	}
 
-	// This is not ideal, but we can not have a direct dependency from the config
-	// onto the provisioning package, because we get a dependency cycle otherwise.
-	err = lifecycle.UpdatesValidateSignal.TryEmit(ctx, cfg.Updates)
-	if err != nil {
-		return err
-	}
-
 	// Security configuration
 	if cfg.Security.OIDC.Issuer != "" {
 		_, err := url.Parse(cfg.Security.OIDC.Issuer)
@@ -447,12 +467,23 @@ func validate(ctx context.Context, cfg config) error {
 		return err
 	}
 
-	// This is not ideal, but we can not have a direct dependency from the config
-	// onto the provisioning adapter package, because we get a dependency cycle
-	// otherwise.
-	err = lifecycle.SettingsValidateSignal.TryEmit(ctx, cfg.Settings)
-	if err != nil {
-		return err
+	{
+		// This is not ideal, but we can not have a direct dependency from the config
+		// because we get a dependency cycles otherwise.
+		// Make sure we don't hold any lock in case config gets called from any of
+		// the listeners.
+		globalConfigInstanceMu.Unlock()
+		defer globalConfigInstanceMu.Lock()
+
+		err = lifecycle.UpdatesValidateSignal.TryEmit(ctx, cfg.Updates)
+		if err != nil {
+			return err
+		}
+
+		err = lifecycle.SettingsValidateSignal.TryEmit(ctx, cfg.Settings)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -509,9 +540,4 @@ func validateNetworkConfig(cfg system.Network) error {
 	}
 
 	return nil
-}
-
-func unlockOnce(mu interface{ Unlock() }) func() {
-	once := sync.Once{}
-	return func() { once.Do(mu.Unlock) }
 }
