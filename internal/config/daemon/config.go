@@ -65,7 +65,7 @@ func Init(vardir enver) error {
 
 	ctx := context.Background()
 
-	err := loadConfig(ctx)
+	err := loadConfig()
 	if err != nil {
 		return fmt.Errorf("Failed to initialize global config: %w", err)
 	}
@@ -91,7 +91,7 @@ func initInternalConfig() {
 	}
 }
 
-func loadConfig(ctx context.Context) error {
+func loadConfig() error {
 	cfg := config{}
 
 	err := yaml.Unmarshal(defaultConfig, &cfg)
@@ -119,11 +119,6 @@ func loadConfig(ctx context.Context) error {
 	cfg.Network.NetworkPut, err = NetworkSetDefaults(cfg.Network.NetworkPut)
 	if err != nil {
 		return fmt.Errorf("Invalid network config: %w", err)
-	}
-
-	err = validate(ctx, cfg)
-	if err != nil {
-		return fmt.Errorf("Invalid config: %w", err)
 	}
 
 	globalConfigInstance = cfg
