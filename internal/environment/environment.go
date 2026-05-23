@@ -208,5 +208,11 @@ func (e environment) GetToken(ctx context.Context) (string, error) {
 		return "", api.StatusErrorf(resp.StatusCode, "%v", response.Error)
 	}
 
-	return string(response.Metadata), nil
+	var token string
+	err = json.Unmarshal(response.Metadata, &token)
+	if err != nil {
+		return "", fmt.Errorf("Invalid response for IncusOS token: %w", err)
+	}
+
+	return token, nil
 }
