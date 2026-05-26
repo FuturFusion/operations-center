@@ -30,13 +30,14 @@ func registerImageIncusHandler(router Router, simplestreamsRouter Router, author
 	simplestreamsRouter.HandleFunc("GET /streams/v1/index.json", response.With(handler.simplestreamsPublicIndexGet))
 	simplestreamsRouter.HandleFunc("GET /streams/v1/images.json", response.With(handler.simplestreamsPublicImagesGet))
 	// Allow download of incus image files without authentication
-	router.HandleFunc("GET /{name}/{version}/{filename}", response.With(handler.incusImageVersionFileGet))
+	simplestreamsRouter.HandleFunc("GET /1.0/image/incus/{name}/{version}/{filename}", response.With(handler.incusImageVersionFileGet))
 
 	router.HandleFunc("GET /{$}", response.With(handler.incusImagesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}", response.With(handler.incusImageGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("DELETE /{name}", response.With(handler.incusImageDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{name}/{version}", response.With(handler.incusImageVersionPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{name}/{version}", response.With(handler.incusImageVersionDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
+	router.HandleFunc("GET /{name}/{version}/{filename}", response.With(handler.incusImageVersionFileGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 }
 
 // swagger:operation GET /incus-images/streams/v1/index.json simplestreams simplestreams_index_get
