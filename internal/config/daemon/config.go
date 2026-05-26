@@ -371,6 +371,16 @@ func applyDefaults(cfg *config) {
 			cfg.Security.ACME.CAURL = "https://acme-v02.api.letsencrypt.org/directory"
 		}
 	}
+
+	// Setting updates.updates_default_channel can not be empty, use default value instead.
+	if cfg.Updates.UpdatesDefaultChannel == "" {
+		cfg.Updates.UpdatesDefaultChannel = "stable"
+	}
+
+	// Setting updates.server_default_channel can not be empty, use default value instead.
+	if cfg.Updates.ServerDefaultChannel == "" {
+		cfg.Updates.ServerDefaultChannel = "stable"
+	}
 }
 
 func saveToDisk(cfg config) error {
