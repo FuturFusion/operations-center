@@ -148,7 +148,7 @@ func (c *cmdIncusImageShow) Command() *cobra.Command {
 	cmd.Use = "show <name>"
 	cmd.Short = "Show information about an Incus image"
 	cmd.Long = `Description:
-  Show information about an incus image.
+  Show information about an Incus image.
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -202,9 +202,9 @@ type cmdIncusImageAdd struct {
 func (c *cmdIncusImageAdd) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "add <name> <version> <file> [<file> ...]"
-	cmd.Short = "Add a Incus image version"
+	cmd.Short = "Add an Incus image version"
 	cmd.Long = `Description:
-  Add an incus image version.
+  Add an Incus image version.
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
