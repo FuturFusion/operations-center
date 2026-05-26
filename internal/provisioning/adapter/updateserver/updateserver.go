@@ -217,7 +217,15 @@ func (u *updateServer) GetUpdateFileByFilenameUnverified(ctx context.Context, in
 
 	token, err := u.tokenProvider.GetToken(ctx)
 	if err == nil {
-		req.Header.Add("X-IncusOS-Authentication", token)
+		if config.GetUpdates().ImageServerAuthenticationByQueryParam {
+			q := req.URL.Query()
+			q.Set("token", token)
+			req.URL.RawQuery = q.Encode()
+		} else {
+			req.Header.Add("X-IncusOS-Authentication", token)
+		}
+	} else {
+		slog.WarnContext(ctx, "Failed to get token from IncusOS", logger.Err(err))
 	}
 
 	resp, err := u.client.Do(req)

@@ -971,8 +971,19 @@ func (d *Daemon) setupBackgroundTasks(
 		return
 	}
 
+	// Give IncusOS some time to apply seed data before actually starting to
+	// perform the refresh of the updates.
+	delayFirst := sync.OnceFunc(func() {})
+	if d.env.IsIncusOS() {
+		delayFirst = sync.OnceFunc(func() {
+			slog.InfoContext(ctx, "Refresh updates delayed for 30s on IncusOS")
+			time.Sleep(30 * time.Second)
+		})
+	}
+
 	// Start background task to refresh updates from the sources.
 	refreshUpdatesFromSourcesTask := func(ctx context.Context) {
+		delayFirst()
 		slog.InfoContext(ctx, "Refresh updates triggered")
 		err := updateSvc.Refresh(ctx)
 		scope := api.WarningScope{
