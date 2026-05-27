@@ -115,7 +115,7 @@ const Server = () => {
         <InventorySearchBox />
       </Container>
       <div className="d-flex flex-column">
-        <div className="scroll-container flex-grow-1">
+        <div className="flex-grow-1">
           <ExtendedDataTable
             headers={headers}
             rows={rows}
