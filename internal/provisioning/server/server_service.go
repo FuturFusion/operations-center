@@ -1760,7 +1760,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 		Entity:     server.Name,
 	}
 
-	updatedServerCertificate, connTestErr := s.connectionTestWithCertificateUpdate(ctx, server, log)
+	connTestErr := s.connectionTestWithCertificateUpdate(ctx, server, log)
 	if connTestErr != nil {
 		var retryableErr domain.ErrRetryable
 		if errors.As(connTestErr, &retryableErr) {
@@ -1908,10 +1908,6 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 
 		server.LastSeen = s.now()
 
-		if updatedServerCertificate != "" {
-			server.Certificate = updatedServerCertificate
-		}
-
 		// Clear status detail, if previous state was not ready, e.g. because
 		// of reboot or reconfiguration.
 		if server.Status != api.ServerStatusReady {
@@ -2018,7 +2014,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 	return nil
 }
 
-func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context, server provisioning.Server, log *slog.Logger) (updatedServerCertificate string, _ error) {
+func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context, server provisioning.Server, log *slog.Logger) error {
 	// Since we re-try frequently, we only grant a short timeout for the
 	// connection attept.
 	ctxWithTimeout, cancelFunc := context.WithTimeout(ctx, 1*time.Second)
@@ -2099,7 +2095,7 @@ func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context,
 				if retryErr != nil {
 					// The clusters certificate has passed validation against system root
 					// certificates but we failed to update the cluster record in the DB.
-					return "", retryErr
+					return retryErr
 				}
 
 			case isStandaloneNonIncusServerWithPublicConnectionURL: // case 2, standalone non Incus server
@@ -2138,9 +2134,20 @@ func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context,
 					Bytes: resp.TLS.PeerCertificates[0].Raw,
 				})
 
-				// Only set the certificate here, the Update in the DB happens at the
-				// end of the function.
-				updatedServerCertificate = string(serverCert)
+				retryErr = transaction.Do(ctx, func(ctx context.Context) error {
+					updateServer, err := s.repo.GetByName(ctx, server.Name)
+					if err != nil {
+						return err
+					}
+
+					updateServer.Certificate = string(serverCert)
+					updateServer.LastSeen = s.now()
+
+					return s.repo.Update(ctx, *updateServer)
+				})
+				if retryErr != nil {
+					return retryErr
+				}
 
 			default:
 				// neither case 1 nor case 2, don't attempt to refresh certificate
@@ -2153,7 +2160,7 @@ func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context,
 		}
 	}
 
-	return updatedServerCertificate, domain.NewRetryableErr(err)
+	return domain.NewRetryableErr(err)
 }
 
 func (s *serverService) SyncCluster(ctx context.Context, clusterName string) error {

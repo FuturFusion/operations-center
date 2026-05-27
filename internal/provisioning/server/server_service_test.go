@@ -3686,6 +3686,7 @@ foobar
 			assertErr: boom.ErrorIs,
 			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
+
 		{
 			name: "success - standalone server now has publicly valid certificate",
 			serverArg: provisioning.Server{
@@ -3705,13 +3706,28 @@ foobar
 						Status: api.ServerStatusReady,
 					},
 				},
+				{
+					Value: &provisioning.Server{
+						Name:   "one",
+						Status: api.ServerStatusReady,
+						Certificate: string(
+							pem.EncodeToMemory(
+								&pem.Block{
+									Type:  "CERTIFICATE",
+									Bytes: httpsServer.TLS.Certificates[0].Leaf.Raw,
+								},
+							),
+						),
+					},
+				},
 			},
 			repoUpdate: []queue.Item[struct{}]{
 				{},
+				{},
 			},
 			clientPing: []queue.Item[struct{}]{
-				// Simulate failing connection with pinned certificate, because cluster
-				// now has a publicly valid certificate (e.g. ACME).
+				// Simulate failing connection with pinned certificate, because
+				// standalone server now has a publicly valid certificate (e.g. ACME).
 				{
 					Err: &url.Error{
 						Err: &tls.CertificateVerificationError{},
@@ -3755,8 +3771,8 @@ foobar
 				{},
 			},
 			clientPing: []queue.Item[struct{}]{
-				// Simulate failing connection with pinned certificate, because cluster
-				// now has a publicly valid certificate (e.g. ACME).
+				// Simulate failing connection with pinned certificate, because
+				// standalone server now has a publicly valid certificate (e.g. ACME).
 				{
 					Err: &url.Error{
 						Err: &tls.CertificateVerificationError{},
@@ -3789,8 +3805,8 @@ foobar
 				{},
 			},
 			clientPing: []queue.Item[struct{}]{
-				// Simulate failing connection with pinned certificate, because cluster
-				// now has a publicly valid certificate (e.g. ACME).
+				// Simulate failing connection with pinned certificate, because
+				// standalone server now has a publicly valid certificate (e.g. ACME).
 				{
 					Err: &url.Error{
 						Err: &tls.CertificateVerificationError{},
@@ -3823,8 +3839,8 @@ foobar
 				{},
 			},
 			clientPing: []queue.Item[struct{}]{
-				// Simulate failing connection with pinned certificate, because cluster
-				// now has a publicly valid certificate (e.g. ACME).
+				// Simulate failing connection with pinned certificate, because
+				// standalone server now has a publicly valid certificate (e.g. ACME).
 				{
 					Err: &url.Error{
 						Err: &tls.CertificateVerificationError{},
@@ -3859,8 +3875,8 @@ foobar
 				},
 			},
 			clientPing: []queue.Item[struct{}]{
-				// Simulate failing connection with pinned certificate, because cluster
-				// now has a publicly valid certificate (e.g. ACME).
+				// Simulate failing connection with pinned certificate, because
+				// standalone server now has a publicly valid certificate (e.g. ACME).
 				{
 					Err: &url.Error{
 						Err: &tls.CertificateVerificationError{},
@@ -3871,6 +3887,36 @@ foobar
 			assertErr:        boom.ErrorIs,
 			assertLog:        log.Match("(?ms)Refresh certificate connection attempt did not return TLS connection or no peer certificates.*Server connection test failed"),
 			wantServerStatus: api.ServerStatusOffline,
+		},
+		{
+			name: "error - standalone server - repo.GetByName",
+			serverArg: provisioning.Server{
+				Name: "one",
+				Certificate: `-----BEGIN CERTIFICATE-----
+foobar
+-----END CERTIFICATE-----`,
+				Status:              api.ServerStatusReady,
+				Type:                api.ServerTypeMigrationManager,
+				ConnectionURL:       "https:/127.0.0.1:7443",
+				PublicConnectionURL: httpsServer.URL,
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Err: boom.Error,
+				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				// Simulate failing connection with pinned certificate, because
+				// standalone server now has a publicly valid certificate (e.g. ACME).
+				{
+					Err: &url.Error{
+						Err: &tls.CertificateVerificationError{},
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 	}
 
