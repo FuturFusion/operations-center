@@ -7,6 +7,7 @@ export enum ServerType {
 export const ServerTypeString = {
   "": "",
   incus: "Incus",
+  "incus-lts-7.0": "Incus (7.0 LTS)",
   "migration-manager": "Migration Manager",
   "operations-center": "Operations Center",
 };
