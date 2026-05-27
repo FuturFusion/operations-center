@@ -72,7 +72,7 @@ const Channel = () => {
             </div>
           </div>
         </div>
-        <div className="scroll-container flex-grow-1">
+        <div className="flex-grow-1">
           <DataTable headers={headers} rows={rows} />
         </div>
       </div>
