@@ -22,6 +22,7 @@ import (
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/lxc/incus/v6/shared/revert"
+	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/maniartech/signals"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -721,7 +722,7 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 		server, err = s.repo.GetByCertificate(ctx, string(authenticationCertificatePEM))
 		if err != nil {
 			if errors.Is(err, domain.ErrNotFound) {
-				return fmt.Errorf("Failed to find server (%s) with cause %q by certificate: %w", serverUpdate.ConnectionURL, serverUpdate.Cause, domain.ErrNotAuthorized)
+				return fmt.Errorf("Failed to find server (%s) with cause %q by certificate (fingerprint: %s): %w", serverUpdate.ConnectionURL, serverUpdate.Cause, incustls.CertFingerprint(serverUpdate.AuthenticationCertificate), domain.ErrNotAuthorized)
 			}
 
 			return fmt.Errorf("Failed to get server (%s) with cause %q by certificate: %w", serverUpdate.ConnectionURL, serverUpdate.Cause, err)
