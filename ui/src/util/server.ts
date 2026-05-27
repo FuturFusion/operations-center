@@ -1,5 +1,6 @@
 export enum ServerType {
   Incus = "incus",
+  IncusLTS70 = "incus-lts-7.0",
   MigrationManager = "migration-manager",
   OperationsCenter = "operations-center",
 }

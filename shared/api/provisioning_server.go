@@ -23,6 +23,7 @@ const ServerNameOperationsCenter = "operations-center"
 const (
 	ServerTypeUnknown          ServerType = "unknown"
 	ServerTypeIncus            ServerType = "incus"
+	ServerTypeIncusLTS70       ServerType = "incus-lts-7.0"
 	ServerTypeMigrationManager ServerType = "migration-manager"
 	ServerTypeOperationsCenter ServerType = "operations-center"
 )
@@ -30,6 +31,7 @@ const (
 var serverTypes = map[ServerType]struct{}{
 	ServerTypeUnknown:          {},
 	ServerTypeIncus:            {},
+	ServerTypeIncusLTS70:       {},
 	ServerTypeMigrationManager: {},
 	ServerTypeOperationsCenter: {},
 }
