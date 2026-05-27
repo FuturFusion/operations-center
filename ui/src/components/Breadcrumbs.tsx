@@ -32,6 +32,10 @@ const Breadcrumbs = () => {
   };
 
   const formatBreadcrumb = (str: string) => {
+    if (str === "os") {
+      return "OS";
+    }
+
     return (str.charAt(0).toUpperCase() + str.slice(1)).replace("-", " ");
   };
 

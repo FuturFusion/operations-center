@@ -1,6 +1,7 @@
 @import "./breadcrumbs.css";
 @import "./dataTable.css";
 @import "./sidebar.css";
+@import "./yamlEditor";
 
 body {
   font-family: 'Inter', sans-serif !important;
