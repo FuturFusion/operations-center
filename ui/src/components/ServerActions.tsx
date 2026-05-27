@@ -32,7 +32,8 @@ const ServerActions: FC<Props> = ({ server }) => {
     } else if (server.version_data.needs_reboot) {
       if (
         server.version_data.in_maintenance == 0 &&
-        server.server_type == ServerType.Incus
+        (server.server_type == ServerType.Incus ||
+          server.server_type == ServerType.IncusLTS70)
       ) {
         action = ServerAction.Evacuate;
       } else {
@@ -87,7 +88,10 @@ const ServerActions: FC<Props> = ({ server }) => {
       return true;
     }
 
-    if (server.server_type == ServerType.Incus) {
+    if (
+      server.server_type == ServerType.Incus ||
+      server.server_type == ServerType.IncusLTS70
+    ) {
       if (versionData.in_maintenance == 2 && action == ServerAction.Restore) {
         return true;
       }
