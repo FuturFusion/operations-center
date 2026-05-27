@@ -7,6 +7,7 @@ import { IoChevronDownOutline, IoChevronForward } from "react-icons/io5";
 import {
   MdLogin,
   MdLogout,
+  MdOutlineDesktopWindows,
   MdOutlineInventory2,
   MdOutlineSettings,
   MdOutlineSystemUpdateAlt,
@@ -21,6 +22,7 @@ import {
   RiPassPendingLine,
 } from "react-icons/ri";
 import { useQuery } from "@tanstack/react-query";
+import { isIncusOS } from "api/os";
 import { fetchSettings } from "api/server";
 import { MenuItem, NavItemLink } from "components/NavItemLink";
 import { useAuth } from "context/authContext";
@@ -39,6 +41,11 @@ const Sidebar = () => {
       window.location.href = "/ui/";
     });
   };
+
+  const { data: isRunningIncusOS = false } = useQuery({
+    queryKey: ["os-check"],
+    queryFn: async () => isIncusOS(),
+  });
 
   const toggleSubmenu = (menuKey: string, level: number) => {
     const updated = openSubmenu.map((item, i) => {
@@ -149,6 +156,11 @@ const Sidebar = () => {
     warnings: {
       id: "warnings",
       to: "/ui/provisioning/warnings",
+      menu: ["", ""],
+    },
+    os: {
+      id: "os",
+      to: "/ui/os",
       menu: ["", ""],
     },
     settings: {
@@ -357,6 +369,14 @@ const Sidebar = () => {
         <Nav className="flex-column w-100 flex-shrink-0 border-top border-secondary pt-2">
           {isAuthenticated && (
             <>
+              {isRunningIncusOS && (
+                <NavItemLink
+                  item={menuItems["os"]}
+                  isActive={isItemActive("os")}
+                >
+                  <MdOutlineDesktopWindows /> OS
+                </NavItemLink>
+              )}
               <NavItemLink
                 item={menuItems["settings"]}
                 isActive={isItemActive("settings")}

@@ -20,6 +20,8 @@ import ClusterCreate from "pages/ClusterCreate";
 import ClusterDetail from "pages/ClusterDetail";
 import ClusterTemplateCreate from "pages/ClusterTemplateCreate";
 import ClusterTemplateDetail from "pages/ClusterTemplateDetail";
+import IncusOS from "pages/IncusOS";
+import OSServiceDetails from "pages/OSServiceDetails";
 import Server from "pages/Server";
 import ServerDetail from "pages/ServerDetail";
 import TokenCreate from "pages/TokenCreate";
@@ -137,4 +139,7 @@ export const routes = [
     path: "/ui/provisioning/warnings/:uuid/:activeTab",
     component: WarningDetail,
   },
+  { path: "/ui/os", component: IncusOS },
+  { path: "/ui/os/:activeTab", component: IncusOS },
+  { path: "/ui/os/services/:name", component: OSServiceDetails },
 ];
