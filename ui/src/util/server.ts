@@ -13,6 +13,11 @@ export const ServerTypeString = {
   "operations-center": "Operations Center",
 };
 
+export const IncusServerTypeString = {
+  incus: "Incus",
+  "incus-lts-7.0": "Incus (7.0 LTS)",
+};
+
 export type ServerTypeKey = keyof typeof ServerTypeString;
 
 export enum ServerAction {

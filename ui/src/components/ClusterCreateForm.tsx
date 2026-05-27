@@ -8,7 +8,7 @@ import { useNotification } from "context/notificationContext";
 import { useServers } from "context/useServers";
 import { useClusterTemplates } from "context/useClusterTemplates";
 import { ClusterPost } from "types/cluster";
-import { ServerType } from "util/server";
+import { IncusServerTypeString, ServerType } from "util/server";
 import { handleCtrlA } from "util/util";
 import YAML from "yaml";
 
@@ -26,11 +26,6 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
   const { data: servers } = useServers("cluster==nil");
   const { data: templates } = useClusterTemplates();
   const { notify } = useNotification();
-
-  const filteredServers = useMemo(
-    () => servers?.filter((s) => s.server_type === ServerType.Incus),
-    [servers],
-  );
 
   const validateForm = (values: ClusterPost): FormikErrors<ClusterPost> => {
     const errors: FormikErrors<ClusterPost> = {};
@@ -120,6 +115,11 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
     },
   });
 
+  const filteredServers = useMemo(
+    () => servers?.filter((s) => s.server_type === formik.values.server_type),
+    [servers, formik.values.server_type],
+  );
+
   const handleServersKeyDown = (e: KeyboardEvent<HTMLSelectElement>) => {
     e.preventDefault();
     formik.setFieldValue(
@@ -188,6 +188,23 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
             onChange={(val) => formik.setFieldValue("channel", val)}
             disabled={formik.isSubmitting}
           />
+          <Form.Group className="mb-4" controlId="serverType">
+            <Form.Label>Server type</Form.Label>
+            <Form.Select
+              value={formik.values.server_type}
+              onChange={(e) => {
+                formik.setFieldValue("server_type", e.target.value);
+                formik.setFieldValue("server_names", []);
+              }}
+              disabled={formik.isSubmitting}
+            >
+              {Object.entries(IncusServerTypeString).map(([key, value]) => (
+                <option key={key} value={key}>
+                  {value}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
           <Form.Group className="mb-4" controlId="serverNames">
             <Form.Label>Servers</Form.Label>
             <Form.Select
