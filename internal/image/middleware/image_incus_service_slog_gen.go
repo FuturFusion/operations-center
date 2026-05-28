@@ -286,3 +286,37 @@ func (_d ImageIncusServiceWithSlog) GetVersionFileByName(ctx context.Context, na
 	}()
 	return _d._base.GetVersionFileByName(ctx, name, version, filename)
 }
+
+// Update implements image.ImageIncusService.
+func (_d ImageIncusServiceWithSlog) Update(ctx context.Context, incusImage image.IncusImage) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("incusImage", incusImage),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Update")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method Update returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method Update returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method Update finished")
+		}
+	}()
+	return _d._base.Update(ctx, incusImage)
+}

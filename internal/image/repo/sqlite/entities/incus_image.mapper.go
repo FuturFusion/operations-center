@@ -14,20 +14,20 @@ import (
 )
 
 var incusImageObjects = RegisterStmt(`
-SELECT incus_images.id, incus_images.name, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_images.last_updated
+SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_images.last_updated
   FROM incus_images
   ORDER BY incus_images.name
 `)
 
 var incusImageObjectsByID = RegisterStmt(`
-SELECT incus_images.id, incus_images.name, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_images.last_updated
+SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_images.last_updated
   FROM incus_images
   WHERE ( incus_images.id = ? )
   ORDER BY incus_images.name
 `)
 
 var incusImageObjectsByName = RegisterStmt(`
-SELECT incus_images.id, incus_images.name, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_images.last_updated
+SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_images.last_updated
   FROM incus_images
   WHERE ( incus_images.name = ? )
   ORDER BY incus_images.name
@@ -45,13 +45,13 @@ SELECT incus_images.id FROM incus_images
 `)
 
 var incusImageCreate = RegisterStmt(`
-INSERT INTO incus_images (name, description, operating_system, release, architecture, variant, versions, last_updated)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO incus_images (name, aliases, description, operating_system, release, architecture, variant, versions, last_updated)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
 var incusImageUpdate = RegisterStmt(`
 UPDATE incus_images
-  SET name = ?, description = ?, operating_system = ?, release = ?, architecture = ?, variant = ?, versions = ?, last_updated = ?
+  SET name = ?, aliases = ?, description = ?, operating_system = ?, release = ?, architecture = ?, variant = ?, versions = ?, last_updated = ?
  WHERE id = ?
 `)
 
@@ -139,7 +139,7 @@ func GetIncusImage(ctx context.Context, db dbtx, name string) (_ *image.IncusIma
 // incusImageColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the IncusImage entity.
 func incusImageColumns() string {
-	return "incus_images.id, incus_images.name, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_images.last_updated"
+	return "incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_images.last_updated"
 }
 
 // getIncusImages can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -148,7 +148,13 @@ func getIncusImages(ctx context.Context, stmt *sql.Stmt, args ...any) ([]image.I
 
 	dest := func(scan func(dest ...any) error) error {
 		i := image.IncusImage{}
-		err := scan(&i.ID, &i.Name, &i.Description, &i.OperatingSystem, &i.Release, &i.Architecture, &i.Variant, &i.Versions, &i.LastUpdated)
+		var aliasesStr string
+		err := scan(&i.ID, &i.Name, &aliasesStr, &i.Description, &i.OperatingSystem, &i.Release, &i.Architecture, &i.Variant, &i.Versions, &i.LastUpdated)
+		if err != nil {
+			return err
+		}
+
+		err = unmarshalJSON(aliasesStr, &i.Aliases)
 		if err != nil {
 			return err
 		}
@@ -172,7 +178,13 @@ func getIncusImagesRaw(ctx context.Context, db dbtx, sql string, args ...any) ([
 
 	dest := func(scan func(dest ...any) error) error {
 		i := image.IncusImage{}
-		err := scan(&i.ID, &i.Name, &i.Description, &i.OperatingSystem, &i.Release, &i.Architecture, &i.Variant, &i.Versions, &i.LastUpdated)
+		var aliasesStr string
+		err := scan(&i.ID, &i.Name, &aliasesStr, &i.Description, &i.OperatingSystem, &i.Release, &i.Architecture, &i.Variant, &i.Versions, &i.LastUpdated)
+		if err != nil {
+			return err
+		}
+
+		err = unmarshalJSON(aliasesStr, &i.Aliases)
 		if err != nil {
 			return err
 		}
@@ -356,17 +368,23 @@ func CreateIncusImage(ctx context.Context, db dbtx, object image.IncusImage) (_ 
 		_err = mapErr(_err, "Incus_image")
 	}()
 
-	args := make([]any, 8)
+	args := make([]any, 9)
 
 	// Populate the statement arguments.
 	args[0] = object.Name
-	args[1] = object.Description
-	args[2] = object.OperatingSystem
-	args[3] = object.Release
-	args[4] = object.Architecture
-	args[5] = object.Variant
-	args[6] = object.Versions
-	args[7] = time.Now().UTC().Format(time.RFC3339)
+	marshaledAliases, err := marshalJSON(object.Aliases)
+	if err != nil {
+		return -1, err
+	}
+
+	args[1] = marshaledAliases
+	args[2] = object.Description
+	args[3] = object.OperatingSystem
+	args[4] = object.Release
+	args[5] = object.Architecture
+	args[6] = object.Variant
+	args[7] = object.Versions
+	args[8] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, incusImageCreate)
@@ -409,7 +427,12 @@ func UpdateIncusImage(ctx context.Context, db tx, name string, object image.Incu
 		return fmt.Errorf("Failed to get \"incusImageUpdate\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(object.Name, object.Description, object.OperatingSystem, object.Release, object.Architecture, object.Variant, object.Versions, time.Now().UTC().Format(time.RFC3339), id)
+	marshaledAliases, err := marshalJSON(object.Aliases)
+	if err != nil {
+		return err
+	}
+
+	result, err := stmt.Exec(object.Name, marshaledAliases, object.Description, object.OperatingSystem, object.Release, object.Architecture, object.Variant, object.Versions, time.Now().UTC().Format(time.RFC3339), id)
 	if err != nil {
 		return fmt.Errorf("Update \"incus_images\" entry failed: %w", err)
 	}

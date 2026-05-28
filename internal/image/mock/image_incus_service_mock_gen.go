@@ -44,6 +44,9 @@ var _ image.ImageIncusService = &ImageIncusServiceMock{}
 //			GetVersionFileByNameFunc: func(ctx context.Context, name string, version string, filename string) (io.ReadCloser, int64, error) {
 //				panic("mock out the GetVersionFileByName method")
 //			},
+//			UpdateFunc: func(ctx context.Context, incusImage image.IncusImage) error {
+//				panic("mock out the Update method")
+//			},
 //		}
 //
 //		// use mockedImageIncusService in code that requires image.ImageIncusService
@@ -71,6 +74,9 @@ type ImageIncusServiceMock struct {
 
 	// GetVersionFileByNameFunc mocks the GetVersionFileByName method.
 	GetVersionFileByNameFunc func(ctx context.Context, name string, version string, filename string) (io.ReadCloser, int64, error)
+
+	// UpdateFunc mocks the Update method.
+	UpdateFunc func(ctx context.Context, incusImage image.IncusImage) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -129,6 +135,13 @@ type ImageIncusServiceMock struct {
 			// Filename is the filename argument value.
 			Filename string
 		}
+		// Update holds details about calls to the Update method.
+		Update []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// IncusImage is the incusImage argument value.
+			IncusImage image.IncusImage
+		}
 	}
 	lockAddVersion           sync.RWMutex
 	lockDeleteByName         sync.RWMutex
@@ -137,6 +150,7 @@ type ImageIncusServiceMock struct {
 	lockGetAllNames          sync.RWMutex
 	lockGetByName            sync.RWMutex
 	lockGetVersionFileByName sync.RWMutex
+	lockUpdate               sync.RWMutex
 }
 
 // AddVersion calls AddVersionFunc.
@@ -400,5 +414,41 @@ func (mock *ImageIncusServiceMock) GetVersionFileByNameCalls() []struct {
 	mock.lockGetVersionFileByName.RLock()
 	calls = mock.calls.GetVersionFileByName
 	mock.lockGetVersionFileByName.RUnlock()
+	return calls
+}
+
+// Update calls UpdateFunc.
+func (mock *ImageIncusServiceMock) Update(ctx context.Context, incusImage image.IncusImage) error {
+	if mock.UpdateFunc == nil {
+		panic("ImageIncusServiceMock.UpdateFunc: method is nil but ImageIncusService.Update was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		IncusImage image.IncusImage
+	}{
+		Ctx:        ctx,
+		IncusImage: incusImage,
+	}
+	mock.lockUpdate.Lock()
+	mock.calls.Update = append(mock.calls.Update, callInfo)
+	mock.lockUpdate.Unlock()
+	return mock.UpdateFunc(ctx, incusImage)
+}
+
+// UpdateCalls gets all the calls that were made to Update.
+// Check the length with:
+//
+//	len(mockedImageIncusService.UpdateCalls())
+func (mock *ImageIncusServiceMock) UpdateCalls() []struct {
+	Ctx        context.Context
+	IncusImage image.IncusImage
+} {
+	var calls []struct {
+		Ctx        context.Context
+		IncusImage image.IncusImage
+	}
+	mock.lockUpdate.RLock()
+	calls = mock.calls.Update
+	mock.lockUpdate.RUnlock()
 	return calls
 }
