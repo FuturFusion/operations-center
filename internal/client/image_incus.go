@@ -84,3 +84,12 @@ func (c OperationsCenterClient) GetIncusImageVersionFile(ctx context.Context, na
 
 	return resp.Body, nil
 }
+
+func (c OperationsCenterClient) UpdateIncusImage(ctx context.Context, name string, incusImage api.IncusImagePut) error {
+	_, err := c.DoRequest(ctx, http.MethodPut, path.Join("/image/incus", name), nil, incusImage)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
