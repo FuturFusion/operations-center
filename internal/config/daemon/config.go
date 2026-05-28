@@ -418,11 +418,9 @@ func validate(ctx context.Context, cfg config) error {
 	}
 
 	// Updates configuration
-	if cfg.Updates.Source != "" {
-		_, err := url.Parse(cfg.Updates.Source)
-		if err != nil {
-			return domain.NewValidationErrf(`Invalid config, "updates.source" property is expected to be a valid URL: %v`, err)
-		}
+	err = validateURI(cfg.Updates.Source, false, false, true)
+	if err != nil {
+		return domain.NewValidationErrf(`Invalid config, "updates.source" property is expected to be a valid source URL: %v`, err)
 	}
 
 	if cfg.Updates.SignatureVerificationRootCA == "" {
@@ -435,18 +433,14 @@ func validate(ctx context.Context, cfg config) error {
 	}
 
 	// Security configuration
-	if cfg.Security.OIDC.Issuer != "" {
-		_, err := url.Parse(cfg.Security.OIDC.Issuer)
-		if err != nil {
-			return domain.NewValidationErrf(`Invalid config, "security.oidc.issuer" property is expected to be a valid URL: %v`, err)
-		}
+	err = validateURI(cfg.Security.OIDC.Issuer, false, false, true)
+	if err != nil {
+		return domain.NewValidationErrf(`Invalid config, "security.oidc.issuer" property is expected to be a valid issuer URL: %v`, err)
 	}
 
-	if cfg.Security.OpenFGA.APIURL != "" {
-		_, err := url.Parse(cfg.Security.OpenFGA.APIURL)
-		if err != nil {
-			return domain.NewValidationErrf(`Invalid config, "security.openfga.api_url" property is expected to be a valid URL: %v`, err)
-		}
+	err = validateURI(cfg.Security.OpenFGA.APIURL, false, false, true)
+	if err != nil {
+		return domain.NewValidationErrf(`Invalid config, "security.openfga.api_url" property is expected to be a valid URL: %v`, err)
 	}
 
 	err = acme.ValidateACMEConfig(cfg.Security.ACME)
@@ -537,10 +531,63 @@ func validateNetworkConfig(cfg system.Network) error {
 		return domain.NewValidationErrf(`Invalid config, "network.address" and "network.rest_server_address" either both are set or both are unset`)
 	}
 
-	if cfg.OperationsCenterAddress != "" {
-		_, err := url.Parse(cfg.OperationsCenterAddress)
+	err := validateURI(cfg.OperationsCenterAddress, false, false, true)
+	if err != nil {
+		return domain.NewValidationErrf(`Invalid config, "network.address" property is expected to be a valid URL: %v`, err)
+	}
+
+	return nil
+}
+
+func validateURI(inURI string, required bool, enforceNoPath bool, enforceNoQuery bool) error {
+	if required && inURI == "" {
+		return fmt.Errorf("Required URI is empty")
+	}
+
+	if inURI != "" {
+		endpoint, err := url.ParseRequestURI(inURI)
 		if err != nil {
-			return domain.NewValidationErrf(`Invalid config, "network.address" property is expected to be a valid URL: %v`, err)
+			return err
+		}
+
+		if endpoint.Scheme == "" {
+			return fmt.Errorf("Failed to determine scheme")
+		}
+
+		if endpoint.Hostname() == "" {
+			return fmt.Errorf("Failed to determine host")
+		}
+
+		if endpoint.Port() != "" {
+			portInt, err := strconv.Atoi(endpoint.Port())
+			if err != nil {
+				return fmt.Errorf("Port %q is invalid: %w", endpoint.Port(), err)
+			}
+
+			if portInt < 1 || portInt > 0xffff {
+				return fmt.Errorf("Port %d is invalid", portInt)
+			}
+		}
+
+		if enforceNoPath && endpoint.Path != "" {
+			return fmt.Errorf("Contains path")
+		}
+
+		if enforceNoQuery && endpoint.RawQuery != "" {
+			return fmt.Errorf("Contains query")
+		}
+
+		if strings.Contains(inURI, "#") {
+			return fmt.Errorf("Contains fragment")
+		}
+
+		if endpoint.User.Username() != "" {
+			return fmt.Errorf("Contains username")
+		}
+
+		_, hasPassword := endpoint.User.Password()
+		if hasPassword {
+			return fmt.Errorf("Contains password")
 		}
 	}
 
