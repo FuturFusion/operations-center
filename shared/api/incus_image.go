@@ -11,6 +11,9 @@ import (
 //
 // swagger:model
 type IncusImagePut struct {
+	// Aliases of the incus image.
+	Aliases []string `json:"aliases" yaml:"aliases"`
+
 	// Description of the incus image.
 	Description string `json:"description" yaml:"description"`
 }
