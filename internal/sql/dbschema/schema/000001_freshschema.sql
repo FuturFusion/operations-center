@@ -371,6 +371,7 @@ CREATE TABLE incus_images (
   variant TEXT NOT NULL,
   versions TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
+  aliases TEXT NOT NULL DEFAULT '',
   UNIQUE (operating_system, release, variant, architecture)
 );
 
@@ -438,4 +439,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (35, strftime("%s"));
+INSERT INTO schema (version, updated_at) VALUES (36, strftime("%s"));

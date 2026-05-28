@@ -63,6 +63,16 @@ var updates = map[int]update{
 	33: updateFromV32,
 	34: updateFromV33,
 	35: updateFromV34,
+	36: updateFromV35,
+}
+
+func updateFromV35(ctx context.Context, tx *sql.Tx) error {
+	// v35..v36 add incus_images.aliases column.
+	stmt := `
+	ALTER TABLE incus_images ADD COLUMN aliases TEXT NOT NULL DEFAULT '';
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV34(ctx context.Context, tx *sql.Tx) error {
