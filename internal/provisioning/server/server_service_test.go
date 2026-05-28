@@ -32,6 +32,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
@@ -107,11 +108,9 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 				},
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Invalid internal state, expect at most 1 server of type "operations-center", found 2`)
-			},
+			assertErr: errassert.Contains(`Invalid internal state, expect at most 1 server of type "operations-center", found 2`),
 		},
-		// validateion error not covered
+		// validation error not covered
 		{
 			name:           "error - operations center self update - repo.Update",
 			argCertificate: serverCertificate,
@@ -256,10 +255,7 @@ one
 				Channel: "stable",
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
+			assertErr: errassert.ValidationError,
 		},
 		{
 			name: "error - remote Operations Center",
@@ -276,10 +272,7 @@ one
 				Channel: "stable",
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
+			assertErr: errassert.ValidationErrorContains("Remote operations centers can not be registered"),
 		},
 		{
 			name: "error - repo.Create",
@@ -524,12 +517,8 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 				},
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(tt, err, "Failed to compile filter expression:")
-			},
-			count: 0,
+			assertErr: errassert.ValidationErrorContains("Failed to compile filter expression:"),
+			count:     0,
 		},
 		{
 			name: "error - filter expression run",
@@ -542,12 +531,8 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 				},
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(t, err, "Failed to execute filter expression:")
-			},
-			count: 0,
+			assertErr: errassert.ValidationErrorContains("Failed to execute filter expression:"),
+			count:     0,
 		},
 		{
 			name: "error - upodateSvc.GetAllWithFilter",
@@ -689,12 +674,8 @@ func TestServerService_GetAllNamesWithFilter(t *testing.T) {
 				"one",
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(tt, err, "Failed to compile filter expression:")
-			},
-			count: 0,
+			assertErr: errassert.ValidationErrorContains("Failed to compile filter expression:"),
+			count:     0,
 		},
 		{
 			name: "error - filter expression run",
@@ -705,12 +686,8 @@ func TestServerService_GetAllNamesWithFilter(t *testing.T) {
 				"one",
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(t, err, "Failed to execute filter expression:")
-			},
-			count: 0,
+			assertErr: errassert.ValidationErrorContains("Failed to execute filter expression:"),
+			count:     0,
 		},
 		{
 			name:                         "error - repo",
@@ -1061,9 +1038,7 @@ func TestServerService_GetByName(t *testing.T) {
 			name:    "error - name empty",
 			nameArg: "", // invalid
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
-			},
+			assertErr: errassert.OperationNotPermittedError,
 		},
 		{
 			name:             "error - repo",
@@ -1181,10 +1156,7 @@ one
 				Channel: "stable",
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
+			assertErr: errassert.ValidationError,
 			assertLog: log.Empty,
 		},
 		{
@@ -1236,10 +1208,7 @@ one
 				},
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, `Update of channel not allowed for clustered server "one"`)
-			},
+			assertErr: errassert.OperationNotPermittedErrorContains(`Update of channel not allowed for clustered server "one"`),
 			assertLog: log.Empty,
 		},
 		{
@@ -2736,10 +2705,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				Channel:       "stable",
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, `Undefined server update cause "other-cause"`)
-			},
+			assertErr: errassert.OperationNotPermittedErrorContains(`Undefined server update cause "other-cause"`),
 			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
@@ -2757,10 +2723,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				Channel:       "stable",
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
+			assertErr: errassert.ValidationError,
 			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
@@ -3082,29 +3045,21 @@ func TestServerService_Rename(t *testing.T) {
 			name:    "error - empty name",
 			oldName: "", // invalid
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
-			},
+			assertErr: errassert.OperationNotPermittedError,
 		},
 		{
 			name:    "error - new name empty",
 			oldName: "one",
 			newName: "", // invalid
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
+			assertErr: errassert.ValidationError,
 		},
 		{
 			name:    "error - old and new name equal",
 			oldName: "one",
 			newName: "one", // equal
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
+			assertErr: errassert.ValidationError,
 		},
 		{
 			name:             "error - repo.GetByName",
@@ -3123,9 +3078,7 @@ func TestServerService_Rename(t *testing.T) {
 				Cluster: ptr.To("one"), // server already clustered
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-			},
+			assertErr: errassert.OperationNotPermittedError,
 		},
 		{
 			name:    "error - repo.Rename",
@@ -3190,9 +3143,7 @@ func TestServerService_DeleteByName(t *testing.T) {
 			name:    "error - name empty",
 			nameArg: "", // invalid
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
-			},
+			assertErr: errassert.OperationNotPermittedError,
 		},
 		{
 			name:             "error - repo.GetByName",
@@ -3431,11 +3382,7 @@ foobar
 				},
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				boom.ErrorIs(t, err)
-				var retryableErr domain.ErrRetryable
-				require.ErrorAs(t, err, &retryableErr)
-			},
+			assertErr:        errassert.RetryableBoomError,
 			assertLog:        log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus: api.ServerStatusPending,
 		},
@@ -3460,11 +3407,7 @@ foobar
 				},
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				boom.ErrorIs(t, err)
-				var retryableErr domain.ErrRetryable
-				require.ErrorAs(t, err, &retryableErr)
-			},
+			assertErr:        errassert.RetryableBoomError,
 			assertLog:        log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus: api.ServerStatusOffline,
 		},
@@ -3541,11 +3484,7 @@ foobar
 				},
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(t, err, "failed to verify certificate")
-				var retryableErr domain.ErrRetryable
-				require.ErrorAs(t, err, &retryableErr)
-			},
+			assertErr:        errassert.RetryableErrorContains("failed to verify certificate"),
 			assertLog:        log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus: api.ServerStatusPending,
 		},
@@ -4280,10 +4219,7 @@ func TestServerService_PollServer(t *testing.T) {
 			},
 			updateServerConfigArg: true,
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.True(tt, domain.IsRetryableError(err))
-				require.ErrorContains(tt, err, "still rebooting (in reboot grace period)")
-			},
+			assertErr: errassert.RetryableErrorContains("still rebooting (in reboot grace period)"),
 			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 		},
 		{
@@ -5486,10 +5422,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				_ = serverSvc.EvacuateSystemByName(context.Background(), "one", true, false)
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.True(tt, domain.IsRetryableError(err))
-				require.ErrorContains(tt, err, "server operation in flight")
-			},
+			assertErr: errassert.RetryableErrorContains("server operation in flight"),
 			assertLog: log.Noop,
 		},
 		{
@@ -5517,10 +5450,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				_ = serverSvc.EvacuateSystemByName(context.Background(), "one", true, false)
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrTerminal)
-				require.ErrorContains(tt, err, "Failed to evacuate system in 3 attempts")
-			},
+			assertErr: errassert.TerminalErrorContains("Failed to evacuate system in 3 attempts"),
 			assertLog: log.Noop,
 		},
 		{
@@ -5582,9 +5512,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				Type:   api.ServerTypeOperationsCenter,
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-			},
+			assertErr: errassert.OperationNotPermittedError,
 			assertLog: log.Noop,
 		},
 		{
@@ -5603,10 +5531,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: false,
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "Lifecycle operation for server")
-			},
+			assertErr: errassert.OperationNotPermittedErrorContains("Lifecycle operation for server"),
 			assertLog: log.Noop,
 		},
 		{
@@ -5800,10 +5725,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: false,
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "Lifecycle operation for server")
-			},
+			assertErr: errassert.OperationNotPermittedErrorContains("Lifecycle operation for server"),
 			assertLog: log.Noop,
 		},
 		{
@@ -5971,10 +5893,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				_ = serverSvc.RebootSystemByName(context.Background(), "one", true)
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.True(tt, domain.IsRetryableError(err))
-				require.ErrorContains(tt, err, "server operation in flight")
-			},
+			assertErr: errassert.RetryableErrorContains("server operation in flight"),
 			assertLog: log.Noop,
 		},
 		{
@@ -5996,10 +5915,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: false,
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "Lifecycle operation for server")
-			},
+			assertErr: errassert.OperationNotPermittedErrorContains("Lifecycle operation for server"),
 			assertLog: log.Noop,
 		},
 		{
@@ -6216,10 +6132,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				_ = serverSvc.RestoreSystemByName(context.Background(), "one", true, false, false)
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.True(tt, domain.IsRetryableError(err))
-				require.ErrorContains(tt, err, "server operation in flight")
-			},
+			assertErr: errassert.RetryableErrorContains("server operation in flight"),
 			assertLog: log.Noop,
 		},
 		{
@@ -6247,10 +6160,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				_ = serverSvc.RestoreSystemByName(context.Background(), "one", true, false, false)
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrTerminal)
-				require.ErrorContains(tt, err, "Failed to restore system in 3 attempts")
-			},
+			assertErr: errassert.TerminalErrorContains("Failed to restore system in 3 attempts"),
 			assertLog: log.Noop,
 		},
 		{
@@ -6312,9 +6222,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				Type:   api.ServerTypeOperationsCenter,
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-			},
+			assertErr: errassert.OperationNotPermittedError,
 			assertLog: log.Noop,
 		},
 		{
@@ -6333,10 +6241,7 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: false,
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "Lifecycle operation for server")
-			},
+			assertErr: errassert.OperationNotPermittedErrorContains("Lifecycle operation for server"),
 			assertLog: log.Noop,
 		},
 		{
@@ -6508,9 +6413,7 @@ func TestServerService_PostRestoreSystemDoneByName(t *testing.T) {
 				Type:   api.ServerTypeOperationsCenter,
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-			},
+			assertErr: errassert.OperationNotPermittedError,
 		},
 		{
 			name: "error - repo.Update",
@@ -6653,9 +6556,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				Status:        api.ServerStatusPending, // server not ready
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-			},
+			assertErr: errassert.OperationNotPermittedError,
 			assertLog: log.Noop,
 		},
 		{
@@ -6670,10 +6571,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: false,
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, "Lifecycle operation for server")
-			},
+			assertErr: errassert.OperationNotPermittedErrorContains("Lifecycle operation for server"),
 			assertLog: log.Noop,
 		},
 		{
@@ -6880,9 +6778,7 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			name:    "error - empty name",
 			argName: "",
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-			},
+			assertErr: errassert.OperationNotPermittedError,
 		},
 		{
 			name:    "error - repo.GetByName",
@@ -6903,9 +6799,7 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 				Type: api.ServerTypeOperationsCenter,
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-			},
+			assertErr: errassert.OperationNotPermittedError,
 		},
 		{
 			name:    "error - incus clustered",
@@ -6916,9 +6810,7 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 				Type:    api.ServerTypeIncus,
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-			},
+			assertErr: errassert.OperationNotPermittedError,
 		},
 		{
 			name:    "error - client.Ping",
