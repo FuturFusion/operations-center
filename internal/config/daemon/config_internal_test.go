@@ -440,3 +440,121 @@ MFEwHQYDVR0OBBYEFERR7s37UYWIfjdauwuftLTUULcaMB8GA1UdIwQYMBaAFERR
 SAAwRQIhAId625vznH0/C9E/gLLRz5S95x3mZmqIHOQBFHRf2mLyAiB2kMK4Idcn
 dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 -----END CERTIFICATE-----`
+
+func Test_validateURI(t *testing.T) {
+	tests := []struct {
+		name           string
+		uri            string
+		required       bool
+		enforceNoPath  bool
+		enforceNoQuery bool
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - empty",
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - full URI",
+			uri:  "http://domain.tld:1234/path?query=true",
+
+			assertErr: require.NoError,
+		},
+
+		{
+			name:     "error - required but empty",
+			required: true,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - parse failure",
+			uri:  ":|\\",
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - no scheme",
+			uri:  "//1.2.3.4:1234",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Failed to determine scheme")
+			},
+		},
+		{
+			name: "error - no hostname",
+			uri:  "http:///",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Failed to determine host")
+			},
+		},
+		{
+			name: "error - invalid port",
+			uri:  "http://domain.tld:10000000000000000000", // > max int 64 (9.223.372.036.854.775.807)
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Port "10000000000000000000" is invalid`)
+			},
+		},
+		{
+			name: "error - invalid port 0",
+			uri:  "http://domain.tld:0",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Port 0 is invalid")
+			},
+		},
+		{
+			name:          "error - enforceNoPath with path",
+			uri:           "http://domain.tld:1234/path",
+			enforceNoPath: true,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Contains path")
+			},
+		},
+		{
+			name:           "error - enforceNoQuery with query",
+			uri:            "http://domain.tld:1234/?query=true",
+			enforceNoQuery: true,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Contains query")
+			},
+		},
+		{
+			name: "error - with fragment",
+			uri:  "http://domain.tld:1234/#fragment",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Contains fragment")
+			},
+		},
+		{
+			name: "error - has user",
+			uri:  "http://user@domain.tld:1234",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Contains username")
+			},
+		},
+		{
+			name: "error - has password",
+			uri:  "http://:password@domain.tld",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Contains password")
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateURI(tc.uri, tc.required, tc.enforceNoPath, tc.enforceNoQuery)
+
+			tc.assertErr(t, err)
+		})
+	}
+}
