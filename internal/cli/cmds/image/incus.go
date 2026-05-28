@@ -287,9 +287,9 @@ type cmdIncusImageEdit struct {
 func (c *cmdIncusImageEdit) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "edit <name>"
-	cmd.Short = "Edit incus image"
+	cmd.Short = "Edit Incus image"
 	cmd.Long = `Description:
-  Edit the incus image
+  Edit the Incus image
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
