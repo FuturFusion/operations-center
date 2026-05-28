@@ -12,6 +12,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/image"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/simplestreams"
@@ -34,6 +35,7 @@ func registerImageIncusHandler(router Router, simplestreamsRouter Router, author
 
 	router.HandleFunc("GET /{$}", response.With(handler.incusImagesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}", response.With(handler.incusImageGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("PUT /{name}", response.With(handler.incusImagePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{name}", response.With(handler.incusImageDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{name}/{version}", response.With(handler.incusImageVersionPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{name}/{version}", response.With(handler.incusImageVersionDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
@@ -121,7 +123,7 @@ func (i *imageIncusHandler) simplestreamsPublicImagesGet(r *http.Request) respon
 
 	for _, incusImage := range incusImages {
 		product := simplestreams.Product{
-			Aliases:         "", // TODO: not supported
+			Aliases:         strings.Join(incusImage.Aliases, ","),
 			Architecture:    incusImage.Architecture,
 			OperatingSystem: incusImage.OperatingSystem,
 			Release:         incusImage.Release,
@@ -251,6 +253,7 @@ func (i *imageIncusHandler) incusImagesGet(r *http.Request) response.Response {
 				LastUpdated:     incusImage.LastUpdated,
 
 				IncusImagePut: api.IncusImagePut{
+					Aliases:     incusImage.Aliases,
 					Description: incusImage.Description,
 				},
 			})
@@ -326,11 +329,86 @@ func (i *imageIncusHandler) incusImageGet(r *http.Request) response.Response {
 			LastUpdated:     incusImage.LastUpdated,
 
 			IncusImagePut: api.IncusImagePut{
+				Aliases:     incusImage.Aliases,
 				Description: incusImage.Description,
 			},
 		},
 		incusImage,
 	)
+}
+
+// swagger:operation PUT /1.0/image/incus/{name} incus_image incus_image_put
+//
+//	Update the incus image
+//
+//	Updates the incus image.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: incus_image
+//	    description: Incus image
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/IncusImage"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (i *imageIncusHandler) incusImagePut(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	var incusImage api.IncusImagePut
+
+	err := json.NewDecoder(r.Body).Decode(&incusImage)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	ctx, trans := transaction.Begin(r.Context())
+	defer func() {
+		rollbackErr := trans.Rollback()
+		if rollbackErr != nil {
+			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+		}
+	}()
+
+	currentIncusImage, err := i.service.GetByName(ctx, name)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to get incus image %q: %w", name, err))
+	}
+
+	// Validate ETag
+	err = response.EtagCheck(r, currentIncusImage)
+	if err != nil {
+		return response.PreconditionFailed(err)
+	}
+
+	currentIncusImage.Aliases = incusImage.Aliases
+	currentIncusImage.Description = incusImage.Description
+
+	err = i.service.Update(ctx, *currentIncusImage)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed updating incus image %q: %w", name, err))
+	}
+
+	err = trans.Commit()
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
+	}
+
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/image/incus/"+name)
 }
 
 // swagger:operation DELETE /1.0/image/incus/{name} incus_image incus_image_delete
