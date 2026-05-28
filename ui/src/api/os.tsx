@@ -5,6 +5,7 @@ import type {
   IncusOSSettings,
   IncusOSSystemUpdate,
 } from "types/os";
+import { processResponse } from "util/response";
 
 export const isIncusOS = async (): Promise<boolean> => {
   return new Promise((resolve, reject) => {
@@ -23,7 +24,7 @@ export const isIncusOS = async (): Promise<boolean> => {
 export const fetchOS = async (): Promise<IncusOSSettings> => {
   return new Promise((resolve, reject) => {
     fetch("/os/1.0")
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -32,7 +33,7 @@ export const fetchOS = async (): Promise<IncusOSSettings> => {
 export const fetchOSApplications = async (): Promise<string[]> => {
   return new Promise((resolve, reject) => {
     fetch(`/os/1.0/applications`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -43,7 +44,7 @@ export const fetchOSApplication = async (
 ): Promise<IncusOSApplication> => {
   return new Promise((resolve, reject) => {
     fetch(name)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -52,7 +53,7 @@ export const fetchOSApplication = async (
 export const fetchSystemUpdate = async (): Promise<IncusOSSystemUpdate> => {
   return new Promise((resolve, reject) => {
     fetch(`/os/1.0/system/update`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -67,7 +68,7 @@ export const fetchDebugLogs = async (limit: number): Promise<IncusOSLog[]> => {
 
   return new Promise((resolve, reject) => {
     fetch(url.pathname + url.search)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -76,7 +77,7 @@ export const fetchDebugLogs = async (limit: number): Promise<IncusOSLog[]> => {
 export const fetchOSNetwork = async (): Promise<string> => {
   return new Promise((resolve, reject) => {
     fetch(`/os/1.0/system/network`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -93,14 +94,7 @@ export const updateOSNetwork = async (
         "Content-Type": "application/json",
       },
     })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.error_code == 0) {
-          return data;
-        }
-
-        reject(data.error);
-      })
+      .then(processResponse)
       .then((data) => resolve(data))
       .catch(reject);
   });
@@ -109,7 +103,7 @@ export const updateOSNetwork = async (
 export const fetchOSStorage = async (): Promise<string> => {
   return new Promise((resolve, reject) => {
     fetch(`/os/1.0/system/storage`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -126,7 +120,7 @@ export const updateOSStorage = async (
         "Content-Type": "application/json",
       },
     })
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data))
       .catch(reject);
   });
@@ -135,7 +129,7 @@ export const updateOSStorage = async (
 export const fetchOSSecurity = async (): Promise<string> => {
   return new Promise((resolve, reject) => {
     fetch(`/os/1.0/system/security`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -152,7 +146,7 @@ export const updateOSSecurity = async (
         "Content-Type": "application/json",
       },
     })
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data))
       .catch(reject);
   });
@@ -161,7 +155,7 @@ export const updateOSSecurity = async (
 export const fetchOSServices = async (): Promise<string[]> => {
   return new Promise((resolve, reject) => {
     fetch(`/os/1.0/services`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -170,7 +164,7 @@ export const fetchOSServices = async (): Promise<string[]> => {
 export const fetchOSService = async (name: string): Promise<string> => {
   return new Promise((resolve, reject) => {
     fetch(`/os/1.0/services/${name}`)
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
@@ -188,7 +182,7 @@ export const updateOSService = async (
         "Content-Type": "application/json",
       },
     })
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data))
       .catch(reject);
   });
@@ -202,7 +196,7 @@ export const updateCheck = async (): Promise<APIResponse<null>> => {
         "Content-Type": "application/json",
       },
     })
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data))
       .catch(reject);
   });
@@ -216,7 +210,7 @@ export const poweroffOS = async (): Promise<APIResponse<null>> => {
         "Content-Type": "application/json",
       },
     })
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data))
       .catch(reject);
   });
@@ -230,7 +224,7 @@ export const rebootOS = async (): Promise<APIResponse<null>> => {
         "Content-Type": "application/json",
       },
     })
-      .then((response) => response.json())
+      .then(processResponse)
       .then((data) => resolve(data))
       .catch(reject);
   });
