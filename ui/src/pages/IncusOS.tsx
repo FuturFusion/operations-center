@@ -1,6 +1,7 @@
 import type { FC } from "react";
 import { useNavigate, useParams } from "react-router";
 import Breadcrumbs from "components/Breadcrumbs";
+import OSActions from "components/OSActions";
 import TabView from "components/TabView";
 import OSOverview from "./OSOverview";
 import OSLogs from "./OSLogs";
@@ -50,7 +51,14 @@ const IncusOS: FC = () => {
 
   return (
     <div className="d-flex flex-column">
-      <Breadcrumbs />
+      <div className="d-flex">
+        <div style={{ width: "10%" }}>
+          <Breadcrumbs />
+        </div>
+        <div className="flex-grow-1">
+          <OSActions />
+        </div>
+      </div>
       <div className="scroll-container flex-grow-1 p-3">
         <TabView
           defaultTab="overview"

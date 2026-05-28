@@ -60,3 +60,9 @@ tr.overview-table-header th {
   overflow-x: auto;
   overflow-y: auto;
 }
+
+.action-sep li:not(:last-child)::after {
+  content: "|";
+  margin: 0 5px;
+  color: #aaa;
+}
