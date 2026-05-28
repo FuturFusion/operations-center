@@ -737,6 +737,12 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     IncusImage:
         properties:
+            aliases:
+                description: Aliases of the incus image.
+                items:
+                    type: string
+                type: array
+                x-go-name: Aliases
             arch:
                 description: Architecture the incus image is built for.
                 example: amd64
@@ -783,6 +789,12 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     IncusImagePut:
         properties:
+            aliases:
+                description: Aliases of the incus image.
+                items:
+                    type: string
+                type: array
+                x-go-name: Aliases
             description:
                 description: Description of the incus image.
                 type: string
@@ -4519,6 +4531,34 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Get the incus image
+            tags:
+                - incus_image
+        put:
+            consumes:
+                - application/json
+            description: Updates the incus image.
+            operationId: incus_image_put
+            parameters:
+                - description: Incus image
+                  in: body
+                  name: incus_image
+                  required: true
+                  schema:
+                    $ref: '#/definitions/IncusImage'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update the incus image
             tags:
                 - incus_image
     /1.0/image/incus/{name}/{version}:
