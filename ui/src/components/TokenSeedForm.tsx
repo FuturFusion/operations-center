@@ -8,7 +8,7 @@ import {
   TokenSeedApplication,
   TokenSeedFormValues,
 } from "types/token";
-import { ServerTypeString } from "util/server";
+import { IncusServerTypeString, ServerTypeString } from "util/server";
 import { secondaryIncusAppOptions } from "util/util";
 import YAML from "yaml";
 
@@ -102,7 +102,9 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
       }
 
       let applications = [{ name: values.seeds.application }];
-      if (values.seeds.application == "incus") {
+      if (
+        Object.keys(IncusServerTypeString).includes(values.seeds.application)
+      ) {
         applications = [
           ...applications,
           ...values.seeds.secondary_applications.map((app) => {
@@ -197,7 +199,9 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
               {formik.errors.seeds?.application}
             </Form.Control.Feedback>
           </Form.Group>
-          {formik.values.seeds.application === "incus" && (
+          {Object.keys(IncusServerTypeString).includes(
+            formik.values.seeds.application,
+          ) && (
             <SecondaryIncusSelect
               value={formik.values.seeds.secondary_applications}
               onChange={(val, checked) => {
