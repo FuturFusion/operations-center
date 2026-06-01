@@ -17,11 +17,9 @@ var nodeSpecificConfig = []string{
 	"core.metrics_address",
 	"core.storage_buckets_address",
 	"core.syslog_socket",
-	"network.ovs.connection",
 	"storage.backups_volume",
 	"storage.images_volume",
 	"storage.logs_volume",
-	"storage.linstor.satellite.name",
 }
 
 // nodeSpecificStorageConfig lists all storage pool config keys which are node-specific.
