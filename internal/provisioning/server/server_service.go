@@ -772,6 +772,10 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 			server.StatusDetail = api.ServerStatusDetailOfflineShutdown
 			server.LastStatusUpdated = s.now()
 
+		case api.ServerSelfUpdateCauseSecureBootUpdateApplied:
+
+		case api.ServerSelfUpdateCauseSuspendTriggered:
+
 		default:
 			return fmt.Errorf("Undefined server update cause %q: %w", serverUpdate.Cause, domain.ErrOperationNotPermitted)
 		}

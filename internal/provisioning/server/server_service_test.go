@@ -2646,6 +2646,48 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			wantServerStatusDetail: api.ServerStatusDetailNone,
 		},
 		{
+			name: "success - cause secure boot update applied",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one-new/",
+				Cause:                     api.ServerSelfUpdateCauseSecureBootUpdateApplied,
+				AuthenticationCertificate: serverCertificate.Leaf,
+			},
+			repoGetByCertificateServer: &provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate:   string(serverCertPEM),
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
+			},
+
+			assertErr:              require.NoError,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerStatus:       api.ServerStatusReady,
+			wantServerStatusDetail: api.ServerStatusDetailNone,
+		},
+		{
+			name: "success - cause suspend triggered",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one-new/",
+				Cause:                     api.ServerSelfUpdateCauseSuspendTriggered,
+				AuthenticationCertificate: serverCertificate.Leaf,
+			},
+			repoGetByCertificateServer: &provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate:   string(serverCertPEM),
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusReady,
+				Channel:       "stable",
+			},
+
+			assertErr:              require.NoError,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerStatus:       api.ServerStatusReady,
+			wantServerStatusDetail: api.ServerStatusDetailNone,
+		},
+		{
 			name: "success - operations center self update - other cause",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
 				Self:  true,

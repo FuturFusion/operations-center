@@ -837,7 +837,7 @@ const (
 	ServerSelfUpdateCauseStorageConfigChanged         ServerSelfUpdateCause = "storage-config-changed"
 	ServerSelfUpdateCauseSystemRebootTriggered        ServerSelfUpdateCause = "system-reboot-triggered"
 	ServerSelfUpdateCauseShutdownTriggered            ServerSelfUpdateCause = "system-shutdown-triggered"
-	ServerSelfUpdateCauseSecureBootUpdateApplied      ServerSelfUpdateCause = "secure-boo-update-applied"
+	ServerSelfUpdateCauseSecureBootUpdateApplied      ServerSelfUpdateCause = "secure-boot-update-applied"
 	ServerSelfUpdateCauseSuspendTriggered             ServerSelfUpdateCause = "suspend-triggered"
 )
 
