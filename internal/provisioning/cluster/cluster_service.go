@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"maps"
 	"net"
+	"net/http"
 	"reflect"
 	"slices"
 	"sort"
@@ -1116,6 +1117,10 @@ func (s *clusterService) RemoveServer(ctx context.Context, name string, removedS
 			for _, storageVolumeName := range ocCreatedStorageVolumes {
 				err = incusClient.UseTarget(removedServerName).DeleteStoragePoolVolume("local", "custom", storageVolumeName)
 				if err != nil {
+					if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+						continue
+					}
+
 					return fmt.Errorf("Failed to remove operations center managed storage volume %q from server %q: %w", storageVolumeName, removedServerName, err)
 				}
 			}

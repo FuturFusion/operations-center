@@ -6889,21 +6889,21 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 
 func TestClusterService_RemoveServer(t *testing.T) {
 	tests := []struct {
-		name                                  string
-		serverSvcGetAllWithFilter             provisioning.Servers
-		serverSvcGetAllWithFilterErr          error
-		inventorySyncerErr                    error
-		inventorySvcGetAllWithFilter          inventory.InventoryAggregates
-		inventorySvcGetAllWithFilterErr       error
-		clientIncusClientErr                  error
-		serverSvcUpdateErr                    queue.Errs
-		incusClientGetClusterMemberErr        error
-		incusClientUpdateClusterMemberErr     error
-		incusClientGetServerErr               error
-		incusClientUpdateServerErr            error
-		incusClientDeleteStoragePoolVolumeErr error
-		serverSvcFactoryResetByNameErr        error
-		incusClientDeleteClusterMemberErr     error
+		name                                   string
+		serverSvcGetAllWithFilter              provisioning.Servers
+		serverSvcGetAllWithFilterErr           error
+		inventorySyncerErr                     error
+		inventorySvcGetAllWithFilter           inventory.InventoryAggregates
+		inventorySvcGetAllWithFilterErr        error
+		clientIncusClientErr                   error
+		serverSvcUpdateErr                     queue.Errs
+		incusClientGetClusterMemberErr         error
+		incusClientUpdateClusterMemberErr      error
+		incusClientGetServerErr                error
+		incusClientUpdateServerErr             error
+		incusClientDeleteStoragePoolVolumeErrs queue.Errs
+		serverSvcFactoryResetByNameErr         error
+		incusClientDeleteClusterMemberErr      error
 
 		assertErr require.ErrorAssertionFunc
 		assertLog func(t *testing.T, logBuf *bytes.Buffer)
@@ -7210,7 +7210,10 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name: "serverTwo",
 				},
 			},
-			incusClientDeleteStoragePoolVolumeErr: boom.Error,
+			incusClientDeleteStoragePoolVolumeErrs: queue.Errs{
+				incusapi.StatusErrorf(404, "Storage pool not found"),
+				boom.Error,
+			},
 
 			assertErr: boom.ErrorIs,
 			assertLog: log.Empty,
@@ -7304,7 +7307,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					return tc.incusClientUpdateServerErr
 				},
 				DeleteStoragePoolVolumeFunc: func(pool, volType, name string) error {
-					return tc.incusClientDeleteStoragePoolVolumeErr
+					return tc.incusClientDeleteStoragePoolVolumeErrs.PopOrNil(t)
 				},
 				DeleteClusterMemberFunc: func(name string, force bool) error {
 					return tc.incusClientDeleteClusterMemberErr
