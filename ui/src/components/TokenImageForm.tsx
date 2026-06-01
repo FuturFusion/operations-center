@@ -6,7 +6,7 @@ import BootSecuritySelect from "components/BootSecuritySelect";
 import ImageTypeSelect from "components/ImageTypeSelect";
 import SecondaryIncusSelect from "components/SecondaryIncusSelect";
 import { TokenImageFormValues } from "types/token";
-import { ServerTypeString } from "util/server";
+import { IncusServerTypeString, ServerTypeString } from "util/server";
 
 interface Props {
   formik: FormikProps<TokenImageFormValues>;
@@ -76,7 +76,9 @@ const TokenImageForm: FC<Props> = ({ formik }) => {
             {formik.errors.seeds?.application}
           </Form.Control.Feedback>
         </Form.Group>
-        {formik.values.seeds.application === "incus" && (
+        {Object.keys(IncusServerTypeString).includes(
+          formik.values.seeds.application,
+        ) && (
           <SecondaryIncusSelect
             value={formik.values.seeds.secondary_applications}
             onChange={(val, checked) => {

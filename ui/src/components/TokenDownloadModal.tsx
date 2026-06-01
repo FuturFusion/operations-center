@@ -7,6 +7,7 @@ import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { Token } from "types/token";
 import { TokenImageFormValues } from "types/token";
+import { IncusServerTypeString } from "util/server";
 import { BootSecurity } from "util/token";
 import { downloadFile } from "util/util";
 import YAML from "yaml";
@@ -75,7 +76,9 @@ const TokenDownloadModal: FC<Props> = ({
       }
 
       let applications = [{ name: values.seeds.application }];
-      if (values.seeds.application == "incus") {
+      if (
+        Object.keys(IncusServerTypeString).includes(values.seeds.application)
+      ) {
         applications = [
           ...applications,
           ...values.seeds.secondary_applications.map((app) => {
