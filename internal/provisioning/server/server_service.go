@@ -777,7 +777,8 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 		case api.ServerSelfUpdateCauseSuspendTriggered:
 
 		default:
-			return fmt.Errorf("Undefined server update cause %q: %w", serverUpdate.Cause, domain.ErrOperationNotPermitted)
+			slog.WarnContext(ctx, "Ignoring unknown server self update cause", slog.String("server_self_update_cause", string(serverUpdate.Cause)))
+			return nil
 		}
 
 		err = server.Validate()

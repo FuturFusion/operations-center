@@ -2747,8 +2747,8 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				Channel:       "stable",
 			},
 
-			assertErr: errassert.OperationNotPermittedErrorContains(`Undefined server update cause "other-cause"`),
-			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			assertErr: require.NoError,
+			assertLog: log.Contains("Ignoring unknown server self update cause server_self_update_cause=other-cause"),
 		},
 		{
 			name: "error - validation",
