@@ -8,12 +8,12 @@ import (
 // nodeSpecificConfig lists all config keys, which are node-specific.
 // Extracted from https://github.com/lxc/incus/blob/5c9f4d6823b79cc0a8825c8c52aa3fe186f4e7bb/internal/server/node/config.go#L168
 var nodeSpecificConfig = []string{
-	"core.https_address",
 	"cluster.https_address",
 	"core.bgp_address",
 	"core.bgp_routerid",
 	"core.debug_address",
 	"core.dns_address",
+	"core.https_address",
 	"core.metrics_address",
 	"core.storage_buckets_address",
 	"core.syslog_socket",
