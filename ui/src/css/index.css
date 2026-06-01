@@ -31,8 +31,8 @@ tr.overview-table-header th {
 
 .scroll-container {
   overflow-y: auto;
-  min-height: calc(100vh - 100px);
-  max-height: calc(100vh - 100px);
+  min-height: calc(100vh - 140px);
+  max-height: calc(100vh - 140px);
 }
 
 .fixed-footer {
