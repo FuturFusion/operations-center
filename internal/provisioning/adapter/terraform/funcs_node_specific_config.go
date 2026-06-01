@@ -27,7 +27,6 @@ var nodeSpecificConfig = []string{
 var nodeSpecificStorageConfig = []string{
 	"source",
 	"source.wipe",
-	"volatile.initial_source",
 	"zfs.pool_name",
 	"lvm.thinpool_name",
 	"lvm.vg_name",
