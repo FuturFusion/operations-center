@@ -2389,7 +2389,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		repoGetByNameErr           error
 
 		assertErr              require.ErrorAssertionFunc
-		assertLog              func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog              log.MatcherFunc
 		wantServerStatus       api.ServerStatus
 		wantServerStatusDetail api.ServerStatusDetail
 	}{
@@ -3344,7 +3344,7 @@ func TestServerService_PollServer_connectionTestWithCertificateUpdate(t *testing
 		clusterSvcUpdateErr    error
 
 		assertErr               require.ErrorAssertionFunc
-		assertLog               func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog               log.MatcherFunc
 		assertServerCertificate string
 		wantServerStatus        api.ServerStatus
 		wantLastSeen            time.Time

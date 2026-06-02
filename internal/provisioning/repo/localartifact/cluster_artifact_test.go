@@ -37,7 +37,7 @@ func TestLocalArtifact_updateSignalHandler(t *testing.T) {
 		clusterName    string
 		oldClusterName string
 
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name:           "success - rename",

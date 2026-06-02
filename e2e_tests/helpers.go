@@ -774,6 +774,7 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 			t.Error(resp.Error())
 		} else {
 			for instance := range strings.Lines(resp.OutputTrimmed()) {
+				instance = strings.TrimSpace(instance)
 				incusJournalFilename := filepath.Join(tmpDir, fmt.Sprintf("incus_%s_journal_%s.log", instance, timestamp))
 				fmt.Printf("incus %q journal saved in %q\n", instance, incusJournalFilename)
 				resp := runWithContext(ctx, t, `incus exec %s -- journalctl -u incus -n 1000`, instance)

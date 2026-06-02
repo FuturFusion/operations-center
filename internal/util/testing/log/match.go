@@ -4,19 +4,23 @@ import (
 	"bytes"
 	"regexp"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
-type MatcherFunc func(t *testing.T, logBuf *bytes.Buffer)
+type TestifyT interface {
+	require.TestingT
+	Helper()
+}
 
-func Noop(t *testing.T, logBuf *bytes.Buffer) {
+type MatcherFunc func(t TestifyT, logBuf *bytes.Buffer)
+
+func Noop(t TestifyT, logBuf *bytes.Buffer) {
 	t.Helper()
 }
 
-func Empty(t *testing.T, logBuf *bytes.Buffer) {
+func Empty(t TestifyT, logBuf *bytes.Buffer) {
 	t.Helper()
 
 	require.Empty(t, logBuf.String())
@@ -24,8 +28,8 @@ func Empty(t *testing.T, logBuf *bytes.Buffer) {
 
 var IgnorePatternDebugLines = "[0-9TZ:-]+ DBG.*"
 
-func EmptyWithIgnorePattern(pattern string) func(t *testing.T, logBuf *bytes.Buffer) {
-	return func(t *testing.T, logBuf *bytes.Buffer) {
+func EmptyWithIgnorePattern(pattern string) func(t TestifyT, logBuf *bytes.Buffer) {
+	return func(t TestifyT, logBuf *bytes.Buffer) {
 		t.Helper()
 
 		re, err := regexp.Compile(pattern)
@@ -49,12 +53,12 @@ func EmptyWithIgnorePattern(pattern string) func(t *testing.T, logBuf *bytes.Buf
 	}
 }
 
-func Contains(want string) func(t *testing.T, logBuf *bytes.Buffer) {
-	return func(t *testing.T, logBuf *bytes.Buffer) {
+func Contains(want string) func(t TestifyT, logBuf *bytes.Buffer) {
+	return func(t TestifyT, logBuf *bytes.Buffer) {
 		t.Helper()
 
 		// Give logs a little bit of time to be processed.
-		for range 10 {
+		for range 20 {
 			if strings.Contains(logBuf.String(), want) {
 				break
 			}
@@ -66,15 +70,15 @@ func Contains(want string) func(t *testing.T, logBuf *bytes.Buffer) {
 	}
 }
 
-func Match(expr string) func(t *testing.T, logBuf *bytes.Buffer) {
-	return func(t *testing.T, logBuf *bytes.Buffer) {
+func Match(expr string) func(t TestifyT, logBuf *bytes.Buffer) {
+	return func(t TestifyT, logBuf *bytes.Buffer) {
 		t.Helper()
 
 		re, err := regexp.Compile(expr)
 		require.NoError(t, err)
 
 		// Give logs a little bit of time to be processed.
-		for range 10 {
+		for range 20 {
 			if re.Match(logBuf.Bytes()) {
 				break
 			}

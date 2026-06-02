@@ -911,7 +911,7 @@ func TestUpdateService_GetChangelog(t *testing.T) {
 		repoUpdateFilesGet []queue.Item[io.ReadCloser]
 
 		assertErr     require.ErrorAssertionFunc
-		assertLog     func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog     log.MatcherFunc
 		wantChangelog api.UpdateChangelog
 	}{
 		{

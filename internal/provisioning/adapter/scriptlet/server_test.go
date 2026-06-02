@@ -40,7 +40,7 @@ func TestRunner_ServerRegistrationRun(t *testing.T) {
 
 		assertSetScriptletErr require.ErrorAssertionFunc
 		assertRunErr          require.ErrorAssertionFunc
-		assertLog             func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog             log.MatcherFunc
 		wantServer            provisioning.Server
 	}{
 		{
@@ -62,7 +62,7 @@ def server_registration(candidate):
 
 			assertSetScriptletErr: require.NoError,
 			assertRunErr:          require.NoError,
-			assertLog: func(t *testing.T, logBuf *bytes.Buffer) {
+			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
 				t.Helper()
 
 				log.Contains("INF Server registration scriptlet: some info 1")(t, logBuf)
@@ -84,7 +84,7 @@ def server_registration(candidate):
 
 			assertSetScriptletErr: require.NoError,
 			assertRunErr:          require.NoError,
-			assertLog: func(t *testing.T, logBuf *bytes.Buffer) {
+			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
 				t.Helper()
 
 				log.Contains(`INF Server registration scriptlet assigned name for server name=name`)(t, logBuf)
@@ -173,7 +173,7 @@ def server_registration(candidate):
 
 			assertSetScriptletErr: require.NoError,
 			assertRunErr:          require.NoError,
-			assertLog: func(t *testing.T, logBuf *bytes.Buffer) {
+			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
 				t.Helper()
 
 				log.Contains(`INF Server registration scriptlet: config.blacklist_modules[0]: bad-module`)(t, logBuf)
@@ -225,7 +225,7 @@ def server_registration(candidate):
 
 			assertSetScriptletErr: require.NoError,
 			assertRunErr:          require.NoError,
-			assertLog: func(t *testing.T, logBuf *bytes.Buffer) {
+			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
 				t.Helper()
 
 				log.Contains(`INF Server registration scriptlet: config.enabled: True`)(t, logBuf)

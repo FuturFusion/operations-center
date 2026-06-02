@@ -1161,7 +1161,7 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 		serviceOptions                    []inventory.NetworkACLServiceOption
 
 		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name: "success",

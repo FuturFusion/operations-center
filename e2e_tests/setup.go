@@ -177,6 +177,7 @@ func cleanupIncusOS(t *testing.T, names []string) func() {
 		}
 
 		for server := range strings.Lines(resp.OutputTrimmed()) {
+			server = strings.TrimSpace(server)
 			resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning server remove %s`, cpuArch, server)
 			if !resp.Success() {
 				t.Error(resp.Error())
