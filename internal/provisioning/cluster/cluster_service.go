@@ -2943,7 +2943,7 @@ func (s *clusterService) prepareBulkUpdate(ctx context.Context, clusterName stri
 			server.VersionData.InMaintenance != nil &&
 			*server.VersionData.InMaintenance == api.NotInMaintenance
 		if !isReady {
-			return nil, fmt.Errorf("Server %q (%s) is not ready (status: %q, status detail: %q, maintenance: %q): %w", server.Name, server.GetConnectionURL(), server.Status, server.StatusDetail, ptr.From(server.VersionData.InMaintenance), domain.ErrOperationNotPermitted)
+			return nil, fmt.Errorf("Server %q (%s) is not ready (status: %q, status detail: %q, maintenance: %q): %w", server.Name, server.GetConnectionURL(), server.Status, server.StatusDetail, server.VersionData.InMaintenance.String(), domain.ErrOperationNotPermitted)
 		}
 	}
 
