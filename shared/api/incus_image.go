@@ -71,6 +71,10 @@ type IncusImageVersionItem struct {
 	// versions metadata ("incus.tar.xz") and the "root.squashfs" image.
 	CombinedSha256SquashFs string `json:"combined_squashfs_sha256,omitempty" yaml:"combined_squashfs_sha256"`
 
+	// CombinedType holds the type (container or virtual-machine) of a combined
+	// image.
+	CombinedType string `json:"combined_type,omitempty"`
+
 	// FileType holds the file type. This defaults to the file name like
 	// incus.tar.xz. Special file types are "squashfs" and "disk-kvm.img".
 	FileType string `json:"ftype" yaml:"ftype"`
