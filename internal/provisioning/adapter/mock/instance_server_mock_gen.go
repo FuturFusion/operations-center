@@ -78,6 +78,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			CreateInstanceBackupStreamFunc: func(instanceName string, backup api.InstanceBackupsPost, req *incus.BackupFileRequest) error {
 //				panic("mock out the CreateInstanceBackupStream method")
 //			},
+//			CreateInstanceBitmapFunc: func(name string, bitmap api.StorageVolumeBitmapsPost) error {
+//				panic("mock out the CreateInstanceBitmap method")
+//			},
 //			CreateInstanceFileFunc: func(instanceName string, path string, args incus.InstanceFileArgs) error {
 //				panic("mock out the CreateInstanceFile method")
 //			},
@@ -164,6 +167,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			},
 //			CreateStorageVolumeBackupStreamFunc: func(pool string, volName string, backup api.StorageVolumeBackupsPost, req *incus.BackupFileRequest) error {
 //				panic("mock out the CreateStorageVolumeBackupStream method")
+//			},
+//			CreateStorageVolumeBitmapFunc: func(pool string, volumeType string, volumeName string, bitmap api.StorageVolumeBitmapsPost) error {
+//				panic("mock out the CreateStorageVolumeBitmap method")
 //			},
 //			CreateStorageVolumeFileFunc: func(pool string, volumeType string, volumeName string, filePath string, args incus.InstanceFileArgs) error {
 //				panic("mock out the CreateStorageVolumeFile method")
@@ -266,6 +272,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			},
 //			DeleteStorageVolumeBackupFunc: func(pool string, volName string, name string) (incus.Operation, error) {
 //				panic("mock out the DeleteStorageVolumeBackup method")
+//			},
+//			DeleteStorageVolumeBitmapFunc: func(pool string, volumeType string, volumeName string, bitmapName string) error {
+//				panic("mock out the DeleteStorageVolumeBitmap method")
 //			},
 //			DeleteStorageVolumeFileFunc: func(pool string, volumeType string, volumeName string, filePath string) error {
 //				panic("mock out the DeleteStorageVolumeFile method")
@@ -723,6 +732,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			GetStoragePoolVolumeFunc: func(pool string, volType string, name string) (*api.StorageVolume, string, error) {
 //				panic("mock out the GetStoragePoolVolume method")
 //			},
+//			GetStoragePoolVolumeBlockNBDConnFunc: func(pool string, volType string, volName string, args incus.StorageVolumeNBDPost) (net.Conn, error) {
+//				panic("mock out the GetStoragePoolVolumeBlockNBDConn method")
+//			},
 //			GetStoragePoolVolumeFileSFTPFunc: func(pool string, volType string, volName string) (*sftp.Client, error) {
 //				panic("mock out the GetStoragePoolVolumeFileSFTP method")
 //			},
@@ -792,6 +804,12 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			GetStorageVolumeBackupsFunc: func(pool string, volName string) ([]api.StorageVolumeBackup, error) {
 //				panic("mock out the GetStorageVolumeBackups method")
 //			},
+//			GetStorageVolumeBitmapNamesFunc: func(pool string, volumeType string, volumeName string) ([]string, error) {
+//				panic("mock out the GetStorageVolumeBitmapNames method")
+//			},
+//			GetStorageVolumeBitmapsFunc: func(pool string, volumeType string, volumeName string) ([]api.StorageVolumeBitmap, error) {
+//				panic("mock out the GetStorageVolumeBitmaps method")
+//			},
 //			GetStorageVolumeFileFunc: func(pool string, volumeType string, volumeName string, filePath string) (io.ReadCloser, *incus.InstanceFileResponse, error) {
 //				panic("mock out the GetStorageVolumeFile method")
 //			},
@@ -836,6 +854,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			},
 //			RebuildInstanceFromImageFunc: func(source incus.ImageServer, image api.Image, instanceName string, req api.InstanceRebuildPost) (incus.RemoteOperation, error) {
 //				panic("mock out the RebuildInstanceFromImage method")
+//			},
+//			RebuildStoragePoolVolumeFunc: func(pool string, volType string, name string, volume api.StorageVolumeRebuildPost) (incus.Operation, error) {
+//				panic("mock out the RebuildStoragePoolVolume method")
 //			},
 //			RefreshImageFunc: func(fingerprint string) (incus.Operation, error) {
 //				panic("mock out the RefreshImage method")
@@ -1048,6 +1069,9 @@ type InstanceServerMock struct {
 	// CreateInstanceBackupStreamFunc mocks the CreateInstanceBackupStream method.
 	CreateInstanceBackupStreamFunc func(instanceName string, backup api.InstanceBackupsPost, req *incus.BackupFileRequest) error
 
+	// CreateInstanceBitmapFunc mocks the CreateInstanceBitmap method.
+	CreateInstanceBitmapFunc func(name string, bitmap api.StorageVolumeBitmapsPost) error
+
 	// CreateInstanceFileFunc mocks the CreateInstanceFile method.
 	CreateInstanceFileFunc func(instanceName string, path string, args incus.InstanceFileArgs) error
 
@@ -1134,6 +1158,9 @@ type InstanceServerMock struct {
 
 	// CreateStorageVolumeBackupStreamFunc mocks the CreateStorageVolumeBackupStream method.
 	CreateStorageVolumeBackupStreamFunc func(pool string, volName string, backup api.StorageVolumeBackupsPost, req *incus.BackupFileRequest) error
+
+	// CreateStorageVolumeBitmapFunc mocks the CreateStorageVolumeBitmap method.
+	CreateStorageVolumeBitmapFunc func(pool string, volumeType string, volumeName string, bitmap api.StorageVolumeBitmapsPost) error
 
 	// CreateStorageVolumeFileFunc mocks the CreateStorageVolumeFile method.
 	CreateStorageVolumeFileFunc func(pool string, volumeType string, volumeName string, filePath string, args incus.InstanceFileArgs) error
@@ -1236,6 +1263,9 @@ type InstanceServerMock struct {
 
 	// DeleteStorageVolumeBackupFunc mocks the DeleteStorageVolumeBackup method.
 	DeleteStorageVolumeBackupFunc func(pool string, volName string, name string) (incus.Operation, error)
+
+	// DeleteStorageVolumeBitmapFunc mocks the DeleteStorageVolumeBitmap method.
+	DeleteStorageVolumeBitmapFunc func(pool string, volumeType string, volumeName string, bitmapName string) error
 
 	// DeleteStorageVolumeFileFunc mocks the DeleteStorageVolumeFile method.
 	DeleteStorageVolumeFileFunc func(pool string, volumeType string, volumeName string, filePath string) error
@@ -1693,6 +1723,9 @@ type InstanceServerMock struct {
 	// GetStoragePoolVolumeFunc mocks the GetStoragePoolVolume method.
 	GetStoragePoolVolumeFunc func(pool string, volType string, name string) (*api.StorageVolume, string, error)
 
+	// GetStoragePoolVolumeBlockNBDConnFunc mocks the GetStoragePoolVolumeBlockNBDConn method.
+	GetStoragePoolVolumeBlockNBDConnFunc func(pool string, volType string, volName string, args incus.StorageVolumeNBDPost) (net.Conn, error)
+
 	// GetStoragePoolVolumeFileSFTPFunc mocks the GetStoragePoolVolumeFileSFTP method.
 	GetStoragePoolVolumeFileSFTPFunc func(pool string, volType string, volName string) (*sftp.Client, error)
 
@@ -1762,6 +1795,12 @@ type InstanceServerMock struct {
 	// GetStorageVolumeBackupsFunc mocks the GetStorageVolumeBackups method.
 	GetStorageVolumeBackupsFunc func(pool string, volName string) ([]api.StorageVolumeBackup, error)
 
+	// GetStorageVolumeBitmapNamesFunc mocks the GetStorageVolumeBitmapNames method.
+	GetStorageVolumeBitmapNamesFunc func(pool string, volumeType string, volumeName string) ([]string, error)
+
+	// GetStorageVolumeBitmapsFunc mocks the GetStorageVolumeBitmaps method.
+	GetStorageVolumeBitmapsFunc func(pool string, volumeType string, volumeName string) ([]api.StorageVolumeBitmap, error)
+
 	// GetStorageVolumeFileFunc mocks the GetStorageVolumeFile method.
 	GetStorageVolumeFileFunc func(pool string, volumeType string, volumeName string, filePath string) (io.ReadCloser, *incus.InstanceFileResponse, error)
 
@@ -1806,6 +1845,9 @@ type InstanceServerMock struct {
 
 	// RebuildInstanceFromImageFunc mocks the RebuildInstanceFromImage method.
 	RebuildInstanceFromImageFunc func(source incus.ImageServer, image api.Image, instanceName string, req api.InstanceRebuildPost) (incus.RemoteOperation, error)
+
+	// RebuildStoragePoolVolumeFunc mocks the RebuildStoragePoolVolume method.
+	RebuildStoragePoolVolumeFunc func(pool string, volType string, name string, volume api.StorageVolumeRebuildPost) (incus.Operation, error)
 
 	// RefreshImageFunc mocks the RefreshImage method.
 	RefreshImageFunc func(fingerprint string) (incus.Operation, error)
@@ -2085,6 +2127,13 @@ type InstanceServerMock struct {
 			// Req is the req argument value.
 			Req *incus.BackupFileRequest
 		}
+		// CreateInstanceBitmap holds details about calls to the CreateInstanceBitmap method.
+		CreateInstanceBitmap []struct {
+			// Name is the name argument value.
+			Name string
+			// Bitmap is the bitmap argument value.
+			Bitmap api.StorageVolumeBitmapsPost
+		}
 		// CreateInstanceFile holds details about calls to the CreateInstanceFile method.
 		CreateInstanceFile []struct {
 			// InstanceName is the instanceName argument value.
@@ -2293,6 +2342,17 @@ type InstanceServerMock struct {
 			Backup api.StorageVolumeBackupsPost
 			// Req is the req argument value.
 			Req *incus.BackupFileRequest
+		}
+		// CreateStorageVolumeBitmap holds details about calls to the CreateStorageVolumeBitmap method.
+		CreateStorageVolumeBitmap []struct {
+			// Pool is the pool argument value.
+			Pool string
+			// VolumeType is the volumeType argument value.
+			VolumeType string
+			// VolumeName is the volumeName argument value.
+			VolumeName string
+			// Bitmap is the bitmap argument value.
+			Bitmap api.StorageVolumeBitmapsPost
 		}
 		// CreateStorageVolumeFile holds details about calls to the CreateStorageVolumeFile method.
 		CreateStorageVolumeFile []struct {
@@ -2519,6 +2579,17 @@ type InstanceServerMock struct {
 			VolName string
 			// Name is the name argument value.
 			Name string
+		}
+		// DeleteStorageVolumeBitmap holds details about calls to the DeleteStorageVolumeBitmap method.
+		DeleteStorageVolumeBitmap []struct {
+			// Pool is the pool argument value.
+			Pool string
+			// VolumeType is the volumeType argument value.
+			VolumeType string
+			// VolumeName is the volumeName argument value.
+			VolumeName string
+			// BitmapName is the bitmapName argument value.
+			BitmapName string
 		}
 		// DeleteStorageVolumeFile holds details about calls to the DeleteStorageVolumeFile method.
 		DeleteStorageVolumeFile []struct {
@@ -3286,6 +3357,17 @@ type InstanceServerMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// GetStoragePoolVolumeBlockNBDConn holds details about calls to the GetStoragePoolVolumeBlockNBDConn method.
+		GetStoragePoolVolumeBlockNBDConn []struct {
+			// Pool is the pool argument value.
+			Pool string
+			// VolType is the volType argument value.
+			VolType string
+			// VolName is the volName argument value.
+			VolName string
+			// Args is the args argument value.
+			Args incus.StorageVolumeNBDPost
+		}
 		// GetStoragePoolVolumeFileSFTP holds details about calls to the GetStoragePoolVolumeFileSFTP method.
 		GetStoragePoolVolumeFileSFTP []struct {
 			// Pool is the pool argument value.
@@ -3451,6 +3533,24 @@ type InstanceServerMock struct {
 			// VolName is the volName argument value.
 			VolName string
 		}
+		// GetStorageVolumeBitmapNames holds details about calls to the GetStorageVolumeBitmapNames method.
+		GetStorageVolumeBitmapNames []struct {
+			// Pool is the pool argument value.
+			Pool string
+			// VolumeType is the volumeType argument value.
+			VolumeType string
+			// VolumeName is the volumeName argument value.
+			VolumeName string
+		}
+		// GetStorageVolumeBitmaps holds details about calls to the GetStorageVolumeBitmaps method.
+		GetStorageVolumeBitmaps []struct {
+			// Pool is the pool argument value.
+			Pool string
+			// VolumeType is the volumeType argument value.
+			VolumeType string
+			// VolumeName is the volumeName argument value.
+			VolumeName string
+		}
 		// GetStorageVolumeFile holds details about calls to the GetStorageVolumeFile method.
 		GetStorageVolumeFile []struct {
 			// Pool is the pool argument value.
@@ -3561,6 +3661,17 @@ type InstanceServerMock struct {
 			InstanceName string
 			// Req is the req argument value.
 			Req api.InstanceRebuildPost
+		}
+		// RebuildStoragePoolVolume holds details about calls to the RebuildStoragePoolVolume method.
+		RebuildStoragePoolVolume []struct {
+			// Pool is the pool argument value.
+			Pool string
+			// VolType is the volType argument value.
+			VolType string
+			// Name is the name argument value.
+			Name string
+			// Volume is the volume argument value.
+			Volume api.StorageVolumeRebuildPost
 		}
 		// RefreshImage holds details about calls to the RefreshImage method.
 		RefreshImage []struct {
@@ -4023,6 +4134,7 @@ type InstanceServerMock struct {
 	lockCreateInstance                                 sync.RWMutex
 	lockCreateInstanceBackup                           sync.RWMutex
 	lockCreateInstanceBackupStream                     sync.RWMutex
+	lockCreateInstanceBitmap                           sync.RWMutex
 	lockCreateInstanceFile                             sync.RWMutex
 	lockCreateInstanceFromBackup                       sync.RWMutex
 	lockCreateInstanceFromImage                        sync.RWMutex
@@ -4052,6 +4164,7 @@ type InstanceServerMock struct {
 	lockCreateStoragePoolVolumeSnapshot                sync.RWMutex
 	lockCreateStorageVolumeBackup                      sync.RWMutex
 	lockCreateStorageVolumeBackupStream                sync.RWMutex
+	lockCreateStorageVolumeBitmap                      sync.RWMutex
 	lockCreateStorageVolumeFile                        sync.RWMutex
 	lockDeleteCertificate                              sync.RWMutex
 	lockDeleteClusterGroup                             sync.RWMutex
@@ -4086,6 +4199,7 @@ type InstanceServerMock struct {
 	lockDeleteStoragePoolVolume                        sync.RWMutex
 	lockDeleteStoragePoolVolumeSnapshot                sync.RWMutex
 	lockDeleteStorageVolumeBackup                      sync.RWMutex
+	lockDeleteStorageVolumeBitmap                      sync.RWMutex
 	lockDeleteStorageVolumeFile                        sync.RWMutex
 	lockDeleteWarning                                  sync.RWMutex
 	lockDisconnect                                     sync.RWMutex
@@ -4238,6 +4352,7 @@ type InstanceServerMock struct {
 	lockGetStoragePoolNames                            sync.RWMutex
 	lockGetStoragePoolResources                        sync.RWMutex
 	lockGetStoragePoolVolume                           sync.RWMutex
+	lockGetStoragePoolVolumeBlockNBDConn               sync.RWMutex
 	lockGetStoragePoolVolumeFileSFTP                   sync.RWMutex
 	lockGetStoragePoolVolumeFileSFTPConn               sync.RWMutex
 	lockGetStoragePoolVolumeFull                       sync.RWMutex
@@ -4261,6 +4376,8 @@ type InstanceServerMock struct {
 	lockGetStorageVolumeBackupFile                     sync.RWMutex
 	lockGetStorageVolumeBackupNames                    sync.RWMutex
 	lockGetStorageVolumeBackups                        sync.RWMutex
+	lockGetStorageVolumeBitmapNames                    sync.RWMutex
+	lockGetStorageVolumeBitmaps                        sync.RWMutex
 	lockGetStorageVolumeFile                           sync.RWMutex
 	lockGetWarning                                     sync.RWMutex
 	lockGetWarningUUIDs                                sync.RWMutex
@@ -4276,6 +4393,7 @@ type InstanceServerMock struct {
 	lockRawWebsocket                                   sync.RWMutex
 	lockRebuildInstance                                sync.RWMutex
 	lockRebuildInstanceFromImage                       sync.RWMutex
+	lockRebuildStoragePoolVolume                       sync.RWMutex
 	lockRefreshImage                                   sync.RWMutex
 	lockRenameClusterGroup                             sync.RWMutex
 	lockRenameClusterMember                            sync.RWMutex
@@ -4946,6 +5064,42 @@ func (mock *InstanceServerMock) CreateInstanceBackupStreamCalls() []struct {
 	mock.lockCreateInstanceBackupStream.RLock()
 	calls = mock.calls.CreateInstanceBackupStream
 	mock.lockCreateInstanceBackupStream.RUnlock()
+	return calls
+}
+
+// CreateInstanceBitmap calls CreateInstanceBitmapFunc.
+func (mock *InstanceServerMock) CreateInstanceBitmap(name string, bitmap api.StorageVolumeBitmapsPost) error {
+	if mock.CreateInstanceBitmapFunc == nil {
+		panic("InstanceServerMock.CreateInstanceBitmapFunc: method is nil but InstanceServer.CreateInstanceBitmap was just called")
+	}
+	callInfo := struct {
+		Name   string
+		Bitmap api.StorageVolumeBitmapsPost
+	}{
+		Name:   name,
+		Bitmap: bitmap,
+	}
+	mock.lockCreateInstanceBitmap.Lock()
+	mock.calls.CreateInstanceBitmap = append(mock.calls.CreateInstanceBitmap, callInfo)
+	mock.lockCreateInstanceBitmap.Unlock()
+	return mock.CreateInstanceBitmapFunc(name, bitmap)
+}
+
+// CreateInstanceBitmapCalls gets all the calls that were made to CreateInstanceBitmap.
+// Check the length with:
+//
+//	len(mockedInstanceServer.CreateInstanceBitmapCalls())
+func (mock *InstanceServerMock) CreateInstanceBitmapCalls() []struct {
+	Name   string
+	Bitmap api.StorageVolumeBitmapsPost
+} {
+	var calls []struct {
+		Name   string
+		Bitmap api.StorageVolumeBitmapsPost
+	}
+	mock.lockCreateInstanceBitmap.RLock()
+	calls = mock.calls.CreateInstanceBitmap
+	mock.lockCreateInstanceBitmap.RUnlock()
 	return calls
 }
 
@@ -6002,6 +6156,50 @@ func (mock *InstanceServerMock) CreateStorageVolumeBackupStreamCalls() []struct 
 	mock.lockCreateStorageVolumeBackupStream.RLock()
 	calls = mock.calls.CreateStorageVolumeBackupStream
 	mock.lockCreateStorageVolumeBackupStream.RUnlock()
+	return calls
+}
+
+// CreateStorageVolumeBitmap calls CreateStorageVolumeBitmapFunc.
+func (mock *InstanceServerMock) CreateStorageVolumeBitmap(pool string, volumeType string, volumeName string, bitmap api.StorageVolumeBitmapsPost) error {
+	if mock.CreateStorageVolumeBitmapFunc == nil {
+		panic("InstanceServerMock.CreateStorageVolumeBitmapFunc: method is nil but InstanceServer.CreateStorageVolumeBitmap was just called")
+	}
+	callInfo := struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+		Bitmap     api.StorageVolumeBitmapsPost
+	}{
+		Pool:       pool,
+		VolumeType: volumeType,
+		VolumeName: volumeName,
+		Bitmap:     bitmap,
+	}
+	mock.lockCreateStorageVolumeBitmap.Lock()
+	mock.calls.CreateStorageVolumeBitmap = append(mock.calls.CreateStorageVolumeBitmap, callInfo)
+	mock.lockCreateStorageVolumeBitmap.Unlock()
+	return mock.CreateStorageVolumeBitmapFunc(pool, volumeType, volumeName, bitmap)
+}
+
+// CreateStorageVolumeBitmapCalls gets all the calls that were made to CreateStorageVolumeBitmap.
+// Check the length with:
+//
+//	len(mockedInstanceServer.CreateStorageVolumeBitmapCalls())
+func (mock *InstanceServerMock) CreateStorageVolumeBitmapCalls() []struct {
+	Pool       string
+	VolumeType string
+	VolumeName string
+	Bitmap     api.StorageVolumeBitmapsPost
+} {
+	var calls []struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+		Bitmap     api.StorageVolumeBitmapsPost
+	}
+	mock.lockCreateStorageVolumeBitmap.RLock()
+	calls = mock.calls.CreateStorageVolumeBitmap
+	mock.lockCreateStorageVolumeBitmap.RUnlock()
 	return calls
 }
 
@@ -7202,6 +7400,50 @@ func (mock *InstanceServerMock) DeleteStorageVolumeBackupCalls() []struct {
 	mock.lockDeleteStorageVolumeBackup.RLock()
 	calls = mock.calls.DeleteStorageVolumeBackup
 	mock.lockDeleteStorageVolumeBackup.RUnlock()
+	return calls
+}
+
+// DeleteStorageVolumeBitmap calls DeleteStorageVolumeBitmapFunc.
+func (mock *InstanceServerMock) DeleteStorageVolumeBitmap(pool string, volumeType string, volumeName string, bitmapName string) error {
+	if mock.DeleteStorageVolumeBitmapFunc == nil {
+		panic("InstanceServerMock.DeleteStorageVolumeBitmapFunc: method is nil but InstanceServer.DeleteStorageVolumeBitmap was just called")
+	}
+	callInfo := struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+		BitmapName string
+	}{
+		Pool:       pool,
+		VolumeType: volumeType,
+		VolumeName: volumeName,
+		BitmapName: bitmapName,
+	}
+	mock.lockDeleteStorageVolumeBitmap.Lock()
+	mock.calls.DeleteStorageVolumeBitmap = append(mock.calls.DeleteStorageVolumeBitmap, callInfo)
+	mock.lockDeleteStorageVolumeBitmap.Unlock()
+	return mock.DeleteStorageVolumeBitmapFunc(pool, volumeType, volumeName, bitmapName)
+}
+
+// DeleteStorageVolumeBitmapCalls gets all the calls that were made to DeleteStorageVolumeBitmap.
+// Check the length with:
+//
+//	len(mockedInstanceServer.DeleteStorageVolumeBitmapCalls())
+func (mock *InstanceServerMock) DeleteStorageVolumeBitmapCalls() []struct {
+	Pool       string
+	VolumeType string
+	VolumeName string
+	BitmapName string
+} {
+	var calls []struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+		BitmapName string
+	}
+	mock.lockDeleteStorageVolumeBitmap.RLock()
+	calls = mock.calls.DeleteStorageVolumeBitmap
+	mock.lockDeleteStorageVolumeBitmap.RUnlock()
 	return calls
 }
 
@@ -12035,6 +12277,50 @@ func (mock *InstanceServerMock) GetStoragePoolVolumeCalls() []struct {
 	return calls
 }
 
+// GetStoragePoolVolumeBlockNBDConn calls GetStoragePoolVolumeBlockNBDConnFunc.
+func (mock *InstanceServerMock) GetStoragePoolVolumeBlockNBDConn(pool string, volType string, volName string, args incus.StorageVolumeNBDPost) (net.Conn, error) {
+	if mock.GetStoragePoolVolumeBlockNBDConnFunc == nil {
+		panic("InstanceServerMock.GetStoragePoolVolumeBlockNBDConnFunc: method is nil but InstanceServer.GetStoragePoolVolumeBlockNBDConn was just called")
+	}
+	callInfo := struct {
+		Pool    string
+		VolType string
+		VolName string
+		Args    incus.StorageVolumeNBDPost
+	}{
+		Pool:    pool,
+		VolType: volType,
+		VolName: volName,
+		Args:    args,
+	}
+	mock.lockGetStoragePoolVolumeBlockNBDConn.Lock()
+	mock.calls.GetStoragePoolVolumeBlockNBDConn = append(mock.calls.GetStoragePoolVolumeBlockNBDConn, callInfo)
+	mock.lockGetStoragePoolVolumeBlockNBDConn.Unlock()
+	return mock.GetStoragePoolVolumeBlockNBDConnFunc(pool, volType, volName, args)
+}
+
+// GetStoragePoolVolumeBlockNBDConnCalls gets all the calls that were made to GetStoragePoolVolumeBlockNBDConn.
+// Check the length with:
+//
+//	len(mockedInstanceServer.GetStoragePoolVolumeBlockNBDConnCalls())
+func (mock *InstanceServerMock) GetStoragePoolVolumeBlockNBDConnCalls() []struct {
+	Pool    string
+	VolType string
+	VolName string
+	Args    incus.StorageVolumeNBDPost
+} {
+	var calls []struct {
+		Pool    string
+		VolType string
+		VolName string
+		Args    incus.StorageVolumeNBDPost
+	}
+	mock.lockGetStoragePoolVolumeBlockNBDConn.RLock()
+	calls = mock.calls.GetStoragePoolVolumeBlockNBDConn
+	mock.lockGetStoragePoolVolumeBlockNBDConn.RUnlock()
+	return calls
+}
+
 // GetStoragePoolVolumeFileSFTP calls GetStoragePoolVolumeFileSFTPFunc.
 func (mock *InstanceServerMock) GetStoragePoolVolumeFileSFTP(pool string, volType string, volName string) (*sftp.Client, error) {
 	if mock.GetStoragePoolVolumeFileSFTPFunc == nil {
@@ -12870,6 +13156,86 @@ func (mock *InstanceServerMock) GetStorageVolumeBackupsCalls() []struct {
 	return calls
 }
 
+// GetStorageVolumeBitmapNames calls GetStorageVolumeBitmapNamesFunc.
+func (mock *InstanceServerMock) GetStorageVolumeBitmapNames(pool string, volumeType string, volumeName string) ([]string, error) {
+	if mock.GetStorageVolumeBitmapNamesFunc == nil {
+		panic("InstanceServerMock.GetStorageVolumeBitmapNamesFunc: method is nil but InstanceServer.GetStorageVolumeBitmapNames was just called")
+	}
+	callInfo := struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+	}{
+		Pool:       pool,
+		VolumeType: volumeType,
+		VolumeName: volumeName,
+	}
+	mock.lockGetStorageVolumeBitmapNames.Lock()
+	mock.calls.GetStorageVolumeBitmapNames = append(mock.calls.GetStorageVolumeBitmapNames, callInfo)
+	mock.lockGetStorageVolumeBitmapNames.Unlock()
+	return mock.GetStorageVolumeBitmapNamesFunc(pool, volumeType, volumeName)
+}
+
+// GetStorageVolumeBitmapNamesCalls gets all the calls that were made to GetStorageVolumeBitmapNames.
+// Check the length with:
+//
+//	len(mockedInstanceServer.GetStorageVolumeBitmapNamesCalls())
+func (mock *InstanceServerMock) GetStorageVolumeBitmapNamesCalls() []struct {
+	Pool       string
+	VolumeType string
+	VolumeName string
+} {
+	var calls []struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+	}
+	mock.lockGetStorageVolumeBitmapNames.RLock()
+	calls = mock.calls.GetStorageVolumeBitmapNames
+	mock.lockGetStorageVolumeBitmapNames.RUnlock()
+	return calls
+}
+
+// GetStorageVolumeBitmaps calls GetStorageVolumeBitmapsFunc.
+func (mock *InstanceServerMock) GetStorageVolumeBitmaps(pool string, volumeType string, volumeName string) ([]api.StorageVolumeBitmap, error) {
+	if mock.GetStorageVolumeBitmapsFunc == nil {
+		panic("InstanceServerMock.GetStorageVolumeBitmapsFunc: method is nil but InstanceServer.GetStorageVolumeBitmaps was just called")
+	}
+	callInfo := struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+	}{
+		Pool:       pool,
+		VolumeType: volumeType,
+		VolumeName: volumeName,
+	}
+	mock.lockGetStorageVolumeBitmaps.Lock()
+	mock.calls.GetStorageVolumeBitmaps = append(mock.calls.GetStorageVolumeBitmaps, callInfo)
+	mock.lockGetStorageVolumeBitmaps.Unlock()
+	return mock.GetStorageVolumeBitmapsFunc(pool, volumeType, volumeName)
+}
+
+// GetStorageVolumeBitmapsCalls gets all the calls that were made to GetStorageVolumeBitmaps.
+// Check the length with:
+//
+//	len(mockedInstanceServer.GetStorageVolumeBitmapsCalls())
+func (mock *InstanceServerMock) GetStorageVolumeBitmapsCalls() []struct {
+	Pool       string
+	VolumeType string
+	VolumeName string
+} {
+	var calls []struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+	}
+	mock.lockGetStorageVolumeBitmaps.RLock()
+	calls = mock.calls.GetStorageVolumeBitmaps
+	mock.lockGetStorageVolumeBitmaps.RUnlock()
+	return calls
+}
+
 // GetStorageVolumeFile calls GetStorageVolumeFileFunc.
 func (mock *InstanceServerMock) GetStorageVolumeFile(pool string, volumeType string, volumeName string, filePath string) (io.ReadCloser, *incus.InstanceFileResponse, error) {
 	if mock.GetStorageVolumeFileFunc == nil {
@@ -13416,6 +13782,50 @@ func (mock *InstanceServerMock) RebuildInstanceFromImageCalls() []struct {
 	mock.lockRebuildInstanceFromImage.RLock()
 	calls = mock.calls.RebuildInstanceFromImage
 	mock.lockRebuildInstanceFromImage.RUnlock()
+	return calls
+}
+
+// RebuildStoragePoolVolume calls RebuildStoragePoolVolumeFunc.
+func (mock *InstanceServerMock) RebuildStoragePoolVolume(pool string, volType string, name string, volume api.StorageVolumeRebuildPost) (incus.Operation, error) {
+	if mock.RebuildStoragePoolVolumeFunc == nil {
+		panic("InstanceServerMock.RebuildStoragePoolVolumeFunc: method is nil but InstanceServer.RebuildStoragePoolVolume was just called")
+	}
+	callInfo := struct {
+		Pool    string
+		VolType string
+		Name    string
+		Volume  api.StorageVolumeRebuildPost
+	}{
+		Pool:    pool,
+		VolType: volType,
+		Name:    name,
+		Volume:  volume,
+	}
+	mock.lockRebuildStoragePoolVolume.Lock()
+	mock.calls.RebuildStoragePoolVolume = append(mock.calls.RebuildStoragePoolVolume, callInfo)
+	mock.lockRebuildStoragePoolVolume.Unlock()
+	return mock.RebuildStoragePoolVolumeFunc(pool, volType, name, volume)
+}
+
+// RebuildStoragePoolVolumeCalls gets all the calls that were made to RebuildStoragePoolVolume.
+// Check the length with:
+//
+//	len(mockedInstanceServer.RebuildStoragePoolVolumeCalls())
+func (mock *InstanceServerMock) RebuildStoragePoolVolumeCalls() []struct {
+	Pool    string
+	VolType string
+	Name    string
+	Volume  api.StorageVolumeRebuildPost
+} {
+	var calls []struct {
+		Pool    string
+		VolType string
+		Name    string
+		Volume  api.StorageVolumeRebuildPost
+	}
+	mock.lockRebuildStoragePoolVolume.RLock()
+	calls = mock.calls.RebuildStoragePoolVolume
+	mock.lockRebuildStoragePoolVolume.RUnlock()
 	return calls
 }
 
