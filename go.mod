@@ -1,6 +1,6 @@
 module github.com/FuturFusion/operations-center
 
-go 1.25.6
+go 1.26.3
 
 require golang.org/x/sys v0.45.0
 
