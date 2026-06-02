@@ -162,7 +162,7 @@ update-openfga:
 .PHONY: update-gomod
 update-gomod:
 	$(GO) get -t -v -u ./...
-	$(GO) mod tidy --go=1.25.0
+	$(GO) mod tidy --go=1.26.0
 	$(GO) get toolchain@none
 
 .PHONY: update-api
