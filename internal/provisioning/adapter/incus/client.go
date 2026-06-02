@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/url"
 	"path"
@@ -990,9 +991,7 @@ func (c client) SetServerConfig(ctx context.Context, endpoint provisioning.Endpo
 		svr.Config = map[string]string{}
 	}
 
-	for key, value := range config {
-		svr.Config[key] = value
-	}
+	maps.Copy(svr.Config, config)
 
 	err = client.UpdateServer(svr.Writable(), etag)
 	if err != nil {

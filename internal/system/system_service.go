@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 
@@ -208,9 +209,7 @@ func (s *systemService) updateProviderConfigAll(ctx context.Context, cfg map[str
 			providerConfig.Config.Config = map[string]string{}
 		}
 
-		for key, value := range cfg {
-			providerConfig.Config.Config[key] = value
-		}
+		maps.Copy(providerConfig.Config.Config, cfg)
 
 		err = s.serverSvc.UpdateSystemProvider(ctx, server.Name, providerConfig)
 		if err != nil {
