@@ -48,7 +48,7 @@ func rebootOnlyServer(t *testing.T, name string) provisioning.Server {
 
 	return provisioning.Server{
 		Name:          name,
-		Cluster:       ptr.To("clusterA"),
+		Cluster:       new("clusterA"),
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://" + name + "/",
 		Certificate:   string(certPEM),
@@ -68,9 +68,9 @@ func rebootOnlyServer(t *testing.T, name string) provisioning.Server {
 					InMaintenance: api.NotInMaintenance,
 				},
 			},
-			NeedsUpdate:   ptr.To(false),
-			NeedsReboot:   ptr.To(false),
-			InMaintenance: ptr.To(api.NotInMaintenance),
+			NeedsUpdate:   new(false),
+			NeedsReboot:   new(false),
+			InMaintenance: new(api.NotInMaintenance),
 			UpdateChannel: "stable",
 		},
 		Status:       api.ServerStatusReady,
@@ -188,7 +188,7 @@ func setupRebootOnlyCluster(t *testing.T, ctx context.Context, listenerName stri
 	clusterA := provisioning.Cluster{
 		Name:          "clusterA",
 		ConnectionURL: "https://cluster-one/",
-		Certificate:   ptr.To(string(certPEM)),
+		Certificate:   new(string(certPEM)),
 		Fingerprint:   fingerprint,
 		Status:        api.ClusterStatusReady,
 		ServerNames:   serverNames,

@@ -19,7 +19,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema/seed"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -27,7 +26,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
 		Name:          "one",
 		ConnectionURL: "https://cluster-one/",
-		Certificate: ptr.To(`-----BEGIN CERTIFICATE-----
+		Certificate: new(`-----BEGIN CERTIFICATE-----
 cluster A
 -----END CERTIFICATE-----
 `),
@@ -39,7 +38,7 @@ cluster A
 	testClusterB := provisioning.Cluster{
 		Name:          "two",
 		ConnectionURL: "https://cluster-two/",
-		Certificate: ptr.To(`-----BEGIN CERTIFICATE-----
+		Certificate: new(`-----BEGIN CERTIFICATE-----
 cluster B
 -----END CERTIFICATE-----
 `),
@@ -52,7 +51,7 @@ cluster B
 
 	testServerA := provisioning.Server{
 		Name:          "one",
-		Cluster:       ptr.To("one"),
+		Cluster:       new("one"),
 		ConnectionURL: "https://server-one/",
 		Certificate: `-----BEGIN CERTIFICATE-----
 server-one
@@ -66,7 +65,7 @@ server-one
 
 	testServerB := provisioning.Server{
 		Name:          "two",
-		Cluster:       ptr.To("two"),
+		Cluster:       new("two"),
 		ConnectionURL: "https://server-two/",
 		Certificate: `-----BEGIN CERTIFICATE-----
 server-two
@@ -155,10 +154,10 @@ server-two
 
 	// Ensure we have one entry with filter for cluster, server, project and name.
 	instanceUUIDs, err = instance.GetAllUUIDsWithFilter(ctx, inventory.InstanceFilter{
-		Cluster:     ptr.To("one"),
-		Server:      ptr.To("one"),
-		ProjectName: ptr.To("one"),
-		Name:        ptr.To("one"),
+		Cluster:     new("one"),
+		Server:      new("one"),
+		ProjectName: new("one"),
+		Name:        new("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, instanceUUIDs, 1)
@@ -166,10 +165,10 @@ server-two
 
 	// Ensure we have one entry with filter for cluster, server, project and name.
 	dbInstance, err = instance.GetAllWithFilter(ctx, inventory.InstanceFilter{
-		Cluster:     ptr.To("one"),
-		Server:      ptr.To("one"),
-		ProjectName: ptr.To("one"),
-		Name:        ptr.To("one"),
+		Cluster:     new("one"),
+		Server:      new("one"),
+		ProjectName: new("one"),
+		Name:        new("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbInstance, 1)
@@ -200,7 +199,7 @@ server-two
 
 	// Delete instances by cluster Name.
 	err = instance.DeleteWithFilter(ctx, inventory.InstanceFilter{
-		Cluster: ptr.To("two"),
+		Cluster: new("two"),
 	})
 	require.NoError(t, err)
 

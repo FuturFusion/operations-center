@@ -12,7 +12,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/image"
 	"github.com/FuturFusion/operations-center/internal/image/adapter/simplestreams"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -88,7 +87,7 @@ func TestSimplestreams_GetImageList(t *testing.T) {
 					Architecture:    "amd64",
 					OperatingSystem: "alpine",
 					Release:         "edge",
-					Source:          ptr.To("one"),
+					Source:          new("one"),
 					Variant:         "default",
 					Versions: api.IncusImageVersions{
 						"20260615": api.IncusImageVersion{

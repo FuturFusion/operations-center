@@ -26,7 +26,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 )
 
@@ -41,19 +40,19 @@ func TestClient_ClusterEndpointWithCA(t *testing.T) {
 	}{
 		{
 			name:                 "success",
-			clusterConnectionURL: ptr.To(fmt.Sprintf("https://%s/", domainName)),
+			clusterConnectionURL: new(fmt.Sprintf("https://%s/", domainName)),
 
 			assertErr: require.NoError,
 		},
 		{
 			name:                 "error - invalid cluster connection URL",
-			clusterConnectionURL: ptr.To(":|\\"), // invalid
+			clusterConnectionURL: new(":|\\"), // invalid
 
 			assertErr: require.Error,
 		},
 		{
 			name:                 "error - server ip is not present in cluster certificate",
-			clusterConnectionURL: ptr.To("https://127.0.0.1/"),
+			clusterConnectionURL: new("https://127.0.0.1/"),
 
 			assertErr: require.Error,
 		},
@@ -108,7 +107,7 @@ func TestClient_ClusterEndpointWithCA(t *testing.T) {
 				Name:                 "server01",
 				ConnectionURL:        server.URL,
 				Certificate:          string(serverCert),
-				Cluster:              ptr.To("cluster"),
+				Cluster:              new("cluster"),
 				ClusterConnectionURL: tc.clusterConnectionURL,
 			}
 

@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -100,13 +99,13 @@ func serverPendingSteps(state api.ServerUpdateState, perServerSteps int, firstSt
 func serverUpdateStateForRollingUpdate(inProgressStatus api.ClusterUpdateInProgressStatus, server provisioning.Server) api.ServerUpdateState {
 	switch inProgressStatus.InProgress {
 	case api.ClusterUpdateInProgressRollingRestart:
-		server.VersionData.NeedsUpdate = ptr.To(false)
+		server.VersionData.NeedsUpdate = new(false)
 
 	case api.ClusterUpdateInProgressRollingReboot:
-		server.VersionData.NeedsUpdate = ptr.To(false)
+		server.VersionData.NeedsUpdate = new(false)
 
 		if slices.Contains(inProgressStatus.PendingReboot, server.Name) {
-			server.VersionData.NeedsReboot = ptr.To(true)
+			server.VersionData.NeedsReboot = new(true)
 		}
 
 	case api.ClusterUpdateInProgressApplyUpdate,

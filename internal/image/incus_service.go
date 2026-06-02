@@ -27,7 +27,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/file"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -449,7 +448,7 @@ func (s *imageIncusService) DeleteBySource(ctx context.Context, sourceName strin
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		images, err := s.repo.GetAllWithFilter(ctx, IncusImageFilter{
-			Source: ptr.To(sourceName),
+			Source: new(sourceName),
 		})
 		if err != nil {
 			return fmt.Errorf("Failed to get incus images for source %q: %w", sourceName, err)
@@ -600,7 +599,7 @@ func (s *imageIncusService) RefreshFromSource(ctx context.Context, source IncusI
 	}
 
 	dbImages, err := s.repo.GetAllWithFilter(ctx, IncusImageFilter{
-		Source: ptr.To(source.Name),
+		Source: new(source.Name),
 	})
 	if err != nil {
 		return fmt.Errorf("Failed to get images from DB for source %q: %w", source.Name, err)

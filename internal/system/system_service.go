@@ -15,7 +15,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/acme"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -113,7 +112,7 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 	// on IncusOS.
 	if s.env.IsIncusOS() {
 		servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
-			Type: ptr.To(api.ServerTypeOperationsCenter),
+			Type: new(api.ServerTypeOperationsCenter),
 		})
 		if err != nil {
 			return fmt.Errorf("Failed to get operations-center server entry: %w", err)

@@ -18,7 +18,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/bmc/redfish"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -3247,8 +3246,8 @@ func TestRedfish_BIOSAttributes(t *testing.T) {
 
 			want: []api.BIOSAttribute{
 				{Name: "CbsDfCmnAcpiSratL3Numa", Type: "Enumeration", CurrentValue: "Enabled", AcceptableValues: []string{"Enabled", "Disabled"}},
-				{Name: "CustomIntegerAttr", Type: "Integer", CurrentValue: float64(5), LowerBound: ptr.To(int64(0)), UpperBound: ptr.To(int64(20)), AcceptableValues: []string{}},
-				{Name: "NumaNodesPerSocket", Type: "String", CurrentValue: "4", MinLength: ptr.To(int64(1)), MaxLength: ptr.To(int64(2)), AcceptableValues: []string{}},
+				{Name: "CustomIntegerAttr", Type: "Integer", CurrentValue: float64(5), LowerBound: new(int64(0)), UpperBound: new(int64(20)), AcceptableValues: []string{}},
+				{Name: "NumaNodesPerSocket", Type: "String", CurrentValue: "4", MinLength: new(int64(1)), MaxLength: new(int64(2)), AcceptableValues: []string{}},
 			},
 			assertErr: require.NoError,
 		},
@@ -3336,8 +3335,8 @@ func TestRedfish_BIOSAttributes(t *testing.T) {
 
 			want: []api.BIOSAttribute{
 				{Name: "CbsDfCmnAcpiSratL3Numa", Type: "Enumeration", CurrentValue: "Enabled", AcceptableValues: []string{"Enabled", "Disabled"}},
-				{Name: "CustomIntegerAttr", Type: "Integer", CurrentValue: float64(5), LowerBound: ptr.To(int64(0)), UpperBound: ptr.To(int64(20)), AcceptableValues: []string{}},
-				{Name: "NumaNodesPerSocket", Type: "String", CurrentValue: "4", MinLength: ptr.To(int64(1)), MaxLength: ptr.To(int64(2)), AcceptableValues: []string{}},
+				{Name: "CustomIntegerAttr", Type: "Integer", CurrentValue: float64(5), LowerBound: new(int64(0)), UpperBound: new(int64(20)), AcceptableValues: []string{}},
+				{Name: "NumaNodesPerSocket", Type: "String", CurrentValue: "4", MinLength: new(int64(1)), MaxLength: new(int64(2)), AcceptableValues: []string{}},
 				{Name: "UndocumentedAttr", CurrentValue: "SomeValue"},
 			},
 			assertErr: require.NoError,
@@ -3440,8 +3439,8 @@ func TestRedfish_BIOSAttribute(t *testing.T) {
 				Type:             "String",
 				CurrentValue:     "4",
 				AcceptableValues: []string{},
-				MinLength:        ptr.To(int64(1)),
-				MaxLength:        ptr.To(int64(2)),
+				MinLength:        new(int64(1)),
+				MaxLength:        new(int64(2)),
 			},
 			assertErr: require.NoError,
 		},
@@ -3463,8 +3462,8 @@ func TestRedfish_BIOSAttribute(t *testing.T) {
 				Type:             "Integer",
 				CurrentValue:     float64(5),
 				AcceptableValues: []string{},
-				LowerBound:       ptr.To(int64(0)),
-				UpperBound:       ptr.To(int64(20)),
+				LowerBound:       new(int64(0)),
+				UpperBound:       new(int64(20)),
 			},
 			assertErr: require.NoError,
 		},
