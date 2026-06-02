@@ -142,6 +142,101 @@ cluster_groups:
 					ID:                    1,
 					ApplicationSeedConfig: applicationSeedConfig,
 				},
+
+				// Configurations with scope local from:
+				// https://github.com/breml/incus/blob/39895ed07d8ed4b40f31cb35cfea1c149ed70ee9/internal/server/metadata/configuration.json
+				//
+				// Extract with:
+				//     jq '
+				//     .configs
+				//     | with_entries(
+				//         .value =
+				//           (
+				//             [
+				//               .value[]
+				//               | .keys[]?
+				//               | to_entries[]
+				//               | select(.value.scope == "local")
+				//               | {key: .key, value: true}
+				//             ]
+				//             | from_entries
+				//           )
+				//       )
+				//     | with_entries(select(.value | length > 0))
+				//     ' internal/server/metadata/configuration.json
+				NodeSpecificConfigKeys: map[string]map[string]bool{
+					"network_bridge": {
+						"bgp.ipv4.nexthop": true,
+						"bgp.ipv6.nexthop": true,
+					},
+					"network_macvlan": {
+						"parent": true,
+					},
+					"network_ovn": {
+						"bridge.external_interfaces": true,
+					},
+					"network_physical": {
+						"parent": true,
+					},
+					"network_sriov": {
+						"parent": true,
+					},
+					"server": {
+						"cluster.https_address":        true,
+						"core.bgp_address":             true,
+						"core.bgp_routerid":            true,
+						"core.debug_address":           true,
+						"core.dns_address":             true,
+						"core.https_address":           true,
+						"core.metrics_address":         true,
+						"core.storage_buckets_address": true,
+						"core.syslog_socket":           true,
+						"storage.backups_volume":       true,
+						"storage.images_volume":        true,
+						"storage.logs_volume":          true,
+					},
+					"storage_btrfs": {
+						"size":        true,
+						"source":      true,
+						"source.wipe": true,
+					},
+					"storage_ceph": {
+						"source": true,
+					},
+					"storage_cephfs": {
+						"source": true,
+					},
+					"storage_dir": {
+						"source": true,
+					},
+					"storage_lvm": {
+						"lvm.thinpool_name":  true,
+						"lvm.vg.force_reuse": true,
+						"lvm.vg_name":        true,
+						"size":               true,
+						"source":             true,
+						"source.wipe":        true,
+					},
+					"storage_truenas": {
+						"source": true,
+					},
+					"storage_zfs": {
+						"size":          true,
+						"source":        true,
+						"source.wipe":   true,
+						"zfs.pool_name": true,
+					},
+
+					// NOTE: This has been MANUALLY added copy from storage_lvm, since it is missing in /1.0/metadata/configuration.
+					"storage_lvmcluster": {
+						"lvm.thinpool_name":  true,
+						"lvm.vg.force_reuse": true,
+						"lvm.vg_name":        true,
+						// "size":               true, // removed, since it is not local for lvmcluster.
+						"source":      true,
+						"source.wipe": true,
+					},
+				},
 			})
 
 			// Assert
