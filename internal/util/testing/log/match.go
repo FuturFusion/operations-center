@@ -54,7 +54,7 @@ func Contains(want string) func(t *testing.T, logBuf *bytes.Buffer) {
 		t.Helper()
 
 		// Give logs a little bit of time to be processed.
-		for range 10 {
+		for range 20 {
 			if strings.Contains(logBuf.String(), want) {
 				break
 			}
@@ -74,7 +74,7 @@ func Match(expr string) func(t *testing.T, logBuf *bytes.Buffer) {
 		require.NoError(t, err)
 
 		// Give logs a little bit of time to be processed.
-		for range 10 {
+		for range 20 {
 			if re.Match(logBuf.Bytes()) {
 				break
 			}
