@@ -89,8 +89,8 @@ func (c *CmdQuery) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	var tmpl *template.Template
-	if strings.HasPrefix(c.flagOutputTemplate, ":") {
-		name := strings.TrimPrefix(c.flagOutputTemplate, ":")
+	name, ok := strings.CutPrefix(c.flagOutputTemplate, ":")
+	if ok {
 		tmplBody, ok := embeddedTemplates[name]
 		if !ok {
 			return fmt.Errorf("%q is not a valid embedded template", name)
