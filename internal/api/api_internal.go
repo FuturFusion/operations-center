@@ -79,7 +79,7 @@ func (i *internalHandler) sqlPost(r *http.Request) response.Response {
 	}
 
 	batch := dump.SQLBatch{}
-	for _, query := range strings.Split(req.Query, ";") {
+	for query := range strings.SplitSeq(req.Query, ";") {
 		query = strings.TrimLeft(query, " ")
 
 		if query == "" {
