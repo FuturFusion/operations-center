@@ -1613,7 +1613,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 		serviceOptions                    []inventory.{{ .Name | pascalcase }}ServiceOption
 
 		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name: "success",

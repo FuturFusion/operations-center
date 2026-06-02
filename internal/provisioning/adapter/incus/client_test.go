@@ -4334,7 +4334,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 		assertErr        require.ErrorAssertionFunc
 		assertErrChanErr require.ErrorAssertionFunc
 		wantEvent        domain.LifecycleEvent
-		assertLog        func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog        log.MatcherFunc
 	}{
 		{
 			name:   "success one event",

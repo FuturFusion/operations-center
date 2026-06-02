@@ -6906,7 +6906,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 		incusClientDeleteClusterMemberErr      error
 
 		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name: "success",
@@ -8133,7 +8133,7 @@ func TestClusterService_Update(t *testing.T) {
 			},
 
 			assertErr: boom.ErrorIs,
-			assertLog: func(t *testing.T, logBuf *bytes.Buffer) {
+			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
 				t.Helper()
 				log.Contains("Failed to restore previous cluster state after failed to update servers of the cluster cluster=one err=boom!")(t, logBuf)
 				log.Contains("Failed to restore previous server state after failed to update member server of cluster cluster=one server=one err=boom!")(t, logBuf)
@@ -8960,7 +8960,7 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
 
 		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name: "success - cluster already up to date",
@@ -9925,7 +9925,7 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 		clientUpdateNetworkConfig []queue.Item[*incusosapi.SystemNetworkConfig] // Value is the expected value.
 
 		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name:             "success",
@@ -10380,7 +10380,7 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 		clientUpdateNetworkConfig []queue.Item[*incusosapi.SystemNetworkConfig] // Value is the expected value.
 
 		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name:             "success",
@@ -10721,7 +10721,7 @@ func TestClusterService_UpdateSystemLogging(t *testing.T) {
 		serverSvcUpdateSystemLogging []queue.Item[struct{}]
 
 		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name:             "success",
@@ -11005,7 +11005,7 @@ func TestClusterService_UpdateSystemKernel(t *testing.T) {
 		serverSvcUpdateSystemKernel []queue.Item[struct{}]
 
 		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name:            "success",
@@ -11288,7 +11288,7 @@ func TestClusterService_AddApplication(t *testing.T) {
 		serverSvcAddApplication   []queue.Item[struct{}]
 
 		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name:               "success",
@@ -11482,7 +11482,7 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
 
 		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name:    "success",
@@ -11819,7 +11819,7 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
 
 		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name:    "success",
@@ -12184,7 +12184,7 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 		serverSvcGetAllWithFilter   []queue.Item[provisioning.Servers]
 
 		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name:      "success",
@@ -12495,7 +12495,7 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 		serverSvcGetAllWithFilter   []queue.Item[provisioning.Servers]
 
 		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name:      "success",
@@ -12806,7 +12806,7 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
 
 		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name:    "success",
@@ -13143,7 +13143,7 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 		serverSvcGetAllWithFilter []queue.Item[provisioning.Servers]
 
 		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name:    "success",
@@ -13519,7 +13519,7 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 
 		assertErr           require.ErrorAssertionFunc
 		wantProcessedEvents int
-		assertLog           func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog           log.MatcherFunc
 	}{
 		{
 			name:     "success - one cluster and one event",
@@ -13815,7 +13815,7 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 		serverSvcGetAllWithFilterErr error
 		updateMessage                lifecycle.ClusterUpdateMessage
 
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name: "success register cluster",

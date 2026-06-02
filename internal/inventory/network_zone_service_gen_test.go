@@ -1135,7 +1135,7 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 		serviceOptions                      []inventory.NetworkZoneServiceOption
 
 		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name: "success",

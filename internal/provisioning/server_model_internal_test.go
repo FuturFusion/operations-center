@@ -17,7 +17,7 @@ func TestServer_SignalLifecycleEvent(t *testing.T) {
 		name                              string
 		lifecycleServerLifecycleSignalErr error
 
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name: "success",

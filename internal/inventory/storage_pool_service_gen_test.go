@@ -1077,7 +1077,7 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 		serviceOptions                      []inventory.StoragePoolServiceOption
 
 		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertLog log.MatcherFunc
 	}{
 		{
 			name: "success",
