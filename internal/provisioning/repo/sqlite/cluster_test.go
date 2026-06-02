@@ -14,7 +14,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -34,7 +33,7 @@ func TestClusterDatabaseActions(t *testing.T) {
 	clusterA := provisioning.Cluster{
 		Name:          "one",
 		ConnectionURL: "https://cluster-one/",
-		Certificate:   ptr.To(string(certPEMA)),
+		Certificate:   new(string(certPEMA)),
 		Fingerprint:   fingerprintA,
 		Status:        api.ClusterStatusReady,
 		ServerNames:   []string{"server1", "server2"},
@@ -44,7 +43,7 @@ func TestClusterDatabaseActions(t *testing.T) {
 	clusterB := provisioning.Cluster{
 		Name:          "two",
 		ConnectionURL: "https://cluster-one/",
-		Certificate:   ptr.To(string(certPEMB)),
+		Certificate:   new(string(certPEMB)),
 		Fingerprint:   fingerprintB,
 		Status:        api.ClusterStatusReady,
 		ServerNames:   []string{"server10", "server11"},
@@ -112,7 +111,7 @@ func TestClusterDatabaseActions(t *testing.T) {
 
 	// Get all with filter
 	clusters, err = cluster.GetAllWithFilter(ctx, provisioning.ClusterFilter{
-		Name: ptr.To("one"),
+		Name: new("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, clusters, 1)

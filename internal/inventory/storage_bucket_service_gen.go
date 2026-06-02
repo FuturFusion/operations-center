@@ -17,7 +17,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
 type storageBucketService struct {
@@ -200,7 +199,7 @@ func (s storageBucketService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 			slog.WarnContext(ctx, "expected project missing in ResyncByUUID", slog.String("resource-type", "storage_bucket"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
 		}
 
-		storageBucket.Server = ptr.To(retrievedStorageBucket.Location)
+		storageBucket.Server = new(retrievedStorageBucket.Location)
 		storageBucket.ProjectName = firstNonEmpty(retrievedStorageBucket.Project, storageBucket.ProjectName, "default")
 		storageBucket.Object = IncusStorageBucketFullWrapper{retrievedStorageBucket}
 		storageBucket.LastUpdated = s.now()
@@ -280,7 +279,7 @@ func (s storageBucketService) handleCreateEvent(ctx context.Context, clusterName
 
 	storageBucket := StorageBucket{
 		Cluster:         clusterName,
-		Server:          ptr.To(retrievedStorageBucket.Location),
+		Server:          new(retrievedStorageBucket.Location),
 		ProjectName:     firstNonEmpty(retrievedStorageBucket.Project, event.Source.ProjectName, "default"),
 		StoragePoolName: event.Source.ParentName,
 		Name:            retrievedStorageBucket.Name,
@@ -441,7 +440,7 @@ func (s storageBucketService) SyncCluster(ctx context.Context, name string) erro
 			for _, retrievedStorageBucket := range retrievedStorageBuckets {
 				storageBucket := StorageBucket{
 					Cluster:         name,
-					Server:          ptr.To(retrievedStorageBucket.Location),
+					Server:          new(retrievedStorageBucket.Location),
 					ProjectName:     retrievedStorageBucket.Project,
 					StoragePoolName: storagePool.Name,
 					Name:            retrievedStorageBucket.Name,

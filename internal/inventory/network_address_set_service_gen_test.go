@@ -19,7 +19,6 @@ import (
 	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
@@ -52,7 +51,7 @@ func TestNetworkAddressSetService_GetAllWithFilter(t *testing.T) {
 		},
 		{
 			name:             "success - with filter expression",
-			filterExpression: ptr.To(`name == "one"`),
+			filterExpression: new(`name == "one"`),
 			repoGetAllWithFilter: inventory.NetworkAddressSets{
 				inventory.NetworkAddressSet{
 					Name: "one",
@@ -67,7 +66,7 @@ func TestNetworkAddressSetService_GetAllWithFilter(t *testing.T) {
 		},
 		{
 			name:             "error - non bool expression",
-			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
+			filterExpression: new(`"string"`), // invalid, does evaluate to string instead of boolean.
 			repoGetAllWithFilter: inventory.NetworkAddressSets{
 				inventory.NetworkAddressSet{
 					Name: "one",
@@ -79,7 +78,7 @@ func TestNetworkAddressSetService_GetAllWithFilter(t *testing.T) {
 		},
 		{
 			name:             "error - filter expression run",
-			filterExpression: ptr.To(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
+			filterExpression: new(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
 			repoGetAllWithFilter: inventory.NetworkAddressSets{
 				inventory.NetworkAddressSet{
 					Name: "one",
@@ -145,7 +144,7 @@ func TestNetworkAddressSetService_GetAllUUIDsWithFilter(t *testing.T) {
 		},
 		{
 			name:             "success - with filter expression",
-			filterExpression: ptr.To(`uuid == "11111111-1111-1111-1111-111111111111"`),
+			filterExpression: new(`uuid == "11111111-1111-1111-1111-111111111111"`),
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
 				uuidgen.FromPattern(t, "1"),
 				uuidgen.FromPattern(t, "2"),
@@ -156,7 +155,7 @@ func TestNetworkAddressSetService_GetAllUUIDsWithFilter(t *testing.T) {
 		},
 		{
 			name:             "error - non bool expression",
-			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
+			filterExpression: new(`"string"`), // invalid, does evaluate to string instead of boolean.
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
 				uuidgen.FromPattern(t, "1"),
 			},
@@ -166,7 +165,7 @@ func TestNetworkAddressSetService_GetAllUUIDsWithFilter(t *testing.T) {
 		},
 		{
 			name:             "error - filter expression run",
-			filterExpression: ptr.To(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
+			filterExpression: new(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
 				uuidgen.FromPattern(t, "1"),
 			},
@@ -300,7 +299,7 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByName: incusapi.NetworkAddressSet{
@@ -328,7 +327,7 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByNameErr: domain.ErrNotFound,
@@ -361,7 +360,7 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByName: incusapi.NetworkAddressSet{
@@ -414,7 +413,7 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByNameErr: boom.Error,
@@ -437,7 +436,7 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByNameErr: domain.ErrNotFound,
@@ -464,7 +463,7 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 
@@ -494,7 +493,7 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByName: incusapi.NetworkAddressSet{
@@ -533,7 +532,7 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByName: incusapi.NetworkAddressSet{
@@ -637,9 +636,9 @@ func TestNetworkAddressSetService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByName: incusapi.NetworkAddressSet{
@@ -688,9 +687,9 @@ func TestNetworkAddressSetService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByName: incusapi.NetworkAddressSet{
@@ -719,9 +718,9 @@ func TestNetworkAddressSetService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByName: incusapi.NetworkAddressSet{
@@ -763,9 +762,9 @@ func TestNetworkAddressSetService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByName: incusapi.NetworkAddressSet{
@@ -793,9 +792,9 @@ func TestNetworkAddressSetService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByName: incusapi.NetworkAddressSet{
@@ -850,9 +849,9 @@ func TestNetworkAddressSetService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByNameErr: boom.Error,
@@ -875,9 +874,9 @@ func TestNetworkAddressSetService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByName: incusapi.NetworkAddressSet{
@@ -908,9 +907,9 @@ func TestNetworkAddressSetService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByName: incusapi.NetworkAddressSet{
@@ -994,9 +993,9 @@ func TestNetworkAddressSetService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByName: incusapi.NetworkAddressSet{
@@ -1029,9 +1028,9 @@ func TestNetworkAddressSetService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByName: incusapi.NetworkAddressSet{
@@ -1170,7 +1169,7 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientHasExtension: true,
@@ -1207,7 +1206,7 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientHasExtension: true,
@@ -1255,7 +1254,7 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientHasExtension: false,
@@ -1269,7 +1268,7 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientHasExtension: true,
@@ -1294,7 +1293,7 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientHasExtension: true,
@@ -1352,7 +1351,7 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientHasExtension:             true,
@@ -1367,7 +1366,7 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientHasExtension: true,
@@ -1390,7 +1389,7 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientHasExtension: true,
@@ -1413,7 +1412,7 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientHasExtension: true,
@@ -1438,7 +1437,7 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkAddressSetClientHasExtension: true,

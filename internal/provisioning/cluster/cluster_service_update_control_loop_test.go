@@ -55,7 +55,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 	clusterA := provisioning.Cluster{
 		Name:          "clusterA",
 		ConnectionURL: "https://cluster-one/",
-		Certificate:   ptr.To(string(certPEM)),
+		Certificate:   new(string(certPEM)),
 		Fingerprint:   fingerprint,
 		Status:        api.ClusterStatusReady,
 		ServerNames:   []string{"serverA"},
@@ -69,7 +69,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 
 	serverA := provisioning.Server{
 		Name:          "one",
-		Cluster:       ptr.To("clusterA"),
+		Cluster:       new("clusterA"),
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
 		Certificate:   string(certPEM),
@@ -89,8 +89,8 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 					InMaintenance: api.NotInMaintenance,
 				},
 			},
-			NeedsUpdate:   ptr.To(true),
-			InMaintenance: ptr.To(api.NotInMaintenance),
+			NeedsUpdate:   new(true),
+			InMaintenance: new(api.NotInMaintenance),
 			UpdateChannel: "stable",
 		},
 		Status:       api.ServerStatusReady,
@@ -508,7 +508,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 	clusterA := provisioning.Cluster{
 		Name:          "clusterA",
 		ConnectionURL: "https://cluster-one/",
-		Certificate:   ptr.To(string(certPEMA)),
+		Certificate:   new(string(certPEMA)),
 		Fingerprint:   fingerprintA,
 		Status:        api.ClusterStatusReady,
 		ServerNames:   []string{"serverA", "serverB", "serverC"},
@@ -522,7 +522,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 
 	serverA := provisioning.Server{
 		Name:          "serverA",
-		Cluster:       ptr.To("clusterA"),
+		Cluster:       new("clusterA"),
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://serverA/",
 		Certificate:   string(certPEMA),
@@ -542,8 +542,8 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 					InMaintenance: api.NotInMaintenance,
 				},
 			},
-			NeedsUpdate:   ptr.To(true),
-			InMaintenance: ptr.To(api.NotInMaintenance),
+			NeedsUpdate:   new(true),
+			InMaintenance: new(api.NotInMaintenance),
 			UpdateChannel: "stable",
 		},
 		Status:       api.ServerStatusReady,
@@ -553,7 +553,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 
 	serverB := provisioning.Server{
 		Name:          "serverB",
-		Cluster:       ptr.To("clusterA"),
+		Cluster:       new("clusterA"),
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://serverB/",
 		Certificate:   string(certPEMB),
@@ -573,8 +573,8 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 					InMaintenance: api.NotInMaintenance,
 				},
 			},
-			NeedsUpdate:   ptr.To(true),
-			InMaintenance: ptr.To(api.NotInMaintenance),
+			NeedsUpdate:   new(true),
+			InMaintenance: new(api.NotInMaintenance),
 			UpdateChannel: "stable",
 		},
 		Status:       api.ServerStatusReady,
@@ -584,7 +584,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 
 	serverC := provisioning.Server{
 		Name:          "serverC",
-		Cluster:       ptr.To("clusterA"),
+		Cluster:       new("clusterA"),
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://serverC/",
 		Certificate:   string(certPEMC),
@@ -604,8 +604,8 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 					InMaintenance: api.NotInMaintenance,
 				},
 			},
-			NeedsUpdate:   ptr.To(true),
-			InMaintenance: ptr.To(api.NotInMaintenance),
+			NeedsUpdate:   new(true),
+			InMaintenance: new(api.NotInMaintenance),
 			UpdateChannel: "stable",
 		},
 		Status:       api.ServerStatusReady,
@@ -1110,13 +1110,13 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 						{
 							Name:          "server1",
 							ConnectionURL: "https://server1:8443",
-							Cluster:       ptr.To("cluster"),
+							Cluster:       new("cluster"),
 							Status:        api.ServerStatusReady,
 							StatusDetail:  api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(false),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(false),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 								Applications: []api.ApplicationVersionData{
 									{
 										Name: "incus",
@@ -1127,13 +1127,13 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 						{
 							Name:          "server2",
 							ConnectionURL: "https://server1:8443",
-							Cluster:       ptr.To("cluster"),
+							Cluster:       new("cluster"),
 							Status:        api.ServerStatusReady,
 							StatusDetail:  api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 								Applications: []api.ApplicationVersionData{
 									{
 										Name: "incus",
@@ -1144,13 +1144,13 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 						{
 							Name:          "server3",
 							ConnectionURL: "https://server2:8443",
-							Cluster:       ptr.To("cluster"),
+							Cluster:       new("cluster"),
 							Status:        api.ServerStatusReady,
 							StatusDetail:  api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 								Applications: []api.ApplicationVersionData{
 									{
 										Name: "incus",
@@ -1338,7 +1338,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 							Name:   "server",
 							Status: api.ServerStatusReady,
 							VersionData: api.ServerVersionData{
-								NeedsUpdate: ptr.To(true),
+								NeedsUpdate: new(true),
 							},
 						},
 					},
@@ -1443,7 +1443,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 							Name:   "server",
 							Status: api.ServerStatusReady,
 							VersionData: api.ServerVersionData{
-								NeedsUpdate: ptr.To(true),
+								NeedsUpdate: new(true),
 							},
 						},
 					},
@@ -1553,9 +1553,9 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(false),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(false),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 							},
 						},
 						{
@@ -1598,16 +1598,16 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(false),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(false),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 							},
 						},
 						{
 							Name:   "server2",
 							Status: api.ServerStatusReady,
 							VersionData: api.ServerVersionData{
-								NeedsUpdate: ptr.To(true),
+								NeedsUpdate: new(true),
 							},
 						},
 					},
@@ -1645,9 +1645,9 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(false),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(false),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 							},
 						},
 						{
@@ -1690,9 +1690,9 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(false),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(false),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 							},
 						},
 						{
@@ -1701,9 +1701,9 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 							Status:        api.ServerStatusReady,
 							StatusDetail:  api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(false),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(false),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 								Applications: []api.ApplicationVersionData{
 									{
 										Name: "incus",
@@ -1743,14 +1743,14 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:          "server",
-							Cluster:       ptr.To("cluster"),
+							Cluster:       new("cluster"),
 							ConnectionURL: "https://server:8443",
 							Status:        api.ServerStatusReady,
 							StatusDetail:  api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 								Applications: []api.ApplicationVersionData{
 									{
 										Name: "incus",
@@ -1789,14 +1789,14 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:          "server",
-							Cluster:       ptr.To("cluster"),
+							Cluster:       new("cluster"),
 							ConnectionURL: "https://server:8443",
 							Status:        api.ServerStatusReady,
 							StatusDetail:  api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 								Applications: []api.ApplicationVersionData{
 									{
 										Name: "incus",
@@ -1838,14 +1838,14 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:          "server",
-							Cluster:       ptr.To("cluster"),
+							Cluster:       new("cluster"),
 							ConnectionURL: "https://server:8443",
 							Status:        api.ServerStatusReady,
 							StatusDetail:  api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 								Applications: []api.ApplicationVersionData{
 									{
 										Name: "incus",
@@ -1888,14 +1888,14 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:          "server",
-							Cluster:       ptr.To("cluster"),
+							Cluster:       new("cluster"),
 							ConnectionURL: "https://server:8443",
 							Status:        api.ServerStatusReady,
 							StatusDetail:  api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 								Applications: []api.ApplicationVersionData{
 									{
 										Name: "incus",
@@ -1934,7 +1934,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:          "server",
-							Cluster:       ptr.To("cluster"),
+							Cluster:       new("cluster"),
 							ConnectionURL: "https://server:8443",
 							Status:        api.ServerStatusReady,
 							StatusDetail:  api.ServerStatusDetailNone,
@@ -1971,7 +1971,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:          "server",
-							Cluster:       ptr.To("cluster"),
+							Cluster:       new("cluster"),
 							ConnectionURL: "https://server:8443",
 							Status:        api.ServerStatusReady,
 							StatusDetail:  api.ServerStatusDetailNone,

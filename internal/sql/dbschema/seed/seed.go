@@ -15,7 +15,6 @@ import (
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -57,7 +56,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		_, err = clusterRepo.Create(ctx, provisioning.Cluster{
 			Name:          clusterName,
 			ConnectionURL: fmt.Sprintf("https://%s.domain.tdl", clusterName),
-			Certificate:   ptr.To(string(clusterCertPEM)),
+			Certificate:   new(string(clusterCertPEM)),
 			LastUpdated:   faker.Date(),
 			Channel:       "stable",
 		})
@@ -620,7 +619,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 			projectName := faker.RandomString(projects)
 			storageBucket := inventory.StorageBucket{
 				Cluster:         clusterName,
-				Server:          ptr.To(faker.RandomString(servers)),
+				Server:          new(faker.RandomString(servers)),
 				Name:            storageBucketName,
 				StoragePoolName: faker.RandomString(storagePools),
 				ProjectName:     projectName,
@@ -654,7 +653,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 			projectName := faker.RandomString(projects)
 			storageVolume := inventory.StorageVolume{
 				Cluster:         clusterName,
-				Server:          ptr.To(faker.RandomString(servers)),
+				Server:          new(faker.RandomString(servers)),
 				Name:            storageVolumeName,
 				StoragePoolName: faker.RandomString(storagePools),
 				ProjectName:     projectName,

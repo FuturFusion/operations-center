@@ -11,7 +11,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -142,11 +141,11 @@ func (i *storagePoolHandler) storagePoolsGet(r *http.Request) response.Response 
 	var filter inventory.StoragePoolFilter
 
 	if r.URL.Query().Get("cluster") != "" {
-		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+		filter.Cluster = new(r.URL.Query().Get("cluster"))
 	}
 
 	if r.URL.Query().Get("filter") != "" {
-		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
+		filter.Expression = new(r.URL.Query().Get("filter"))
 	}
 
 	if recursion == 1 {

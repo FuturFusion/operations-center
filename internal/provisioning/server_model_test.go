@@ -8,7 +8,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -24,7 +23,7 @@ func TestServer_Validate(t *testing.T) {
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -41,7 +40,7 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeOperationsCenter,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -58,7 +57,7 @@ one
 			server: provisioning.Server{
 				Name:          "", // invalid
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -78,7 +77,7 @@ one
 			server: provisioning.Server{
 				Name:          ":self", // reserved for internal use, not allowed
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -98,7 +97,7 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          "", // empty
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -118,7 +117,7 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerType("invalid"), // invalid
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -138,7 +137,7 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "", // invalid
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -158,7 +157,7 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: ":|\\", // invalid
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -178,7 +177,7 @@ one
 			server: provisioning.Server{
 				Name:                "one",
 				Type:                api.ServerTypeIncus,
-				Cluster:             ptr.To("one"),
+				Cluster:             new("one"),
 				ConnectionURL:       "http://one/",
 				PublicConnectionURL: ":|\\", // invalid
 				Certificate: `-----BEGIN CERTIFICATE-----
@@ -198,7 +197,7 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate:   ``, // invalid
 				Status:        api.ServerStatusReady,
@@ -215,7 +214,7 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -235,7 +234,7 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -255,7 +254,7 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -276,7 +275,7 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -320,11 +319,11 @@ func TestServer_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: provisioning.ServerFilter{
-				Cluster:     ptr.To("cluster"),
-				Status:      ptr.To(api.ServerStatusReady),
-				Certificate: ptr.To("certificate"),
-				Type:        ptr.To(api.ServerTypeIncus),
-				Expression:  ptr.To("true"),
+				Cluster:     new("cluster"),
+				Status:      new(api.ServerStatusReady),
+				Certificate: new("certificate"),
+				Type:        new(api.ServerTypeIncus),
+				Expression:  new("true"),
 			},
 
 			want:      `certificate=certificate&cluster=cluster&filter=true&status=ready&type=incus`,
@@ -352,18 +351,18 @@ func TestServer_Getters(t *testing.T) {
 	require.Equal(t, server.ConnectionURL, server.GetConnectionURL())
 
 	// Cluster with not cluster certificate set.
-	server.Cluster = ptr.To("cluster")
+	server.Cluster = new("cluster")
 	require.Empty(t, server.GetCertificate())
 
 	// Cluster with cluster certificate set.
-	server.ClusterCertificate = ptr.To("cluster cert")
+	server.ClusterCertificate = new("cluster cert")
 	require.Equal(t, *server.ClusterCertificate, server.GetCertificate())
 }
 
 func TestServer_Clone(t *testing.T) {
 	server := provisioning.Server{
 		Name:    "name",
-		Cluster: ptr.To("cluster"),
+		Cluster: new("cluster"),
 		Type:    api.ServerTypeIncus,
 		Status:  api.ServerStatusReady,
 		VersionData: api.ServerVersionData{
@@ -413,7 +412,7 @@ func TestServer_GetServerName(t *testing.T) {
 			name: "success - cluster",
 			server: provisioning.Server{
 				ConnectionURL:        "http://example.com:443/",
-				ClusterConnectionURL: ptr.To("http://cluster.com:443/"),
+				ClusterConnectionURL: new("http://cluster.com:443/"),
 			},
 
 			assertErr:  require.NoError,

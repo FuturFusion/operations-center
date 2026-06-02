@@ -15,7 +15,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/inventory"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
 )
@@ -136,19 +135,19 @@ func (c *cmdStorageBucketList) run(cmd *cobra.Command, args []string) error {
 	var filter inventory.StorageBucketFilter
 
 	if c.flagFilterCluster != "" {
-		filter.Cluster = ptr.To(c.flagFilterCluster)
+		filter.Cluster = new(c.flagFilterCluster)
 	}
 
 	if c.flagFilterServer != "" {
-		filter.Server = ptr.To(c.flagFilterServer)
+		filter.Server = new(c.flagFilterServer)
 	}
 
 	if c.flagFilterProject != "" {
-		filter.ProjectName = ptr.To(c.flagFilterProject)
+		filter.ProjectName = new(c.flagFilterProject)
 	}
 
 	if c.flagFilterExpression != "" {
-		filter.Expression = ptr.To(c.flagFilterExpression)
+		filter.Expression = new(c.flagFilterExpression)
 	}
 
 	storageBuckets, err := c.ocClient.GetWithFilterStorageBuckets(cmd.Context(), filter)

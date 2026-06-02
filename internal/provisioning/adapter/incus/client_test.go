@@ -26,7 +26,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -4264,8 +4263,8 @@ func TestClientServer(t *testing.T) {
 						Name:               "server01",
 						ConnectionURL:      server.URL,
 						Certificate:        string(serverCert),
-						Cluster:            ptr.To("cluster"),
-						ClusterCertificate: ptr.To(string(serverCert)),
+						Cluster:            new("cluster"),
+						ClusterCertificate: new(string(serverCert)),
 						OSData: api.OSData{
 							Network: incusosapi.SystemNetwork{
 								State: incusosapi.SystemNetworkState{

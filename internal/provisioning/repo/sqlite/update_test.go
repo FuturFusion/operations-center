@@ -17,7 +17,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -111,13 +110,13 @@ func TestUpdateDatabaseActions(t *testing.T) {
 
 	// Ensure we have one entry with filter
 	updates, err = update.GetAllWithFilter(ctx, provisioning.UpdateFilter{
-		Origin: ptr.To("linuxcontainers.org"),
+		Origin: new("linuxcontainers.org"),
 	})
 	require.NoError(t, err)
 	require.Len(t, updates, 1)
 
 	updateIDs, err = update.GetAllUUIDsWithFilter(ctx, provisioning.UpdateFilter{
-		Origin: ptr.To("alternative.org"),
+		Origin: new("alternative.org"),
 	})
 	require.NoError(t, err)
 	require.Len(t, updateIDs, 1)
@@ -179,7 +178,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []string{"test-channel"}, updates[0].Channels)
 
 	updates, err = update.GetAllWithFilter(ctx, provisioning.UpdateFilter{
-		Origin: ptr.To("alternative.org"),
+		Origin: new("alternative.org"),
 	})
 	require.NoError(t, err)
 	require.Len(t, updates, 1)

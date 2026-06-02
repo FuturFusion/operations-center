@@ -20,7 +20,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/editor"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -354,7 +353,7 @@ func (c *cmdClusterList) run(cmd *cobra.Command, args []string) error {
 	var filter provisioning.ClusterFilter
 
 	if c.flagFilterExpression != "" {
-		filter.Expression = ptr.To(c.flagFilterExpression)
+		filter.Expression = new(c.flagFilterExpression)
 	}
 
 	clusters, err := c.ocClient.GetWithFilterClusters(cmd.Context(), filter)

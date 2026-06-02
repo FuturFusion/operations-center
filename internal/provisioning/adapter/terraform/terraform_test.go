@@ -13,7 +13,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -125,8 +124,8 @@ cluster_groups:
 				ClusterEndpoint: provisioning.ClusterEndpoint{
 					provisioning.Server{
 						ConnectionURL:      "https://127.0.0.1:8443",
-						Cluster:            ptr.To("cluster"),
-						ClusterCertificate: ptr.To("cluster certificate"),
+						Cluster:            new("cluster"),
+						ClusterCertificate: new("cluster certificate"),
 					},
 				},
 

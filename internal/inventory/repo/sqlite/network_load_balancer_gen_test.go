@@ -19,7 +19,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema/seed"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -27,7 +26,7 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
 		Name:          "one",
 		ConnectionURL: "https://cluster-one/",
-		Certificate: ptr.To(`-----BEGIN CERTIFICATE-----
+		Certificate: new(`-----BEGIN CERTIFICATE-----
 cluster A
 -----END CERTIFICATE-----
 `),
@@ -39,7 +38,7 @@ cluster A
 	testClusterB := provisioning.Cluster{
 		Name:          "two",
 		ConnectionURL: "https://cluster-two/",
-		Certificate: ptr.To(`-----BEGIN CERTIFICATE-----
+		Certificate: new(`-----BEGIN CERTIFICATE-----
 cluster B
 -----END CERTIFICATE-----
 `),
@@ -52,7 +51,7 @@ cluster B
 
 	testServerA := provisioning.Server{
 		Name:          "one",
-		Cluster:       ptr.To("one"),
+		Cluster:       new("one"),
 		ConnectionURL: "https://server-one/",
 		Certificate: `-----BEGIN CERTIFICATE-----
 server-one
@@ -66,7 +65,7 @@ server-one
 
 	testServerB := provisioning.Server{
 		Name:          "two",
-		Cluster:       ptr.To("two"),
+		Cluster:       new("two"),
 		ConnectionURL: "https://server-two/",
 		Certificate: `-----BEGIN CERTIFICATE-----
 server-two
@@ -155,10 +154,10 @@ server-two
 
 	// Ensure we have one entry with filter for cluster, server, project, network and name.
 	networkLoadBalancerUUIDs, err = networkLoadBalancer.GetAllUUIDsWithFilter(ctx, inventory.NetworkLoadBalancerFilter{
-		Cluster:     ptr.To("one"),
-		ProjectName: ptr.To("one"),
-		NetworkName: ptr.To("parent one"),
-		Name:        ptr.To("one"),
+		Cluster:     new("one"),
+		ProjectName: new("one"),
+		NetworkName: new("parent one"),
+		Name:        new("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkLoadBalancerUUIDs, 1)
@@ -166,10 +165,10 @@ server-two
 
 	// Ensure we have one entry with filter for cluster, server, project, network and name.
 	dbNetworkLoadBalancer, err = networkLoadBalancer.GetAllWithFilter(ctx, inventory.NetworkLoadBalancerFilter{
-		Cluster:     ptr.To("one"),
-		ProjectName: ptr.To("one"),
-		NetworkName: ptr.To("parent one"),
-		Name:        ptr.To("one"),
+		Cluster:     new("one"),
+		ProjectName: new("one"),
+		NetworkName: new("parent one"),
+		Name:        new("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbNetworkLoadBalancer, 1)
@@ -200,7 +199,7 @@ server-two
 
 	// Delete network_load_balancers by cluster Name.
 	err = networkLoadBalancer.DeleteWithFilter(ctx, inventory.NetworkLoadBalancerFilter{
-		Cluster: ptr.To("two"),
+		Cluster: new("two"),
 	})
 	require.NoError(t, err)
 

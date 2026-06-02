@@ -30,7 +30,6 @@ import (
 	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
@@ -265,7 +264,7 @@ func TestClusterService_Create(t *testing.T) {
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
-						Cluster: ptr.To("cluster-foo"), // already part of cluster.
+						Cluster: new("cluster-foo"), // already part of cluster.
 						Name:    "server1",
 						Type:    api.ServerTypeIncus,
 						Status:  api.ServerStatusReady,
@@ -365,7 +364,7 @@ func TestClusterService_Create(t *testing.T) {
 									Version: "1",
 								},
 							},
-							NeedsUpdate: ptr.To(true), // server requires update
+							NeedsUpdate: new(true), // server requires update
 						},
 					},
 				},
@@ -1596,7 +1595,7 @@ func TestClusterService_Create(t *testing.T) {
 				},
 				{
 					Value: &provisioning.Server{
-						Cluster: ptr.To("cluster-foo"), // added to a cluster since the first check.
+						Cluster: new("cluster-foo"), // added to a cluster since the first check.
 						Name:    "server1",
 						Type:    api.ServerTypeIncus,
 						Channel: "stable",
@@ -2686,7 +2685,7 @@ func TestClusterService_Create(t *testing.T) {
 			},
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
-					ClusterCertificate: ptr.To("none nil"), // none nil certificate
+					ClusterCertificate: new("none nil"), // none nil certificate
 				},
 			},
 
@@ -3347,9 +3346,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -3370,9 +3369,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -3390,7 +3389,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:    "one",
-					Cluster: ptr.To("cluster"),
+					Cluster: new("cluster"),
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
 							Name:    "os",
@@ -3452,9 +3451,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -3475,9 +3474,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -3495,7 +3494,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:    "one",
-					Cluster: ptr.To("cluster"),
+					Cluster: new("cluster"),
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
 							Name:    "os",
@@ -3562,13 +3561,13 @@ func TestClusterService_AddServers(t *testing.T) {
 				{
 					Value: &provisioning.Server{
 						Name:    "new",
-						Cluster: ptr.To("some-cluster"), // server already clustered
+						Cluster: new("some-cluster"), // server already clustered
 						Status:  api.ServerStatusOffline,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(true),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(true),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -3604,9 +3603,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusOffline, // invalid
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(true),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(true),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -3642,9 +3641,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "invalid", // mismatch
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(true),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(true),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -3680,9 +3679,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(true), // needs update
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(true), // needs update
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -3718,9 +3717,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -3756,9 +3755,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -3792,9 +3791,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -3812,7 +3811,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:    "one",
-					Cluster: ptr.To("cluster"),
+					Cluster: new("cluster"),
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
 							Name:    "os",
@@ -3846,9 +3845,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -3866,7 +3865,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:    "one",
-					Cluster: ptr.To("cluster"),
+					Cluster: new("cluster"),
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
 							Name:    "os",
@@ -3902,9 +3901,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -3922,7 +3921,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:    "one",
-					Cluster: ptr.To("cluster"),
+					Cluster: new("cluster"),
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
 							Name:    "os",
@@ -3958,9 +3957,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -3978,7 +3977,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:    "one",
-					Cluster: ptr.To("cluster"),
+					Cluster: new("cluster"),
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
 							Name:    "os",
@@ -4012,9 +4011,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -4032,7 +4031,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:    "one",
-					Cluster: ptr.To("cluster"),
+					Cluster: new("cluster"),
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
 							Name:    "os",
@@ -4075,9 +4074,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -4095,7 +4094,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:    "one",
-					Cluster: ptr.To("cluster"),
+					Cluster: new("cluster"),
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
 							Name:    "os",
@@ -4145,9 +4144,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -4165,7 +4164,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:    "one",
-					Cluster: ptr.To("cluster"),
+					Cluster: new("cluster"),
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
 							Name:    "os",
@@ -4200,9 +4199,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -4220,7 +4219,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:    "one",
-					Cluster: ptr.To("cluster"),
+					Cluster: new("cluster"),
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
 							Name:    "os",
@@ -4255,9 +4254,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -4279,7 +4278,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:    "one",
-					Cluster: ptr.To("cluster"),
+					Cluster: new("cluster"),
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
 							Name:    "os",
@@ -4313,9 +4312,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -4333,13 +4332,13 @@ func TestClusterService_AddServers(t *testing.T) {
 				{
 					Value: &provisioning.Server{
 						Name:    "new",
-						Cluster: ptr.To("some-cluster"), // already clustered
+						Cluster: new("some-cluster"), // already clustered
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -4357,7 +4356,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:    "one",
-					Cluster: ptr.To("cluster"),
+					Cluster: new("cluster"),
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
 							Name:    "os",
@@ -4394,9 +4393,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -4417,9 +4416,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -4437,7 +4436,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:    "one",
-					Cluster: ptr.To("cluster"),
+					Cluster: new("cluster"),
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
 							Name:    "os",
@@ -4472,9 +4471,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -4495,9 +4494,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -4515,7 +4514,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:    "one",
-					Cluster: ptr.To("cluster"),
+					Cluster: new("cluster"),
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
 							Name:    "os",
@@ -4550,9 +4549,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -4573,9 +4572,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -4593,7 +4592,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:    "one",
-					Cluster: ptr.To("cluster"),
+					Cluster: new("cluster"),
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
 							Name:    "os",
@@ -4631,9 +4630,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -4654,9 +4653,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -4674,7 +4673,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:    "one",
-					Cluster: ptr.To("cluster"),
+					Cluster: new("cluster"),
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
 							Name:    "os",
@@ -4709,9 +4708,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -4732,9 +4731,9 @@ func TestClusterService_AddServers(t *testing.T) {
 						Status:  api.ServerStatusReady,
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
-							NeedsUpdate:   ptr.To(false),
-							NeedsReboot:   ptr.To(false),
-							InMaintenance: ptr.To(api.NotInMaintenance),
+							NeedsUpdate:   new(false),
+							NeedsReboot:   new(false),
+							InMaintenance: new(api.NotInMaintenance),
 							OS: api.OSVersionData{
 								Name:    "os",
 								Version: "1",
@@ -4752,7 +4751,7 @@ func TestClusterService_AddServers(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:    "one",
-					Cluster: ptr.To("cluster"),
+					Cluster: new("cluster"),
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
 							Name:    "os",
@@ -6915,7 +6914,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name:   "serverOne",
 					Status: api.ServerStatusReady,
 					VersionData: api.ServerVersionData{
-						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+						InMaintenance: new(api.InMaintenanceEvacuated),
 					},
 				},
 				{
@@ -7007,7 +7006,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name:   "serverOne",
 					Status: api.ServerStatusReady,
 					VersionData: api.ServerVersionData{
-						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+						InMaintenance: new(api.InMaintenanceEvacuated),
 					},
 				},
 				{
@@ -7026,7 +7025,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name:   "serverOne",
 					Status: api.ServerStatusReady,
 					VersionData: api.ServerVersionData{
-						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+						InMaintenance: new(api.InMaintenanceEvacuated),
 					},
 				},
 				{
@@ -7045,7 +7044,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name:   "serverOne",
 					Status: api.ServerStatusReady,
 					VersionData: api.ServerVersionData{
-						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+						InMaintenance: new(api.InMaintenanceEvacuated),
 					},
 				},
 				{
@@ -7075,7 +7074,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name:   "serverOne",
 					Status: api.ServerStatusReady,
 					VersionData: api.ServerVersionData{
-						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+						InMaintenance: new(api.InMaintenanceEvacuated),
 					},
 				},
 				{
@@ -7108,7 +7107,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name:   "serverOne",
 					Status: api.ServerStatusReady,
 					VersionData: api.ServerVersionData{
-						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+						InMaintenance: new(api.InMaintenanceEvacuated),
 					},
 				},
 				{
@@ -7127,7 +7126,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name:   "serverOne",
 					Status: api.ServerStatusReady,
 					VersionData: api.ServerVersionData{
-						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+						InMaintenance: new(api.InMaintenanceEvacuated),
 					},
 				},
 				{
@@ -7146,7 +7145,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name:   "serverOne",
 					Status: api.ServerStatusReady,
 					VersionData: api.ServerVersionData{
-						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+						InMaintenance: new(api.InMaintenanceEvacuated),
 					},
 				},
 				{
@@ -7165,7 +7164,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name:   "serverOne",
 					Status: api.ServerStatusReady,
 					VersionData: api.ServerVersionData{
-						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+						InMaintenance: new(api.InMaintenanceEvacuated),
 					},
 				},
 				{
@@ -7184,7 +7183,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name:   "serverOne",
 					Status: api.ServerStatusReady,
 					VersionData: api.ServerVersionData{
-						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+						InMaintenance: new(api.InMaintenanceEvacuated),
 					},
 				},
 				{
@@ -7203,7 +7202,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name:   "serverOne",
 					Status: api.ServerStatusReady,
 					VersionData: api.ServerVersionData{
-						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+						InMaintenance: new(api.InMaintenanceEvacuated),
 					},
 				},
 				{
@@ -7225,7 +7224,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name:   "serverOne",
 					Status: api.ServerStatusReady,
 					VersionData: api.ServerVersionData{
-						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+						InMaintenance: new(api.InMaintenanceEvacuated),
 					},
 				},
 				{
@@ -7244,7 +7243,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name:   "serverOne",
 					Status: api.ServerStatusReady,
 					VersionData: api.ServerVersionData{
-						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+						InMaintenance: new(api.InMaintenanceEvacuated),
 					},
 				},
 				{
@@ -7446,17 +7445,17 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 						{
 							Name: "server1",
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(false),
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(false),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name: "server2",
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(false),
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(false),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -7466,17 +7465,17 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 						{
 							Name: "serverA",
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(false),
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(false),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name: "serverB",
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(false),
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(false),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -7489,7 +7488,7 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 		{
 			name: "success - with filter expression",
 			filter: provisioning.ClusterFilter{
-				Expression: ptr.To(`name == "one"`),
+				Expression: new(`name == "one"`),
 			},
 			repoGetAllWithFilter: provisioning.Clusters{
 				provisioning.Cluster{
@@ -7505,17 +7504,17 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 						{
 							Name: "server1",
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(false),
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(false),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name: "server2",
 							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(false),
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(false),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -7528,7 +7527,7 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 		{
 			name: "error - non bool expression",
 			filter: provisioning.ClusterFilter{
-				Expression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
+				Expression: new(`"string"`), // invalid, does evaluate to string instead of boolean.
 			},
 			repoGetAllWithFilter: provisioning.Clusters{
 				provisioning.Cluster{
@@ -7546,7 +7545,7 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 		{
 			name: "error - filter expression run",
 			filter: provisioning.ClusterFilter{
-				Expression: ptr.To(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
+				Expression: new(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
 			},
 			repoGetAllWithFilter: provisioning.Clusters{
 				provisioning.Cluster{
@@ -7688,7 +7687,7 @@ func TestClusterService_GetAllNamesWithFilter(t *testing.T) {
 		{
 			name: "success - with filter expression",
 			filter: provisioning.ClusterFilter{
-				Expression: ptr.To(`name matches "one"`),
+				Expression: new(`name matches "one"`),
 			},
 			repoGetAllNamesWithFilter: []string{
 				"one", "two",
@@ -7700,7 +7699,7 @@ func TestClusterService_GetAllNamesWithFilter(t *testing.T) {
 		{
 			name: "error - non bool expression",
 			filter: provisioning.ClusterFilter{
-				Expression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
+				Expression: new(`"string"`), // invalid, does evaluate to string instead of boolean.
 			},
 			repoGetAllNamesWithFilter: []string{
 				"one",
@@ -7716,7 +7715,7 @@ func TestClusterService_GetAllNamesWithFilter(t *testing.T) {
 		{
 			name: "error - filter expression run",
 			filter: provisioning.ClusterFilter{
-				Expression: ptr.To(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
+				Expression: new(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
 			},
 			repoGetAllNamesWithFilter: []string{
 				"one",
@@ -7783,17 +7782,17 @@ func TestClusterService_GetByName(t *testing.T) {
 				{
 					Name: "server1",
 					VersionData: api.ServerVersionData{
-						NeedsUpdate:   ptr.To(false),
-						NeedsReboot:   ptr.To(false),
-						InMaintenance: ptr.To(api.NotInMaintenance),
+						NeedsUpdate:   new(false),
+						NeedsReboot:   new(false),
+						InMaintenance: new(api.NotInMaintenance),
 					},
 				},
 				{
 					Name: "server2",
 					VersionData: api.ServerVersionData{
-						NeedsUpdate:   ptr.To(false),
-						NeedsReboot:   ptr.To(false),
-						InMaintenance: ptr.To(api.NotInMaintenance),
+						NeedsUpdate:   new(false),
+						NeedsReboot:   new(false),
+						InMaintenance: new(api.NotInMaintenance),
 					},
 				},
 			},
@@ -7822,33 +7821,33 @@ func TestClusterService_GetByName(t *testing.T) {
 				{
 					Name: "server1",
 					VersionData: api.ServerVersionData{
-						NeedsUpdate:   ptr.To(true),
-						NeedsReboot:   ptr.To(false),
-						InMaintenance: ptr.To(api.NotInMaintenance),
+						NeedsUpdate:   new(true),
+						NeedsReboot:   new(false),
+						InMaintenance: new(api.NotInMaintenance),
 					},
 				},
 				{
 					Name: "server2",
 					VersionData: api.ServerVersionData{
-						NeedsUpdate:   ptr.To(false),
-						NeedsReboot:   ptr.To(true),
-						InMaintenance: ptr.To(api.NotInMaintenance),
+						NeedsUpdate:   new(false),
+						NeedsReboot:   new(true),
+						InMaintenance: new(api.NotInMaintenance),
 					},
 				},
 				{
 					Name: "server3",
 					VersionData: api.ServerVersionData{
-						NeedsUpdate:   ptr.To(false),
-						NeedsReboot:   ptr.To(false),
-						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+						NeedsUpdate:   new(false),
+						NeedsReboot:   new(false),
+						InMaintenance: new(api.InMaintenanceEvacuated),
 					},
 				},
 				{
 					Name: "server4",
 					VersionData: api.ServerVersionData{
-						NeedsUpdate:   ptr.To(false),
-						NeedsReboot:   ptr.To(false),
-						InMaintenance: ptr.To(api.InMaintenanceRestoring),
+						NeedsUpdate:   new(false),
+						NeedsReboot:   new(false),
+						InMaintenance: new(api.InMaintenanceRestoring),
 					},
 				},
 			},
@@ -7883,9 +7882,9 @@ func TestClusterService_GetByName(t *testing.T) {
 				{
 					Name: "server1",
 					VersionData: api.ServerVersionData{
-						NeedsUpdate:   ptr.To(true),
-						NeedsReboot:   ptr.To(false),
-						InMaintenance: ptr.To(api.NotInMaintenance),
+						NeedsUpdate:   new(true),
+						NeedsReboot:   new(false),
+						InMaintenance: new(api.NotInMaintenance),
 					},
 				},
 			},
@@ -7902,7 +7901,7 @@ func TestClusterService_GetByName(t *testing.T) {
 					InProgressStatus: api.ClusterUpdateInProgressStatus{
 						InProgress:        api.ClusterUpdateInProgressError,
 						Error:             "error",
-						StatusDescription: ptr.To("error"),
+						StatusDescription: new("error"),
 					},
 				},
 			},
@@ -8475,7 +8474,7 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 		{
 			name:     "success - with token",
 			nameArg:  "one",
-			tokenArg: ptr.To(uuidgen.FromPattern(t, "1")),
+			tokenArg: new(uuidgen.FromPattern(t, "1")),
 
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{},
@@ -8498,8 +8497,8 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 		{
 			name:             "success - with token and tokenSeedName",
 			nameArg:          "one",
-			tokenArg:         ptr.To(uuidgen.FromPattern(t, "1")),
-			tokenSeedNameArg: ptr.To("token-seed-name"),
+			tokenArg:         new(uuidgen.FromPattern(t, "1")),
+			tokenSeedNameArg: new("token-seed-name"),
 
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{},
@@ -8569,8 +8568,8 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 		{
 			name:             "error - tokenSvc.GetTokenSeedByName",
 			nameArg:          "one",
-			tokenArg:         ptr.To(uuidgen.FromPattern(t, "1")),
-			tokenSeedNameArg: ptr.To("token-seed-name"),
+			tokenArg:         new(uuidgen.FromPattern(t, "1")),
+			tokenSeedNameArg: new("token-seed-name"),
 
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{},
@@ -9018,19 +9017,19 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 								OS: api.OSVersionData{
 									Version:          "1",
 									VersionNext:      "1",
-									AvailableVersion: ptr.To("2"),
+									AvailableVersion: new("2"),
 									NeedsReboot:      false,
 								},
 								Applications: []api.ApplicationVersionData{
 									{
 										Name:             "incus",
 										Version:          "1",
-										AvailableVersion: ptr.To("2"),
-										NeedsUpdate:      ptr.To(true),
+										AvailableVersion: new("2"),
+										NeedsUpdate:      new(true),
 									},
 								},
-								NeedsUpdate:   ptr.To(true),
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								NeedsUpdate:   new(true),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -9046,19 +9045,19 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 								OS: api.OSVersionData{
 									Version:          "1",
 									VersionNext:      "1",
-									AvailableVersion: ptr.To("2"),
+									AvailableVersion: new("2"),
 									NeedsReboot:      false,
 								},
 								Applications: []api.ApplicationVersionData{
 									{
 										Name:             "incus",
 										Version:          "1",
-										AvailableVersion: ptr.To("2"),
-										NeedsUpdate:      ptr.To(true),
+										AvailableVersion: new("2"),
+										NeedsUpdate:      new(true),
 									},
 								},
-								NeedsUpdate:   ptr.To(true),
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								NeedsUpdate:   new(true),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -9105,19 +9104,19 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 								OS: api.OSVersionData{
 									Version:          "1",
 									VersionNext:      "1",
-									AvailableVersion: ptr.To("2"),
+									AvailableVersion: new("2"),
 									NeedsReboot:      false,
 								},
 								Applications: []api.ApplicationVersionData{
 									{
 										Name:             "incus",
 										Version:          "1",
-										AvailableVersion: ptr.To("2"),
-										NeedsUpdate:      ptr.To(true),
+										AvailableVersion: new("2"),
+										NeedsUpdate:      new(true),
 									},
 								},
-								NeedsUpdate:   ptr.To(true),
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								NeedsUpdate:   new(true),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -9133,19 +9132,19 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 								OS: api.OSVersionData{
 									Version:          "1",
 									VersionNext:      "1",
-									AvailableVersion: ptr.To("2"),
+									AvailableVersion: new("2"),
 									NeedsReboot:      false,
 								},
 								Applications: []api.ApplicationVersionData{
 									{
 										Name:             "incus",
 										Version:          "1",
-										AvailableVersion: ptr.To("2"),
-										NeedsUpdate:      ptr.To(true),
+										AvailableVersion: new("2"),
+										NeedsUpdate:      new(true),
 									},
 								},
-								NeedsUpdate:   ptr.To(true),
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								NeedsUpdate:   new(true),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -9193,12 +9192,12 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 								OS: api.OSVersionData{
 									Version:          "1",
 									VersionNext:      "2",
-									AvailableVersion: ptr.To("2"),
+									AvailableVersion: new("2"),
 									NeedsReboot:      true,
 								},
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 							},
 						},
 					},
@@ -9215,12 +9214,12 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 								OS: api.OSVersionData{
 									Version:          "1",
 									VersionNext:      "2",
-									AvailableVersion: ptr.To("2"),
+									AvailableVersion: new("2"),
 									NeedsReboot:      true,
 								},
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 							},
 						},
 					},
@@ -9310,12 +9309,12 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 								OS: api.OSVersionData{
 									Version:          "1",
 									VersionNext:      "2",
-									AvailableVersion: ptr.To("2"),
+									AvailableVersion: new("2"),
 									NeedsReboot:      true,
 								},
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 							},
 						},
 					},
@@ -9364,12 +9363,12 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 								OS: api.OSVersionData{
 									Version:          "1",
 									VersionNext:      "2",
-									AvailableVersion: ptr.To("2"),
+									AvailableVersion: new("2"),
 									NeedsReboot:      true,
 								},
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 							},
 						},
 					},
@@ -9420,12 +9419,12 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 								OS: api.OSVersionData{
 									Version:          "1",
 									VersionNext:      "2",
-									AvailableVersion: ptr.To("2"),
+									AvailableVersion: new("2"),
 									NeedsReboot:      true,
 								},
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 							},
 						},
 					},
@@ -9475,12 +9474,12 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 								OS: api.OSVersionData{
 									Version:          "1",
 									VersionNext:      "2",
-									AvailableVersion: ptr.To("2"),
+									AvailableVersion: new("2"),
 									NeedsReboot:      true,
 								},
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 							},
 						},
 					},
@@ -9535,12 +9534,12 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 								OS: api.OSVersionData{
 									Version:          "1",
 									VersionNext:      "2",
-									AvailableVersion: ptr.To("2"),
+									AvailableVersion: new("2"),
 									NeedsReboot:      true,
 								},
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 							},
 						},
 					},
@@ -9593,12 +9592,12 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 								OS: api.OSVersionData{
 									Version:          "1",
 									VersionNext:      "2",
-									AvailableVersion: ptr.To("2"),
+									AvailableVersion: new("2"),
 									NeedsReboot:      true,
 								},
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.InMaintenanceEvacuated),
 							},
 						},
 					},
@@ -9613,12 +9612,12 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 								OS: api.OSVersionData{
 									Version:          "1",
 									VersionNext:      "2",
-									AvailableVersion: ptr.To("2"),
+									AvailableVersion: new("2"),
 									NeedsReboot:      true,
 								},
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -9671,12 +9670,12 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 								OS: api.OSVersionData{
 									Version:          "1",
 									VersionNext:      "2",
-									AvailableVersion: ptr.To("2"),
+									AvailableVersion: new("2"),
 									NeedsReboot:      true,
 								},
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuating),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.InMaintenanceEvacuating),
 							},
 						},
 					},
@@ -9693,12 +9692,12 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 								OS: api.OSVersionData{
 									Version:          "1",
 									VersionNext:      "2",
-									AvailableVersion: ptr.To("2"),
+									AvailableVersion: new("2"),
 									NeedsReboot:      true,
 								},
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuating),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.InMaintenanceEvacuating),
 							},
 						},
 					},
@@ -9757,12 +9756,12 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 								OS: api.OSVersionData{
 									Version:          "1",
 									VersionNext:      "2",
-									AvailableVersion: ptr.To("2"),
+									AvailableVersion: new("2"),
 									NeedsReboot:      true,
 								},
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -9778,12 +9777,12 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 								OS: api.OSVersionData{
 									Version:          "1",
 									VersionNext:      "2",
-									AvailableVersion: ptr.To("2"),
+									AvailableVersion: new("2"),
 									NeedsReboot:      true,
 								},
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(true),
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								NeedsUpdate:   new(false),
+								NeedsReboot:   new(true),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -9944,11 +9943,11 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -9965,11 +9964,11 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -10120,11 +10119,11 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusOffline, // server offline
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -10153,11 +10152,11 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -10193,11 +10192,11 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -10235,11 +10234,11 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -10256,11 +10255,11 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -10399,11 +10398,11 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -10420,11 +10419,11 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -10497,11 +10496,11 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -10537,11 +10536,11 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -10579,11 +10578,11 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -10600,11 +10599,11 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -10739,11 +10738,11 @@ func TestClusterService_UpdateSystemLogging(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -10759,11 +10758,11 @@ func TestClusterService_UpdateSystemLogging(t *testing.T) {
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -10819,11 +10818,11 @@ func TestClusterService_UpdateSystemLogging(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -10839,11 +10838,11 @@ func TestClusterService_UpdateSystemLogging(t *testing.T) {
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -10885,11 +10884,11 @@ func TestClusterService_UpdateSystemLogging(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -10905,11 +10904,11 @@ func TestClusterService_UpdateSystemLogging(t *testing.T) {
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -11023,11 +11022,11 @@ func TestClusterService_UpdateSystemKernel(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -11043,11 +11042,11 @@ func TestClusterService_UpdateSystemKernel(t *testing.T) {
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -11103,11 +11102,11 @@ func TestClusterService_UpdateSystemKernel(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -11123,11 +11122,11 @@ func TestClusterService_UpdateSystemKernel(t *testing.T) {
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -11169,11 +11168,11 @@ func TestClusterService_UpdateSystemKernel(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -11189,11 +11188,11 @@ func TestClusterService_UpdateSystemKernel(t *testing.T) {
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -11306,11 +11305,11 @@ func TestClusterService_AddApplication(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -11326,11 +11325,11 @@ func TestClusterService_AddApplication(t *testing.T) {
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -11382,11 +11381,11 @@ func TestClusterService_AddApplication(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -11402,11 +11401,11 @@ func TestClusterService_AddApplication(t *testing.T) {
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
@@ -11530,20 +11529,20 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -11593,20 +11592,20 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -11652,20 +11651,20 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -11732,20 +11731,20 @@ func TestClusterService_AddStorageTargetISCSI(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -11889,20 +11888,20 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -11952,20 +11951,20 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -12005,20 +12004,20 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -12097,20 +12096,20 @@ func TestClusterService_RemoveStorageTargetISCSI(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -12228,20 +12227,20 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -12283,20 +12282,20 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -12332,20 +12331,20 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -12408,20 +12407,20 @@ func TestClusterService_AddStorageTargetMultipath(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -12539,20 +12538,20 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -12594,20 +12593,20 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -12643,20 +12642,20 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -12719,20 +12718,20 @@ func TestClusterService_RemoveStorageTargetMultipath(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -12854,20 +12853,20 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -12917,20 +12916,20 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -12976,20 +12975,20 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -13056,20 +13055,20 @@ func TestClusterService_AddStorageTargetNVME(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -13213,20 +13212,20 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -13276,20 +13275,20 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -13329,20 +13328,20 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},
@@ -13421,20 +13420,20 @@ func TestClusterService_RemoveStorageTargetNVME(t *testing.T) {
 					Value: provisioning.Servers{
 						{
 							Name:         "one",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 						{
 							Name:         "two",
-							Cluster:      ptr.To("one"),
+							Cluster:      new("one"),
 							Status:       api.ServerStatusReady,
 							StatusDetail: api.ServerStatusDetailNone,
 							VersionData: api.ServerVersionData{
-								InMaintenance: ptr.To(api.NotInMaintenance),
+								InMaintenance: new(api.NotInMaintenance),
 							},
 						},
 					},

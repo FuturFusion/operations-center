@@ -17,7 +17,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -154,11 +153,11 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 	var filter provisioning.UpdateFilter
 
 	if r.URL.Query().Get("channel") != "" {
-		filter.UpstreamChannel = ptr.To(r.URL.Query().Get("channel"))
+		filter.UpstreamChannel = new(r.URL.Query().Get("channel"))
 	}
 
 	if r.URL.Query().Get("origin") != "" {
-		filter.Origin = ptr.To(r.URL.Query().Get("origin"))
+		filter.Origin = new(r.URL.Query().Get("origin"))
 	}
 
 	if r.URL.Query().Get("status") != "" {

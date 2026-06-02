@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/util/logger"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
 type operation int
@@ -96,7 +95,7 @@ func (v *volatileServerStates) start(ctx context.Context, serverName string, op 
 	s.operationLastErr = nil
 
 	if s.startTime == nil {
-		s.startTime = ptr.To(v.now())
+		s.startTime = new(v.now())
 	}
 
 	v.servers[serverName] = s

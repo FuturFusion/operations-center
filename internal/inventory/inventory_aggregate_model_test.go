@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
 func TestInventoryAggregate_Filter(t *testing.T) {
@@ -33,7 +32,7 @@ func TestInventoryAggregate_Filter(t *testing.T) {
 				ProjectIncludeNull: true,
 				Parents:            []string{"parent"},
 				ParentIncludeNull:  true,
-				Expression:         ptr.To("true"),
+				Expression:         new("true"),
 			},
 
 			want: `cluster=cluster&filter=true&kind=kind&parent=parent&parent_include_null=true&project=project&project_include_null=true&server=server&server_include_null=true`,

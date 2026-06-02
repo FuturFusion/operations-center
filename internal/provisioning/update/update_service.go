@@ -30,7 +30,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -177,7 +176,7 @@ func (s updateService) Prune(ctx context.Context) error {
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		updates, err := s.repo.GetAllWithFilter(ctx, provisioning.UpdateFilter{
-			Status: ptr.To(api.UpdateStatusPending),
+			Status: new(api.UpdateStatusPending),
 		})
 		if err != nil {
 			return fmt.Errorf("Failed to get all pending updates during prune: %w", err)
@@ -455,9 +454,9 @@ func (s updateService) readManifest(ctx context.Context, update provisioning.Upd
 func (s updateService) GetChangelogByChannel(ctx context.Context, currentUUID uuid.UUID, channelName string, upstream bool, architecture images.UpdateFileArchitecture) (api.UpdateChangelog, error) {
 	updateFilter := provisioning.UpdateFilter{}
 	if upstream {
-		updateFilter.UpstreamChannel = ptr.To(channelName)
+		updateFilter.UpstreamChannel = new(channelName)
 	} else {
-		updateFilter.Channel = ptr.To(channelName)
+		updateFilter.Channel = new(channelName)
 	}
 
 	updates, err := s.GetAllWithFilter(ctx, updateFilter)

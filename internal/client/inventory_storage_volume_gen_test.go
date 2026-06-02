@@ -13,7 +13,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	provisioningEntities "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -64,7 +63,7 @@ func Test_GetWithFilterStorageVolumes(t *testing.T) {
 					UUID:    uuidgen.FromPattern(t, "1"),
 					Name:    "one",
 					Cluster: "clusterOne",
-					Server:  ptr.To("serverOne"),
+					Server:  new("serverOne"),
 				})
 				require.NoError(t, err)
 			},
@@ -138,7 +137,7 @@ func Test_GetStorageVolume(t *testing.T) {
 					UUID:    uuidgen.FromPattern(t, "1"),
 					Name:    "foo",
 					Cluster: "clusterOne",
-					Server:  ptr.To("serverOne"),
+					Server:  new("serverOne"),
 				})
 				require.NoError(t, err)
 			},

@@ -148,7 +148,7 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 	var filter provisioning.ClusterFilter
 
 	if r.URL.Query().Get("filter") != "" {
-		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
+		filter.Expression = new(r.URL.Query().Get("filter"))
 	}
 
 	if recursion == 1 {
@@ -436,7 +436,7 @@ func (c *clusterHandler) clusterDelete(r *http.Request) response.Response {
 		var tokenSeedName *string
 
 		if r.URL.Query().Get("tokenSeedName") != "" {
-			tokenSeedName = ptr.To(r.URL.Query().Get("tokenSeedName"))
+			tokenSeedName = new(r.URL.Query().Get("tokenSeedName"))
 		}
 
 		if r.URL.Query().Get("token") != "" {

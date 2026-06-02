@@ -10,7 +10,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -149,9 +148,9 @@ func TestUpdate_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: provisioning.UpdateFilter{
-				UpstreamChannel: ptr.To("channel"),
-				Origin:          ptr.To("origin"),
-				Status:          ptr.To(api.UpdateStatusReady),
+				UpstreamChannel: new("channel"),
+				Origin:          new("origin"),
+				Status:          new(api.UpdateStatusReady),
 			},
 
 			want: `channel=channel&origin=origin&status=ready`,

@@ -17,7 +17,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -147,15 +146,15 @@ func (c *cmdUpdateList) run(cmd *cobra.Command, args []string) error {
 	var filter provisioning.UpdateFilter
 
 	if c.flagFilterUpstreamChannel != "" {
-		filter.UpstreamChannel = ptr.To(c.flagFilterUpstreamChannel)
+		filter.UpstreamChannel = new(c.flagFilterUpstreamChannel)
 	}
 
 	if c.flagFilterChannel != "" {
-		filter.Channel = ptr.To(c.flagFilterChannel)
+		filter.Channel = new(c.flagFilterChannel)
 	}
 
 	if c.flagFilterOrigin != "" {
-		filter.Origin = ptr.To(c.flagFilterOrigin)
+		filter.Origin = new(c.flagFilterOrigin)
 	}
 
 	if c.flagFilterStatus != "" {

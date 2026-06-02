@@ -6,7 +6,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/response"
 )
 
@@ -141,7 +140,7 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 	}
 
 	if r.URL.Query().Get("filter") != "" {
-		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
+		filter.Expression = new(r.URL.Query().Get("filter"))
 	}
 
 	// FIXME: Should we require a non empty filter with recursion?

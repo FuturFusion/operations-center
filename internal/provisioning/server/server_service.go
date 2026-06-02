@@ -365,7 +365,7 @@ func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, serv
 	serverComponents = append(serverComponents, string(images.UpdateFileComponentOS))
 	for i, app := range server.VersionData.Applications {
 		serverComponents = append(serverComponents, app.Name)
-		server.VersionData.Applications[i].NeedsUpdate = ptr.To(false)
+		server.VersionData.Applications[i].NeedsUpdate = new(false)
 	}
 
 	// For each component installed on the server (OS, applications), we need to
@@ -832,7 +832,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		servers, err := s.repo.GetAllWithFilter(ctx, provisioning.ServerFilter{
-			Type: ptr.To(api.ServerTypeOperationsCenter),
+			Type: new(api.ServerTypeOperationsCenter),
 		})
 		if err != nil {
 			return fmt.Errorf(`Failed to get server of type "operations-center": %w`, err)
@@ -1713,7 +1713,7 @@ func (s *serverService) GetChangelogByName(ctx context.Context, name string) (ap
 	}
 
 	updates, err := s.updateSvc.GetAllWithFilter(ctx, provisioning.UpdateFilter{
-		Channel: ptr.To(server.Channel),
+		Channel: new(server.Channel),
 	})
 	if err != nil {
 		return api.UpdateChangelog{}, fmt.Errorf("Failed to get updates for channel %q: %w", server.Channel, err)
