@@ -11,6 +11,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/internal/image"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/maps"
 	"github.com/FuturFusion/operations-center/internal/util/multipartstreamer"
@@ -205,6 +206,9 @@ func (c *cmdIncusImageAdd) Command() *cobra.Command {
 	cmd.Short = "Add an Incus image version"
 	cmd.Long = `Description:
   Add an Incus image version.
+
+  Format for the image name: os:release:architecture:variant
+  Format for the version: yyyymmdd
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -217,6 +221,19 @@ func (c *cmdIncusImageAdd) validateArgsAndFlags(cmd *cobra.Command, args []strin
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 3, -1)
 	if exit {
+		return err
+	}
+
+	name := args[0]
+	version := args[1]
+
+	err = image.ValidateIncusImageName(name)
+	if err != nil {
+		return err
+	}
+
+	err = image.ValidateIncusImageVersion(version)
+	if err != nil {
 		return err
 	}
 
