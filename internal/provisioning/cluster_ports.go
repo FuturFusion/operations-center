@@ -95,6 +95,7 @@ type ClusterClientPort interface {
 	GetClusterJoinToken(ctx context.Context, endpoint Endpoint, memberName string) (joinToken string, _ error)
 	JoinCluster(ctx context.Context, server Server, joinToken string, serverAddressOfClusterRole string, endpoint Endpoint, config []api.ClusterMemberConfigKey) error
 	GetOSData(ctx context.Context, endpoint Endpoint) (api.OSData, error)
+	GetNodeSpecificConfigKeys(ctx context.Context, endpoint Endpoint) (map[string]map[string]bool, error)
 	UpdateClusterCertificate(ctx context.Context, endpoint Endpoint, certificatePEM string, keyPEM string) error
 	SystemFactoryReset(ctx context.Context, endpoint Endpoint, allowTPMResetFailure bool, seeds TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error
 	SubscribeLifecycleEvents(ctx context.Context, endpoint Endpoint) (chan domain.LifecycleEvent, chan error, error)

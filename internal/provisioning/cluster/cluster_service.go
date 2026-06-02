@@ -482,11 +482,18 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 		servers[i].OSData = osData
 	}
 
+	nodeSpecificConfigKeys, err := s.client.GetNodeSpecificConfigKeys(ctx, clusterEndpoint)
+	if err != nil {
+		return newCluster, err
+	}
+
 	// Perform post-clustering initialization using provisioner (Terraform).
 	temporaryPath, cleanup, err := s.provisioner.Init(ctx, newCluster.Name, provisioning.ClusterProvisioningConfig{
 		ClusterEndpoint: clusterEndpoint,
 		Servers:         servers,
 		Cluster:         newCluster,
+
+		NodeSpecificConfigKeys: nodeSpecificConfigKeys,
 	})
 	if err != nil {
 		return newCluster, err
