@@ -829,10 +829,8 @@ func (u UpdateFileExprEnv) ExprCompileOptions() []expr.Option {
 				return true, nil
 			}
 
-			for _, wantArch := range wantArchs {
-				if arch == wantArch {
-					return true, nil
-				}
+			if slices.Contains(wantArchs, arch) {
+				return true, nil
 			}
 
 			return false, nil
