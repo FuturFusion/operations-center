@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/docker/go-connections/nat"
-	incustls "github.com/lxc/incus/v6/shared/tls"
+	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/oauth2-proxy/mockoidc"
 	"github.com/stretchr/testify/require"
 	testcontainers "github.com/testcontainers/testcontainers-go"

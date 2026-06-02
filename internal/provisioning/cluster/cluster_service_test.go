@@ -12,9 +12,9 @@ import (
 
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
-	incusclient "github.com/lxc/incus/v6/client"
-	incusapi "github.com/lxc/incus/v6/shared/api"
-	incustls "github.com/lxc/incus/v6/shared/tls"
+	incusclient "github.com/lxc/incus/v7/client"
+	incusapi "github.com/lxc/incus/v7/shared/api"
+	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
 

@@ -12,8 +12,8 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/gorilla/websocket"
-	incus "github.com/lxc/incus/v6/client"
-	"github.com/lxc/incus/v6/shared/api"
+	incus "github.com/lxc/incus/v7/client"
+	"github.com/lxc/incus/v7/shared/api"
 	"github.com/pkg/sftp"
 )
 

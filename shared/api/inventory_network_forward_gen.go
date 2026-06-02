@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	incusapi "github.com/lxc/incus/v6/shared/api"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 )
 
 type NetworkForward struct {

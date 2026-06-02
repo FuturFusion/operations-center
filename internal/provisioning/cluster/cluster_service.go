@@ -25,8 +25,8 @@ import (
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus-os/incus-osd/api/images"
-	incusapi "github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/revert"
+	incusapi "github.com/lxc/incus/v7/shared/api"
+	"github.com/lxc/incus/v7/shared/revert"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"

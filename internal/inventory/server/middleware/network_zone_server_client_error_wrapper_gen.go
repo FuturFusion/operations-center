@@ -8,7 +8,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/lxc/incus/v6/shared/api"
+	"github.com/lxc/incus/v7/shared/api"
 )
 
 // NetworkZoneServerClientWithErrorWrapper implements inventory.NetworkZoneServerClient that wraps errors based custom logic.
