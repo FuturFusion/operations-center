@@ -66,7 +66,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 
 		serverCount := randBetween(config.ServersMin, config.ServersMax)
 		servers := make([]string, 0, serverCount)
-		for serverIdx := 0; serverIdx < serverCount; serverIdx++ {
+		for serverIdx := range serverCount {
 			serverName := fmt.Sprintf("server-%08x-%08x", clusterIdx, serverIdx)
 
 			var certPEM []byte
@@ -98,7 +98,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 
 		projectCount := randBetween(config.ProjectsMin, config.ProjectsMax)
 		projects := make([]string, 0, projectCount)
-		for projectIdx := 0; projectIdx < projectCount; projectIdx++ {
+		for projectIdx := range projectCount {
 			projectName := fmt.Sprintf("project-%08x-%08x", clusterIdx, projectIdx)
 			projects = append(projects, projectName)
 			project := inventory.Project{
@@ -132,7 +132,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 
 		networkCount := randBetween(config.NetworksMin, config.NetworksMax)
 		networks := make([]string, 0, networkCount)
-		for networkIdx := 0; networkIdx < networkCount; networkIdx++ {
+		for networkIdx := range networkCount {
 			networkName := fmt.Sprintf("network-%08x-%08x", clusterIdx, networkIdx)
 			projectName := faker.RandomString(projects)
 			networks = append(networks, networkName)
@@ -166,7 +166,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 
 		storagePoolCount := randBetween(config.StoragePoolsMin, config.StoragePoolsMax)
 		storagePools := make([]string, 0, storagePoolCount)
-		for storagePoolIdx := 0; storagePoolIdx < storagePoolCount; storagePoolIdx++ {
+		for storagePoolIdx := range storagePoolCount {
 			storagePoolName := fmt.Sprintf("storagePool-%08x-%08x", clusterIdx, storagePoolIdx)
 			storagePools = append(storagePools, storagePoolName)
 			storagePool := inventory.StoragePool{
@@ -195,7 +195,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		}
 
 		imageCount := randBetween(config.ImagesMin, config.ImagesMax)
-		for imageIdx := 0; imageIdx < imageCount; imageIdx++ {
+		for imageIdx := range imageCount {
 			imageName := fmt.Sprintf("image-%08x-%08x", clusterIdx, imageIdx)
 			projectName := faker.RandomString(projects)
 			image := inventory.Image{
@@ -246,7 +246,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		}
 
 		profileCount := randBetween(config.ProfilesMin, config.ProfilesMax)
-		for profileIdx := 0; profileIdx < profileCount; profileIdx++ {
+		for profileIdx := range profileCount {
 			profileName := fmt.Sprintf("profile-%08x-%08x", clusterIdx, profileIdx)
 			profile := inventory.Profile{
 				Cluster:     clusterName,
@@ -273,7 +273,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		}
 
 		instanceCount := randBetween(config.InstancesMin, config.InstancesMax)
-		for instanceIdx := 0; instanceIdx < instanceCount; instanceIdx++ {
+		for instanceIdx := range instanceCount {
 			instanceName := fmt.Sprintf("instance-%08x-%08x", clusterIdx, instanceIdx)
 			serverName := faker.RandomString(servers)
 			projectName := faker.RandomString(projects)
@@ -357,7 +357,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		}
 
 		networkACLCount := randBetween(config.NetworkACLsMin, config.NetworkACLsMax)
-		for networkACLIdx := 0; networkACLIdx < networkACLCount; networkACLIdx++ {
+		for networkACLIdx := range networkACLCount {
 			networkACLName := fmt.Sprintf("networkACL-%08x-%08x", clusterIdx, networkACLIdx)
 			projectName := faker.RandomString(projects)
 			networkACL := inventory.NetworkACL{
@@ -415,7 +415,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		}
 
 		networkAddressSetCount := randBetween(config.NetworkAddressSetsMin, config.NetworkAddressSetsMax)
-		for networkAddressSetIdx := 0; networkAddressSetIdx < networkAddressSetCount; networkAddressSetIdx++ {
+		for networkAddressSetIdx := range networkAddressSetCount {
 			networkAddressSetName := fmt.Sprintf("networkAddressSet-%08x-%08x", clusterIdx, networkAddressSetIdx)
 			projectName := faker.RandomString(projects)
 			networkAddressSet := inventory.NetworkAddressSet{
@@ -446,7 +446,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		}
 
 		networkForwardCount := randBetween(config.NetworkForwardsMin, config.NetworkForwardsMax)
-		for networkForwardIdx := 0; networkForwardIdx < networkForwardCount; networkForwardIdx++ {
+		for networkForwardIdx := range networkForwardCount {
 			networkForwardName := fmt.Sprintf("networkForward-%08x-%08x", clusterIdx, networkForwardIdx)
 			projectName := faker.RandomString(projects)
 			networkForward := inventory.NetworkForward{
@@ -484,7 +484,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		}
 
 		networkIntegrationCount := randBetween(config.NetworkIntegrationsMin, config.NetworkIntegrationsMax)
-		for networkIntegrationIdx := 0; networkIntegrationIdx < networkIntegrationCount; networkIntegrationIdx++ {
+		for networkIntegrationIdx := range networkIntegrationCount {
 			networkIntegrationName := fmt.Sprintf("networkIntegration-%08x-%08x", clusterIdx, networkIntegrationIdx)
 			networkIntegration := inventory.NetworkIntegration{
 				Cluster: clusterName,
@@ -510,7 +510,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		}
 
 		networkLoadBalancerCount := randBetween(config.NetworkLoadBalancersMin, config.NetworkLoadBalancersMax)
-		for networkLoadBalancerIdx := 0; networkLoadBalancerIdx < networkLoadBalancerCount; networkLoadBalancerIdx++ {
+		for networkLoadBalancerIdx := range networkLoadBalancerCount {
 			networkLoadBalancerName := fmt.Sprintf("networkLoadBalancer-%08x-%08x", clusterIdx, networkLoadBalancerIdx)
 			projectName := faker.RandomString(projects)
 			networkLoadBalancer := inventory.NetworkLoadBalancer{
@@ -553,7 +553,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		}
 
 		networkPeerCount := randBetween(config.NetworkPeersMin, config.NetworkPeersMax)
-		for networkPeerIdx := 0; networkPeerIdx < networkPeerCount; networkPeerIdx++ {
+		for networkPeerIdx := range networkPeerCount {
 			networkPeerName := fmt.Sprintf("networkPeer-%08x-%08x", clusterIdx, networkPeerIdx)
 			projectName := faker.RandomString(projects)
 			networkPeer := inventory.NetworkPeer{
@@ -586,7 +586,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		}
 
 		networkZoneCount := randBetween(config.NetworkZonesMin, config.NetworkZonesMax)
-		for networkZoneIdx := 0; networkZoneIdx < networkZoneCount; networkZoneIdx++ {
+		for networkZoneIdx := range networkZoneCount {
 			networkZoneName := fmt.Sprintf("networkZone-%08x-%08x", clusterIdx, networkZoneIdx)
 			projectName := faker.RandomString(projects)
 			networkZone := inventory.NetworkZone{
@@ -614,7 +614,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		}
 
 		storageBucketCount := randBetween(config.StorageBucketsMin, config.StorageBucketsMax)
-		for storageBucketIdx := 0; storageBucketIdx < storageBucketCount; storageBucketIdx++ {
+		for storageBucketIdx := range storageBucketCount {
 			storageBucketName := fmt.Sprintf("storageBucket-%08x-%08x", clusterIdx, storageBucketIdx)
 			projectName := faker.RandomString(projects)
 			storageBucket := inventory.StorageBucket{
@@ -648,7 +648,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		}
 
 		storageVolumeCount := randBetween(config.StorageVolumesMin, config.StorageVolumesMax)
-		for storageVolumeIdx := 0; storageVolumeIdx < storageVolumeCount; storageVolumeIdx++ {
+		for storageVolumeIdx := range storageVolumeCount {
 			storageVolumeName := fmt.Sprintf("storageVolume-%08x-%08x", clusterIdx, storageVolumeIdx)
 			projectName := faker.RandomString(projects)
 			storageVolume := inventory.StorageVolume{
