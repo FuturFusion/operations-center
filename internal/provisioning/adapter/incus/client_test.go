@@ -2836,7 +2836,7 @@ func TestClientServer(t *testing.T) {
 								Enabled:     true,
 								LoginServer: "server",
 							},
-							State: struct{}{},
+							State: incusosapi.ServiceTailscaleState{},
 						}
 
 						require.Equal(t, wantOSService, res)
