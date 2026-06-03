@@ -81,7 +81,7 @@ func (c *CmdIncusImage) Command() *cobra.Command {
 
 	cmd.AddCommand(incusImageRemoveCmd.Command())
 
-	// Remove
+	// Remove version
 	incusImageVersionRemoveCmd := cmdIncusImageVersionRemove{
 		ocClient: c.OCClient,
 	}
@@ -502,7 +502,7 @@ func (c *cmdIncusImageRemove) run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Remove incus image.
+// Remove incus image version.
 type cmdIncusImageVersionRemove struct {
 	ocClient *client.OperationsCenterClient
 }
