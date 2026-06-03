@@ -33,7 +33,7 @@ type imageIncusService struct {
 
 var _ ImageIncusService = &imageIncusService{}
 
-func New(repo ImageIncusRepo, filesRepo ImageIncusFileRepo) *imageIncusService {
+func NewIncusImage(repo ImageIncusRepo, filesRepo ImageIncusFileRepo) *imageIncusService {
 	service := &imageIncusService{
 		repo:      repo,
 		filesRepo: filesRepo,
