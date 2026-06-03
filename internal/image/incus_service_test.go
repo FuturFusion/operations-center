@@ -756,7 +756,7 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.New(repo, filesRepo)
+			imageSvc := image.NewIncusImage(repo, filesRepo)
 
 			// Run test
 			err := imageSvc.AddVersion(t.Context(), tc.nameArg, tc.versionArg, tc.multipartReaderArg)
@@ -887,7 +887,7 @@ func TestImageIncusService_GetAll(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.New(repo, nil)
+			imageSvc := image.NewIncusImage(repo, nil)
 
 			// Run test
 			images, err := imageSvc.GetAll(t.Context())
@@ -933,7 +933,7 @@ func TestImageIncusService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.New(repo, nil)
+			imageSvc := image.NewIncusImage(repo, nil)
 
 			// Run test
 			images, err := imageSvc.GetAllNames(t.Context())
@@ -989,7 +989,7 @@ func TestImageIncusService_GetByName(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.New(repo, nil)
+			imageSvc := image.NewIncusImage(repo, nil)
 
 			// Run test
 			img, err := imageSvc.GetByName(t.Context(), tc.nameArg)
@@ -1078,7 +1078,7 @@ func TestImageIncusService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.New(repo, filesRepo)
+			imageSvc := image.NewIncusImage(repo, filesRepo)
 
 			// Run test
 			err := imageSvc.DeleteByName(t.Context(), tc.argName)
@@ -1210,7 +1210,7 @@ func TestImageIncusService_DeleteVersionByName(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.New(repo, filesRepo)
+			imageSvc := image.NewIncusImage(repo, filesRepo)
 
 			// Run test
 			err := imageSvc.DeleteVersionByName(t.Context(), tc.argName, tc.argVersion)
@@ -1353,7 +1353,7 @@ func TestIncusImageService_GetVersionFileByName(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.New(repo, filesRepo)
+			imageSvc := image.NewIncusImage(repo, filesRepo)
 
 			// Run test
 			rc, size, err := imageSvc.GetVersionFileByName(t.Context(), tc.argName, tc.argVersion, tc.argFilename)
@@ -1365,7 +1365,7 @@ func TestIncusImageService_GetVersionFileByName(t *testing.T) {
 	}
 }
 
-func TestServerService_Update(t *testing.T) {
+func TestIncusImageService_Update(t *testing.T) {
 	tests := []struct {
 		name          string
 		incusImage    image.IncusImage
@@ -1420,7 +1420,7 @@ func TestServerService_Update(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.New(repo, nil)
+			imageSvc := image.NewIncusImage(repo, nil)
 
 			// Run test
 			err := imageSvc.Update(t.Context(), tc.incusImage)
