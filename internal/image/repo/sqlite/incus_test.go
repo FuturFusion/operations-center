@@ -13,6 +13,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
 func TestIncusImageDatabaseActions(t *testing.T) {
@@ -32,6 +33,15 @@ func TestIncusImageDatabaseActions(t *testing.T) {
 		Architecture:    "amd64",
 		Variant:         "cloud",
 		Description:     "almalinux 10 (cloud) (amd64)",
+	}
+
+	incusImageC := image.IncusImage{
+		Name:            "rocky:10:amd64:cloud",
+		OperatingSystem: "rocky",
+		Release:         "10",
+		Architecture:    "amd64",
+		Variant:         "cloud",
+		Description:     "rocky 10 (cloud) (amd64)",
 	}
 
 	ctx := context.Background()
@@ -67,10 +77,20 @@ func TestIncusImageDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, incusImages, 2)
 
+	incusImages, err = incusImage.GetAllWithFilter(ctx, image.IncusImageFilter{
+		Name: ptr.To("almalinux:10:amd64:default"),
+	})
+	require.NoError(t, err)
+	require.Len(t, incusImages, 1)
+
 	incusImageIDs, err := incusImage.GetAllNames(ctx)
 	require.NoError(t, err)
 	require.Len(t, incusImageIDs, 2)
 	require.ElementsMatch(t, []string{"almalinux:10:amd64:default", "almalinux:10:amd64:cloud"}, incusImageIDs)
+
+	dbIncusImageAExists, err := incusImage.ExistsByName(ctx, incusImageA.Name)
+	require.NoError(t, err)
+	require.True(t, dbIncusImageAExists)
 
 	// Should get back incusImageA unchanged.
 	dbIncusImageA, err := incusImage.GetByName(ctx, incusImageA.Name)
@@ -105,6 +125,9 @@ func TestIncusImageDatabaseActions(t *testing.T) {
 	incusImages, err = incusImage.GetAll(ctx)
 	require.NoError(t, err)
 	require.Len(t, incusImages, 1)
+
+	err = incusImage.Upsert(ctx, incusImageC)
+	require.NoError(t, err)
 
 	// Can't delete a incusImage that doesn't exist.
 	err = incusImage.DeleteByName(ctx, "three")
