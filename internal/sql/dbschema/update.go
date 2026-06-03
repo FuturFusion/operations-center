@@ -64,6 +64,47 @@ var updates = map[int]update{
 	34: updateFromV33,
 	35: updateFromV34,
 	36: updateFromV35,
+	37: updateFromV36,
+}
+
+func updateFromV36(ctx context.Context, tx *sql.Tx) error {
+	// v36..v37 add image_sources table and add foreign key from incus_images to image_sources.
+	stmt := `
+CREATE TABLE image_sources (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name TEXT NOT NULL,
+  url TEXT NOT NULL,
+  type TEXT NOT NULL,
+  filter_expression TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (name),
+  UNIQUE (url),
+  CHECK (name <> '')
+);
+
+CREATE TABLE incus_images_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  operating_system TEXT NOT NULL,
+  release TEXT NOT NULL,
+  architecture TEXT NOT NULL,
+  variant TEXT NOT NULL,
+  versions TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  aliases TEXT NOT NULL DEFAULT '',
+  image_source_id INTEGER,
+  UNIQUE (operating_system, release, variant, architecture),
+  FOREIGN KEY (image_source_id) REFERENCES image_sources(id),
+  CHECK (name <> '')
+);
+
+INSERT INTO incus_images_new SELECT id, name, description, operating_system, release, architecture, variant, versions, last_updated, aliases, NULL FROM incus_images;
+DROP TABLE incus_images;
+ALTER TABLE incus_images_new RENAME TO incus_images;
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV35(ctx context.Context, tx *sql.Tx) error {
