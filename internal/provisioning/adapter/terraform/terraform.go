@@ -46,8 +46,10 @@ var terraformProviders = map[string]struct {
 var templatesFS embed.FS
 
 type terraform struct {
-	storageDir string
-	tmpDir     string
+	storageDir        string
+	tmpDir            string
+	clientCertificate string
+	clientKey         string
 
 	terraformInitFunc  func(ctx context.Context, configDir string) error
 	terraformApplyFunc func(ctx context.Context, configDir string) error
@@ -81,7 +83,12 @@ var _ provisioning.ClusterProvisioningPort = &terraform{}
 
 type Option func(*terraform)
 
-func New(tmpDir string, opts ...Option) (terraform, error) {
+func New(
+	tmpDir string,
+	clientCertificate string,
+	clientKey string,
+	opts ...Option,
+) (terraform, error) {
 	storageDir := filepath.Join(tmpDir, "cluster-configs")
 	err := os.MkdirAll(storageDir, 0o700)
 	if err != nil {
@@ -89,8 +96,10 @@ func New(tmpDir string, opts ...Option) (terraform, error) {
 	}
 
 	t := terraform{
-		storageDir: storageDir,
-		tmpDir:     tmpDir,
+		storageDir:        storageDir,
+		tmpDir:            tmpDir,
+		clientCertificate: clientCertificate,
+		clientKey:         clientKey,
 
 		incusProviderVersion:  terraformProviders["incus"].minVersion,
 		randomProviderVersion: terraformProviders["random"].minVersion,
@@ -217,6 +226,18 @@ func (t terraform) SeedCertificate(ctx context.Context, clusterName string, cert
 	err = os.WriteFile(servercertsFilename, []byte(certificatePEM), 0o600)
 	if err != nil {
 		return fmt.Errorf("Failed to write servercert for %q (%s): %w", clusterName, servercertsFilename, err)
+	}
+
+	// Additionally, we need to make sure, the client.crt and client.key are available
+	// for Incus as well.
+	err = os.WriteFile(filepath.Join(t.tmpDir, "client.key"), []byte(t.clientKey), 0o600)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(filepath.Join(t.tmpDir, "client.crt"), []byte(t.clientCertificate), 0o600)
+	if err != nil {
+		return err
 	}
 
 	return err

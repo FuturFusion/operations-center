@@ -16,7 +16,6 @@ func (t terraform) terraformInit(ctx context.Context, configDir string) error {
 	env := cleanEnvVars(os.Environ())
 
 	// Make sure, terraform provider uses the client certificate of Operations Center.
-	// FIXME: this should go to a temporary directory.
 	env = append(env, "INCUS_CONF="+t.tmpDir)
 
 	_, _, err := subprocess.RunCommandSplit(ctx, env, nil, "tofu", "-chdir="+configDir, "init", "-reconfigure")
@@ -33,7 +32,6 @@ func (t terraform) terraformApply(ctx context.Context, configDir string) error {
 	env := cleanEnvVars(os.Environ())
 
 	// Make sure, terraform provider uses the client certificate of Operations Center.
-	// FIXME: this should go to a temporary directory.
 	env = append(env, "INCUS_CONF="+t.tmpDir)
 
 	_, stderr, err := subprocess.RunCommandSplit(ctx, env, nil, "tofu", "-chdir="+configDir, "apply", "-auto-approve")
