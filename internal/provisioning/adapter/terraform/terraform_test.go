@@ -51,9 +51,14 @@ func TestTerraform_Init(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 
-			tf, err := terraform.New(tmpDir, terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
-				return tc.terraformInitErr
-			}))
+			tf, err := terraform.New(
+				tmpDir,
+				"",
+				"",
+				terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
+					return tc.terraformInitErr
+				}),
+			)
 			require.NoError(t, err)
 
 			const applicationConfig = `---
@@ -302,9 +307,14 @@ func TestTerraform_Apply(t *testing.T) {
 			clusterName := "foobar"
 			tc.setup(t, filepath.Join(tmpDir, "cluster-configs", clusterName))
 
-			tf, err := terraform.New(tmpDir, terraform.WithTerraformApplyFunc(func(ctx context.Context, configDir string) error {
-				return tc.terraformApplyErr
-			}))
+			tf, err := terraform.New(
+				tmpDir,
+				"",
+				"",
+				terraform.WithTerraformApplyFunc(func(ctx context.Context, configDir string) error {
+					return tc.terraformApplyErr
+				}),
+			)
 			require.NoError(t, err)
 
 			// Run tests
