@@ -5,11 +5,12 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 
-	"github.com/lxc/incus/v6/shared/revert"
-	incustls "github.com/lxc/incus/v6/shared/tls"
+	"github.com/lxc/incus/v7/shared/revert"
+	incustls "github.com/lxc/incus/v7/shared/tls"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
@@ -208,9 +209,7 @@ func (s *systemService) updateProviderConfigAll(ctx context.Context, cfg map[str
 			providerConfig.Config.Config = map[string]string{}
 		}
 
-		for key, value := range cfg {
-			providerConfig.Config.Config[key] = value
-		}
+		maps.Copy(providerConfig.Config.Config, cfg)
 
 		err = s.serverSvc.UpdateSystemProvider(ctx, server.Name, providerConfig)
 		if err != nil {

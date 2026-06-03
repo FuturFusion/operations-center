@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lxc/incus/v6/shared/tls"
-	"github.com/lxc/incus/v6/shared/validate"
+	"github.com/lxc/incus/v7/shared/tls"
+	"github.com/lxc/incus/v7/shared/validate"
 
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )

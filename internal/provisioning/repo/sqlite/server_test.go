@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
-	incustls "github.com/lxc/incus/v6/shared/tls"
+	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -22,7 +22,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -303,14 +302,14 @@ func TestServerDatabaseActions(t *testing.T) {
 
 	// Get all with filter
 	servers, err = server.GetAllWithFilter(ctx, provisioning.ServerFilter{
-		Cluster: ptr.To("one"),
+		Cluster: new("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, servers, 1)
 
 	// Get all names with filter
 	serverIDs, err = server.GetAllNamesWithFilter(ctx, provisioning.ServerFilter{
-		Cluster: ptr.To("one"),
+		Cluster: new("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, serverIDs, 1)

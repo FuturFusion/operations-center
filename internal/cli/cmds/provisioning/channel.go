@@ -10,7 +10,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -160,21 +159,21 @@ func (c *cmdChannelShow) run(cmd *cobra.Command, args []string) error {
 	}
 
 	clusters, err := c.ocClient.GetWithFilterClusters(cmd.Context(), provisioning.ClusterFilter{
-		Expression: ptr.To(fmt.Sprintf(`channel == %q`, name)),
+		Expression: new(fmt.Sprintf(`channel == %q`, name)),
 	})
 	if err != nil {
 		return err
 	}
 
 	servers, err := c.ocClient.GetWithFilterServers(cmd.Context(), provisioning.ServerFilter{
-		Expression: ptr.To(fmt.Sprintf(`version_data.update_channel == %q`, name)),
+		Expression: new(fmt.Sprintf(`version_data.update_channel == %q`, name)),
 	})
 	if err != nil {
 		return err
 	}
 
 	updates, err := c.ocClient.GetWithFilterUpdates(cmd.Context(), provisioning.UpdateFilter{
-		Channel: ptr.To(name),
+		Channel: new(name),
 	})
 	if err != nil {
 		return err

@@ -76,8 +76,8 @@ func capitalizedWords(s string, withAcronyms bool) []string {
 		}
 
 		// Plural?
-		if strings.HasSuffix(words[i], "s") {
-			w := strings.TrimSuffix(words[i], "s")
+		w, ok := strings.CutSuffix(words[i], "s")
+		if ok {
 			_, ok := acronyms[strings.ToLower(w)]
 			if ok {
 				words[i] = strings.ToUpper(w) + "s"

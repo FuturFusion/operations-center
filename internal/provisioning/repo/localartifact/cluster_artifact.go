@@ -13,7 +13,7 @@ import (
 	"slices"
 
 	"github.com/gabriel-vasile/mimetype"
-	"github.com/lxc/incus/v6/shared/revert"
+	"github.com/lxc/incus/v7/shared/revert"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"

@@ -5,12 +5,11 @@ package inventory_test
 import (
 	"testing"
 
-	"github.com/lxc/incus/v6/shared/api"
+	"github.com/lxc/incus/v7/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -190,11 +189,11 @@ func TestNetwork_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: inventory.NetworkFilter{
-				UUID:        ptr.To(uuidgen.FromPattern(t, "1")),
-				Cluster:     ptr.To("cluster"),
-				ProjectName: ptr.To("project"),
-				Name:        ptr.To("name"),
-				Expression:  ptr.To("true"),
+				UUID:        new(uuidgen.FromPattern(t, "1")),
+				Cluster:     new("cluster"),
+				ProjectName: new("project"),
+				Name:        new("name"),
+				Expression:  new("true"),
 			},
 
 			want: `cluster=cluster&filter=true&name=name&project=project&uuid=11111111-1111-1111-1111-111111111111`,

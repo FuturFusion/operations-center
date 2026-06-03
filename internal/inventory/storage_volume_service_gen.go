@@ -12,12 +12,11 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 	"github.com/google/uuid"
-	incusapi "github.com/lxc/incus/v6/shared/api"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
 type storageVolumeService struct {
@@ -200,7 +199,7 @@ func (s storageVolumeService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 			slog.WarnContext(ctx, "expected project missing in ResyncByUUID", slog.String("resource-type", "storage_volume"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
 		}
 
-		storageVolume.Server = ptr.To(retrievedStorageVolume.Location)
+		storageVolume.Server = new(retrievedStorageVolume.Location)
 		storageVolume.ProjectName = firstNonEmpty(retrievedStorageVolume.Project, storageVolume.ProjectName, "default")
 		storageVolume.Type = retrievedStorageVolume.Type
 		storageVolume.Object = IncusStorageVolumeFullWrapper{retrievedStorageVolume}
@@ -281,7 +280,7 @@ func (s storageVolumeService) handleCreateEvent(ctx context.Context, clusterName
 
 	storageVolume := StorageVolume{
 		Cluster:         clusterName,
-		Server:          ptr.To(retrievedStorageVolume.Location),
+		Server:          new(retrievedStorageVolume.Location),
 		ProjectName:     firstNonEmpty(retrievedStorageVolume.Project, event.Source.ProjectName, "default"),
 		StoragePoolName: event.Source.ParentName,
 		Name:            retrievedStorageVolume.Name,
@@ -443,7 +442,7 @@ func (s storageVolumeService) SyncCluster(ctx context.Context, name string) erro
 			for _, retrievedStorageVolume := range retrievedStorageVolumes {
 				storageVolume := StorageVolume{
 					Cluster:         name,
-					Server:          ptr.To(retrievedStorageVolume.Location),
+					Server:          new(retrievedStorageVolume.Location),
 					ProjectName:     retrievedStorageVolume.Project,
 					StoragePoolName: storagePool.Name,
 					Name:            retrievedStorageVolume.Name,

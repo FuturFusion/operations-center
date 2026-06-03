@@ -16,7 +16,7 @@ import (
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus-os/incus-osd/api/images"
-	incustls "github.com/lxc/incus/v6/shared/tls"
+	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
 
@@ -30,7 +30,6 @@ import (
 	provisioningServer "github.com/FuturFusion/operations-center/internal/provisioning/server"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
@@ -224,7 +223,7 @@ func TestServerService_Create(t *testing.T) {
 			name: "success",
 			server: provisioning.Server{
 				Name:          "one",
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -245,7 +244,7 @@ one
 			name: "error - validation",
 			server: provisioning.Server{
 				Name:          "", // invalid
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -261,7 +260,7 @@ one
 			name: "error - remote Operations Center",
 			server: provisioning.Server{
 				Name:          "one",
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -278,7 +277,7 @@ one
 			name: "error - repo.Create",
 			server: provisioning.Server{
 				Name:          "one",
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -295,7 +294,7 @@ one
 			name: "error - Ping",
 			server: provisioning.Server{
 				Name:          "one",
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -405,12 +404,12 @@ func TestServerService_GetAll(t *testing.T) {
 			repoGetAllServers: provisioning.Servers{
 				provisioning.Server{
 					Name:          "one",
-					Cluster:       ptr.To("one"),
+					Cluster:       new("one"),
 					ConnectionURL: "http://one/",
 				},
 				provisioning.Server{
 					Name:          "two",
-					Cluster:       ptr.To("one"),
+					Cluster:       new("one"),
 					ConnectionURL: "http://one/",
 				},
 			},
@@ -468,7 +467,7 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 		{
 			name: "success - no filter expression",
 			filter: provisioning.ServerFilter{
-				Cluster: ptr.To("one"),
+				Cluster: new("one"),
 			},
 			repoGetAllWithFilter: provisioning.Servers{
 				provisioning.Server{
@@ -485,7 +484,7 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 		{
 			name: "success - with filter expression",
 			filter: provisioning.ServerFilter{
-				Expression: ptr.To(`name == "one"`),
+				Expression: new(`name == "one"`),
 			},
 			repoGetAllWithFilter: provisioning.Servers{
 				provisioning.Server{
@@ -509,7 +508,7 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 		{
 			name: "error - non bool expression",
 			filter: provisioning.ServerFilter{
-				Expression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
+				Expression: new(`"string"`), // invalid, does evaluate to string instead of boolean.
 			},
 			repoGetAllWithFilter: provisioning.Servers{
 				provisioning.Server{
@@ -523,7 +522,7 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 		{
 			name: "error - filter expression run",
 			filter: provisioning.ServerFilter{
-				Expression: ptr.To(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
+				Expression: new(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
 			},
 			repoGetAllWithFilter: provisioning.Servers{
 				provisioning.Server{
@@ -537,7 +536,7 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 		{
 			name: "error - upodateSvc.GetAllWithFilter",
 			filter: provisioning.ServerFilter{
-				Cluster: ptr.To("one"),
+				Cluster: new("one"),
 			},
 			repoGetAllWithFilter: provisioning.Servers{
 				provisioning.Server{
@@ -644,7 +643,7 @@ func TestServerService_GetAllNamesWithFilter(t *testing.T) {
 		{
 			name: "success - no filter expression",
 			filter: provisioning.ServerFilter{
-				Cluster: ptr.To("one"),
+				Cluster: new("one"),
 			},
 			repoGetAllNamesWithFilter: []string{
 				"one", "two",
@@ -656,7 +655,7 @@ func TestServerService_GetAllNamesWithFilter(t *testing.T) {
 		{
 			name: "success - with filter expression",
 			filter: provisioning.ServerFilter{
-				Expression: ptr.To(`name matches "one"`),
+				Expression: new(`name matches "one"`),
 			},
 			repoGetAllNamesWithFilter: []string{
 				"one", "two",
@@ -668,7 +667,7 @@ func TestServerService_GetAllNamesWithFilter(t *testing.T) {
 		{
 			name: "error - non bool expression",
 			filter: provisioning.ServerFilter{
-				Expression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
+				Expression: new(`"string"`), // invalid, does evaluate to string instead of boolean.
 			},
 			repoGetAllNamesWithFilter: []string{
 				"one",
@@ -680,7 +679,7 @@ func TestServerService_GetAllNamesWithFilter(t *testing.T) {
 		{
 			name: "error - filter expression run",
 			filter: provisioning.ServerFilter{
-				Expression: ptr.To(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
+				Expression: new(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
 			},
 			repoGetAllNamesWithFilter: []string{
 				"one",
@@ -739,21 +738,21 @@ func TestServerService_GetByName(t *testing.T) {
 			nameArg: "one",
 			repoGetByNameServer: &provisioning.Server{
 				Name:          "one",
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 			},
 
 			assertErr: require.NoError,
 			wantServer: &provisioning.Server{
 				Name:          "one",
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				VersionData: api.ServerVersionData{
-					NeedsUpdate:   ptr.To(false),
-					NeedsReboot:   ptr.To(false),
-					InMaintenance: ptr.To(api.NotInMaintenance),
+					NeedsUpdate:   new(false),
+					NeedsReboot:   new(false),
+					InMaintenance: new(api.NotInMaintenance),
 					OS: api.OSVersionData{
-						NeedsUpdate: ptr.To(false),
+						NeedsUpdate: new(false),
 					},
 				},
 			},
@@ -763,7 +762,7 @@ func TestServerService_GetByName(t *testing.T) {
 			nameArg: "one",
 			repoGetByNameServer: &provisioning.Server{
 				Name:          "one",
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
@@ -817,33 +816,33 @@ func TestServerService_GetByName(t *testing.T) {
 			assertErr: require.NoError,
 			wantServer: &provisioning.Server{
 				Name:          "one",
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
 						Name:             "os",
 						Version:          "2",
 						VersionNext:      "2",
-						AvailableVersion: ptr.To("2"),
-						NeedsUpdate:      ptr.To(false),
+						AvailableVersion: new("2"),
+						NeedsUpdate:      new(false),
 					},
 					Applications: []api.ApplicationVersionData{
 						{
 							Name:             "incus",
 							Version:          "2",
-							AvailableVersion: ptr.To("2"),
-							NeedsUpdate:      ptr.To(false),
+							AvailableVersion: new("2"),
+							NeedsUpdate:      new(false),
 						},
 						{
 							Name:             "incus-ceph",
 							Version:          "2",
-							AvailableVersion: ptr.To("2"),
-							NeedsUpdate:      ptr.To(false),
+							AvailableVersion: new("2"),
+							NeedsUpdate:      new(false),
 						},
 					},
-					NeedsUpdate:   ptr.To(false),
-					NeedsReboot:   ptr.To(false),
-					InMaintenance: ptr.To(api.NotInMaintenance),
+					NeedsUpdate:   new(false),
+					NeedsReboot:   new(false),
+					InMaintenance: new(api.NotInMaintenance),
 				},
 			},
 		},
@@ -852,7 +851,7 @@ func TestServerService_GetByName(t *testing.T) {
 			nameArg: "one",
 			repoGetByNameServer: &provisioning.Server{
 				Name:          "one",
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
@@ -920,33 +919,33 @@ func TestServerService_GetByName(t *testing.T) {
 			assertErr: require.NoError,
 			wantServer: &provisioning.Server{
 				Name:          "one",
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
 						Name:             "os",
 						Version:          "2",
 						VersionNext:      "2",
-						AvailableVersion: ptr.To("3"),
-						NeedsUpdate:      ptr.To(true),
+						AvailableVersion: new("3"),
+						NeedsUpdate:      new(true),
 					},
 					Applications: []api.ApplicationVersionData{
 						{
 							Name:             "incus",
 							Version:          "2",
-							AvailableVersion: ptr.To("3"),
-							NeedsUpdate:      ptr.To(true),
+							AvailableVersion: new("3"),
+							NeedsUpdate:      new(true),
 						},
 						{
 							Name:             "incus-ceph",
 							Version:          "2",
-							AvailableVersion: ptr.To("3"),
-							NeedsUpdate:      ptr.To(true),
+							AvailableVersion: new("3"),
+							NeedsUpdate:      new(true),
 						},
 					},
-					NeedsUpdate:   ptr.To(true),
-					NeedsReboot:   ptr.To(false),
-					InMaintenance: ptr.To(api.NotInMaintenance),
+					NeedsUpdate:   new(true),
+					NeedsReboot:   new(false),
+					InMaintenance: new(api.NotInMaintenance),
 				},
 			},
 		},
@@ -955,7 +954,7 @@ func TestServerService_GetByName(t *testing.T) {
 			nameArg: "one",
 			repoGetByNameServer: &provisioning.Server{
 				Name:          "one",
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
@@ -1005,32 +1004,32 @@ func TestServerService_GetByName(t *testing.T) {
 			assertErr: require.NoError,
 			wantServer: &provisioning.Server{
 				Name:          "one",
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
 						Name:             "os",
 						Version:          "2",
 						VersionNext:      "2",
-						AvailableVersion: ptr.To("2"),
-						NeedsUpdate:      ptr.To(false),
+						AvailableVersion: new("2"),
+						NeedsUpdate:      new(false),
 					},
 					Applications: []api.ApplicationVersionData{
 						{
 							Name:             "incus",
 							Version:          "2",
-							AvailableVersion: ptr.To("2"),
-							NeedsUpdate:      ptr.To(false),
+							AvailableVersion: new("2"),
+							NeedsUpdate:      new(false),
 						},
 						{
 							Name:        "incus-ceph",
 							Version:     "2",
-							NeedsUpdate: ptr.To(false),
+							NeedsUpdate: new(false),
 						},
 					},
-					NeedsUpdate:   ptr.To(false),
-					NeedsReboot:   ptr.To(false),
-					InMaintenance: ptr.To(api.NotInMaintenance),
+					NeedsUpdate:   new(false),
+					NeedsReboot:   new(false),
+					InMaintenance: new(api.NotInMaintenance),
 				},
 			},
 		},
@@ -1052,7 +1051,7 @@ func TestServerService_GetByName(t *testing.T) {
 			nameArg: "one",
 			repoGetByNameServer: &provisioning.Server{
 				Name:          "one",
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 			},
 			updateSvcGetAllWithFilterErr: boom.Error,
@@ -1108,7 +1107,7 @@ func TestServerService_Update(t *testing.T) {
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1146,7 +1145,7 @@ one
 			server: provisioning.Server{
 				Name:          "", // invalid
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1165,7 +1164,7 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1189,7 +1188,7 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1202,7 +1201,7 @@ one
 				{
 					Value: &provisioning.Server{
 						Name:    "one",
-						Cluster: ptr.To("one"),
+						Cluster: new("one"),
 						Channel: "testing",
 					},
 				},
@@ -1216,7 +1215,7 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1246,7 +1245,7 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1276,7 +1275,7 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1386,7 +1385,7 @@ func TestServerService_UpdateSystemNetwork(t *testing.T) {
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1419,7 +1418,7 @@ one
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 		one
@@ -1450,7 +1449,7 @@ one
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1483,7 +1482,7 @@ one
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1515,7 +1514,7 @@ one
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1616,7 +1615,7 @@ func TestServerService_UpdateSystemStorage(t *testing.T) {
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1649,7 +1648,7 @@ one
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 		one
@@ -1680,7 +1679,7 @@ one
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1713,7 +1712,7 @@ one
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1745,7 +1744,7 @@ one
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1832,7 +1831,7 @@ func TestServerService_GetSystemProvider(t *testing.T) {
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1870,7 +1869,7 @@ one
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1932,7 +1931,7 @@ func TestServerService_UpdateSystemProvider(t *testing.T) {
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -1954,7 +1953,7 @@ one
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 		one
@@ -2021,7 +2020,7 @@ func TestServerService_GetSystemUpdate(t *testing.T) {
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -2067,7 +2066,7 @@ one
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -2131,7 +2130,7 @@ func TestServerService_UpdateSystemUpdate(t *testing.T) {
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -2171,7 +2170,7 @@ one
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 		one
@@ -2275,7 +2274,7 @@ func TestServerService_UpdateSystemNetworkWithSelfUpdateSignal(t *testing.T) {
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
-				Cluster:       ptr.To("one"),
+				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
@@ -3117,7 +3116,7 @@ func TestServerService_Rename(t *testing.T) {
 			newName: "two",
 			repoGetByNameServer: &provisioning.Server{
 				Name:    "one",
-				Cluster: ptr.To("one"), // server already clustered
+				Cluster: new("one"), // server already clustered
 			},
 
 			assertErr: errassert.OperationNotPermittedError,
@@ -3198,7 +3197,7 @@ func TestServerService_DeleteByName(t *testing.T) {
 			name:    "error - assigned to cluster",
 			nameArg: "one",
 			repoGetByNameServer: &provisioning.Server{
-				Cluster: ptr.To("one"),
+				Cluster: new("one"),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -3310,7 +3309,7 @@ func TestServerService_PollServers(t *testing.T) {
 
 			// Run test
 			err := serverSvc.PollServers(t.Context(), provisioning.ServerFilter{
-				Status: ptr.To(api.ServerStatusPending),
+				Status: new(api.ServerStatusPending),
 			}, true)
 
 			// Assert
@@ -3538,8 +3537,8 @@ foobar
 				Certificate: `-----BEGIN CERTIFICATE-----
 foobar
 -----END CERTIFICATE-----`,
-				Cluster:            ptr.To("cluster"),
-				ClusterCertificate: ptr.To("certificate"),
+				Cluster:            new("cluster"),
+				ClusterCertificate: new("certificate"),
 			},
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
@@ -3566,7 +3565,7 @@ foobar
 			},
 			clusterSvcGetByName: &provisioning.Cluster{
 				Name:        "cluster",
-				Certificate: ptr.To("certificate"),
+				Certificate: new("certificate"),
 			},
 
 			assertErr: require.NoError,
@@ -3582,8 +3581,8 @@ foobar
 			serverArg: provisioning.Server{
 				Name:               "one",
 				Status:             api.ServerStatusReady,
-				Cluster:            ptr.To("cluster"),
-				ClusterCertificate: ptr.To("certificate"),
+				Cluster:            new("cluster"),
+				ClusterCertificate: new("certificate"),
 			},
 			repoGetByName: []queue.Item[*provisioning.Server]{
 				{
@@ -3610,7 +3609,7 @@ foobar
 			},
 			clusterSvcGetByName: &provisioning.Cluster{
 				Name:        "cluster",
-				Certificate: ptr.To("certificate"),
+				Certificate: new("certificate"),
 			},
 
 			assertErr:        require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
@@ -3622,8 +3621,8 @@ foobar
 			serverArg: provisioning.Server{
 				Name:               "one",
 				Status:             api.ServerStatusReady,
-				Cluster:            ptr.To("cluster"),
-				ClusterCertificate: ptr.To("certificate"),
+				Cluster:            new("cluster"),
+				ClusterCertificate: new("certificate"),
 			},
 			clientPing: []queue.Item[struct{}]{
 				// Simulate failing connection with pinned certificate, because cluster
@@ -3645,8 +3644,8 @@ foobar
 			serverArg: provisioning.Server{
 				Name:               "one",
 				Status:             api.ServerStatusReady,
-				Cluster:            ptr.To("cluster"),
-				ClusterCertificate: ptr.To("certificate"),
+				Cluster:            new("cluster"),
+				ClusterCertificate: new("certificate"),
 			},
 			clientPing: []queue.Item[struct{}]{
 				// Simulate failing connection with pinned certificate, because cluster
@@ -3660,7 +3659,7 @@ foobar
 			},
 			clusterSvcGetByName: &provisioning.Cluster{
 				Name:        "cluster",
-				Certificate: ptr.To("certificate"),
+				Certificate: new("certificate"),
 			},
 			clusterSvcUpdateErr: boom.Error,
 
@@ -4198,7 +4197,7 @@ func TestServerService_PollServer(t *testing.T) {
 			updateServerConfigArg: false,
 			repoGetByName: &provisioning.Server{
 				Name:         "one",
-				Cluster:      ptr.To("cluster"),
+				Cluster:      new("cluster"),
 				Status:       api.ServerStatusReady,
 				StatusDetail: api.ServerStatusDetailReadyRestoring,
 				VersionData: api.ServerVersionData{
@@ -4556,7 +4555,7 @@ func TestServerService_PollServer(t *testing.T) {
 			updateServerConfigArg: false,
 			repoGetByName: &provisioning.Server{
 				Name:         "one",
-				Cluster:      ptr.To("cluster"),
+				Cluster:      new("cluster"),
 				Status:       api.ServerStatusReady,
 				StatusDetail: api.ServerStatusDetailReadyRestoring,
 				VersionData: api.ServerVersionData{
@@ -4782,7 +4781,7 @@ func TestServerService_ResyncByName(t *testing.T) {
 			lifecycleOperationArg: domain.LifecycleOperationRestore,
 			repoGetByName: provisioning.Server{
 				Name:    "incus",
-				Cluster: ptr.To("cluster"),
+				Cluster: new("cluster"),
 				Type:    api.ServerTypeIncus,
 				Status:  api.ServerStatusReady,
 				VersionData: api.ServerVersionData{
@@ -4841,7 +4840,7 @@ func TestServerService_ResyncByName(t *testing.T) {
 			lifecycleOperationArg: domain.LifecycleOperationRestore,
 			repoGetByName: provisioning.Server{
 				Name:    "incus",
-				Cluster: ptr.To("cluster"),
+				Cluster: new("cluster"),
 				Type:    api.ServerTypeIncus,
 				Status:  api.ServerStatusReady,
 				VersionData: api.ServerVersionData{
@@ -6805,8 +6804,8 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 		{
 			name:             "success - with tokenID and tokenSeedName",
 			argName:          "one",
-			argTokenID:       ptr.To(uuidgen.FromPattern(t, "1")),
-			argTokenSeedName: ptr.To("some_seed"),
+			argTokenID:       new(uuidgen.FromPattern(t, "1")),
+			argTokenSeedName: new("some_seed"),
 			repoGetByName: provisioning.Server{
 				Name: "server01",
 				Type: api.ServerTypeIncus,
@@ -6848,7 +6847,7 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			argName: "one",
 			repoGetByName: provisioning.Server{
 				Name:    "server01",
-				Cluster: ptr.To("cluster"),
+				Cluster: new("cluster"),
 				Type:    api.ServerTypeIncus,
 			},
 
@@ -6868,8 +6867,8 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 		{
 			name:             "error - tokenSvc.GetTokenSeedByName",
 			argName:          "one",
-			argTokenID:       ptr.To(uuidgen.FromPattern(t, "1")),
-			argTokenSeedName: ptr.To("some_seed"),
+			argTokenID:       new(uuidgen.FromPattern(t, "1")),
+			argTokenSeedName: new("some_seed"),
 			repoGetByName: provisioning.Server{
 				Name: "server01",
 				Type: api.ServerTypeIncus,

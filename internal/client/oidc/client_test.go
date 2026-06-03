@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lxc/incus/v6/test/mini-oidc/minioidc"
-	"github.com/lxc/incus/v6/test/mini-oidc/storage"
+	"github.com/lxc/incus/v7/test/mini-oidc/minioidc"
+	"github.com/lxc/incus/v7/test/mini-oidc/storage"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/client/oidc"

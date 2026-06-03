@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 )
 
@@ -55,10 +56,8 @@ func StatusErrorMatch(err error, matchStatusCodes ...int) (int, bool) {
 			return statusCode, true
 		}
 
-		for _, s := range matchStatusCodes {
-			if statusCode == s {
-				return statusCode, true
-			}
+		if slices.Contains(matchStatusCodes, statusCode) {
+			return statusCode, true
 		}
 	}
 

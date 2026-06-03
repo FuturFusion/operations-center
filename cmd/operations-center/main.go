@@ -7,9 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/lxc/incus/v6/shared/ask"
-	"github.com/lxc/incus/v6/shared/termios"
-	incustls "github.com/lxc/incus/v6/shared/tls"
+	"github.com/lxc/incus/v7/shared/ask"
+	"github.com/lxc/incus/v7/shared/termios"
+	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/internal/cli/cmds"

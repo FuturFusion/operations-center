@@ -11,7 +11,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
-	localtls "github.com/lxc/incus/v6/shared/tls"
+	localtls "github.com/lxc/incus/v7/shared/tls"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -205,7 +205,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 	var filter provisioning.ServerFilter
 
 	if r.URL.Query().Get("cluster") != "" {
-		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+		filter.Cluster = new(r.URL.Query().Get("cluster"))
 	}
 
 	if r.URL.Query().Get("status") != "" {
@@ -219,7 +219,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 	}
 
 	if r.URL.Query().Get("filter") != "" {
-		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
+		filter.Expression = new(r.URL.Query().Get("filter"))
 	}
 
 	if recursion == 1 {
@@ -962,7 +962,7 @@ func (s *serverHandler) serverSystemFactoryResetPost(r *http.Request) response.R
 	var tokenSeedName *string
 
 	if r.URL.Query().Get("tokenSeedName") != "" {
-		tokenSeedName = ptr.To(r.URL.Query().Get("tokenSeedName"))
+		tokenSeedName = new(r.URL.Query().Get("tokenSeedName"))
 	}
 
 	if r.URL.Query().Get("token") != "" {

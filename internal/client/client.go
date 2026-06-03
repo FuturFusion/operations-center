@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	incusTLS "github.com/lxc/incus/v6/shared/tls"
+	incusTLS "github.com/lxc/incus/v7/shared/tls"
 
 	oidcClient "github.com/FuturFusion/operations-center/internal/client/oidc"
 	"github.com/FuturFusion/operations-center/internal/domain"

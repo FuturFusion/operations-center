@@ -8,14 +8,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/lxc/incus/v6/shared/ask"
-	localtls "github.com/lxc/incus/v6/shared/tls"
+	"github.com/lxc/incus/v7/shared/ask"
+	localtls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	config "github.com/FuturFusion/operations-center/internal/config/cli"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
 )
@@ -58,7 +57,7 @@ func (c *CmdRemote) Command() *cobra.Command {
 	// Add
 	remoteAddCmd := cmdRemoteAdd{
 		env:   c.Env,
-		asker: ptr.To(ask.NewAsker(bufio.NewReader(cmd.InOrStdin()))),
+		asker: new(ask.NewAsker(bufio.NewReader(cmd.InOrStdin()))),
 	}
 
 	cmd.AddCommand(remoteAddCmd.Command())

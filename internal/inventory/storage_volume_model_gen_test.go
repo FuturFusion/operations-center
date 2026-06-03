@@ -5,12 +5,11 @@ package inventory_test
 import (
 	"testing"
 
-	"github.com/lxc/incus/v6/shared/api"
+	"github.com/lxc/incus/v7/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -101,7 +100,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 			storageVolume: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
-				Server:          ptr.To("one"),
+				Server:          new("one"),
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "one",
@@ -114,7 +113,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 			storageVolume: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "", // invalid
-				Server:          ptr.To("one"),
+				Server:          new("one"),
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "one",
@@ -130,7 +129,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 			storageVolume: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
-				Server:          ptr.To("one"),
+				Server:          new("one"),
 				ProjectName:     "", // invalid
 				StoragePoolName: "storagePool one",
 				Name:            "one",
@@ -146,7 +145,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 			storageVolume: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
-				Server:          ptr.To("one"),
+				Server:          new("one"),
 				ProjectName:     "project one",
 				StoragePoolName: "", // invalid
 				Name:            "one",
@@ -162,7 +161,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 			storageVolume: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
-				Server:          ptr.To("one"),
+				Server:          new("one"),
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "", // invalid
@@ -178,7 +177,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 			storageVolume: &inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
-				Server:          ptr.To("one"),
+				Server:          new("one"),
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "one",
@@ -216,13 +215,13 @@ func TestStorageVolume_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: inventory.StorageVolumeFilter{
-				UUID:            ptr.To(uuidgen.FromPattern(t, "1")),
-				Cluster:         ptr.To("cluster"),
-				Server:          ptr.To("server"),
-				ProjectName:     ptr.To("project"),
-				StoragePoolName: ptr.To("storage_pool"),
-				Name:            ptr.To("name"),
-				Expression:      ptr.To("true"),
+				UUID:            new(uuidgen.FromPattern(t, "1")),
+				Cluster:         new("cluster"),
+				Server:          new("server"),
+				ProjectName:     new("project"),
+				StoragePoolName: new("storage_pool"),
+				Name:            new("name"),
+				Expression:      new("true"),
 			},
 
 			want: `cluster=cluster&filter=true&name=name&parent=storage_pool&project=project&server=server&uuid=11111111-1111-1111-1111-111111111111`,

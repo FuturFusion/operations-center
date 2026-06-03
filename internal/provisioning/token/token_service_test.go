@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
-	incusapi "github.com/lxc/incus/v6/shared/api"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 	"github.com/stretchr/testify/require"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"

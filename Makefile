@@ -162,13 +162,13 @@ update-openfga:
 .PHONY: update-gomod
 update-gomod:
 	$(GO) get -t -v -u ./...
-	$(GO) mod tidy --go=1.25.0
+	$(GO) mod tidy --go=1.26.0
 	$(GO) get toolchain@none
 
 .PHONY: update-api
 update-api:
 	$(GO) install -v -x github.com/go-swagger/go-swagger/cmd/swagger@master
-	swagger generate spec -o doc/rest-api.yaml -w ./internal/api -m -x github.com/lxc/incus/v6/shared/api -x github.com/FuturFusion/migration-manager
+	swagger generate spec -o doc/rest-api.yaml -w ./internal/api -m -x github.com/lxc/incus/v7/shared/api -x github.com/FuturFusion/migration-manager
 
 .PHONY: doc-setup
 doc-setup:

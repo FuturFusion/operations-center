@@ -16,9 +16,9 @@ import (
 
 	"github.com/gorilla/websocket"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
-	incusclient "github.com/lxc/incus/v6/client"
-	incusapi "github.com/lxc/incus/v6/shared/api"
-	incustls "github.com/lxc/incus/v6/shared/tls"
+	incusclient "github.com/lxc/incus/v7/client"
+	incusapi "github.com/lxc/incus/v7/shared/api"
+	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -26,7 +26,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -2836,7 +2835,7 @@ func TestClientServer(t *testing.T) {
 								Enabled:     true,
 								LoginServer: "server",
 							},
-							State: struct{}{},
+							State: incusosapi.ServiceTailscaleState{},
 						}
 
 						require.Equal(t, wantOSService, res)
@@ -4264,8 +4263,8 @@ func TestClientServer(t *testing.T) {
 						Name:               "server01",
 						ConnectionURL:      server.URL,
 						Certificate:        string(serverCert),
-						Cluster:            ptr.To("cluster"),
-						ClusterCertificate: ptr.To(string(serverCert)),
+						Cluster:            new("cluster"),
+						ClusterCertificate: new(string(serverCert)),
 						OSData: api.OSData{
 							Network: incusosapi.SystemNetwork{
 								State: incusosapi.SystemNetworkState{

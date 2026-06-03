@@ -23,7 +23,8 @@ jobs:
       fail-fast: false
       matrix:
         go:
-          - oldstable
+          # FIXME: disabled for now, since updating github.com/lxc/incus-os/incus-osd requires Go 1.26 and Go 1.27 is not yet released.
+          # - oldstable
           - stable
           # Disabled for now, since tip is not really important for us as of now.exclude:
           # This saves us some minutes on CI.

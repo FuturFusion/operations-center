@@ -25,8 +25,8 @@ import (
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus-os/incus-osd/api/images"
-	incusapi "github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/revert"
+	incusapi "github.com/lxc/incus/v7/shared/api"
+	"github.com/lxc/incus/v7/shared/revert"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -666,7 +666,7 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 	}
 
 	currentClusterServers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
-		Cluster: ptr.To(name),
+		Cluster: new(name),
 	})
 	if err != nil {
 		return fmt.Errorf("Failed to get current servers of cluster %q: %w", name, err)
@@ -981,7 +981,7 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 
 func (s *clusterService) RemoveServer(ctx context.Context, name string, removedServerNames []string) error {
 	servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
-		Cluster: ptr.To(name),
+		Cluster: new(name),
 	})
 	if err != nil {
 		return fmt.Errorf("Server removal failed while getting servers of cluster %q: %w", name, err)
@@ -1313,7 +1313,7 @@ func (s *clusterService) GetByName(ctx context.Context, name string) (*provision
 
 func (s *clusterService) getClusterUpdateStatus(ctx context.Context, name string, clusterUpdateStatus *api.ClusterUpdateStatus) error {
 	servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
-		Cluster: ptr.To(name),
+		Cluster: new(name),
 	})
 	if err != nil {
 		return fmt.Errorf("Failed to get servers for cluster %q: %w", name, err)
@@ -1338,7 +1338,7 @@ func (s *clusterService) getClusterUpdateStatus(ctx context.Context, name string
 	}
 
 	if clusterUpdateStatus.InProgressStatus.InProgress != api.ClusterUpdateInProgressInactive {
-		clusterUpdateStatus.InProgressStatus.StatusDescription = ptr.To(clusterUpdateState(clusterUpdateStatus.InProgressStatus, servers))
+		clusterUpdateStatus.InProgressStatus.StatusDescription = new(clusterUpdateState(clusterUpdateStatus.InProgressStatus, servers))
 	}
 
 	return nil
@@ -1511,7 +1511,7 @@ func (s *clusterService) DeleteAndFactoryResetByName(ctx context.Context, name s
 	}
 
 	servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
-		Cluster: ptr.To(name),
+		Cluster: new(name),
 	})
 	if err != nil {
 		return fmt.Errorf("Get cluster servers for factory reset: %w", err)
@@ -1733,7 +1733,7 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 
 	// Refresh all status information for all servers.
 	err = s.serverSvc.PollServers(ctx, provisioning.ServerFilter{
-		Cluster: ptr.To(name),
+		Cluster: new(name),
 	}, true)
 	if err != nil {
 		return fmt.Errorf("Failed to refresh server state information for cluster %q: %w", name, err)
@@ -1743,7 +1743,7 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 	//   * All servers are in ready state with no update currently running.
 	//   * None of the servers is in maintenance.
 	servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
-		Cluster: ptr.To(name),
+		Cluster: new(name),
 	})
 	if err == nil && len(servers) == 0 {
 		err = domain.ErrNotFound
@@ -1784,7 +1784,7 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 func (s *clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNameFilter *string) error {
 	clusters, err := s.GetAllWithFilter(ctx, provisioning.ClusterFilter{
 		Name:       clusterNameFilter,
-		Expression: ptr.To(`update_status.in_progress_status.in_progress != ""`),
+		Expression: new(`update_status.in_progress_status.in_progress != ""`),
 	})
 	if err != nil {
 		return fmt.Errorf("Failed to get clusters for update control loop: %w", err)
@@ -2919,14 +2919,14 @@ func (s *clusterService) prepareBulkUpdate(ctx context.Context, clusterName stri
 
 	// Update the current server states in the DB, serves as a connection test at the same time.
 	err = s.serverSvc.PollServers(ctx, provisioning.ServerFilter{
-		Cluster: ptr.To(clusterName),
+		Cluster: new(clusterName),
 	}, true)
 	if err != nil {
 		return nil, fmt.Errorf("Polling of cluster members failed: %w", err)
 	}
 
 	servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
-		Cluster: ptr.To(clusterName),
+		Cluster: new(clusterName),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get server names for cluster %q: %w", clusterName, err)
@@ -2943,7 +2943,7 @@ func (s *clusterService) prepareBulkUpdate(ctx context.Context, clusterName stri
 			server.VersionData.InMaintenance != nil &&
 			*server.VersionData.InMaintenance == api.NotInMaintenance
 		if !isReady {
-			return nil, fmt.Errorf("Server %q (%s) is not ready (status: %q, status detail: %q, maintenance: %q): %w", server.Name, server.GetConnectionURL(), server.Status, server.StatusDetail, ptr.From(server.VersionData.InMaintenance), domain.ErrOperationNotPermitted)
+			return nil, fmt.Errorf("Server %q (%s) is not ready (status: %q, status detail: %q, maintenance: %q): %w", server.Name, server.GetConnectionURL(), server.Status, server.StatusDetail, server.VersionData.InMaintenance.String(), domain.ErrOperationNotPermitted)
 		}
 	}
 

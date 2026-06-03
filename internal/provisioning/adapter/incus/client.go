@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/url"
 	"path"
@@ -12,8 +13,8 @@ import (
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus-os/incus-osd/api/seed"
-	incus "github.com/lxc/incus/v6/client"
-	incusapi "github.com/lxc/incus/v6/shared/api"
+	incus "github.com/lxc/incus/v7/client"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -990,9 +991,7 @@ func (c client) SetServerConfig(ctx context.Context, endpoint provisioning.Endpo
 		svr.Config = map[string]string{}
 	}
 
-	for key, value := range config {
-		svr.Config[key] = value
-	}
+	maps.Copy(svr.Config, config)
 
 	err = client.UpdateServer(svr.Writable(), etag)
 	if err != nil {

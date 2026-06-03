@@ -8,7 +8,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -260,7 +259,7 @@ func TestCluster_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: provisioning.ClusterFilter{
-				Expression: ptr.To("true"),
+				Expression: new("true"),
 			},
 
 			want: `filter=true`,

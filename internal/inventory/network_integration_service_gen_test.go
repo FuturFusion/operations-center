@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusapi "github.com/lxc/incus/v6/shared/api"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -19,7 +19,6 @@ import (
 	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
@@ -52,7 +51,7 @@ func TestNetworkIntegrationService_GetAllWithFilter(t *testing.T) {
 		},
 		{
 			name:             "success - with filter expression",
-			filterExpression: ptr.To(`name == "one"`),
+			filterExpression: new(`name == "one"`),
 			repoGetAllWithFilter: inventory.NetworkIntegrations{
 				inventory.NetworkIntegration{
 					Name: "one",
@@ -67,7 +66,7 @@ func TestNetworkIntegrationService_GetAllWithFilter(t *testing.T) {
 		},
 		{
 			name:             "error - non bool expression",
-			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
+			filterExpression: new(`"string"`), // invalid, does evaluate to string instead of boolean.
 			repoGetAllWithFilter: inventory.NetworkIntegrations{
 				inventory.NetworkIntegration{
 					Name: "one",
@@ -79,7 +78,7 @@ func TestNetworkIntegrationService_GetAllWithFilter(t *testing.T) {
 		},
 		{
 			name:             "error - filter expression run",
-			filterExpression: ptr.To(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
+			filterExpression: new(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
 			repoGetAllWithFilter: inventory.NetworkIntegrations{
 				inventory.NetworkIntegration{
 					Name: "one",
@@ -145,7 +144,7 @@ func TestNetworkIntegrationService_GetAllUUIDsWithFilter(t *testing.T) {
 		},
 		{
 			name:             "success - with filter expression",
-			filterExpression: ptr.To(`uuid == "11111111-1111-1111-1111-111111111111"`),
+			filterExpression: new(`uuid == "11111111-1111-1111-1111-111111111111"`),
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
 				uuidgen.FromPattern(t, "1"),
 				uuidgen.FromPattern(t, "2"),
@@ -156,7 +155,7 @@ func TestNetworkIntegrationService_GetAllUUIDsWithFilter(t *testing.T) {
 		},
 		{
 			name:             "error - non bool expression",
-			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
+			filterExpression: new(`"string"`), // invalid, does evaluate to string instead of boolean.
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
 				uuidgen.FromPattern(t, "1"),
 			},
@@ -166,7 +165,7 @@ func TestNetworkIntegrationService_GetAllUUIDsWithFilter(t *testing.T) {
 		},
 		{
 			name:             "error - filter expression run",
-			filterExpression: ptr.To(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
+			filterExpression: new(`fromBase64("~invalid") == ""`), // invalid, returns runtime error during evauluation of the expression.
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
 				uuidgen.FromPattern(t, "1"),
 			},
@@ -297,7 +296,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
@@ -321,7 +320,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationByNameErr: domain.ErrNotFound,
@@ -354,7 +353,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
@@ -403,7 +402,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationByNameErr: boom.Error,
@@ -425,7 +424,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationByNameErr: domain.ErrNotFound,
@@ -451,7 +450,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 
@@ -479,7 +478,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
@@ -513,7 +512,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
@@ -613,9 +612,9 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
@@ -658,9 +657,9 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
@@ -684,9 +683,9 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
@@ -722,9 +721,9 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
@@ -748,9 +747,9 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
@@ -799,9 +798,9 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationByNameErr: boom.Error,
@@ -822,9 +821,9 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
@@ -850,9 +849,9 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
@@ -925,9 +924,9 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
@@ -955,9 +954,9 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 				{
 					ConnectionURL:        "https://server01/",
 					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
+					Cluster:              new("cluster"),
+					ClusterConnectionURL: new("https://cluster/"),
+					ClusterCertificate:   new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
@@ -1085,7 +1084,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
@@ -1115,7 +1114,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
@@ -1153,7 +1152,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
@@ -1174,7 +1173,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
@@ -1222,7 +1221,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrationsErr: boom.Error,
@@ -1236,7 +1235,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
@@ -1255,7 +1254,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
@@ -1274,7 +1273,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
@@ -1295,7 +1294,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				{
 					ConnectionURL:      "https://server-one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+					ClusterCertificate: new("cluster-cert"),
 				},
 			},
 			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{

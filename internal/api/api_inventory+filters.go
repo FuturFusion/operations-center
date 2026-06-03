@@ -1,7 +1,7 @@
 package api
 
 import (
-	incusapi "github.com/lxc/incus/v6/shared/api"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 )

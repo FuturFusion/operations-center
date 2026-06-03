@@ -17,8 +17,6 @@ import (
 
 	"github.com/fabien-marty/slog-helpers/pkg/stacktrace"
 	"github.com/lmittmann/tint"
-
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
 const (
@@ -117,7 +115,7 @@ func SetLogLevel(level slog.Level) error {
 	logger := slog.New(
 		newContextHandler(stacktrace.New(slogHandler, &stacktrace.Options{
 			Mode:                                    stacktrace.ModeAddAttr,
-			MinimalLevelForStackTraceEnabledEnabled: ptr.To(slog.Level(100)), // Disable automatic addition of stack traces
+			MinimalLevelForStackTraceEnabledEnabled: new(slog.Level(100)), // Disable automatic addition of stack traces
 		})),
 	)
 

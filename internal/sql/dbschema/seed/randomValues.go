@@ -4,7 +4,7 @@ import (
 	"math/rand/v2"
 
 	"github.com/brianvoe/gofakeit/v7"
-	incusapi "github.com/lxc/incus/v6/shared/api"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 )
 
 func randBetween(from, to int) int {

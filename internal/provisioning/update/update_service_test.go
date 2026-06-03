@@ -17,7 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/lxc/incus-os/incus-osd/manifests"
-	incustls "github.com/lxc/incus/v6/shared/tls"
+	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -30,7 +30,6 @@ import (
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	provisioningUpdate "github.com/FuturFusion/operations-center/internal/provisioning/update"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
@@ -479,7 +478,7 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 		{
 			name: "success",
 			filter: provisioning.UpdateFilter{
-				Origin: ptr.To("one"),
+				Origin: new("one"),
 			},
 			repoGetAllXXX: provisioning.Updates{
 				provisioning.Update{
@@ -496,8 +495,8 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 		{
 			name: "success - with upstream channel",
 			filter: provisioning.UpdateFilter{
-				Origin:          ptr.To("one"),
-				UpstreamChannel: ptr.To("stable"),
+				Origin:          new("one"),
+				UpstreamChannel: new("stable"),
 			},
 			repoGetAllXXX: provisioning.Updates{
 				provisioning.Update{
@@ -516,8 +515,8 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 		{
 			name: "success - with channel",
 			filter: provisioning.UpdateFilter{
-				Origin:  ptr.To("one"),
-				Channel: ptr.To("stable"),
+				Origin:  new("one"),
+				Channel: new("stable"),
 			},
 			repoGetAllXXX: provisioning.Updates{
 				provisioning.Update{
@@ -643,7 +642,7 @@ func TestUpdateService_GetAllUUIDsWithFilter(t *testing.T) {
 		{
 			name: "success - with upstream channel",
 			filter: provisioning.UpdateFilter{
-				UpstreamChannel: ptr.To("stable"),
+				UpstreamChannel: new("stable"),
 			},
 			repoGetAll: provisioning.Updates{
 				{
@@ -669,7 +668,7 @@ func TestUpdateService_GetAllUUIDsWithFilter(t *testing.T) {
 		{
 			name: "error - repo",
 			filter: provisioning.UpdateFilter{
-				UpstreamChannel: ptr.To("stable"),
+				UpstreamChannel: new("stable"),
 			},
 			repoGetAllErr: boom.Error,
 

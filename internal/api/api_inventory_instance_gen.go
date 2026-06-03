@@ -11,7 +11,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -162,19 +161,19 @@ func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
 	var filter inventory.InstanceFilter
 
 	if r.URL.Query().Get("cluster") != "" {
-		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+		filter.Cluster = new(r.URL.Query().Get("cluster"))
 	}
 
 	if r.URL.Query().Get("server") != "" {
-		filter.Server = ptr.To(r.URL.Query().Get("server"))
+		filter.Server = new(r.URL.Query().Get("server"))
 	}
 
 	if r.URL.Query().Get("project") != "" {
-		filter.ProjectName = ptr.To(r.URL.Query().Get("project"))
+		filter.ProjectName = new(r.URL.Query().Get("project"))
 	}
 
 	if r.URL.Query().Get("filter") != "" {
-		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
+		filter.Expression = new(r.URL.Query().Get("filter"))
 	}
 
 	if recursion == 1 {

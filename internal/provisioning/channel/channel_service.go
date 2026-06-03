@@ -13,7 +13,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -146,7 +145,7 @@ func (s channelService) validateUpdatesConfig(ctx context.Context, su system.Upd
 
 func (s channelService) GetChangelogByName(ctx context.Context, name string, architecture images.UpdateFileArchitecture) (api.UpdateChangelogs, error) {
 	updates, err := s.updateSvc.GetAllWithFilter(ctx, provisioning.UpdateFilter{
-		Channel: ptr.To(name),
+		Channel: new(name),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get updates for channel %q: %w", name, err)

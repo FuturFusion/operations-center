@@ -13,7 +13,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/inventory"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
 )
@@ -203,23 +202,23 @@ func (c *cmd{{ .Name | pascalcase }}List) run(cmd *cobra.Command, args []string)
 	var filter inventory.{{ .Name | pascalcase }}Filter
 
 	if c.flagFilterCluster != "" {
-		filter.Cluster = ptr.To(c.flagFilterCluster)
+		filter.Cluster = new(c.flagFilterCluster)
 	}
 {{- if .ServerIDByLocation }}
 
 	if c.flagFilterServer != "" {
-		filter.Server = ptr.To(c.flagFilterServer)
+		filter.Server = new(c.flagFilterServer)
 	}
 {{- end}}
 {{- if .HasProject }}
 
 	if c.flagFilterProject != "" {
-		filter.ProjectName = ptr.To(c.flagFilterProject)
+		filter.ProjectName = new(c.flagFilterProject)
 	}
 {{- end }}
 
 	if c.flagFilterExpression != "" {
-		filter.Expression = ptr.To(c.flagFilterExpression)
+		filter.Expression = new(c.flagFilterExpression)
 	}
 
 	{{ .PluralName | camelcase }}, err := c.ocClient.GetWithFilter{{ .PluralName | pascalcase }}(cmd.Context(), filter)

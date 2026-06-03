@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 )
 
@@ -117,7 +116,7 @@ func Test_volatileServerStates_start(t *testing.T) {
 			servers: map[string]volatileServerState{
 				"one": {
 					inFlightOperation: operationRestore,
-					startTime:         ptr.To(fixedTime.Add(-(autoResetDelay + 1*time.Minute))),
+					startTime:         new(fixedTime.Add(-(autoResetDelay + 1*time.Minute))),
 				},
 			},
 

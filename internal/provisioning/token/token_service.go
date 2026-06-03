@@ -15,7 +15,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -321,8 +320,8 @@ func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageT
 	}
 
 	updates, err := s.updateSvc.GetAllWithFilter(ctx, provisioning.UpdateFilter{
-		Status:  ptr.To(api.UpdateStatusReady),
-		Channel: ptr.To(channel),
+		Status:  new(api.UpdateStatusReady),
+		Channel: new(channel),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get updates: %w", err)
