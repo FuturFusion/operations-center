@@ -32,10 +32,10 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/image"
-	imageIncusServiceMiddleware "github.com/FuturFusion/operations-center/internal/image/middleware"
+	imageServiceMiddleware "github.com/FuturFusion/operations-center/internal/image/middleware"
 	imageLocalfs "github.com/FuturFusion/operations-center/internal/image/repo/localfs"
-	imageIncusRepoMiddleware "github.com/FuturFusion/operations-center/internal/image/repo/middleware"
-	imageIncusSqlite "github.com/FuturFusion/operations-center/internal/image/repo/sqlite"
+	imageRepoMiddleware "github.com/FuturFusion/operations-center/internal/image/repo/middleware"
+	imageSqlite "github.com/FuturFusion/operations-center/internal/image/repo/sqlite"
 	imageEntities "github.com/FuturFusion/operations-center/internal/image/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	inventoryServiceMiddleware "github.com/FuturFusion/operations-center/internal/inventory/middleware"
@@ -231,6 +231,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
+	imageSourceSvc := d.setupImageSourceService(dbWithTransaction)
+
 	warningSvc := d.setupWarningService(dbWithTransaction)
 	// Temporary use log only warn service.
 	// warningLogEmitter := provisioning.LogWarningService{}
@@ -290,6 +292,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		channelSvc,
 		warningSvc,
 		inventoryInventoryAggregateSvc,
+		imageSourceSvc,
 		incusImageSvc,
 		dbWithTransaction,
 	)
@@ -523,18 +526,30 @@ func (d *Daemon) setupIncusImageService(db dbdriver.DBTX) (image.ImageIncusServi
 		return nil, err
 	}
 
-	imageIncusSvc := imageIncusServiceMiddleware.NewImageIncusServiceWithSlog(
-		image.New(
-			imageIncusRepoMiddleware.NewImageIncusRepoWithSlog(
-				imageIncusSqlite.NewIncusImage(db),
+	imageIncusSvc := imageServiceMiddleware.NewImageIncusServiceWithSlog(
+		image.NewIncusImage(
+			imageRepoMiddleware.NewImageIncusRepoWithSlog(
+				imageSqlite.NewIncusImage(db),
 			),
-			imageIncusRepoMiddleware.NewImageIncusFileRepoWithSlog(
+			imageRepoMiddleware.NewImageIncusFileRepoWithSlog(
 				imageFilesRepo,
 			),
 		),
 	)
 
 	return imageIncusSvc, nil
+}
+
+func (d *Daemon) setupImageSourceService(db dbdriver.DBTX) image.SourceService {
+	imageSourceSvc := imageServiceMiddleware.NewSourceServiceWithSlog(
+		image.NewSource(
+			imageRepoMiddleware.NewSourceRepoWithSlog(
+				imageSqlite.NewImageSource(db),
+			),
+		),
+	)
+
+	return imageSourceSvc
 }
 
 func (d *Daemon) setupWarningService(db dbdriver.DBTX) warning.WarningService {
@@ -874,6 +889,7 @@ func (d *Daemon) setupAPIRoutes(
 	channelSvc provisioning.ChannelService,
 	warningSvc warning.WarningService,
 	inventoryInventoryAggregateSvc inventory.InventoryAggregateService,
+	imageSourceSvc image.SourceService,
 	incusImageSvc image.ImageIncusService,
 	db dbdriver.DBTX,
 ) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer) {
@@ -953,6 +969,8 @@ func (d *Daemon) setupAPIRoutes(
 	registerAPI10Handler(api10router)
 
 	imageRouter := api10router.SubGroup("/image")
+	imageSourceRouter := imageRouter.SubGroup("/sources")
+	registerImageSourceHandler(imageSourceRouter, d.authorizer, imageSourceSvc)
 	imageIncusRouter := imageRouter.SubGroup("/incus")
 	registerImageIncusHandler(imageIncusRouter, simplestreamsRouter, d.authorizer, incusImageSvc)
 
