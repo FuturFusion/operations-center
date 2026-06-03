@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/lxc/incus/v6/shared/units"
+	"github.com/lxc/incus/v7/shared/units"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"

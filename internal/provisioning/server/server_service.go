@@ -21,8 +21,8 @@ import (
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus-os/incus-osd/api/images"
-	"github.com/lxc/incus/v6/shared/revert"
-	incustls "github.com/lxc/incus/v6/shared/tls"
+	"github.com/lxc/incus/v7/shared/revert"
+	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/maniartech/signals"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"

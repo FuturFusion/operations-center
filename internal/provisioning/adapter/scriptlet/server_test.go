@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
-	incusScriptlet "github.com/lxc/incus/v6/shared/scriptlet"
+	incusScriptlet "github.com/lxc/incus/v7/shared/scriptlet"
 	"github.com/stretchr/testify/require"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"

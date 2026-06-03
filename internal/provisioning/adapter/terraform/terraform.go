@@ -16,7 +16,7 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
-	incusapi "github.com/lxc/incus/v6/shared/api"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/FuturFusion/operations-center/internal/environment"

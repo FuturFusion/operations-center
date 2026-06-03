@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
-	incustls "github.com/lxc/incus/v6/shared/tls"
+	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"

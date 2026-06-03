@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
-	incus "github.com/lxc/incus/v6/client"
+	incus "github.com/lxc/incus/v7/client"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"

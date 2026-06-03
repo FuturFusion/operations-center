@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lxc/incus/v6/shared/scriptlet"
+	"github.com/lxc/incus/v7/shared/scriptlet"
 	_ "go.starlark.net/starlark"
 
 	daemonConfig "github.com/FuturFusion/operations-center/internal/config/daemon"

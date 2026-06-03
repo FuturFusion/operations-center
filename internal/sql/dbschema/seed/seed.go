@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/brianvoe/gofakeit/v7"
-	incusapi "github.com/lxc/incus/v6/shared/api"
-	incustls "github.com/lxc/incus/v6/shared/tls"
+	incusapi "github.com/lxc/incus/v7/shared/api"
+	incustls "github.com/lxc/incus/v7/shared/tls"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 
-	cli "github.com/lxc/incus/v6/shared/cmd"
-	"github.com/lxc/incus/v6/shared/ioprogress"
-	"github.com/lxc/incus/v6/shared/units"
+	cli "github.com/lxc/incus/v7/shared/cmd"
+	"github.com/lxc/incus/v7/shared/ioprogress"
+	"github.com/lxc/incus/v7/shared/units"
 )
 
 func progressWriter(target io.WriteCloser, format string, quiet bool) (*cli.ProgressRenderer, io.WriteCloser) {
