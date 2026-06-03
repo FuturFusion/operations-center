@@ -8,9 +8,10 @@ import (
 	"context"
 	"sync"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/warning"
 	"github.com/FuturFusion/operations-center/shared/api"
-	"github.com/google/uuid"
 )
 
 // Ensure that WarningServiceMock does implement warning.WarningService.

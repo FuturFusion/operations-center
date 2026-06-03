@@ -8,8 +8,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/google/uuid"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 // Ensure that TokenRepoMock does implement provisioning.TokenRepo.

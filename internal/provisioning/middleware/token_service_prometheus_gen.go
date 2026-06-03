@@ -8,12 +8,13 @@ import (
 	"io"
 	"time"
 
-	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // TokenServiceWithPrometheus implements provisioning.TokenService interface with all methods wrapped

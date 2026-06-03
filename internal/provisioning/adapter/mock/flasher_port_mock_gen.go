@@ -9,9 +9,10 @@ import (
 	"io"
 	"sync"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
-	"github.com/google/uuid"
 )
 
 // Ensure that FlasherPortMock does implement provisioning.FlasherPort.

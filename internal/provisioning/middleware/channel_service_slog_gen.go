@@ -7,10 +7,11 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/lxc/incus-os/incus-osd/api/images"
+
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
-	"github.com/lxc/incus-os/incus-osd/api/images"
 )
 
 // ChannelServiceWithSlog implements provisioning.ChannelService that is instrumented with slog logger.

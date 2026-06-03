@@ -7,10 +7,11 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/warning"
 	"github.com/FuturFusion/operations-center/shared/api"
-	"github.com/google/uuid"
 )
 
 // WarningRepoWithSlog implements warning.WarningRepo that is instrumented with slog logger.

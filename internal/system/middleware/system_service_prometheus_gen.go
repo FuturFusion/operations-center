@@ -7,10 +7,11 @@ import (
 	"context"
 	"time"
 
-	system0 "github.com/FuturFusion/operations-center/internal/system"
-	"github.com/FuturFusion/operations-center/shared/api/system"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	system0 "github.com/FuturFusion/operations-center/internal/system"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 // SystemServiceWithPrometheus implements system0.SystemService interface with all methods wrapped

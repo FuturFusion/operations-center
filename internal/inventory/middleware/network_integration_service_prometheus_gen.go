@@ -7,11 +7,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/FuturFusion/operations-center/internal/domain"
-	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/inventory"
 )
 
 // NetworkIntegrationServiceWithPrometheus implements inventory.NetworkIntegrationService interface with all methods wrapped

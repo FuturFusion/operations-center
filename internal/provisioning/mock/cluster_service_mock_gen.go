@@ -9,10 +9,11 @@ import (
 	"io"
 	"sync"
 
-	"github.com/FuturFusion/operations-center/internal/domain"
-	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 // Ensure that ClusterServiceMock does implement provisioning.ClusterService.

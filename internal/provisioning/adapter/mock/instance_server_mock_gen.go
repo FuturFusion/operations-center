@@ -79,6 +79,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			CreateInstanceBackupStreamFunc: func(instanceName string, backup api.InstanceBackupsPost, req *incus.BackupFileRequest) error {
 //				panic("mock out the CreateInstanceBackupStream method")
 //			},
+//			CreateInstanceBitmapFunc: func(name string, bitmap api.StorageVolumeBitmapsPost) error {
+//				panic("mock out the CreateInstanceBitmap method")
+//			},
 //			CreateInstanceFileFunc: func(instanceName string, path string, args incus.InstanceFileArgs) error {
 //				panic("mock out the CreateInstanceFile method")
 //			},
@@ -165,6 +168,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			},
 //			CreateStorageVolumeBackupStreamFunc: func(pool string, volName string, backup api.StorageVolumeBackupsPost, req *incus.BackupFileRequest) error {
 //				panic("mock out the CreateStorageVolumeBackupStream method")
+//			},
+//			CreateStorageVolumeBitmapFunc: func(pool string, volumeType string, volumeName string, bitmap api.StorageVolumeBitmapsPost) error {
+//				panic("mock out the CreateStorageVolumeBitmap method")
 //			},
 //			CreateStorageVolumeFileFunc: func(pool string, volumeType string, volumeName string, filePath string, args incus.InstanceFileArgs) error {
 //				panic("mock out the CreateStorageVolumeFile method")
@@ -267,6 +273,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			},
 //			DeleteStorageVolumeBackupFunc: func(pool string, volName string, name string) (incus.Operation, error) {
 //				panic("mock out the DeleteStorageVolumeBackup method")
+//			},
+//			DeleteStorageVolumeBitmapFunc: func(pool string, volumeType string, volumeName string, bitmapName string) error {
+//				panic("mock out the DeleteStorageVolumeBitmap method")
 //			},
 //			DeleteStorageVolumeFileFunc: func(pool string, volumeType string, volumeName string, filePath string) error {
 //				panic("mock out the DeleteStorageVolumeFile method")
@@ -724,6 +733,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			GetStoragePoolVolumeFunc: func(pool string, volType string, name string) (*api.StorageVolume, string, error) {
 //				panic("mock out the GetStoragePoolVolume method")
 //			},
+//			GetStoragePoolVolumeBlockNBDConnFunc: func(pool string, volType string, volName string, args incus.StorageVolumeNBDPost) (net.Conn, error) {
+//				panic("mock out the GetStoragePoolVolumeBlockNBDConn method")
+//			},
 //			GetStoragePoolVolumeFileSFTPFunc: func(pool string, volType string, volName string) (*sftp.Client, error) {
 //				panic("mock out the GetStoragePoolVolumeFileSFTP method")
 //			},
@@ -793,6 +805,12 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			GetStorageVolumeBackupsFunc: func(pool string, volName string) ([]api.StorageVolumeBackup, error) {
 //				panic("mock out the GetStorageVolumeBackups method")
 //			},
+//			GetStorageVolumeBitmapNamesFunc: func(pool string, volumeType string, volumeName string) ([]string, error) {
+//				panic("mock out the GetStorageVolumeBitmapNames method")
+//			},
+//			GetStorageVolumeBitmapsFunc: func(pool string, volumeType string, volumeName string) ([]api.StorageVolumeBitmap, error) {
+//				panic("mock out the GetStorageVolumeBitmaps method")
+//			},
 //			GetStorageVolumeFileFunc: func(pool string, volumeType string, volumeName string, filePath string) (io.ReadCloser, *incus.InstanceFileResponse, error) {
 //				panic("mock out the GetStorageVolumeFile method")
 //			},
@@ -837,6 +855,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			},
 //			RebuildInstanceFromImageFunc: func(source incus.ImageServer, image api.Image, instanceName string, req api.InstanceRebuildPost) (incus.RemoteOperation, error) {
 //				panic("mock out the RebuildInstanceFromImage method")
+//			},
+//			RebuildStoragePoolVolumeFunc: func(pool string, volType string, name string, volume api.StorageVolumeRebuildPost) (incus.Operation, error) {
+//				panic("mock out the RebuildStoragePoolVolume method")
 //			},
 //			RefreshImageFunc: func(fingerprint string) (incus.Operation, error) {
 //				panic("mock out the RefreshImage method")
@@ -1049,6 +1070,9 @@ type InstanceServerMock struct {
 	// CreateInstanceBackupStreamFunc mocks the CreateInstanceBackupStream method.
 	CreateInstanceBackupStreamFunc func(instanceName string, backup api.InstanceBackupsPost, req *incus.BackupFileRequest) error
 
+	// CreateInstanceBitmapFunc mocks the CreateInstanceBitmap method.
+	CreateInstanceBitmapFunc func(name string, bitmap api.StorageVolumeBitmapsPost) error
+
 	// CreateInstanceFileFunc mocks the CreateInstanceFile method.
 	CreateInstanceFileFunc func(instanceName string, path string, args incus.InstanceFileArgs) error
 
@@ -1135,6 +1159,9 @@ type InstanceServerMock struct {
 
 	// CreateStorageVolumeBackupStreamFunc mocks the CreateStorageVolumeBackupStream method.
 	CreateStorageVolumeBackupStreamFunc func(pool string, volName string, backup api.StorageVolumeBackupsPost, req *incus.BackupFileRequest) error
+
+	// CreateStorageVolumeBitmapFunc mocks the CreateStorageVolumeBitmap method.
+	CreateStorageVolumeBitmapFunc func(pool string, volumeType string, volumeName string, bitmap api.StorageVolumeBitmapsPost) error
 
 	// CreateStorageVolumeFileFunc mocks the CreateStorageVolumeFile method.
 	CreateStorageVolumeFileFunc func(pool string, volumeType string, volumeName string, filePath string, args incus.InstanceFileArgs) error
@@ -1237,6 +1264,9 @@ type InstanceServerMock struct {
 
 	// DeleteStorageVolumeBackupFunc mocks the DeleteStorageVolumeBackup method.
 	DeleteStorageVolumeBackupFunc func(pool string, volName string, name string) (incus.Operation, error)
+
+	// DeleteStorageVolumeBitmapFunc mocks the DeleteStorageVolumeBitmap method.
+	DeleteStorageVolumeBitmapFunc func(pool string, volumeType string, volumeName string, bitmapName string) error
 
 	// DeleteStorageVolumeFileFunc mocks the DeleteStorageVolumeFile method.
 	DeleteStorageVolumeFileFunc func(pool string, volumeType string, volumeName string, filePath string) error
@@ -1694,6 +1724,9 @@ type InstanceServerMock struct {
 	// GetStoragePoolVolumeFunc mocks the GetStoragePoolVolume method.
 	GetStoragePoolVolumeFunc func(pool string, volType string, name string) (*api.StorageVolume, string, error)
 
+	// GetStoragePoolVolumeBlockNBDConnFunc mocks the GetStoragePoolVolumeBlockNBDConn method.
+	GetStoragePoolVolumeBlockNBDConnFunc func(pool string, volType string, volName string, args incus.StorageVolumeNBDPost) (net.Conn, error)
+
 	// GetStoragePoolVolumeFileSFTPFunc mocks the GetStoragePoolVolumeFileSFTP method.
 	GetStoragePoolVolumeFileSFTPFunc func(pool string, volType string, volName string) (*sftp.Client, error)
 
@@ -1763,6 +1796,12 @@ type InstanceServerMock struct {
 	// GetStorageVolumeBackupsFunc mocks the GetStorageVolumeBackups method.
 	GetStorageVolumeBackupsFunc func(pool string, volName string) ([]api.StorageVolumeBackup, error)
 
+	// GetStorageVolumeBitmapNamesFunc mocks the GetStorageVolumeBitmapNames method.
+	GetStorageVolumeBitmapNamesFunc func(pool string, volumeType string, volumeName string) ([]string, error)
+
+	// GetStorageVolumeBitmapsFunc mocks the GetStorageVolumeBitmaps method.
+	GetStorageVolumeBitmapsFunc func(pool string, volumeType string, volumeName string) ([]api.StorageVolumeBitmap, error)
+
 	// GetStorageVolumeFileFunc mocks the GetStorageVolumeFile method.
 	GetStorageVolumeFileFunc func(pool string, volumeType string, volumeName string, filePath string) (io.ReadCloser, *incus.InstanceFileResponse, error)
 
@@ -1807,6 +1846,9 @@ type InstanceServerMock struct {
 
 	// RebuildInstanceFromImageFunc mocks the RebuildInstanceFromImage method.
 	RebuildInstanceFromImageFunc func(source incus.ImageServer, image api.Image, instanceName string, req api.InstanceRebuildPost) (incus.RemoteOperation, error)
+
+	// RebuildStoragePoolVolumeFunc mocks the RebuildStoragePoolVolume method.
+	RebuildStoragePoolVolumeFunc func(pool string, volType string, name string, volume api.StorageVolumeRebuildPost) (incus.Operation, error)
 
 	// RefreshImageFunc mocks the RefreshImage method.
 	RefreshImageFunc func(fingerprint string) (incus.Operation, error)
@@ -2086,6 +2128,13 @@ type InstanceServerMock struct {
 			// Req is the req argument value.
 			Req *incus.BackupFileRequest
 		}
+		// CreateInstanceBitmap holds details about calls to the CreateInstanceBitmap method.
+		CreateInstanceBitmap []struct {
+			// Name is the name argument value.
+			Name string
+			// Bitmap is the bitmap argument value.
+			Bitmap api.StorageVolumeBitmapsPost
+		}
 		// CreateInstanceFile holds details about calls to the CreateInstanceFile method.
 		CreateInstanceFile []struct {
 			// InstanceName is the instanceName argument value.
@@ -2294,6 +2343,17 @@ type InstanceServerMock struct {
 			Backup api.StorageVolumeBackupsPost
 			// Req is the req argument value.
 			Req *incus.BackupFileRequest
+		}
+		// CreateStorageVolumeBitmap holds details about calls to the CreateStorageVolumeBitmap method.
+		CreateStorageVolumeBitmap []struct {
+			// Pool is the pool argument value.
+			Pool string
+			// VolumeType is the volumeType argument value.
+			VolumeType string
+			// VolumeName is the volumeName argument value.
+			VolumeName string
+			// Bitmap is the bitmap argument value.
+			Bitmap api.StorageVolumeBitmapsPost
 		}
 		// CreateStorageVolumeFile holds details about calls to the CreateStorageVolumeFile method.
 		CreateStorageVolumeFile []struct {
@@ -2521,6 +2581,17 @@ type InstanceServerMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// DeleteStorageVolumeBitmap holds details about calls to the DeleteStorageVolumeBitmap method.
+		DeleteStorageVolumeBitmap []struct {
+			// Pool is the pool argument value.
+			Pool string
+			// VolumeType is the volumeType argument value.
+			VolumeType string
+			// VolumeName is the volumeName argument value.
+			VolumeName string
+			// BitmapName is the bitmapName argument value.
+			BitmapName string
+		}
 		// DeleteStorageVolumeFile holds details about calls to the DeleteStorageVolumeFile method.
 		DeleteStorageVolumeFile []struct {
 			// Pool is the pool argument value.
@@ -2538,7 +2609,8 @@ type InstanceServerMock struct {
 			UUID string
 		}
 		// Disconnect holds details about calls to the Disconnect method.
-		Disconnect []struct{}
+		Disconnect []struct {
+		}
 		// DoHTTP holds details about calls to the DoHTTP method.
 		DoHTTP []struct {
 			// Req is the req argument value.
@@ -2566,50 +2638,60 @@ type InstanceServerMock struct {
 			Fingerprint string
 		}
 		// GetCertificateFingerprints holds details about calls to the GetCertificateFingerprints method.
-		GetCertificateFingerprints []struct{}
+		GetCertificateFingerprints []struct {
+		}
 		// GetCertificates holds details about calls to the GetCertificates method.
-		GetCertificates []struct{}
+		GetCertificates []struct {
+		}
 		// GetCertificatesWithFilter holds details about calls to the GetCertificatesWithFilter method.
 		GetCertificatesWithFilter []struct {
 			// Filters is the filters argument value.
 			Filters []string
 		}
 		// GetCluster holds details about calls to the GetCluster method.
-		GetCluster []struct{}
+		GetCluster []struct {
+		}
 		// GetClusterGroup holds details about calls to the GetClusterGroup method.
 		GetClusterGroup []struct {
 			// Name is the name argument value.
 			Name string
 		}
 		// GetClusterGroupNames holds details about calls to the GetClusterGroupNames method.
-		GetClusterGroupNames []struct{}
+		GetClusterGroupNames []struct {
+		}
 		// GetClusterGroups holds details about calls to the GetClusterGroups method.
-		GetClusterGroups []struct{}
+		GetClusterGroups []struct {
+		}
 		// GetClusterMember holds details about calls to the GetClusterMember method.
 		GetClusterMember []struct {
 			// Name is the name argument value.
 			Name string
 		}
 		// GetClusterMemberNames holds details about calls to the GetClusterMemberNames method.
-		GetClusterMemberNames []struct{}
+		GetClusterMemberNames []struct {
+		}
 		// GetClusterMemberState holds details about calls to the GetClusterMemberState method.
 		GetClusterMemberState []struct {
 			// Name is the name argument value.
 			Name string
 		}
 		// GetClusterMembers holds details about calls to the GetClusterMembers method.
-		GetClusterMembers []struct{}
+		GetClusterMembers []struct {
+		}
 		// GetClusterMembersWithFilter holds details about calls to the GetClusterMembersWithFilter method.
 		GetClusterMembersWithFilter []struct {
 			// Filters is the filters argument value.
 			Filters []string
 		}
 		// GetConnectionInfo holds details about calls to the GetConnectionInfo method.
-		GetConnectionInfo []struct{}
+		GetConnectionInfo []struct {
+		}
 		// GetEvents holds details about calls to the GetEvents method.
-		GetEvents []struct{}
+		GetEvents []struct {
+		}
 		// GetEventsAllProjects holds details about calls to the GetEventsAllProjects method.
-		GetEventsAllProjects []struct{}
+		GetEventsAllProjects []struct {
+		}
 		// GetEventsAllProjectsByType holds details about calls to the GetEventsAllProjectsByType method.
 		GetEventsAllProjectsByType []struct {
 			// EventTypes is the eventTypes argument value.
@@ -2621,7 +2703,8 @@ type InstanceServerMock struct {
 			EventTypes []string
 		}
 		// GetHTTPClient holds details about calls to the GetHTTPClient method.
-		GetHTTPClient []struct{}
+		GetHTTPClient []struct {
+		}
 		// GetImage holds details about calls to the GetImage method.
 		GetImage []struct {
 			// Fingerprint is the fingerprint argument value.
@@ -2640,7 +2723,8 @@ type InstanceServerMock struct {
 			Name string
 		}
 		// GetImageAliasNames holds details about calls to the GetImageAliasNames method.
-		GetImageAliasNames []struct{}
+		GetImageAliasNames []struct {
+		}
 		// GetImageAliasType holds details about calls to the GetImageAliasType method.
 		GetImageAliasType []struct {
 			// ImageType is the imageType argument value.
@@ -2649,7 +2733,8 @@ type InstanceServerMock struct {
 			Name string
 		}
 		// GetImageAliases holds details about calls to the GetImageAliases method.
-		GetImageAliases []struct{}
+		GetImageAliases []struct {
+		}
 		// GetImageFile holds details about calls to the GetImageFile method.
 		GetImageFile []struct {
 			// Fingerprint is the fingerprint argument value.
@@ -2658,16 +2743,19 @@ type InstanceServerMock struct {
 			Req incus.ImageFileRequest
 		}
 		// GetImageFingerprints holds details about calls to the GetImageFingerprints method.
-		GetImageFingerprints []struct{}
+		GetImageFingerprints []struct {
+		}
 		// GetImageSecret holds details about calls to the GetImageSecret method.
 		GetImageSecret []struct {
 			// Fingerprint is the fingerprint argument value.
 			Fingerprint string
 		}
 		// GetImages holds details about calls to the GetImages method.
-		GetImages []struct{}
+		GetImages []struct {
+		}
 		// GetImagesAllProjects holds details about calls to the GetImagesAllProjects method.
-		GetImagesAllProjects []struct{}
+		GetImagesAllProjects []struct {
+		}
 		// GetImagesAllProjectsWithFilter holds details about calls to the GetImagesAllProjectsWithFilter method.
 		GetImagesAllProjectsWithFilter []struct {
 			// Filters is the filters argument value.
@@ -2860,9 +2948,11 @@ type InstanceServerMock struct {
 			Filters []string
 		}
 		// GetMetadataConfiguration holds details about calls to the GetMetadataConfiguration method.
-		GetMetadataConfiguration []struct{}
+		GetMetadataConfiguration []struct {
+		}
 		// GetMetrics holds details about calls to the GetMetrics method.
-		GetMetrics []struct{}
+		GetMetrics []struct {
+		}
 		// GetNetwork holds details about calls to the GetNetwork method.
 		GetNetwork []struct {
 			// Name is the name argument value.
@@ -2879,26 +2969,34 @@ type InstanceServerMock struct {
 			Name string
 		}
 		// GetNetworkACLNames holds details about calls to the GetNetworkACLNames method.
-		GetNetworkACLNames []struct{}
+		GetNetworkACLNames []struct {
+		}
 		// GetNetworkACLs holds details about calls to the GetNetworkACLs method.
-		GetNetworkACLs []struct{}
+		GetNetworkACLs []struct {
+		}
 		// GetNetworkACLsAllProjects holds details about calls to the GetNetworkACLsAllProjects method.
-		GetNetworkACLsAllProjects []struct{}
+		GetNetworkACLsAllProjects []struct {
+		}
 		// GetNetworkAddressSet holds details about calls to the GetNetworkAddressSet method.
 		GetNetworkAddressSet []struct {
 			// Name is the name argument value.
 			Name string
 		}
 		// GetNetworkAddressSetNames holds details about calls to the GetNetworkAddressSetNames method.
-		GetNetworkAddressSetNames []struct{}
+		GetNetworkAddressSetNames []struct {
+		}
 		// GetNetworkAddressSets holds details about calls to the GetNetworkAddressSets method.
-		GetNetworkAddressSets []struct{}
+		GetNetworkAddressSets []struct {
+		}
 		// GetNetworkAddressSetsAllProjects holds details about calls to the GetNetworkAddressSetsAllProjects method.
-		GetNetworkAddressSetsAllProjects []struct{}
+		GetNetworkAddressSetsAllProjects []struct {
+		}
 		// GetNetworkAllocations holds details about calls to the GetNetworkAllocations method.
-		GetNetworkAllocations []struct{}
+		GetNetworkAllocations []struct {
+		}
 		// GetNetworkAllocationsAllProjects holds details about calls to the GetNetworkAllocationsAllProjects method.
-		GetNetworkAllocationsAllProjects []struct{}
+		GetNetworkAllocationsAllProjects []struct {
+		}
 		// GetNetworkForward holds details about calls to the GetNetworkForward method.
 		GetNetworkForward []struct {
 			// NetworkName is the networkName argument value.
@@ -2922,9 +3020,11 @@ type InstanceServerMock struct {
 			Name string
 		}
 		// GetNetworkIntegrationNames holds details about calls to the GetNetworkIntegrationNames method.
-		GetNetworkIntegrationNames []struct{}
+		GetNetworkIntegrationNames []struct {
+		}
 		// GetNetworkIntegrations holds details about calls to the GetNetworkIntegrations method.
-		GetNetworkIntegrations []struct{}
+		GetNetworkIntegrations []struct {
+		}
 		// GetNetworkLeases holds details about calls to the GetNetworkLeases method.
 		GetNetworkLeases []struct {
 			// Name is the name argument value.
@@ -2955,7 +3055,8 @@ type InstanceServerMock struct {
 			NetworkName string
 		}
 		// GetNetworkNames holds details about calls to the GetNetworkNames method.
-		GetNetworkNames []struct{}
+		GetNetworkNames []struct {
+		}
 		// GetNetworkPeer holds details about calls to the GetNetworkPeer method.
 		GetNetworkPeer []struct {
 			// NetworkName is the networkName argument value.
@@ -2984,7 +3085,8 @@ type InstanceServerMock struct {
 			Name string
 		}
 		// GetNetworkZoneNames holds details about calls to the GetNetworkZoneNames method.
-		GetNetworkZoneNames []struct{}
+		GetNetworkZoneNames []struct {
+		}
 		// GetNetworkZoneRecord holds details about calls to the GetNetworkZoneRecord method.
 		GetNetworkZoneRecord []struct {
 			// Zone is the zone argument value.
@@ -3003,13 +3105,17 @@ type InstanceServerMock struct {
 			Zone string
 		}
 		// GetNetworkZones holds details about calls to the GetNetworkZones method.
-		GetNetworkZones []struct{}
+		GetNetworkZones []struct {
+		}
 		// GetNetworkZonesAllProjects holds details about calls to the GetNetworkZonesAllProjects method.
-		GetNetworkZonesAllProjects []struct{}
+		GetNetworkZonesAllProjects []struct {
+		}
 		// GetNetworks holds details about calls to the GetNetworks method.
-		GetNetworks []struct{}
+		GetNetworks []struct {
+		}
 		// GetNetworksAllProjects holds details about calls to the GetNetworksAllProjects method.
-		GetNetworksAllProjects []struct{}
+		GetNetworksAllProjects []struct {
+		}
 		// GetNetworksAllProjectsWithFilter holds details about calls to the GetNetworksAllProjectsWithFilter method.
 		GetNetworksAllProjectsWithFilter []struct {
 			// Filters is the filters argument value.
@@ -3026,7 +3132,8 @@ type InstanceServerMock struct {
 			UUID string
 		}
 		// GetOperationUUIDs holds details about calls to the GetOperationUUIDs method.
-		GetOperationUUIDs []struct{}
+		GetOperationUUIDs []struct {
+		}
 		// GetOperationWait holds details about calls to the GetOperationWait method.
 		GetOperationWait []struct {
 			// UUID is the uuid argument value.
@@ -3051,9 +3158,11 @@ type InstanceServerMock struct {
 			Secret string
 		}
 		// GetOperations holds details about calls to the GetOperations method.
-		GetOperations []struct{}
+		GetOperations []struct {
+		}
 		// GetOperationsAllProjects holds details about calls to the GetOperationsAllProjects method.
-		GetOperationsAllProjects []struct{}
+		GetOperationsAllProjects []struct {
+		}
 		// GetPrivateImage holds details about calls to the GetPrivateImage method.
 		GetPrivateImage []struct {
 			// Fingerprint is the fingerprint argument value.
@@ -3076,11 +3185,14 @@ type InstanceServerMock struct {
 			Name string
 		}
 		// GetProfileNames holds details about calls to the GetProfileNames method.
-		GetProfileNames []struct{}
+		GetProfileNames []struct {
+		}
 		// GetProfiles holds details about calls to the GetProfiles method.
-		GetProfiles []struct{}
+		GetProfiles []struct {
+		}
 		// GetProfilesAllProjects holds details about calls to the GetProfilesAllProjects method.
-		GetProfilesAllProjects []struct{}
+		GetProfilesAllProjects []struct {
+		}
 		// GetProfilesAllProjectsWithFilter holds details about calls to the GetProfilesAllProjectsWithFilter method.
 		GetProfilesAllProjectsWithFilter []struct {
 			// Filters is the filters argument value.
@@ -3102,23 +3214,27 @@ type InstanceServerMock struct {
 			Name string
 		}
 		// GetProjectNames holds details about calls to the GetProjectNames method.
-		GetProjectNames []struct{}
+		GetProjectNames []struct {
+		}
 		// GetProjectState holds details about calls to the GetProjectState method.
 		GetProjectState []struct {
 			// Name is the name argument value.
 			Name string
 		}
 		// GetProjects holds details about calls to the GetProjects method.
-		GetProjects []struct{}
+		GetProjects []struct {
+		}
 		// GetProjectsWithFilter holds details about calls to the GetProjectsWithFilter method.
 		GetProjectsWithFilter []struct {
 			// Filters is the filters argument value.
 			Filters []string
 		}
 		// GetServer holds details about calls to the GetServer method.
-		GetServer []struct{}
+		GetServer []struct {
+		}
 		// GetServerResources holds details about calls to the GetServerResources method.
-		GetServerResources []struct{}
+		GetServerResources []struct {
+		}
 		// GetStoragePool holds details about calls to the GetStoragePool method.
 		GetStoragePool []struct {
 			// Name is the name argument value.
@@ -3226,7 +3342,8 @@ type InstanceServerMock struct {
 			Filters []string
 		}
 		// GetStoragePoolNames holds details about calls to the GetStoragePoolNames method.
-		GetStoragePoolNames []struct{}
+		GetStoragePoolNames []struct {
+		}
 		// GetStoragePoolResources holds details about calls to the GetStoragePoolResources method.
 		GetStoragePoolResources []struct {
 			// Name is the name argument value.
@@ -3240,6 +3357,17 @@ type InstanceServerMock struct {
 			VolType string
 			// Name is the name argument value.
 			Name string
+		}
+		// GetStoragePoolVolumeBlockNBDConn holds details about calls to the GetStoragePoolVolumeBlockNBDConn method.
+		GetStoragePoolVolumeBlockNBDConn []struct {
+			// Pool is the pool argument value.
+			Pool string
+			// VolType is the volType argument value.
+			VolType string
+			// VolName is the volName argument value.
+			VolName string
+			// Args is the args argument value.
+			Args incus.StorageVolumeNBDPost
 		}
 		// GetStoragePoolVolumeFileSFTP holds details about calls to the GetStoragePoolVolumeFileSFTP method.
 		GetStoragePoolVolumeFileSFTP []struct {
@@ -3365,7 +3493,8 @@ type InstanceServerMock struct {
 			Filters []string
 		}
 		// GetStoragePools holds details about calls to the GetStoragePools method.
-		GetStoragePools []struct{}
+		GetStoragePools []struct {
+		}
 		// GetStoragePoolsWithFilter holds details about calls to the GetStoragePoolsWithFilter method.
 		GetStoragePoolsWithFilter []struct {
 			// Filters is the filters argument value.
@@ -3405,6 +3534,24 @@ type InstanceServerMock struct {
 			// VolName is the volName argument value.
 			VolName string
 		}
+		// GetStorageVolumeBitmapNames holds details about calls to the GetStorageVolumeBitmapNames method.
+		GetStorageVolumeBitmapNames []struct {
+			// Pool is the pool argument value.
+			Pool string
+			// VolumeType is the volumeType argument value.
+			VolumeType string
+			// VolumeName is the volumeName argument value.
+			VolumeName string
+		}
+		// GetStorageVolumeBitmaps holds details about calls to the GetStorageVolumeBitmaps method.
+		GetStorageVolumeBitmaps []struct {
+			// Pool is the pool argument value.
+			Pool string
+			// VolumeType is the volumeType argument value.
+			VolumeType string
+			// VolumeName is the volumeName argument value.
+			VolumeName string
+		}
 		// GetStorageVolumeFile holds details about calls to the GetStorageVolumeFile method.
 		GetStorageVolumeFile []struct {
 			// Pool is the pool argument value.
@@ -3422,16 +3569,19 @@ type InstanceServerMock struct {
 			UUID string
 		}
 		// GetWarningUUIDs holds details about calls to the GetWarningUUIDs method.
-		GetWarningUUIDs []struct{}
+		GetWarningUUIDs []struct {
+		}
 		// GetWarnings holds details about calls to the GetWarnings method.
-		GetWarnings []struct{}
+		GetWarnings []struct {
+		}
 		// HasExtension holds details about calls to the HasExtension method.
 		HasExtension []struct {
 			// Extension is the extension argument value.
 			Extension string
 		}
 		// IsClustered holds details about calls to the IsClustered method.
-		IsClustered []struct{}
+		IsClustered []struct {
+		}
 		// MigrateInstance holds details about calls to the MigrateInstance method.
 		MigrateInstance []struct {
 			// Name is the name argument value.
@@ -3512,6 +3662,17 @@ type InstanceServerMock struct {
 			InstanceName string
 			// Req is the req argument value.
 			Req api.InstanceRebuildPost
+		}
+		// RebuildStoragePoolVolume holds details about calls to the RebuildStoragePoolVolume method.
+		RebuildStoragePoolVolume []struct {
+			// Pool is the pool argument value.
+			Pool string
+			// VolType is the volType argument value.
+			VolType string
+			// Name is the name argument value.
+			Name string
+			// Volume is the volume argument value.
+			Volume api.StorageVolumeRebuildPost
 		}
 		// RefreshImage holds details about calls to the RefreshImage method.
 		RefreshImage []struct {
@@ -3974,6 +4135,7 @@ type InstanceServerMock struct {
 	lockCreateInstance                                 sync.RWMutex
 	lockCreateInstanceBackup                           sync.RWMutex
 	lockCreateInstanceBackupStream                     sync.RWMutex
+	lockCreateInstanceBitmap                           sync.RWMutex
 	lockCreateInstanceFile                             sync.RWMutex
 	lockCreateInstanceFromBackup                       sync.RWMutex
 	lockCreateInstanceFromImage                        sync.RWMutex
@@ -4003,6 +4165,7 @@ type InstanceServerMock struct {
 	lockCreateStoragePoolVolumeSnapshot                sync.RWMutex
 	lockCreateStorageVolumeBackup                      sync.RWMutex
 	lockCreateStorageVolumeBackupStream                sync.RWMutex
+	lockCreateStorageVolumeBitmap                      sync.RWMutex
 	lockCreateStorageVolumeFile                        sync.RWMutex
 	lockDeleteCertificate                              sync.RWMutex
 	lockDeleteClusterGroup                             sync.RWMutex
@@ -4037,6 +4200,7 @@ type InstanceServerMock struct {
 	lockDeleteStoragePoolVolume                        sync.RWMutex
 	lockDeleteStoragePoolVolumeSnapshot                sync.RWMutex
 	lockDeleteStorageVolumeBackup                      sync.RWMutex
+	lockDeleteStorageVolumeBitmap                      sync.RWMutex
 	lockDeleteStorageVolumeFile                        sync.RWMutex
 	lockDeleteWarning                                  sync.RWMutex
 	lockDisconnect                                     sync.RWMutex
@@ -4189,6 +4353,7 @@ type InstanceServerMock struct {
 	lockGetStoragePoolNames                            sync.RWMutex
 	lockGetStoragePoolResources                        sync.RWMutex
 	lockGetStoragePoolVolume                           sync.RWMutex
+	lockGetStoragePoolVolumeBlockNBDConn               sync.RWMutex
 	lockGetStoragePoolVolumeFileSFTP                   sync.RWMutex
 	lockGetStoragePoolVolumeFileSFTPConn               sync.RWMutex
 	lockGetStoragePoolVolumeFull                       sync.RWMutex
@@ -4212,6 +4377,8 @@ type InstanceServerMock struct {
 	lockGetStorageVolumeBackupFile                     sync.RWMutex
 	lockGetStorageVolumeBackupNames                    sync.RWMutex
 	lockGetStorageVolumeBackups                        sync.RWMutex
+	lockGetStorageVolumeBitmapNames                    sync.RWMutex
+	lockGetStorageVolumeBitmaps                        sync.RWMutex
 	lockGetStorageVolumeFile                           sync.RWMutex
 	lockGetWarning                                     sync.RWMutex
 	lockGetWarningUUIDs                                sync.RWMutex
@@ -4227,6 +4394,7 @@ type InstanceServerMock struct {
 	lockRawWebsocket                                   sync.RWMutex
 	lockRebuildInstance                                sync.RWMutex
 	lockRebuildInstanceFromImage                       sync.RWMutex
+	lockRebuildStoragePoolVolume                       sync.RWMutex
 	lockRefreshImage                                   sync.RWMutex
 	lockRenameClusterGroup                             sync.RWMutex
 	lockRenameClusterMember                            sync.RWMutex
@@ -4897,6 +5065,42 @@ func (mock *InstanceServerMock) CreateInstanceBackupStreamCalls() []struct {
 	mock.lockCreateInstanceBackupStream.RLock()
 	calls = mock.calls.CreateInstanceBackupStream
 	mock.lockCreateInstanceBackupStream.RUnlock()
+	return calls
+}
+
+// CreateInstanceBitmap calls CreateInstanceBitmapFunc.
+func (mock *InstanceServerMock) CreateInstanceBitmap(name string, bitmap api.StorageVolumeBitmapsPost) error {
+	if mock.CreateInstanceBitmapFunc == nil {
+		panic("InstanceServerMock.CreateInstanceBitmapFunc: method is nil but InstanceServer.CreateInstanceBitmap was just called")
+	}
+	callInfo := struct {
+		Name   string
+		Bitmap api.StorageVolumeBitmapsPost
+	}{
+		Name:   name,
+		Bitmap: bitmap,
+	}
+	mock.lockCreateInstanceBitmap.Lock()
+	mock.calls.CreateInstanceBitmap = append(mock.calls.CreateInstanceBitmap, callInfo)
+	mock.lockCreateInstanceBitmap.Unlock()
+	return mock.CreateInstanceBitmapFunc(name, bitmap)
+}
+
+// CreateInstanceBitmapCalls gets all the calls that were made to CreateInstanceBitmap.
+// Check the length with:
+//
+//	len(mockedInstanceServer.CreateInstanceBitmapCalls())
+func (mock *InstanceServerMock) CreateInstanceBitmapCalls() []struct {
+	Name   string
+	Bitmap api.StorageVolumeBitmapsPost
+} {
+	var calls []struct {
+		Name   string
+		Bitmap api.StorageVolumeBitmapsPost
+	}
+	mock.lockCreateInstanceBitmap.RLock()
+	calls = mock.calls.CreateInstanceBitmap
+	mock.lockCreateInstanceBitmap.RUnlock()
 	return calls
 }
 
@@ -5953,6 +6157,50 @@ func (mock *InstanceServerMock) CreateStorageVolumeBackupStreamCalls() []struct 
 	mock.lockCreateStorageVolumeBackupStream.RLock()
 	calls = mock.calls.CreateStorageVolumeBackupStream
 	mock.lockCreateStorageVolumeBackupStream.RUnlock()
+	return calls
+}
+
+// CreateStorageVolumeBitmap calls CreateStorageVolumeBitmapFunc.
+func (mock *InstanceServerMock) CreateStorageVolumeBitmap(pool string, volumeType string, volumeName string, bitmap api.StorageVolumeBitmapsPost) error {
+	if mock.CreateStorageVolumeBitmapFunc == nil {
+		panic("InstanceServerMock.CreateStorageVolumeBitmapFunc: method is nil but InstanceServer.CreateStorageVolumeBitmap was just called")
+	}
+	callInfo := struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+		Bitmap     api.StorageVolumeBitmapsPost
+	}{
+		Pool:       pool,
+		VolumeType: volumeType,
+		VolumeName: volumeName,
+		Bitmap:     bitmap,
+	}
+	mock.lockCreateStorageVolumeBitmap.Lock()
+	mock.calls.CreateStorageVolumeBitmap = append(mock.calls.CreateStorageVolumeBitmap, callInfo)
+	mock.lockCreateStorageVolumeBitmap.Unlock()
+	return mock.CreateStorageVolumeBitmapFunc(pool, volumeType, volumeName, bitmap)
+}
+
+// CreateStorageVolumeBitmapCalls gets all the calls that were made to CreateStorageVolumeBitmap.
+// Check the length with:
+//
+//	len(mockedInstanceServer.CreateStorageVolumeBitmapCalls())
+func (mock *InstanceServerMock) CreateStorageVolumeBitmapCalls() []struct {
+	Pool       string
+	VolumeType string
+	VolumeName string
+	Bitmap     api.StorageVolumeBitmapsPost
+} {
+	var calls []struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+		Bitmap     api.StorageVolumeBitmapsPost
+	}
+	mock.lockCreateStorageVolumeBitmap.RLock()
+	calls = mock.calls.CreateStorageVolumeBitmap
+	mock.lockCreateStorageVolumeBitmap.RUnlock()
 	return calls
 }
 
@@ -7156,6 +7404,50 @@ func (mock *InstanceServerMock) DeleteStorageVolumeBackupCalls() []struct {
 	return calls
 }
 
+// DeleteStorageVolumeBitmap calls DeleteStorageVolumeBitmapFunc.
+func (mock *InstanceServerMock) DeleteStorageVolumeBitmap(pool string, volumeType string, volumeName string, bitmapName string) error {
+	if mock.DeleteStorageVolumeBitmapFunc == nil {
+		panic("InstanceServerMock.DeleteStorageVolumeBitmapFunc: method is nil but InstanceServer.DeleteStorageVolumeBitmap was just called")
+	}
+	callInfo := struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+		BitmapName string
+	}{
+		Pool:       pool,
+		VolumeType: volumeType,
+		VolumeName: volumeName,
+		BitmapName: bitmapName,
+	}
+	mock.lockDeleteStorageVolumeBitmap.Lock()
+	mock.calls.DeleteStorageVolumeBitmap = append(mock.calls.DeleteStorageVolumeBitmap, callInfo)
+	mock.lockDeleteStorageVolumeBitmap.Unlock()
+	return mock.DeleteStorageVolumeBitmapFunc(pool, volumeType, volumeName, bitmapName)
+}
+
+// DeleteStorageVolumeBitmapCalls gets all the calls that were made to DeleteStorageVolumeBitmap.
+// Check the length with:
+//
+//	len(mockedInstanceServer.DeleteStorageVolumeBitmapCalls())
+func (mock *InstanceServerMock) DeleteStorageVolumeBitmapCalls() []struct {
+	Pool       string
+	VolumeType string
+	VolumeName string
+	BitmapName string
+} {
+	var calls []struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+		BitmapName string
+	}
+	mock.lockDeleteStorageVolumeBitmap.RLock()
+	calls = mock.calls.DeleteStorageVolumeBitmap
+	mock.lockDeleteStorageVolumeBitmap.RUnlock()
+	return calls
+}
+
 // DeleteStorageVolumeFile calls DeleteStorageVolumeFileFunc.
 func (mock *InstanceServerMock) DeleteStorageVolumeFile(pool string, volumeType string, volumeName string, filePath string) error {
 	if mock.DeleteStorageVolumeFileFunc == nil {
@@ -7237,7 +7529,8 @@ func (mock *InstanceServerMock) Disconnect() {
 	if mock.DisconnectFunc == nil {
 		panic("InstanceServerMock.DisconnectFunc: method is nil but InstanceServer.Disconnect was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockDisconnect.Lock()
 	mock.calls.Disconnect = append(mock.calls.Disconnect, callInfo)
 	mock.lockDisconnect.Unlock()
@@ -7248,8 +7541,10 @@ func (mock *InstanceServerMock) Disconnect() {
 // Check the length with:
 //
 //	len(mockedInstanceServer.DisconnectCalls())
-func (mock *InstanceServerMock) DisconnectCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) DisconnectCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockDisconnect.RLock()
 	calls = mock.calls.Disconnect
 	mock.lockDisconnect.RUnlock()
@@ -7401,7 +7696,8 @@ func (mock *InstanceServerMock) GetCertificateFingerprints() ([]string, error) {
 	if mock.GetCertificateFingerprintsFunc == nil {
 		panic("InstanceServerMock.GetCertificateFingerprintsFunc: method is nil but InstanceServer.GetCertificateFingerprints was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetCertificateFingerprints.Lock()
 	mock.calls.GetCertificateFingerprints = append(mock.calls.GetCertificateFingerprints, callInfo)
 	mock.lockGetCertificateFingerprints.Unlock()
@@ -7412,8 +7708,10 @@ func (mock *InstanceServerMock) GetCertificateFingerprints() ([]string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetCertificateFingerprintsCalls())
-func (mock *InstanceServerMock) GetCertificateFingerprintsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetCertificateFingerprintsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetCertificateFingerprints.RLock()
 	calls = mock.calls.GetCertificateFingerprints
 	mock.lockGetCertificateFingerprints.RUnlock()
@@ -7425,7 +7723,8 @@ func (mock *InstanceServerMock) GetCertificates() ([]api.Certificate, error) {
 	if mock.GetCertificatesFunc == nil {
 		panic("InstanceServerMock.GetCertificatesFunc: method is nil but InstanceServer.GetCertificates was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetCertificates.Lock()
 	mock.calls.GetCertificates = append(mock.calls.GetCertificates, callInfo)
 	mock.lockGetCertificates.Unlock()
@@ -7436,8 +7735,10 @@ func (mock *InstanceServerMock) GetCertificates() ([]api.Certificate, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetCertificatesCalls())
-func (mock *InstanceServerMock) GetCertificatesCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetCertificatesCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetCertificates.RLock()
 	calls = mock.calls.GetCertificates
 	mock.lockGetCertificates.RUnlock()
@@ -7481,7 +7782,8 @@ func (mock *InstanceServerMock) GetCluster() (*api.Cluster, string, error) {
 	if mock.GetClusterFunc == nil {
 		panic("InstanceServerMock.GetClusterFunc: method is nil but InstanceServer.GetCluster was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetCluster.Lock()
 	mock.calls.GetCluster = append(mock.calls.GetCluster, callInfo)
 	mock.lockGetCluster.Unlock()
@@ -7492,8 +7794,10 @@ func (mock *InstanceServerMock) GetCluster() (*api.Cluster, string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetClusterCalls())
-func (mock *InstanceServerMock) GetClusterCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetClusterCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetCluster.RLock()
 	calls = mock.calls.GetCluster
 	mock.lockGetCluster.RUnlock()
@@ -7537,7 +7841,8 @@ func (mock *InstanceServerMock) GetClusterGroupNames() ([]string, error) {
 	if mock.GetClusterGroupNamesFunc == nil {
 		panic("InstanceServerMock.GetClusterGroupNamesFunc: method is nil but InstanceServer.GetClusterGroupNames was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetClusterGroupNames.Lock()
 	mock.calls.GetClusterGroupNames = append(mock.calls.GetClusterGroupNames, callInfo)
 	mock.lockGetClusterGroupNames.Unlock()
@@ -7548,8 +7853,10 @@ func (mock *InstanceServerMock) GetClusterGroupNames() ([]string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetClusterGroupNamesCalls())
-func (mock *InstanceServerMock) GetClusterGroupNamesCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetClusterGroupNamesCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetClusterGroupNames.RLock()
 	calls = mock.calls.GetClusterGroupNames
 	mock.lockGetClusterGroupNames.RUnlock()
@@ -7561,7 +7868,8 @@ func (mock *InstanceServerMock) GetClusterGroups() ([]api.ClusterGroup, error) {
 	if mock.GetClusterGroupsFunc == nil {
 		panic("InstanceServerMock.GetClusterGroupsFunc: method is nil but InstanceServer.GetClusterGroups was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetClusterGroups.Lock()
 	mock.calls.GetClusterGroups = append(mock.calls.GetClusterGroups, callInfo)
 	mock.lockGetClusterGroups.Unlock()
@@ -7572,8 +7880,10 @@ func (mock *InstanceServerMock) GetClusterGroups() ([]api.ClusterGroup, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetClusterGroupsCalls())
-func (mock *InstanceServerMock) GetClusterGroupsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetClusterGroupsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetClusterGroups.RLock()
 	calls = mock.calls.GetClusterGroups
 	mock.lockGetClusterGroups.RUnlock()
@@ -7617,7 +7927,8 @@ func (mock *InstanceServerMock) GetClusterMemberNames() ([]string, error) {
 	if mock.GetClusterMemberNamesFunc == nil {
 		panic("InstanceServerMock.GetClusterMemberNamesFunc: method is nil but InstanceServer.GetClusterMemberNames was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetClusterMemberNames.Lock()
 	mock.calls.GetClusterMemberNames = append(mock.calls.GetClusterMemberNames, callInfo)
 	mock.lockGetClusterMemberNames.Unlock()
@@ -7628,8 +7939,10 @@ func (mock *InstanceServerMock) GetClusterMemberNames() ([]string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetClusterMemberNamesCalls())
-func (mock *InstanceServerMock) GetClusterMemberNamesCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetClusterMemberNamesCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetClusterMemberNames.RLock()
 	calls = mock.calls.GetClusterMemberNames
 	mock.lockGetClusterMemberNames.RUnlock()
@@ -7673,7 +7986,8 @@ func (mock *InstanceServerMock) GetClusterMembers() ([]api.ClusterMember, error)
 	if mock.GetClusterMembersFunc == nil {
 		panic("InstanceServerMock.GetClusterMembersFunc: method is nil but InstanceServer.GetClusterMembers was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetClusterMembers.Lock()
 	mock.calls.GetClusterMembers = append(mock.calls.GetClusterMembers, callInfo)
 	mock.lockGetClusterMembers.Unlock()
@@ -7684,8 +7998,10 @@ func (mock *InstanceServerMock) GetClusterMembers() ([]api.ClusterMember, error)
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetClusterMembersCalls())
-func (mock *InstanceServerMock) GetClusterMembersCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetClusterMembersCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetClusterMembers.RLock()
 	calls = mock.calls.GetClusterMembers
 	mock.lockGetClusterMembers.RUnlock()
@@ -7729,7 +8045,8 @@ func (mock *InstanceServerMock) GetConnectionInfo() (*incus.ConnectionInfo, erro
 	if mock.GetConnectionInfoFunc == nil {
 		panic("InstanceServerMock.GetConnectionInfoFunc: method is nil but InstanceServer.GetConnectionInfo was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetConnectionInfo.Lock()
 	mock.calls.GetConnectionInfo = append(mock.calls.GetConnectionInfo, callInfo)
 	mock.lockGetConnectionInfo.Unlock()
@@ -7740,8 +8057,10 @@ func (mock *InstanceServerMock) GetConnectionInfo() (*incus.ConnectionInfo, erro
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetConnectionInfoCalls())
-func (mock *InstanceServerMock) GetConnectionInfoCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetConnectionInfoCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetConnectionInfo.RLock()
 	calls = mock.calls.GetConnectionInfo
 	mock.lockGetConnectionInfo.RUnlock()
@@ -7753,7 +8072,8 @@ func (mock *InstanceServerMock) GetEvents() (*incus.EventListener, error) {
 	if mock.GetEventsFunc == nil {
 		panic("InstanceServerMock.GetEventsFunc: method is nil but InstanceServer.GetEvents was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetEvents.Lock()
 	mock.calls.GetEvents = append(mock.calls.GetEvents, callInfo)
 	mock.lockGetEvents.Unlock()
@@ -7764,8 +8084,10 @@ func (mock *InstanceServerMock) GetEvents() (*incus.EventListener, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetEventsCalls())
-func (mock *InstanceServerMock) GetEventsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetEventsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetEvents.RLock()
 	calls = mock.calls.GetEvents
 	mock.lockGetEvents.RUnlock()
@@ -7777,7 +8099,8 @@ func (mock *InstanceServerMock) GetEventsAllProjects() (*incus.EventListener, er
 	if mock.GetEventsAllProjectsFunc == nil {
 		panic("InstanceServerMock.GetEventsAllProjectsFunc: method is nil but InstanceServer.GetEventsAllProjects was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetEventsAllProjects.Lock()
 	mock.calls.GetEventsAllProjects = append(mock.calls.GetEventsAllProjects, callInfo)
 	mock.lockGetEventsAllProjects.Unlock()
@@ -7788,8 +8111,10 @@ func (mock *InstanceServerMock) GetEventsAllProjects() (*incus.EventListener, er
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetEventsAllProjectsCalls())
-func (mock *InstanceServerMock) GetEventsAllProjectsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetEventsAllProjectsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetEventsAllProjects.RLock()
 	calls = mock.calls.GetEventsAllProjects
 	mock.lockGetEventsAllProjects.RUnlock()
@@ -7865,7 +8190,8 @@ func (mock *InstanceServerMock) GetHTTPClient() (*http.Client, error) {
 	if mock.GetHTTPClientFunc == nil {
 		panic("InstanceServerMock.GetHTTPClientFunc: method is nil but InstanceServer.GetHTTPClient was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetHTTPClient.Lock()
 	mock.calls.GetHTTPClient = append(mock.calls.GetHTTPClient, callInfo)
 	mock.lockGetHTTPClient.Unlock()
@@ -7876,8 +8202,10 @@ func (mock *InstanceServerMock) GetHTTPClient() (*http.Client, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetHTTPClientCalls())
-func (mock *InstanceServerMock) GetHTTPClientCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetHTTPClientCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetHTTPClient.RLock()
 	calls = mock.calls.GetHTTPClient
 	mock.lockGetHTTPClient.RUnlock()
@@ -7989,7 +8317,8 @@ func (mock *InstanceServerMock) GetImageAliasNames() ([]string, error) {
 	if mock.GetImageAliasNamesFunc == nil {
 		panic("InstanceServerMock.GetImageAliasNamesFunc: method is nil but InstanceServer.GetImageAliasNames was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetImageAliasNames.Lock()
 	mock.calls.GetImageAliasNames = append(mock.calls.GetImageAliasNames, callInfo)
 	mock.lockGetImageAliasNames.Unlock()
@@ -8000,8 +8329,10 @@ func (mock *InstanceServerMock) GetImageAliasNames() ([]string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetImageAliasNamesCalls())
-func (mock *InstanceServerMock) GetImageAliasNamesCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetImageAliasNamesCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetImageAliasNames.RLock()
 	calls = mock.calls.GetImageAliasNames
 	mock.lockGetImageAliasNames.RUnlock()
@@ -8049,7 +8380,8 @@ func (mock *InstanceServerMock) GetImageAliases() ([]api.ImageAliasesEntry, erro
 	if mock.GetImageAliasesFunc == nil {
 		panic("InstanceServerMock.GetImageAliasesFunc: method is nil but InstanceServer.GetImageAliases was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetImageAliases.Lock()
 	mock.calls.GetImageAliases = append(mock.calls.GetImageAliases, callInfo)
 	mock.lockGetImageAliases.Unlock()
@@ -8060,8 +8392,10 @@ func (mock *InstanceServerMock) GetImageAliases() ([]api.ImageAliasesEntry, erro
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetImageAliasesCalls())
-func (mock *InstanceServerMock) GetImageAliasesCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetImageAliasesCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetImageAliases.RLock()
 	calls = mock.calls.GetImageAliases
 	mock.lockGetImageAliases.RUnlock()
@@ -8109,7 +8443,8 @@ func (mock *InstanceServerMock) GetImageFingerprints() ([]string, error) {
 	if mock.GetImageFingerprintsFunc == nil {
 		panic("InstanceServerMock.GetImageFingerprintsFunc: method is nil but InstanceServer.GetImageFingerprints was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetImageFingerprints.Lock()
 	mock.calls.GetImageFingerprints = append(mock.calls.GetImageFingerprints, callInfo)
 	mock.lockGetImageFingerprints.Unlock()
@@ -8120,8 +8455,10 @@ func (mock *InstanceServerMock) GetImageFingerprints() ([]string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetImageFingerprintsCalls())
-func (mock *InstanceServerMock) GetImageFingerprintsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetImageFingerprintsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetImageFingerprints.RLock()
 	calls = mock.calls.GetImageFingerprints
 	mock.lockGetImageFingerprints.RUnlock()
@@ -8165,7 +8502,8 @@ func (mock *InstanceServerMock) GetImages() ([]api.Image, error) {
 	if mock.GetImagesFunc == nil {
 		panic("InstanceServerMock.GetImagesFunc: method is nil but InstanceServer.GetImages was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetImages.Lock()
 	mock.calls.GetImages = append(mock.calls.GetImages, callInfo)
 	mock.lockGetImages.Unlock()
@@ -8176,8 +8514,10 @@ func (mock *InstanceServerMock) GetImages() ([]api.Image, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetImagesCalls())
-func (mock *InstanceServerMock) GetImagesCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetImagesCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetImages.RLock()
 	calls = mock.calls.GetImages
 	mock.lockGetImages.RUnlock()
@@ -8189,7 +8529,8 @@ func (mock *InstanceServerMock) GetImagesAllProjects() ([]api.Image, error) {
 	if mock.GetImagesAllProjectsFunc == nil {
 		panic("InstanceServerMock.GetImagesAllProjectsFunc: method is nil but InstanceServer.GetImagesAllProjects was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetImagesAllProjects.Lock()
 	mock.calls.GetImagesAllProjects = append(mock.calls.GetImagesAllProjects, callInfo)
 	mock.lockGetImagesAllProjects.Unlock()
@@ -8200,8 +8541,10 @@ func (mock *InstanceServerMock) GetImagesAllProjects() ([]api.Image, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetImagesAllProjectsCalls())
-func (mock *InstanceServerMock) GetImagesAllProjectsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetImagesAllProjectsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetImagesAllProjects.RLock()
 	calls = mock.calls.GetImagesAllProjects
 	mock.lockGetImagesAllProjects.RUnlock()
@@ -9321,7 +9664,8 @@ func (mock *InstanceServerMock) GetMetadataConfiguration() (*api.MetadataConfigu
 	if mock.GetMetadataConfigurationFunc == nil {
 		panic("InstanceServerMock.GetMetadataConfigurationFunc: method is nil but InstanceServer.GetMetadataConfiguration was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetMetadataConfiguration.Lock()
 	mock.calls.GetMetadataConfiguration = append(mock.calls.GetMetadataConfiguration, callInfo)
 	mock.lockGetMetadataConfiguration.Unlock()
@@ -9332,8 +9676,10 @@ func (mock *InstanceServerMock) GetMetadataConfiguration() (*api.MetadataConfigu
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetMetadataConfigurationCalls())
-func (mock *InstanceServerMock) GetMetadataConfigurationCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetMetadataConfigurationCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetMetadataConfiguration.RLock()
 	calls = mock.calls.GetMetadataConfiguration
 	mock.lockGetMetadataConfiguration.RUnlock()
@@ -9345,7 +9691,8 @@ func (mock *InstanceServerMock) GetMetrics() (string, error) {
 	if mock.GetMetricsFunc == nil {
 		panic("InstanceServerMock.GetMetricsFunc: method is nil but InstanceServer.GetMetrics was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetMetrics.Lock()
 	mock.calls.GetMetrics = append(mock.calls.GetMetrics, callInfo)
 	mock.lockGetMetrics.Unlock()
@@ -9356,8 +9703,10 @@ func (mock *InstanceServerMock) GetMetrics() (string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetMetricsCalls())
-func (mock *InstanceServerMock) GetMetricsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetMetricsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetMetrics.RLock()
 	calls = mock.calls.GetMetrics
 	mock.lockGetMetrics.RUnlock()
@@ -9465,7 +9814,8 @@ func (mock *InstanceServerMock) GetNetworkACLNames() ([]string, error) {
 	if mock.GetNetworkACLNamesFunc == nil {
 		panic("InstanceServerMock.GetNetworkACLNamesFunc: method is nil but InstanceServer.GetNetworkACLNames was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetNetworkACLNames.Lock()
 	mock.calls.GetNetworkACLNames = append(mock.calls.GetNetworkACLNames, callInfo)
 	mock.lockGetNetworkACLNames.Unlock()
@@ -9476,8 +9826,10 @@ func (mock *InstanceServerMock) GetNetworkACLNames() ([]string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetNetworkACLNamesCalls())
-func (mock *InstanceServerMock) GetNetworkACLNamesCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetNetworkACLNamesCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetNetworkACLNames.RLock()
 	calls = mock.calls.GetNetworkACLNames
 	mock.lockGetNetworkACLNames.RUnlock()
@@ -9489,7 +9841,8 @@ func (mock *InstanceServerMock) GetNetworkACLs() ([]api.NetworkACL, error) {
 	if mock.GetNetworkACLsFunc == nil {
 		panic("InstanceServerMock.GetNetworkACLsFunc: method is nil but InstanceServer.GetNetworkACLs was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetNetworkACLs.Lock()
 	mock.calls.GetNetworkACLs = append(mock.calls.GetNetworkACLs, callInfo)
 	mock.lockGetNetworkACLs.Unlock()
@@ -9500,8 +9853,10 @@ func (mock *InstanceServerMock) GetNetworkACLs() ([]api.NetworkACL, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetNetworkACLsCalls())
-func (mock *InstanceServerMock) GetNetworkACLsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetNetworkACLsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetNetworkACLs.RLock()
 	calls = mock.calls.GetNetworkACLs
 	mock.lockGetNetworkACLs.RUnlock()
@@ -9513,7 +9868,8 @@ func (mock *InstanceServerMock) GetNetworkACLsAllProjects() ([]api.NetworkACL, e
 	if mock.GetNetworkACLsAllProjectsFunc == nil {
 		panic("InstanceServerMock.GetNetworkACLsAllProjectsFunc: method is nil but InstanceServer.GetNetworkACLsAllProjects was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetNetworkACLsAllProjects.Lock()
 	mock.calls.GetNetworkACLsAllProjects = append(mock.calls.GetNetworkACLsAllProjects, callInfo)
 	mock.lockGetNetworkACLsAllProjects.Unlock()
@@ -9524,8 +9880,10 @@ func (mock *InstanceServerMock) GetNetworkACLsAllProjects() ([]api.NetworkACL, e
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetNetworkACLsAllProjectsCalls())
-func (mock *InstanceServerMock) GetNetworkACLsAllProjectsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetNetworkACLsAllProjectsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetNetworkACLsAllProjects.RLock()
 	calls = mock.calls.GetNetworkACLsAllProjects
 	mock.lockGetNetworkACLsAllProjects.RUnlock()
@@ -9569,7 +9927,8 @@ func (mock *InstanceServerMock) GetNetworkAddressSetNames() ([]string, error) {
 	if mock.GetNetworkAddressSetNamesFunc == nil {
 		panic("InstanceServerMock.GetNetworkAddressSetNamesFunc: method is nil but InstanceServer.GetNetworkAddressSetNames was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetNetworkAddressSetNames.Lock()
 	mock.calls.GetNetworkAddressSetNames = append(mock.calls.GetNetworkAddressSetNames, callInfo)
 	mock.lockGetNetworkAddressSetNames.Unlock()
@@ -9580,8 +9939,10 @@ func (mock *InstanceServerMock) GetNetworkAddressSetNames() ([]string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetNetworkAddressSetNamesCalls())
-func (mock *InstanceServerMock) GetNetworkAddressSetNamesCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetNetworkAddressSetNamesCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetNetworkAddressSetNames.RLock()
 	calls = mock.calls.GetNetworkAddressSetNames
 	mock.lockGetNetworkAddressSetNames.RUnlock()
@@ -9593,7 +9954,8 @@ func (mock *InstanceServerMock) GetNetworkAddressSets() ([]api.NetworkAddressSet
 	if mock.GetNetworkAddressSetsFunc == nil {
 		panic("InstanceServerMock.GetNetworkAddressSetsFunc: method is nil but InstanceServer.GetNetworkAddressSets was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetNetworkAddressSets.Lock()
 	mock.calls.GetNetworkAddressSets = append(mock.calls.GetNetworkAddressSets, callInfo)
 	mock.lockGetNetworkAddressSets.Unlock()
@@ -9604,8 +9966,10 @@ func (mock *InstanceServerMock) GetNetworkAddressSets() ([]api.NetworkAddressSet
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetNetworkAddressSetsCalls())
-func (mock *InstanceServerMock) GetNetworkAddressSetsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetNetworkAddressSetsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetNetworkAddressSets.RLock()
 	calls = mock.calls.GetNetworkAddressSets
 	mock.lockGetNetworkAddressSets.RUnlock()
@@ -9617,7 +9981,8 @@ func (mock *InstanceServerMock) GetNetworkAddressSetsAllProjects() ([]api.Networ
 	if mock.GetNetworkAddressSetsAllProjectsFunc == nil {
 		panic("InstanceServerMock.GetNetworkAddressSetsAllProjectsFunc: method is nil but InstanceServer.GetNetworkAddressSetsAllProjects was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetNetworkAddressSetsAllProjects.Lock()
 	mock.calls.GetNetworkAddressSetsAllProjects = append(mock.calls.GetNetworkAddressSetsAllProjects, callInfo)
 	mock.lockGetNetworkAddressSetsAllProjects.Unlock()
@@ -9628,8 +9993,10 @@ func (mock *InstanceServerMock) GetNetworkAddressSetsAllProjects() ([]api.Networ
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetNetworkAddressSetsAllProjectsCalls())
-func (mock *InstanceServerMock) GetNetworkAddressSetsAllProjectsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetNetworkAddressSetsAllProjectsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetNetworkAddressSetsAllProjects.RLock()
 	calls = mock.calls.GetNetworkAddressSetsAllProjects
 	mock.lockGetNetworkAddressSetsAllProjects.RUnlock()
@@ -9641,7 +10008,8 @@ func (mock *InstanceServerMock) GetNetworkAllocations() ([]api.NetworkAllocation
 	if mock.GetNetworkAllocationsFunc == nil {
 		panic("InstanceServerMock.GetNetworkAllocationsFunc: method is nil but InstanceServer.GetNetworkAllocations was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetNetworkAllocations.Lock()
 	mock.calls.GetNetworkAllocations = append(mock.calls.GetNetworkAllocations, callInfo)
 	mock.lockGetNetworkAllocations.Unlock()
@@ -9652,8 +10020,10 @@ func (mock *InstanceServerMock) GetNetworkAllocations() ([]api.NetworkAllocation
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetNetworkAllocationsCalls())
-func (mock *InstanceServerMock) GetNetworkAllocationsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetNetworkAllocationsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetNetworkAllocations.RLock()
 	calls = mock.calls.GetNetworkAllocations
 	mock.lockGetNetworkAllocations.RUnlock()
@@ -9665,7 +10035,8 @@ func (mock *InstanceServerMock) GetNetworkAllocationsAllProjects() ([]api.Networ
 	if mock.GetNetworkAllocationsAllProjectsFunc == nil {
 		panic("InstanceServerMock.GetNetworkAllocationsAllProjectsFunc: method is nil but InstanceServer.GetNetworkAllocationsAllProjects was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetNetworkAllocationsAllProjects.Lock()
 	mock.calls.GetNetworkAllocationsAllProjects = append(mock.calls.GetNetworkAllocationsAllProjects, callInfo)
 	mock.lockGetNetworkAllocationsAllProjects.Unlock()
@@ -9676,8 +10047,10 @@ func (mock *InstanceServerMock) GetNetworkAllocationsAllProjects() ([]api.Networ
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetNetworkAllocationsAllProjectsCalls())
-func (mock *InstanceServerMock) GetNetworkAllocationsAllProjectsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetNetworkAllocationsAllProjectsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetNetworkAllocationsAllProjects.RLock()
 	calls = mock.calls.GetNetworkAllocationsAllProjects
 	mock.lockGetNetworkAllocationsAllProjects.RUnlock()
@@ -9821,7 +10194,8 @@ func (mock *InstanceServerMock) GetNetworkIntegrationNames() ([]string, error) {
 	if mock.GetNetworkIntegrationNamesFunc == nil {
 		panic("InstanceServerMock.GetNetworkIntegrationNamesFunc: method is nil but InstanceServer.GetNetworkIntegrationNames was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetNetworkIntegrationNames.Lock()
 	mock.calls.GetNetworkIntegrationNames = append(mock.calls.GetNetworkIntegrationNames, callInfo)
 	mock.lockGetNetworkIntegrationNames.Unlock()
@@ -9832,8 +10206,10 @@ func (mock *InstanceServerMock) GetNetworkIntegrationNames() ([]string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetNetworkIntegrationNamesCalls())
-func (mock *InstanceServerMock) GetNetworkIntegrationNamesCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetNetworkIntegrationNamesCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetNetworkIntegrationNames.RLock()
 	calls = mock.calls.GetNetworkIntegrationNames
 	mock.lockGetNetworkIntegrationNames.RUnlock()
@@ -9845,7 +10221,8 @@ func (mock *InstanceServerMock) GetNetworkIntegrations() ([]api.NetworkIntegrati
 	if mock.GetNetworkIntegrationsFunc == nil {
 		panic("InstanceServerMock.GetNetworkIntegrationsFunc: method is nil but InstanceServer.GetNetworkIntegrations was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetNetworkIntegrations.Lock()
 	mock.calls.GetNetworkIntegrations = append(mock.calls.GetNetworkIntegrations, callInfo)
 	mock.lockGetNetworkIntegrations.Unlock()
@@ -9856,8 +10233,10 @@ func (mock *InstanceServerMock) GetNetworkIntegrations() ([]api.NetworkIntegrati
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetNetworkIntegrationsCalls())
-func (mock *InstanceServerMock) GetNetworkIntegrationsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetNetworkIntegrationsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetNetworkIntegrations.RLock()
 	calls = mock.calls.GetNetworkIntegrations
 	mock.lockGetNetworkIntegrations.RUnlock()
@@ -10037,7 +10416,8 @@ func (mock *InstanceServerMock) GetNetworkNames() ([]string, error) {
 	if mock.GetNetworkNamesFunc == nil {
 		panic("InstanceServerMock.GetNetworkNamesFunc: method is nil but InstanceServer.GetNetworkNames was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetNetworkNames.Lock()
 	mock.calls.GetNetworkNames = append(mock.calls.GetNetworkNames, callInfo)
 	mock.lockGetNetworkNames.Unlock()
@@ -10048,8 +10428,10 @@ func (mock *InstanceServerMock) GetNetworkNames() ([]string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetNetworkNamesCalls())
-func (mock *InstanceServerMock) GetNetworkNamesCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetNetworkNamesCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetNetworkNames.RLock()
 	calls = mock.calls.GetNetworkNames
 	mock.lockGetNetworkNames.RUnlock()
@@ -10225,7 +10607,8 @@ func (mock *InstanceServerMock) GetNetworkZoneNames() ([]string, error) {
 	if mock.GetNetworkZoneNamesFunc == nil {
 		panic("InstanceServerMock.GetNetworkZoneNamesFunc: method is nil but InstanceServer.GetNetworkZoneNames was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetNetworkZoneNames.Lock()
 	mock.calls.GetNetworkZoneNames = append(mock.calls.GetNetworkZoneNames, callInfo)
 	mock.lockGetNetworkZoneNames.Unlock()
@@ -10236,8 +10619,10 @@ func (mock *InstanceServerMock) GetNetworkZoneNames() ([]string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetNetworkZoneNamesCalls())
-func (mock *InstanceServerMock) GetNetworkZoneNamesCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetNetworkZoneNamesCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetNetworkZoneNames.RLock()
 	calls = mock.calls.GetNetworkZoneNames
 	mock.lockGetNetworkZoneNames.RUnlock()
@@ -10349,7 +10734,8 @@ func (mock *InstanceServerMock) GetNetworkZones() ([]api.NetworkZone, error) {
 	if mock.GetNetworkZonesFunc == nil {
 		panic("InstanceServerMock.GetNetworkZonesFunc: method is nil but InstanceServer.GetNetworkZones was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetNetworkZones.Lock()
 	mock.calls.GetNetworkZones = append(mock.calls.GetNetworkZones, callInfo)
 	mock.lockGetNetworkZones.Unlock()
@@ -10360,8 +10746,10 @@ func (mock *InstanceServerMock) GetNetworkZones() ([]api.NetworkZone, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetNetworkZonesCalls())
-func (mock *InstanceServerMock) GetNetworkZonesCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetNetworkZonesCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetNetworkZones.RLock()
 	calls = mock.calls.GetNetworkZones
 	mock.lockGetNetworkZones.RUnlock()
@@ -10373,7 +10761,8 @@ func (mock *InstanceServerMock) GetNetworkZonesAllProjects() ([]api.NetworkZone,
 	if mock.GetNetworkZonesAllProjectsFunc == nil {
 		panic("InstanceServerMock.GetNetworkZonesAllProjectsFunc: method is nil but InstanceServer.GetNetworkZonesAllProjects was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetNetworkZonesAllProjects.Lock()
 	mock.calls.GetNetworkZonesAllProjects = append(mock.calls.GetNetworkZonesAllProjects, callInfo)
 	mock.lockGetNetworkZonesAllProjects.Unlock()
@@ -10384,8 +10773,10 @@ func (mock *InstanceServerMock) GetNetworkZonesAllProjects() ([]api.NetworkZone,
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetNetworkZonesAllProjectsCalls())
-func (mock *InstanceServerMock) GetNetworkZonesAllProjectsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetNetworkZonesAllProjectsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetNetworkZonesAllProjects.RLock()
 	calls = mock.calls.GetNetworkZonesAllProjects
 	mock.lockGetNetworkZonesAllProjects.RUnlock()
@@ -10397,7 +10788,8 @@ func (mock *InstanceServerMock) GetNetworks() ([]api.Network, error) {
 	if mock.GetNetworksFunc == nil {
 		panic("InstanceServerMock.GetNetworksFunc: method is nil but InstanceServer.GetNetworks was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetNetworks.Lock()
 	mock.calls.GetNetworks = append(mock.calls.GetNetworks, callInfo)
 	mock.lockGetNetworks.Unlock()
@@ -10408,8 +10800,10 @@ func (mock *InstanceServerMock) GetNetworks() ([]api.Network, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetNetworksCalls())
-func (mock *InstanceServerMock) GetNetworksCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetNetworksCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetNetworks.RLock()
 	calls = mock.calls.GetNetworks
 	mock.lockGetNetworks.RUnlock()
@@ -10421,7 +10815,8 @@ func (mock *InstanceServerMock) GetNetworksAllProjects() ([]api.Network, error) 
 	if mock.GetNetworksAllProjectsFunc == nil {
 		panic("InstanceServerMock.GetNetworksAllProjectsFunc: method is nil but InstanceServer.GetNetworksAllProjects was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetNetworksAllProjects.Lock()
 	mock.calls.GetNetworksAllProjects = append(mock.calls.GetNetworksAllProjects, callInfo)
 	mock.lockGetNetworksAllProjects.Unlock()
@@ -10432,8 +10827,10 @@ func (mock *InstanceServerMock) GetNetworksAllProjects() ([]api.Network, error) 
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetNetworksAllProjectsCalls())
-func (mock *InstanceServerMock) GetNetworksAllProjectsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetNetworksAllProjectsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetNetworksAllProjects.RLock()
 	calls = mock.calls.GetNetworksAllProjects
 	mock.lockGetNetworksAllProjects.RUnlock()
@@ -10541,7 +10938,8 @@ func (mock *InstanceServerMock) GetOperationUUIDs() ([]string, error) {
 	if mock.GetOperationUUIDsFunc == nil {
 		panic("InstanceServerMock.GetOperationUUIDsFunc: method is nil but InstanceServer.GetOperationUUIDs was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetOperationUUIDs.Lock()
 	mock.calls.GetOperationUUIDs = append(mock.calls.GetOperationUUIDs, callInfo)
 	mock.lockGetOperationUUIDs.Unlock()
@@ -10552,8 +10950,10 @@ func (mock *InstanceServerMock) GetOperationUUIDs() ([]string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetOperationUUIDsCalls())
-func (mock *InstanceServerMock) GetOperationUUIDsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetOperationUUIDsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetOperationUUIDs.RLock()
 	calls = mock.calls.GetOperationUUIDs
 	mock.lockGetOperationUUIDs.RUnlock()
@@ -10677,7 +11077,8 @@ func (mock *InstanceServerMock) GetOperations() ([]api.Operation, error) {
 	if mock.GetOperationsFunc == nil {
 		panic("InstanceServerMock.GetOperationsFunc: method is nil but InstanceServer.GetOperations was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetOperations.Lock()
 	mock.calls.GetOperations = append(mock.calls.GetOperations, callInfo)
 	mock.lockGetOperations.Unlock()
@@ -10688,8 +11089,10 @@ func (mock *InstanceServerMock) GetOperations() ([]api.Operation, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetOperationsCalls())
-func (mock *InstanceServerMock) GetOperationsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetOperationsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetOperations.RLock()
 	calls = mock.calls.GetOperations
 	mock.lockGetOperations.RUnlock()
@@ -10701,7 +11104,8 @@ func (mock *InstanceServerMock) GetOperationsAllProjects() ([]api.Operation, err
 	if mock.GetOperationsAllProjectsFunc == nil {
 		panic("InstanceServerMock.GetOperationsAllProjectsFunc: method is nil but InstanceServer.GetOperationsAllProjects was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetOperationsAllProjects.Lock()
 	mock.calls.GetOperationsAllProjects = append(mock.calls.GetOperationsAllProjects, callInfo)
 	mock.lockGetOperationsAllProjects.Unlock()
@@ -10712,8 +11116,10 @@ func (mock *InstanceServerMock) GetOperationsAllProjects() ([]api.Operation, err
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetOperationsAllProjectsCalls())
-func (mock *InstanceServerMock) GetOperationsAllProjectsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetOperationsAllProjectsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetOperationsAllProjects.RLock()
 	calls = mock.calls.GetOperationsAllProjects
 	mock.lockGetOperationsAllProjects.RUnlock()
@@ -10833,7 +11239,8 @@ func (mock *InstanceServerMock) GetProfileNames() ([]string, error) {
 	if mock.GetProfileNamesFunc == nil {
 		panic("InstanceServerMock.GetProfileNamesFunc: method is nil but InstanceServer.GetProfileNames was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetProfileNames.Lock()
 	mock.calls.GetProfileNames = append(mock.calls.GetProfileNames, callInfo)
 	mock.lockGetProfileNames.Unlock()
@@ -10844,8 +11251,10 @@ func (mock *InstanceServerMock) GetProfileNames() ([]string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetProfileNamesCalls())
-func (mock *InstanceServerMock) GetProfileNamesCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetProfileNamesCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetProfileNames.RLock()
 	calls = mock.calls.GetProfileNames
 	mock.lockGetProfileNames.RUnlock()
@@ -10857,7 +11266,8 @@ func (mock *InstanceServerMock) GetProfiles() ([]api.Profile, error) {
 	if mock.GetProfilesFunc == nil {
 		panic("InstanceServerMock.GetProfilesFunc: method is nil but InstanceServer.GetProfiles was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetProfiles.Lock()
 	mock.calls.GetProfiles = append(mock.calls.GetProfiles, callInfo)
 	mock.lockGetProfiles.Unlock()
@@ -10868,8 +11278,10 @@ func (mock *InstanceServerMock) GetProfiles() ([]api.Profile, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetProfilesCalls())
-func (mock *InstanceServerMock) GetProfilesCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetProfilesCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetProfiles.RLock()
 	calls = mock.calls.GetProfiles
 	mock.lockGetProfiles.RUnlock()
@@ -10881,7 +11293,8 @@ func (mock *InstanceServerMock) GetProfilesAllProjects() ([]api.Profile, error) 
 	if mock.GetProfilesAllProjectsFunc == nil {
 		panic("InstanceServerMock.GetProfilesAllProjectsFunc: method is nil but InstanceServer.GetProfilesAllProjects was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetProfilesAllProjects.Lock()
 	mock.calls.GetProfilesAllProjects = append(mock.calls.GetProfilesAllProjects, callInfo)
 	mock.lockGetProfilesAllProjects.Unlock()
@@ -10892,8 +11305,10 @@ func (mock *InstanceServerMock) GetProfilesAllProjects() ([]api.Profile, error) 
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetProfilesAllProjectsCalls())
-func (mock *InstanceServerMock) GetProfilesAllProjectsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetProfilesAllProjectsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetProfilesAllProjects.RLock()
 	calls = mock.calls.GetProfilesAllProjects
 	mock.lockGetProfilesAllProjects.RUnlock()
@@ -11033,7 +11448,8 @@ func (mock *InstanceServerMock) GetProjectNames() ([]string, error) {
 	if mock.GetProjectNamesFunc == nil {
 		panic("InstanceServerMock.GetProjectNamesFunc: method is nil but InstanceServer.GetProjectNames was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetProjectNames.Lock()
 	mock.calls.GetProjectNames = append(mock.calls.GetProjectNames, callInfo)
 	mock.lockGetProjectNames.Unlock()
@@ -11044,8 +11460,10 @@ func (mock *InstanceServerMock) GetProjectNames() ([]string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetProjectNamesCalls())
-func (mock *InstanceServerMock) GetProjectNamesCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetProjectNamesCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetProjectNames.RLock()
 	calls = mock.calls.GetProjectNames
 	mock.lockGetProjectNames.RUnlock()
@@ -11089,7 +11507,8 @@ func (mock *InstanceServerMock) GetProjects() ([]api.Project, error) {
 	if mock.GetProjectsFunc == nil {
 		panic("InstanceServerMock.GetProjectsFunc: method is nil but InstanceServer.GetProjects was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetProjects.Lock()
 	mock.calls.GetProjects = append(mock.calls.GetProjects, callInfo)
 	mock.lockGetProjects.Unlock()
@@ -11100,8 +11519,10 @@ func (mock *InstanceServerMock) GetProjects() ([]api.Project, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetProjectsCalls())
-func (mock *InstanceServerMock) GetProjectsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetProjectsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetProjects.RLock()
 	calls = mock.calls.GetProjects
 	mock.lockGetProjects.RUnlock()
@@ -11145,7 +11566,8 @@ func (mock *InstanceServerMock) GetServer() (*api.Server, string, error) {
 	if mock.GetServerFunc == nil {
 		panic("InstanceServerMock.GetServerFunc: method is nil but InstanceServer.GetServer was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetServer.Lock()
 	mock.calls.GetServer = append(mock.calls.GetServer, callInfo)
 	mock.lockGetServer.Unlock()
@@ -11156,8 +11578,10 @@ func (mock *InstanceServerMock) GetServer() (*api.Server, string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetServerCalls())
-func (mock *InstanceServerMock) GetServerCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetServerCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetServer.RLock()
 	calls = mock.calls.GetServer
 	mock.lockGetServer.RUnlock()
@@ -11169,7 +11593,8 @@ func (mock *InstanceServerMock) GetServerResources() (*api.Resources, error) {
 	if mock.GetServerResourcesFunc == nil {
 		panic("InstanceServerMock.GetServerResourcesFunc: method is nil but InstanceServer.GetServerResources was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetServerResources.Lock()
 	mock.calls.GetServerResources = append(mock.calls.GetServerResources, callInfo)
 	mock.lockGetServerResources.Unlock()
@@ -11180,8 +11605,10 @@ func (mock *InstanceServerMock) GetServerResources() (*api.Resources, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetServerResourcesCalls())
-func (mock *InstanceServerMock) GetServerResourcesCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetServerResourcesCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetServerResources.RLock()
 	calls = mock.calls.GetServerResources
 	mock.lockGetServerResources.RUnlock()
@@ -11757,7 +12184,8 @@ func (mock *InstanceServerMock) GetStoragePoolNames() ([]string, error) {
 	if mock.GetStoragePoolNamesFunc == nil {
 		panic("InstanceServerMock.GetStoragePoolNamesFunc: method is nil but InstanceServer.GetStoragePoolNames was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetStoragePoolNames.Lock()
 	mock.calls.GetStoragePoolNames = append(mock.calls.GetStoragePoolNames, callInfo)
 	mock.lockGetStoragePoolNames.Unlock()
@@ -11768,8 +12196,10 @@ func (mock *InstanceServerMock) GetStoragePoolNames() ([]string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetStoragePoolNamesCalls())
-func (mock *InstanceServerMock) GetStoragePoolNamesCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetStoragePoolNamesCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetStoragePoolNames.RLock()
 	calls = mock.calls.GetStoragePoolNames
 	mock.lockGetStoragePoolNames.RUnlock()
@@ -11845,6 +12275,50 @@ func (mock *InstanceServerMock) GetStoragePoolVolumeCalls() []struct {
 	mock.lockGetStoragePoolVolume.RLock()
 	calls = mock.calls.GetStoragePoolVolume
 	mock.lockGetStoragePoolVolume.RUnlock()
+	return calls
+}
+
+// GetStoragePoolVolumeBlockNBDConn calls GetStoragePoolVolumeBlockNBDConnFunc.
+func (mock *InstanceServerMock) GetStoragePoolVolumeBlockNBDConn(pool string, volType string, volName string, args incus.StorageVolumeNBDPost) (net.Conn, error) {
+	if mock.GetStoragePoolVolumeBlockNBDConnFunc == nil {
+		panic("InstanceServerMock.GetStoragePoolVolumeBlockNBDConnFunc: method is nil but InstanceServer.GetStoragePoolVolumeBlockNBDConn was just called")
+	}
+	callInfo := struct {
+		Pool    string
+		VolType string
+		VolName string
+		Args    incus.StorageVolumeNBDPost
+	}{
+		Pool:    pool,
+		VolType: volType,
+		VolName: volName,
+		Args:    args,
+	}
+	mock.lockGetStoragePoolVolumeBlockNBDConn.Lock()
+	mock.calls.GetStoragePoolVolumeBlockNBDConn = append(mock.calls.GetStoragePoolVolumeBlockNBDConn, callInfo)
+	mock.lockGetStoragePoolVolumeBlockNBDConn.Unlock()
+	return mock.GetStoragePoolVolumeBlockNBDConnFunc(pool, volType, volName, args)
+}
+
+// GetStoragePoolVolumeBlockNBDConnCalls gets all the calls that were made to GetStoragePoolVolumeBlockNBDConn.
+// Check the length with:
+//
+//	len(mockedInstanceServer.GetStoragePoolVolumeBlockNBDConnCalls())
+func (mock *InstanceServerMock) GetStoragePoolVolumeBlockNBDConnCalls() []struct {
+	Pool    string
+	VolType string
+	VolName string
+	Args    incus.StorageVolumeNBDPost
+} {
+	var calls []struct {
+		Pool    string
+		VolType string
+		VolName string
+		Args    incus.StorageVolumeNBDPost
+	}
+	mock.lockGetStoragePoolVolumeBlockNBDConn.RLock()
+	calls = mock.calls.GetStoragePoolVolumeBlockNBDConn
+	mock.lockGetStoragePoolVolumeBlockNBDConn.RUnlock()
 	return calls
 }
 
@@ -12473,7 +12947,8 @@ func (mock *InstanceServerMock) GetStoragePools() ([]api.StoragePool, error) {
 	if mock.GetStoragePoolsFunc == nil {
 		panic("InstanceServerMock.GetStoragePoolsFunc: method is nil but InstanceServer.GetStoragePools was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetStoragePools.Lock()
 	mock.calls.GetStoragePools = append(mock.calls.GetStoragePools, callInfo)
 	mock.lockGetStoragePools.Unlock()
@@ -12484,8 +12959,10 @@ func (mock *InstanceServerMock) GetStoragePools() ([]api.StoragePool, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetStoragePoolsCalls())
-func (mock *InstanceServerMock) GetStoragePoolsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetStoragePoolsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetStoragePools.RLock()
 	calls = mock.calls.GetStoragePools
 	mock.lockGetStoragePools.RUnlock()
@@ -12680,6 +13157,86 @@ func (mock *InstanceServerMock) GetStorageVolumeBackupsCalls() []struct {
 	return calls
 }
 
+// GetStorageVolumeBitmapNames calls GetStorageVolumeBitmapNamesFunc.
+func (mock *InstanceServerMock) GetStorageVolumeBitmapNames(pool string, volumeType string, volumeName string) ([]string, error) {
+	if mock.GetStorageVolumeBitmapNamesFunc == nil {
+		panic("InstanceServerMock.GetStorageVolumeBitmapNamesFunc: method is nil but InstanceServer.GetStorageVolumeBitmapNames was just called")
+	}
+	callInfo := struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+	}{
+		Pool:       pool,
+		VolumeType: volumeType,
+		VolumeName: volumeName,
+	}
+	mock.lockGetStorageVolumeBitmapNames.Lock()
+	mock.calls.GetStorageVolumeBitmapNames = append(mock.calls.GetStorageVolumeBitmapNames, callInfo)
+	mock.lockGetStorageVolumeBitmapNames.Unlock()
+	return mock.GetStorageVolumeBitmapNamesFunc(pool, volumeType, volumeName)
+}
+
+// GetStorageVolumeBitmapNamesCalls gets all the calls that were made to GetStorageVolumeBitmapNames.
+// Check the length with:
+//
+//	len(mockedInstanceServer.GetStorageVolumeBitmapNamesCalls())
+func (mock *InstanceServerMock) GetStorageVolumeBitmapNamesCalls() []struct {
+	Pool       string
+	VolumeType string
+	VolumeName string
+} {
+	var calls []struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+	}
+	mock.lockGetStorageVolumeBitmapNames.RLock()
+	calls = mock.calls.GetStorageVolumeBitmapNames
+	mock.lockGetStorageVolumeBitmapNames.RUnlock()
+	return calls
+}
+
+// GetStorageVolumeBitmaps calls GetStorageVolumeBitmapsFunc.
+func (mock *InstanceServerMock) GetStorageVolumeBitmaps(pool string, volumeType string, volumeName string) ([]api.StorageVolumeBitmap, error) {
+	if mock.GetStorageVolumeBitmapsFunc == nil {
+		panic("InstanceServerMock.GetStorageVolumeBitmapsFunc: method is nil but InstanceServer.GetStorageVolumeBitmaps was just called")
+	}
+	callInfo := struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+	}{
+		Pool:       pool,
+		VolumeType: volumeType,
+		VolumeName: volumeName,
+	}
+	mock.lockGetStorageVolumeBitmaps.Lock()
+	mock.calls.GetStorageVolumeBitmaps = append(mock.calls.GetStorageVolumeBitmaps, callInfo)
+	mock.lockGetStorageVolumeBitmaps.Unlock()
+	return mock.GetStorageVolumeBitmapsFunc(pool, volumeType, volumeName)
+}
+
+// GetStorageVolumeBitmapsCalls gets all the calls that were made to GetStorageVolumeBitmaps.
+// Check the length with:
+//
+//	len(mockedInstanceServer.GetStorageVolumeBitmapsCalls())
+func (mock *InstanceServerMock) GetStorageVolumeBitmapsCalls() []struct {
+	Pool       string
+	VolumeType string
+	VolumeName string
+} {
+	var calls []struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+	}
+	mock.lockGetStorageVolumeBitmaps.RLock()
+	calls = mock.calls.GetStorageVolumeBitmaps
+	mock.lockGetStorageVolumeBitmaps.RUnlock()
+	return calls
+}
+
 // GetStorageVolumeFile calls GetStorageVolumeFileFunc.
 func (mock *InstanceServerMock) GetStorageVolumeFile(pool string, volumeType string, volumeName string, filePath string) (io.ReadCloser, *incus.InstanceFileResponse, error) {
 	if mock.GetStorageVolumeFileFunc == nil {
@@ -12761,7 +13318,8 @@ func (mock *InstanceServerMock) GetWarningUUIDs() ([]string, error) {
 	if mock.GetWarningUUIDsFunc == nil {
 		panic("InstanceServerMock.GetWarningUUIDsFunc: method is nil but InstanceServer.GetWarningUUIDs was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetWarningUUIDs.Lock()
 	mock.calls.GetWarningUUIDs = append(mock.calls.GetWarningUUIDs, callInfo)
 	mock.lockGetWarningUUIDs.Unlock()
@@ -12772,8 +13330,10 @@ func (mock *InstanceServerMock) GetWarningUUIDs() ([]string, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetWarningUUIDsCalls())
-func (mock *InstanceServerMock) GetWarningUUIDsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetWarningUUIDsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetWarningUUIDs.RLock()
 	calls = mock.calls.GetWarningUUIDs
 	mock.lockGetWarningUUIDs.RUnlock()
@@ -12785,7 +13345,8 @@ func (mock *InstanceServerMock) GetWarnings() ([]api.Warning, error) {
 	if mock.GetWarningsFunc == nil {
 		panic("InstanceServerMock.GetWarningsFunc: method is nil but InstanceServer.GetWarnings was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockGetWarnings.Lock()
 	mock.calls.GetWarnings = append(mock.calls.GetWarnings, callInfo)
 	mock.lockGetWarnings.Unlock()
@@ -12796,8 +13357,10 @@ func (mock *InstanceServerMock) GetWarnings() ([]api.Warning, error) {
 // Check the length with:
 //
 //	len(mockedInstanceServer.GetWarningsCalls())
-func (mock *InstanceServerMock) GetWarningsCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) GetWarningsCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockGetWarnings.RLock()
 	calls = mock.calls.GetWarnings
 	mock.lockGetWarnings.RUnlock()
@@ -12841,7 +13404,8 @@ func (mock *InstanceServerMock) IsClustered() bool {
 	if mock.IsClusteredFunc == nil {
 		panic("InstanceServerMock.IsClusteredFunc: method is nil but InstanceServer.IsClustered was just called")
 	}
-	callInfo := struct{}{}
+	callInfo := struct {
+	}{}
 	mock.lockIsClustered.Lock()
 	mock.calls.IsClustered = append(mock.calls.IsClustered, callInfo)
 	mock.lockIsClustered.Unlock()
@@ -12852,8 +13416,10 @@ func (mock *InstanceServerMock) IsClustered() bool {
 // Check the length with:
 //
 //	len(mockedInstanceServer.IsClusteredCalls())
-func (mock *InstanceServerMock) IsClusteredCalls() []struct{} {
-	var calls []struct{}
+func (mock *InstanceServerMock) IsClusteredCalls() []struct {
+} {
+	var calls []struct {
+	}
 	mock.lockIsClustered.RLock()
 	calls = mock.calls.IsClustered
 	mock.lockIsClustered.RUnlock()
@@ -13217,6 +13783,50 @@ func (mock *InstanceServerMock) RebuildInstanceFromImageCalls() []struct {
 	mock.lockRebuildInstanceFromImage.RLock()
 	calls = mock.calls.RebuildInstanceFromImage
 	mock.lockRebuildInstanceFromImage.RUnlock()
+	return calls
+}
+
+// RebuildStoragePoolVolume calls RebuildStoragePoolVolumeFunc.
+func (mock *InstanceServerMock) RebuildStoragePoolVolume(pool string, volType string, name string, volume api.StorageVolumeRebuildPost) (incus.Operation, error) {
+	if mock.RebuildStoragePoolVolumeFunc == nil {
+		panic("InstanceServerMock.RebuildStoragePoolVolumeFunc: method is nil but InstanceServer.RebuildStoragePoolVolume was just called")
+	}
+	callInfo := struct {
+		Pool    string
+		VolType string
+		Name    string
+		Volume  api.StorageVolumeRebuildPost
+	}{
+		Pool:    pool,
+		VolType: volType,
+		Name:    name,
+		Volume:  volume,
+	}
+	mock.lockRebuildStoragePoolVolume.Lock()
+	mock.calls.RebuildStoragePoolVolume = append(mock.calls.RebuildStoragePoolVolume, callInfo)
+	mock.lockRebuildStoragePoolVolume.Unlock()
+	return mock.RebuildStoragePoolVolumeFunc(pool, volType, name, volume)
+}
+
+// RebuildStoragePoolVolumeCalls gets all the calls that were made to RebuildStoragePoolVolume.
+// Check the length with:
+//
+//	len(mockedInstanceServer.RebuildStoragePoolVolumeCalls())
+func (mock *InstanceServerMock) RebuildStoragePoolVolumeCalls() []struct {
+	Pool    string
+	VolType string
+	Name    string
+	Volume  api.StorageVolumeRebuildPost
+} {
+	var calls []struct {
+		Pool    string
+		VolType string
+		Name    string
+		Volume  api.StorageVolumeRebuildPost
+	}
+	mock.lockRebuildStoragePoolVolume.RLock()
+	calls = mock.calls.RebuildStoragePoolVolume
+	mock.lockRebuildStoragePoolVolume.RUnlock()
 	return calls
 }
 

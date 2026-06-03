@@ -7,9 +7,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 // ClusterRepoWithPrometheus implements provisioning.ClusterRepo interface with all methods wrapped

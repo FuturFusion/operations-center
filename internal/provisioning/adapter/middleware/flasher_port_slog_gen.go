@@ -8,10 +8,11 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
-	"github.com/google/uuid"
 )
 
 // FlasherPortWithSlog implements provisioning.FlasherPort that is instrumented with slog logger.

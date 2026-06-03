@@ -8,8 +8,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/google/uuid"
+
+	"github.com/FuturFusion/operations-center/internal/inventory"
 )
 
 // Ensure that StoragePoolRepoMock does implement inventory.StoragePoolRepo.

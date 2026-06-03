@@ -8,12 +8,13 @@ import (
 	"io"
 	"time"
 
-	"github.com/FuturFusion/operations-center/internal/domain"
-	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 // ClusterServiceWithPrometheus implements provisioning.ClusterService interface with all methods wrapped

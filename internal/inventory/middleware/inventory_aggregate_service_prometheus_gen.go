@@ -7,9 +7,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/FuturFusion/operations-center/internal/inventory"
 )
 
 // InventoryAggregateServiceWithPrometheus implements inventory.InventoryAggregateService interface with all methods wrapped

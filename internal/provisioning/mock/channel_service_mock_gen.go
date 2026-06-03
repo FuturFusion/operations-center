@@ -8,9 +8,10 @@ import (
 	"context"
 	"sync"
 
+	"github.com/lxc/incus-os/incus-osd/api/images"
+
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
-	"github.com/lxc/incus-os/incus-osd/api/images"
 )
 
 // Ensure that ChannelServiceMock does implement provisioning.ChannelService.
