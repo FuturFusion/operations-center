@@ -5,7 +5,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/lxc/incus/v6/shared/api"
+	"github.com/lxc/incus/v7/shared/api"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )

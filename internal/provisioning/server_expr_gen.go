@@ -261,6 +261,7 @@ type ExprOsapiSystemSecurityState struct {
 	SecureBootEnabled               bool                                           `incusos:"-"                               json:"secure_boot_enabled"                yaml:"secure_boot_enabled" expr:"secure_boot_enabled"`
 	SystemStateIsTrusted            bool                                           `incusos:"-"                               json:"system_state_is_trusted"            yaml:"system_state_is_trusted" expr:"system_state_is_trusted"`
 	TPMStatus                       string                                         `incusos:"-"                               json:"tpm_status"                         yaml:"tpm_status" expr:"tpm_status"`
+	TPMPublicKey                    string                                         `incusos:"-"                               json:"tpm_public_key,omitempty"           yaml:"tpm_public_key,omitempty" expr:"tpm_public_key"`
 }
 
 type ExprOsapiSystemStorage struct {
@@ -690,6 +691,7 @@ func ToExprOsapiSystemSecurityState(s osapi.SystemSecurityState) ExprOsapiSystem
 		SecureBootEnabled:               s.SecureBootEnabled,
 		SystemStateIsTrusted:            s.SystemStateIsTrusted,
 		TPMStatus:                       s.TPMStatus,
+		TPMPublicKey:                    s.TPMPublicKey,
 	}
 }
 

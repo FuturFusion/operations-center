@@ -4,6 +4,11 @@ all: False
 template: file://./internal/domain/error_wrapper.gotmpl
 require-template-schema-exists: false
 force-file-write: true
+formatter: goimports
+formatter-options:
+  goimports:
+    local-prefix: github.com/FuturFusion/operations-center
+    tab-indent: true
 include-auto-generated: true
 include-interface-regex: "(.*ServerClient|.+ClientPort)"
 dir: >-

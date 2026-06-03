@@ -6,9 +6,10 @@ package middleware
 import (
 	"context"
 
+	"github.com/lxc/incus/v7/shared/api"
+
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/lxc/incus/v6/shared/api"
 )
 
 // NetworkPeerServerClientWithErrorWrapper implements inventory.NetworkPeerServerClient that wraps errors based custom logic.

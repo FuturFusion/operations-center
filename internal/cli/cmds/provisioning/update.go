@@ -10,7 +10,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/lxc/incus-os/incus-osd/api/images"
-	"github.com/lxc/incus/v6/shared/units"
+	"github.com/lxc/incus/v7/shared/units"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 

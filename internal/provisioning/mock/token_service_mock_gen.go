@@ -9,10 +9,11 @@ import (
 	"io"
 	"sync"
 
-	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // Ensure that TokenServiceMock does implement provisioning.TokenService.

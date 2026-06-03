@@ -840,7 +840,7 @@ definitions:
             usb:
                 $ref: '#/definitions/ResourcesUSB'
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesCPU:
         description: ResourcesCPU represents the cpu resources available on the system
         properties:
@@ -862,7 +862,7 @@ definitions:
                 type: integer
                 x-go-name: Total
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesCPUAddressSizes:
         properties:
             physical_bits:
@@ -875,7 +875,7 @@ definitions:
                 x-go-name: VirtualBits
         title: ResourcesCPUAddressSizes resprents address size information for a CPU socket.
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesCPUCache:
         description: ResourcesCPUCache represents a CPU cache
         properties:
@@ -897,7 +897,7 @@ definitions:
                 type: string
                 x-go-name: Type
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesCPUCore:
         description: ResourcesCPUCore represents a CPU core on the system
         properties:
@@ -933,7 +933,7 @@ definitions:
                 type: array
                 x-go-name: Threads
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesCPUSocket:
         description: ResourcesCPUSocket represents a CPU socket on the system
         properties:
@@ -986,7 +986,7 @@ definitions:
                 type: string
                 x-go-name: Vendor
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesCPUThread:
         description: ResourcesCPUThread represents a CPU thread on the system
         properties:
@@ -1019,7 +1019,7 @@ definitions:
                 type: integer
                 x-go-name: Thread
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesGPU:
         description: ResourcesGPU represents the GPU resources available on the system
         properties:
@@ -1036,7 +1036,7 @@ definitions:
                 type: integer
                 x-go-name: Total
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesGPUCard:
         description: ResourcesGPUCard represents a GPU card on the system
         properties:
@@ -1100,7 +1100,7 @@ definitions:
                 type: string
                 x-go-name: VendorID
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesGPUCardDRM:
         description: ResourcesGPUCardDRM represents the Linux DRM configuration of the GPU
         properties:
@@ -1141,7 +1141,7 @@ definitions:
                 type: string
                 x-go-name: RenderName
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesGPUCardMdev:
         description: ResourcesGPUCardMdev represents the mediated devices configuration of the GPU
         properties:
@@ -1176,7 +1176,7 @@ definitions:
                 type: string
                 x-go-name: Name
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesGPUCardNvidia:
         description: ResourcesGPUCardNvidia represents additional information for NVIDIA GPUs
         properties:
@@ -1221,7 +1221,7 @@ definitions:
                 type: string
                 x-go-name: UUID
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesGPUCardSRIOV:
         description: ResourcesGPUCardSRIOV represents the SRIOV configuration of the GPU
         properties:
@@ -1245,7 +1245,7 @@ definitions:
                 type: array
                 x-go-name: VFs
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesLoad:
         description: ResourcesLoad represents system load information
         properties:
@@ -1270,7 +1270,7 @@ definitions:
                 format: int64
                 type: integer
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesMemory:
         description: ResourcesMemory represents the memory resources available on the system
         properties:
@@ -1312,7 +1312,7 @@ definitions:
                 type: integer
                 x-go-name: Used
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesMemoryNode:
         description: ResourcesMemoryNode represents the node-specific memory resources available on the system
         properties:
@@ -1347,7 +1347,7 @@ definitions:
                 type: integer
                 x-go-name: Used
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesNetwork:
         description: ResourcesNetwork represents the network cards available on the system
         properties:
@@ -1364,7 +1364,7 @@ definitions:
                 type: integer
                 x-go-name: Total
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesNetworkCard:
         description: ResourcesNetworkCard represents a network card on the system
         properties:
@@ -1430,7 +1430,7 @@ definitions:
                 type: string
                 x-go-name: VendorID
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesNetworkCardPort:
         description: ResourcesNetworkCardPort represents a network port on the system
         properties:
@@ -1509,7 +1509,7 @@ definitions:
                 type: string
                 x-go-name: TransceiverType
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesNetworkCardPortInfiniband:
         description: ResourcesNetworkCardPortInfiniband represents the Linux Infiniband configuration for the port
         properties:
@@ -1544,7 +1544,7 @@ definitions:
                 type: string
                 x-go-name: VerbName
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesNetworkCardSRIOV:
         description: ResourcesNetworkCardSRIOV represents the SRIOV configuration of the network card
         properties:
@@ -1568,7 +1568,7 @@ definitions:
                 type: array
                 x-go-name: VFs
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesNetworkCardVDPA:
         description: ResourcesNetworkCardVDPA represents the VDPA configuration of the network card
         properties:
@@ -1581,7 +1581,7 @@ definitions:
                 type: string
                 x-go-name: Name
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesPCI:
         description: ResourcesPCI represents the PCI devices available on the system
         properties:
@@ -1598,7 +1598,7 @@ definitions:
                 type: integer
                 x-go-name: Total
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesPCIDevice:
         description: ResourcesPCIDevice represents a PCI device
         properties:
@@ -1652,7 +1652,7 @@ definitions:
             vpd:
                 $ref: '#/definitions/ResourcesPCIVPD'
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesPCIVPD:
         description: ResourcesPCIVPD represents VPD entries for a device
         properties:
@@ -1660,7 +1660,10 @@ definitions:
                 additionalProperties:
                     type: string
                 description: Vendor provided key/value pairs.
-                example: '{"EC": ""A-5545", "MN": "103C", "V0": "5W PCIeGen2"}'
+                example:
+                    EC: A-5545
+                    MN: 103C
+                    V0: 5W PCIeGen2
                 type: object
                 x-go-name: Entries
             product_name:
@@ -1669,7 +1672,7 @@ definitions:
                 type: string
                 x-go-name: ProductName
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesSerial:
         description: ResourcesSerial represents the serial devices available on the system
         properties:
@@ -1686,7 +1689,7 @@ definitions:
                 type: integer
                 x-go-name: Total
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesSerialDevice:
         description: ResourcesSerialDevice represents a serial device
         properties:
@@ -1736,7 +1739,7 @@ definitions:
                 type: string
                 x-go-name: VendorID
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesStorage:
         description: ResourcesStorage represents the local storage
         properties:
@@ -1753,7 +1756,7 @@ definitions:
                 type: integer
                 x-go-name: Total
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesStorageDisk:
         description: ResourcesStorageDisk represents a disk
         properties:
@@ -1853,7 +1856,7 @@ definitions:
                 type: string
                 x-go-name: WWN
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesStorageDiskPartition:
         description: ResourcesStorageDiskPartition represents a partition on a disk
         properties:
@@ -1885,7 +1888,7 @@ definitions:
                 type: integer
                 x-go-name: Size
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesSystem:
         description: ResourcesSystem represents the system
         properties:
@@ -1937,7 +1940,7 @@ definitions:
                 type: string
                 x-go-name: Version
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesSystemChassis:
         description: ResourcesSystemChassis represents the system chassis
         properties:
@@ -1962,7 +1965,7 @@ definitions:
                 type: string
                 x-go-name: Version
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesSystemFirmware:
         description: ResourcesSystemFirmware represents the system firmware
         properties:
@@ -1982,7 +1985,7 @@ definitions:
                 type: string
                 x-go-name: Version
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesSystemMotherboard:
         description: ResourcesSystemMotherboard represents the motherboard
         properties:
@@ -2007,7 +2010,7 @@ definitions:
                 type: string
                 x-go-name: Version
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesUSB:
         description: ResourcesUSB represents the USB devices available on the system
         properties:
@@ -2024,7 +2027,7 @@ definitions:
                 type: integer
                 x-go-name: Total
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesUSBDevice:
         description: ResourcesUSBDevice represents a USB device
         properties:
@@ -2078,7 +2081,7 @@ definitions:
                 type: string
                 x-go-name: VendorID
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesUSBDeviceInterface:
         description: ResourcesUSBDeviceInterface represents a USB device interface
         properties:
@@ -2121,7 +2124,7 @@ definitions:
                 type: integer
                 x-go-name: SubClassID
         type: object
-        x-go-package: github.com/lxc/incus/v6/shared/api
+        x-go-package: github.com/lxc/incus/v7/shared/api
     Security:
         properties:
             acme:
@@ -3272,6 +3275,9 @@ definitions:
             system_state_is_trusted:
                 type: boolean
                 x-go-name: SystemStateIsTrusted
+            tpm_public_key:
+                type: string
+                x-go-name: TPMPublicKey
             tpm_status:
                 type: string
                 x-go-name: TPMStatus

@@ -7,10 +7,11 @@ import (
 	"context"
 	"crypto/x509"
 
+	api0 "github.com/lxc/incus-os/incus-osd/api"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
-	api0 "github.com/lxc/incus-os/incus-osd/api"
 )
 
 // ClusterClientPortWithErrorWrapper implements provisioning.ClusterClientPort that wraps errors based custom logic.

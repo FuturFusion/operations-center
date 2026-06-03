@@ -8,12 +8,13 @@ import (
 	"crypto/x509"
 	"time"
 
-	"github.com/FuturFusion/operations-center/internal/domain"
-	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/shared/api"
 	api0 "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // ClusterClientPortWithPrometheus implements provisioning.ClusterClientPort interface with all methods wrapped

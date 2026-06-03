@@ -3,7 +3,7 @@ package domain
 import (
 	"strings"
 
-	incusapi "github.com/lxc/incus/v6/shared/api"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 )
 
 type LifecycleEvent struct {

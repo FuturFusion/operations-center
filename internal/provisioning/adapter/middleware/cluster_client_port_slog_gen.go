@@ -8,11 +8,12 @@ import (
 	"crypto/x509"
 	"log/slog"
 
+	api0 "github.com/lxc/incus-os/incus-osd/api"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
-	api0 "github.com/lxc/incus-os/incus-osd/api"
 )
 
 // ClusterClientPortWithSlog implements provisioning.ClusterClientPort that is instrumented with slog logger.

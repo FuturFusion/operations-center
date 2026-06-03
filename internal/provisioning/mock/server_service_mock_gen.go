@@ -8,10 +8,11 @@ import (
 	"context"
 	"sync"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
-	"github.com/google/uuid"
 )
 
 // Ensure that ServerServiceMock does implement provisioning.ServerService.

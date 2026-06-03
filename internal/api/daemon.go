@@ -23,8 +23,8 @@ import (
 
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
-	incusScriptlet "github.com/lxc/incus/v6/shared/scriptlet"
-	incusTLS "github.com/lxc/incus/v6/shared/tls"
+	incusScriptlet "github.com/lxc/incus/v7/shared/scriptlet"
+	incusTLS "github.com/lxc/incus/v7/shared/tls"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/operations-center/internal/api/listener"

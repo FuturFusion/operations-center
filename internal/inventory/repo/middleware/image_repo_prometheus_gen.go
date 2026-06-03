@@ -7,10 +7,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/FuturFusion/operations-center/internal/inventory"
 )
 
 // ImageRepoWithPrometheus implements inventory.ImageRepo interface with all methods wrapped

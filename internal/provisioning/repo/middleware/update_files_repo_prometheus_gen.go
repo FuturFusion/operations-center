@@ -9,9 +9,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 // UpdateFilesRepoWithPrometheus implements provisioning.UpdateFilesRepo interface with all methods wrapped

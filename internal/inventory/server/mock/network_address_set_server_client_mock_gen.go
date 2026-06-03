@@ -8,9 +8,10 @@ import (
 	"context"
 	"sync"
 
+	"github.com/lxc/incus/v7/shared/api"
+
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/lxc/incus/v6/shared/api"
 )
 
 // Ensure that NetworkAddressSetServerClientMock does implement inventory.NetworkAddressSetServerClient.

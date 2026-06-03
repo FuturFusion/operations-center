@@ -7,10 +7,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // ClusterTemplateServiceWithPrometheus implements provisioning.ClusterTemplateService interface with all methods wrapped

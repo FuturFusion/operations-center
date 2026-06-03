@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
-	incustls "github.com/lxc/incus/v6/shared/tls"
-	"github.com/lxc/incus/v6/shared/util"
+	incustls "github.com/lxc/incus/v7/shared/tls"
+	"github.com/lxc/incus/v7/shared/util"
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
 

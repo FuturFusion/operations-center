@@ -7,11 +7,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/FuturFusion/operations-center/internal/warning"
-	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/FuturFusion/operations-center/internal/warning"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // WarningRepoWithPrometheus implements warning.WarningRepo interface with all methods wrapped

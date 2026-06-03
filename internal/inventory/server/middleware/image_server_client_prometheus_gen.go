@@ -7,11 +7,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/FuturFusion/operations-center/internal/inventory"
-	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/lxc/incus/v6/shared/api"
+	"github.com/lxc/incus/v7/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 // ImageServerClientWithPrometheus implements inventory.ImageServerClient interface with all methods wrapped

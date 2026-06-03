@@ -9,10 +9,11 @@ import (
 	"crypto/x509"
 	"sync"
 
+	api0 "github.com/lxc/incus-os/incus-osd/api"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
-	api0 "github.com/lxc/incus-os/incus-osd/api"
 )
 
 // Ensure that ClusterClientPortMock does implement provisioning.ClusterClientPort.
