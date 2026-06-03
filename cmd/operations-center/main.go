@@ -78,17 +78,23 @@ func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
 	app.SetVersionTemplate("{{.Version}}\n")
 	app.Version = version.Version
 
-	provisioningCmd := cmds.CmdProvisioning{
+	imageCmd := cmds.CmdImage{
 		OCClient: globalCmd.ocClient,
 	}
 
-	app.AddCommand(provisioningCmd.Command())
+	app.AddCommand(imageCmd.Command())
 
 	inventoryCmd := cmds.CmdInventory{
 		OCClient: globalCmd.ocClient,
 	}
 
 	app.AddCommand(inventoryCmd.Command())
+
+	provisioningCmd := cmds.CmdProvisioning{
+		OCClient: globalCmd.ocClient,
+	}
+
+	app.AddCommand(provisioningCmd.Command())
 
 	remoteCmd := cmds.CmdRemote{
 		Env: env,

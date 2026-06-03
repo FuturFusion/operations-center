@@ -36,6 +36,7 @@ structname: "{{ .InterfaceName }}Mock"
 pkgname: mock
 packages:
   github.com/FuturFusion/operations-center/internal/environment:
+  github.com/FuturFusion/operations-center/internal/image:
   github.com/FuturFusion/operations-center/internal/inventory:
   github.com/FuturFusion/operations-center/internal/provisioning:
   github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet:

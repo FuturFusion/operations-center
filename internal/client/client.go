@@ -142,6 +142,10 @@ func (c OperationsCenterClient) doRequestRawResponse(ctx context.Context, method
 
 	var body io.ReadCloser
 	switch data := content.(type) {
+	case ContentTypeReadCloser:
+		contentType = data.ContentType()
+		body = data
+
 	case io.Reader:
 		contentType = "application/octet-stream"
 		body = io.NopCloser(data)
@@ -288,4 +292,9 @@ func (c OperationsCenterClient) IsServerTrusted(ctx context.Context, serverCerti
 	}
 
 	return api.Certificate{}, true, nil
+}
+
+type ContentTypeReadCloser interface {
+	io.ReadCloser
+	ContentType() string
 }

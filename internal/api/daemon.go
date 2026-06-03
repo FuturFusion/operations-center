@@ -31,6 +31,12 @@ import (
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
+	"github.com/FuturFusion/operations-center/internal/image"
+	imageIncusServiceMiddleware "github.com/FuturFusion/operations-center/internal/image/middleware"
+	imageLocalfs "github.com/FuturFusion/operations-center/internal/image/repo/localfs"
+	imageIncusRepoMiddleware "github.com/FuturFusion/operations-center/internal/image/repo/middleware"
+	imageIncusSqlite "github.com/FuturFusion/operations-center/internal/image/repo/sqlite"
+	imageEntities "github.com/FuturFusion/operations-center/internal/image/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	inventoryServiceMiddleware "github.com/FuturFusion/operations-center/internal/inventory/middleware"
 	inventoryRepoMiddleware "github.com/FuturFusion/operations-center/internal/inventory/repo/middleware"
@@ -52,7 +58,7 @@ import (
 	provisioningServiceMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/middleware"
 	provisioningClusterArtifactRepo "github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact"
 	localartifactEntities "github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact/entities"
-	"github.com/FuturFusion/operations-center/internal/provisioning/repo/localfs"
+	provisioningLocalfs "github.com/FuturFusion/operations-center/internal/provisioning/repo/localfs"
 	provisioningRepoMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/repo/middleware"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	provisioningEntities "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
@@ -220,6 +226,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// Setup Services
+	incusImageSvc, err := d.setupIncusImageService(dbWithTransaction)
+	if err != nil {
+		return err
+	}
+
 	warningSvc := d.setupWarningService(dbWithTransaction)
 	// Temporary use log only warn service.
 	// warningLogEmitter := provisioning.LogWarningService{}
@@ -279,6 +290,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		channelSvc,
 		warningSvc,
 		inventoryInventoryAggregateSvc,
+		incusImageSvc,
 		dbWithTransaction,
 	)
 	inventorySyncers[domain.ResourceTypeServer] = serverSvc
@@ -373,6 +385,12 @@ func (d *Daemon) initDB(ctx context.Context) (dbdriver.DBTX, error) {
 	}
 
 	dbWithTransaction := transaction.Enable(db)
+
+	imageEntities.PreparedStmts, err = imageEntities.PrepareStmts(dbWithTransaction, false)
+	if err != nil {
+		return nil, err
+	}
+
 	provisioningEntities.PreparedStmts, err = provisioningEntities.PrepareStmts(dbWithTransaction, false)
 	if err != nil {
 		return nil, err
@@ -499,6 +517,26 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 	return errors.Join(errs...)
 }
 
+func (d *Daemon) setupIncusImageService(db dbdriver.DBTX) (image.ImageIncusService, error) {
+	imageFilesRepo, err := imageLocalfs.New(filepath.Join(d.env.VarDir(), "images"))
+	if err != nil {
+		return nil, err
+	}
+
+	imageIncusSvc := imageIncusServiceMiddleware.NewImageIncusServiceWithSlog(
+		image.New(
+			imageIncusRepoMiddleware.NewImageIncusRepoWithSlog(
+				imageIncusSqlite.NewIncusImage(db),
+			),
+			imageIncusRepoMiddleware.NewImageIncusFileRepoWithSlog(
+				imageFilesRepo,
+			),
+		),
+	)
+
+	return imageIncusSvc, nil
+}
+
 func (d *Daemon) setupWarningService(db dbdriver.DBTX) warning.WarningService {
 	warningSvc := warningServiceMiddleware.NewWarningServiceWithSlog(
 		warning.NewWarningService(
@@ -512,7 +550,7 @@ func (d *Daemon) setupWarningService(db dbdriver.DBTX) warning.WarningService {
 }
 
 func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (provisioning.UpdateService, error) {
-	repoUpdateFiles, err := localfs.New(
+	repoUpdateFiles, err := provisioningLocalfs.New(
 		filepath.Join(d.env.VarDir(), "updates"),
 		config.GetUpdates().SignatureVerificationRootCA,
 	)
@@ -836,6 +874,7 @@ func (d *Daemon) setupAPIRoutes(
 	channelSvc provisioning.ChannelService,
 	warningSvc warning.WarningService,
 	inventoryInventoryAggregateSvc inventory.InventoryAggregateService,
+	incusImageSvc image.ImageIncusService,
 	db dbdriver.DBTX,
 ) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
@@ -910,6 +949,10 @@ func (d *Daemon) setupAPIRoutes(
 		d.authenticator.Middleware(authn.WithIsAuthenticationRequired(isAuthenticationRequired)),
 	)
 	registerAPI10Handler(api10router)
+
+	imageRouter := api10router.SubGroup("/image")
+	imageIncusRouter := imageRouter.SubGroup("/incus")
+	registerImageIncusHandler(imageIncusRouter, d.authorizer, incusImageSvc)
 
 	internalRouter := api10router.SubGroup("/internal")
 	registerInternalHandler(internalRouter, d.authorizer, db)

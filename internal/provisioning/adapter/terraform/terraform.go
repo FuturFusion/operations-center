@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -191,7 +190,7 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 					return fmt.Errorf("Failed to open template file %q: %w", templateFilename, err)
 				}
 
-				_, err = io.Copy(targetFile, templateFile)
+				_, err = file.SafeCopy(targetFile, templateFile)
 				if err != nil {
 					return fmt.Errorf("Failed to copy template content to target file %q: %w", targetFilename, err)
 				}

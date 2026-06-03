@@ -121,7 +121,7 @@ func (l localfs) Put(ctx context.Context, update provisioning.Update, filename s
 		return nil, cancel, err
 	}
 
-	_, err = io.Copy(target, content)
+	_, err = file.SafeCopy(target, content)
 	if err != nil {
 		return nil, cancel, err
 	}
@@ -369,7 +369,7 @@ func extractTar(ctx context.Context, tarReader *tar.Reader, destDir string) (ext
 
 			defer f.Close()
 
-			n, err := io.Copy(f, tarReader)
+			n, err := file.SafeCopy(f, tarReader)
 			if err != nil {
 				return fmt.Errorf("Failed to write target file %q: %w", targetFile, err)
 			}
@@ -463,7 +463,7 @@ func verifyUpdateFiles(ctx context.Context, destDir string, updateManifest *prov
 			}()
 
 			h := sha256.New()
-			n, err := io.Copy(h, f)
+			n, err := file.SafeCopy(h, f)
 			if err != nil {
 				return fmt.Errorf("Failed to verify sha256 hash for file %q: %w", updateFile.Filename, err)
 			}
