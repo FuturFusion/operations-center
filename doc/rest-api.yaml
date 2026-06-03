@@ -1660,7 +1660,10 @@ definitions:
                 additionalProperties:
                     type: string
                 description: Vendor provided key/value pairs.
-                example: '{"EC": ""A-5545", "MN": "103C", "V0": "5W PCIeGen2"}'
+                example:
+                    EC: A-5545
+                    MN: 103C
+                    V0: 5W PCIeGen2
                 type: object
                 x-go-name: Entries
             product_name:
@@ -3272,6 +3275,9 @@ definitions:
             system_state_is_trusted:
                 type: boolean
                 x-go-name: SystemStateIsTrusted
+            tpm_public_key:
+                type: string
+                x-go-name: TPMPublicKey
             tpm_status:
                 type: string
                 x-go-name: TPMStatus
