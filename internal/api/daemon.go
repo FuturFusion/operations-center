@@ -720,17 +720,11 @@ func (d *Daemon) setupClusterService(
 		tmpTerraformDir = os.TempDir()
 	}
 
-	err = os.WriteFile(filepath.Join(tmpTerraformDir, "client.key"), []byte(d.clientKey), 0o600)
-	if err != nil {
-		return nil, err
-	}
-
-	err = os.WriteFile(filepath.Join(tmpTerraformDir, "client.crt"), []byte(d.clientCertificate), 0o600)
-	if err != nil {
-		return nil, err
-	}
-
-	terraformProvisioner, err := terraform.New(tmpTerraformDir)
+	terraformProvisioner, err := terraform.New(
+		tmpTerraformDir,
+		d.clientCertificate,
+		d.clientKey,
+	)
 	if err != nil {
 		return nil, err
 	}
