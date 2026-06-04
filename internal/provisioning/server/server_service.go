@@ -753,9 +753,13 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 			triggerBackgroundPolling = true
 
 		case api.ServerSelfUpdateCauseApplicationUpdateApplied:
-			server.StatusDetail = api.ServerStatusDetailNone
-			server.LastStatusUpdated = s.now()
-			triggerBackgroundPolling = true
+			// Only update the server status detail, if an application update is
+			// processed,since applications also get updated as part of the OS update.
+			if server.StatusDetail == api.ServerStatusDetailReadyUpdatingApplication {
+				server.StatusDetail = api.ServerStatusDetailNone
+				server.LastStatusUpdated = s.now()
+				triggerBackgroundPolling = true
+			}
 
 		case api.ServerSelfUpdateCauseNetworkInterfaceStateChanged:
 			triggerBackgroundPolling = true
@@ -1420,7 +1424,7 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 
 		previousServer = server.Clone()
 
-		server.StatusDetail = api.ServerStatusDetailReadyUpdating
+		server.StatusDetail = api.ServerStatusDetailReadyUpdatingOS
 		server.LastStatusUpdated = s.now()
 
 		err = s.Update(ctx, *server, false, false)
@@ -1970,7 +1974,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 
 		// If an update has been triggered, check if an update is still needed.
 		// If not, updating is done.
-		if server.StatusDetail == api.ServerStatusDetailReadyUpdating {
+		if server.StatusDetail == api.ServerStatusDetailReadyUpdatingOS {
 			if !ptr.From(server.VersionData.NeedsUpdate) {
 				server.StatusDetail = api.ServerStatusDetailNone
 				server.LastStatusUpdated = s.now()

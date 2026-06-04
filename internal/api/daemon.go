@@ -1116,7 +1116,7 @@ func (d *Daemon) setupBackgroundTasks(
 		"updating",
 		provisioning.ServerFilter{
 			Status:       ptr.To(api.ServerStatusReady),
-			StatusDetail: ptr.To(api.ServerStatusDetailReadyUpdating),
+			StatusDetail: ptr.To(api.ServerStatusDetailReadyUpdatingOS),
 		},
 		false,
 		config.UpdatingServerPollInterval,
