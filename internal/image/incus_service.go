@@ -190,7 +190,6 @@ func (s *imageIncusService) calculateCombinedHashes(ctx context.Context, img *In
 
 		switch fileName {
 		case "root.tar.xz":
-			incusTarXZ.CombinedSha256 = hex.EncodeToString(hash256.Sum(nil))
 			incusTarXZ.CombinedSha256RootXz = hex.EncodeToString(hash256.Sum(nil))
 
 		case "root.squashfs":
