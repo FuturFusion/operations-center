@@ -67,10 +67,6 @@ type IncusImageVersionItem struct {
 	// versions metadata ("incus.tar.xz") and the "root.tar.xz" image.
 	CombinedSha256RootXz string `json:"combined_rootxz_sha256,omitempty" yaml:"combined_rootxz_sha256"`
 
-	// CombinedSha256 holds the combinded sha256 hash of the incus image
-	// versions metadata ("incus.tar.xz") and the "root.tar.xz" image.
-	CombinedSha256 string `json:"combined_sha256,omitempty" yaml:"combined_sha256"`
-
 	// CombinedSha256SquashFs holds the combinded sha256 hash of the incus image
 	// versions metadata ("incus.tar.xz") and the "root.squashfs" image.
 	CombinedSha256SquashFs string `json:"combined_squashfs_sha256,omitempty" yaml:"combined_squashfs_sha256"`
