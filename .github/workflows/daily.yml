@@ -22,7 +22,7 @@ jobs:
       - image-debian-13
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Go
         uses: actions/setup-go@v5

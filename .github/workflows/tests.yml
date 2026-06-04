@@ -30,7 +30,7 @@ jobs:
           # - tip
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Currently the repository is not yet setup for dependency review.
       # Setup: Enable Dependency graph along with GitHub Advanced Security on
