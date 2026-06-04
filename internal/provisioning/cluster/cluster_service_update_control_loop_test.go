@@ -1487,7 +1487,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 						{
 							Name:         "server",
 							Status:       api.ServerStatusReady,
-							StatusDetail: api.ServerStatusDetailReadyUpdating,
+							StatusDetail: api.ServerStatusDetailReadyUpdatingOS,
 						},
 					},
 				},
@@ -1661,7 +1661,7 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 						{
 							Name:         "server2",
 							Status:       api.ServerStatusReady,
-							StatusDetail: api.ServerStatusDetailReadyUpdating,
+							StatusDetail: api.ServerStatusDetailReadyUpdatingOS,
 						},
 					},
 				},
