@@ -83,7 +83,7 @@ type IncusImageVersionItem struct {
 	// file artifact is stored.
 	Path string `json:"path" yaml:"path"`
 
-	// HashSha256 holds the sha256 has of the file.
+	// HashSha256 holds the sha256 hash of the file.
 	HashSha256 string `json:"sha256,omitempty" yaml:"sha256"`
 
 	// Size holds the size in bytes of the file.
