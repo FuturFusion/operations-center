@@ -14,4 +14,4 @@ jobs:
     name: Signed-off-by (DCO)
     runs-on: ubuntu-24.04
     steps:
-    - uses: KineticCafe/actions-dco@v1
+    - uses: KineticCafe/actions-dco@v3.1.0
