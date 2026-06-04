@@ -40,13 +40,13 @@ jobs:
       #   if: github.event_name == 'pull_request'
 
       - name: Install Go (${{ matrix.go }})
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go }}
         if: matrix.go != 'tip'
 
       - name: Install Go (stable)
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: stable
         if: matrix.go == 'tip'
