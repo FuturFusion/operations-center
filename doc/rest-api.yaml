@@ -816,12 +816,6 @@ definitions:
                     versions metadata ("incus.tar.xz") and the "root.tar.xz" image.
                 type: string
                 x-go-name: CombinedSha256RootXz
-            combined_sha256:
-                description: |-
-                    CombinedSha256 holds the combinded sha256 hash of the incus image
-                    versions metadata ("incus.tar.xz") and the "root.tar.xz" image.
-                type: string
-                x-go-name: CombinedSha256
             combined_squashfs_sha256:
                 description: |-
                     CombinedSha256SquashFs holds the combinded sha256 hash of the incus image
@@ -841,7 +835,7 @@ definitions:
                 type: string
                 x-go-name: Path
             sha256:
-                description: HashSha256 holds the sha256 has of the file.
+                description: HashSha256 holds the sha256 hash of the file.
                 type: string
                 x-go-name: HashSha256
             size:

@@ -70,7 +70,7 @@ func updateFromV34(ctx context.Context, tx *sql.Tx) error {
 	stmt := `
 CREATE TABLE incus_images (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-	name TEXT NOT NULL,
+  name TEXT NOT NULL,
   description TEXT NOT NULL,
   operating_system TEXT NOT NULL,
   release TEXT NOT NULL,
