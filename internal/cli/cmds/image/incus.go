@@ -25,11 +25,11 @@ type CmdIncusImage struct {
 func (c *CmdIncusImage) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "incus"
-	cmd.Short = "Interact with incus images"
+	cmd.Short = "Interact with Incus images"
 	cmd.Long = `Description:
-  Interact with incus images
+  Interact with Incus images
 
-  Manage incus images.
+  Manage Incus images.
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -91,9 +91,9 @@ type cmdIncusImagesList struct {
 func (c *cmdIncusImagesList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
-	cmd.Short = "List available incus images"
+	cmd.Short = "List available Incus images"
 	cmd.Long = `Description:
-  List the available incus images
+  List the available Incus images
 `
 
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
@@ -146,7 +146,7 @@ type cmdIncusImageShow struct {
 func (c *cmdIncusImageShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <name>"
-	cmd.Short = "Show information about an incus image"
+	cmd.Short = "Show information about an Incus image"
 	cmd.Long = `Description:
   Show information about an incus image.
 `
@@ -202,7 +202,7 @@ type cmdIncusImageAdd struct {
 func (c *cmdIncusImageAdd) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "add <name> <version> <file> [<file> ...]"
-	cmd.Short = "Add a incus image version"
+	cmd.Short = "Add a Incus image version"
 	cmd.Long = `Description:
   Add an incus image version.
 `
@@ -237,7 +237,7 @@ func (c *cmdIncusImageAdd) run(cmd *cobra.Command, args []string) (err error) {
 
 	err = c.ocClient.CreateIncusImageVersion(cmd.Context(), name, version, mr)
 	if err != nil {
-		return fmt.Errorf("Failed to create incus image version %s/%s: %w", name, version, err)
+		return fmt.Errorf("Failed to create Incus image version %s/%s: %w", name, version, err)
 	}
 
 	return nil
@@ -251,11 +251,11 @@ type cmdIncusImageRemove struct {
 func (c *cmdIncusImageRemove) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "remove <name>"
-	cmd.Short = "Remove an incus image"
+	cmd.Short = "Remove an Incus image"
 	cmd.Long = `Description:
-  Remove an incus image
+  Remove an Incus image
 
-  Removes an incus image from the operations center.
+  Removes an Incus image from the operations center.
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -293,11 +293,11 @@ type cmdIncusImageVersionRemove struct {
 func (c *cmdIncusImageVersionRemove) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "remove-version <name>"
-	cmd.Short = "Remove an incus image version version"
+	cmd.Short = "Remove an Incus image version version"
 	cmd.Long = `Description:
-  Remove an incus image version
+  Remove an Incus image version
 
-  Removes an incus image version from the operations center.
+  Removes an Incus image version from the operations center.
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -336,9 +336,9 @@ type cmdIncusImageVersionGetFile struct {
 func (c *cmdIncusImageVersionGetFile) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "file <name> <version> <filename> <target-filename>"
-	cmd.Short = "Get incus image version file"
+	cmd.Short = "Get Incus image version file"
 	cmd.Long = `Description:
-  Get a file of an incus image version.
+  Get a file of an Incus image version.
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
