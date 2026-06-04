@@ -158,9 +158,10 @@ const (
 	ServerStatusDetailPendingRegistering   ServerStatusDetail = "registering"
 	ServerStatusDetailPendingReconfiguring ServerStatusDetail = "re-configuring"
 
-	ServerStatusDetailReadyUpdating   ServerStatusDetail = "updating"
-	ServerStatusDetailReadyEvacuating ServerStatusDetail = "evacuating"
-	ServerStatusDetailReadyRestoring  ServerStatusDetail = "restoring"
+	ServerStatusDetailReadyUpdatingOS          ServerStatusDetail = "updating"
+	ServerStatusDetailReadyUpdatingApplication ServerStatusDetail = "updating application"
+	ServerStatusDetailReadyEvacuating          ServerStatusDetail = "evacuating"
+	ServerStatusDetailReadyRestoring           ServerStatusDetail = "restoring"
 
 	ServerStatusDetailOfflineRebooting    ServerStatusDetail = "rebooting"
 	ServerStatusDetailOfflineShutdown     ServerStatusDetail = "shut down"
@@ -168,15 +169,16 @@ const (
 )
 
 var serverStatusDetails = map[ServerStatusDetail]struct{}{
-	ServerStatusDetailNone:                 {},
-	ServerStatusDetailPendingRegistering:   {},
-	ServerStatusDetailPendingReconfiguring: {},
-	ServerStatusDetailReadyUpdating:        {},
-	ServerStatusDetailReadyEvacuating:      {},
-	ServerStatusDetailReadyRestoring:       {},
-	ServerStatusDetailOfflineRebooting:     {},
-	ServerStatusDetailOfflineShutdown:      {},
-	ServerStatusDetailOfflineUnresponsive:  {},
+	ServerStatusDetailNone:                     {},
+	ServerStatusDetailPendingRegistering:       {},
+	ServerStatusDetailPendingReconfiguring:     {},
+	ServerStatusDetailReadyUpdatingOS:          {},
+	ServerStatusDetailReadyUpdatingApplication: {},
+	ServerStatusDetailReadyEvacuating:          {},
+	ServerStatusDetailReadyRestoring:           {},
+	ServerStatusDetailOfflineRebooting:         {},
+	ServerStatusDetailOfflineShutdown:          {},
+	ServerStatusDetailOfflineUnresponsive:      {},
 }
 
 func (s ServerStatusDetail) String() string {
@@ -699,8 +701,12 @@ func (s Server) UpdateState() ServerUpdateState {
 	// Handle ServerStatusReady states.
 	// Offline states, that are not tackled above are threated the same as their
 	// respective ready counter-parts.
-	if s.StatusDetail == ServerStatusDetailReadyUpdating {
+	switch s.StatusDetail {
+	case ServerStatusDetailReadyUpdatingOS:
 		return ServerUpdateStateUpdating
+
+	case ServerStatusDetailReadyUpdatingApplication:
+		return ServerUpdateStateUndefined
 	}
 
 	if !ptr.From(s.VersionData.NeedsUpdate) &&
@@ -780,7 +786,7 @@ func (s Server) RecommendedAction() ServerAction {
 	}
 
 	// Already an update in progress, don't trigger an other action.
-	if s.StatusDetail == ServerStatusDetailReadyUpdating {
+	if s.StatusDetail == ServerStatusDetailReadyUpdatingOS || s.StatusDetail == ServerStatusDetailReadyUpdatingApplication {
 		return ServerActionNone
 	}
 

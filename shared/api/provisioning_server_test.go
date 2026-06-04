@@ -101,7 +101,7 @@ func TestServerVersionData_UpdateState(t *testing.T) {
 		},
 		{
 			status:        api.ServerStatusReady,
-			statusDetail:  api.ServerStatusDetailReadyUpdating,
+			statusDetail:  api.ServerStatusDetailReadyUpdatingOS,
 			cluster:       "",
 			needsUpdate:   false,
 			needsReboot:   false,
@@ -211,6 +211,17 @@ func TestServerVersionData_UpdateState(t *testing.T) {
 		},
 
 		// Update pending edge cases:
+		{
+			status:        api.ServerStatusReady,
+			statusDetail:  api.ServerStatusDetailReadyUpdatingApplication,
+			cluster:       "",
+			needsUpdate:   false,
+			needsReboot:   false,
+			inMaintenance: api.NotInMaintenance,
+			isTypeIncus:   false,
+
+			wantServerUpdateState: api.ServerUpdateStateUndefined,
+		},
 		{
 			status:        api.ServerStatusReady,
 			statusDetail:  api.ServerStatusDetailNone,
@@ -426,7 +437,7 @@ func TestServerVersionData_RecommendedAction(t *testing.T) {
 		},
 		{
 			status:        api.ServerStatusReady,
-			statusDetail:  api.ServerStatusDetailReadyUpdating,
+			statusDetail:  api.ServerStatusDetailReadyUpdatingOS,
 			cluster:       "",
 			needsUpdate:   false,
 			needsReboot:   false,
