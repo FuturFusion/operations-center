@@ -65,13 +65,13 @@ jobs:
           node-version: 22.x
 
       - name: Install UI dependencies
-        uses: borales/actions-yarn@v4
+        uses: borales/actions-yarn@v5
         with:
           cmd: install
           dir: ui
 
       - name: Build UI
-        uses: borales/actions-yarn@v4
+        uses: borales/actions-yarn@v5
         with:
           cmd: build
           dir: ui
