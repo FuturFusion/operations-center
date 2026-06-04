@@ -2490,6 +2490,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				Certificate:   string(serverCertPEM),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
+				StatusDetail:  api.ServerStatusDetailReadyUpdatingOS,
 				Channel:       "stable",
 			},
 
@@ -2511,6 +2512,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				Certificate:   string(serverCertPEM),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
+				StatusDetail:  api.ServerStatusDetailReadyUpdatingApplication,
 				Channel:       "stable",
 			},
 
@@ -4068,7 +4070,7 @@ func TestServerService_PollServer(t *testing.T) {
 			repoGetByName: &provisioning.Server{
 				Name:         "one",
 				Status:       api.ServerStatusReady,
-				StatusDetail: api.ServerStatusDetailReadyUpdating,
+				StatusDetail: api.ServerStatusDetailReadyUpdatingOS,
 			},
 			clientGetOSData: api.OSData{
 				Network: incusosapi.SystemNetwork{
@@ -4491,7 +4493,7 @@ func TestServerService_PollServer(t *testing.T) {
 			repoGetByName: &provisioning.Server{
 				Name:         "one",
 				Status:       api.ServerStatusReady,
-				StatusDetail: api.ServerStatusDetailReadyUpdating,
+				StatusDetail: api.ServerStatusDetailReadyUpdatingOS,
 			},
 			clientGetOSData: api.OSData{
 				Network: incusosapi.SystemNetwork{
