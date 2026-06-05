@@ -16,9 +16,10 @@ import (
 //generate-expr: IncusImage
 
 type IncusImage struct {
-	ID          int64  `json:"-"`
-	Name        string `json:"name" db:"primary=yes"`
-	Description string `json:"description"`
+	ID          int64    `json:"-"`
+	Name        string   `json:"name" db:"primary=yes"`
+	Aliases     []string `json:"aliases" db:"marshal=json"`
+	Description string   `json:"description"`
 
 	OperatingSystem string `json:"os"`
 	Release         string `json:"release"`
@@ -54,6 +55,15 @@ func (i IncusImage) Validate() error {
 
 	if i.Name != strings.Join([]string{i.OperatingSystem, i.Release, i.Architecture, i.Variant}, ":") {
 		return domain.NewValidationErrf(`Invalid incus image, name needs to match "os:release:architecture:variant"`)
+	}
+
+	set := make(map[string]bool, len(i.Aliases))
+	for _, alias := range i.Aliases {
+		if set[alias] {
+			return domain.NewValidationErrf(`Invalid aliases, %q is contained multiple times`, alias)
+		}
+
+		set[alias] = true
 	}
 
 	return nil

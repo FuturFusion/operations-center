@@ -137,3 +137,17 @@ func (_d ImageIncusServiceWithPrometheus) GetVersionFileByName(ctx context.Conte
 	}()
 	return _d.base.GetVersionFileByName(ctx, name, version, filename)
 }
+
+// Update implements image.ImageIncusService.
+func (_d ImageIncusServiceWithPrometheus) Update(ctx context.Context, incusImage image.IncusImage) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		imageIncusServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Update", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Update(ctx, incusImage)
+}

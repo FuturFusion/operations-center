@@ -1,22 +1,29 @@
 package image
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
+	"github.com/lxc/incus/v7/shared/termios"
 	"github.com/lxc/incus/v7/shared/units"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/image"
+	"github.com/FuturFusion/operations-center/internal/util/editor"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/maps"
 	"github.com/FuturFusion/operations-center/internal/util/multipartstreamer"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type CmdIncusImage struct {
@@ -57,6 +64,13 @@ func (c *CmdIncusImage) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(incusImageAddCmd.Command())
+
+	// Edit
+	incusImageEditCmd := cmdIncusImageEdit{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(incusImageEditCmd.Command())
 
 	// Remove
 	incusImageRemoveCmd := cmdIncusImageRemove{
@@ -177,6 +191,11 @@ func (c *cmdIncusImageShow) run(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Name: %s\n", incusImage.Name)
+	fmt.Printf("Aliases:\n")
+	for _, alias := range incusImage.Aliases {
+		fmt.Printf("  - %s\n", alias)
+	}
+
 	fmt.Printf("Operating system: %s\n", incusImage.OperatingSystem)
 	fmt.Printf("Release: %s\n", incusImage.Release)
 	fmt.Printf("Architecture: %s\n", incusImage.Architecture)
@@ -255,6 +274,121 @@ func (c *cmdIncusImageAdd) run(cmd *cobra.Command, args []string) (err error) {
 	err = c.ocClient.CreateIncusImageVersion(cmd.Context(), name, version, mr)
 	if err != nil {
 		return fmt.Errorf("Failed to create Incus image version %s/%s: %w", name, version, err)
+	}
+
+	return nil
+}
+
+// Edit incus image.
+type cmdIncusImageEdit struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdIncusImageEdit) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "edit <name>"
+	cmd.Short = "Edit incus image"
+	cmd.Long = `Description:
+  Edit the incus image
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+// helpTemplate returns a sample YAML configuration and guidelines for editing incus image settings.
+func (c *cmdIncusImageEdit) helpTemplate() string {
+	return `### This is a YAML representation of the configuration.
+### Any line starting with a '# will be ignored.
+###
+### A sample configuration looks like:
+###
+### aliases: []
+### description: ""
+`
+}
+
+func (c *cmdIncusImageEdit) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdIncusImageEdit) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	// If stdin isn't a terminal, read text from it.
+	if !termios.IsTerminal(environment.GetStdinFd()) {
+		contents, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+
+		newdata := api.IncusImagePut{}
+		err = yaml.Unmarshal(contents, &newdata)
+		if err != nil {
+			return err
+		}
+
+		err = c.ocClient.UpdateIncusImage(cmd.Context(), name, newdata)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	serverConfig, err := c.ocClient.GetIncusImage(cmd.Context(), name)
+	if err != nil {
+		return err
+	}
+
+	b := &bytes.Buffer{}
+	encoder := yaml.NewEncoder(b)
+	encoder.SetIndent(2)
+	err = encoder.Encode(serverConfig.IncusImagePut)
+	if err != nil {
+		return err
+	}
+
+	// Spawn the editor
+	content, err := editor.Spawn("", append([]byte(c.helpTemplate()+"\n\n"), b.Bytes()...))
+	if err != nil {
+		return err
+	}
+
+	for {
+		newdata := api.IncusImagePut{}
+		err = yaml.Unmarshal(content, &newdata)
+		if err == nil {
+			err = c.ocClient.UpdateIncusImage(cmd.Context(), name, newdata)
+		}
+
+		// Respawn the editor
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Config parsing error: %s\n", err)
+			fmt.Println("Press enter to open the editor again or ctrl+c to abort change")
+
+			_, err := os.Stdin.Read(make([]byte, 1))
+			if err != nil {
+				return err
+			}
+
+			content, err = editor.Spawn("", content)
+			if err != nil {
+				return err
+			}
+
+			continue
+		}
+
+		break
 	}
 
 	return nil

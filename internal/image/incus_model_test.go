@@ -24,6 +24,7 @@ func TestIncusImage_Validate(t *testing.T) {
 				Release:         "10",
 				Architecture:    "amd64",
 				Variant:         "cloud",
+				Aliases:         []string{"almalinux/10/cloud/amd64", "some/alias"},
 			},
 
 			assertErr: require.NoError,
@@ -151,6 +152,22 @@ func TestIncusImage_Validate(t *testing.T) {
 				Release:         "10",
 				Architecture:    "amd64",
 				Variant:         "cloud",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - redundant alias",
+			image: image.IncusImage{
+				Name:            "almalinux:10:amd64:cloud",
+				OperatingSystem: "almalinux",
+				Release:         "10",
+				Architecture:    "amd64",
+				Variant:         "cloud",
+				Aliases:         []string{"almalinux/10/cloud/amd64", "some/alias", "almalinux/10/cloud/amd64"},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {

@@ -47,6 +47,7 @@ func (s *imageIncusService) AddVersion(ctx context.Context, name string, version
 	}
 
 	nameParts := strings.Split(name, ":")
+	os, release, architecture, variant := nameParts[0], nameParts[1], nameParts[2], nameParts[3]
 
 	img, err := s.repo.GetByName(ctx, name)
 	if err != nil {
@@ -56,10 +57,11 @@ func (s *imageIncusService) AddVersion(ctx context.Context, name string, version
 
 		img = &IncusImage{
 			Name:            name,
-			OperatingSystem: nameParts[0],
-			Release:         nameParts[1],
-			Architecture:    nameParts[2],
-			Variant:         nameParts[3],
+			Aliases:         []string{fmt.Sprintf("%s/%s/%s/%s", os, release, variant, architecture)},
+			OperatingSystem: os,
+			Release:         release,
+			Architecture:    architecture,
+			Variant:         variant,
 			Description:     fmt.Sprintf("%s %s (%s) (%s)", nameParts[0], nameParts[1], nameParts[3], nameParts[2]),
 			Versions:        make(map[string]api.IncusImageVersion, 1),
 		}
@@ -392,4 +394,18 @@ func (s *imageIncusService) GetVersionFileByName(ctx context.Context, name strin
 	}
 
 	return rc, size, nil
+}
+
+func (s *imageIncusService) Update(ctx context.Context, incusImage IncusImage) error {
+	err := incusImage.Validate()
+	if err != nil {
+		return fmt.Errorf("Failed to validate incus image %q for update: %w", incusImage.Name, err)
+	}
+
+	err = s.repo.Update(ctx, incusImage)
+	if err != nil {
+		return fmt.Errorf("Failed to update incus image %q: %w", incusImage.Name, err)
+	}
+
+	return nil
 }

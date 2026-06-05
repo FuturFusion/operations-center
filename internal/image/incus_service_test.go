@@ -1364,3 +1364,69 @@ func TestIncusImageService_GetVersionFileByName(t *testing.T) {
 		})
 	}
 }
+
+func TestServerService_Update(t *testing.T) {
+	tests := []struct {
+		name          string
+		incusImage    image.IncusImage
+		repoUpdateErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			incusImage: image.IncusImage{
+				Name:            "almalinux:10:amd64:cloud",
+				OperatingSystem: "almalinux",
+				Release:         "10",
+				Architecture:    "amd64",
+				Variant:         "cloud",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - validation",
+			incusImage: image.IncusImage{
+				Name: "", // empty name
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr)
+			},
+		},
+		{
+			name: "error - repo.Update",
+			incusImage: image.IncusImage{
+				Name:            "almalinux:10:amd64:cloud",
+				OperatingSystem: "almalinux",
+				Release:         "10",
+				Architecture:    "amd64",
+				Variant:         "cloud",
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ImageIncusRepoMock{
+				UpdateFunc: func(ctx context.Context, newIncusImage image.IncusImage) error {
+					return tc.repoUpdateErr
+				},
+			}
+
+			imageSvc := image.New(repo, nil)
+
+			// Run test
+			err := imageSvc.Update(t.Context(), tc.incusImage)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
