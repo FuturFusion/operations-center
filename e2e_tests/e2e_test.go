@@ -30,6 +30,15 @@ func TestE2E_WithToken_RegisterServer(t *testing.T) {
 	)
 }
 
+func TestE2E_WithToken_OCImagesRemoteLaunchInstance(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - register Operations Center as images remote and launch instance",
+		setupIncusOSWithToken([]string{"IncusOS01"}),
+		ocIncusImagesRemoteLaunchInstance([]string{"IncusOS01"}),
+	)
+}
+
 func TestE2E_UpdatesCleanupAndRefresh(t *testing.T) {
 	runE2ETest(
 		t,
@@ -51,6 +60,8 @@ func TestE2E_WithToken_CreateCluster(t *testing.T) {
 }
 
 func TestE2E_WithToken_CreateSingleNodeCluster(t *testing.T) {
+	t.Skip("included in TestE2E_WithToken_OCImagesRemoteLaunchInstance")
+
 	runE2ETest(
 		t,
 		"token - create single node cluster",

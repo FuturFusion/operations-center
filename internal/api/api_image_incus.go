@@ -1,26 +1,36 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/FuturFusion/operations-center/internal/image"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/simplestreams"
 )
 
 type imageIncusHandler struct {
 	service image.ImageIncusService
 }
 
-func registerImageIncusHandler(router Router, authorizer *authz.Authorizer, service image.ImageIncusService) {
+func registerImageIncusHandler(router Router, simplestreamsRouter Router, authorizer *authz.Authorizer, service image.ImageIncusService) {
 	handler := &imageIncusHandler{
 		service: service,
 	}
+
+	// public simplestreams routes, available without authentication
+	simplestreamsRouter.HandleFunc("GET /streams/v1/index.json", response.With(handler.simplestreamsPublicIndexGet))
+	simplestreamsRouter.HandleFunc("GET /streams/v1/images.json", response.With(handler.simplestreamsPublicImagesGet))
+	// Allow download of incus image files without authentication
+	simplestreamsRouter.HandleFunc("GET /1.0/image/incus/{name}/{version}/{filename}", response.With(handler.incusImageVersionFileGet))
 
 	router.HandleFunc("GET /{$}", response.With(handler.incusImagesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}", response.With(handler.incusImageGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -28,6 +38,112 @@ func registerImageIncusHandler(router Router, authorizer *authz.Authorizer, serv
 	router.HandleFunc("POST /{name}/{version}", response.With(handler.incusImageVersionPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{name}/{version}", response.With(handler.incusImageVersionDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("GET /{name}/{version}/{filename}", response.With(handler.incusImageVersionFileGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+}
+
+// swagger:operation GET /incus-images/streams/v1/index.json simplestreams simplestreams_index_get
+//
+//	Get incus images simplestreams index
+//
+//	Returns the list of publicly available incus images in simplestreams v1
+//
+// format, served at streams/v1/index.json.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Simplestreams API for incus images index
+//	    schema:
+//	      $ref: "#/definitions/SimplestreamsStream"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (i *imageIncusHandler) simplestreamsPublicIndexGet(r *http.Request) response.Response {
+	incusImages, err := i.service.GetAll(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	index := simplestreams.StreamIndex{
+		DataType: "image-downloads",
+		Path:     "streams/v1/images.json",
+		Format:   "products:1.0",
+		Products: make([]string, 0, len(incusImages)),
+	}
+
+	for _, incusImage := range incusImages {
+		index.Products = append(index.Products, incusImage.Name)
+	}
+
+	stream := simplestreams.Stream{
+		Index: map[string]simplestreams.StreamIndex{
+			"images": index,
+		},
+		Format: "index:1.0",
+	}
+
+	return response.ManualResponse(func(w http.ResponseWriter) error {
+		w.WriteHeader(http.StatusOK)
+
+		return json.NewEncoder(w).Encode(stream)
+	})
+}
+
+// swagger:operation GET /incus-images/streams/v1/images.json simplestreams simplestreams_images_get
+//
+//	Get incus images simplestreams images
+//
+//	Returns the details for the publicly available incus images in simplestreams
+//	v1 format, served at streams/v1/images.json.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Simplestreams API for incus images details
+//	    schema:
+//	      $ref: "#/definitions/SimplestreamsProducts"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (i *imageIncusHandler) simplestreamsPublicImagesGet(r *http.Request) response.Response {
+	incusImages, err := i.service.GetAll(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	products := simplestreams.Products{
+		ContentID: "images",
+		DataType:  "image-downloads",
+		Format:    "products:1.0",
+		Products:  make(map[string]simplestreams.Product, len(incusImages)),
+	}
+
+	for _, incusImage := range incusImages {
+		product := simplestreams.Product{
+			Aliases:         "", // TODO: not supported
+			Architecture:    incusImage.Architecture,
+			OperatingSystem: incusImage.OperatingSystem,
+			Release:         incusImage.Release,
+			Versions:        incusImage.Versions,
+			Variant:         incusImage.Variant,
+		}
+
+		for version := range product.Versions {
+			for filename, fileDetails := range product.Versions[version].Items {
+				fileDetails.Path = filepath.Join("/1.0/image/incus", strings.Join([]string{incusImage.OperatingSystem, incusImage.Release, incusImage.Architecture, incusImage.Variant}, ":"), version, filename)
+				product.Versions[version].Items[filename] = fileDetails
+			}
+		}
+
+		products.Products[incusImage.Name] = product
+	}
+
+	return response.ManualResponse(func(w http.ResponseWriter) error {
+		w.WriteHeader(http.StatusOK)
+
+		return json.NewEncoder(w).Encode(products)
+	})
 }
 
 // swagger:operation GET /1.0/image/incus incus_images incus_images_get

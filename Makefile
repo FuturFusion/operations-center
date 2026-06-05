@@ -260,3 +260,6 @@ clean-e2e-test-soft:
 	for i in $$(bin/operations-center.linux.amd64 provisioning token list -f json | jq -r '.[] | select(.description == "CRUD") | .uuid'); do \
 		bin/operations-center.linux.amd64 provisioning token remove $$i || true; \
 	done
+	for i in $$(bin/operations-center.linux.amd64 image incus list -f json | jq -r '.[].name'); do \
+		bin/operations-center.linux.amd64 image incus remove $$i || true; \
+	done

@@ -2724,6 +2724,119 @@ definitions:
                 x-go-name: ServerRegistrationScriptlet
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
+    SimplestreamsProduct:
+        properties:
+            aliases:
+                type: string
+                x-go-name: Aliases
+            arch:
+                type: string
+                x-go-name: Architecture
+            os:
+                type: string
+                x-go-name: OperatingSystem
+            release:
+                type: string
+                x-go-name: Release
+            release_codename:
+                type: string
+                x-go-name: ReleaseCodename
+            release_title:
+                type: string
+                x-go-name: ReleaseTitle
+            requirements:
+                additionalProperties:
+                    type: string
+                type: object
+                x-go-name: Requirements
+            support_eol:
+                type: string
+                x-go-name: SupportedEOL
+            supported:
+                type: boolean
+                x-go-name: Supported
+            variant:
+                description: Non-standard fields (only used on some image servers).
+                type: string
+                x-go-name: Variant
+            version:
+                type: string
+                x-go-name: Version
+            versions:
+                additionalProperties:
+                    $ref: '#/definitions/IncusImageVersion'
+                type: object
+                x-go-name: Versions
+        title: Product represents a single product inside download.json.
+        type: object
+        x-go-name: Product
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/simplestreams
+    SimplestreamsProducts:
+        properties:
+            content_id:
+                type: string
+                x-go-name: ContentID
+            datatype:
+                type: string
+                x-go-name: DataType
+            format:
+                type: string
+                x-go-name: Format
+            license:
+                type: string
+                x-go-name: License
+            products:
+                additionalProperties:
+                    $ref: '#/definitions/SimplestreamsProduct'
+                type: object
+                x-go-name: Products
+            updated:
+                type: string
+                x-go-name: Updated
+        title: Products represents the base of download.json.
+        type: object
+        x-go-name: Products
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/simplestreams
+    SimplestreamsStream:
+        properties:
+            format:
+                type: string
+                x-go-name: Format
+            index:
+                additionalProperties:
+                    $ref: '#/definitions/SimplestreamsStreamIndex'
+                type: object
+                x-go-name: Index
+            updated:
+                type: string
+                x-go-name: Updated
+        title: Stream represents the base structure of index.json.
+        type: object
+        x-go-name: Stream
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/simplestreams
+    SimplestreamsStreamIndex:
+        properties:
+            datatype:
+                type: string
+                x-go-name: DataType
+            format:
+                type: string
+                x-go-name: Format
+            path:
+                type: string
+                x-go-name: Path
+            products:
+                items:
+                    type: string
+                type: array
+                x-go-name: Products
+            updated:
+                type: string
+                x-go-name: Updated
+        title: StreamIndex represents the Index entry inside index.json.
+        type: object
+        x-go-name: StreamIndex
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/simplestreams
     SystemNetwork:
         properties:
             config:
@@ -10339,4 +10452,41 @@ paths:
             summary: Update the warning
             tags:
                 - warnings
+    /incus-images/streams/v1/images.json:
+        get:
+            description: |-
+                Returns the details for the publicly available incus images in simplestreams
+                v1 format, served at streams/v1/images.json.
+            operationId: simplestreams_images_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Simplestreams API for incus images details
+                    schema:
+                        $ref: '#/definitions/SimplestreamsProducts'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get incus images simplestreams images
+            tags:
+                - simplestreams
+    /incus-images/streams/v1/index.json:
+        get:
+            description: |-
+                Returns the list of publicly available incus images in simplestreams v1
+
+                format, served at streams/v1/index.json.
+            operationId: simplestreams_index_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Simplestreams API for incus images index
+                    schema:
+                        $ref: '#/definitions/SimplestreamsStream'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get incus images simplestreams index
+            tags:
+                - simplestreams
 swagger: "2.0"
