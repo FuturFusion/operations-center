@@ -1,6 +1,8 @@
 package image
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -35,7 +37,7 @@ func New(repo ImageIncusRepo, filesRepo ImageIncusFileRepo) *imageIncusService {
 }
 
 func (s *imageIncusService) AddVersion(ctx context.Context, name string, versionIdentifier string, mr *multipart.Reader) (err error) {
-	err = validateIncusImageName(name)
+	err = ValidateIncusImageName(name)
 	if err != nil {
 		return err
 	}
@@ -108,19 +110,26 @@ func (s *imageIncusService) AddVersion(ctx context.Context, name string, version
 		}
 
 		ftype := part.FileName()
+		var combinedType string
 		switch part.FileName() {
 		case "root.squashfs":
 			ftype = "squashfs"
 
 		case "disk.qcow2":
 			ftype = "disk-kvm.img"
+
+		case "incus_combined.tar.gz":
+			ftype = "incus_combined.tar.gz"
+
+			combinedType, err = s.detectCombinedImageType(ctx, img, versionIdentifier, part.FileName())
 		}
 
 		incusImageVersion.Items[part.FileName()] = api.IncusImageVersionItem{
-			FileType:   ftype,
-			Size:       size,
-			HashSha256: hex.EncodeToString(hash256.Sum(nil)),
-			Path:       filepath.Join("images", img.Path(), versionIdentifier, part.FileName()),
+			FileType:     ftype,
+			CombinedType: combinedType,
+			Size:         size,
+			HashSha256:   hex.EncodeToString(hash256.Sum(nil)),
+			Path:         filepath.Join("images", img.Path(), versionIdentifier, part.FileName()),
 		}
 	}
 
@@ -155,9 +164,57 @@ func (s *imageIncusService) AddVersion(ctx context.Context, name string, version
 	return nil
 }
 
+func (s *imageIncusService) detectCombinedImageType(ctx context.Context, img *IncusImage, versionIdentifier string, filename string) (imageType string, err error) {
+	rc, _, err := s.filesRepo.Get(ctx, img, versionIdentifier, filename)
+	if err != nil {
+		return "", err
+	}
+
+	defer func() {
+		closeErr := rc.Close()
+		err = errors.Join(err, closeErr)
+	}()
+
+	gzReader, err := gzip.NewReader(rc)
+	if err != nil {
+		return "", err
+	}
+
+	defer func() {
+		closeErr := gzReader.Close()
+		err = errors.Join(err, closeErr)
+	}()
+
+	tarReader := tar.NewReader(gzReader)
+
+	for {
+		hdr, err := tarReader.Next()
+		if err != nil {
+			if err == io.EOF {
+				return "", fmt.Errorf("Invalid incus_combined.tar.gzip archive, unable to determine type of combined image")
+			}
+
+			return "", err
+		}
+
+		if hdr.Name == "rootfs" || hdr.Name == "./rootfs" {
+			return "container", nil
+		}
+
+		if hdr.Name == "rootfs.img" || hdr.Name == "./rootfs.img" {
+			return "virtual-machine", nil
+		}
+	}
+}
+
 func (s *imageIncusService) calculateCombinedHashes(ctx context.Context, img *IncusImage, versionIdentifier string, incusImageVersion *api.IncusImageVersion) error {
 	incusTarXZ, ok := incusImageVersion.Items["incus.tar.xz"]
 	if !ok {
+		_, ok := incusImageVersion.Items["incus_combined.tar.gz"]
+		if ok && len(incusImageVersion.Items) == 1 {
+			return nil
+		}
+
 		return fmt.Errorf(`Incus image version does not have metadata file "incus.tar.xz": %w`, domain.ErrOperationNotPermitted)
 	}
 
@@ -224,7 +281,7 @@ func (s *imageIncusService) GetAllNames(ctx context.Context) ([]string, error) {
 }
 
 func (s *imageIncusService) GetByName(ctx context.Context, name string) (*IncusImage, error) {
-	err := validateIncusImageName(name)
+	err := ValidateIncusImageName(name)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +295,7 @@ func (s *imageIncusService) GetByName(ctx context.Context, name string) (*IncusI
 }
 
 func (s *imageIncusService) DeleteByName(ctx context.Context, name string) error {
-	err := validateIncusImageName(name)
+	err := ValidateIncusImageName(name)
 	if err != nil {
 		return err
 	}
@@ -269,7 +326,7 @@ func (s *imageIncusService) DeleteByName(ctx context.Context, name string) error
 }
 
 func (s *imageIncusService) DeleteVersionByName(ctx context.Context, name string, versionIdentifier string) error {
-	err := validateIncusImageName(name)
+	err := ValidateIncusImageName(name)
 	if err != nil {
 		return err
 	}
@@ -311,7 +368,7 @@ func (s *imageIncusService) DeleteVersionByName(ctx context.Context, name string
 }
 
 func (s *imageIncusService) GetVersionFileByName(ctx context.Context, name string, version string, filename string) (_ io.ReadCloser, size int64, _ error) {
-	err := validateIncusImageName(name)
+	err := ValidateIncusImageName(name)
 	if err != nil {
 		return nil, 0, err
 	}

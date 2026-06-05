@@ -822,6 +822,12 @@ definitions:
                     versions metadata ("incus.tar.xz") and the "root.squashfs" image.
                 type: string
                 x-go-name: CombinedSha256SquashFs
+            combined_type:
+                description: |-
+                    CombinedType holds the type (container or virtual-machine) of a combined
+                    image.
+                type: string
+                x-go-name: CombinedType
             ftype:
                 description: |-
                     FileType holds the file type. This defaults to the file name like

@@ -1,6 +1,7 @@
 package image
 
 import (
+	"fmt"
 	"path"
 	"path/filepath"
 	"slices"
@@ -30,7 +31,7 @@ type IncusImage struct {
 }
 
 func (i IncusImage) Validate() error {
-	err := validateIncusImageName(i.Name)
+	err := ValidateIncusImageName(i.Name)
 	if err != nil {
 		return err
 	}
@@ -58,7 +59,7 @@ func (i IncusImage) Validate() error {
 	return nil
 }
 
-func validateIncusImageName(name string) error {
+func ValidateIncusImageName(name string) error {
 	nameParts := strings.Split(name, ":")
 	if len(nameParts) != 4 {
 		return domain.NewValidationErrf(`Invalid incus image name, expect name in the format "os:release:architecture:variant"`)
@@ -78,6 +79,24 @@ func validateIncusImageName(name string) error {
 
 	if nameParts[3] == "" {
 		return domain.NewValidationErrf("Invalid incus image, variant can not be empty")
+	}
+
+	return nil
+}
+
+// ValidateIncusImageVersion checks the version matches the expected version
+// format in simplestreams.
+// https://github.com/lxc/incus/blob/1d64af1e40ced8716280bd4fcf044dce4ca6d5cf/shared/simplestreams/products.go#L87-L95
+func ValidateIncusImageVersion(version string) error {
+	const versionLayout = "20060102"
+
+	if len(version) < 8 {
+		return fmt.Errorf(`Invalid version, version is required to be a 8 digits long date in the format "yyyymmdd"`)
+	}
+
+	_, err := time.Parse(versionLayout, version[0:8])
+	if err != nil {
+		return fmt.Errorf(`Invalid version, version is required to be a 8 digits long date in the format "yyyymmdd": %w`, err)
 	}
 
 	return nil
