@@ -34,6 +34,10 @@ func (s ImageSource) Validate(ctx context.Context, imageSourcers map[api.ImageSo
 		return domain.NewValidationErrf(`Invalid source, only type "incus" is supported`)
 	}
 
+	if s.FilterExpression == "" {
+		return domain.NewValidationErrf(`Empty filter expression is not permitted`)
+	}
+
 	imageSourcer, ok := imageSourcers[s.Type]
 	if !ok {
 		return fmt.Errorf("No source implementation available for source type %q", s.Type)

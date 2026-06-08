@@ -357,3 +357,160 @@ func TestSourceService_DeleteByName(t *testing.T) {
 		})
 	}
 }
+
+func TestSourceService_RefreshByName(t *testing.T) {
+	tests := []struct {
+		name             string
+		repoGetByName    image.ImageSource
+		repoGetByNameErr error
+		imageSourcerErr  error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByName: image.ImageSource{
+				Name: "one",
+				Type: api.ImageSourceTypeIncus,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - no image sourcer",
+			repoGetByName: image.ImageSource{
+				Name: "one",
+				Type: api.ImageSourceType("invalid"), // invalid image source type
+
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `No source implementation available for source type "invalid"`)
+			},
+		},
+		{
+			name: "error - imageSourcer.RefreshFromSource",
+			repoGetByName: image.ImageSource{
+				Name: "one",
+				Type: api.ImageSourceTypeIncus,
+			},
+			imageSourcerErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.SourceRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*image.ImageSource, error) {
+					return &tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			imageSourcers := map[api.ImageSourceType]image.ImageSourcerPort{
+				api.ImageSourceTypeIncus: &mock.ImageIncusServiceMock{
+					RefreshFromSourceFunc: func(ctx context.Context, source image.ImageSource) error {
+						return tc.imageSourcerErr
+					},
+				},
+			}
+
+			imageSvc := image.NewSource(repo, imageSourcers)
+
+			// Run test
+			err := imageSvc.RefreshByName(t.Context(), "one")
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestSourceService_RefreshAll(t *testing.T) {
+	tests := []struct {
+		name            string
+		repoGetAll      image.Sources
+		repoGetAllErr   error
+		imageSourcerErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetAll: image.Sources{
+				{
+					Name: "one",
+					Type: api.ImageSourceTypeIncus,
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:          "error - repo.GetAll",
+			repoGetAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - no image sourcer",
+			repoGetAll: image.Sources{
+				{
+					Name: "one",
+					Type: api.ImageSourceType("invalid"), // invalid image source type
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `No source implementation available for source type "invalid"`)
+			},
+		},
+		{
+			name: "error - imageSourcer.RefreshFromSource",
+			repoGetAll: image.Sources{
+				{
+					Name: "one",
+					Type: api.ImageSourceTypeIncus,
+				},
+			},
+			imageSourcerErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.SourceRepoMock{
+				GetAllFunc: func(ctx context.Context) (image.Sources, error) {
+					return tc.repoGetAll, tc.repoGetAllErr
+				},
+			}
+
+			imageSourcers := map[api.ImageSourceType]image.ImageSourcerPort{
+				api.ImageSourceTypeIncus: &mock.ImageIncusServiceMock{
+					RefreshFromSourceFunc: func(ctx context.Context, source image.ImageSource) error {
+						return tc.imageSourcerErr
+					},
+				},
+			}
+
+			imageSvc := image.NewSource(repo, imageSourcers)
+
+			// Run test
+			err := imageSvc.RefreshAll(t.Context())
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}

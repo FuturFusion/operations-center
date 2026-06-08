@@ -93,7 +93,26 @@ func (s *sourceService) DeleteByName(ctx context.Context, name string) error {
 	return nil
 }
 
-func (s *sourceService) SyncSources(ctx context.Context) error {
+func (s *sourceService) RefreshByName(ctx context.Context, name string) error {
+	source, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Sync sources failed to sources: %w", err)
+	}
+
+	imageSourcer, ok := s.imageSourcers[source.Type]
+	if !ok {
+		return fmt.Errorf("No source implementation available for source type %q", source.Type)
+	}
+
+	err = imageSourcer.RefreshFromSource(ctx, *source)
+	if err != nil {
+		return fmt.Errorf("Sync source %q failed: %w", source.Name, err)
+	}
+
+	return nil
+}
+
+func (s *sourceService) RefreshAll(ctx context.Context) error {
 	sources, err := s.repo.GetAll(ctx)
 	if err != nil {
 		return fmt.Errorf("Sync sources failed to sources: %w", err)

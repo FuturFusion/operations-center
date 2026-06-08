@@ -11,7 +11,8 @@ type SourceService interface {
 	GetByName(ctx context.Context, name string) (*ImageSource, error)
 	Update(ctx context.Context, source ImageSource) error
 	DeleteByName(ctx context.Context, name string) error
-	SyncSources(ctx context.Context) error
+	RefreshAll(ctx context.Context) error
+	RefreshByName(ctx context.Context, name string) error
 }
 
 type SourceRepo interface {

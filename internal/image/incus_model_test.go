@@ -186,6 +186,54 @@ func TestIncusImage_Validate(t *testing.T) {
 	}
 }
 
+func TestIncusImage_ValidateIncusImageVersion(t *testing.T) {
+	tests := []struct {
+		name       string
+		argVersion string
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:       "valid",
+			argVersion: "20260609",
+
+			assertErr: require.NoError,
+		},
+		{
+			name:       "error - empty",
+			argVersion: "",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid version, version is required to be a 8 digits long date in the format "yyyymmdd"`)
+			},
+		},
+		{
+			name:       "error - too short",
+			argVersion: "260609", // 6 digits
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid version, version is required to be a 8 digits long date in the format "yyyymmdd"`)
+			},
+		},
+		{
+			name:       "error - not a date",
+			argVersion: "not valid", // invalid, more than 8 chars
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid version, version is required to be a 8 digits long date in the format "yyyymmdd"`)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := image.ValidateIncusImageVersion(tc.argVersion)
+
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestIncusImage_FilePath(t *testing.T) {
 	tests := []struct {
 		name  string
