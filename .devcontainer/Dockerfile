@@ -37,6 +37,7 @@ apt install -y \
   locales-all \
   man \
   python3.13-venv \
+  ripgrep \
   ruby-mdl \
   sqlite3 \
   sudo \

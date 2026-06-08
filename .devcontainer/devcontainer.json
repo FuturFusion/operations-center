@@ -12,6 +12,7 @@
         "github.vscode-github-actions",
         "davidanson.vscode-markdownlint",
         "shardulm94.trailing-spaces",
+        "bokuweb.vscode-ripgrep",
         "Gruntfuggly.todo-tree",
         "casualjim.gotemplate",
         "eamodio.gitlens",
@@ -70,7 +71,9 @@
           "zsh": {
               "path": "/bin/zsh"
           }
-        }
+        },
+        "todo-tree.tree.scanMode": "workspace",
+        "todo-tree.ripgrep.ripgrep": "/usr/bin/rg"
       }
     }
   },
