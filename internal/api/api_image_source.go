@@ -27,6 +27,7 @@ func registerImageSourceHandler(router Router, authorizer *authz.Authorizer, ser
 	router.HandleFunc("GET /{name}", response.With(handler.imageSourceGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /{name}", response.With(handler.imageSourcePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{name}", response.With(handler.imageSourceDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
+	router.HandleFunc("POST /{name}/:refresh", response.With(handler.imageSourceRefreshPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/image/sources image_sources image_sources_get
@@ -362,6 +363,37 @@ func (i *imageSourceHandler) imageSourceDelete(r *http.Request) response.Respons
 	name := r.PathValue("name")
 
 	err := i.service.DeleteByName(r.Context(), name)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/image/sources/{name}/:refresh image_source image_source_refresh_post
+//
+//	Refresh the image source
+//
+//	Refresh the image source by fetching the available images, which
+//	pass the filter, from origin and update the state in the DB and in the
+//	files repository.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (i *imageSourceHandler) imageSourceRefreshPost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	err := i.service.RefreshByName(r.Context(), name)
 	if err != nil {
 		return response.SmartError(err)
 	}
