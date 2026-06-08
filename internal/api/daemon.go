@@ -32,6 +32,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/image"
+	"github.com/FuturFusion/operations-center/internal/image/adapter/simplestreams"
 	imageServiceMiddleware "github.com/FuturFusion/operations-center/internal/image/middleware"
 	imageLocalfs "github.com/FuturFusion/operations-center/internal/image/repo/localfs"
 	imageRepoMiddleware "github.com/FuturFusion/operations-center/internal/image/repo/middleware"
@@ -231,7 +232,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
-	imageSourceSvc := d.setupImageSourceService(dbWithTransaction)
+	imageSourceSvc := d.setupImageSourceService(
+		dbWithTransaction,
+		map[api.ImageSourceType]image.ImageSourcerPort{
+			api.ImageSourceTypeIncus: incusImageSvc,
+		},
+	)
 
 	warningSvc := d.setupWarningService(dbWithTransaction)
 	// Temporary use log only warn service.
@@ -357,7 +363,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// Background tasks
-	d.setupBackgroundTasks(ctx, updateSvc, serverSvc, clusterSvc, warningLogEmitter)
+	d.setupBackgroundTasks(ctx, updateSvc, imageSourceSvc, serverSvc, clusterSvc, warningLogEmitter)
 
 	// Finalize daemon start
 	// Wait for immediate errors during startup.
@@ -534,18 +540,20 @@ func (d *Daemon) setupIncusImageService(db dbdriver.DBTX) (image.ImageIncusServi
 			imageRepoMiddleware.NewImageIncusFileRepoWithSlog(
 				imageFilesRepo,
 			),
+			simplestreams.New(),
 		),
 	)
 
 	return imageIncusSvc, nil
 }
 
-func (d *Daemon) setupImageSourceService(db dbdriver.DBTX) image.SourceService {
+func (d *Daemon) setupImageSourceService(db dbdriver.DBTX, imageSourcers map[api.ImageSourceType]image.ImageSourcerPort) image.SourceService {
 	imageSourceSvc := imageServiceMiddleware.NewSourceServiceWithSlog(
 		image.NewSource(
 			imageRepoMiddleware.NewSourceRepoWithSlog(
 				imageSqlite.NewImageSource(db),
 			),
+			imageSourcers,
 		),
 	)
 
@@ -1020,6 +1028,7 @@ func (d *Daemon) setupAPIRoutes(
 func (d *Daemon) setupBackgroundTasks(
 	ctx context.Context,
 	updateSvc provisioning.UpdateService,
+	imageSourceSvc image.SourceService,
 	serverSvc provisioning.ServerService,
 	clusterSvc provisioning.ClusterService,
 	warningSvc warning.WarningEmitter,
@@ -1030,9 +1039,9 @@ func (d *Daemon) setupBackgroundTasks(
 
 	// Give IncusOS some time to apply seed data before actually starting to
 	// perform the refresh of the updates.
-	delayFirst := sync.OnceFunc(func() {})
+	delayFirstUpdates := sync.OnceFunc(func() {})
 	if d.env.IsIncusOS() {
-		delayFirst = sync.OnceFunc(func() {
+		delayFirstUpdates = sync.OnceFunc(func() {
 			slog.InfoContext(ctx, "Refresh updates delayed for 30s on IncusOS")
 			time.Sleep(30 * time.Second)
 		})
@@ -1040,7 +1049,7 @@ func (d *Daemon) setupBackgroundTasks(
 
 	// Start background task to refresh updates from the sources.
 	refreshUpdatesFromSourcesTask := func(ctx context.Context) {
-		delayFirst()
+		delayFirstUpdates()
 		slog.InfoContext(ctx, "Refresh updates triggered")
 		err := updateSvc.Refresh(ctx)
 		scope := api.WarningScope{
@@ -1073,6 +1082,48 @@ func (d *Daemon) setupBackgroundTasks(
 	updateSourceTaskStop, _ := task.Start(ctx, refreshUpdatesFromSourcesTask, task.Every(config.UpdatesSourcePollInterval, updateSourceOptions...))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return updateSourceTaskStop(deadlineFrom(ctx, 60*time.Second))
+	})
+
+	// Give IncusOS some time to download update before starting to refresh
+	// image sources.
+	delayFirstImageSourcesRefresh := sync.OnceFunc(func() {})
+	if d.env.IsIncusOS() {
+		delayFirstImageSourcesRefresh = sync.OnceFunc(func() {
+			slog.InfoContext(ctx, "Refresh updates delayed for 30s on IncusOS")
+			time.Sleep(10 * time.Minute)
+		})
+	}
+
+	// Start background task to refresh images from the sources.
+	refreshImageSourcesTask := func(ctx context.Context) {
+		delayFirstImageSourcesRefresh()
+		slog.InfoContext(ctx, "Refresh image sources triggered")
+		err := imageSourceSvc.RefreshAll(ctx)
+		scope := api.WarningScope{
+			Scope:      "refresh",
+			EntityType: "image_sources",
+			Entity:     "-",
+		}
+		if err != nil {
+			warningSvc.Emit(ctx,
+				warning.NewWarning(
+					api.WarningTypeUpdateRefreshFailed,
+					scope,
+					fmt.Sprintf("Refresh image sources failed: %v", err),
+				),
+			)
+
+			return
+		}
+
+		warningSvc.RemoveStale(ctx, scope, nil)
+
+		slog.InfoContext(ctx, "Refresh image sources completed")
+	}
+
+	imageSourceRefreshTaskStop, _ := task.Start(ctx, refreshImageSourcesTask, task.Every(config.ImageSourcePollInterval))
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return imageSourceRefreshTaskStop(deadlineFrom(ctx, 60*time.Second))
 	})
 
 	// Start background task for cluster update control loop.
