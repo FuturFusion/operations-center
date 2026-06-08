@@ -108,6 +108,34 @@ func (_d SourceServiceWithPrometheus) GetByName(ctx context.Context, name string
 	return _d.base.GetByName(ctx, name)
 }
 
+// RefreshAll implements image.SourceService.
+func (_d SourceServiceWithPrometheus) RefreshAll(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		sourceServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RefreshAll", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RefreshAll(ctx)
+}
+
+// RefreshByName implements image.SourceService.
+func (_d SourceServiceWithPrometheus) RefreshByName(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		sourceServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RefreshByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RefreshByName(ctx, name)
+}
+
 // Update implements image.SourceService.
 func (_d SourceServiceWithPrometheus) Update(ctx context.Context, source image.ImageSource) (err error) {
 	_since := time.Now()

@@ -36,7 +36,13 @@ var _ image.SourceService = &SourceServiceMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*image.ImageSource, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			UpdateFunc: func(ctx context.Context, source image.Source) error {
+//			RefreshAllFunc: func(ctx context.Context) error {
+//				panic("mock out the RefreshAll method")
+//			},
+//			RefreshByNameFunc: func(ctx context.Context, name string) error {
+//				panic("mock out the RefreshByName method")
+//			},
+//			UpdateFunc: func(ctx context.Context, source image.ImageSource) error {
 //				panic("mock out the Update method")
 //			},
 //		}
@@ -60,6 +66,12 @@ type SourceServiceMock struct {
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*image.ImageSource, error)
+
+	// RefreshAllFunc mocks the RefreshAll method.
+	RefreshAllFunc func(ctx context.Context) error
+
+	// RefreshByNameFunc mocks the RefreshByName method.
+	RefreshByNameFunc func(ctx context.Context, name string) error
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, source image.ImageSource) error
@@ -97,6 +109,18 @@ type SourceServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// RefreshAll holds details about calls to the RefreshAll method.
+		RefreshAll []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// RefreshByName holds details about calls to the RefreshByName method.
+		RefreshByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -105,12 +129,14 @@ type SourceServiceMock struct {
 			Source image.ImageSource
 		}
 	}
-	lockCreate       sync.RWMutex
-	lockDeleteByName sync.RWMutex
-	lockGetAll       sync.RWMutex
-	lockGetAllNames  sync.RWMutex
-	lockGetByName    sync.RWMutex
-	lockUpdate       sync.RWMutex
+	lockCreate        sync.RWMutex
+	lockDeleteByName  sync.RWMutex
+	lockGetAll        sync.RWMutex
+	lockGetAllNames   sync.RWMutex
+	lockGetByName     sync.RWMutex
+	lockRefreshAll    sync.RWMutex
+	lockRefreshByName sync.RWMutex
+	lockUpdate        sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -282,6 +308,74 @@ func (mock *SourceServiceMock) GetByNameCalls() []struct {
 	mock.lockGetByName.RLock()
 	calls = mock.calls.GetByName
 	mock.lockGetByName.RUnlock()
+	return calls
+}
+
+// RefreshAll calls RefreshAllFunc.
+func (mock *SourceServiceMock) RefreshAll(ctx context.Context) error {
+	if mock.RefreshAllFunc == nil {
+		panic("SourceServiceMock.RefreshAllFunc: method is nil but SourceService.RefreshAll was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockRefreshAll.Lock()
+	mock.calls.RefreshAll = append(mock.calls.RefreshAll, callInfo)
+	mock.lockRefreshAll.Unlock()
+	return mock.RefreshAllFunc(ctx)
+}
+
+// RefreshAllCalls gets all the calls that were made to RefreshAll.
+// Check the length with:
+//
+//	len(mockedSourceService.RefreshAllCalls())
+func (mock *SourceServiceMock) RefreshAllCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockRefreshAll.RLock()
+	calls = mock.calls.RefreshAll
+	mock.lockRefreshAll.RUnlock()
+	return calls
+}
+
+// RefreshByName calls RefreshByNameFunc.
+func (mock *SourceServiceMock) RefreshByName(ctx context.Context, name string) error {
+	if mock.RefreshByNameFunc == nil {
+		panic("SourceServiceMock.RefreshByNameFunc: method is nil but SourceService.RefreshByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockRefreshByName.Lock()
+	mock.calls.RefreshByName = append(mock.calls.RefreshByName, callInfo)
+	mock.lockRefreshByName.Unlock()
+	return mock.RefreshByNameFunc(ctx, name)
+}
+
+// RefreshByNameCalls gets all the calls that were made to RefreshByName.
+// Check the length with:
+//
+//	len(mockedSourceService.RefreshByNameCalls())
+func (mock *SourceServiceMock) RefreshByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockRefreshByName.RLock()
+	calls = mock.calls.RefreshByName
+	mock.lockRefreshByName.RUnlock()
 	return calls
 }
 

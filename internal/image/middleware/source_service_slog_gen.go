@@ -211,6 +211,73 @@ func (_d SourceServiceWithSlog) GetByName(ctx context.Context, name string) (ima
 	return _d._base.GetByName(ctx, name)
 }
 
+// RefreshAll implements image.SourceService.
+func (_d SourceServiceWithSlog) RefreshAll(ctx context.Context) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RefreshAll")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method RefreshAll returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method RefreshAll returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method RefreshAll finished")
+		}
+	}()
+	return _d._base.RefreshAll(ctx)
+}
+
+// RefreshByName implements image.SourceService.
+func (_d SourceServiceWithSlog) RefreshByName(ctx context.Context, name string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RefreshByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method RefreshByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method RefreshByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method RefreshByName finished")
+		}
+	}()
+	return _d._base.RefreshByName(ctx, name)
+}
+
 // Update implements image.SourceService.
 func (_d SourceServiceWithSlog) Update(ctx context.Context, source image.ImageSource) (err error) {
 	log := slog.With()
