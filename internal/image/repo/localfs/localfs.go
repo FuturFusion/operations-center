@@ -150,3 +150,9 @@ func (l localfs) DeleteVersion(ctx context.Context, img *image.IncusImage, versi
 
 	return os.RemoveAll(fullFilename)
 }
+
+func (l localfs) DeleteVersionFile(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string) error {
+	fullFilename := filepath.Join(l.storageDir, img.FilePath(), versionIdentifier, filename)
+
+	return os.RemoveAll(fullFilename)
+}
