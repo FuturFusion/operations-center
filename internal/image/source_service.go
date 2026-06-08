@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -83,17 +84,51 @@ func (s *sourceService) DeleteByName(ctx context.Context, name string) error {
 		return fmt.Errorf("Image source name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	// FIXME: remove all images from the file repository through the respective service (e.g. incus image)
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		source, err := s.repo.GetByName(ctx, name)
+		if err != nil {
+			return err
+		}
 
-	err := s.repo.DeleteByName(ctx, name)
+		err = s.imageSourcers[source.Type].DeleteBySource(ctx, name)
+		if err != nil {
+			return err
+		}
+
+		err = s.repo.DeleteByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to delete image source %q: %w", name, err)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return fmt.Errorf("Failed to delete image source %q: %w", name, err)
+		return err
 	}
 
 	return nil
 }
 
-func (s *sourceService) SyncSources(ctx context.Context) error {
+func (s *sourceService) RefreshByName(ctx context.Context, name string) error {
+	source, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Sync sources failed to sources: %w", err)
+	}
+
+	imageSourcer, ok := s.imageSourcers[source.Type]
+	if !ok {
+		return fmt.Errorf("No source implementation available for source type %q", source.Type)
+	}
+
+	err = imageSourcer.RefreshFromSource(ctx, *source)
+	if err != nil {
+		return fmt.Errorf("Sync source %q failed: %w", source.Name, err)
+	}
+
+	return nil
+}
+
+func (s *sourceService) RefreshAll(ctx context.Context) error {
 	sources, err := s.repo.GetAll(ctx)
 	if err != nil {
 		return fmt.Errorf("Sync sources failed to sources: %w", err)

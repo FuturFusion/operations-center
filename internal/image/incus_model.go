@@ -11,9 +11,6 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-//
-//generate-expr: IncusImage
-
 type IncusImage struct {
 	ID          int64    `json:"-"`
 	Name        string   `json:"name" db:"primary=yes"`
@@ -26,6 +23,8 @@ type IncusImage struct {
 	Variant         string `json:"variant"`
 
 	Versions api.IncusImageVersions `json:"versions"`
+
+	Source *string `json:"source" db:"leftjoin=image_sources.name"`
 
 	LastUpdated time.Time `json:"-" expr:"last_updated" db:"update_timestamp"`
 }
@@ -137,7 +136,12 @@ func (i IncusImage) Path() string {
 }
 
 func (i IncusImage) FilePath() string {
-	return filepath.Join(i.OperatingSystem, i.Release, i.Architecture, i.Variant)
+	return filepath.Join(
+		strings.ToLower(i.OperatingSystem),
+		strings.ToLower(i.Release),
+		strings.ToLower(i.Architecture),
+		strings.ToLower(i.Variant),
+	)
 }
 
 type IncusImageFilter struct {
@@ -147,6 +151,19 @@ type IncusImageFilter struct {
 	Release         *string
 	Architecture    *string
 	Variant         *string
+	Source          *string
+}
+
+type ExprIncusImageVersionFile struct {
+	Name            string `json:"name"              yaml:"name"              expr:"name"`
+	OperatingSystem string `json:"operating_system"  yaml:"operating_system"  expr:"operating_system"`
+	Release         string `json:"release"           yaml:"release"           expr:"release"`
+	Architecture    string `json:"architecture"      yaml:"architecture"      expr:"architecture"`
+	Variant         string `json:"variant"           yaml:"variant"           expr:"variant"`
+	Version         string `json:"version"           yaml:"version"           expr:"version"`
+	Filename        string `json:"filename"          yaml:"filename"          expr:"filename"`
+	FileType        string `json:"file_type"         yaml:"file_type"         expr:"file_type"`
+	Size            int64  `json:"size"              yaml:"size"              expr:"size"`
 }
 
 type IncusImages []IncusImage

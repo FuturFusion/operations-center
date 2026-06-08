@@ -105,6 +105,24 @@ func TestImageSource_Validate(t *testing.T) {
 			},
 		},
 		{
+			name: "error - image source filter empty",
+			source: image.ImageSource{
+				Name:             "name",
+				URL:              "https://images.linuxcontainers.org",
+				Type:             api.ImageSourceTypeIncus,
+				FilterExpression: "",
+			},
+			setupImageSourcers: func() map[api.ImageSourceType]image.ImageSourcerPort {
+				return map[api.ImageSourceType]image.ImageSourcerPort{}
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(tt, err, "Empty filter expression is not permitted")
+			},
+		},
+		{
 			name: "error - image source filter validation",
 			source: image.ImageSource{
 				Name:             "name",

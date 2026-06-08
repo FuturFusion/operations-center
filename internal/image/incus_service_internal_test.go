@@ -9,10 +9,12 @@ import (
 	"mime/multipart"
 	"net/textproto"
 	"testing"
+	"testing/iotest"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
+	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 )
 
 func Test_metadataFromRequestJSON(t *testing.T) {
@@ -92,8 +94,43 @@ func Test_metadataFromIncusTarXZ(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:            "error - not metadata.yaml",
-			multipartReader: multipartReaderIncusTarXZ(t, "invalid", "architecture: amd64"),
+			name: "success - virtual-machine",
+			rc:   generateTarGz(t, "rootfs.img"),
+
+			assertErr:     require.NoError,
+			wantImageType: "virtual-machine",
+		},
+		{
+			name:           "error - fileRepo.Get",
+			fileRepoGetErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - read error",
+			rc:   io.NopCloser(iotest.ErrReader(boom.Error)),
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - read error",
+			rc: func() io.ReadCloser {
+				var buf bytes.Buffer
+
+				gzw := gzip.NewWriter(&buf)
+				defer gzw.Close()
+
+				_, err := gzw.Write([]byte("invalid tar"))
+				require.NoError(t, err)
+
+				return io.NopCloser(&buf)
+			}(),
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - neither container nor virtual-machine",
+			rc:   generateTarGz(t, "foobar"),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Failed to find metadata.yaml in incus.tar.xz")
@@ -200,6 +237,8 @@ func multipartReaderNotXZ(t *testing.T) *multipart.Reader {
 }
 
 func generateTarGz(t *testing.T, filename string) io.ReadCloser {
+	t.Helper()
+
 	var buf bytes.Buffer
 
 	gzw := gzip.NewWriter(&buf)

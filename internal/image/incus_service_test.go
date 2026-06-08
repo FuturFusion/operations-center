@@ -18,6 +18,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/image"
+	adapterMock "github.com/FuturFusion/operations-center/internal/image/adapter/mock"
 	"github.com/FuturFusion/operations-center/internal/image/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
@@ -641,6 +642,13 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				{},
 			},
 			filesRepoGet: []queue.Item[fileRepoGetValue]{
+				// incus_combined.tar.gz
+				{
+					Value: fileRepoGetValue{
+						reader: io.NopCloser(bytes.NewBufferString(`incus combined`)),
+						size:   int64(len(`incus combined`)),
+					},
+				},
 				// incus.tar.xz for root.tar.xz
 				{
 					Value: fileRepoGetValue{
@@ -678,6 +686,13 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				{},
 			},
 			filesRepoGet: []queue.Item[fileRepoGetValue]{
+				// incus_combined.tar.gz
+				{
+					Value: fileRepoGetValue{
+						reader: io.NopCloser(bytes.NewBufferString(`incus combined`)),
+						size:   int64(len(`incus combined`)),
+					},
+				},
 				// incus.tar.xz for root.tar.xz
 				{
 					Value: fileRepoGetValue{
@@ -901,7 +916,7 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, filesRepo)
+			imageSvc := image.NewIncusImage(repo, filesRepo, nil)
 
 			// Run test
 			name, err := imageSvc.AddVersion(t.Context(), tc.multipartReaderArg)
@@ -1179,7 +1194,7 @@ func TestImageIncusService_GetAll(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, nil)
+			imageSvc := image.NewIncusImage(repo, nil, nil)
 
 			// Run test
 			images, err := imageSvc.GetAll(t.Context())
@@ -1225,7 +1240,7 @@ func TestImageIncusService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, nil)
+			imageSvc := image.NewIncusImage(repo, nil, nil)
 
 			// Run test
 			images, err := imageSvc.GetAllNames(t.Context())
@@ -1281,7 +1296,7 @@ func TestImageIncusService_GetByName(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, nil)
+			imageSvc := image.NewIncusImage(repo, nil, nil)
 
 			// Run test
 			img, err := imageSvc.GetByName(t.Context(), tc.nameArg)
@@ -1370,10 +1385,104 @@ func TestImageIncusService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, filesRepo)
+			imageSvc := image.NewIncusImage(repo, filesRepo, nil)
 
 			// Run test
 			err := imageSvc.DeleteByName(t.Context(), tc.argName)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestImageIncusService_DeleteBySource(t *testing.T) {
+	tests := []struct {
+		name                    string
+		argName                 string
+		repoGetAllWithFilter    image.IncusImages
+		repoGetAllWithFilterErr error
+		filesRepoDeleteErr      error
+		repoDeleteByNameErr     error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:    "success",
+			argName: "almalinux:10:amd64:cloud",
+			repoGetAllWithFilter: image.IncusImages{
+				image.IncusImage{
+					Name: "almalinux:10:amd64:cloud",
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "error - invalid name",
+			argName: "", // empty name
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(tt, err, `Invalid incus image name, expect name in the format "os:release:architecture:variant"`)
+			},
+		},
+		{
+			name:                    "error - repo.GetByName",
+			argName:                 "almalinux:10:amd64:cloud",
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - repo.DeleteByName",
+			argName: "almalinux:10:amd64:cloud",
+			repoGetAllWithFilter: image.IncusImages{
+				image.IncusImage{
+					Name: "almalinux:10:amd64:cloud",
+				},
+			},
+			repoDeleteByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - filesRepo.Delete",
+			argName: "almalinux:10:amd64:cloud",
+			repoGetAllWithFilter: image.IncusImages{
+				image.IncusImage{
+					Name: "almalinux:10:amd64:cloud",
+				},
+			},
+			filesRepoDeleteErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ImageIncusRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter image.IncusImageFilter) (image.IncusImages, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+				DeleteByNameFunc: func(ctx context.Context, name string) error {
+					return tc.repoDeleteByNameErr
+				},
+			}
+
+			filesRepo := &mock.ImageIncusFileRepoMock{
+				DeleteFunc: func(ctx context.Context, img *image.IncusImage) error {
+					return tc.filesRepoDeleteErr
+				},
+			}
+
+			imageSvc := image.NewIncusImage(repo, filesRepo, nil)
+
+			// Run test
+			err := imageSvc.DeleteBySource(t.Context(), tc.argName)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1502,7 +1611,7 @@ func TestImageIncusService_DeleteVersionByName(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, filesRepo)
+			imageSvc := image.NewIncusImage(repo, filesRepo, nil)
 
 			// Run test
 			err := imageSvc.DeleteVersionByName(t.Context(), tc.argName, tc.argVersion)
@@ -1645,7 +1754,7 @@ func TestIncusImageService_GetVersionFileByName(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, filesRepo)
+			imageSvc := image.NewIncusImage(repo, filesRepo, nil)
 
 			// Run test
 			rc, size, err := imageSvc.GetVersionFileByName(t.Context(), tc.argName, tc.argVersion, tc.argFilename)
@@ -1712,7 +1821,7 @@ func TestIncusImageService_Update(t *testing.T) {
 				},
 			}
 
-			imageSvc := image.NewIncusImage(repo, nil)
+			imageSvc := image.NewIncusImage(repo, nil, nil)
 
 			// Run test
 			err := imageSvc.Update(t.Context(), tc.incusImage)
@@ -1720,5 +1829,836 @@ func TestIncusImageService_Update(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 		})
+	}
+}
+
+func TestIncusImageService_ValidateFilterExpression(t *testing.T) {
+	tests := []struct {
+		name                string
+		argFilterExpression string
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:                "success",
+			argFilterExpression: "true",
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                "error - invalid expression",
+			argFilterExpression: "10", // invalid expression, does not return bool result
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			imageSvc := image.NewIncusImage(nil, nil, nil)
+
+			// Run test
+			err := imageSvc.ValidateFilterExpression(t.Context(), tc.argFilterExpression)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestIncusImageService_RefreshFromSource(t *testing.T) {
+	tests := []struct {
+		name                          string
+		ctx                           context.Context
+		filterExpression              string
+		simplestreamsGetImageList     image.IncusImages
+		simplestreamsGetImageListErr  error
+		repoGetAllWithFilter          image.IncusImages
+		repoGetAllWithFilterErr       error
+		repoDeleteByNameErr           error
+		filesRepoDeleteVersionFileErr error
+		filesRepoUsageInformation     image.UsageInformation
+		filesRepoUsageInformationErr  error
+		simplestreamsGetFileRC        io.ReadCloser
+		simplestreamsGetFileErr       error
+		filesRepoPutCommitErr         error
+		filesRepoPutCancelErr         error
+		filesRepoPutErr               error
+		repoUpsertErr                 error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - no updates, no state in the DB",
+			ctx:  t.Context(),
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "success - one update, filtered",
+			ctx:              t.Context(),
+			filterExpression: "false", // filter everything
+
+			simplestreamsGetImageList: image.IncusImages{
+				{
+					Name: "alpine:edge:amd64:default",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "success - one update, already present in DB",
+			ctx:              t.Context(),
+			filterExpression: "true",
+
+			simplestreamsGetImageList: image.IncusImages{
+				{
+					Name: "alpine:edge:amd64:default",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+			},
+			repoGetAllWithFilter: image.IncusImages{
+				{
+					Name: "alpine:edge:amd64:default",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+			},
+			filesRepoUsageInformation: usageInfoGiB(100, 20),
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "success - one update, already present in DB but misses files with valid hash",
+			ctx:              t.Context(),
+			filterExpression: "true",
+
+			simplestreamsGetImageList: image.IncusImages{
+				{
+					Name: "alpine:edge:amd64:default",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+								"root.tar.xz": {
+									// Generate hash: echo -n "dummy" | sha256sum
+									HashSha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
+								},
+							},
+						},
+					},
+				},
+			},
+			repoGetAllWithFilter: image.IncusImages{
+				{
+					Name: "alpine:edge:amd64:default",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+			},
+			filesRepoUsageInformation: usageInfoGiB(50, 10),
+			simplestreamsGetFileRC:    io.NopCloser(bytes.NewBufferString(`dummy`)),
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - enhanced example",
+			// Image source presents 3 images.
+			// One image is filtered based on filter expression and therefore skipped.
+			// One is not present and is therefore downloaded with all files included.
+			// One is present but misses file and has supernumerous file.
+			// In the DB we have two images.
+			// One is obsolete and gets deleted.
+			// One is updated, because it misses a file and has a supernumerous file (see 3rd image from source).
+			ctx:              t.Context(),
+			filterExpression: `architecture == "amd64"`,
+
+			simplestreamsGetImageList: image.IncusImages{
+				// Filtered because of architecture.
+				{
+					Name:            "alpine:edge:aarch64:default",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "aarch64",
+					Variant:         "default",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+				// Not present in the DB.
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+				// Present in DB, but misses file and has supernumerous file.
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+								"root.tar.xz":  {}, // additional file
+							},
+						},
+					},
+				},
+			},
+			repoGetAllWithFilter: image.IncusImages{
+				// Present in DB, but misses file and has supernumerous file.
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz":       {},
+								"supernumerous.file": {},
+							},
+						},
+					},
+				},
+				// Obsolete update.
+				{
+					Name:            "alpine:edge:amd64:obsolete",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "obsolete",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+			},
+			filesRepoUsageInformation: usageInfoGiB(50, 10),
+
+			assertErr: require.NoError,
+		},
+
+		// Error cases.
+		{
+			name:             "error - simplestreams.GetImageList",
+			ctx:              t.Context(),
+			filterExpression: `true`,
+
+			simplestreamsGetImageListErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:             "error - invalid filter",
+			ctx:              t.Context(),
+			filterExpression: `10`, // invalid filter, does not evaluate to bool value.
+
+			simplestreamsGetImageList: image.IncusImages{},
+			repoGetAllWithFilter:      image.IncusImages{},
+			repoGetAllWithFilterErr:   boom.Error,
+
+			assertErr: require.Error,
+		},
+		{
+			name:             "error - repo.DeleteByName",
+			ctx:              t.Context(),
+			filterExpression: `true`,
+
+			simplestreamsGetImageList: image.IncusImages{},
+			repoGetAllWithFilter:      image.IncusImages{},
+			repoGetAllWithFilterErr:   boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:             "error - repo.DeleteByName",
+			ctx:              t.Context(),
+			filterExpression: `true`,
+
+			simplestreamsGetImageList: image.IncusImages{},
+			repoGetAllWithFilter: image.IncusImages{
+				// Supernumerous image.
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+			},
+			repoDeleteByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:             "error - filesRepo.DeleteVersionFile",
+			ctx:              t.Context(),
+			filterExpression: `true`,
+
+			simplestreamsGetImageList: image.IncusImages{
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+			},
+			repoGetAllWithFilter: image.IncusImages{
+				// Present in DB, but has supernumerous file.
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+								"root.tar.xz":  {}, // Additional file.
+							},
+						},
+					},
+				},
+			},
+			filesRepoDeleteVersionFileErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:             "error - filesRepo.UsageInformation",
+			ctx:              t.Context(),
+			filterExpression: `true`,
+
+			simplestreamsGetImageList: image.IncusImages{
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+								"root.tar.xz":  {}, // Additional file.
+							},
+						},
+					},
+				},
+			},
+			repoGetAllWithFilter: image.IncusImages{
+				// Present in DB, but misses file.
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+			},
+			filesRepoUsageInformationErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:             "error - invalid total disk space",
+			ctx:              t.Context(),
+			filterExpression: `true`,
+
+			simplestreamsGetImageList: image.IncusImages{
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+								"root.tar.xz":  {}, // Additional file.
+							},
+						},
+					},
+				},
+			},
+			repoGetAllWithFilter: image.IncusImages{
+				// Present in DB, but misses file.
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+			},
+			filesRepoUsageInformation: usageInfoGiB(0, 0), // total disk space invalid.
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Files repository reported an invalid total space")
+			},
+		},
+		{
+			name:             "error - not enough disk space available",
+			ctx:              t.Context(),
+			filterExpression: `true`,
+
+			simplestreamsGetImageList: image.IncusImages{
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+								"root.tar.xz":  {}, // Additional file.
+							},
+						},
+					},
+				},
+			},
+			repoGetAllWithFilter: image.IncusImages{
+				// Present in DB, but misses file.
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+			},
+			filesRepoUsageInformation: usageInfoGiB(10, 0), // total disk space invalid.
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Not enough space available in files repository")
+			},
+		},
+		{
+			name:             "error - simplestreams.GetFile",
+			ctx:              t.Context(),
+			filterExpression: `true`,
+
+			simplestreamsGetImageList: image.IncusImages{
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+								"root.tar.xz":  {},
+							},
+						},
+					},
+				},
+			},
+			repoGetAllWithFilter: image.IncusImages{
+				// Present in DB, but misses files.
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+			},
+			filesRepoUsageInformation: usageInfoGiB(50, 10),
+			simplestreamsGetFileErr:   boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:             "error - fileRepo.Put",
+			ctx:              t.Context(),
+			filterExpression: `true`,
+
+			simplestreamsGetImageList: image.IncusImages{
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz":  {},
+								"root01.tar.xz": {}, // 10 additional files all failing.
+								"root02.tar.xz": {}, // 10 additional files all failing.
+								"root03.tar.xz": {}, // 10 additional files all failing.
+								"root04.tar.xz": {}, // 10 additional files all failing.
+								"root05.tar.xz": {}, // 10 additional files all failing.
+								"root06.tar.xz": {}, // 10 additional files all failing.
+								"root07.tar.xz": {}, // 10 additional files all failing.
+								"root08.tar.xz": {}, // 10 additional files all failing.
+								"root09.tar.xz": {}, // 10 additional files all failing.
+								"root10.tar.xz": {}, // 10 additional files all failing.
+							},
+						},
+					},
+				},
+			},
+			repoGetAllWithFilter: image.IncusImages{
+				// Present in DB, but misses files.
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+			},
+			filesRepoUsageInformation: usageInfoGiB(50, 10),
+			filesRepoPutErr:           boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:             "error - fileRepo.Put - commit cancel error",
+			ctx:              t.Context(),
+			filterExpression: `true`,
+
+			simplestreamsGetImageList: image.IncusImages{
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+								"root.tar.xz":  {},
+							},
+						},
+					},
+				},
+			},
+			repoGetAllWithFilter: image.IncusImages{
+				// Present in DB, but misses files.
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+			},
+			filesRepoUsageInformation: usageInfoGiB(50, 10),
+			filesRepoPutCommitErr:     boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:             "error - fileRepo.Put - commit cancel error",
+			ctx:              t.Context(),
+			filterExpression: `true`,
+
+			simplestreamsGetImageList: image.IncusImages{
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+								"root.tar.xz":  {},
+							},
+						},
+					},
+				},
+			},
+			repoGetAllWithFilter: image.IncusImages{
+				// Present in DB, but misses files.
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+			},
+			filesRepoUsageInformation: usageInfoGiB(50, 10),
+			filesRepoPutErr:           errors.New("some error"),
+			filesRepoPutCancelErr:     boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:             "error - fileRepo.Put - invalid file hash",
+			ctx:              t.Context(),
+			filterExpression: `true`,
+
+			simplestreamsGetImageList: image.IncusImages{
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+								"root.tar.xz": {
+									HashSha256: "0000000000000000000000000000000000000000000000000000000000000000", // incorrect hash
+								},
+							},
+						},
+					},
+				},
+			},
+			repoGetAllWithFilter: image.IncusImages{
+				// Present in DB, but misses files.
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+			},
+			filesRepoUsageInformation: usageInfoGiB(50, 10),
+			simplestreamsGetFileRC:    io.NopCloser(bytes.NewBufferString(`dummy`)),
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Image file sha256 mismatch for image "alpine:edge:amd64:cloud", version "20260101", file "root.tar.xz" from source "linuxcontainers.org": manifest: 0000000000000000000000000000000000000000000000000000000000000000, actual: b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259`)
+			},
+		},
+		{
+			name:             "error - repo.Upsert",
+			ctx:              t.Context(),
+			filterExpression: `true`,
+
+			simplestreamsGetImageList: image.IncusImages{
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+								"root.tar.xz":  {},
+							},
+						},
+					},
+				},
+			},
+			repoGetAllWithFilter: image.IncusImages{
+				// Present in DB, but misses file.
+				{
+					Name:            "alpine:edge:amd64:cloud",
+					OperatingSystem: "Alpine",
+					Release:         "edge",
+					Architecture:    "amd64",
+					Variant:         "cloud",
+					Versions: api.IncusImageVersions{
+						"20260101": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"incus.tar.xz": {},
+							},
+						},
+					},
+				},
+			},
+			filesRepoUsageInformation: usageInfoGiB(50, 10),
+			repoUpsertErr:             boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ImageIncusRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter image.IncusImageFilter) (image.IncusImages, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+				DeleteByNameFunc: func(ctx context.Context, name string) error {
+					return tc.repoDeleteByNameErr
+				},
+				UpsertFunc: func(ctx context.Context, incusImage image.IncusImage) error {
+					return tc.repoUpsertErr
+				},
+			}
+
+			filesRepo := &mock.ImageIncusFileRepoMock{
+				DeleteVersionFileFunc: func(ctx context.Context, img *image.IncusImage, versionIdentifier, filename string) error {
+					return tc.filesRepoDeleteVersionFileErr
+				},
+				UsageInformationFunc: func(ctx context.Context) (image.UsageInformation, error) {
+					return tc.filesRepoUsageInformation, tc.filesRepoUsageInformationErr
+				},
+				PutFunc: func(ctx context.Context, img *image.IncusImage, versionIdentifier, filename string, content io.ReadCloser) (image.CommitFunc, image.CancelFunc, int64, error) {
+					if content != nil {
+						_, err := io.ReadAll(content)
+						require.NoError(t, err)
+					}
+
+					return func() error { return tc.filesRepoPutCommitErr }, func() error { return tc.filesRepoPutCancelErr }, 0, tc.filesRepoPutErr
+				},
+			}
+
+			simplestreams := &adapterMock.SimplestreamsPortMock{
+				GetImageListFunc: func(ctx context.Context, source image.ImageSource) (image.IncusImages, error) {
+					return tc.simplestreamsGetImageList, tc.simplestreamsGetImageListErr
+				},
+				GetFileFunc: func(ctx context.Context, source image.ImageSource, path string) (io.ReadCloser, error) {
+					return tc.simplestreamsGetFileRC, tc.simplestreamsGetFileErr
+				},
+			}
+
+			imageSvc := image.NewIncusImage(repo, filesRepo, simplestreams)
+
+			// Run test
+			err := imageSvc.RefreshFromSource(tc.ctx, image.ImageSource{
+				Name:             "linuxcontainers.org",
+				FilterExpression: tc.filterExpression,
+			})
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func usageInfoGiB(totalSpaceGiB int, availableSpaceGiB int) image.UsageInformation {
+	const GiB = 1024 * 1024 * 1024
+	return image.UsageInformation{
+		TotalSpaceBytes:     uint64(totalSpaceGiB) * GiB,
+		AvailableSpaceBytes: uint64(availableSpaceGiB) * GiB,
+		UsedSpaceBytes:      uint64(totalSpaceGiB-availableSpaceGiB) * GiB,
 	}
 }

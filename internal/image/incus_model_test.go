@@ -205,11 +205,7 @@ func TestValidateIncusImageArchitecture(t *testing.T) {
 			architecture: "invalid",
 
 			assertErr: errassert.ValidationErrorContains("Invalid incus image, architecture is not supported"),
-		},
-	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
 			err := image.ValidateIncusImageArchitecture(tc.architecture)
 			tc.assertErr(t, err)
 		})
@@ -246,6 +242,7 @@ func TestValidateIncusImageVersion(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			err := image.ValidateIncusImageVersion(tc.version)
+
 			tc.assertErr(t, err)
 		})
 	}
