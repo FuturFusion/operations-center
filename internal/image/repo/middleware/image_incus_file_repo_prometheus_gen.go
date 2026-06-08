@@ -67,6 +67,20 @@ func (_d ImageIncusFileRepoWithPrometheus) DeleteVersion(ctx context.Context, im
 	return _d.base.DeleteVersion(ctx, img, versionIdentifier)
 }
 
+// DeleteVersionFile implements image.ImageIncusFileRepo.
+func (_d ImageIncusFileRepoWithPrometheus) DeleteVersionFile(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		imageIncusFileRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteVersionFile", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteVersionFile(ctx, img, versionIdentifier, filename)
+}
+
 // Exists implements image.ImageIncusFileRepo.
 func (_d ImageIncusFileRepoWithPrometheus) Exists(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string) (b bool, err error) {
 	_since := time.Now()

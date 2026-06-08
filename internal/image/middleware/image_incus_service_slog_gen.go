@@ -110,6 +110,40 @@ func (_d ImageIncusServiceWithSlog) DeleteByName(ctx context.Context, name strin
 	return _d._base.DeleteByName(ctx, name)
 }
 
+// DeleteBySource implements image.ImageIncusService.
+func (_d ImageIncusServiceWithSlog) DeleteBySource(ctx context.Context, sourceName string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("sourceName", sourceName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling DeleteBySource")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method DeleteBySource returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method DeleteBySource returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method DeleteBySource finished")
+		}
+	}()
+	return _d._base.DeleteBySource(ctx, sourceName)
+}
+
 // DeleteVersionByName implements image.ImageIncusService.
 func (_d ImageIncusServiceWithSlog) DeleteVersionByName(ctx context.Context, name string, version string) (err error) {
 	log := slog.With()
@@ -286,6 +320,40 @@ func (_d ImageIncusServiceWithSlog) GetVersionFileByName(ctx context.Context, na
 	return _d._base.GetVersionFileByName(ctx, name, version, filename)
 }
 
+// RefreshFromSource implements image.ImageIncusService.
+func (_d ImageIncusServiceWithSlog) RefreshFromSource(ctx context.Context, source image.ImageSource) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("source", source),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RefreshFromSource")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method RefreshFromSource returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method RefreshFromSource returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method RefreshFromSource finished")
+		}
+	}()
+	return _d._base.RefreshFromSource(ctx, source)
+}
+
 // Update implements image.ImageIncusService.
 func (_d ImageIncusServiceWithSlog) Update(ctx context.Context, incusImage image.IncusImage) (err error) {
 	log := slog.With()
@@ -318,4 +386,38 @@ func (_d ImageIncusServiceWithSlog) Update(ctx context.Context, incusImage image
 		}
 	}()
 	return _d._base.Update(ctx, incusImage)
+}
+
+// ValidateFilterExpression implements image.ImageIncusService.
+func (_d ImageIncusServiceWithSlog) ValidateFilterExpression(ctx context.Context, filterExpression string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("filterExpression", filterExpression),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ValidateFilterExpression")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method ValidateFilterExpression returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method ValidateFilterExpression returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method ValidateFilterExpression finished")
+		}
+	}()
+	return _d._base.ValidateFilterExpression(ctx, filterExpression)
 }

@@ -66,6 +66,20 @@ func (_d ImageIncusRepoWithPrometheus) DeleteByName(ctx context.Context, name st
 	return _d.base.DeleteByName(ctx, name)
 }
 
+// ExistsByName implements image.ImageIncusRepo.
+func (_d ImageIncusRepoWithPrometheus) ExistsByName(ctx context.Context, name string) (b bool, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		imageIncusRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "ExistsByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ExistsByName(ctx, name)
+}
+
 // GetAll implements image.ImageIncusRepo.
 func (_d ImageIncusRepoWithPrometheus) GetAll(ctx context.Context) (incusImages image.IncusImages, err error) {
 	_since := time.Now()
@@ -94,6 +108,20 @@ func (_d ImageIncusRepoWithPrometheus) GetAllNames(ctx context.Context) (strings
 	return _d.base.GetAllNames(ctx)
 }
 
+// GetAllWithFilter implements image.ImageIncusRepo.
+func (_d ImageIncusRepoWithPrometheus) GetAllWithFilter(ctx context.Context, filter image.IncusImageFilter) (incusImages image.IncusImages, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		imageIncusRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByName implements image.ImageIncusRepo.
 func (_d ImageIncusRepoWithPrometheus) GetByName(ctx context.Context, name string) (incusImage *image.IncusImage, err error) {
 	_since := time.Now()
@@ -109,7 +137,7 @@ func (_d ImageIncusRepoWithPrometheus) GetByName(ctx context.Context, name strin
 }
 
 // Update implements image.ImageIncusRepo.
-func (_d ImageIncusRepoWithPrometheus) Update(ctx context.Context, newIncusImage image.IncusImage) (err error) {
+func (_d ImageIncusRepoWithPrometheus) Update(ctx context.Context, incusImage image.IncusImage) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -119,5 +147,19 @@ func (_d ImageIncusRepoWithPrometheus) Update(ctx context.Context, newIncusImage
 
 		imageIncusRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "Update", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.Update(ctx, newIncusImage)
+	return _d.base.Update(ctx, incusImage)
+}
+
+// Upsert implements image.ImageIncusRepo.
+func (_d ImageIncusRepoWithPrometheus) Upsert(ctx context.Context, incusImage image.IncusImage) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		imageIncusRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "Upsert", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Upsert(ctx, incusImage)
 }

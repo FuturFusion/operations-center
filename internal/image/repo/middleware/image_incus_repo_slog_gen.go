@@ -108,6 +108,41 @@ func (_d ImageIncusRepoWithSlog) DeleteByName(ctx context.Context, name string) 
 	return _d._base.DeleteByName(ctx, name)
 }
 
+// ExistsByName implements image.ImageIncusRepo.
+func (_d ImageIncusRepoWithSlog) ExistsByName(ctx context.Context, name string) (b bool, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ExistsByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Bool("b", b),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method ExistsByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method ExistsByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method ExistsByName finished")
+		}
+	}()
+	return _d._base.ExistsByName(ctx, name)
+}
+
 // GetAll implements image.ImageIncusRepo.
 func (_d ImageIncusRepoWithSlog) GetAll(ctx context.Context) (incusImages image.IncusImages, err error) {
 	log := slog.With()
@@ -176,6 +211,41 @@ func (_d ImageIncusRepoWithSlog) GetAllNames(ctx context.Context) (strings []str
 	return _d._base.GetAllNames(ctx)
 }
 
+// GetAllWithFilter implements image.ImageIncusRepo.
+func (_d ImageIncusRepoWithSlog) GetAllWithFilter(ctx context.Context, filter image.IncusImageFilter) (incusImages image.IncusImages, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetAllWithFilter")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("incusImages", incusImages),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByName implements image.ImageIncusRepo.
 func (_d ImageIncusRepoWithSlog) GetByName(ctx context.Context, name string) (incusImage *image.IncusImage, err error) {
 	log := slog.With()
@@ -212,12 +282,12 @@ func (_d ImageIncusRepoWithSlog) GetByName(ctx context.Context, name string) (in
 }
 
 // Update implements image.ImageIncusRepo.
-func (_d ImageIncusRepoWithSlog) Update(ctx context.Context, newIncusImage image.IncusImage) (err error) {
+func (_d ImageIncusRepoWithSlog) Update(ctx context.Context, incusImage image.IncusImage) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("newIncusImage", newIncusImage),
+			slog.Any("incusImage", incusImage),
 		)
 	}
 	log.DebugContext(ctx, "=> calling Update")
@@ -242,5 +312,39 @@ func (_d ImageIncusRepoWithSlog) Update(ctx context.Context, newIncusImage image
 			log.DebugContext(ctx, "<= method Update finished")
 		}
 	}()
-	return _d._base.Update(ctx, newIncusImage)
+	return _d._base.Update(ctx, incusImage)
+}
+
+// Upsert implements image.ImageIncusRepo.
+func (_d ImageIncusRepoWithSlog) Upsert(ctx context.Context, incusImage image.IncusImage) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("incusImage", incusImage),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Upsert")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method Upsert returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method Upsert returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method Upsert finished")
+		}
+	}()
+	return _d._base.Upsert(ctx, incusImage)
 }
