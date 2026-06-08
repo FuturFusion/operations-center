@@ -1,0 +1,1 @@
+package simplestreams_test
