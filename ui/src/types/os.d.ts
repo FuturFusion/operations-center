@@ -31,7 +31,7 @@ export interface IncusOSLog {
   _PID: string;
   __REALTIME_TIMESTAMP: string;
   __SYSLOG_IDENTIFIER: string;
-  MESSAGE: string;
+  MESSAGE: string | number[];
   SYSLOG_IDENTIFIER: string;
 }
 
