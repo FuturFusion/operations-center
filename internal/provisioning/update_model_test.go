@@ -133,6 +133,54 @@ func TestUpdate_Components(t *testing.T) {
 	}
 }
 
+func TestUpdate_Applications(t *testing.T) {
+	tests := []struct {
+		name string
+	}{
+		{
+			name: "success",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			update := provisioning.Update{
+				Files: provisioning.UpdateFiles{
+					{
+						Filename: "x86_64/IncusOS_202605310326.img.gz",
+					},
+					{
+						Filename: "x86_64/incus.raw.gz",
+					},
+					{
+						Filename: "x86_64/incus.manifest.json.gz",
+					},
+					{
+						Filename: "aarch64/incus.raw.gz",
+					},
+					{
+						Filename: "x86_64/incus-lts-7.0.raw.gz",
+					},
+					{
+						Filename: "x86_64/debug.raw.gz",
+					},
+				},
+			}
+
+			got := update.Applications()
+
+			want := []string{
+				"IncusOS",
+				"incus",
+				"incus-lts-7.0",
+				"debug",
+			}
+
+			require.ElementsMatch(t, want, got)
+		})
+	}
+}
+
 func TestUpdate_Filter(t *testing.T) {
 	tests := []struct {
 		name   string
