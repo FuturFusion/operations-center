@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net/url"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -64,6 +65,29 @@ func (u Update) Components() []images.UpdateFileComponent {
 	}
 
 	return components
+}
+
+func (u Update) Applications() []string {
+	applicationsSet := make(map[string]struct{})
+	for _, file := range u.Files {
+		osNameVersion, ok := strings.CutSuffix(filepath.Base(file.Filename), ".img.gz")
+		if ok {
+			osNameVersionParts := strings.Split(osNameVersion, "_")
+			applicationsSet[osNameVersionParts[0]] = struct{}{}
+		}
+
+		applicationName, ok := strings.CutSuffix(filepath.Base(file.Filename), ".raw.gz")
+		if ok {
+			applicationsSet[applicationName] = struct{}{}
+		}
+	}
+
+	applications := make([]string, 0, len(applicationsSet))
+	for application := range applicationsSet {
+		applications = append(applications, application)
+	}
+
+	return applications
 }
 
 type Updates []Update
