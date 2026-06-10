@@ -8,29 +8,37 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"mime/multipart"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
 
+	"github.com/expr-lang/expr"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/file"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type imageIncusService struct {
-	repo      ImageIncusRepo
-	filesRepo ImageIncusFileRepo
+	repo          ImageIncusRepo
+	filesRepo     ImageIncusFileRepo
+	simplestreams SimplestreamsPort
 }
 
 var _ ImageIncusService = &imageIncusService{}
 
-func New(repo ImageIncusRepo, filesRepo ImageIncusFileRepo) *imageIncusService {
+func NewIncusImage(repo ImageIncusRepo, filesRepo ImageIncusFileRepo, simplestreams SimplestreamsPort) *imageIncusService {
 	service := &imageIncusService{
-		repo:      repo,
-		filesRepo: filesRepo,
+		repo:          repo,
+		filesRepo:     filesRepo,
+		simplestreams: simplestreams,
 	}
 
 	return service
@@ -327,6 +335,10 @@ func (s *imageIncusService) DeleteByName(ctx context.Context, name string) error
 	return nil
 }
 
+func (s *imageIncusService) DeleteBySource(ctx context.Context, sourceName string) error {
+	panic("// FIXME: not implemented")
+}
+
 func (s *imageIncusService) DeleteVersionByName(ctx context.Context, name string, versionIdentifier string) error {
 	err := ValidateIncusImageName(name)
 	if err != nil {
@@ -408,4 +420,295 @@ func (s *imageIncusService) Update(ctx context.Context, incusImage IncusImage) e
 	}
 
 	return nil
+}
+
+func (s *imageIncusService) ValidateFilterExpression(ctx context.Context, filterExpression string) error {
+	if filterExpression != "" {
+		_, err := expr.Compile(
+			filterExpression,
+			expr.Env(ExprIncusImageVersionFile{}),
+			expr.AsBool(),
+			expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+		)
+		if err != nil {
+			return domain.NewValidationErrf(`Invalid config, failed to compile filter expression: %v`, err)
+		}
+	}
+
+	return nil
+}
+
+// RefreshFromSource refreshes the images from a given Incus image source.
+//
+// This operations is performed in the following steps:
+//
+//   - Get latest list of images from the provided source.
+//   - Get all existing images for this source from the DB.
+//   - Merge the two sets such that only images are downloaded, which pass the filter
+//     and are not yet present. Existing images might be updated (e.g. newer versions,
+//     missing files) in this process.
+//     Obsolete or supernumerous images, versions and files are removed.
+//   - Remove the images, version or files, which are marked for removal.
+//   - Download the images, version or files, that are part of the resulting state
+//     and not yet present on the system.
+func (s *imageIncusService) RefreshFromSource(ctx context.Context, source ImageSource) error {
+	originImages, err := s.simplestreams.GetImageList(ctx, source)
+	if err != nil {
+		return fmt.Errorf("Failed to refresh images from source %q: %w", source.Name, err)
+	}
+
+	originImages, err = filterImageVersionFilesByFilterExpression(originImages, source.FilterExpression)
+	if err != nil {
+		return fmt.Errorf("Failed to filter images from source %q: %w", source.Name, err)
+	}
+
+	dbImages, err := s.repo.GetAllWithFilter(ctx, IncusImageFilter{
+		Source: ptr.To(source.Name),
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to get images from DB for source %q: %w", source.Name, err)
+	}
+
+	imagesToDeleteFromDB := determineImagesToDeleteFromDB(originImages, dbImages)
+	for _, image := range imagesToDeleteFromDB {
+		err = s.repo.DeleteByName(ctx, image.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to remove obsolete image %q from DB: %w", image.Name, err)
+		}
+	}
+
+	originImageVersionFileLookup := getImageVersionFileLookup(originImages)
+	dbImageVersionFileLookup := getImageVersionFileLookup(dbImages)
+
+	// Delete supernoumerous files.
+	var errs []error
+	for _, image := range dbImages {
+		for versionIdentifier, version := range image.Versions {
+			for filename := range version.Items {
+				if originImageVersionFileLookup[imageVersionFileIdentifier(image, versionIdentifier, filename)] {
+					continue
+				}
+
+				err := s.filesRepo.DeleteVersionFile(ctx, &image, versionIdentifier, filename)
+				if err != nil {
+					errs = append(errs, err)
+					continue
+				}
+			}
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("Failed to remove supernoumerous images from source %q: %w", source.Name, errors.Join(errs...))
+	}
+
+	// Iterate images, check if files exist, download if not.
+syncImages:
+	for _, image := range originImages {
+		// Make sure, we do have enough space left in the files repository before downloading the files.
+		err = s.isSpaceAvailable(ctx, image)
+		if err != nil {
+			errs = append(errs, err)
+			break syncImages
+		}
+
+		for versionIdentifier, version := range image.Versions {
+			for filename, fileItem := range version.Items {
+				if dbImageVersionFileLookup[imageVersionFileIdentifier(image, versionIdentifier, filename)] {
+					continue
+				}
+
+				downloadItem := downloadItem{
+					source:            source,
+					image:             &image,
+					versionIdentifier: versionIdentifier,
+					filename:          filename,
+					file:              fileItem,
+				}
+				err = s.downloadFile(ctx, downloadItem)
+				if err != nil {
+					errs = append(errs, err)
+					continue
+				}
+			}
+
+			if len(errs) >= 10 {
+				break syncImages
+			}
+		}
+
+		err := s.repo.Upsert(ctx, image)
+		if err != nil {
+			errs = append([]error{err}, errs...)
+			return fmt.Errorf("Failed to update image %q in DB: %w", image.Name, errors.Join(errs...))
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("Failed to sync from source %q: %w", source.Name, errors.Join(errs...))
+	}
+
+	return nil
+}
+
+func filterImageVersionFilesByFilterExpression(images IncusImages, filterExpression string) (IncusImages, error) {
+	// No filter set defaults to filter everything to prevent users from accidentally downloading
+	// huge number of files unnecessarily. If a user wants do download everything on purpose,
+	// the filter expression can be set to "true".
+	if filterExpression == "" {
+		return IncusImages{}, nil
+	}
+
+	filterExpressionProgram, err := expr.Compile(
+		filterExpression,
+		expr.Env(ExprIncusImageVersionFile{}),
+		expr.AsBool(),
+		expr.Patch(expropts.UnderlyingBaseTypePatcher{}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	n := 0
+	for i, image := range images {
+		for versionIdentifier, version := range image.Versions {
+			for filename, fileItem := range version.Items {
+				exprIncusImageVersionFile := ExprIncusImageVersionFile{
+					Name:            image.Name,
+					OperatingSystem: image.OperatingSystem,
+					Release:         image.Release,
+					Architecture:    image.Architecture,
+					Variant:         image.Variant,
+					Version:         versionIdentifier,
+					Filename:        filename,
+					FileType:        fileItem.FileType,
+					Size:            fileItem.Size,
+				}
+
+				result, err := expr.Run(filterExpressionProgram, exprIncusImageVersionFile)
+				if err != nil {
+					return nil, err
+				}
+
+				if !result.(bool) {
+					delete(images[i].Versions[versionIdentifier].Items, filename)
+				}
+			}
+
+			if len(images[i].Versions[versionIdentifier].Items) == 0 {
+				delete(images[i].Versions, versionIdentifier)
+			}
+		}
+
+		if len(images[i].Versions) == 0 {
+			continue
+		}
+
+		images[n] = images[i]
+		n++
+	}
+
+	return images[:n], nil
+}
+
+func determineImagesToDeleteFromDB(originImages IncusImages, dbImages IncusImages) IncusImages {
+	originImageNames := make(map[string]bool, len(originImages))
+	for _, image := range originImages {
+		originImageNames[image.Name] = true
+	}
+
+	imagesToDeleteFromDB := make(IncusImages, 0, len(dbImages))
+	for _, image := range dbImages {
+		if originImageNames[image.Name] {
+			continue
+		}
+
+		imagesToDeleteFromDB = append(imagesToDeleteFromDB, image)
+	}
+
+	return imagesToDeleteFromDB
+}
+
+func getImageVersionFileLookup(images IncusImages) map[string]bool {
+	lookup := map[string]bool{}
+	for _, image := range images {
+		for versionIdentifier, version := range image.Versions {
+			for filename := range version.Items {
+				lookup[imageVersionFileIdentifier(image, versionIdentifier, filename)] = true
+			}
+		}
+	}
+
+	return lookup
+}
+
+func imageVersionFileIdentifier(image IncusImage, versionIdentifier string, filename string) string {
+	return path.Join(image.Path(), versionIdentifier, filename)
+}
+
+func (s *imageIncusService) isSpaceAvailable(ctx context.Context, downloadImage IncusImage) error {
+	var requiredSpaceTotal int64
+	for _, version := range downloadImage.Versions {
+		for _, fileItem := range version.Items {
+			requiredSpaceTotal += fileItem.Size
+		}
+	}
+
+	ui, err := s.filesRepo.UsageInformation(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to get usage information: %w", err)
+	}
+
+	if ui.TotalSpaceBytes < 1 {
+		return fmt.Errorf("Files repository reported an invalid total space: %d", ui.TotalSpaceBytes)
+	}
+
+	if (float64(ui.AvailableSpaceBytes)-float64(requiredSpaceTotal))/float64(ui.TotalSpaceBytes) < 0.1 {
+		return fmt.Errorf("Not enough space available in files repository, require: %d, available: %d, required headroom after download: 10%%", requiredSpaceTotal, ui.AvailableSpaceBytes)
+	}
+
+	return nil
+}
+
+type downloadItem struct {
+	source            ImageSource
+	image             *IncusImage
+	versionIdentifier string
+	filename          string
+	file              api.IncusImageVersionItem
+}
+
+func (s *imageIncusService) downloadFile(ctx context.Context, item downloadItem) error {
+	stream, err := s.simplestreams.GetFile(ctx, item.source, item.file.Path)
+	if err != nil {
+		return fmt.Errorf(`Failed to fetch image %q, version %q, file %q from source %q: %w`, item.image.Name, item.versionIdentifier, item.filename, item.source.Name, err)
+	}
+
+	teeStream := stream
+	var h hash.Hash
+
+	if item.file.HashSha256 != "" {
+		h = sha256.New()
+		teeStream = file.NewTeeReadCloser(stream, h)
+	}
+
+	commit, cancel, _, err := s.filesRepo.Put(ctx, item.image, item.versionIdentifier, item.filename, teeStream)
+	defer func() {
+		cancelErr := cancel()
+		if cancelErr != nil {
+			err = errors.Join(err, cancelErr)
+		}
+	}()
+	if err != nil {
+		return fmt.Errorf(`Failed to save stream for image %q, version %q, file %q from source %q: %w`, item.image.Name, item.versionIdentifier, item.filename, item.source.Name, err)
+	}
+
+	if item.file.HashSha256 != "" {
+		checksum := hex.EncodeToString(h.Sum(nil))
+		if item.file.HashSha256 != checksum {
+			return fmt.Errorf("Image file sha256 mismatch for image %q, version %q, file %q from source %q: manifest %s, actual: %s", item.image.Name, item.versionIdentifier, item.filename, item.source.Name, item.file.HashSha256, checksum)
+		}
+	}
+
+	return commit()
 }

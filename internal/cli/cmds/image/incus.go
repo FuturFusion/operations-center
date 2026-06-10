@@ -79,7 +79,7 @@ func (c *CmdIncusImage) Command() *cobra.Command {
 
 	cmd.AddCommand(incusImageRemoveCmd.Command())
 
-	// Remove
+	// Remove version
 	incusImageVersionRemoveCmd := cmdIncusImageVersionRemove{
 		ocClient: c.OCClient,
 	}
@@ -287,9 +287,9 @@ type cmdIncusImageEdit struct {
 func (c *cmdIncusImageEdit) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "edit <name>"
-	cmd.Short = "Edit incus image"
+	cmd.Short = "Edit Incus image"
 	cmd.Long = `Description:
-  Edit the incus image
+  Edit the Incus image
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -436,7 +436,7 @@ func (c *cmdIncusImageRemove) run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Remove incus image.
+// Remove incus image version.
 type cmdIncusImageVersionRemove struct {
 	ocClient *client.OperationsCenterClient
 }

@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -12,7 +13,7 @@ import (
 // swagger:model
 type IncusImagePut struct {
 	// Aliases of the incus image.
-	Aliases []string `json:"aliases" yaml:"aliases"`
+	Aliases IncusImageAlias `json:"aliases" yaml:"aliases"`
 
 	// Description of the incus image.
 	Description string `json:"description" yaml:"description"`
@@ -53,6 +54,36 @@ type IncusImage struct {
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
 	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
+}
+
+type IncusImageAlias []string
+
+func (i *IncusImageAlias) UnmarshalJSON(data []byte) error {
+	var aliasList []string
+	err := json.Unmarshal(data, &aliasList)
+	if err == nil {
+		*i = aliasList
+		return nil
+	}
+
+	var aliasCSV string
+	err = json.Unmarshal(data, &aliasCSV)
+	if err == nil {
+		if aliasCSV == "" {
+			*i = nil
+			return nil
+		}
+
+		aliases := strings.Split(aliasCSV, ",")
+		for i := range aliases {
+			aliases[i] = strings.TrimSpace(aliases[i])
+		}
+
+		*i = aliases
+		return nil
+	}
+
+	return fmt.Errorf("IncusImageAlias: expected string or []string")
 }
 
 type IncusImageVersion struct {

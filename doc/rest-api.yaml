@@ -731,6 +731,81 @@ definitions:
                 $ref: '#/definitions/ResourcesUSB'
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ImageSource:
+        properties:
+            filter_expression:
+                description: |-
+                    FilterExression applied when fetching images from the image source.
+                    Only images matching the filter expression are fetched.
+                example: Architecture == "amd64"
+                type: string
+                x-go-name: FilterExpression
+            last_updated:
+                description: LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
+                example: "2024-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: LastUpdated
+            name:
+                description: Name of the image source.
+                example: linuxcontainers.org
+                type: string
+                x-go-name: Name
+            type:
+                $ref: '#/definitions/ImageSourceType'
+            url:
+                description: URL of the image source.
+                example: https://images.linuxcontainers.org
+                type: string
+                x-go-name: URL
+        title: ImageSource defines an image source like images.linuxcontainers.org.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ImageSourcePost:
+        properties:
+            filter_expression:
+                description: |-
+                    FilterExression applied when fetching images from the image source.
+                    Only images matching the filter expression are fetched.
+                example: Architecture == "amd64"
+                type: string
+                x-go-name: FilterExpression
+            name:
+                description: Name of the image source.
+                example: linuxcontainers.org
+                type: string
+                x-go-name: Name
+            type:
+                $ref: '#/definitions/ImageSourceType'
+            url:
+                description: URL of the image source.
+                example: https://images.linuxcontainers.org
+                type: string
+                x-go-name: URL
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ImageSourcePut:
+        properties:
+            filter_expression:
+                description: |-
+                    FilterExression applied when fetching images from the image source.
+                    Only images matching the filter expression are fetched.
+                example: Architecture == "amd64"
+                type: string
+                x-go-name: FilterExpression
+            type:
+                $ref: '#/definitions/ImageSourceType'
+            url:
+                description: URL of the image source.
+                example: https://images.linuxcontainers.org
+                type: string
+                x-go-name: URL
+        title: ImageSourcePut represents the fields available for update for an image source.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ImageSourceType:
+        type: string
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     InMaintenanceState:
         format: int64
         type: integer
@@ -738,11 +813,7 @@ definitions:
     IncusImage:
         properties:
             aliases:
-                description: Aliases of the incus image.
-                items:
-                    type: string
-                type: array
-                x-go-name: Aliases
+                $ref: '#/definitions/IncusImageAlias'
             arch:
                 description: Architecture the incus image is built for.
                 example: amd64
@@ -787,14 +858,15 @@ definitions:
         title: IncusImage defines an incus image.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    IncusImageAlias:
+        items:
+            type: string
+        type: array
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     IncusImagePut:
         properties:
             aliases:
-                description: Aliases of the incus image.
-                items:
-                    type: string
-                type: array
-                x-go-name: Aliases
+                $ref: '#/definitions/IncusImageAlias'
             description:
                 description: Description of the incus image.
                 type: string
@@ -4621,7 +4693,7 @@ paths:
     /1.0/image/incus?recursion=1:
         get:
             description: Returns a list of incus images (structs).
-            operationId: incus_get_recursion
+            operationId: incus_images_get_recursion
             produces:
                 - application/json
             responses:
@@ -4654,7 +4726,212 @@ paths:
                     $ref: '#/responses/InternalServerError'
             summary: Get the list of incus images
             tags:
-                - incus
+                - incus_images
+    /1.0/image/sources:
+        get:
+            description: Returns a list of image sources (URLs).
+            operationId: image_sources_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API image sources
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of image sources
+                                example: |-
+                                    [
+                                      "/1.0/image/sources/linuxcontainer.org",
+                                      "/1.0/image/sources/images.org"
+                                    ]
+                                items:
+                                    type: string
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the list of image sources
+            tags:
+                - image_sources
+        post:
+            consumes:
+                - application/json
+            description: Creates a new image source.
+            operationId: image_sources_post
+            parameters:
+                - description: Image source configuration
+                  in: body
+                  name: image_source
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ImageSourcePost'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Add an image source
+            tags:
+                - image_sources
+    /1.0/image/sources/{name}:
+        delete:
+            description: Removes the image source.
+            operationId: image_source_delete
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Delete the image source
+            tags:
+                - image_source
+        get:
+            description: Gets a specific image source.
+            operationId: image_source_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Image source
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/ImageSource'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the image source
+            tags:
+                - image_source
+        put:
+            consumes:
+                - application/json
+            description: Updates the image source.
+            operationId: image_source_put
+            parameters:
+                - description: Image source
+                  in: body
+                  name: image_source
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ImageSource'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update the image source
+            tags:
+                - image_source
+    /1.0/image/sources/{name}/:refresh:
+        post:
+            description: |-
+                Refresh the image source by fetching the available images, which
+                pass the filter, from origin and update the state in the DB and in the
+                files repository.
+            operationId: image_source_refresh_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Refresh the image source
+            tags:
+                - image_source
+    /1.0/image/sources?recursion=1:
+        get:
+            description: Returns a list of image sources (structs).
+            operationId: image_sources_get_recursion
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API image sources
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of image sources
+                                items:
+                                    $ref: '#/definitions/ImageSource'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the list of image sources
+            tags:
+                - image_sources
     /1.0/inventory/images:
         get:
             description: Returns a list of images (list of relative URLs).

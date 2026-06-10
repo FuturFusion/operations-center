@@ -5,9 +5,10 @@ package provisioning
 import (
 	"time"
 
-	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
+
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type ExprUpdate struct {

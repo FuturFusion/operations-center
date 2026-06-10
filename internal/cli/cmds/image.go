@@ -25,11 +25,17 @@ func (c *CmdImage) Command() *cobra.Command {
 	cmd.Args = cobra.NoArgs
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
-	ChannelCmd := image.CmdIncusImage{
+	IncusImageCmd := image.CmdIncusImage{
 		OCClient: c.OCClient,
 	}
 
-	cmd.AddCommand(ChannelCmd.Command())
+	cmd.AddCommand(IncusImageCmd.Command())
+
+	SourceCmd := image.CmdSource{
+		OCClient: c.OCClient,
+	}
+
+	cmd.AddCommand(SourceCmd.Command())
 
 	return cmd
 }

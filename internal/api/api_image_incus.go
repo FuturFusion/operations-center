@@ -191,7 +191,7 @@ func (i *imageIncusHandler) simplestreamsPublicImagesGet(r *http.Request) respon
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/image/incus?recursion=1 incus incus_get_recursion
+// swagger:operation GET /1.0/image/incus?recursion=1 incus_images incus_images_get_recursion
 //
 //	Get the list of incus images
 //

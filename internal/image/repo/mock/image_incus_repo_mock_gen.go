@@ -27,17 +27,26 @@ var _ image.ImageIncusRepo = &ImageIncusRepoMock{}
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the DeleteByName method")
 //			},
+//			ExistsByNameFunc: func(ctx context.Context, name string) (bool, error) {
+//				panic("mock out the ExistsByName method")
+//			},
 //			GetAllFunc: func(ctx context.Context) (image.IncusImages, error) {
 //				panic("mock out the GetAll method")
 //			},
 //			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
 //				panic("mock out the GetAllNames method")
 //			},
+//			GetAllWithFilterFunc: func(ctx context.Context, filter image.IncusImageFilter) (image.IncusImages, error) {
+//				panic("mock out the GetAllWithFilter method")
+//			},
 //			GetByNameFunc: func(ctx context.Context, name string) (*image.IncusImage, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			UpdateFunc: func(ctx context.Context, newIncusImage image.IncusImage) error {
+//			UpdateFunc: func(ctx context.Context, incusImage image.IncusImage) error {
 //				panic("mock out the Update method")
+//			},
+//			UpsertFunc: func(ctx context.Context, incusImage image.IncusImage) error {
+//				panic("mock out the Upsert method")
 //			},
 //		}
 //
@@ -52,17 +61,26 @@ type ImageIncusRepoMock struct {
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
 
+	// ExistsByNameFunc mocks the ExistsByName method.
+	ExistsByNameFunc func(ctx context.Context, name string) (bool, error)
+
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (image.IncusImages, error)
 
 	// GetAllNamesFunc mocks the GetAllNames method.
 	GetAllNamesFunc func(ctx context.Context) ([]string, error)
 
+	// GetAllWithFilterFunc mocks the GetAllWithFilter method.
+	GetAllWithFilterFunc func(ctx context.Context, filter image.IncusImageFilter) (image.IncusImages, error)
+
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*image.IncusImage, error)
 
 	// UpdateFunc mocks the Update method.
-	UpdateFunc func(ctx context.Context, newIncusImage image.IncusImage) error
+	UpdateFunc func(ctx context.Context, incusImage image.IncusImage) error
+
+	// UpsertFunc mocks the Upsert method.
+	UpsertFunc func(ctx context.Context, incusImage image.IncusImage) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -80,6 +98,13 @@ type ImageIncusRepoMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// ExistsByName holds details about calls to the ExistsByName method.
+		ExistsByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
 			// Ctx is the ctx argument value.
@@ -89,6 +114,13 @@ type ImageIncusRepoMock struct {
 		GetAllNames []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+		}
+		// GetAllWithFilter holds details about calls to the GetAllWithFilter method.
+		GetAllWithFilter []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Filter is the filter argument value.
+			Filter image.IncusImageFilter
 		}
 		// GetByName holds details about calls to the GetByName method.
 		GetByName []struct {
@@ -101,16 +133,26 @@ type ImageIncusRepoMock struct {
 		Update []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// NewIncusImage is the newIncusImage argument value.
-			NewIncusImage image.IncusImage
+			// IncusImage is the incusImage argument value.
+			IncusImage image.IncusImage
+		}
+		// Upsert holds details about calls to the Upsert method.
+		Upsert []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// IncusImage is the incusImage argument value.
+			IncusImage image.IncusImage
 		}
 	}
-	lockCreate       sync.RWMutex
-	lockDeleteByName sync.RWMutex
-	lockGetAll       sync.RWMutex
-	lockGetAllNames  sync.RWMutex
-	lockGetByName    sync.RWMutex
-	lockUpdate       sync.RWMutex
+	lockCreate           sync.RWMutex
+	lockDeleteByName     sync.RWMutex
+	lockExistsByName     sync.RWMutex
+	lockGetAll           sync.RWMutex
+	lockGetAllNames      sync.RWMutex
+	lockGetAllWithFilter sync.RWMutex
+	lockGetByName        sync.RWMutex
+	lockUpdate           sync.RWMutex
+	lockUpsert           sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -185,6 +227,42 @@ func (mock *ImageIncusRepoMock) DeleteByNameCalls() []struct {
 	return calls
 }
 
+// ExistsByName calls ExistsByNameFunc.
+func (mock *ImageIncusRepoMock) ExistsByName(ctx context.Context, name string) (bool, error) {
+	if mock.ExistsByNameFunc == nil {
+		panic("ImageIncusRepoMock.ExistsByNameFunc: method is nil but ImageIncusRepo.ExistsByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockExistsByName.Lock()
+	mock.calls.ExistsByName = append(mock.calls.ExistsByName, callInfo)
+	mock.lockExistsByName.Unlock()
+	return mock.ExistsByNameFunc(ctx, name)
+}
+
+// ExistsByNameCalls gets all the calls that were made to ExistsByName.
+// Check the length with:
+//
+//	len(mockedImageIncusRepo.ExistsByNameCalls())
+func (mock *ImageIncusRepoMock) ExistsByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockExistsByName.RLock()
+	calls = mock.calls.ExistsByName
+	mock.lockExistsByName.RUnlock()
+	return calls
+}
+
 // GetAll calls GetAllFunc.
 func (mock *ImageIncusRepoMock) GetAll(ctx context.Context) (image.IncusImages, error) {
 	if mock.GetAllFunc == nil {
@@ -249,6 +327,42 @@ func (mock *ImageIncusRepoMock) GetAllNamesCalls() []struct {
 	return calls
 }
 
+// GetAllWithFilter calls GetAllWithFilterFunc.
+func (mock *ImageIncusRepoMock) GetAllWithFilter(ctx context.Context, filter image.IncusImageFilter) (image.IncusImages, error) {
+	if mock.GetAllWithFilterFunc == nil {
+		panic("ImageIncusRepoMock.GetAllWithFilterFunc: method is nil but ImageIncusRepo.GetAllWithFilter was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Filter image.IncusImageFilter
+	}{
+		Ctx:    ctx,
+		Filter: filter,
+	}
+	mock.lockGetAllWithFilter.Lock()
+	mock.calls.GetAllWithFilter = append(mock.calls.GetAllWithFilter, callInfo)
+	mock.lockGetAllWithFilter.Unlock()
+	return mock.GetAllWithFilterFunc(ctx, filter)
+}
+
+// GetAllWithFilterCalls gets all the calls that were made to GetAllWithFilter.
+// Check the length with:
+//
+//	len(mockedImageIncusRepo.GetAllWithFilterCalls())
+func (mock *ImageIncusRepoMock) GetAllWithFilterCalls() []struct {
+	Ctx    context.Context
+	Filter image.IncusImageFilter
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Filter image.IncusImageFilter
+	}
+	mock.lockGetAllWithFilter.RLock()
+	calls = mock.calls.GetAllWithFilter
+	mock.lockGetAllWithFilter.RUnlock()
+	return calls
+}
+
 // GetByName calls GetByNameFunc.
 func (mock *ImageIncusRepoMock) GetByName(ctx context.Context, name string) (*image.IncusImage, error) {
 	if mock.GetByNameFunc == nil {
@@ -286,21 +400,21 @@ func (mock *ImageIncusRepoMock) GetByNameCalls() []struct {
 }
 
 // Update calls UpdateFunc.
-func (mock *ImageIncusRepoMock) Update(ctx context.Context, newIncusImage image.IncusImage) error {
+func (mock *ImageIncusRepoMock) Update(ctx context.Context, incusImage image.IncusImage) error {
 	if mock.UpdateFunc == nil {
 		panic("ImageIncusRepoMock.UpdateFunc: method is nil but ImageIncusRepo.Update was just called")
 	}
 	callInfo := struct {
-		Ctx           context.Context
-		NewIncusImage image.IncusImage
+		Ctx        context.Context
+		IncusImage image.IncusImage
 	}{
-		Ctx:           ctx,
-		NewIncusImage: newIncusImage,
+		Ctx:        ctx,
+		IncusImage: incusImage,
 	}
 	mock.lockUpdate.Lock()
 	mock.calls.Update = append(mock.calls.Update, callInfo)
 	mock.lockUpdate.Unlock()
-	return mock.UpdateFunc(ctx, newIncusImage)
+	return mock.UpdateFunc(ctx, incusImage)
 }
 
 // UpdateCalls gets all the calls that were made to Update.
@@ -308,15 +422,51 @@ func (mock *ImageIncusRepoMock) Update(ctx context.Context, newIncusImage image.
 //
 //	len(mockedImageIncusRepo.UpdateCalls())
 func (mock *ImageIncusRepoMock) UpdateCalls() []struct {
-	Ctx           context.Context
-	NewIncusImage image.IncusImage
+	Ctx        context.Context
+	IncusImage image.IncusImage
 } {
 	var calls []struct {
-		Ctx           context.Context
-		NewIncusImage image.IncusImage
+		Ctx        context.Context
+		IncusImage image.IncusImage
 	}
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update
 	mock.lockUpdate.RUnlock()
+	return calls
+}
+
+// Upsert calls UpsertFunc.
+func (mock *ImageIncusRepoMock) Upsert(ctx context.Context, incusImage image.IncusImage) error {
+	if mock.UpsertFunc == nil {
+		panic("ImageIncusRepoMock.UpsertFunc: method is nil but ImageIncusRepo.Upsert was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		IncusImage image.IncusImage
+	}{
+		Ctx:        ctx,
+		IncusImage: incusImage,
+	}
+	mock.lockUpsert.Lock()
+	mock.calls.Upsert = append(mock.calls.Upsert, callInfo)
+	mock.lockUpsert.Unlock()
+	return mock.UpsertFunc(ctx, incusImage)
+}
+
+// UpsertCalls gets all the calls that were made to Upsert.
+// Check the length with:
+//
+//	len(mockedImageIncusRepo.UpsertCalls())
+func (mock *ImageIncusRepoMock) UpsertCalls() []struct {
+	Ctx        context.Context
+	IncusImage image.IncusImage
+} {
+	var calls []struct {
+		Ctx        context.Context
+		IncusImage image.IncusImage
+	}
+	mock.lockUpsert.RLock()
+	calls = mock.calls.Upsert
+	mock.lockUpsert.RUnlock()
 	return calls
 }
