@@ -767,7 +767,7 @@ func TestServerService_GetByName(t *testing.T) {
 				ConnectionURL: "http://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
-						Name:        "os",
+						Name:        "IncusOS",
 						Version:     "2",
 						VersionNext: "2",
 					},
@@ -788,13 +788,13 @@ func TestServerService_GetByName(t *testing.T) {
 					Version: "2",
 					Files: provisioning.UpdateFiles{
 						{
-							Component: images.UpdateFileComponentOS,
+							Filename: "x86_64/IncusOS_20260610.img.gz",
 						},
 						{
-							Component: images.UpdateFileComponentIncus,
+							Filename: "x86_64/incus.raw.gz",
 						},
 						{
-							Component: images.UpdateFileComponentIncusCeph,
+							Filename: "x86_64/incus-ceph.raw.gz",
 						},
 					},
 				},
@@ -802,13 +802,13 @@ func TestServerService_GetByName(t *testing.T) {
 					Version: "1",
 					Files: provisioning.UpdateFiles{
 						{
-							Component: images.UpdateFileComponentOS,
+							Filename: "x86_64/IncusOS_20260610.img.gz",
 						},
 						{
-							Component: images.UpdateFileComponentIncus,
+							Filename: "x86_64/incus.raw.gz",
 						},
 						{
-							Component: images.UpdateFileComponentIncusCeph,
+							Filename: "x86_64/incus-ceph.raw.gz",
 						},
 					},
 				},
@@ -821,7 +821,7 @@ func TestServerService_GetByName(t *testing.T) {
 				ConnectionURL: "http://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
-						Name:             "os",
+						Name:             "IncusOS",
 						Version:          "2",
 						VersionNext:      "2",
 						AvailableVersion: ptr.To("2"),
@@ -856,7 +856,7 @@ func TestServerService_GetByName(t *testing.T) {
 				ConnectionURL: "http://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
-						Name:        "os",
+						Name:        "IncusOS",
 						Version:     "2",
 						VersionNext: "2",
 					},
@@ -877,13 +877,13 @@ func TestServerService_GetByName(t *testing.T) {
 					Version: "3",
 					Files: provisioning.UpdateFiles{
 						{
-							Component: images.UpdateFileComponentOS,
+							Filename: "x86_64/IncusOS_20260610.img.gz",
 						},
 						{
-							Component: images.UpdateFileComponentIncus,
+							Filename: "x86_64/incus.raw.gz",
 						},
 						{
-							Component: images.UpdateFileComponentIncusCeph,
+							Filename: "x86_64/incus-ceph.raw.gz",
 						},
 					},
 				},
@@ -891,13 +891,13 @@ func TestServerService_GetByName(t *testing.T) {
 					Version: "2",
 					Files: provisioning.UpdateFiles{
 						{
-							Component: images.UpdateFileComponentOS,
+							Filename: "x86_64/IncusOS_20260610.img.gz",
 						},
 						{
-							Component: images.UpdateFileComponentIncus,
+							Filename: "x86_64/incus.raw.gz",
 						},
 						{
-							Component: images.UpdateFileComponentIncusCeph,
+							Filename: "x86_64/incus-ceph.raw.gz",
 						},
 					},
 				},
@@ -905,13 +905,13 @@ func TestServerService_GetByName(t *testing.T) {
 					Version: "1",
 					Files: provisioning.UpdateFiles{
 						{
-							Component: images.UpdateFileComponentOS,
+							Filename: "x86_64/IncusOS_20260610.img.gz",
 						},
 						{
-							Component: images.UpdateFileComponentIncus,
+							Filename: "x86_64/incus.raw.gz",
 						},
 						{
-							Component: images.UpdateFileComponentIncusCeph,
+							Filename: "x86_64/incus-ceph.raw.gz",
 						},
 					},
 				},
@@ -924,7 +924,7 @@ func TestServerService_GetByName(t *testing.T) {
 				ConnectionURL: "http://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
-						Name:             "os",
+						Name:             "IncusOS",
 						Version:          "2",
 						VersionNext:      "2",
 						AvailableVersion: ptr.To("3"),
@@ -959,7 +959,7 @@ func TestServerService_GetByName(t *testing.T) {
 				ConnectionURL: "http://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
-						Name:        "os",
+						Name:        "IncusOS",
 						Version:     "2",
 						VersionNext: "2",
 					},
@@ -980,10 +980,10 @@ func TestServerService_GetByName(t *testing.T) {
 					Version: "2",
 					Files: provisioning.UpdateFiles{
 						{
-							Component: images.UpdateFileComponentOS,
+							Filename: "x86_64/IncusOS_20260610.img.gz",
 						},
 						{
-							Component: images.UpdateFileComponentIncus,
+							Filename: "x86_64/incus.raw.gz",
 						},
 						// incus-ceph missing here
 					},
@@ -992,10 +992,10 @@ func TestServerService_GetByName(t *testing.T) {
 					Version: "1",
 					Files: provisioning.UpdateFiles{
 						{
-							Component: images.UpdateFileComponentOS,
+							Filename: "x86_64/IncusOS_20260610.img.gz",
 						},
 						{
-							Component: images.UpdateFileComponentIncus,
+							Filename: "x86_64/incus.raw.gz",
 						},
 						// incus-ceph missing here
 					},
@@ -1009,7 +1009,7 @@ func TestServerService_GetByName(t *testing.T) {
 				ConnectionURL: "http://one/",
 				VersionData: api.ServerVersionData{
 					OS: api.OSVersionData{
-						Name:             "os",
+						Name:             "IncusOS",
 						Version:          "2",
 						VersionNext:      "2",
 						AvailableVersion: ptr.To("2"),
@@ -4137,6 +4137,10 @@ func TestServerService_PollServer(t *testing.T) {
 				Status:       api.ServerStatusReady,
 				StatusDetail: api.ServerStatusDetailReadyEvacuating,
 				VersionData: api.ServerVersionData{
+					OS: api.OSVersionData{
+						Name:    "IncusOS",
+						Version: "1",
+					},
 					Applications: []api.ApplicationVersionData{
 						{
 							Name:          "incus",
@@ -4163,6 +4167,10 @@ func TestServerService_PollServer(t *testing.T) {
 				},
 			},
 			clientGetVersionData: api.ServerVersionData{
+				OS: api.OSVersionData{
+					Name:    "IncusOS",
+					Version: "1",
+				},
 				Applications: []api.ApplicationVersionData{
 					{
 						Name:          "incus",
@@ -4178,10 +4186,10 @@ func TestServerService_PollServer(t *testing.T) {
 					Channels: []string{"stable"},
 					Files: provisioning.UpdateFiles{
 						{
-							Component: images.UpdateFileComponentOS,
+							Filename: "x86_64/IncusOS_20260610.img.gz",
 						},
 						{
-							Component: images.UpdateFileComponentIncus,
+							Filename: "x86_64/incus.raw.gz",
 						},
 					},
 				},
@@ -5009,7 +5017,7 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
 							OS: api.OSVersionData{
-								Name:    "os",
+								Name:    "IncusOS",
 								Version: "1",
 							},
 							Applications: []api.ApplicationVersionData{
@@ -5032,10 +5040,10 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 							Channels: []string{"stable"},
 							Files: provisioning.UpdateFiles{
 								{
-									Component: images.UpdateFileComponentOS,
+									Filename: "x86_64/IncusOS_20260610.img.gz",
 								},
 								{
-									Component: images.UpdateFileComponentIncus,
+									Filename: "x86_64/incus.raw.gz",
 								},
 							},
 						},
@@ -5045,10 +5053,10 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 							Channels: []string{"stable"},
 							Files: provisioning.UpdateFiles{
 								{
-									Component: images.UpdateFileComponentOS,
+									Filename: "x86_64/IncusOS_20260610.img.gz",
 								},
 								{
-									Component: images.UpdateFileComponentIncus,
+									Filename: "x86_64/incus.raw.gz",
 								},
 							},
 						},
@@ -5063,10 +5071,10 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 							Channels: []string{"stable"},
 							Files: provisioning.UpdateFiles{
 								{
-									Component: images.UpdateFileComponentOS,
+									Filename: "x86_64/IncusOS_20260610.img.gz",
 								},
 								{
-									Component: images.UpdateFileComponentIncus,
+									Filename: "x86_64/incus.raw.gz",
 								},
 							},
 						},
@@ -5076,10 +5084,10 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 							Channels: []string{"stable"},
 							Files: provisioning.UpdateFiles{
 								{
-									Component: images.UpdateFileComponentOS,
+									Filename: "x86_64/IncusOS_20260610.img.gz",
 								},
 								{
-									Component: images.UpdateFileComponentIncus,
+									Filename: "x86_64/incus.raw.gz",
 								},
 							},
 						},
@@ -5090,7 +5098,7 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 				CurrentVersion: "2",
 				PriorVersion:   "1",
 				Components: map[string]images.ChangelogEntries{
-					"os": {
+					"IncusOS": {
 						Updated: []string{"file version 1 to version 2"},
 					},
 					"incus": {
@@ -5105,7 +5113,7 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 				PriorVersion:   "1",
 				Channel:        "stable",
 				Components: map[string]images.ChangelogEntries{
-					"os": {
+					"IncusOS": {
 						Updated: []string{"file version 1 to version 2"},
 					},
 					"incus": {
@@ -5124,7 +5132,7 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
 							OS: api.OSVersionData{
-								Name:    "os",
+								Name:    "IncusOS",
 								Version: "1",
 							},
 							Applications: []api.ApplicationVersionData{
@@ -5148,10 +5156,10 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 							Channels: []string{"stable"},
 							Files: provisioning.UpdateFiles{
 								{
-									Component: images.UpdateFileComponentOS,
+									Filename: "x86_64/IncusOS_20260610.img.gz",
 								},
 								{
-									Component: images.UpdateFileComponentIncus,
+									Filename: "x86_64/incus.raw.gz",
 								},
 							},
 						},
@@ -5183,7 +5191,7 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
 							OS: api.OSVersionData{
-								Name:    "os",
+								Name:    "IncusOS",
 								Version: "1",
 							},
 							Applications: []api.ApplicationVersionData{
@@ -5206,10 +5214,10 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 							Channels: []string{"stable"},
 							Files: provisioning.UpdateFiles{
 								{
-									Component: images.UpdateFileComponentOS,
+									Filename: "x86_64/IncusOS_20260610.img.gz",
 								},
 								{
-									Component: images.UpdateFileComponentIncus,
+									Filename: "x86_64/incus.raw.gz",
 								},
 							},
 						},
@@ -5219,10 +5227,10 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 							Channels: []string{"stable"},
 							Files: provisioning.UpdateFiles{
 								{
-									Component: images.UpdateFileComponentOS,
+									Filename: "x86_64/IncusOS_20260610.img.gz",
 								},
 								{
-									Component: images.UpdateFileComponentIncus,
+									Filename: "x86_64/incus.raw.gz",
 								},
 							},
 						},
@@ -5246,7 +5254,7 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 						Channel: "stable",
 						VersionData: api.ServerVersionData{
 							OS: api.OSVersionData{
-								Name:    "os",
+								Name:    "IncusOS",
 								Version: "1",
 							},
 							Applications: []api.ApplicationVersionData{
@@ -5269,10 +5277,10 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 							Channels: []string{"stable"},
 							Files: provisioning.UpdateFiles{
 								{
-									Component: images.UpdateFileComponentOS,
+									Filename: "x86_64/IncusOS_20260610.img.gz",
 								},
 								{
-									Component: images.UpdateFileComponentIncus,
+									Filename: "x86_64/incus.raw.gz",
 								},
 							},
 						},
@@ -5282,10 +5290,10 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 							Channels: []string{"stable"},
 							Files: provisioning.UpdateFiles{
 								{
-									Component: images.UpdateFileComponentOS,
+									Filename: "x86_64/IncusOS_20260610.img.gz",
 								},
 								{
-									Component: images.UpdateFileComponentIncus,
+									Filename: "x86_64/incus.raw.gz",
 								},
 							},
 						},
@@ -5300,10 +5308,10 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 							Channels: []string{"stable"},
 							Files: provisioning.UpdateFiles{
 								{
-									Component: images.UpdateFileComponentOS,
+									Filename: "x86_64/IncusOS_20260610.img.gz",
 								},
 								{
-									Component: images.UpdateFileComponentIncus,
+									Filename: "x86_64/incus.raw.gz",
 								},
 							},
 						},
@@ -5313,10 +5321,10 @@ func TestServerService_GetChangelogByName(t *testing.T) {
 							Channels: []string{"stable"},
 							Files: provisioning.UpdateFiles{
 								{
-									Component: images.UpdateFileComponentOS,
+									Filename: "x86_64/IncusOS_202606100326.img.gz",
 								},
 								{
-									Component: images.UpdateFileComponentIncus,
+									Filename: "x86_64/incus.raw.gz",
 								},
 							},
 						},

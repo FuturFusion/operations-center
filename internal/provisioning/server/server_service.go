@@ -357,14 +357,14 @@ func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, serv
 
 	if len(updates) == 0 {
 		// No updates found, enrich without update version information.
-		server.VersionData.Compute(nil)
+		server.VersionData.Compute("", nil)
 		return nil
 	}
 
-	serverComponents := make([]string, 0, len(server.VersionData.Applications)+1) // All applications + OS
-	serverComponents = append(serverComponents, string(images.UpdateFileComponentOS))
+	serverOSAndApplications := make([]string, 0, len(server.VersionData.Applications)+1) // All applications + OS
+	serverOSAndApplications = append(serverOSAndApplications, server.VersionData.OS.Name)
 	for i, app := range server.VersionData.Applications {
-		serverComponents = append(serverComponents, app.Name)
+		serverOSAndApplications = append(serverOSAndApplications, app.Name)
 		server.VersionData.Applications[i].NeedsUpdate = ptr.To(false)
 	}
 
@@ -377,16 +377,16 @@ func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, serv
 	// latestAvailableVersions map and remove the component from
 	// `serverComponents`. We are done with the work, if `serverComponents` is
 	// empty.
-	latestAvailableVersions := make(map[images.UpdateFileComponent]string, len(updates))
+	latestAvailableVersions := make(map[string]string, len(updates))
 	for _, update := range updates {
-		if len(serverComponents) == 0 {
+		if len(serverOSAndApplications) == 0 {
 			break
 		}
 
-		for _, updateComponent := range update.Components() {
-			serverComponents = slices.DeleteFunc(serverComponents, func(serverComponent string) bool {
-				if serverComponent == updateComponent.String() {
-					latestAvailableVersions[updateComponent] = update.Version
+		for _, updateApplication := range update.Applications() {
+			serverOSAndApplications = slices.DeleteFunc(serverOSAndApplications, func(application string) bool {
+				if application == updateApplication {
+					latestAvailableVersions[updateApplication] = update.Version
 					return true
 				}
 
@@ -401,7 +401,7 @@ func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, serv
 		Entity:     server.Name,
 	}
 
-	if len(serverComponents) != 0 {
+	if len(serverOSAndApplications) != 0 {
 		// This indicates, that for some components, we have not found any update.
 		// This is a possible case, e.g. if someone clears and refreshes all the
 		// updates and then queries servers, registered in Operations Center, before
@@ -410,14 +410,14 @@ func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, serv
 			warning.NewWarning(
 				api.WarningTypeVersionDatailsMissing,
 				scope,
-				fmt.Sprintf("Failed to find updates for some components while enriching server record with update version information: %v", serverComponents),
+				fmt.Sprintf("Failed to find updates for some components while enriching server record with update version information: %v", serverOSAndApplications),
 			),
 		)
 	} else {
 		s.warning.RemoveStale(ctx, scope, nil)
 	}
 
-	server.VersionData.Compute(latestAvailableVersions)
+	server.VersionData.Compute(server.VersionData.OS.Name, latestAvailableVersions)
 
 	return nil
 }
