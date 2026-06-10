@@ -78,6 +78,7 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				{},
 				{},
 				{},
+				{},
 			},
 			filesRepoGet: []queue.Item[fileRepoGetValue]{
 				// incus.tar.xz for root.tar.xz
@@ -120,6 +121,13 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 					Value: fileRepoGetValue{
 						reader: io.NopCloser(bytes.NewBufferString(`disk qcow2`)),
 						size:   int64(len(`disk qcow2`)),
+					},
+				},
+				// incus_combined.tar.gz
+				{
+					Value: fileRepoGetValue{
+						reader: io.NopCloser(bytes.NewBufferString(`incus combined`)),
+						size:   int64(len(`incus combined`)),
 					},
 				},
 			},
@@ -150,6 +158,7 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				{},
 				{},
 				{},
+				{},
 			},
 			filesRepoGet: []queue.Item[fileRepoGetValue]{
 				// incus.tar.xz for root.tar.xz
@@ -192,6 +201,13 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 					Value: fileRepoGetValue{
 						reader: io.NopCloser(bytes.NewBufferString(`disk qcow2`)),
 						size:   int64(len(`disk qcow2`)),
+					},
+				},
+				// incus_combined.tar.gz
+				{
+					Value: fileRepoGetValue{
+						reader: io.NopCloser(bytes.NewBufferString(`incus combined`)),
+						size:   int64(len(`incus combined`)),
 					},
 				},
 			},
@@ -543,8 +559,16 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				{},
 				{},
 				{},
+				{},
 			},
 			filesRepoGet: []queue.Item[fileRepoGetValue]{
+				// incus_combined.tar.gz
+				{
+					Value: fileRepoGetValue{
+						reader: io.NopCloser(bytes.NewBufferString(`incus combined`)),
+						size:   int64(len(`incus combined`)),
+					},
+				},
 				// incus.tar.xz for root.tar.xz
 				{
 					Err: boom.Error,
@@ -573,8 +597,16 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				{},
 				{},
 				{},
+				{},
 			},
 			filesRepoGet: []queue.Item[fileRepoGetValue]{
+				// incus_combined.tar.gz
+				{
+					Value: fileRepoGetValue{
+						reader: io.NopCloser(bytes.NewBufferString(`incus combined`)),
+						size:   int64(len(`incus combined`)),
+					},
+				},
 				// incus.tar.xz for root.tar.xz
 				{
 					Value: fileRepoGetValue{
@@ -602,6 +634,7 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				},
 			},
 			filesRepoPut: []queue.Item[fileRepoPutValue]{
+				{},
 				{},
 				{},
 				{},
@@ -638,6 +671,7 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				},
 			},
 			filesRepoPut: []queue.Item[fileRepoPutValue]{
+				{},
 				{},
 				{},
 				{},
@@ -685,6 +719,7 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				{},
 				{},
 				{},
+				{},
 			},
 			filesRepoGet: []queue.Item[fileRepoGetValue]{
 				// incus.tar.xz for root.tar.xz
@@ -727,6 +762,13 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 					Value: fileRepoGetValue{
 						reader: io.NopCloser(bytes.NewBufferString(`disk qcow2`)),
 						size:   int64(len(`disk qcow2`)),
+					},
+				},
+				// incus_combined.tar.gz
+				{
+					Value: fileRepoGetValue{
+						reader: io.NopCloser(bytes.NewBufferString(`incus combined`)),
+						size:   int64(len(`incus combined`)),
 					},
 				},
 			},
@@ -763,6 +805,7 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				{},
 				{},
 				{},
+				{},
 			},
 			filesRepoGet: []queue.Item[fileRepoGetValue]{
 				// incus.tar.xz for root.tar.xz
@@ -805,6 +848,13 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 					Value: fileRepoGetValue{
 						reader: io.NopCloser(bytes.NewBufferString(`disk qcow2`)),
 						size:   int64(len(`disk qcow2`)),
+					},
+				},
+				// incus_combined.tar.gz
+				{
+					Value: fileRepoGetValue{
+						reader: io.NopCloser(bytes.NewBufferString(`incus combined`)),
+						size:   int64(len(`incus combined`)),
 					},
 				},
 			},
@@ -951,6 +1001,18 @@ func validMultipartReaderWithIncusTarXZ(t *testing.T) *multipart.Reader {
 	require.NoError(t, err)
 
 	_, err = io.WriteString(part, "disk qcow2")
+	require.NoError(t, err)
+
+	// incus_combined.tar.gz
+	header = textproto.MIMEHeader{}
+	header.Set("Content-Disposition",
+		`form-data; name="file"; filename="incus_combined.tar.gz"`)
+	header.Set("Content-Type", "application/octet-stream")
+
+	part, err = writer.CreatePart(header)
+	require.NoError(t, err)
+
+	_, err = io.WriteString(part, "incus combined")
 	require.NoError(t, err)
 
 	err = writer.Close()

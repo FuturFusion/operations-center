@@ -3,6 +3,9 @@ package image
 import (
 	"archive/tar"
 	"bytes"
+	"compress/gzip"
+	"context"
+	"io"
 	"mime/multipart"
 	"net/textproto"
 	"testing"
@@ -194,4 +197,66 @@ func multipartReaderNotXZ(t *testing.T) *multipart.Reader {
 	require.NoError(t, err)
 
 	return multipart.NewReader(&body, writer.Boundary())
+}
+
+func generateTarGz(t *testing.T, filename string) io.ReadCloser {
+	var buf bytes.Buffer
+
+	gzw := gzip.NewWriter(&buf)
+	defer gzw.Close()
+
+	tw := tar.NewWriter(gzw)
+
+	content := []byte(filename)
+
+	hdr := &tar.Header{
+		Name: filename,
+		Mode: 0o600,
+		Size: int64(len(content)),
+	}
+
+	err := tw.WriteHeader(hdr)
+	require.NoError(t, err)
+
+	_, err = tw.Write(content)
+	require.NoError(t, err)
+
+	err = tw.Close()
+	require.NoError(t, err)
+
+	return io.NopCloser(&buf)
+}
+
+type fileRepoMock struct {
+	rc  io.ReadCloser
+	err error
+	t   *testing.T
+}
+
+func (f fileRepoMock) Get(ctx context.Context, img *IncusImage, versionIdentifier string, filename string) (_ io.ReadCloser, size int64, _ error) {
+	return f.rc, 0, f.err
+}
+
+func (fileRepoMock) Exists(ctx context.Context, img *IncusImage, versionIdentifier string, filename string) (bool, error) {
+	panic("not implemented")
+}
+
+func (fileRepoMock) Put(ctx context.Context, img *IncusImage, versionIdentifier string, filename string, content io.ReadCloser) (_ CommitFunc, _ CancelFunc, size int64, _ error) {
+	panic("not implemented")
+}
+
+func (fileRepoMock) Delete(ctx context.Context, img *IncusImage) error {
+	panic("not implemented")
+}
+
+func (fileRepoMock) DeleteVersion(ctx context.Context, img *IncusImage, versionIdentifier string) error {
+	panic("not implemented")
+}
+
+func (fileRepoMock) DeleteVersionFile(ctx context.Context, img *IncusImage, versionIdentifier string, filename string) error {
+	panic("not implemented")
+}
+
+func (fileRepoMock) UsageInformation(ctx context.Context) (UsageInformation, error) {
+	panic("not implemented")
 }
