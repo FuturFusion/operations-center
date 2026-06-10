@@ -24,6 +24,9 @@ const (
 	// Interval in which the update server is polled for new updates.
 	UpdatesSourcePollInterval = 1 * time.Hour
 
+	// Interval in which the image sources are polled for new updates.
+	ImageSourcePollInterval = 6 * time.Hour
+
 	// Interval in which a connectivity check is performed for the servers
 	// known by Operations Center.
 	ConnectivityCheckInterval = 5 * time.Minute
