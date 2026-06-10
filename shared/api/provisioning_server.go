@@ -9,7 +9,6 @@ import (
 	"time"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
-	"github.com/lxc/incus-os/incus-osd/api/images"
 	incusapi "github.com/lxc/incus/v7/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -477,7 +476,7 @@ func (s *ServerVersionData) Scan(value any) error {
 // Compute the calculated fields of the ServerVersionData. The argument is
 // expected to be a lookup map for the most recent available version
 // for each component.
-func (s *ServerVersionData) Compute(latestAvailableVersions map[images.UpdateFileComponent]string) {
+func (s *ServerVersionData) Compute(osName string, latestAvailableVersions map[string]string) {
 	// Init calculated fields with default values, if no value is currently set.
 	s.NeedsReboot = ptr.To(false)
 	s.InMaintenance = ptr.To(NotInMaintenance)
@@ -499,7 +498,7 @@ func (s *ServerVersionData) Compute(latestAvailableVersions map[images.UpdateFil
 	}
 
 	// Set OS AvailableVersion and NeedUpdate.
-	osLatestAvailableVersion, ok := latestAvailableVersions[images.UpdateFileComponentOS]
+	osLatestAvailableVersion, ok := latestAvailableVersions[osName]
 	if ok {
 		s.OS.AvailableVersion = &osLatestAvailableVersion
 
@@ -513,7 +512,7 @@ func (s *ServerVersionData) Compute(latestAvailableVersions map[images.UpdateFil
 
 	// Set per application AvailableVersion and NeedsUpdate.
 	for i := range s.Applications {
-		appLatestAvailableVersion, ok := latestAvailableVersions[images.UpdateFileComponent(s.Applications[i].Name)]
+		appLatestAvailableVersion, ok := latestAvailableVersions[s.Applications[i].Name]
 		if ok {
 			s.Applications[i].AvailableVersion = &appLatestAvailableVersion
 			s.Applications[i].NeedsUpdate = ptr.To(availableVersionGreaterThan(s.Applications[i].Version, appLatestAvailableVersion))

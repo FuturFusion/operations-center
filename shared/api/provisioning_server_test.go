@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
@@ -488,7 +487,7 @@ func TestServerVersionData_Compute(t *testing.T) {
 	tests := []struct {
 		name                    string
 		serverVersionData       api.ServerVersionData
-		latestAvailableVersions map[images.UpdateFileComponent]string
+		latestAvailableVersions map[string]string
 
 		wantServerVersionData api.ServerVersionData
 	}{
@@ -507,9 +506,9 @@ func TestServerVersionData_Compute(t *testing.T) {
 					},
 				},
 			},
-			latestAvailableVersions: map[images.UpdateFileComponent]string{
-				images.UpdateFileComponentOS:    "202602230000",
-				images.UpdateFileComponentIncus: "202602230000",
+			latestAvailableVersions: map[string]string{
+				"IncusOS": "202602230000",
+				"incus":   "202602230000",
 			},
 			wantServerVersionData: api.ServerVersionData{
 				OS: api.OSVersionData{
@@ -549,9 +548,9 @@ func TestServerVersionData_Compute(t *testing.T) {
 					},
 				},
 			},
-			latestAvailableVersions: map[images.UpdateFileComponent]string{
-				images.UpdateFileComponentOS:    "202602230001",
-				images.UpdateFileComponentIncus: "202602230001",
+			latestAvailableVersions: map[string]string{
+				"IncusOS": "202602230001",
+				"incus":   "202602230001",
 			},
 			wantServerVersionData: api.ServerVersionData{
 				OS: api.OSVersionData{
@@ -592,9 +591,9 @@ func TestServerVersionData_Compute(t *testing.T) {
 					},
 				},
 			},
-			latestAvailableVersions: map[images.UpdateFileComponent]string{
-				images.UpdateFileComponentOS:    "202602230001",
-				images.UpdateFileComponentIncus: "202602230001",
+			latestAvailableVersions: map[string]string{
+				"IncusOS": "202602230001",
+				"incus":   "202602230001",
 			},
 			wantServerVersionData: api.ServerVersionData{
 				OS: api.OSVersionData{
@@ -634,9 +633,9 @@ func TestServerVersionData_Compute(t *testing.T) {
 					},
 				},
 			},
-			latestAvailableVersions: map[images.UpdateFileComponent]string{
-				images.UpdateFileComponentOS:    "202602230000",
-				images.UpdateFileComponentIncus: "202602230001",
+			latestAvailableVersions: map[string]string{
+				"IncusOS": "202602230000",
+				"incus":   "202602230001",
 			},
 			wantServerVersionData: api.ServerVersionData{
 				OS: api.OSVersionData{
@@ -666,7 +665,7 @@ func TestServerVersionData_Compute(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.serverVersionData
-			got.Compute(tc.latestAvailableVersions)
+			got.Compute("IncusOS", tc.latestAvailableVersions)
 
 			require.Equal(t, tc.wantServerVersionData, got)
 		})
