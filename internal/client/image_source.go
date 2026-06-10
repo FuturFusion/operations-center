@@ -69,3 +69,12 @@ func (c OperationsCenterClient) UpdateImageSource(ctx context.Context, name stri
 
 	return nil
 }
+
+func (c OperationsCenterClient) RefreshImageSource(ctx context.Context, name string) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/image/sources", name, ":refresh"), nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
