@@ -13,7 +13,6 @@ import (
 	"time"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
-	"github.com/lxc/incus-os/incus-osd/api/images"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
 
@@ -170,12 +169,10 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 					Version: "2",
 					Files: provisioning.UpdateFiles{
 						{
-							Filename:  "os",
-							Component: images.UpdateFileComponentOS,
+							Filename: "x86_64/IncusOS_20260610.img.gz",
 						},
 						{
-							Filename:  "incus",
-							Component: images.UpdateFileComponentIncus,
+							Filename: "x86_64/incus.raw.gz",
 						},
 					},
 				},
@@ -730,12 +727,10 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 					Version: "2",
 					Files: provisioning.UpdateFiles{
 						{
-							Filename:  "os",
-							Component: images.UpdateFileComponentOS,
+							Filename: "x86_64/IncusOS_20260610.img.gz",
 						},
 						{
-							Filename:  "incus",
-							Component: images.UpdateFileComponentIncus,
+							Filename: "x86_64/incus.raw.gz",
 						},
 					},
 				},
