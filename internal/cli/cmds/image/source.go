@@ -73,6 +73,13 @@ func (c *CmdSource) Command() *cobra.Command {
 
 	cmd.AddCommand(imageSourceRemoveCmd.Command())
 
+	// Refresh
+	imageSourceRefreshCmd := cmdImageSourceRefresh{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(imageSourceRefreshCmd.Command())
+
 	return cmd
 }
 
@@ -209,6 +216,10 @@ func (c *cmdImageSourceAdd) validateArgsAndFlags(cmd *cobra.Command, args []stri
 	exit, err := validate.Args(cmd, args, 2, 2)
 	if exit {
 		return err
+	}
+
+	if c.flagFilterExpression == "" {
+		return fmt.Errorf(`Filter expression can not be empty. To allow all images from being fetch, use "true" as the filter expression.`)
 	}
 
 	return nil
@@ -386,6 +397,49 @@ func (c *cmdImageSourceRemove) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	err := c.ocClient.DeleteImageSource(cmd.Context(), name)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Refresh image source.
+type cmdImageSourceRefresh struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdImageSourceRefresh) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "refresh <name>"
+	cmd.Short = "Refresh an image source"
+	cmd.Long = `Description:
+  Refresh an image source
+
+  Trigger a refresh for an image source to align the local state with the
+  upstream state.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdImageSourceRefresh) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdImageSourceRefresh) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.RefreshImageSource(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
