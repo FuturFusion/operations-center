@@ -8,6 +8,7 @@ import {
   MdLogin,
   MdLogout,
   MdOutlineDesktopWindows,
+  MdOutlineImage,
   MdOutlineInventory2,
   MdOutlineSettings,
   MdOutlineSystemUpdateAlt,
@@ -151,6 +152,11 @@ const Sidebar = () => {
     updates: {
       id: "updates",
       to: "/ui/provisioning/updates-view",
+      menu: ["", ""],
+    },
+    image_server: {
+      id: "image_server",
+      to: "/ui/images-view",
       menu: ["", ""],
     },
     warnings: {
@@ -330,6 +336,14 @@ const Sidebar = () => {
                   isActive={isItemActive("clusters")}
                 >
                   <AiOutlineCluster /> Clusters
+                </NavItemLink>
+              </Nav.Item>
+              <Nav.Item>
+                <NavItemLink
+                  item={menuItems["image_server"]}
+                  isActive={isItemActive("image_server")}
+                >
+                  <MdOutlineImage /> Images
                 </NavItemLink>
               </Nav.Item>
               <Nav.Item>
