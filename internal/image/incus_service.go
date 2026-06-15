@@ -62,7 +62,7 @@ func (s *imageIncusService) AddVersion(ctx context.Context, name string, version
 			Release:         release,
 			Architecture:    architecture,
 			Variant:         variant,
-			Description:     fmt.Sprintf("%s %s (%s) (%s)", nameParts[0], nameParts[1], nameParts[3], nameParts[2]),
+			Description:     fmt.Sprintf("%s %s (%s) (%s)", os, release, variant, architecture),
 			Versions:        make(map[string]api.IncusImageVersion, 1),
 		}
 
