@@ -57,7 +57,7 @@ func (s *imageIncusService) AddVersion(ctx context.Context, name string, version
 
 		img = &IncusImage{
 			Name:            name,
-			Aliases:         []string{fmt.Sprintf("%s/%s/%s/%s", os, release, variant, architecture)},
+			Aliases:         []string{fmt.Sprintf("%s/%s/%s", os, release, variant)},
 			OperatingSystem: os,
 			Release:         release,
 			Architecture:    architecture,
