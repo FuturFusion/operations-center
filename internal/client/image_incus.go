@@ -29,8 +29,8 @@ func (c OperationsCenterClient) GetIncusImages(ctx context.Context) ([]api.Incus
 	return incusImages, nil
 }
 
-func (c OperationsCenterClient) CreateIncusImageVersion(ctx context.Context, name string, version string, filesReader ContentTypeReadCloser) error {
-	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/images/incus", name, version), nil, filesReader)
+func (c OperationsCenterClient) CreateIncusImageVersion(ctx context.Context, filesReader ContentTypeReadCloser) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/images/incus"), nil, filesReader)
 	if err != nil {
 		return err
 	}
