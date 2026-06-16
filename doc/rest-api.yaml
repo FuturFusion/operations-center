@@ -792,6 +792,36 @@ definitions:
         title: IncusImage defines an incus image.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    IncusImagePost:
+        properties:
+            arch:
+                description: Architecture the incus image is built for.
+                example: amd64
+                type: string
+                x-go-name: Architecture
+            os:
+                description: OperatingSystem of the incus image.
+                example: almalinux
+                type: string
+                x-go-name: OperatingSystem
+            release:
+                description: Release of the operating system of the incus image.
+                example: "10"
+                type: string
+                x-go-name: Release
+            variant:
+                description: Variant of the incus image.
+                example: default
+                type: string
+                x-go-name: Variant
+            version:
+                description: Version of the incus image.
+                example: "20260616"
+                type: string
+                x-go-name: Version
+        title: IncusImagePost represents the fields available when creating an incus image version.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     IncusImagePut:
         properties:
             aliases:
@@ -4487,6 +4517,27 @@ paths:
             summary: Get the list of incus images
             tags:
                 - incus_images
+        post:
+            consumes:
+                - multipart/form-data
+            description: |-
+                Add a new incus image version. Also creates the incus image, if it does not
+                exist.
+            operationId: incus_images_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Add an incus image version
+            tags:
+                - incus_image
     /1.0/image/incus/{name}:
         delete:
             description: Removes the incus image.
@@ -4582,27 +4633,6 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Delete the incus image version
-            tags:
-                - incus_image
-        post:
-            consumes:
-                - multipart/form-data
-            description: |-
-                Add a new incus image version. Also creates the incus image, if it does not
-                exist.
-            operationId: incus_images_post
-            produces:
-                - application/json
-            responses:
-                "200":
-                    $ref: '#/responses/EmptySyncResponse'
-                "400":
-                    $ref: '#/responses/BadRequest'
-                "403":
-                    $ref: '#/responses/Forbidden'
-                "500":
-                    $ref: '#/responses/InternalServerError'
-            summary: Add an incus image version
             tags:
                 - incus_image
     /1.0/image/incus/{name}/{version}/{filename}:
