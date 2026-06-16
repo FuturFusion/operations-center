@@ -94,6 +94,14 @@ func ValidateIncusImageName(name string) error {
 	return nil
 }
 
+func ValidateIncusImageArchitecture(architecture string) error {
+	if !slices.Contains([]string{"amd64", "arm64", "armhf", "riscv64"}, architecture) {
+		return domain.NewValidationErrf("Invalid incus image, architecture is not supported")
+	}
+
+	return nil
+}
+
 // ValidateIncusImageVersion checks the version matches the expected version
 // format in simplestreams.
 // https://github.com/lxc/incus/blob/1d64af1e40ced8716280bd4fcf044dce4ca6d5cf/shared/simplestreams/products.go#L87-L95

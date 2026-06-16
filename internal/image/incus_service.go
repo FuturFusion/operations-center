@@ -2,10 +2,12 @@ package image
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,9 +15,14 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
+
+	incusapi "github.com/lxc/incus/v7/shared/api"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -36,23 +43,164 @@ func New(repo ImageIncusRepo, filesRepo ImageIncusFileRepo) *imageIncusService {
 	return service
 }
 
-func (s *imageIncusService) AddVersion(ctx context.Context, name string, versionIdentifier string, mr *multipart.Reader) (err error) {
-	err = ValidateIncusImageName(name)
-	if err != nil {
-		return err
+func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader) (_ string, err error) {
+	var part *multipart.Part
+	part, err = mr.NextPart()
+
+	var (
+		os                string
+		release           string
+		architecture      string
+		variant           string
+		versionIdentifier string
+		description       string
+
+		incusTarXZ []byte
+	)
+
+	switch {
+	case part.FormName() == "request_json":
+		var requestMetadata api.IncusImagePost
+
+		err = json.NewDecoder(part).Decode(&requestMetadata)
+		if err != nil {
+			return "", fmt.Errorf(`Failed to decode metadata from "request_json": %w`, err)
+		}
+
+		os = requestMetadata.OperatingSystem
+		release = requestMetadata.Release
+		architecture = requestMetadata.Architecture
+		variant = requestMetadata.Variant
+		versionIdentifier = requestMetadata.Version
+		description = fmt.Sprintf("%s %s (%s) (%s)", os, release, variant, architecture)
+
+		metadata := incusapi.ImageMetadata{
+			Architecture: architecture,
+			CreationDate: time.Now().Unix(),
+			Properties: map[string]string{
+				"os":           os,
+				"release":      release,
+				"architecture": architecture,
+				"variant":      variant,
+				"serial":       versionIdentifier,
+				"description":  description,
+			},
+		}
+
+		buf := &bytes.Buffer{}
+		err = func() (err error) {
+			metadataBody, err := yaml.Marshal(metadata)
+			if err != nil {
+				return fmt.Errorf(`Failed to yaml encode "metadata.yaml": %w`, err)
+			}
+
+			incusTarXZWriter, err := xz.NewWriter(ctx, buf)
+			if err != nil {
+				return fmt.Errorf("Failed to create XZ writer: %w", err)
+			}
+
+			defer func() {
+				err = errors.Join(err, incusTarXZWriter.Close())
+			}()
+
+			tarWriter := tar.NewWriter(incusTarXZWriter)
+			err = tarWriter.WriteHeader(&tar.Header{
+				Name: "metadata.yaml",
+				Size: int64(len(metadataBody)),
+				Mode: 0o600,
+			})
+			if err != nil {
+				return fmt.Errorf(`Failed to write header for "metadata.yaml" to incus.tar.xz: %w`, err)
+			}
+
+			defer func() {
+				err = errors.Join(err, tarWriter.Close())
+			}()
+
+			_, err = tarWriter.Write(metadataBody)
+			if err != nil {
+				return fmt.Errorf(`Failed to write "metadata.yaml" to incus.tar.xz: %w`, err)
+			}
+
+			return nil
+		}()
+		if err != nil {
+			return "", err
+		}
+
+		incusTarXZ = buf.Bytes()
+
+	case part.FileName() == "incus.tar.xz":
+		const incusTarXZSizeLimit = 64 * 1024
+		r := io.LimitReader(part, incusTarXZSizeLimit)
+		buf := &bytes.Buffer{}
+		r = io.TeeReader(r, buf)
+
+		xzReader, err := xz.NewReader(ctx, r)
+		if err != nil {
+			return "", fmt.Errorf(`Failed to create xz reader for "incus.tar.xz": %w`, err)
+		}
+
+		tr := tar.NewReader(xzReader)
+
+		for {
+			hdr, err := tr.Next()
+			if errors.Is(err, io.EOF) {
+				return "", fmt.Errorf(`Failed to find metadata.yaml in incus.tar.xz: %w`, domain.ErrConstraintViolation)
+			}
+
+			if err != nil {
+				return "", fmt.Errorf(`Failed to read "incus.tar.xz": %w`, err)
+			}
+
+			if hdr.Name != "metadata.yaml" {
+				continue
+			}
+
+			var metadata incusapi.ImageMetadata
+			err = yaml.NewDecoder(tr).Decode(&metadata)
+			if err != nil {
+				return "", fmt.Errorf(`Failed to decode "metadata.yaml": %w`, err)
+			}
+
+			os = metadata.Properties["os"]
+			release = metadata.Properties["release"]
+			architecture = metadata.Properties["architecture"]
+			variant = metadata.Properties["variant"]
+			versionIdentifier = metadata.Properties["serial"]
+			description = metadata.Properties["description"]
+
+			break
+		}
+
+		incusTarXZ = buf.Bytes()
+
+	default:
+		return "", fmt.Errorf(`First part of the multipart request is required to be either "request_json" or the file "incus.tar.xz", got form-name %q, filename %q: %w`, part.FormName(), part.FileName(), domain.ErrOperationNotPermitted)
+	}
+
+	if os == "" || architecture == "" || versionIdentifier == "" {
+		return "", domain.NewValidationErrf(`Incomplete metadata, not all required properties set os=%q, architecture=%q, version=%q`, os, architecture, versionIdentifier)
 	}
 
 	if versionIdentifier == "" {
-		return domain.NewValidationErrf("Incus image version can not be empty")
+		return "", domain.NewValidationErrf("Incus image version can not be empty")
 	}
 
-	nameParts := strings.Split(name, ":")
-	os, release, architecture, variant := nameParts[0], nameParts[1], nameParts[2], nameParts[3]
+	if release == "" {
+		release = "current"
+	}
+
+	if variant == "" {
+		variant = "default"
+	}
+
+	name := strings.Join([]string{os, release, architecture, variant}, ":")
 
 	img, err := s.repo.GetByName(ctx, name)
 	if err != nil {
 		if !errors.Is(err, domain.ErrNotFound) {
-			return fmt.Errorf("Failed to get incus image %q: %w", name, err)
+			return "", fmt.Errorf("Failed to get incus image %q: %w", name, err)
 		}
 
 		img = &IncusImage{
@@ -62,34 +210,61 @@ func (s *imageIncusService) AddVersion(ctx context.Context, name string, version
 			Release:         release,
 			Architecture:    architecture,
 			Variant:         variant,
-			Description:     fmt.Sprintf("%s %s (%s) (%s)", os, release, variant, architecture),
+			Description:     description,
 			Versions:        make(map[string]api.IncusImageVersion, 1),
 		}
 
 		_, err = s.repo.Create(ctx, *img)
 		if err != nil {
-			return fmt.Errorf("Failed to create incus image %q: %w", name, err)
+			return "", fmt.Errorf("Failed to create incus image %q: %w", name, err)
 		}
 	}
 
 	_, ok := img.Versions[versionIdentifier]
 	if ok {
-		return fmt.Errorf("Version %q already exists for incus image %q: %w", versionIdentifier, name, domain.ErrOperationNotPermitted)
+		return "", fmt.Errorf("Version %q already exists for incus image %q: %w", versionIdentifier, name, domain.ErrOperationNotPermitted)
 	}
 
 	incusImageVersion := api.IncusImageVersion{
 		Items: map[string]api.IncusImageVersionItem{},
 	}
-	for {
-		var part *multipart.Part
 
+	hash256 := sha256.New()
+	incusTarXZReader := file.NewTeeReadCloser(io.NopCloser(bytes.NewReader(incusTarXZ)), hash256)
+
+	commit, cancel, size, putErr := s.filesRepo.Put(ctx, img, versionIdentifier, "incus.tar.xz", incusTarXZReader)
+	defer func() { //nolint:revive // if any of the file put operations fail, we would want to cancel all of them, so having defer in the loop is what we want.
+		cancelErr := cancel()
+		if cancelErr != nil {
+			err = errors.Join(err, cancelErr)
+		}
+	}()
+	if putErr != nil {
+		return "", fmt.Errorf(`Failed to put file "incus.tar.xz" for image %q, version %q: %w`, name, versionIdentifier, putErr)
+	}
+
+	err = commit()
+	if err != nil {
+		return "", fmt.Errorf("Add version failed to complete file put for %q of image %q, version %q: %w", part.FileName(), name, versionIdentifier, err)
+	}
+
+	incusImageVersion.Items["incus.tar.xz"] = api.IncusImageVersionItem{
+		FileType:   "incus.tar.xz",
+		Size:       size,
+		HashSha256: hex.EncodeToString(hash256.Sum(nil)),
+		Path:       filepath.Join("images", img.Path(), versionIdentifier, "incus.tar.xz"),
+	}
+
+	// FIXME: What about the combined incus_combined.tar.gz?
+
+	for {
 		part, err = mr.NextPart()
 		if errors.Is(err, io.EOF) {
 			break
 		}
 
 		if err != nil {
-			return fmt.Errorf("Add version failed to get multipart item: %w", err)
+			return "", fmt.Errorf("Add version failed to get multipart item: %w", err)
 		}
 
 		hash256 := sha256.New()
@@ -103,12 +278,12 @@ func (s *imageIncusService) AddVersion(ctx context.Context, name string, version
 			}
 		}()
 		if putErr != nil {
-			return fmt.Errorf("Failed to put file %q for image %q, version %q: %w", part.FileName(), name, versionIdentifier, putErr)
+			return "", fmt.Errorf("Failed to put file %q for image %q, version %q: %w", part.FileName(), name, versionIdentifier, putErr)
 		}
 
 		err = commit()
 		if err != nil {
-			return fmt.Errorf("Add version failed to complete file put for %q of image %q, version %q: %w", part.FileName(), name, versionIdentifier, err)
+			return "", fmt.Errorf("Add version failed to complete file put for %q of image %q, version %q: %w", part.FileName(), name, versionIdentifier, err)
 		}
 
 		ftype := part.FileName()
@@ -137,7 +312,7 @@ func (s *imageIncusService) AddVersion(ctx context.Context, name string, version
 
 	err = s.calculateCombinedHashes(ctx, img, versionIdentifier, &incusImageVersion)
 	if err != nil {
-		return fmt.Errorf("Failed to calculate combined hashes for %q, version %q: %w", name, versionIdentifier, err)
+		return "", fmt.Errorf("Failed to calculate combined hashes for %q, version %q: %w", name, versionIdentifier, err)
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
@@ -160,10 +335,10 @@ func (s *imageIncusService) AddVersion(ctx context.Context, name string, version
 		return nil
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return name, nil
 }
 
 func (s *imageIncusService) detectCombinedImageType(ctx context.Context, img *IncusImage, versionIdentifier string, filename string) (imageType string, err error) {
