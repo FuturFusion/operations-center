@@ -2,10 +2,12 @@ package image
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/lxc/incus/v7/shared/termios"
@@ -217,18 +219,33 @@ func (c *cmdIncusImageShow) run(cmd *cobra.Command, args []string) error {
 // Add incus image.
 type cmdIncusImageAdd struct {
 	ocClient *client.OperationsCenterClient
+
+	hasIncusTarXZPos bool
+
+	flagOS           string
+	flagRelease      string
+	flagArchitecture string
+	flagVariant      string
+	flagVersion      string
 }
 
 func (c *cmdIncusImageAdd) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "add <name> <version> <file> [<file> ...]"
+	cmd.Use = "add <file> [<file> ...]"
 	cmd.Short = "Add an Incus image version"
 	cmd.Long = `Description:
   Add an Incus image version.
 
-  Format for the image name: os:release:architecture:variant
-  Format for the version: yyyymmdd
+  The required metadata can either be provided through a incus.tar.xz file
+  or through the respective flags (e.g. --os). The two variants are mutually
+  exclusive, if an incus.tar.xz is present, it takes precedence.
 `
+
+	cmd.Flags().StringVar(&c.flagOS, "os", "", "Operating system name of the image version (required, if no incus.tar.xz is provided)")
+	cmd.Flags().StringVar(&c.flagRelease, "release", "current", "Release identifier of the image version")
+	cmd.Flags().StringVar(&c.flagArchitecture, "arch", "", "Architecture of the image version (required, if no incus.tar.xz is provided)")
+	cmd.Flags().StringVar(&c.flagVariant, "variant", "default", "Variant of the image version")
+	cmd.Flags().StringVar(&c.flagVersion, "image-version", "", "Version of the image (required, if no incus.tar.xz is provided)")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -238,32 +255,81 @@ func (c *cmdIncusImageAdd) Command() *cobra.Command {
 
 func (c *cmdIncusImageAdd) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
-	exit, err := validate.Args(cmd, args, 3, -1)
+	exit, err := validate.Args(cmd, args, 1, -1)
 	if exit {
 		return err
 	}
 
-	name := args[0]
-	version := args[1]
-
-	err = image.ValidateIncusImageName(name)
-	if err != nil {
-		return err
+	for _, arg := range args {
+		if filepath.Base(arg) == "incus.tar.xz" {
+			c.hasIncusTarXZPos = true
+			break
+		}
 	}
 
-	err = image.ValidateIncusImageVersion(version)
-	if err != nil {
-		return err
+	minFiles := 1
+	if c.hasIncusTarXZPos {
+		minFiles = 2
+	}
+
+	if len(args) < minFiles {
+		return fmt.Errorf("No image file provided")
+	}
+
+	if !c.hasIncusTarXZPos {
+		if c.flagOS == "" || c.flagRelease == "" || c.flagArchitecture == "" || c.flagVariant == "" || c.flagVersion == "" {
+			return fmt.Errorf("Either provide the image attributes through a incus.tar.xz file or pass all the required flags")
+		}
+
+		err = image.ValidateIncusImageArchitecture(c.flagArchitecture)
+		if err != nil {
+			return err
+		}
+
+		err = image.ValidateIncusImageVersion(c.flagVersion)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (c *cmdIncusImageAdd) run(cmd *cobra.Command, args []string) (err error) {
-	name := args[0]
-	version := args[1]
+	var mr client.ContentTypeReadCloser
 
-	mr := multipartstreamer.New(args[2:]...)
+	if c.hasIncusTarXZPos {
+		// Make sure, incus.tar.xz is the first file.
+		files := make([]string, 1, len(args))
+		for _, arg := range args {
+			if filepath.Base(arg) == "incus.tar.xz" {
+				files[0] = arg
+				continue
+			}
+
+			files = append(files, arg)
+		}
+
+		mr = multipartstreamer.New(files...)
+	} else {
+		metadata := api.IncusImagePost{
+			OperatingSystem: c.flagOS,
+			Release:         c.flagRelease,
+			Architecture:    c.flagArchitecture,
+			Variant:         c.flagVariant,
+			Version:         c.flagVersion,
+		}
+
+		requestJSON, err := json.Marshal(metadata)
+		if err != nil {
+			return err
+		}
+
+		mr = multipartstreamer.NewWithFields(map[string]string{
+			"request_json": string(requestJSON),
+		}, args...)
+	}
+
 	defer func() {
 		closeErr := mr.Close()
 		if closeErr != nil {
@@ -271,9 +337,9 @@ func (c *cmdIncusImageAdd) run(cmd *cobra.Command, args []string) (err error) {
 		}
 	}()
 
-	err = c.ocClient.CreateIncusImageVersion(cmd.Context(), name, version, mr)
+	err = c.ocClient.CreateIncusImageVersion(cmd.Context(), mr)
 	if err != nil {
-		return fmt.Errorf("Failed to create Incus image version %s/%s: %w", name, version, err)
+		return fmt.Errorf("Failed to create Incus image version: %w", err)
 	}
 
 	return nil
