@@ -41,7 +41,7 @@ func NewImageIncusServiceWithPrometheus(base image.ImageIncusService, instanceNa
 }
 
 // AddVersion implements image.ImageIncusService.
-func (_d ImageIncusServiceWithPrometheus) AddVersion(ctx context.Context, name string, version string, mr *multipart.Reader) (err error) {
+func (_d ImageIncusServiceWithPrometheus) AddVersion(ctx context.Context, mr *multipart.Reader) (name string, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -51,7 +51,7 @@ func (_d ImageIncusServiceWithPrometheus) AddVersion(ctx context.Context, name s
 
 		imageIncusServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AddVersion", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.AddVersion(ctx, name, version, mr)
+	return _d.base.AddVersion(ctx, mr)
 }
 
 // DeleteByName implements image.ImageIncusService.
