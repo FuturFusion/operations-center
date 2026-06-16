@@ -15,7 +15,7 @@ func (c OperationsCenterClient) GetIncusImages(ctx context.Context) ([]api.Incus
 	query := url.Values{}
 	query.Add("recursion", "1")
 
-	response, err := c.DoRequest(ctx, http.MethodGet, "/image/incus", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/images/incus", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +30,7 @@ func (c OperationsCenterClient) GetIncusImages(ctx context.Context) ([]api.Incus
 }
 
 func (c OperationsCenterClient) CreateIncusImageVersion(ctx context.Context, name string, version string, filesReader ContentTypeReadCloser) error {
-	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/image/incus", name, version), nil, filesReader)
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/images/incus", name, version), nil, filesReader)
 	if err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ func (c OperationsCenterClient) CreateIncusImageVersion(ctx context.Context, nam
 }
 
 func (c OperationsCenterClient) GetIncusImage(ctx context.Context, name string) (api.IncusImage, error) {
-	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/image/incus", name), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/images/incus", name), nil, nil)
 	if err != nil {
 		return api.IncusImage{}, err
 	}
@@ -54,7 +54,7 @@ func (c OperationsCenterClient) GetIncusImage(ctx context.Context, name string) 
 }
 
 func (c OperationsCenterClient) DeleteIncusImage(ctx context.Context, name string) error {
-	_, err := c.DoRequest(ctx, http.MethodDelete, path.Join("/image/incus", name), nil, nil)
+	_, err := c.DoRequest(ctx, http.MethodDelete, path.Join("/images/incus", name), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func (c OperationsCenterClient) DeleteIncusImage(ctx context.Context, name strin
 }
 
 func (c OperationsCenterClient) DeleteIncusImageVersion(ctx context.Context, name string, version string) error {
-	_, err := c.DoRequest(ctx, http.MethodDelete, path.Join("/image/incus", name, version), nil, nil)
+	_, err := c.DoRequest(ctx, http.MethodDelete, path.Join("/images/incus", name, version), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func (c OperationsCenterClient) DeleteIncusImageVersion(ctx context.Context, nam
 }
 
 func (c OperationsCenterClient) GetIncusImageVersionFile(ctx context.Context, name string, version string, filename string) (io.ReadCloser, error) {
-	resp, err := c.doRequestRawResponse(ctx, http.MethodGet, path.Join("/image/incus", name, version, filename), nil, nil)
+	resp, err := c.doRequestRawResponse(ctx, http.MethodGet, path.Join("/images/incus", name, version, filename), nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (c OperationsCenterClient) GetIncusImageVersionFile(ctx context.Context, na
 }
 
 func (c OperationsCenterClient) UpdateIncusImage(ctx context.Context, name string, incusImage api.IncusImagePut) error {
-	_, err := c.DoRequest(ctx, http.MethodPut, path.Join("/image/incus", name), nil, incusImage)
+	_, err := c.DoRequest(ctx, http.MethodPut, path.Join("/images/incus", name), nil, incusImage)
 	if err != nil {
 		return err
 	}
