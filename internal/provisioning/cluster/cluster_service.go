@@ -927,12 +927,32 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 			return false, "", fmt.Errorf("Failed to get LVM service configuration for server %q: %w", server.Name, err)
 		}
 
-		if referenceLVMConfig.Config.Enabled != lvmConfig.Config.Enabled {
-			return false, fmt.Sprintf("LVM enabled mismatch, found enabled %t (%s) and %t (%s)", referenceLVMConfig.Config.Enabled, servers[0].Name, lvmConfig.Config.Enabled, server.Name), nil
+		if !referenceLVMConfig.Config.Enabled {
+			if referenceLVMConfig.Config.Enabled != lvmConfig.Config.Enabled {
+				return false, fmt.Sprintf("LVM enabled mismatch, found enabled %t (%s) and %t (%s)", referenceLVMConfig.Config.Enabled, servers[0].Name, lvmConfig.Config.Enabled, server.Name), nil
+			}
+
+			continue
 		}
 
-		if !referenceLVMConfig.Config.Enabled {
-			continue
+		// If the existing cluster has LVM enabled, make sure this is also the case for the added servers.
+		// Set the LVM system_id following the same logic as during cluster creation.
+		if !lvmConfig.Config.Enabled {
+			if server.ID > 2000 {
+				return false, fmt.Sprintf(`Failed to enable OS service "lvm" on %q: can not enable LVM on servers with internal ID > 2000`, server.Name), nil
+			}
+
+			cfg := map[string]any{
+				"enabled":   true,
+				"system_id": server.ID,
+			}
+
+			err = s.client.UpdateOSService(ctx, server, "lvm", cfg)
+			if err != nil {
+				return false, "", fmt.Errorf(`Failed to enable OS service "lvm" on %q: %w`, server.Name, err)
+			}
+
+			lvmConfig.Config.SystemID = int(server.ID)
 		}
 
 		if slices.Contains(seenSystemIDs, lvmConfig.Config.SystemID) {

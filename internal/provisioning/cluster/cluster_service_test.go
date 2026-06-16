@@ -4882,6 +4882,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 		clientGetOSServiceLVM       []queue.Item[incusosapi.ServiceLVM]
 		clientGetOSServiceMultipath []queue.Item[incusosapi.ServiceMultipath]
 		clientGetOSServiceNVME      []queue.Item[incusosapi.ServiceNVME]
+		clientUpdateOSServiceErrs   queue.Errs
 
 		assertErr               require.ErrorAssertionFunc
 		wantConsistent          bool
@@ -4897,9 +4898,10 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 			wantConsistent: true,
 		},
 		{
-			name: "success",
+			name: "success - no LVM",
 			servers: []provisioning.Server{
 				{
+					ID:   1,
 					Name: "one",
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
@@ -4922,6 +4924,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 					},
 				},
 				{
+					ID:   2,
 					Name: "two",
 					VersionData: api.ServerVersionData{
 						OS: api.OSVersionData{
@@ -5012,6 +5015,184 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						},
 					},
 				},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr:      require.NoError,
+			wantConsistent: true,
+		},
+		{
+			name: "success - auto fix LVM",
+			servers: []provisioning.Server{
+				{
+					ID:   1,
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "gpu-support",
+								Version: "1",
+							},
+							{
+								Name:    "debug",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					ID:   2,
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+							// gpu-support and debug are missing, but this is ok.
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled: true,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled: false,
+						},
+					},
+				},
+			},
+			clientUpdateOSServiceErrs: queue.Errs{
+				nil,
 			},
 			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
 				// one (reference)
@@ -5864,8 +6045,8 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				{
 					Value: incusosapi.ServiceLVM{
 						Config: incusosapi.ServiceLVMConfig{
-							Enabled:  true,
-							SystemID: 1,
+							Enabled:  false,
+							SystemID: 0,
 						},
 					},
 				},
@@ -5873,7 +6054,8 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				{
 					Value: incusosapi.ServiceLVM{
 						Config: incusosapi.ServiceLVMConfig{
-							Enabled: false, // mismatch
+							Enabled:  true, // mismatch
+							SystemID: 1,
 						},
 					},
 				},
@@ -5883,7 +6065,242 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 			wantInconsistencyReason: "LVM enabled mismatch",
 		},
 		{
-			name: "error - service LVM enabled mismatch",
+			name: "error - service LVM on servers with internal ID > 2000",
+			servers: []provisioning.Server{
+				{
+					ID:   1,
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					ID:   2001,
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 0,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  false, // mismatch
+							SystemID: 0,
+						},
+					},
+				},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: `can not enable LVM on servers with internal ID > 2000`,
+		},
+		{
+			name: "error - client.UpdateOSService",
+			servers: []provisioning.Server{
+				{
+					ID:   1,
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					ID:   2,
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 0,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  false, // mismatch
+							SystemID: 0,
+						},
+					},
+				},
+			},
+			clientUpdateOSServiceErrs: queue.Errs{
+				boom.Error,
+			},
+
+			assertErr:               boom.ErrorIs,
+			wantInconsistencyReason: ``,
+		},
+		{
+			name: "error - service LVM system ID conflict",
 			servers: []provisioning.Server{
 				{
 					Name: "one",
@@ -6857,6 +7274,9 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				GetOSServiceNVMEFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceNVME, error) {
 					return queue.Pop(t, &tc.clientGetOSServiceNVME)
 				},
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					return tc.clientUpdateOSServiceErrs.Pop(t)
+				},
 			}
 
 			clusterSvc := provisioningCluster.New(
@@ -6883,6 +7303,7 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 			require.Empty(t, tc.clientGetOSServiceLVM)
 			require.Empty(t, tc.clientGetOSServiceMultipath)
 			require.Empty(t, tc.clientGetOSServiceNVME)
+			require.Empty(t, tc.clientUpdateOSServiceErrs)
 		})
 	}
 }
