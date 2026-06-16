@@ -455,14 +455,30 @@ func (i *imageIncusHandler) incusImageDelete(r *http.Request) response.Response 
 //	requestBody:
 //	  content:
 //	    multipart/form-data:
+//	      description: >
+//	        In order to allow stream processing of the request, the order of the
+//	        fields in the request is important. The "json_request" field is
+//	        expected to be sent as the first field. If the "json_request" field
+//	        is omitted, then the first file is required to be the incus.tar.xz.
+//	        Sending the "json_request" and a file called incus.tar.xz is an
+//	        error.
 //	      schema:
 //	        type: object
 //	        properties:
-//	          filename:
-//	            type: array
-//	            items:
-//	              type: string
-//	              format: binary
+//	          json_request:
+//	            description: >
+//	              json_request contains the fields of the request as JSON object.
+//	            type: object
+//	            schema:
+//	              $ref: "#/definitions/IncusImagePost"
+//	          fileNN:
+//	            type: string
+//	            format: binary
+//	            description: >
+//	              As single request might contain multiple files. In this case,
+//	              the form field names should be prefixed with "file", followed
+//	              by an incrementing number, e.g. file00, file01.
+//	              The "filename" parameter should be used to pass the filename.
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -473,9 +489,6 @@ func (i *imageIncusHandler) incusImageDelete(r *http.Request) response.Response 
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageIncusHandler) incusImageVersionPost(r *http.Request) response.Response {
-	name := r.PathValue("name")
-	version := r.PathValue("version")
-
 	mediatype, params, err := mime.ParseMediaType(r.Header.Get("Content-type"))
 	if err != nil {
 		return response.BadRequest(fmt.Errorf("Failed to process Content-type header: %w", err))
@@ -490,7 +503,7 @@ func (i *imageIncusHandler) incusImageVersionPost(r *http.Request) response.Resp
 		return response.BadRequest(fmt.Errorf(`Content-type header misses boundary parameter`))
 	}
 
-	err = i.service.AddVersion(r.Context(), name, version, multipart.NewReader(r.Body, boundary))
+	name, err := i.service.AddVersion(r.Context(), multipart.NewReader(r.Body, boundary))
 	if err != nil {
 		return response.SmartError(err)
 	}
