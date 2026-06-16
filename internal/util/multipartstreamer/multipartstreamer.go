@@ -21,8 +21,8 @@ type multipartStreamer struct {
 	err   error
 }
 
-func New(fileNames ...string) *multipartStreamer {
-	if len(fileNames) == 0 {
+func NewWithFields(fields map[string]string, fileNames ...string) *multipartStreamer {
+	if len(fields) == 0 && len(fileNames) == 0 {
 		return &multipartStreamer{
 			reader: bytes.NewReader([]byte{}),
 		}
@@ -49,6 +49,20 @@ func New(fileNames ...string) *multipartStreamer {
 				m.setErr(err)
 			}
 		}()
+
+		for name, field := range fields {
+			mw, err := multipartWriter.CreateFormField(name)
+			if err != nil {
+				m.setErr(err)
+				return
+			}
+
+			_, err = mw.Write([]byte(field))
+			if err != nil {
+				m.setErr(err)
+				return
+			}
+		}
 
 		for i, filename := range fileNames {
 			func() {
@@ -84,6 +98,10 @@ func New(fileNames ...string) *multipartStreamer {
 	}()
 
 	return m
+}
+
+func New(fileNames ...string) *multipartStreamer {
+	return NewWithFields(nil, fileNames...)
 }
 
 func (m *multipartStreamer) Read(p []byte) (n int, err error) {
