@@ -31,13 +31,13 @@ func registerImageIncusHandler(router Router, simplestreamsRouter Router, author
 	simplestreamsRouter.HandleFunc("GET /streams/v1/index.json", response.With(handler.simplestreamsPublicIndexGet))
 	simplestreamsRouter.HandleFunc("GET /streams/v1/images.json", response.With(handler.simplestreamsPublicImagesGet))
 	// Allow download of incus image files without authentication
-	simplestreamsRouter.HandleFunc("GET /1.0/image/incus/{name}/{version}/{filename}", response.With(handler.incusImageVersionFileGet))
+	simplestreamsRouter.HandleFunc("GET /1.0/images/incus/{name}/{version}/{filename}", response.With(handler.incusImageVersionFileGet))
 
 	router.HandleFunc("GET /{$}", response.With(handler.incusImagesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{$}", response.With(handler.incusImageVersionPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}", response.With(handler.incusImageGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /{name}", response.With(handler.incusImagePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{name}", response.With(handler.incusImageDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
-	router.HandleFunc("POST /{name}/{version}", response.With(handler.incusImageVersionPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{name}/{version}", response.With(handler.incusImageVersionDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("GET /{name}/{version}/{filename}", response.With(handler.incusImageVersionFileGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 }
@@ -440,7 +440,7 @@ func (i *imageIncusHandler) incusImageDelete(r *http.Request) response.Response 
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/image/incus/{name}/{version} incus_image incus_images_post
+// swagger:operation POST /1.0/image/incus incus_image incus_images_post
 //
 //	Add an incus image version
 //
