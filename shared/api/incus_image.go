@@ -18,6 +18,31 @@ type IncusImagePut struct {
 	Description string `json:"description" yaml:"description"`
 }
 
+// IncusImagePost represents the fields available when creating an incus image version.
+//
+// swagger:model
+type IncusImagePost struct {
+	// OperatingSystem of the incus image.
+	// Example: almalinux
+	OperatingSystem string `json:"os" yaml:"os"`
+
+	// Release of the operating system of the incus image.
+	// Example: 10
+	Release string `json:"release" yaml:"release"`
+
+	// Architecture the incus image is built for.
+	// Example: amd64
+	Architecture string `json:"arch" yaml:"arch"`
+
+	// Variant of the incus image.
+	// Example: default
+	Variant string `json:"variant" yaml:"variant"`
+
+	// Version of the incus image.
+	// Example: 20260616
+	Version string `json:"version" yaml:"version"`
+}
+
 // IncusImage defines an incus image.
 //
 // swagger:model
