@@ -756,8 +756,6 @@ definitions:
                 example: linuxcontainers.org
                 type: string
                 x-go-name: Name
-            type:
-                $ref: '#/definitions/ImageSourceType'
             url:
                 description: URL of the image source.
                 example: https://images.linuxcontainers.org
@@ -780,8 +778,6 @@ definitions:
                 example: linuxcontainers.org
                 type: string
                 x-go-name: Name
-            type:
-                $ref: '#/definitions/ImageSourceType'
             url:
                 description: URL of the image source.
                 example: https://images.linuxcontainers.org
@@ -798,8 +794,6 @@ definitions:
                 example: Architecture == "amd64"
                 type: string
                 x-go-name: FilterExpression
-            type:
-                $ref: '#/definitions/ImageSourceType'
             url:
                 description: URL of the image source.
                 example: https://images.linuxcontainers.org
@@ -807,9 +801,6 @@ definitions:
                 x-go-name: URL
         title: ImageSourcePut represents the fields available for update for an image source.
         type: object
-        x-go-package: github.com/FuturFusion/operations-center/shared/api
-    ImageSourceType:
-        type: string
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     InMaintenanceState:
         format: int64
@@ -4755,7 +4746,7 @@ paths:
             summary: Get the list of incus images
             tags:
                 - incus_images
-    /1.0/image/sources:
+    /1.0/images/incus/sources:
         get:
             description: Returns a list of image sources (URLs).
             operationId: image_sources_get
@@ -4771,8 +4762,8 @@ paths:
                                 description: List of image sources
                                 example: |-
                                     [
-                                      "/1.0/image/sources/linuxcontainer.org",
-                                      "/1.0/image/sources/images.org"
+                                      "/1.0/images/incus/sources/linuxcontainer.org",
+                                      "/1.0/images/incus/sources/images.org"
                                     ]
                                 items:
                                     type: string
@@ -4823,7 +4814,7 @@ paths:
             summary: Add an image source
             tags:
                 - image_sources
-    /1.0/image/sources/{name}:
+    /1.0/images/incus/sources/{name}:
         delete:
             description: Removes the image source.
             operationId: image_source_delete
@@ -4902,7 +4893,7 @@ paths:
             summary: Update the image source
             tags:
                 - image_source
-    /1.0/image/sources/{name}/:refresh:
+    /1.0/images/incus/sources/{name}/:refresh:
         post:
             description: |-
                 Refresh the image source by fetching the available images, which
@@ -4923,7 +4914,7 @@ paths:
             summary: Refresh the image source
             tags:
                 - image_source
-    /1.0/image/sources?recursion=1:
+    /1.0/images/incus/sources?recursion=1:
         get:
             description: Returns a list of image sources (structs).
             operationId: image_sources_get_recursion
