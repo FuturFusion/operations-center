@@ -70,11 +70,10 @@ var updates = map[int]update{
 func updateFromV36(ctx context.Context, tx *sql.Tx) error {
 	// v36..v37 add image_sources table and add foreign key from incus_images to image_sources.
 	stmt := `
-CREATE TABLE image_sources (
+CREATE TABLE incus_image_sources (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   name TEXT NOT NULL,
   url TEXT NOT NULL,
-  type TEXT NOT NULL,
   filter_expression TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (name),
@@ -93,9 +92,9 @@ CREATE TABLE incus_images_new (
   versions TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   aliases TEXT NOT NULL DEFAULT '',
-  image_source_id INTEGER,
+  incus_image_source_id INTEGER,
   UNIQUE (operating_system, release, variant, architecture),
-  FOREIGN KEY (image_source_id) REFERENCES image_sources(id),
+  FOREIGN KEY (incus_image_source_id) REFERENCES incus_image_sources(id),
   CHECK (name <> '')
 );
 

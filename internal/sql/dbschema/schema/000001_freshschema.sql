@@ -361,11 +361,10 @@ CREATE TABLE warnings (
   UNIQUE (type, scope, entity_type, entity)
 );
 
-CREATE TABLE image_sources (
+CREATE TABLE incus_image_sources (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   name TEXT NOT NULL,
   url TEXT NOT NULL,
-  type TEXT NOT NULL,
   filter_expression TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (name),
@@ -384,9 +383,9 @@ CREATE TABLE incus_images (
   versions TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   aliases TEXT NOT NULL DEFAULT '',
-  image_source_id INTEGER,
+  incus_image_source_id INTEGER,
   UNIQUE (operating_system, release, variant, architecture),
-  FOREIGN KEY (image_source_id) REFERENCES image_sources(id),
+  FOREIGN KEY (incus_image_source_id) REFERENCES incus_image_sources(id),
   CHECK (name <> '')
 );
 
