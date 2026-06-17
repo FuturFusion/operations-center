@@ -14,32 +14,32 @@ import (
 )
 
 var incusImageObjects = RegisterStmt(`
-SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, image_sources.name AS source, incus_images.last_updated
+SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.last_updated
   FROM incus_images
-  LEFT JOIN image_sources ON incus_images.image_source_id = image_sources.id
+  LEFT JOIN incus_image_sources ON incus_images.incus_image_source_id = incus_image_sources.id
   ORDER BY incus_images.name
 `)
 
 var incusImageObjectsByID = RegisterStmt(`
-SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, image_sources.name AS source, incus_images.last_updated
+SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.last_updated
   FROM incus_images
-  LEFT JOIN image_sources ON incus_images.image_source_id = image_sources.id
+  LEFT JOIN incus_image_sources ON incus_images.incus_image_source_id = incus_image_sources.id
   WHERE ( incus_images.id = ? )
   ORDER BY incus_images.name
 `)
 
 var incusImageObjectsByName = RegisterStmt(`
-SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, image_sources.name AS source, incus_images.last_updated
+SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.last_updated
   FROM incus_images
-  LEFT JOIN image_sources ON incus_images.image_source_id = image_sources.id
+  LEFT JOIN incus_image_sources ON incus_images.incus_image_source_id = incus_image_sources.id
   WHERE ( incus_images.name = ? )
   ORDER BY incus_images.name
 `)
 
 var incusImageObjectsBySource = RegisterStmt(`
-SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, image_sources.name AS source, incus_images.last_updated
+SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.last_updated
   FROM incus_images
-  LEFT JOIN image_sources ON incus_images.image_source_id = image_sources.id
+  LEFT JOIN incus_image_sources ON incus_images.incus_image_source_id = incus_image_sources.id
   WHERE ( source = ? )
   ORDER BY incus_images.name
 `)
@@ -56,18 +56,18 @@ SELECT incus_images.id FROM incus_images
 `)
 
 var incusImageCreate = RegisterStmt(`
-INSERT INTO incus_images (name, aliases, description, operating_system, release, architecture, variant, versions, image_source_id, last_updated)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, (SELECT image_sources.id FROM image_sources WHERE image_sources.name = ?), ?)
+INSERT INTO incus_images (name, aliases, description, operating_system, release, architecture, variant, versions, incus_image_source_id, last_updated)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, (SELECT incus_image_sources.id FROM incus_image_sources WHERE incus_image_sources.name = ?), ?)
 `)
 
 var incusImageCreateOrReplace = RegisterStmt(`
-INSERT OR REPLACE INTO incus_images (name, aliases, description, operating_system, release, architecture, variant, versions, image_source_id, last_updated)
- VALUES (?, ?, ?, ?, ?, ?, ?, ?, (SELECT image_sources.id FROM image_sources WHERE image_sources.name = ?), ?)
+INSERT OR REPLACE INTO incus_images (name, aliases, description, operating_system, release, architecture, variant, versions, incus_image_source_id, last_updated)
+ VALUES (?, ?, ?, ?, ?, ?, ?, ?, (SELECT incus_image_sources.id FROM incus_image_sources WHERE incus_image_sources.name = ?), ?)
 `)
 
 var incusImageUpdate = RegisterStmt(`
 UPDATE incus_images
-  SET name = ?, aliases = ?, description = ?, operating_system = ?, release = ?, architecture = ?, variant = ?, versions = ?, image_source_id = (SELECT image_sources.id FROM image_sources WHERE image_sources.name = ?), last_updated = ?
+  SET name = ?, aliases = ?, description = ?, operating_system = ?, release = ?, architecture = ?, variant = ?, versions = ?, incus_image_source_id = (SELECT incus_image_sources.id FROM incus_image_sources WHERE incus_image_sources.name = ?), last_updated = ?
  WHERE id = ?
 `)
 
@@ -155,7 +155,7 @@ func GetIncusImage(ctx context.Context, db dbtx, name string) (_ *image.IncusIma
 // incusImageColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the IncusImage entity.
 func incusImageColumns() string {
-	return "incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, image_sources.name AS source, incus_images.last_updated"
+	return "incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.last_updated"
 }
 
 // getIncusImages can be used to run handwritten sql.Stmts to return a slice of objects.

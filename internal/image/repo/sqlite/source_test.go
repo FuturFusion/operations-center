@@ -13,21 +13,18 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
-	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestImageSourceDatabaseActions(t *testing.T) {
-	imageSourceA := image.ImageSource{
+	imageSourceA := image.IncusImageSource{
 		Name:             "linuxcontainers.org",
 		URL:              "https://images.linuxcontainers.org",
-		Type:             api.ImageSourceTypeIncus,
 		FilterExpression: `Architecture == "amd64"`,
 	}
 
-	imageSourceB := image.ImageSource{
+	imageSourceB := image.IncusImageSource{
 		Name:             "images.org",
 		URL:              "https://images.org",
-		Type:             api.ImageSourceTypeIncus,
 		FilterExpression: ``,
 	}
 
