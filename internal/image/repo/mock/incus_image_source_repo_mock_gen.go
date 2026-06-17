@@ -11,58 +11,58 @@ import (
 	"github.com/FuturFusion/operations-center/internal/image"
 )
 
-// Ensure that SourceRepoMock does implement image.SourceRepo.
+// Ensure that IncusImageSourceRepoMock does implement image.IncusImageSourceRepo.
 // If this is not the case, regenerate this file with mockery.
-var _ image.SourceRepo = &SourceRepoMock{}
+var _ image.IncusImageSourceRepo = &IncusImageSourceRepoMock{}
 
-// SourceRepoMock is a mock implementation of image.SourceRepo.
+// IncusImageSourceRepoMock is a mock implementation of image.IncusImageSourceRepo.
 //
-//	func TestSomethingThatUsesSourceRepo(t *testing.T) {
+//	func TestSomethingThatUsesIncusImageSourceRepo(t *testing.T) {
 //
-//		// make and configure a mocked image.SourceRepo
-//		mockedSourceRepo := &SourceRepoMock{
-//			CreateFunc: func(ctx context.Context, source image.ImageSource) (int64, error) {
+//		// make and configure a mocked image.IncusImageSourceRepo
+//		mockedIncusImageSourceRepo := &IncusImageSourceRepoMock{
+//			CreateFunc: func(ctx context.Context, source image.IncusImageSource) (int64, error) {
 //				panic("mock out the Create method")
 //			},
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the DeleteByName method")
 //			},
-//			GetAllFunc: func(ctx context.Context) (image.Sources, error) {
+//			GetAllFunc: func(ctx context.Context) (image.IncusImageSources, error) {
 //				panic("mock out the GetAll method")
 //			},
 //			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
 //				panic("mock out the GetAllNames method")
 //			},
-//			GetByNameFunc: func(ctx context.Context, name string) (*image.ImageSource, error) {
+//			GetByNameFunc: func(ctx context.Context, name string) (*image.IncusImageSource, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			UpdateFunc: func(ctx context.Context, source image.ImageSource) error {
+//			UpdateFunc: func(ctx context.Context, source image.IncusImageSource) error {
 //				panic("mock out the Update method")
 //			},
 //		}
 //
-//		// use mockedSourceRepo in code that requires image.SourceRepo
+//		// use mockedIncusImageSourceRepo in code that requires image.IncusImageSourceRepo
 //		// and then make assertions.
 //
 //	}
-type SourceRepoMock struct {
+type IncusImageSourceRepoMock struct {
 	// CreateFunc mocks the Create method.
-	CreateFunc func(ctx context.Context, source image.ImageSource) (int64, error)
+	CreateFunc func(ctx context.Context, source image.IncusImageSource) (int64, error)
 
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
 
 	// GetAllFunc mocks the GetAll method.
-	GetAllFunc func(ctx context.Context) (image.Sources, error)
+	GetAllFunc func(ctx context.Context) (image.IncusImageSources, error)
 
 	// GetAllNamesFunc mocks the GetAllNames method.
 	GetAllNamesFunc func(ctx context.Context) ([]string, error)
 
 	// GetByNameFunc mocks the GetByName method.
-	GetByNameFunc func(ctx context.Context, name string) (*image.ImageSource, error)
+	GetByNameFunc func(ctx context.Context, name string) (*image.IncusImageSource, error)
 
 	// UpdateFunc mocks the Update method.
-	UpdateFunc func(ctx context.Context, source image.ImageSource) error
+	UpdateFunc func(ctx context.Context, source image.IncusImageSource) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -71,7 +71,7 @@ type SourceRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Source is the source argument value.
-			Source image.ImageSource
+			Source image.IncusImageSource
 		}
 		// DeleteByName holds details about calls to the DeleteByName method.
 		DeleteByName []struct {
@@ -102,7 +102,7 @@ type SourceRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Source is the source argument value.
-			Source image.ImageSource
+			Source image.IncusImageSource
 		}
 	}
 	lockCreate       sync.RWMutex
@@ -114,13 +114,13 @@ type SourceRepoMock struct {
 }
 
 // Create calls CreateFunc.
-func (mock *SourceRepoMock) Create(ctx context.Context, source image.ImageSource) (int64, error) {
+func (mock *IncusImageSourceRepoMock) Create(ctx context.Context, source image.IncusImageSource) (int64, error) {
 	if mock.CreateFunc == nil {
-		panic("SourceRepoMock.CreateFunc: method is nil but SourceRepo.Create was just called")
+		panic("IncusImageSourceRepoMock.CreateFunc: method is nil but IncusImageSourceRepo.Create was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
-		Source image.ImageSource
+		Source image.IncusImageSource
 	}{
 		Ctx:    ctx,
 		Source: source,
@@ -134,14 +134,14 @@ func (mock *SourceRepoMock) Create(ctx context.Context, source image.ImageSource
 // CreateCalls gets all the calls that were made to Create.
 // Check the length with:
 //
-//	len(mockedSourceRepo.CreateCalls())
-func (mock *SourceRepoMock) CreateCalls() []struct {
+//	len(mockedIncusImageSourceRepo.CreateCalls())
+func (mock *IncusImageSourceRepoMock) CreateCalls() []struct {
 	Ctx    context.Context
-	Source image.ImageSource
+	Source image.IncusImageSource
 } {
 	var calls []struct {
 		Ctx    context.Context
-		Source image.ImageSource
+		Source image.IncusImageSource
 	}
 	mock.lockCreate.RLock()
 	calls = mock.calls.Create
@@ -150,9 +150,9 @@ func (mock *SourceRepoMock) CreateCalls() []struct {
 }
 
 // DeleteByName calls DeleteByNameFunc.
-func (mock *SourceRepoMock) DeleteByName(ctx context.Context, name string) error {
+func (mock *IncusImageSourceRepoMock) DeleteByName(ctx context.Context, name string) error {
 	if mock.DeleteByNameFunc == nil {
-		panic("SourceRepoMock.DeleteByNameFunc: method is nil but SourceRepo.DeleteByName was just called")
+		panic("IncusImageSourceRepoMock.DeleteByNameFunc: method is nil but IncusImageSourceRepo.DeleteByName was just called")
 	}
 	callInfo := struct {
 		Ctx  context.Context
@@ -170,8 +170,8 @@ func (mock *SourceRepoMock) DeleteByName(ctx context.Context, name string) error
 // DeleteByNameCalls gets all the calls that were made to DeleteByName.
 // Check the length with:
 //
-//	len(mockedSourceRepo.DeleteByNameCalls())
-func (mock *SourceRepoMock) DeleteByNameCalls() []struct {
+//	len(mockedIncusImageSourceRepo.DeleteByNameCalls())
+func (mock *IncusImageSourceRepoMock) DeleteByNameCalls() []struct {
 	Ctx  context.Context
 	Name string
 } {
@@ -186,9 +186,9 @@ func (mock *SourceRepoMock) DeleteByNameCalls() []struct {
 }
 
 // GetAll calls GetAllFunc.
-func (mock *SourceRepoMock) GetAll(ctx context.Context) (image.Sources, error) {
+func (mock *IncusImageSourceRepoMock) GetAll(ctx context.Context) (image.IncusImageSources, error) {
 	if mock.GetAllFunc == nil {
-		panic("SourceRepoMock.GetAllFunc: method is nil but SourceRepo.GetAll was just called")
+		panic("IncusImageSourceRepoMock.GetAllFunc: method is nil but IncusImageSourceRepo.GetAll was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -204,8 +204,8 @@ func (mock *SourceRepoMock) GetAll(ctx context.Context) (image.Sources, error) {
 // GetAllCalls gets all the calls that were made to GetAll.
 // Check the length with:
 //
-//	len(mockedSourceRepo.GetAllCalls())
-func (mock *SourceRepoMock) GetAllCalls() []struct {
+//	len(mockedIncusImageSourceRepo.GetAllCalls())
+func (mock *IncusImageSourceRepoMock) GetAllCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {
@@ -218,9 +218,9 @@ func (mock *SourceRepoMock) GetAllCalls() []struct {
 }
 
 // GetAllNames calls GetAllNamesFunc.
-func (mock *SourceRepoMock) GetAllNames(ctx context.Context) ([]string, error) {
+func (mock *IncusImageSourceRepoMock) GetAllNames(ctx context.Context) ([]string, error) {
 	if mock.GetAllNamesFunc == nil {
-		panic("SourceRepoMock.GetAllNamesFunc: method is nil but SourceRepo.GetAllNames was just called")
+		panic("IncusImageSourceRepoMock.GetAllNamesFunc: method is nil but IncusImageSourceRepo.GetAllNames was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -236,8 +236,8 @@ func (mock *SourceRepoMock) GetAllNames(ctx context.Context) ([]string, error) {
 // GetAllNamesCalls gets all the calls that were made to GetAllNames.
 // Check the length with:
 //
-//	len(mockedSourceRepo.GetAllNamesCalls())
-func (mock *SourceRepoMock) GetAllNamesCalls() []struct {
+//	len(mockedIncusImageSourceRepo.GetAllNamesCalls())
+func (mock *IncusImageSourceRepoMock) GetAllNamesCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {
@@ -250,9 +250,9 @@ func (mock *SourceRepoMock) GetAllNamesCalls() []struct {
 }
 
 // GetByName calls GetByNameFunc.
-func (mock *SourceRepoMock) GetByName(ctx context.Context, name string) (*image.ImageSource, error) {
+func (mock *IncusImageSourceRepoMock) GetByName(ctx context.Context, name string) (*image.IncusImageSource, error) {
 	if mock.GetByNameFunc == nil {
-		panic("SourceRepoMock.GetByNameFunc: method is nil but SourceRepo.GetByName was just called")
+		panic("IncusImageSourceRepoMock.GetByNameFunc: method is nil but IncusImageSourceRepo.GetByName was just called")
 	}
 	callInfo := struct {
 		Ctx  context.Context
@@ -270,8 +270,8 @@ func (mock *SourceRepoMock) GetByName(ctx context.Context, name string) (*image.
 // GetByNameCalls gets all the calls that were made to GetByName.
 // Check the length with:
 //
-//	len(mockedSourceRepo.GetByNameCalls())
-func (mock *SourceRepoMock) GetByNameCalls() []struct {
+//	len(mockedIncusImageSourceRepo.GetByNameCalls())
+func (mock *IncusImageSourceRepoMock) GetByNameCalls() []struct {
 	Ctx  context.Context
 	Name string
 } {
@@ -286,13 +286,13 @@ func (mock *SourceRepoMock) GetByNameCalls() []struct {
 }
 
 // Update calls UpdateFunc.
-func (mock *SourceRepoMock) Update(ctx context.Context, source image.ImageSource) error {
+func (mock *IncusImageSourceRepoMock) Update(ctx context.Context, source image.IncusImageSource) error {
 	if mock.UpdateFunc == nil {
-		panic("SourceRepoMock.UpdateFunc: method is nil but SourceRepo.Update was just called")
+		panic("IncusImageSourceRepoMock.UpdateFunc: method is nil but IncusImageSourceRepo.Update was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
-		Source image.ImageSource
+		Source image.IncusImageSource
 	}{
 		Ctx:    ctx,
 		Source: source,
@@ -306,14 +306,14 @@ func (mock *SourceRepoMock) Update(ctx context.Context, source image.ImageSource
 // UpdateCalls gets all the calls that were made to Update.
 // Check the length with:
 //
-//	len(mockedSourceRepo.UpdateCalls())
-func (mock *SourceRepoMock) UpdateCalls() []struct {
+//	len(mockedIncusImageSourceRepo.UpdateCalls())
+func (mock *IncusImageSourceRepoMock) UpdateCalls() []struct {
 	Ctx    context.Context
-	Source image.ImageSource
+	Source image.IncusImageSource
 } {
 	var calls []struct {
 		Ctx    context.Context
-		Source image.ImageSource
+		Source image.IncusImageSource
 	}
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update

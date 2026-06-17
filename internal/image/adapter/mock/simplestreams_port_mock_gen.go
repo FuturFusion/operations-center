@@ -22,10 +22,10 @@ var _ image.SimplestreamsPort = &SimplestreamsPortMock{}
 //
 //		// make and configure a mocked image.SimplestreamsPort
 //		mockedSimplestreamsPort := &SimplestreamsPortMock{
-//			GetFileFunc: func(ctx context.Context, source image.ImageSource, path string) (io.ReadCloser, error) {
+//			GetFileFunc: func(ctx context.Context, source image.IncusImageSource, path string) (io.ReadCloser, error) {
 //				panic("mock out the GetFile method")
 //			},
-//			GetImageListFunc: func(ctx context.Context, source image.ImageSource) (image.IncusImages, error) {
+//			GetImageListFunc: func(ctx context.Context, source image.IncusImageSource) (image.IncusImages, error) {
 //				panic("mock out the GetImageList method")
 //			},
 //		}
@@ -36,10 +36,10 @@ var _ image.SimplestreamsPort = &SimplestreamsPortMock{}
 //	}
 type SimplestreamsPortMock struct {
 	// GetFileFunc mocks the GetFile method.
-	GetFileFunc func(ctx context.Context, source image.ImageSource, path string) (io.ReadCloser, error)
+	GetFileFunc func(ctx context.Context, source image.IncusImageSource, path string) (io.ReadCloser, error)
 
 	// GetImageListFunc mocks the GetImageList method.
-	GetImageListFunc func(ctx context.Context, source image.ImageSource) (image.IncusImages, error)
+	GetImageListFunc func(ctx context.Context, source image.IncusImageSource) (image.IncusImages, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -48,7 +48,7 @@ type SimplestreamsPortMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Source is the source argument value.
-			Source image.ImageSource
+			Source image.IncusImageSource
 			// Path is the path argument value.
 			Path string
 		}
@@ -57,7 +57,7 @@ type SimplestreamsPortMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Source is the source argument value.
-			Source image.ImageSource
+			Source image.IncusImageSource
 		}
 	}
 	lockGetFile      sync.RWMutex
@@ -65,13 +65,13 @@ type SimplestreamsPortMock struct {
 }
 
 // GetFile calls GetFileFunc.
-func (mock *SimplestreamsPortMock) GetFile(ctx context.Context, source image.ImageSource, path string) (io.ReadCloser, error) {
+func (mock *SimplestreamsPortMock) GetFile(ctx context.Context, source image.IncusImageSource, path string) (io.ReadCloser, error) {
 	if mock.GetFileFunc == nil {
 		panic("SimplestreamsPortMock.GetFileFunc: method is nil but SimplestreamsPort.GetFile was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
-		Source image.ImageSource
+		Source image.IncusImageSource
 		Path   string
 	}{
 		Ctx:    ctx,
@@ -90,12 +90,12 @@ func (mock *SimplestreamsPortMock) GetFile(ctx context.Context, source image.Ima
 //	len(mockedSimplestreamsPort.GetFileCalls())
 func (mock *SimplestreamsPortMock) GetFileCalls() []struct {
 	Ctx    context.Context
-	Source image.ImageSource
+	Source image.IncusImageSource
 	Path   string
 } {
 	var calls []struct {
 		Ctx    context.Context
-		Source image.ImageSource
+		Source image.IncusImageSource
 		Path   string
 	}
 	mock.lockGetFile.RLock()
@@ -105,13 +105,13 @@ func (mock *SimplestreamsPortMock) GetFileCalls() []struct {
 }
 
 // GetImageList calls GetImageListFunc.
-func (mock *SimplestreamsPortMock) GetImageList(ctx context.Context, source image.ImageSource) (image.IncusImages, error) {
+func (mock *SimplestreamsPortMock) GetImageList(ctx context.Context, source image.IncusImageSource) (image.IncusImages, error) {
 	if mock.GetImageListFunc == nil {
 		panic("SimplestreamsPortMock.GetImageListFunc: method is nil but SimplestreamsPort.GetImageList was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
-		Source image.ImageSource
+		Source image.IncusImageSource
 	}{
 		Ctx:    ctx,
 		Source: source,
@@ -128,11 +128,11 @@ func (mock *SimplestreamsPortMock) GetImageList(ctx context.Context, source imag
 //	len(mockedSimplestreamsPort.GetImageListCalls())
 func (mock *SimplestreamsPortMock) GetImageListCalls() []struct {
 	Ctx    context.Context
-	Source image.ImageSource
+	Source image.IncusImageSource
 } {
 	var calls []struct {
 		Ctx    context.Context
-		Source image.ImageSource
+		Source image.IncusImageSource
 	}
 	mock.lockGetImageList.RLock()
 	calls = mock.calls.GetImageList

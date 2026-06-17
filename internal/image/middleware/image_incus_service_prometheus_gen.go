@@ -153,7 +153,7 @@ func (_d ImageIncusServiceWithPrometheus) GetVersionFileByName(ctx context.Conte
 }
 
 // RefreshFromSource implements image.ImageIncusService.
-func (_d ImageIncusServiceWithPrometheus) RefreshFromSource(ctx context.Context, source image.ImageSource) (err error) {
+func (_d ImageIncusServiceWithPrometheus) RefreshFromSource(ctx context.Context, source image.IncusImageSource) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"

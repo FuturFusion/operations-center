@@ -11,23 +11,23 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
-// SourceServiceWithSlog implements image.SourceService that is instrumented with slog logger.
-type SourceServiceWithSlog struct {
-	_base                 image.SourceService
+// IncusImageSourceRepoWithSlog implements image.IncusImageSourceRepo that is instrumented with slog logger.
+type IncusImageSourceRepoWithSlog struct {
+	_base                 image.IncusImageSourceRepo
 	_isInformativeErrFunc func(error) bool
 }
 
-type SourceServiceWithSlogOption func(s *SourceServiceWithSlog)
+type IncusImageSourceRepoWithSlogOption func(s *IncusImageSourceRepoWithSlog)
 
-func SourceServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) SourceServiceWithSlogOption {
-	return func(_base *SourceServiceWithSlog) {
+func IncusImageSourceRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) IncusImageSourceRepoWithSlogOption {
+	return func(_base *IncusImageSourceRepoWithSlog) {
 		_base._isInformativeErrFunc = isInformativeErrFunc
 	}
 }
 
-// NewSourceServiceWithSlog instruments an implementation of the image.SourceService with simple logging.
-func NewSourceServiceWithSlog(base image.SourceService, opts ...SourceServiceWithSlogOption) SourceServiceWithSlog {
-	this := SourceServiceWithSlog{
+// NewIncusImageSourceRepoWithSlog instruments an implementation of the image.IncusImageSourceRepo with simple logging.
+func NewIncusImageSourceRepoWithSlog(base image.IncusImageSourceRepo, opts ...IncusImageSourceRepoWithSlogOption) IncusImageSourceRepoWithSlog {
+	this := IncusImageSourceRepoWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
@@ -39,8 +39,8 @@ func NewSourceServiceWithSlog(base image.SourceService, opts ...SourceServiceWit
 	return this
 }
 
-// Create implements image.SourceService.
-func (_d SourceServiceWithSlog) Create(ctx context.Context, source image.ImageSource) (imageSource image.ImageSource, err error) {
+// Create implements image.IncusImageSourceRepo.
+func (_d IncusImageSourceRepoWithSlog) Create(ctx context.Context, source image.IncusImageSource) (n int64, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -53,7 +53,7 @@ func (_d SourceServiceWithSlog) Create(ctx context.Context, source image.ImageSo
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("imageSource", imageSource),
+				slog.Int64("n", n),
 				slog.Any("err", err),
 			)
 		} else {
@@ -74,8 +74,8 @@ func (_d SourceServiceWithSlog) Create(ctx context.Context, source image.ImageSo
 	return _d._base.Create(ctx, source)
 }
 
-// DeleteByName implements image.SourceService.
-func (_d SourceServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
+// DeleteByName implements image.IncusImageSourceRepo.
+func (_d IncusImageSourceRepoWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -108,8 +108,8 @@ func (_d SourceServiceWithSlog) DeleteByName(ctx context.Context, name string) (
 	return _d._base.DeleteByName(ctx, name)
 }
 
-// GetAll implements image.SourceService.
-func (_d SourceServiceWithSlog) GetAll(ctx context.Context) (sources image.Sources, err error) {
+// GetAll implements image.IncusImageSourceRepo.
+func (_d IncusImageSourceRepoWithSlog) GetAll(ctx context.Context) (incusImageSources image.IncusImageSources, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -121,7 +121,7 @@ func (_d SourceServiceWithSlog) GetAll(ctx context.Context) (sources image.Sourc
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("sources", sources),
+				slog.Any("incusImageSources", incusImageSources),
 				slog.Any("err", err),
 			)
 		} else {
@@ -142,8 +142,8 @@ func (_d SourceServiceWithSlog) GetAll(ctx context.Context) (sources image.Sourc
 	return _d._base.GetAll(ctx)
 }
 
-// GetAllNames implements image.SourceService.
-func (_d SourceServiceWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
+// GetAllNames implements image.IncusImageSourceRepo.
+func (_d IncusImageSourceRepoWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -176,8 +176,8 @@ func (_d SourceServiceWithSlog) GetAllNames(ctx context.Context) (strings []stri
 	return _d._base.GetAllNames(ctx)
 }
 
-// GetByName implements image.SourceService.
-func (_d SourceServiceWithSlog) GetByName(ctx context.Context, name string) (imageSource *image.ImageSource, err error) {
+// GetByName implements image.IncusImageSourceRepo.
+func (_d IncusImageSourceRepoWithSlog) GetByName(ctx context.Context, name string) (incusImageSource *image.IncusImageSource, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -190,7 +190,7 @@ func (_d SourceServiceWithSlog) GetByName(ctx context.Context, name string) (ima
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("imageSource", imageSource),
+				slog.Any("incusImageSource", incusImageSource),
 				slog.Any("err", err),
 			)
 		} else {
@@ -211,75 +211,8 @@ func (_d SourceServiceWithSlog) GetByName(ctx context.Context, name string) (ima
 	return _d._base.GetByName(ctx, name)
 }
 
-// RefreshAll implements image.SourceService.
-func (_d SourceServiceWithSlog) RefreshAll(ctx context.Context) (err error) {
-	log := slog.With()
-	if slog.Default().Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-		)
-	}
-	log.DebugContext(ctx, "=> calling RefreshAll")
-	defer func() {
-		log := slog.With()
-		if slog.Default().Enabled(ctx, logger.LevelTrace) {
-			log = slog.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = slog.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method RefreshAll returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method RefreshAll returned an error")
-			}
-		} else {
-			log.DebugContext(ctx, "<= method RefreshAll finished")
-		}
-	}()
-	return _d._base.RefreshAll(ctx)
-}
-
-// RefreshByName implements image.SourceService.
-func (_d SourceServiceWithSlog) RefreshByName(ctx context.Context, name string) (err error) {
-	log := slog.With()
-	if slog.Default().Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.String("name", name),
-		)
-	}
-	log.DebugContext(ctx, "=> calling RefreshByName")
-	defer func() {
-		log := slog.With()
-		if slog.Default().Enabled(ctx, logger.LevelTrace) {
-			log = slog.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = slog.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method RefreshByName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method RefreshByName returned an error")
-			}
-		} else {
-			log.DebugContext(ctx, "<= method RefreshByName finished")
-		}
-	}()
-	return _d._base.RefreshByName(ctx, name)
-}
-
-// Update implements image.SourceService.
-func (_d SourceServiceWithSlog) Update(ctx context.Context, source image.ImageSource) (err error) {
+// Update implements image.IncusImageSourceRepo.
+func (_d IncusImageSourceRepoWithSlog) Update(ctx context.Context, source image.IncusImageSource) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

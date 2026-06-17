@@ -11,20 +11,20 @@ import (
 	"github.com/FuturFusion/operations-center/internal/image"
 )
 
-// Ensure that ImageSourcerPortMock does implement image.ImageSourcerPort.
+// Ensure that IncusImageSourcePortMock does implement image.IncusImageSourcePort.
 // If this is not the case, regenerate this file with mockery.
-var _ image.ImageSourcerPort = &ImageSourcerPortMock{}
+var _ image.IncusImageSourcePort = &IncusImageSourcePortMock{}
 
-// ImageSourcerPortMock is a mock implementation of image.ImageSourcerPort.
+// IncusImageSourcePortMock is a mock implementation of image.IncusImageSourcePort.
 //
-//	func TestSomethingThatUsesImageSourcerPort(t *testing.T) {
+//	func TestSomethingThatUsesIncusImageSourcePort(t *testing.T) {
 //
-//		// make and configure a mocked image.ImageSourcerPort
-//		mockedImageSourcerPort := &ImageSourcerPortMock{
+//		// make and configure a mocked image.IncusImageSourcePort
+//		mockedIncusImageSourcePort := &IncusImageSourcePortMock{
 //			DeleteBySourceFunc: func(ctx context.Context, sourceName string) error {
 //				panic("mock out the DeleteBySource method")
 //			},
-//			RefreshFromSourceFunc: func(ctx context.Context, source image.ImageSource) error {
+//			RefreshFromSourceFunc: func(ctx context.Context, source image.IncusImageSource) error {
 //				panic("mock out the RefreshFromSource method")
 //			},
 //			ValidateFilterExpressionFunc: func(ctx context.Context, filterExpression string) error {
@@ -32,16 +32,16 @@ var _ image.ImageSourcerPort = &ImageSourcerPortMock{}
 //			},
 //		}
 //
-//		// use mockedImageSourcerPort in code that requires image.ImageSourcerPort
+//		// use mockedIncusImageSourcePort in code that requires image.IncusImageSourcePort
 //		// and then make assertions.
 //
 //	}
-type ImageSourcerPortMock struct {
+type IncusImageSourcePortMock struct {
 	// DeleteBySourceFunc mocks the DeleteBySource method.
 	DeleteBySourceFunc func(ctx context.Context, sourceName string) error
 
 	// RefreshFromSourceFunc mocks the RefreshFromSource method.
-	RefreshFromSourceFunc func(ctx context.Context, source image.ImageSource) error
+	RefreshFromSourceFunc func(ctx context.Context, source image.IncusImageSource) error
 
 	// ValidateFilterExpressionFunc mocks the ValidateFilterExpression method.
 	ValidateFilterExpressionFunc func(ctx context.Context, filterExpression string) error
@@ -60,7 +60,7 @@ type ImageSourcerPortMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Source is the source argument value.
-			Source image.ImageSource
+			Source image.IncusImageSource
 		}
 		// ValidateFilterExpression holds details about calls to the ValidateFilterExpression method.
 		ValidateFilterExpression []struct {
@@ -76,9 +76,9 @@ type ImageSourcerPortMock struct {
 }
 
 // DeleteBySource calls DeleteBySourceFunc.
-func (mock *ImageSourcerPortMock) DeleteBySource(ctx context.Context, sourceName string) error {
+func (mock *IncusImageSourcePortMock) DeleteBySource(ctx context.Context, sourceName string) error {
 	if mock.DeleteBySourceFunc == nil {
-		panic("ImageSourcerPortMock.DeleteBySourceFunc: method is nil but ImageSourcerPort.DeleteBySource was just called")
+		panic("IncusImageSourcePortMock.DeleteBySourceFunc: method is nil but IncusImageSourcePort.DeleteBySource was just called")
 	}
 	callInfo := struct {
 		Ctx        context.Context
@@ -96,8 +96,8 @@ func (mock *ImageSourcerPortMock) DeleteBySource(ctx context.Context, sourceName
 // DeleteBySourceCalls gets all the calls that were made to DeleteBySource.
 // Check the length with:
 //
-//	len(mockedImageSourcerPort.DeleteBySourceCalls())
-func (mock *ImageSourcerPortMock) DeleteBySourceCalls() []struct {
+//	len(mockedIncusImageSourcePort.DeleteBySourceCalls())
+func (mock *IncusImageSourcePortMock) DeleteBySourceCalls() []struct {
 	Ctx        context.Context
 	SourceName string
 } {
@@ -112,13 +112,13 @@ func (mock *ImageSourcerPortMock) DeleteBySourceCalls() []struct {
 }
 
 // RefreshFromSource calls RefreshFromSourceFunc.
-func (mock *ImageSourcerPortMock) RefreshFromSource(ctx context.Context, source image.ImageSource) error {
+func (mock *IncusImageSourcePortMock) RefreshFromSource(ctx context.Context, source image.IncusImageSource) error {
 	if mock.RefreshFromSourceFunc == nil {
-		panic("ImageSourcerPortMock.RefreshFromSourceFunc: method is nil but ImageSourcerPort.RefreshFromSource was just called")
+		panic("IncusImageSourcePortMock.RefreshFromSourceFunc: method is nil but IncusImageSourcePort.RefreshFromSource was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
-		Source image.ImageSource
+		Source image.IncusImageSource
 	}{
 		Ctx:    ctx,
 		Source: source,
@@ -132,14 +132,14 @@ func (mock *ImageSourcerPortMock) RefreshFromSource(ctx context.Context, source 
 // RefreshFromSourceCalls gets all the calls that were made to RefreshFromSource.
 // Check the length with:
 //
-//	len(mockedImageSourcerPort.RefreshFromSourceCalls())
-func (mock *ImageSourcerPortMock) RefreshFromSourceCalls() []struct {
+//	len(mockedIncusImageSourcePort.RefreshFromSourceCalls())
+func (mock *IncusImageSourcePortMock) RefreshFromSourceCalls() []struct {
 	Ctx    context.Context
-	Source image.ImageSource
+	Source image.IncusImageSource
 } {
 	var calls []struct {
 		Ctx    context.Context
-		Source image.ImageSource
+		Source image.IncusImageSource
 	}
 	mock.lockRefreshFromSource.RLock()
 	calls = mock.calls.RefreshFromSource
@@ -148,9 +148,9 @@ func (mock *ImageSourcerPortMock) RefreshFromSourceCalls() []struct {
 }
 
 // ValidateFilterExpression calls ValidateFilterExpressionFunc.
-func (mock *ImageSourcerPortMock) ValidateFilterExpression(ctx context.Context, filterExpression string) error {
+func (mock *IncusImageSourcePortMock) ValidateFilterExpression(ctx context.Context, filterExpression string) error {
 	if mock.ValidateFilterExpressionFunc == nil {
-		panic("ImageSourcerPortMock.ValidateFilterExpressionFunc: method is nil but ImageSourcerPort.ValidateFilterExpression was just called")
+		panic("IncusImageSourcePortMock.ValidateFilterExpressionFunc: method is nil but IncusImageSourcePort.ValidateFilterExpression was just called")
 	}
 	callInfo := struct {
 		Ctx              context.Context
@@ -168,8 +168,8 @@ func (mock *ImageSourcerPortMock) ValidateFilterExpression(ctx context.Context, 
 // ValidateFilterExpressionCalls gets all the calls that were made to ValidateFilterExpression.
 // Check the length with:
 //
-//	len(mockedImageSourcerPort.ValidateFilterExpressionCalls())
-func (mock *ImageSourcerPortMock) ValidateFilterExpressionCalls() []struct {
+//	len(mockedIncusImageSourcePort.ValidateFilterExpressionCalls())
+func (mock *IncusImageSourcePortMock) ValidateFilterExpressionCalls() []struct {
 	Ctx              context.Context
 	FilterExpression string
 } {

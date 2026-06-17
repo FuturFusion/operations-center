@@ -11,23 +11,23 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
-// ImageSourcerPortWithSlog implements image.ImageSourcerPort that is instrumented with slog logger.
-type ImageSourcerPortWithSlog struct {
-	_base                 image.ImageSourcerPort
+// IncusImageSourcePortWithSlog implements image.IncusImageSourcePort that is instrumented with slog logger.
+type IncusImageSourcePortWithSlog struct {
+	_base                 image.IncusImageSourcePort
 	_isInformativeErrFunc func(error) bool
 }
 
-type ImageSourcerPortWithSlogOption func(s *ImageSourcerPortWithSlog)
+type IncusImageSourcePortWithSlogOption func(s *IncusImageSourcePortWithSlog)
 
-func ImageSourcerPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ImageSourcerPortWithSlogOption {
-	return func(_base *ImageSourcerPortWithSlog) {
+func IncusImageSourcePortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) IncusImageSourcePortWithSlogOption {
+	return func(_base *IncusImageSourcePortWithSlog) {
 		_base._isInformativeErrFunc = isInformativeErrFunc
 	}
 }
 
-// NewImageSourcerPortWithSlog instruments an implementation of the image.ImageSourcerPort with simple logging.
-func NewImageSourcerPortWithSlog(base image.ImageSourcerPort, opts ...ImageSourcerPortWithSlogOption) ImageSourcerPortWithSlog {
-	this := ImageSourcerPortWithSlog{
+// NewIncusImageSourcePortWithSlog instruments an implementation of the image.IncusImageSourcePort with simple logging.
+func NewIncusImageSourcePortWithSlog(base image.IncusImageSourcePort, opts ...IncusImageSourcePortWithSlogOption) IncusImageSourcePortWithSlog {
+	this := IncusImageSourcePortWithSlog{
 		_base:                 base,
 		_isInformativeErrFunc: func(error) bool { return false },
 	}
@@ -39,8 +39,8 @@ func NewImageSourcerPortWithSlog(base image.ImageSourcerPort, opts ...ImageSourc
 	return this
 }
 
-// DeleteBySource implements image.ImageSourcerPort.
-func (_d ImageSourcerPortWithSlog) DeleteBySource(ctx context.Context, sourceName string) (err error) {
+// DeleteBySource implements image.IncusImageSourcePort.
+func (_d IncusImageSourcePortWithSlog) DeleteBySource(ctx context.Context, sourceName string) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -73,8 +73,8 @@ func (_d ImageSourcerPortWithSlog) DeleteBySource(ctx context.Context, sourceNam
 	return _d._base.DeleteBySource(ctx, sourceName)
 }
 
-// RefreshFromSource implements image.ImageSourcerPort.
-func (_d ImageSourcerPortWithSlog) RefreshFromSource(ctx context.Context, source image.ImageSource) (err error) {
+// RefreshFromSource implements image.IncusImageSourcePort.
+func (_d IncusImageSourcePortWithSlog) RefreshFromSource(ctx context.Context, source image.IncusImageSource) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -107,8 +107,8 @@ func (_d ImageSourcerPortWithSlog) RefreshFromSource(ctx context.Context, source
 	return _d._base.RefreshFromSource(ctx, source)
 }
 
-// ValidateFilterExpression implements image.ImageSourcerPort.
-func (_d ImageSourcerPortWithSlog) ValidateFilterExpression(ctx context.Context, filterExpression string) (err error) {
+// ValidateFilterExpression implements image.IncusImageSourcePort.
+func (_d IncusImageSourcePortWithSlog) ValidateFilterExpression(ctx context.Context, filterExpression string) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

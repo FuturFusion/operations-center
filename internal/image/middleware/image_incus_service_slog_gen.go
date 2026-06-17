@@ -321,7 +321,7 @@ func (_d ImageIncusServiceWithSlog) GetVersionFileByName(ctx context.Context, na
 }
 
 // RefreshFromSource implements image.ImageIncusService.
-func (_d ImageIncusServiceWithSlog) RefreshFromSource(ctx context.Context, source image.ImageSource) (err error) {
+func (_d ImageIncusServiceWithSlog) RefreshFromSource(ctx context.Context, source image.IncusImageSource) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

@@ -40,7 +40,7 @@ func NewSimplestreamsPortWithPrometheus(base image.SimplestreamsPort, instanceNa
 }
 
 // GetFile implements image.SimplestreamsPort.
-func (_d SimplestreamsPortWithPrometheus) GetFile(ctx context.Context, source image.ImageSource, path string) (readCloser io.ReadCloser, err error) {
+func (_d SimplestreamsPortWithPrometheus) GetFile(ctx context.Context, source image.IncusImageSource, path string) (readCloser io.ReadCloser, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -54,7 +54,7 @@ func (_d SimplestreamsPortWithPrometheus) GetFile(ctx context.Context, source im
 }
 
 // GetImageList implements image.SimplestreamsPort.
-func (_d SimplestreamsPortWithPrometheus) GetImageList(ctx context.Context, source image.ImageSource) (incusImages image.IncusImages, err error) {
+func (_d SimplestreamsPortWithPrometheus) GetImageList(ctx context.Context, source image.IncusImageSource) (incusImages image.IncusImages, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"

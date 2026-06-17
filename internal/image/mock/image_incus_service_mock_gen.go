@@ -47,7 +47,7 @@ var _ image.ImageIncusService = &ImageIncusServiceMock{}
 //			GetVersionFileByNameFunc: func(ctx context.Context, name string, version string, filename string) (io.ReadCloser, int64, error) {
 //				panic("mock out the GetVersionFileByName method")
 //			},
-//			RefreshFromSourceFunc: func(ctx context.Context, source image.ImageSource) error {
+//			RefreshFromSourceFunc: func(ctx context.Context, source image.IncusImageSource) error {
 //				panic("mock out the RefreshFromSource method")
 //			},
 //			UpdateFunc: func(ctx context.Context, incusImage image.IncusImage) error {
@@ -88,7 +88,7 @@ type ImageIncusServiceMock struct {
 	GetVersionFileByNameFunc func(ctx context.Context, name string, version string, filename string) (io.ReadCloser, int64, error)
 
 	// RefreshFromSourceFunc mocks the RefreshFromSource method.
-	RefreshFromSourceFunc func(ctx context.Context, source image.ImageSource) error
+	RefreshFromSourceFunc func(ctx context.Context, source image.IncusImageSource) error
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, incusImage image.IncusImage) error
@@ -161,7 +161,7 @@ type ImageIncusServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Source is the source argument value.
-			Source image.ImageSource
+			Source image.IncusImageSource
 		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
@@ -484,13 +484,13 @@ func (mock *ImageIncusServiceMock) GetVersionFileByNameCalls() []struct {
 }
 
 // RefreshFromSource calls RefreshFromSourceFunc.
-func (mock *ImageIncusServiceMock) RefreshFromSource(ctx context.Context, source image.ImageSource) error {
+func (mock *ImageIncusServiceMock) RefreshFromSource(ctx context.Context, source image.IncusImageSource) error {
 	if mock.RefreshFromSourceFunc == nil {
 		panic("ImageIncusServiceMock.RefreshFromSourceFunc: method is nil but ImageIncusService.RefreshFromSource was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
-		Source image.ImageSource
+		Source image.IncusImageSource
 	}{
 		Ctx:    ctx,
 		Source: source,
@@ -507,11 +507,11 @@ func (mock *ImageIncusServiceMock) RefreshFromSource(ctx context.Context, source
 //	len(mockedImageIncusService.RefreshFromSourceCalls())
 func (mock *ImageIncusServiceMock) RefreshFromSourceCalls() []struct {
 	Ctx    context.Context
-	Source image.ImageSource
+	Source image.IncusImageSource
 } {
 	var calls []struct {
 		Ctx    context.Context
-		Source image.ImageSource
+		Source image.IncusImageSource
 	}
 	mock.lockRefreshFromSource.RLock()
 	calls = mock.calls.RefreshFromSource

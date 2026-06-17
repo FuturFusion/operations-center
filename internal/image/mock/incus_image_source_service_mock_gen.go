@@ -11,29 +11,29 @@ import (
 	"github.com/FuturFusion/operations-center/internal/image"
 )
 
-// Ensure that SourceServiceMock does implement image.SourceService.
+// Ensure that IncusImageSourceServiceMock does implement image.IncusImageSourceService.
 // If this is not the case, regenerate this file with mockery.
-var _ image.SourceService = &SourceServiceMock{}
+var _ image.IncusImageSourceService = &IncusImageSourceServiceMock{}
 
-// SourceServiceMock is a mock implementation of image.SourceService.
+// IncusImageSourceServiceMock is a mock implementation of image.IncusImageSourceService.
 //
-//	func TestSomethingThatUsesSourceService(t *testing.T) {
+//	func TestSomethingThatUsesIncusImageSourceService(t *testing.T) {
 //
-//		// make and configure a mocked image.SourceService
-//		mockedSourceService := &SourceServiceMock{
-//			CreateFunc: func(ctx context.Context, source image.ImageSource) (image.ImageSource, error) {
+//		// make and configure a mocked image.IncusImageSourceService
+//		mockedIncusImageSourceService := &IncusImageSourceServiceMock{
+//			CreateFunc: func(ctx context.Context, source image.IncusImageSource) (image.IncusImageSource, error) {
 //				panic("mock out the Create method")
 //			},
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the DeleteByName method")
 //			},
-//			GetAllFunc: func(ctx context.Context) (image.Sources, error) {
+//			GetAllFunc: func(ctx context.Context) (image.IncusImageSources, error) {
 //				panic("mock out the GetAll method")
 //			},
 //			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
 //				panic("mock out the GetAllNames method")
 //			},
-//			GetByNameFunc: func(ctx context.Context, name string) (*image.ImageSource, error) {
+//			GetByNameFunc: func(ctx context.Context, name string) (*image.IncusImageSource, error) {
 //				panic("mock out the GetByName method")
 //			},
 //			RefreshAllFunc: func(ctx context.Context) error {
@@ -42,30 +42,30 @@ var _ image.SourceService = &SourceServiceMock{}
 //			RefreshByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the RefreshByName method")
 //			},
-//			UpdateFunc: func(ctx context.Context, source image.ImageSource) error {
+//			UpdateFunc: func(ctx context.Context, source image.IncusImageSource) error {
 //				panic("mock out the Update method")
 //			},
 //		}
 //
-//		// use mockedSourceService in code that requires image.SourceService
+//		// use mockedIncusImageSourceService in code that requires image.IncusImageSourceService
 //		// and then make assertions.
 //
 //	}
-type SourceServiceMock struct {
+type IncusImageSourceServiceMock struct {
 	// CreateFunc mocks the Create method.
-	CreateFunc func(ctx context.Context, source image.ImageSource) (image.ImageSource, error)
+	CreateFunc func(ctx context.Context, source image.IncusImageSource) (image.IncusImageSource, error)
 
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
 
 	// GetAllFunc mocks the GetAll method.
-	GetAllFunc func(ctx context.Context) (image.Sources, error)
+	GetAllFunc func(ctx context.Context) (image.IncusImageSources, error)
 
 	// GetAllNamesFunc mocks the GetAllNames method.
 	GetAllNamesFunc func(ctx context.Context) ([]string, error)
 
 	// GetByNameFunc mocks the GetByName method.
-	GetByNameFunc func(ctx context.Context, name string) (*image.ImageSource, error)
+	GetByNameFunc func(ctx context.Context, name string) (*image.IncusImageSource, error)
 
 	// RefreshAllFunc mocks the RefreshAll method.
 	RefreshAllFunc func(ctx context.Context) error
@@ -74,7 +74,7 @@ type SourceServiceMock struct {
 	RefreshByNameFunc func(ctx context.Context, name string) error
 
 	// UpdateFunc mocks the Update method.
-	UpdateFunc func(ctx context.Context, source image.ImageSource) error
+	UpdateFunc func(ctx context.Context, source image.IncusImageSource) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -83,7 +83,7 @@ type SourceServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Source is the source argument value.
-			Source image.ImageSource
+			Source image.IncusImageSource
 		}
 		// DeleteByName holds details about calls to the DeleteByName method.
 		DeleteByName []struct {
@@ -126,7 +126,7 @@ type SourceServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Source is the source argument value.
-			Source image.ImageSource
+			Source image.IncusImageSource
 		}
 	}
 	lockCreate        sync.RWMutex
@@ -140,13 +140,13 @@ type SourceServiceMock struct {
 }
 
 // Create calls CreateFunc.
-func (mock *SourceServiceMock) Create(ctx context.Context, source image.ImageSource) (image.ImageSource, error) {
+func (mock *IncusImageSourceServiceMock) Create(ctx context.Context, source image.IncusImageSource) (image.IncusImageSource, error) {
 	if mock.CreateFunc == nil {
-		panic("SourceServiceMock.CreateFunc: method is nil but SourceService.Create was just called")
+		panic("IncusImageSourceServiceMock.CreateFunc: method is nil but IncusImageSourceService.Create was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
-		Source image.ImageSource
+		Source image.IncusImageSource
 	}{
 		Ctx:    ctx,
 		Source: source,
@@ -160,14 +160,14 @@ func (mock *SourceServiceMock) Create(ctx context.Context, source image.ImageSou
 // CreateCalls gets all the calls that were made to Create.
 // Check the length with:
 //
-//	len(mockedSourceService.CreateCalls())
-func (mock *SourceServiceMock) CreateCalls() []struct {
+//	len(mockedIncusImageSourceService.CreateCalls())
+func (mock *IncusImageSourceServiceMock) CreateCalls() []struct {
 	Ctx    context.Context
-	Source image.ImageSource
+	Source image.IncusImageSource
 } {
 	var calls []struct {
 		Ctx    context.Context
-		Source image.ImageSource
+		Source image.IncusImageSource
 	}
 	mock.lockCreate.RLock()
 	calls = mock.calls.Create
@@ -176,9 +176,9 @@ func (mock *SourceServiceMock) CreateCalls() []struct {
 }
 
 // DeleteByName calls DeleteByNameFunc.
-func (mock *SourceServiceMock) DeleteByName(ctx context.Context, name string) error {
+func (mock *IncusImageSourceServiceMock) DeleteByName(ctx context.Context, name string) error {
 	if mock.DeleteByNameFunc == nil {
-		panic("SourceServiceMock.DeleteByNameFunc: method is nil but SourceService.DeleteByName was just called")
+		panic("IncusImageSourceServiceMock.DeleteByNameFunc: method is nil but IncusImageSourceService.DeleteByName was just called")
 	}
 	callInfo := struct {
 		Ctx  context.Context
@@ -196,8 +196,8 @@ func (mock *SourceServiceMock) DeleteByName(ctx context.Context, name string) er
 // DeleteByNameCalls gets all the calls that were made to DeleteByName.
 // Check the length with:
 //
-//	len(mockedSourceService.DeleteByNameCalls())
-func (mock *SourceServiceMock) DeleteByNameCalls() []struct {
+//	len(mockedIncusImageSourceService.DeleteByNameCalls())
+func (mock *IncusImageSourceServiceMock) DeleteByNameCalls() []struct {
 	Ctx  context.Context
 	Name string
 } {
@@ -212,9 +212,9 @@ func (mock *SourceServiceMock) DeleteByNameCalls() []struct {
 }
 
 // GetAll calls GetAllFunc.
-func (mock *SourceServiceMock) GetAll(ctx context.Context) (image.Sources, error) {
+func (mock *IncusImageSourceServiceMock) GetAll(ctx context.Context) (image.IncusImageSources, error) {
 	if mock.GetAllFunc == nil {
-		panic("SourceServiceMock.GetAllFunc: method is nil but SourceService.GetAll was just called")
+		panic("IncusImageSourceServiceMock.GetAllFunc: method is nil but IncusImageSourceService.GetAll was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -230,8 +230,8 @@ func (mock *SourceServiceMock) GetAll(ctx context.Context) (image.Sources, error
 // GetAllCalls gets all the calls that were made to GetAll.
 // Check the length with:
 //
-//	len(mockedSourceService.GetAllCalls())
-func (mock *SourceServiceMock) GetAllCalls() []struct {
+//	len(mockedIncusImageSourceService.GetAllCalls())
+func (mock *IncusImageSourceServiceMock) GetAllCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {
@@ -244,9 +244,9 @@ func (mock *SourceServiceMock) GetAllCalls() []struct {
 }
 
 // GetAllNames calls GetAllNamesFunc.
-func (mock *SourceServiceMock) GetAllNames(ctx context.Context) ([]string, error) {
+func (mock *IncusImageSourceServiceMock) GetAllNames(ctx context.Context) ([]string, error) {
 	if mock.GetAllNamesFunc == nil {
-		panic("SourceServiceMock.GetAllNamesFunc: method is nil but SourceService.GetAllNames was just called")
+		panic("IncusImageSourceServiceMock.GetAllNamesFunc: method is nil but IncusImageSourceService.GetAllNames was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -262,8 +262,8 @@ func (mock *SourceServiceMock) GetAllNames(ctx context.Context) ([]string, error
 // GetAllNamesCalls gets all the calls that were made to GetAllNames.
 // Check the length with:
 //
-//	len(mockedSourceService.GetAllNamesCalls())
-func (mock *SourceServiceMock) GetAllNamesCalls() []struct {
+//	len(mockedIncusImageSourceService.GetAllNamesCalls())
+func (mock *IncusImageSourceServiceMock) GetAllNamesCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {
@@ -276,9 +276,9 @@ func (mock *SourceServiceMock) GetAllNamesCalls() []struct {
 }
 
 // GetByName calls GetByNameFunc.
-func (mock *SourceServiceMock) GetByName(ctx context.Context, name string) (*image.ImageSource, error) {
+func (mock *IncusImageSourceServiceMock) GetByName(ctx context.Context, name string) (*image.IncusImageSource, error) {
 	if mock.GetByNameFunc == nil {
-		panic("SourceServiceMock.GetByNameFunc: method is nil but SourceService.GetByName was just called")
+		panic("IncusImageSourceServiceMock.GetByNameFunc: method is nil but IncusImageSourceService.GetByName was just called")
 	}
 	callInfo := struct {
 		Ctx  context.Context
@@ -296,8 +296,8 @@ func (mock *SourceServiceMock) GetByName(ctx context.Context, name string) (*ima
 // GetByNameCalls gets all the calls that were made to GetByName.
 // Check the length with:
 //
-//	len(mockedSourceService.GetByNameCalls())
-func (mock *SourceServiceMock) GetByNameCalls() []struct {
+//	len(mockedIncusImageSourceService.GetByNameCalls())
+func (mock *IncusImageSourceServiceMock) GetByNameCalls() []struct {
 	Ctx  context.Context
 	Name string
 } {
@@ -312,9 +312,9 @@ func (mock *SourceServiceMock) GetByNameCalls() []struct {
 }
 
 // RefreshAll calls RefreshAllFunc.
-func (mock *SourceServiceMock) RefreshAll(ctx context.Context) error {
+func (mock *IncusImageSourceServiceMock) RefreshAll(ctx context.Context) error {
 	if mock.RefreshAllFunc == nil {
-		panic("SourceServiceMock.RefreshAllFunc: method is nil but SourceService.RefreshAll was just called")
+		panic("IncusImageSourceServiceMock.RefreshAllFunc: method is nil but IncusImageSourceService.RefreshAll was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -330,8 +330,8 @@ func (mock *SourceServiceMock) RefreshAll(ctx context.Context) error {
 // RefreshAllCalls gets all the calls that were made to RefreshAll.
 // Check the length with:
 //
-//	len(mockedSourceService.RefreshAllCalls())
-func (mock *SourceServiceMock) RefreshAllCalls() []struct {
+//	len(mockedIncusImageSourceService.RefreshAllCalls())
+func (mock *IncusImageSourceServiceMock) RefreshAllCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {
@@ -344,9 +344,9 @@ func (mock *SourceServiceMock) RefreshAllCalls() []struct {
 }
 
 // RefreshByName calls RefreshByNameFunc.
-func (mock *SourceServiceMock) RefreshByName(ctx context.Context, name string) error {
+func (mock *IncusImageSourceServiceMock) RefreshByName(ctx context.Context, name string) error {
 	if mock.RefreshByNameFunc == nil {
-		panic("SourceServiceMock.RefreshByNameFunc: method is nil but SourceService.RefreshByName was just called")
+		panic("IncusImageSourceServiceMock.RefreshByNameFunc: method is nil but IncusImageSourceService.RefreshByName was just called")
 	}
 	callInfo := struct {
 		Ctx  context.Context
@@ -364,8 +364,8 @@ func (mock *SourceServiceMock) RefreshByName(ctx context.Context, name string) e
 // RefreshByNameCalls gets all the calls that were made to RefreshByName.
 // Check the length with:
 //
-//	len(mockedSourceService.RefreshByNameCalls())
-func (mock *SourceServiceMock) RefreshByNameCalls() []struct {
+//	len(mockedIncusImageSourceService.RefreshByNameCalls())
+func (mock *IncusImageSourceServiceMock) RefreshByNameCalls() []struct {
 	Ctx  context.Context
 	Name string
 } {
@@ -380,13 +380,13 @@ func (mock *SourceServiceMock) RefreshByNameCalls() []struct {
 }
 
 // Update calls UpdateFunc.
-func (mock *SourceServiceMock) Update(ctx context.Context, source image.ImageSource) error {
+func (mock *IncusImageSourceServiceMock) Update(ctx context.Context, source image.IncusImageSource) error {
 	if mock.UpdateFunc == nil {
-		panic("SourceServiceMock.UpdateFunc: method is nil but SourceService.Update was just called")
+		panic("IncusImageSourceServiceMock.UpdateFunc: method is nil but IncusImageSourceService.Update was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
-		Source image.ImageSource
+		Source image.IncusImageSource
 	}{
 		Ctx:    ctx,
 		Source: source,
@@ -400,14 +400,14 @@ func (mock *SourceServiceMock) Update(ctx context.Context, source image.ImageSou
 // UpdateCalls gets all the calls that were made to Update.
 // Check the length with:
 //
-//	len(mockedSourceService.UpdateCalls())
-func (mock *SourceServiceMock) UpdateCalls() []struct {
+//	len(mockedIncusImageSourceService.UpdateCalls())
+func (mock *IncusImageSourceServiceMock) UpdateCalls() []struct {
 	Ctx    context.Context
-	Source image.ImageSource
+	Source image.IncusImageSource
 } {
 	var calls []struct {
 		Ctx    context.Context
-		Source image.ImageSource
+		Source image.IncusImageSource
 	}
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update

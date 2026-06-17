@@ -41,7 +41,7 @@ func NewSimplestreamsPortWithSlog(base image.SimplestreamsPort, opts ...Simplest
 }
 
 // GetFile implements image.SimplestreamsPort.
-func (_d SimplestreamsPortWithSlog) GetFile(ctx context.Context, source image.ImageSource, path string) (readCloser io.ReadCloser, err error) {
+func (_d SimplestreamsPortWithSlog) GetFile(ctx context.Context, source image.IncusImageSource, path string) (readCloser io.ReadCloser, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -77,7 +77,7 @@ func (_d SimplestreamsPortWithSlog) GetFile(ctx context.Context, source image.Im
 }
 
 // GetImageList implements image.SimplestreamsPort.
-func (_d SimplestreamsPortWithSlog) GetImageList(ctx context.Context, source image.ImageSource) (incusImages image.IncusImages, err error) {
+func (_d SimplestreamsPortWithSlog) GetImageList(ctx context.Context, source image.IncusImageSource) (incusImages image.IncusImages, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
