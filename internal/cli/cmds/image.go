@@ -31,11 +31,5 @@ func (c *CmdImage) Command() *cobra.Command {
 
 	cmd.AddCommand(IncusImageCmd.Command())
 
-	SourceCmd := image.CmdSource{
-		OCClient: c.OCClient,
-	}
-
-	cmd.AddCommand(SourceCmd.Command())
-
 	return cmd
 }

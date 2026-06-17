@@ -21,7 +21,7 @@ import (
 )
 
 type CmdSource struct {
-	OCClient *client.OperationsCenterClient
+	ocClient *client.OperationsCenterClient
 }
 
 func (c *CmdSource) Command() *cobra.Command {
@@ -40,42 +40,42 @@ func (c *CmdSource) Command() *cobra.Command {
 
 	// List
 	imageSourceListCmd := cmdImageSourceList{
-		ocClient: c.OCClient,
+		ocClient: c.ocClient,
 	}
 
 	cmd.AddCommand(imageSourceListCmd.Command())
 
 	// Show
 	imageSourceShowCmd := cmdImageSourceShow{
-		ocClient: c.OCClient,
+		ocClient: c.ocClient,
 	}
 
 	cmd.AddCommand(imageSourceShowCmd.Command())
 
 	// Add
 	imageSourceAddCmd := cmdImageSourceAdd{
-		ocClient: c.OCClient,
+		ocClient: c.ocClient,
 	}
 
 	cmd.AddCommand(imageSourceAddCmd.Command())
 
 	// Edit
 	imageSourceEditCmd := cmdImageSourceEdit{
-		ocClient: c.OCClient,
+		ocClient: c.ocClient,
 	}
 
 	cmd.AddCommand(imageSourceEditCmd.Command())
 
 	// Remove
 	imageSourceRemoveCmd := cmdImageSourceRemove{
-		ocClient: c.OCClient,
+		ocClient: c.ocClient,
 	}
 
 	cmd.AddCommand(imageSourceRemoveCmd.Command())
 
 	// Refresh
 	imageSourceRefreshCmd := cmdImageSourceRefresh{
-		ocClient: c.OCClient,
+		ocClient: c.ocClient,
 	}
 
 	cmd.AddCommand(imageSourceRefreshCmd.Command())
@@ -117,17 +117,17 @@ func (c *cmdImageSourceList) validateArgsAndFlags(cmd *cobra.Command, args []str
 }
 
 func (c *cmdImageSourceList) run(cmd *cobra.Command, args []string) error {
-	imageSource, err := c.ocClient.GetImageSources(cmd.Context())
+	imageSource, err := c.ocClient.GetImageIncusSources(cmd.Context())
 	if err != nil {
 		return err
 	}
 
 	// Render the table.
-	header := []string{"Name", "URL", "Type", "Filter Expression", "Last Updated"}
+	header := []string{"Name", "URL", "Filter Expression", "Last Updated"}
 	data := [][]string{}
 
 	for _, imageSource := range imageSource {
-		data = append(data, []string{imageSource.Name, imageSource.URL, string(imageSource.Type), imageSource.FilterExpression, imageSource.LastUpdated.Truncate(time.Second).String()})
+		data = append(data, []string{imageSource.Name, imageSource.URL, imageSource.FilterExpression, imageSource.LastUpdated.Truncate(time.Second).String()})
 	}
 
 	sort.ColumnsSort(data, []sort.ColumnSorter{
@@ -172,14 +172,13 @@ func (c *cmdImageSourceShow) validateArgsAndFlags(cmd *cobra.Command, args []str
 func (c *cmdImageSourceShow) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	imageSource, err := c.ocClient.GetImageSource(cmd.Context(), name)
+	imageSource, err := c.ocClient.GetImageIncusSource(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
 
 	fmt.Printf("Name: %s\n", imageSource.Name)
 	fmt.Printf("URL: %s\n", imageSource.URL)
-	fmt.Printf("Type: %s\n", imageSource.Type)
 	fmt.Printf("Filter Expression: %s\n", imageSource.FilterExpression)
 	fmt.Printf("Last Updated: %s\n", imageSource.LastUpdated.Truncate(time.Second).String())
 
@@ -190,7 +189,6 @@ func (c *cmdImageSourceShow) run(cmd *cobra.Command, args []string) error {
 type cmdImageSourceAdd struct {
 	ocClient *client.OperationsCenterClient
 
-	flagType             string
 	flagFilterExpression string
 }
 
@@ -202,7 +200,6 @@ func (c *cmdImageSourceAdd) Command() *cobra.Command {
   Add an image source.
 `
 
-	cmd.Flags().StringVarP(&c.flagType, "type", "t", "incus", `Type of the image source, allowed value: incus`)
 	cmd.Flags().StringVarP(&c.flagFilterExpression, "filter", "f", "", `Filter expression applied to filter images fetched from the image source`)
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -233,12 +230,11 @@ func (c *cmdImageSourceAdd) run(cmd *cobra.Command, args []string) error {
 		Name: name,
 		ImageSourcePut: api.ImageSourcePut{
 			URL:              url,
-			Type:             api.ImageSourceType(c.flagType),
 			FilterExpression: c.flagFilterExpression,
 		},
 	}
 
-	err := c.ocClient.CreateImageSource(cmd.Context(), imageSource)
+	err := c.ocClient.CreateImageIncusSource(cmd.Context(), imageSource)
 	if err != nil {
 		return fmt.Errorf("Failed to create image source: %w", err)
 	}
@@ -304,7 +300,7 @@ func (c *cmdImageSourceEdit) run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		err = c.ocClient.UpdateImageSource(cmd.Context(), name, newdata)
+		err = c.ocClient.UpdateImageIncusSource(cmd.Context(), name, newdata)
 		if err != nil {
 			return err
 		}
@@ -312,7 +308,7 @@ func (c *cmdImageSourceEdit) run(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	serverConfig, err := c.ocClient.GetImageSource(cmd.Context(), name)
+	serverConfig, err := c.ocClient.GetImageIncusSource(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
@@ -335,7 +331,7 @@ func (c *cmdImageSourceEdit) run(cmd *cobra.Command, args []string) error {
 		newdata := api.ImageSourcePut{}
 		err = yaml.Unmarshal(content, &newdata)
 		if err == nil {
-			err = c.ocClient.UpdateImageSource(cmd.Context(), name, newdata)
+			err = c.ocClient.UpdateImageIncusSource(cmd.Context(), name, newdata)
 		}
 
 		// Respawn the editor
@@ -396,7 +392,7 @@ func (c *cmdImageSourceRemove) validateArgsAndFlags(cmd *cobra.Command, args []s
 func (c *cmdImageSourceRemove) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	err := c.ocClient.DeleteImageSource(cmd.Context(), name)
+	err := c.ocClient.DeleteImageIncusSource(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
@@ -439,7 +435,7 @@ func (c *cmdImageSourceRefresh) validateArgsAndFlags(cmd *cobra.Command, args []
 func (c *cmdImageSourceRefresh) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	err := c.ocClient.RefreshImageSource(cmd.Context(), name)
+	err := c.ocClient.RefreshImageIncusSource(cmd.Context(), name)
 	if err != nil {
 		return err
 	}

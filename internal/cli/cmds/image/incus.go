@@ -95,6 +95,13 @@ func (c *CmdIncusImage) Command() *cobra.Command {
 
 	cmd.AddCommand(incusImageVersionGetFileCmd.Command())
 
+	// Sources
+	SourceCmd := CmdSource{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(SourceCmd.Command())
+
 	return cmd
 }
 
