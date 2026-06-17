@@ -436,6 +436,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			GetInstanceMetadataFunc: func(name string) (*api.ImageMetadata, string, error) {
 //				panic("mock out the GetInstanceMetadata method")
 //			},
+//			GetInstanceNBDConnFunc: func(instanceName string, args incus.InstanceNBDArgs) (net.Conn, error) {
+//				panic("mock out the GetInstanceNBDConn method")
+//			},
 //			GetInstanceNamesFunc: func(instanceType api.InstanceType) ([]string, error) {
 //				panic("mock out the GetInstanceNames method")
 //			},
@@ -1426,6 +1429,9 @@ type InstanceServerMock struct {
 
 	// GetInstanceMetadataFunc mocks the GetInstanceMetadata method.
 	GetInstanceMetadataFunc func(name string) (*api.ImageMetadata, string, error)
+
+	// GetInstanceNBDConnFunc mocks the GetInstanceNBDConn method.
+	GetInstanceNBDConnFunc func(instanceName string, args incus.InstanceNBDArgs) (net.Conn, error)
 
 	// GetInstanceNamesFunc mocks the GetInstanceNames method.
 	GetInstanceNamesFunc func(instanceType api.InstanceType) ([]string, error)
@@ -2855,6 +2861,13 @@ type InstanceServerMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// GetInstanceNBDConn holds details about calls to the GetInstanceNBDConn method.
+		GetInstanceNBDConn []struct {
+			// InstanceName is the instanceName argument value.
+			InstanceName string
+			// Args is the args argument value.
+			Args incus.InstanceNBDArgs
+		}
 		// GetInstanceNames holds details about calls to the GetInstanceNames method.
 		GetInstanceNames []struct {
 			// InstanceType is the instanceType argument value.
@@ -4254,6 +4267,7 @@ type InstanceServerMock struct {
 	lockGetInstanceLogfile                             sync.RWMutex
 	lockGetInstanceLogfiles                            sync.RWMutex
 	lockGetInstanceMetadata                            sync.RWMutex
+	lockGetInstanceNBDConn                             sync.RWMutex
 	lockGetInstanceNames                               sync.RWMutex
 	lockGetInstanceNamesAllProjects                    sync.RWMutex
 	lockGetInstanceSnapshot                            sync.RWMutex
@@ -9120,6 +9134,42 @@ func (mock *InstanceServerMock) GetInstanceMetadataCalls() []struct {
 	mock.lockGetInstanceMetadata.RLock()
 	calls = mock.calls.GetInstanceMetadata
 	mock.lockGetInstanceMetadata.RUnlock()
+	return calls
+}
+
+// GetInstanceNBDConn calls GetInstanceNBDConnFunc.
+func (mock *InstanceServerMock) GetInstanceNBDConn(instanceName string, args incus.InstanceNBDArgs) (net.Conn, error) {
+	if mock.GetInstanceNBDConnFunc == nil {
+		panic("InstanceServerMock.GetInstanceNBDConnFunc: method is nil but InstanceServer.GetInstanceNBDConn was just called")
+	}
+	callInfo := struct {
+		InstanceName string
+		Args         incus.InstanceNBDArgs
+	}{
+		InstanceName: instanceName,
+		Args:         args,
+	}
+	mock.lockGetInstanceNBDConn.Lock()
+	mock.calls.GetInstanceNBDConn = append(mock.calls.GetInstanceNBDConn, callInfo)
+	mock.lockGetInstanceNBDConn.Unlock()
+	return mock.GetInstanceNBDConnFunc(instanceName, args)
+}
+
+// GetInstanceNBDConnCalls gets all the calls that were made to GetInstanceNBDConn.
+// Check the length with:
+//
+//	len(mockedInstanceServer.GetInstanceNBDConnCalls())
+func (mock *InstanceServerMock) GetInstanceNBDConnCalls() []struct {
+	InstanceName string
+	Args         incus.InstanceNBDArgs
+} {
+	var calls []struct {
+		InstanceName string
+		Args         incus.InstanceNBDArgs
+	}
+	mock.lockGetInstanceNBDConn.RLock()
+	calls = mock.calls.GetInstanceNBDConn
+	mock.lockGetInstanceNBDConn.RUnlock()
 	return calls
 }
 
