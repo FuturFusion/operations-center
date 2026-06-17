@@ -14,10 +14,10 @@ import (
 )
 
 type imageSourceHandler struct {
-	service image.SourceService
+	service image.IncusImageSourceService
 }
 
-func registerImageSourceHandler(router Router, authorizer *authz.Authorizer, service image.SourceService) {
+func registerImageSourceHandler(router Router, authorizer *authz.Authorizer, service image.IncusImageSourceService) {
 	handler := &imageSourceHandler{
 		service: service,
 	}
@@ -30,7 +30,7 @@ func registerImageSourceHandler(router Router, authorizer *authz.Authorizer, ser
 	router.HandleFunc("POST /{name}/:refresh", response.With(handler.imageSourceRefreshPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
-// swagger:operation GET /1.0/image/sources image_sources image_sources_get
+// swagger:operation GET /1.0/images/incus/sources image_sources image_sources_get
 //
 //	Get the list of image sources
 //
@@ -65,15 +65,15 @@ func registerImageSourceHandler(router Router, authorizer *authz.Authorizer, ser
 //	            type: string
 //	          example: |-
 //	            [
-//	              "/1.0/image/sources/linuxcontainer.org",
-//	              "/1.0/image/sources/images.org"
+//	              "/1.0/images/incus/sources/linuxcontainer.org",
+//	              "/1.0/images/incus/sources/images.org"
 //	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/image/sources?recursion=1 image_sources image_sources_get_recursion
+// swagger:operation GET /1.0/images/incus/sources?recursion=1 image_sources image_sources_get_recursion
 //
 //	Get the list of image sources
 //
@@ -133,7 +133,6 @@ func (i *imageSourceHandler) imageSourcesGet(r *http.Request) response.Response 
 
 					ImageSourcePut: api.ImageSourcePut{
 						URL:              imageSource.URL,
-						Type:             imageSource.Type,
 						FilterExpression: imageSource.FilterExpression,
 					},
 				},
@@ -156,7 +155,7 @@ func (i *imageSourceHandler) imageSourcesGet(r *http.Request) response.Response 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation POST /1.0/image/sources image_sources image_sources_post
+// swagger:operation POST /1.0/images/incus/sources image_sources image_sources_post
 //
 //	Add an image source
 //
@@ -192,10 +191,9 @@ func (i *imageSourceHandler) imageSourcesPost(r *http.Request) response.Response
 		return response.BadRequest(err)
 	}
 
-	newImageSource, err := i.service.Create(r.Context(), image.ImageSource{
+	newImageSource, err := i.service.Create(r.Context(), image.IncusImageSource{
 		Name:             imageSource.Name,
 		URL:              imageSource.URL,
-		Type:             imageSource.Type,
 		FilterExpression: imageSource.FilterExpression,
 	})
 	if err != nil {
@@ -205,7 +203,7 @@ func (i *imageSourceHandler) imageSourcesPost(r *http.Request) response.Response
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/image/sources/"+newImageSource.Name)
 }
 
-// swagger:operation GET /1.0/image/sources/{name} image_source image_source_get
+// swagger:operation GET /1.0/images/incus/sources/{name} image_source image_source_get
 //
 //	Get the image source
 //
@@ -257,7 +255,6 @@ func (i *imageSourceHandler) imageSourceGet(r *http.Request) response.Response {
 
 				ImageSourcePut: api.ImageSourcePut{
 					URL:              imageSource.URL,
-					Type:             imageSource.Type,
 					FilterExpression: imageSource.FilterExpression,
 				},
 			},
@@ -266,7 +263,7 @@ func (i *imageSourceHandler) imageSourceGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation PUT /1.0/image/sources/{name} image_source image_source_put
+// swagger:operation PUT /1.0/images/incus/sources/{name} image_source image_source_put
 //
 //	Update the image source
 //
@@ -325,7 +322,6 @@ func (i *imageSourceHandler) imageSourcePut(r *http.Request) response.Response {
 	}
 
 	currentImageSource.URL = imageSource.URL
-	currentImageSource.Type = imageSource.Type
 	currentImageSource.FilterExpression = imageSource.FilterExpression
 
 	err = i.service.Update(ctx, *currentImageSource)
@@ -341,7 +337,7 @@ func (i *imageSourceHandler) imageSourcePut(r *http.Request) response.Response {
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/image/sources/"+name)
 }
 
-// swagger:operation DELETE /1.0/image/sources/{name} image_source image_source_delete
+// swagger:operation DELETE /1.0/images/incus/sources/{name} image_source image_source_delete
 //
 //	Delete the image source
 //
@@ -370,7 +366,7 @@ func (i *imageSourceHandler) imageSourceDelete(r *http.Request) response.Respons
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/image/sources/{name}/:refresh image_source image_source_refresh_post
+// swagger:operation POST /1.0/images/incus/sources/{name}/:refresh image_source image_source_refresh_post
 //
 //	Refresh the image source
 //

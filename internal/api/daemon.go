@@ -234,9 +234,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	imageSourceSvc := d.setupImageSourceService(
 		dbWithTransaction,
-		map[api.ImageSourceType]image.ImageSourcerPort{
-			api.ImageSourceTypeIncus: incusImageSvc,
-		},
+		incusImageSvc,
 	)
 
 	warningSvc := d.setupWarningService(dbWithTransaction)
@@ -547,13 +545,13 @@ func (d *Daemon) setupIncusImageService(db dbdriver.DBTX) (image.ImageIncusServi
 	return imageIncusSvc, nil
 }
 
-func (d *Daemon) setupImageSourceService(db dbdriver.DBTX, imageSourcers map[api.ImageSourceType]image.ImageSourcerPort) image.SourceService {
-	imageSourceSvc := imageServiceMiddleware.NewSourceServiceWithSlog(
-		image.NewSource(
-			imageRepoMiddleware.NewSourceRepoWithSlog(
+func (d *Daemon) setupImageSourceService(db dbdriver.DBTX, incusImageSourcer image.IncusImageSourcePort) image.IncusImageSourceService {
+	imageSourceSvc := imageServiceMiddleware.NewIncusImageSourceServiceWithSlog(
+		image.NewIncusSource(
+			imageRepoMiddleware.NewIncusImageSourceRepoWithSlog(
 				imageSqlite.NewImageSource(db),
 			),
-			imageSourcers,
+			incusImageSourcer,
 		),
 	)
 
@@ -897,7 +895,7 @@ func (d *Daemon) setupAPIRoutes(
 	channelSvc provisioning.ChannelService,
 	warningSvc warning.WarningService,
 	inventoryInventoryAggregateSvc inventory.InventoryAggregateService,
-	imageSourceSvc image.SourceService,
+	imageSourceSvc image.IncusImageSourceService,
 	incusImageSvc image.ImageIncusService,
 	db dbdriver.DBTX,
 ) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer) {
@@ -981,6 +979,8 @@ func (d *Daemon) setupAPIRoutes(
 	registerImageSourceHandler(imageSourceRouter, d.authorizer, imageSourceSvc)
 	imageIncusRouter := imageRouter.SubGroup("/incus")
 	registerImageIncusHandler(imageIncusRouter, simplestreamsRouter, d.authorizer, incusImageSvc)
+	imageIncusSourceRouter := imageIncusRouter.SubGroup("/sources")
+	registerImageSourceHandler(imageIncusSourceRouter, d.authorizer, imageSourceSvc)
 
 	internalRouter := api10router.SubGroup("/internal")
 	registerInternalHandler(internalRouter, d.authorizer, db)
@@ -1028,7 +1028,7 @@ func (d *Daemon) setupAPIRoutes(
 func (d *Daemon) setupBackgroundTasks(
 	ctx context.Context,
 	updateSvc provisioning.UpdateService,
-	imageSourceSvc image.SourceService,
+	imageSourceSvc image.IncusImageSourceService,
 	serverSvc provisioning.ServerService,
 	clusterSvc provisioning.ClusterService,
 	warningSvc warning.WarningEmitter,
