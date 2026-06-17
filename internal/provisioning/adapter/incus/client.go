@@ -289,9 +289,10 @@ func (c client) GetVersionData(ctx context.Context, server provisioning.Server) 
 		}
 
 		applicationVersions = append(applicationVersions, api.ApplicationVersionData{
-			Name:          applicationName,
-			Version:       application.State.Version,
-			InMaintenance: inMaintenance,
+			Name:            applicationName,
+			Version:         application.State.Version,
+			FriendlyVersion: application.State.FriendlyVersion,
+			InMaintenance:   inMaintenance,
 		})
 	}
 
