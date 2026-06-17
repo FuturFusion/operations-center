@@ -43,147 +43,46 @@ func New(repo ImageIncusRepo, filesRepo ImageIncusFileRepo) *imageIncusService {
 }
 
 func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader) (_ string, err error) {
-	var part *multipart.Part
-	part, err = mr.NextPart()
-
 	var (
-		os                string
-		release           string
-		architecture      string
-		variant           string
-		versionIdentifier string
-		description       string
-
-		incusTarXZ []byte
+		part          *multipart.Part
+		imageMetadata incusapi.ImageMetadata
+		incusTarXZ    []byte
 	)
+
+	part, err = mr.NextPart()
+	if err != nil {
+		return "", fmt.Errorf("Add version failed to get first multipart item: %w", err)
+	}
 
 	switch {
 	case part.FormName() == "request_json":
-		var requestMetadata api.IncusImagePost
-
-		err = json.NewDecoder(part).Decode(&requestMetadata)
-		if err != nil {
-			return "", fmt.Errorf(`Failed to decode metadata from "request_json": %w`, err)
-		}
-
-		os = requestMetadata.OperatingSystem
-		release = requestMetadata.Release
-		architecture = requestMetadata.Architecture
-		variant = requestMetadata.Variant
-		versionIdentifier = requestMetadata.Version
-		description = fmt.Sprintf("%s %s (%s) (%s)", os, release, variant, architecture)
-
-		metadata := incusapi.ImageMetadata{
-			Architecture: architecture,
-			CreationDate: time.Now().Unix(),
-			Properties: map[string]string{
-				"os":           os,
-				"release":      release,
-				"architecture": architecture,
-				"variant":      variant,
-				"serial":       versionIdentifier,
-				"description":  description,
-			},
-		}
-
-		buf := &bytes.Buffer{}
-		err = func() (err error) {
-			metadataBody, err := yaml.Marshal(metadata)
-			if err != nil {
-				return fmt.Errorf(`Failed to yaml encode "metadata.yaml": %w`, err)
-			}
-
-			incusTarXZWriter, err := xz.NewWriter(ctx, buf)
-			if err != nil {
-				return fmt.Errorf("Failed to create XZ writer: %w", err)
-			}
-
-			defer func() {
-				err = errors.Join(err, incusTarXZWriter.Close())
-			}()
-
-			tarWriter := tar.NewWriter(incusTarXZWriter)
-			err = tarWriter.WriteHeader(&tar.Header{
-				Name: "metadata.yaml",
-				Size: int64(len(metadataBody)),
-				Mode: 0o600,
-			})
-			if err != nil {
-				return fmt.Errorf(`Failed to write header for "metadata.yaml" to incus.tar.xz: %w`, err)
-			}
-
-			defer func() {
-				err = errors.Join(err, tarWriter.Close())
-			}()
-
-			_, err = tarWriter.Write(metadataBody)
-			if err != nil {
-				return fmt.Errorf(`Failed to write "metadata.yaml" to incus.tar.xz: %w`, err)
-			}
-
-			return nil
-		}()
-		if err != nil {
-			return "", err
-		}
-
-		incusTarXZ = buf.Bytes()
+		imageMetadata, incusTarXZ, err = metadataFromRequestJSON(ctx, part)
 
 	case part.FileName() == "incus.tar.xz":
-		const incusTarXZSizeLimit = 64 * 1024
-		r := io.LimitReader(part, incusTarXZSizeLimit)
-		buf := &bytes.Buffer{}
-		r = io.TeeReader(r, buf)
-
-		xzReader, err := xz.NewReader(ctx, r)
-		if err != nil {
-			return "", fmt.Errorf(`Failed to create xz reader for "incus.tar.xz": %w`, err)
-		}
-
-		tr := tar.NewReader(xzReader)
-
-		for {
-			hdr, err := tr.Next()
-			if errors.Is(err, io.EOF) {
-				return "", fmt.Errorf(`Failed to find metadata.yaml in incus.tar.xz: %w`, domain.ErrConstraintViolation)
-			}
-
-			if err != nil {
-				return "", fmt.Errorf(`Failed to read "incus.tar.xz": %w`, err)
-			}
-
-			if hdr.Name != "metadata.yaml" {
-				continue
-			}
-
-			var metadata incusapi.ImageMetadata
-			err = yaml.NewDecoder(tr).Decode(&metadata)
-			if err != nil {
-				return "", fmt.Errorf(`Failed to decode "metadata.yaml": %w`, err)
-			}
-
-			os = metadata.Properties["os"]
-			release = metadata.Properties["release"]
-			architecture = metadata.Properties["architecture"]
-			variant = metadata.Properties["variant"]
-			versionIdentifier = metadata.Properties["serial"]
-			description = metadata.Properties["description"]
-
-			break
-		}
-
-		incusTarXZ = buf.Bytes()
+		imageMetadata, incusTarXZ, err = metadataFromIncusTarXZ(ctx, part)
 
 	default:
 		return "", fmt.Errorf(`First part of the multipart request is required to be either "request_json" or the file "incus.tar.xz", got form-name %q, filename %q: %w`, part.FormName(), part.FileName(), domain.ErrOperationNotPermitted)
 	}
 
+	if err != nil {
+		return "", fmt.Errorf(`Failed to read metadata: %w`, err)
+	}
+
+	os := imageMetadata.Properties["os"]
+	release := imageMetadata.Properties["release"]
+	architecture := fixArchitectureMapping(imageMetadata.Properties["architecture"])
+	variant := imageMetadata.Properties["variant"]
+	versionIdentifier := imageMetadata.Properties["serial"]
+	description := imageMetadata.Properties["description"]
+
 	if os == "" || architecture == "" || versionIdentifier == "" {
 		return "", domain.NewValidationErrf(`Incomplete metadata, not all required properties set os=%q, architecture=%q, version=%q`, os, architecture, versionIdentifier)
 	}
 
-	if versionIdentifier == "" {
-		return "", domain.NewValidationErrf("Incus image version can not be empty")
+	err = ValidateIncusImageVersion(versionIdentifier)
+	if err != nil {
+		return "", fmt.Errorf("Invalid incus image version: %w", err)
 	}
 
 	if release == "" {
@@ -331,11 +230,103 @@ func (s *imageIncusService) AddVersion(ctx context.Context, mr *multipart.Reader
 	return name, nil
 }
 
-func (s *imageIncusService) calculateCombinedHashes(ctx context.Context, img *IncusImage, versionIdentifier string, incusImageVersion *api.IncusImageVersion) error {
-	incusTarXZ, ok := incusImageVersion.Items["incus.tar.xz"]
-	if !ok {
-		return fmt.Errorf(`Incus image version does not have metadata file "incus.tar.xz": %w`, domain.ErrOperationNotPermitted)
+func metadataFromRequestJSON(ctx context.Context, part *multipart.Part) (_ incusapi.ImageMetadata, incusTarXZ []byte, err error) {
+	var requestMetadata api.IncusImagePost
+
+	err = json.NewDecoder(part).Decode(&requestMetadata)
+	if err != nil {
+		return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to decode metadata from "request_json": %w`, err)
 	}
+
+	imageMetadata := incusapi.ImageMetadata{
+		Architecture: requestMetadata.Architecture,
+		CreationDate: time.Now().Unix(),
+		Properties: map[string]string{
+			"os":           requestMetadata.OperatingSystem,
+			"release":      requestMetadata.Release,
+			"architecture": requestMetadata.Architecture,
+			"variant":      requestMetadata.Variant,
+			"serial":       requestMetadata.Version,
+			"description":  fmt.Sprintf("%s %s (%s) (%s)", requestMetadata.OperatingSystem, requestMetadata.Release, requestMetadata.Variant, requestMetadata.Architecture),
+		},
+	}
+
+	buf := &bytes.Buffer{}
+	metadataBody, err := yaml.Marshal(imageMetadata)
+	if err != nil {
+		return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to yaml encode "metadata.yaml": %w`, err)
+	}
+
+	incusTarXZWriter, err := xz.NewWriter(ctx, buf)
+	if err != nil {
+		return incusapi.ImageMetadata{}, nil, fmt.Errorf("Failed to create XZ writer: %w", err)
+	}
+
+	defer func() {
+		err = errors.Join(err, incusTarXZWriter.Close())
+	}()
+
+	tarWriter := tar.NewWriter(incusTarXZWriter)
+	err = tarWriter.WriteHeader(&tar.Header{
+		Name: "metadata.yaml",
+		Size: int64(len(metadataBody)),
+		Mode: 0o600,
+	})
+	if err != nil {
+		return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to write header for "metadata.yaml" to incus.tar.xz: %w`, err)
+	}
+
+	defer func() {
+		err = errors.Join(err, tarWriter.Close())
+	}()
+
+	_, err = tarWriter.Write(metadataBody)
+	if err != nil {
+		return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to write "metadata.yaml" to incus.tar.xz: %w`, err)
+	}
+
+	return imageMetadata, buf.Bytes(), nil
+}
+
+func metadataFromIncusTarXZ(ctx context.Context, part *multipart.Part) (_ incusapi.ImageMetadata, incusTarXZ []byte, err error) {
+	const incusTarXZSizeLimit = 64 * 1024
+	r := io.LimitReader(part, incusTarXZSizeLimit)
+	buf := &bytes.Buffer{}
+	r = io.TeeReader(r, buf)
+
+	xzReader, err := xz.NewReader(ctx, r)
+	if err != nil {
+		return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to create xz reader for "incus.tar.xz": %w`, err)
+	}
+
+	tr := tar.NewReader(xzReader)
+
+	for {
+		hdr, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to find metadata.yaml in incus.tar.xz: %w`, domain.ErrConstraintViolation)
+		}
+
+		if err != nil {
+			return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to read "incus.tar.xz": %w`, err)
+		}
+
+		if hdr.Name != "metadata.yaml" {
+			continue
+		}
+
+		var imageMetadata incusapi.ImageMetadata
+		err = yaml.NewDecoder(tr).Decode(&imageMetadata)
+		if err != nil {
+			return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to decode "metadata.yaml": %w`, err)
+		}
+
+		return imageMetadata, buf.Bytes(), nil
+	}
+}
+
+func (s *imageIncusService) calculateCombinedHashes(ctx context.Context, img *IncusImage, versionIdentifier string, incusImageVersion *api.IncusImageVersion) error {
+	incusTarXZ := incusImageVersion.Items["incus.tar.xz"]
 
 	for fileName := range incusImageVersion.Items {
 		if !slices.Contains([]string{"root.tar.xz", "root.squashfs", "disk.qcow2"}, fileName) {

@@ -1,28 +1,32 @@
 package image_test
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"errors"
 	"io"
 	"mime/multipart"
 	"net/textproto"
+	"strings"
 	"testing"
 	"testing/iotest"
 
+	incusapi "github.com/lxc/incus/v7/shared/api"
 	"github.com/stretchr/testify/require"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/image"
 	"github.com/FuturFusion/operations-center/internal/image/repo/mock"
+	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestImageIncusService_AddVersion(t *testing.T) {
-	t.Skip("currently broken")
-
 	type fileRepoPutValue struct {
 		commitErr error
 		cancelErr error
@@ -35,8 +39,6 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 
 	tests := []struct {
 		name               string
-		nameArg            string
-		versionArg         string
 		multipartReaderArg *multipart.Reader
 		repoGetByName      []queue.Item[*image.IncusImage]
 		repoCreateErr      error
@@ -47,10 +49,8 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name:               "success",
-			nameArg:            "almalinux:10:amd64:cloud",
-			versionArg:         "20260515",
-			multipartReaderArg: validMultipartReader(t),
+			name:               "success - with metadata from incus.tar.xz",
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
 			repoGetByName: []queue.Item[*image.IncusImage]{
 				// lookup
 				{
@@ -127,10 +127,8 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:               "success - new incus image",
-			nameArg:            "almalinux:10:amd64:cloud",
-			versionArg:         "20260515",
-			multipartReaderArg: validMultipartReader(t),
+			name:               "success - new incus image with metadata from incus.tar.xz",
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
 			repoGetByName: []queue.Item[*image.IncusImage]{
 				// lookup
 				{
@@ -201,30 +199,106 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:    "error - invalid incus image name",
-			nameArg: "invalid", // invalid
+			name: "success - new incus image with metadata from request_json",
+			multipartReaderArg: validMultipartReaderWithRequestJSON(t, `{
+  "os": "almalinux",
+  "release": "",
+  "arch": "amd64",
+  "variant": "",
+  "version": "20260515"
+}
+`), // use default release and variant
+			repoGetByName: []queue.Item[*image.IncusImage]{
+				// lookup
+				{
+					Err: domain.ErrNotFound,
+				},
+				// in transaction, get before update
+				{
+					Value: &image.IncusImage{
+						Name:            "almalinux:10:amd64:cloud",
+						OperatingSystem: "almalinux",
+						Release:         "10",
+						Architecture:    "amd64",
+						Variant:         "cloud",
+					},
+				},
+			},
+			filesRepoPut: []queue.Item[fileRepoPutValue]{
+				{},
+				{},
+			},
+			filesRepoGet: []queue.Item[fileRepoGetValue]{
+				// incus.tar.xz for disk.qcow2
+				{
+					Value: fileRepoGetValue{
+						reader: io.NopCloser(bytes.NewBufferString(`incus tar xz`)),
+						size:   int64(len(`incus tar xz`)),
+					},
+				},
+				// disk.qcow2
+				{
+					Value: fileRepoGetValue{
+						reader: io.NopCloser(bytes.NewBufferString(`disk qcow2`)),
+						size:   int64(len(`disk qcow2`)),
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:               "error - invalid multipart reader",
+			multipartReaderArg: multipart.NewReader(bytes.NewBufferString(`invalid`), ``),
+
+			assertErr: require.Error,
+		},
+		{
+			name:               "error - multipart reader without metadata file",
+			multipartReaderArg: multipartReaderWithoutMetadataFile(t),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(tt, err, `Invalid incus image name, expect name in the format "os:release:architecture:variant"`)
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `First part of the multipart request is required to be either "request_json" or the file "incus.tar.xz", got form-name "file", filename "root.tar.xz"`)
 			},
 		},
 		{
-			name:       "error - version identifier empty",
-			nameArg:    "almalinux:10:amd64:cloud",
-			versionArg: "", // empty
+			name:               "error - failed to read metadata",
+			multipartReaderArg: validMultipartReaderWithRequestJSON(t, `{`), // invalid metadata
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(tt, err, `Incus image version can not be empty`)
+				require.ErrorContains(tt, err, "Failed to read metadata")
 			},
 		},
 		{
-			name:       "error - repo.GetByName",
-			nameArg:    "almalinux:10:amd64:cloud",
-			versionArg: "20260515",
+			name: "error - missing metadata",
+			multipartReaderArg: validMultipartReaderWithRequestJSON(t, `{
+  "os": "",
+  "release": "10",
+  "arch": "amd64",
+  "variant": "cloud",
+  "version": "20260515"
+}
+`), // empty os
+
+			assertErr: errassert.ValidationErrorContains("Incomplete metadata, not all required properties set"),
+		},
+		{
+			name: "error - invalid version",
+			multipartReaderArg: validMultipartReaderWithRequestJSON(t, `{
+  "os": "almalinux",
+  "release": "10",
+  "arch": "amd64",
+  "variant": "cloud",
+  "version": "invalid"
+}
+`), // invalid version
+
+			assertErr: errassert.ValidationErrorContains("Invalid incus image version"),
+		},
+		{
+			name:               "error - repo.GetByName",
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
 			repoGetByName: []queue.Item[*image.IncusImage]{
 				// lookup
 				{
@@ -235,9 +309,8 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:       "error - new incus image - repo.Create",
-			nameArg:    "almalinux:10:amd64:cloud",
-			versionArg: "20260515",
+			name:               "error - new incus image - repo.Create",
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
 			repoGetByName: []queue.Item[*image.IncusImage]{
 				// lookup
 				{
@@ -249,9 +322,8 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:       "error - version already exists",
-			nameArg:    "almalinux:10:amd64:cloud",
-			versionArg: "20260515",
+			name:               "error - version already exists",
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
 			repoGetByName: []queue.Item[*image.IncusImage]{
 				// lookup
 				{
@@ -274,30 +346,8 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 			},
 		},
 		{
-			name:               "error - invalid multipart reader",
-			nameArg:            "almalinux:10:amd64:cloud",
-			versionArg:         "20260515",
-			multipartReaderArg: multipart.NewReader(bytes.NewBufferString(`invalid`), ``),
-			repoGetByName: []queue.Item[*image.IncusImage]{
-				// lookup
-				{
-					Value: &image.IncusImage{
-						Name:            "almalinux:10:amd64:cloud",
-						OperatingSystem: "almalinux",
-						Release:         "10",
-						Architecture:    "amd64",
-						Variant:         "cloud",
-					},
-				},
-			},
-
-			assertErr: require.Error,
-		},
-		{
 			name:               "error - filesRepo.Put",
-			nameArg:            "almalinux:10:amd64:cloud",
-			versionArg:         "20260515",
-			multipartReaderArg: validMultipartReader(t),
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
 			repoGetByName: []queue.Item[*image.IncusImage]{
 				// lookup
 				{
@@ -320,9 +370,7 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 		},
 		{
 			name:               "error - filesRepo.Put - cancel",
-			nameArg:            "almalinux:10:amd64:cloud",
-			versionArg:         "20260515",
-			multipartReaderArg: validMultipartReader(t),
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
 			repoGetByName: []queue.Item[*image.IncusImage]{
 				// lookup
 				{
@@ -351,9 +399,7 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 		},
 		{
 			name:               "error - filesRepo.Put - commit",
-			nameArg:            "almalinux:10:amd64:cloud",
-			versionArg:         "20260515",
-			multipartReaderArg: validMultipartReader(t),
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
 			repoGetByName: []queue.Item[*image.IncusImage]{
 				// lookup
 				{
@@ -377,10 +423,8 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:               "error - multipart reader without metadata file",
-			nameArg:            "almalinux:10:amd64:cloud",
-			versionArg:         "20260515",
-			multipartReaderArg: multipartReaderWithoutMetadataFile(t),
+			name:               "error - invalid 2nd part in multipart message",
+			multipartReaderArg: multipartReaderWithInvalid2ndPart(t),
 			repoGetByName: []queue.Item[*image.IncusImage]{
 				// lookup
 				{
@@ -397,16 +441,91 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 				{},
 			},
 
+			assertErr: require.Error,
+		},
+		{
+			name:               "error - 2nd filesRepo.Put",
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
+			repoGetByName: []queue.Item[*image.IncusImage]{
+				// lookup
+				{
+					Value: &image.IncusImage{
+						Name:            "almalinux:10:amd64:cloud",
+						OperatingSystem: "almalinux",
+						Release:         "10",
+						Architecture:    "amd64",
+						Variant:         "cloud",
+					},
+				},
+			},
+			filesRepoPut: []queue.Item[fileRepoPutValue]{
+				{},
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:               "error - 2nd filesRepo.Put - cancel",
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
+			repoGetByName: []queue.Item[*image.IncusImage]{
+				// lookup
+				{
+					Value: &image.IncusImage{
+						Name:            "almalinux:10:amd64:cloud",
+						OperatingSystem: "almalinux",
+						Release:         "10",
+						Architecture:    "amd64",
+						Variant:         "cloud",
+					},
+				},
+			},
+			filesRepoPut: []queue.Item[fileRepoPutValue]{
+				{},
+				{
+					Err: errors.New("some error"),
+					Value: fileRepoPutValue{
+						cancelErr: boom.Error,
+					},
+				},
+			},
+
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(tt, err, `Incus image version does not have metadata file "incus.tar.xz"`)
+				boom.ErrorIs(tt, err)
+				require.ErrorContains(tt, err, "some error")
 			},
 		},
 		{
+			name:               "error - 2nd filesRepo.Put - commit",
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
+			repoGetByName: []queue.Item[*image.IncusImage]{
+				// lookup
+				{
+					Value: &image.IncusImage{
+						Name:            "almalinux:10:amd64:cloud",
+						OperatingSystem: "almalinux",
+						Release:         "10",
+						Architecture:    "amd64",
+						Variant:         "cloud",
+					},
+				},
+			},
+			filesRepoPut: []queue.Item[fileRepoPutValue]{
+				{},
+				{
+					Value: fileRepoPutValue{
+						commitErr: boom.Error,
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name:               "error - filesRepo.Get metadata for checksum",
-			nameArg:            "almalinux:10:amd64:cloud",
-			versionArg:         "20260515",
-			multipartReaderArg: validMultipartReader(t),
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
 			repoGetByName: []queue.Item[*image.IncusImage]{
 				// lookup
 				{
@@ -436,9 +555,7 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 		},
 		{
 			name:               "error - read metadata for checksum",
-			nameArg:            "almalinux:10:amd64:cloud",
-			versionArg:         "20260515",
-			multipartReaderArg: validMultipartReader(t),
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
 			repoGetByName: []queue.Item[*image.IncusImage]{
 				// lookup
 				{
@@ -471,9 +588,7 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 		},
 		{
 			name:               "error - filesRepo.Get image for checksum",
-			nameArg:            "almalinux:10:amd64:cloud",
-			versionArg:         "20260515",
-			multipartReaderArg: validMultipartReader(t),
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
 			repoGetByName: []queue.Item[*image.IncusImage]{
 				// lookup
 				{
@@ -509,9 +624,7 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 		},
 		{
 			name:               "error - read image for checksum",
-			nameArg:            "almalinux:10:amd64:cloud",
-			versionArg:         "20260515",
-			multipartReaderArg: validMultipartReader(t),
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
 			repoGetByName: []queue.Item[*image.IncusImage]{
 				// lookup
 				{
@@ -550,9 +663,7 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 		},
 		{
 			name:               "error - repo.GetByName in transaction for update",
-			nameArg:            "almalinux:10:amd64:cloud",
-			versionArg:         "20260515",
-			multipartReaderArg: validMultipartReader(t),
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
 			repoGetByName: []queue.Item[*image.IncusImage]{
 				// lookup
 				{
@@ -624,9 +735,7 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 		},
 		{
 			name:               "error - repo.Update",
-			nameArg:            "almalinux:10:amd64:cloud",
-			versionArg:         "20260515",
-			multipartReaderArg: validMultipartReader(t),
+			multipartReaderArg: validMultipartReaderWithIncusTarXZ(t),
 			repoGetByName: []queue.Item[*image.IncusImage]{
 				// lookup
 				{
@@ -759,7 +868,7 @@ func TestImageIncusService_AddVersion(t *testing.T) {
 	}
 }
 
-func validMultipartReader(t *testing.T) *multipart.Reader {
+func validMultipartReaderWithIncusTarXZ(t *testing.T) *multipart.Reader {
 	t.Helper()
 
 	var body bytes.Buffer
@@ -775,7 +884,37 @@ func validMultipartReader(t *testing.T) *multipart.Reader {
 	part, err := writer.CreatePart(header)
 	require.NoError(t, err)
 
-	_, err = io.WriteString(part, "incus tar xz")
+	metadata := incusapi.ImageMetadata{
+		Properties: map[string]string{
+			"os":           "almalinux",
+			"release":      "10",
+			"architecture": "x86_64",
+			"variant":      "cloud",
+			"serial":       "20260515",
+			"description":  "almalinux 10 (cloud) (amd64)",
+		},
+	}
+	metadataBody, err := yaml.Marshal(metadata)
+	require.NoError(t, err)
+
+	buf := bytes.NewBuffer(nil)
+	xzw, err := xz.NewWriter(t.Context(), buf)
+	require.NoError(t, err)
+	tw := tar.NewWriter(xzw)
+	err = tw.WriteHeader(&tar.Header{
+		Name: "metadata.yaml",
+		Size: int64(len(metadataBody)),
+		Mode: 0o600,
+	})
+	require.NoError(t, err)
+	_, err = tw.Write(metadataBody)
+	require.NoError(t, err)
+	err = tw.Close()
+	require.NoError(t, err)
+	err = xzw.Close()
+	require.NoError(t, err)
+
+	_, err = part.Write(buf.Bytes())
 	require.NoError(t, err)
 
 	// root.tar.xz
@@ -820,6 +959,43 @@ func validMultipartReader(t *testing.T) *multipart.Reader {
 	return multipart.NewReader(&body, writer.Boundary())
 }
 
+func validMultipartReaderWithRequestJSON(t *testing.T, requestJSON string) *multipart.Reader {
+	t.Helper()
+
+	var body bytes.Buffer
+
+	writer := multipart.NewWriter(&body)
+
+	// request_json
+	header := textproto.MIMEHeader{}
+	header.Set("Content-Disposition",
+		`form-data; name="request_json"`)
+	header.Set("Content-Type", "application/json")
+
+	part, err := writer.CreatePart(header)
+	require.NoError(t, err)
+
+	_, err = part.Write([]byte(requestJSON))
+	require.NoError(t, err)
+
+	// disk.qcow2
+	header = textproto.MIMEHeader{}
+	header.Set("Content-Disposition",
+		`form-data; name="file"; filename="disk.qcow2"`)
+	header.Set("Content-Type", "application/octet-stream")
+
+	part, err = writer.CreatePart(header)
+	require.NoError(t, err)
+
+	_, err = io.WriteString(part, "disk qcow2")
+	require.NoError(t, err)
+
+	err = writer.Close()
+	require.NoError(t, err)
+
+	return multipart.NewReader(&body, writer.Boundary())
+}
+
 func multipartReaderWithoutMetadataFile(t *testing.T) *multipart.Reader {
 	t.Helper()
 
@@ -837,6 +1013,71 @@ func multipartReaderWithoutMetadataFile(t *testing.T) *multipart.Reader {
 	require.NoError(t, err)
 
 	_, err = io.WriteString(part, "root tar xz")
+	require.NoError(t, err)
+
+	err = writer.Close()
+	require.NoError(t, err)
+
+	return multipart.NewReader(&body, writer.Boundary())
+}
+
+func multipartReaderWithInvalid2ndPart(t *testing.T) *multipart.Reader {
+	t.Helper()
+
+	var body bytes.Buffer
+
+	writer := multipart.NewWriter(&body)
+
+	// incus.tar.xz
+	header := textproto.MIMEHeader{}
+	header.Set("Content-Disposition",
+		`form-data; name="file"; filename="incus.tar.xz"`)
+	header.Set("Content-Type", "application/octet-stream")
+
+	part, err := writer.CreatePart(header)
+	require.NoError(t, err)
+
+	metadata := incusapi.ImageMetadata{
+		Properties: map[string]string{
+			"os":           "almalinux",
+			"release":      "10",
+			"architecture": "amd64",
+			"variant":      "cloud",
+			"serial":       "20260515",
+			"description":  "almalinux 10 (cloud) (amd64)",
+		},
+	}
+	metadataBody, err := yaml.Marshal(metadata)
+	require.NoError(t, err)
+
+	buf := bytes.NewBuffer(nil)
+	xzw, err := xz.NewWriter(t.Context(), buf)
+	require.NoError(t, err)
+	tw := tar.NewWriter(xzw)
+	err = tw.WriteHeader(&tar.Header{
+		Name: "metadata.yaml",
+		Size: int64(len(metadataBody)),
+		Mode: 0o600,
+	})
+	require.NoError(t, err)
+	_, err = tw.Write(metadataBody)
+	require.NoError(t, err)
+	err = tw.Close()
+	require.NoError(t, err)
+	err = xzw.Close()
+	require.NoError(t, err)
+
+	_, err = part.Write(buf.Bytes())
+	require.NoError(t, err)
+
+	// append invalid multipart content
+	_, err = body.WriteString(strings.Join([]string{
+		"",
+		"--" + writer.Boundary(),
+		"Invalid Header Without Colon", // malformed header
+		"",
+		"invalid part",
+	}, "\r\n"))
 	require.NoError(t, err)
 
 	err = writer.Close()

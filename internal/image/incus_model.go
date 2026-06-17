@@ -1,7 +1,6 @@
 package image
 
 import (
-	"fmt"
 	"path"
 	"path/filepath"
 	"slices"
@@ -102,6 +101,16 @@ func ValidateIncusImageArchitecture(architecture string) error {
 	return nil
 }
 
+func fixArchitectureMapping(architecture string) string {
+	switch architecture {
+	case "x86_64":
+		return "amd64"
+
+	default:
+		return architecture
+	}
+}
+
 // ValidateIncusImageVersion checks the version matches the expected version
 // format in simplestreams.
 // https://github.com/lxc/incus/blob/1d64af1e40ced8716280bd4fcf044dce4ca6d5cf/shared/simplestreams/products.go#L87-L95
@@ -109,12 +118,12 @@ func ValidateIncusImageVersion(version string) error {
 	const versionLayout = "20060102"
 
 	if len(version) < 8 {
-		return fmt.Errorf(`Invalid version, version is required to be a 8 digits long date in the format "yyyymmdd"`)
+		return domain.NewValidationErrf(`Invalid version, version is required to be a 8 digits long date in the format "yyyymmdd"`)
 	}
 
 	_, err := time.Parse(versionLayout, version[0:8])
 	if err != nil {
-		return fmt.Errorf(`Invalid version, version is required to be a 8 digits long date in the format "yyyymmdd": %w`, err)
+		return domain.NewValidationErrf(`Invalid version, version is required to be a 8 digits long date in the format "yyyymmdd": %v`, err)
 	}
 
 	return nil
