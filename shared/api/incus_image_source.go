@@ -10,10 +10,6 @@ type ImageSourcePut struct {
 	// Example: https://images.linuxcontainers.org
 	URL string `json:"url" yaml:"url"`
 
-	// Type of the image source.
-	// Example: incus
-	Type ImageSourceType `json:"type" yaml:"yaml"`
-
 	// FilterExression applied when fetching images from the image source.
 	// Only images matching the filter expression are fetched.
 	// Example: Architecture == "amd64"
@@ -38,9 +34,3 @@ type ImageSource struct {
 	// Example: 2024-11-12T16:15:00Z
 	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
 }
-
-type ImageSourceType string
-
-const (
-	ImageSourceTypeIncus ImageSourceType = "incus"
-)
