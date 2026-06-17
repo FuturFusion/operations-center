@@ -20,6 +20,8 @@ import ClusterCreate from "pages/ClusterCreate";
 import ClusterDetail from "pages/ClusterDetail";
 import ClusterTemplateCreate from "pages/ClusterTemplateCreate";
 import ClusterTemplateDetail from "pages/ClusterTemplateDetail";
+import ImageServer from "pages/ImageServer";
+import IncusImageDetail from "pages/IncusImageDetail";
 import IncusOS from "pages/IncusOS";
 import OSServiceDetails from "pages/OSServiceDetails";
 import Server from "pages/Server";
@@ -116,6 +118,14 @@ export const routes = [
   {
     path: "/ui/provisioning/tokens/:uuid/seeds/:name/:activeTab",
     component: TokenSeedDetail,
+  },
+
+  { path: "/ui/images-view", component: ImageServer },
+
+  { path: "/ui/images/incus/:name", component: IncusImageDetail },
+  {
+    path: "/ui/images/incus/:name/:activeTab",
+    component: IncusImageDetail,
   },
 
   { path: "/ui/provisioning/updates-view", component: Update },

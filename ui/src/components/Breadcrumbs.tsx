@@ -2,6 +2,7 @@ import { Link, useLocation, matchPath } from "react-router";
 import { routes } from "util/routes";
 
 const breadcrumbPathMap: Record<string, string> = {
+  "/ui/images": "/ui/images-view",
   "/ui/provisioning/clusters": "/ui/provisioning/clusters-view",
   "/ui/provisioning/cluster-templates":
     "/ui/provisioning/clusters-view/templates",
@@ -12,6 +13,7 @@ const breadcrumbPathMap: Record<string, string> = {
 };
 
 const customLabels: Record<string, string> = {
+  "/ui/images-view": "Images",
   "/ui/provisioning/clusters-view": "Clusters",
   "/ui/provisioning/clusters-view/clusters": "Clusters",
   "/ui/provisioning/clusters-view/templates": "Cluster templates",
