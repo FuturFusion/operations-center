@@ -233,7 +233,7 @@ func TestSimplestreams_GetImageList(t *testing.T) {
 
 			simplestreamsAdapter := simplestreams.New()
 
-			imgs, err := simplestreamsAdapter.GetImageList(t.Context(), image.ImageSource{
+			imgs, err := simplestreamsAdapter.GetImageList(t.Context(), image.IncusImageSource{
 				Name: "one",
 				URL:  svr.URL,
 			})
@@ -302,7 +302,7 @@ func TestSimplestreams_GetFile(t *testing.T) {
 
 			simplestreamsAdapter := simplestreams.New()
 
-			rc, err := simplestreamsAdapter.GetFile(t.Context(), image.ImageSource{
+			rc, err := simplestreamsAdapter.GetFile(t.Context(), image.IncusImageSource{
 				Name: "one",
 				URL:  svr.URL + "/streams/v1",
 			}, tc.argFileName)

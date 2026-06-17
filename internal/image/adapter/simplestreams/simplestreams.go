@@ -27,7 +27,7 @@ func New() image.SimplestreamsPort {
 	}
 }
 
-func (s *simplestreams) GetImageList(ctx context.Context, source image.ImageSource) (image.IncusImages, error) {
+func (s *simplestreams) GetImageList(ctx context.Context, source image.IncusImageSource) (image.IncusImages, error) {
 	indexURL, err := url.JoinPath(source.URL, "streams/v1/index.json")
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func (s *simplestreams) GetImageList(ctx context.Context, source image.ImageSour
 	return incusImages, nil
 }
 
-func (s *simplestreams) GetFile(ctx context.Context, source image.ImageSource, filePath string) (io.ReadCloser, error) {
+func (s *simplestreams) GetFile(ctx context.Context, source image.IncusImageSource, filePath string) (io.ReadCloser, error) {
 	fileURL, err := urlJoinPathAbsolute(source.URL, filePath)
 	if err != nil {
 		return nil, err
