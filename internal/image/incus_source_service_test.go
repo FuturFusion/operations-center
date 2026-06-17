@@ -11,23 +11,21 @@ import (
 	"github.com/FuturFusion/operations-center/internal/image/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/image/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
-	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestSourceService_Create(t *testing.T) {
 	tests := []struct {
 		name                   string
-		source                 image.ImageSource
+		source                 image.IncusImageSource
 		repoCreateTokenSeedErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
-			source: image.ImageSource{
+			source: image.IncusImageSource{
 				Name:             "one",
 				URL:              "https://images.linuxcontainers.org",
-				Type:             api.ImageSourceTypeIncus,
 				FilterExpression: "true",
 			},
 
@@ -35,10 +33,9 @@ func TestSourceService_Create(t *testing.T) {
 		},
 		{
 			name: "error - empty name",
-			source: image.ImageSource{
+			source: image.IncusImageSource{
 				Name:             "", // invalid
 				URL:              "https://images.linuxcontainers.org",
-				Type:             api.ImageSourceTypeIncus,
 				FilterExpression: "true",
 			},
 
@@ -49,10 +46,9 @@ func TestSourceService_Create(t *testing.T) {
 		},
 		{
 			name: "error - repo.Create",
-			source: image.ImageSource{
+			source: image.IncusImageSource{
 				Name:             "one",
 				URL:              "https://images.linuxcontainers.org",
-				Type:             api.ImageSourceTypeIncus,
 				FilterExpression: "true",
 			},
 			repoCreateTokenSeedErr: boom.Error,
@@ -64,21 +60,19 @@ func TestSourceService_Create(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &repoMock.SourceRepoMock{
-				CreateFunc: func(ctx context.Context, source image.ImageSource) (int64, error) {
+			repo := &repoMock.IncusImageSourceRepoMock{
+				CreateFunc: func(ctx context.Context, source image.IncusImageSource) (int64, error) {
 					return 1, tc.repoCreateTokenSeedErr
 				},
 			}
 
-			imageSourcers := map[api.ImageSourceType]image.ImageSourcerPort{
-				api.ImageSourceTypeIncus: &mock.ImageIncusServiceMock{
-					ValidateFilterExpressionFunc: func(ctx context.Context, filterExpression string) error {
-						return nil
-					},
+			incusImageSourcer := &mock.ImageIncusServiceMock{
+				ValidateFilterExpressionFunc: func(ctx context.Context, filterExpression string) error {
+					return nil
 				},
 			}
 
-			tokenSvc := image.NewSource(repo, imageSourcers)
+			tokenSvc := image.NewIncusSource(repo, incusImageSourcer)
 
 			// Run test
 			_, err := tokenSvc.Create(t.Context(), tc.source)
@@ -92,14 +86,14 @@ func TestSourceService_Create(t *testing.T) {
 func TestSourceService_GetAll(t *testing.T) {
 	tests := []struct {
 		name          string
-		repoGetAll    image.Sources
+		repoGetAll    image.IncusImageSources
 		repoGetAllErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name:       "success",
-			repoGetAll: image.Sources{},
+			repoGetAll: image.IncusImageSources{},
 
 			assertErr: require.NoError,
 		},
@@ -114,13 +108,13 @@ func TestSourceService_GetAll(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &repoMock.SourceRepoMock{
-				GetAllFunc: func(ctx context.Context) (image.Sources, error) {
+			repo := &repoMock.IncusImageSourceRepoMock{
+				GetAllFunc: func(ctx context.Context) (image.IncusImageSources, error) {
 					return tc.repoGetAll, tc.repoGetAllErr
 				},
 			}
 
-			imageSvc := image.NewSource(repo, nil)
+			imageSvc := image.NewIncusSource(repo, nil)
 
 			// Run test
 			images, err := imageSvc.GetAll(t.Context())
@@ -160,13 +154,13 @@ func TestSourceService_GetAllNames(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &repoMock.SourceRepoMock{
+			repo := &repoMock.IncusImageSourceRepoMock{
 				GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
 					return tc.repoGetAllNames, tc.repoGetAllNamesErr
 				},
 			}
 
-			imageSvc := image.NewSource(repo, nil)
+			imageSvc := image.NewIncusSource(repo, nil)
 
 			// Run test
 			images, err := imageSvc.GetAllNames(t.Context())
@@ -182,7 +176,7 @@ func TestSourceService_GetByName(t *testing.T) {
 	tests := []struct {
 		name             string
 		nameArg          string
-		repoGetByName    *image.ImageSource
+		repoGetByName    *image.IncusImageSource
 		repoGetByNameErr error
 
 		assertErr require.ErrorAssertionFunc
@@ -190,7 +184,7 @@ func TestSourceService_GetByName(t *testing.T) {
 		{
 			name:          "success",
 			nameArg:       "one",
-			repoGetByName: &image.ImageSource{},
+			repoGetByName: &image.IncusImageSource{},
 
 			assertErr: require.NoError,
 		},
@@ -215,13 +209,13 @@ func TestSourceService_GetByName(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &repoMock.SourceRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*image.ImageSource, error) {
+			repo := &repoMock.IncusImageSourceRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*image.IncusImageSource, error) {
 					return tc.repoGetByName, tc.repoGetByNameErr
 				},
 			}
 
-			imageSvc := image.NewSource(repo, nil)
+			imageSvc := image.NewIncusSource(repo, nil)
 
 			// Run test
 			img, err := imageSvc.GetByName(t.Context(), tc.nameArg)
@@ -236,17 +230,16 @@ func TestSourceService_GetByName(t *testing.T) {
 func TestSourceService_Update(t *testing.T) {
 	tests := []struct {
 		name          string
-		incusImage    image.ImageSource
+		incusImage    image.IncusImageSource
 		repoUpdateErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
-			incusImage: image.ImageSource{
+			incusImage: image.IncusImageSource{
 				Name:             "one",
 				URL:              "https://images.linuxcontainers.org",
-				Type:             api.ImageSourceTypeIncus,
 				FilterExpression: "true",
 			},
 
@@ -254,7 +247,7 @@ func TestSourceService_Update(t *testing.T) {
 		},
 		{
 			name: "error - validation",
-			incusImage: image.ImageSource{
+			incusImage: image.IncusImageSource{
 				Name: "", // empty name
 			},
 
@@ -265,10 +258,9 @@ func TestSourceService_Update(t *testing.T) {
 		},
 		{
 			name: "error - repo.Update",
-			incusImage: image.ImageSource{
+			incusImage: image.IncusImageSource{
 				Name:             "one",
 				URL:              "https://images.linuxcontainers.org",
-				Type:             api.ImageSourceTypeIncus,
 				FilterExpression: "true",
 			},
 			repoUpdateErr: boom.Error,
@@ -280,21 +272,19 @@ func TestSourceService_Update(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &repoMock.SourceRepoMock{
-				UpdateFunc: func(ctx context.Context, source image.ImageSource) error {
+			repo := &repoMock.IncusImageSourceRepoMock{
+				UpdateFunc: func(ctx context.Context, source image.IncusImageSource) error {
 					return tc.repoUpdateErr
 				},
 			}
 
-			imageSourcers := map[api.ImageSourceType]image.ImageSourcerPort{
-				api.ImageSourceTypeIncus: &mock.ImageIncusServiceMock{
-					ValidateFilterExpressionFunc: func(ctx context.Context, filterExpression string) error {
-						return nil
-					},
+			incusImageSourcer := &mock.ImageIncusServiceMock{
+				ValidateFilterExpressionFunc: func(ctx context.Context, filterExpression string) error {
+					return nil
 				},
 			}
 
-			imageSvc := image.NewSource(repo, imageSourcers)
+			imageSvc := image.NewIncusSource(repo, incusImageSourcer)
 
 			// Run test
 			err := imageSvc.Update(t.Context(), tc.incusImage)
@@ -309,8 +299,6 @@ func TestSourceService_DeleteByName(t *testing.T) {
 	tests := []struct {
 		name                          string
 		argName                       string
-		repoGetByName                 *image.ImageSource
-		repoGetByNameErr              error
 		imageSourcerDeleteBySourceErr error
 		repoDeleteByNameErr           error
 
@@ -319,10 +307,6 @@ func TestSourceService_DeleteByName(t *testing.T) {
 		{
 			name:    "success",
 			argName: "one",
-			repoGetByName: &image.ImageSource{
-				Name: "one",
-				Type: api.ImageSourceTypeIncus,
-			},
 
 			assertErr: require.NoError,
 		},
@@ -336,30 +320,15 @@ func TestSourceService_DeleteByName(t *testing.T) {
 			},
 		},
 		{
-			name:             "error - repo.GetByName",
-			argName:          "one",
-			repoGetByNameErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name:    "error - imageSourcer.DeleteBySource",
-			argName: "one",
-			repoGetByName: &image.ImageSource{
-				Name: "one",
-				Type: api.ImageSourceTypeIncus,
-			},
+			name:                          "error - imageSourcer.DeleteBySource",
+			argName:                       "one",
 			imageSourcerDeleteBySourceErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:    "error - repo.DeleteByName",
-			argName: "one",
-			repoGetByName: &image.ImageSource{
-				Name: "one",
-				Type: api.ImageSourceTypeIncus,
-			},
+			name:                "error - repo.DeleteByName",
+			argName:             "one",
 			repoDeleteByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -369,22 +338,19 @@ func TestSourceService_DeleteByName(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &repoMock.SourceRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*image.ImageSource, error) {
-					return tc.repoGetByName, tc.repoGetByNameErr
-				},
+			repo := &repoMock.IncusImageSourceRepoMock{
 				DeleteByNameFunc: func(ctx context.Context, name string) error {
 					return tc.repoDeleteByNameErr
 				},
 			}
 
-			imageSvc := image.NewSource(repo, map[api.ImageSourceType]image.ImageSourcerPort{
-				api.ImageSourceTypeIncus: &mock.ImageIncusServiceMock{
-					DeleteBySourceFunc: func(ctx context.Context, sourceName string) error {
-						return tc.imageSourcerDeleteBySourceErr
-					},
+			incusImageSourcer := &mock.ImageIncusServiceMock{
+				DeleteBySourceFunc: func(ctx context.Context, sourceName string) error {
+					return tc.imageSourcerDeleteBySourceErr
 				},
-			})
+			}
+
+			imageSvc := image.NewIncusSource(repo, incusImageSourcer)
 
 			// Run test
 			err := imageSvc.DeleteByName(t.Context(), tc.argName)
@@ -398,7 +364,7 @@ func TestSourceService_DeleteByName(t *testing.T) {
 func TestSourceService_RefreshByName(t *testing.T) {
 	tests := []struct {
 		name                             string
-		repoGetByName                    image.ImageSource
+		repoGetByName                    image.IncusImageSource
 		repoGetByNameErr                 error
 		imageSourcerRefreshFromSourceErr error
 
@@ -406,9 +372,8 @@ func TestSourceService_RefreshByName(t *testing.T) {
 	}{
 		{
 			name: "success",
-			repoGetByName: image.ImageSource{
+			repoGetByName: image.IncusImageSource{
 				Name: "one",
-				Type: api.ImageSourceTypeIncus,
 			},
 
 			assertErr: require.NoError,
@@ -420,22 +385,9 @@ func TestSourceService_RefreshByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - no image sourcer",
-			repoGetByName: image.ImageSource{
-				Name: "one",
-				Type: api.ImageSourceType("invalid"), // invalid image source type
-
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `No source implementation available for source type "invalid"`)
-			},
-		},
-		{
 			name: "error - imageSourcer.RefreshFromSource",
-			repoGetByName: image.ImageSource{
+			repoGetByName: image.IncusImageSource{
 				Name: "one",
-				Type: api.ImageSourceTypeIncus,
 			},
 			imageSourcerRefreshFromSourceErr: boom.Error,
 
@@ -446,21 +398,19 @@ func TestSourceService_RefreshByName(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &repoMock.SourceRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*image.ImageSource, error) {
+			repo := &repoMock.IncusImageSourceRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*image.IncusImageSource, error) {
 					return &tc.repoGetByName, tc.repoGetByNameErr
 				},
 			}
 
-			imageSourcers := map[api.ImageSourceType]image.ImageSourcerPort{
-				api.ImageSourceTypeIncus: &mock.ImageIncusServiceMock{
-					RefreshFromSourceFunc: func(ctx context.Context, source image.ImageSource) error {
-						return tc.imageSourcerRefreshFromSourceErr
-					},
+			incusImageSourcer := &mock.ImageIncusServiceMock{
+				RefreshFromSourceFunc: func(ctx context.Context, source image.IncusImageSource) error {
+					return tc.imageSourcerRefreshFromSourceErr
 				},
 			}
 
-			imageSvc := image.NewSource(repo, imageSourcers)
+			imageSvc := image.NewIncusSource(repo, incusImageSourcer)
 
 			// Run test
 			err := imageSvc.RefreshByName(t.Context(), "one")
@@ -474,7 +424,7 @@ func TestSourceService_RefreshByName(t *testing.T) {
 func TestSourceService_RefreshAll(t *testing.T) {
 	tests := []struct {
 		name                             string
-		repoGetAll                       image.Sources
+		repoGetAll                       image.IncusImageSources
 		repoGetAllErr                    error
 		imageSourcerRefreshFromSourceErr error
 
@@ -482,10 +432,9 @@ func TestSourceService_RefreshAll(t *testing.T) {
 	}{
 		{
 			name: "success",
-			repoGetAll: image.Sources{
+			repoGetAll: image.IncusImageSources{
 				{
 					Name: "one",
-					Type: api.ImageSourceTypeIncus,
 				},
 			},
 
@@ -498,24 +447,10 @@ func TestSourceService_RefreshAll(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - no image sourcer",
-			repoGetAll: image.Sources{
-				{
-					Name: "one",
-					Type: api.ImageSourceType("invalid"), // invalid image source type
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `No source implementation available for source type "invalid"`)
-			},
-		},
-		{
 			name: "error - imageSourcer.RefreshFromSource",
-			repoGetAll: image.Sources{
+			repoGetAll: image.IncusImageSources{
 				{
 					Name: "one",
-					Type: api.ImageSourceTypeIncus,
 				},
 			},
 			imageSourcerRefreshFromSourceErr: boom.Error,
@@ -527,21 +462,19 @@ func TestSourceService_RefreshAll(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &repoMock.SourceRepoMock{
-				GetAllFunc: func(ctx context.Context) (image.Sources, error) {
+			repo := &repoMock.IncusImageSourceRepoMock{
+				GetAllFunc: func(ctx context.Context) (image.IncusImageSources, error) {
 					return tc.repoGetAll, tc.repoGetAllErr
 				},
 			}
 
-			imageSourcers := map[api.ImageSourceType]image.ImageSourcerPort{
-				api.ImageSourceTypeIncus: &mock.ImageIncusServiceMock{
-					RefreshFromSourceFunc: func(ctx context.Context, source image.ImageSource) error {
-						return tc.imageSourcerRefreshFromSourceErr
-					},
+			incusImageSourcer := &mock.ImageIncusServiceMock{
+				RefreshFromSourceFunc: func(ctx context.Context, source image.IncusImageSource) error {
+					return tc.imageSourcerRefreshFromSourceErr
 				},
 			}
 
-			imageSvc := image.NewSource(repo, imageSourcers)
+			imageSvc := image.NewIncusSource(repo, incusImageSourcer)
 
 			// Run test
 			err := imageSvc.RefreshAll(t.Context())

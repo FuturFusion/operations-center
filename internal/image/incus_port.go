@@ -17,7 +17,7 @@ type ImageIncusService interface {
 	GetVersionFileByName(ctx context.Context, name string, version string, filename string) (_ io.ReadCloser, size int64, _ error)
 	Update(ctx context.Context, incusImage IncusImage) error
 	ValidateFilterExpression(ctx context.Context, filterExpression string) error
-	RefreshFromSource(ctx context.Context, source ImageSource) error
+	RefreshFromSource(ctx context.Context, source IncusImageSource) error
 }
 
 type ImageIncusRepo interface {
@@ -48,6 +48,6 @@ type ImageIncusFileRepo interface {
 }
 
 type SimplestreamsPort interface {
-	GetImageList(ctx context.Context, source ImageSource) (IncusImages, error)
-	GetFile(ctx context.Context, source ImageSource, path string) (io.ReadCloser, error)
+	GetImageList(ctx context.Context, source IncusImageSource) (IncusImages, error)
+	GetFile(ctx context.Context, source IncusImageSource, path string) (io.ReadCloser, error)
 }

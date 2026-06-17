@@ -2632,10 +2632,10 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 			}
 
 			simplestreams := &adapterMock.SimplestreamsPortMock{
-				GetImageListFunc: func(ctx context.Context, source image.ImageSource) (image.IncusImages, error) {
+				GetImageListFunc: func(ctx context.Context, source image.IncusImageSource) (image.IncusImages, error) {
 					return tc.simplestreamsGetImageList, tc.simplestreamsGetImageListErr
 				},
-				GetFileFunc: func(ctx context.Context, source image.ImageSource, path string) (io.ReadCloser, error) {
+				GetFileFunc: func(ctx context.Context, source image.IncusImageSource, path string) (io.ReadCloser, error) {
 					return tc.simplestreamsGetFileRC, tc.simplestreamsGetFileErr
 				},
 			}
@@ -2643,7 +2643,7 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 			imageSvc := image.NewIncusImage(repo, filesRepo, simplestreams)
 
 			// Run test
-			err := imageSvc.RefreshFromSource(tc.ctx, image.ImageSource{
+			err := imageSvc.RefreshFromSource(tc.ctx, image.IncusImageSource{
 				Name:             "linuxcontainers.org",
 				FilterExpression: tc.filterExpression,
 			})

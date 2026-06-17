@@ -590,7 +590,7 @@ func (s *imageIncusService) ValidateFilterExpression(ctx context.Context, filter
 //   - Remove the images, version or files, which are marked for removal.
 //   - Download the images, version or files, that are part of the resulting state
 //     and not yet present on the system.
-func (s *imageIncusService) RefreshFromSource(ctx context.Context, source ImageSource) error {
+func (s *imageIncusService) RefreshFromSource(ctx context.Context, source IncusImageSource) error {
 	originImages, err := s.simplestreams.GetImageList(ctx, source)
 	if err != nil {
 		return fmt.Errorf("Failed to refresh images from source %q: %w", source.Name, err)
@@ -810,7 +810,7 @@ func (s *imageIncusService) isSpaceAvailable(ctx context.Context, downloadImage 
 }
 
 type downloadItem struct {
-	source            ImageSource
+	source            IncusImageSource
 	image             *IncusImage
 	versionIdentifier string
 	filename          string

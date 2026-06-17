@@ -24,7 +24,7 @@ type IncusImage struct {
 
 	Versions api.IncusImageVersions `json:"versions"`
 
-	Source *string `json:"source" db:"leftjoin=image_sources.name"`
+	Source *string `json:"source" db:"leftjoin=incus_image_sources.name"`
 
 	LastUpdated time.Time `json:"-" expr:"last_updated" db:"update_timestamp"`
 }
