@@ -5,8 +5,9 @@ package provisioning
 import (
 	"time"
 
-	"github.com/FuturFusion/operations-center/shared/api"
 	osapi "github.com/lxc/incus-os/incus-osd/api"
+
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type ExprApiApplicationVersionData struct {
