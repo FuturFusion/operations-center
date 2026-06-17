@@ -13,6 +13,7 @@ import (
 type ExprApiApplicationVersionData struct {
 	Name             string                 `json:"name" yaml:"name" expr:"name"`
 	Version          string                 `json:"version" yaml:"version" expr:"version"`
+	FriendlyVersion  string                 `json:"friendly_version,omitzero" yaml:"friendly_version" expr:"friendly_version"`
 	AvailableVersion *string                `json:"available_version,omitempty" yaml:"available_version,omitempty" expr:"available_version"`
 	NeedsUpdate      *bool                  `json:"needs_update,omitempty" yaml:"needs_update,omitempty" expr:"needs_update"`
 	InMaintenance    api.InMaintenanceState `json:"in_maintenance" yaml:"in_maintenance" expr:"in_maintenance"`
@@ -383,6 +384,7 @@ func ToExprApiApplicationVersionData(a api.ApplicationVersionData) ExprApiApplic
 	return ExprApiApplicationVersionData{
 		Name:             a.Name,
 		Version:          a.Version,
+		FriendlyVersion:  a.FriendlyVersion,
 		AvailableVersion: a.AvailableVersion,
 		NeedsUpdate:      a.NeedsUpdate,
 		InMaintenance:    a.InMaintenance,

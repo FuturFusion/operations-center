@@ -11,6 +11,11 @@ definitions:
                     in the update channel assigned to the respective system.
                 type: string
                 x-go-name: AvailableVersion
+            friendly_version:
+                description: FriendlyVersion holds the friendly version of the application.
+                example: 7.0.0 [202511041800]
+                type: string
+                x-go-name: FriendlyVersion
             in_maintenance:
                 $ref: '#/definitions/InMaintenanceState'
             name:

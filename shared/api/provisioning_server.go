@@ -414,6 +414,10 @@ type ApplicationVersionData struct {
 	// Example: 202512250102
 	Version string `json:"version" yaml:"version"`
 
+	// FriendlyVersion holds the friendly version of the application.
+	// Example: 7.0.0 [202511041800]
+	FriendlyVersion string `json:"friendly_version,omitzero" yaml:"friendly_version"`
+
 	// AvailableVersion is the most recent version available for this application
 	// in the update channel assigned to the respective system.
 	AvailableVersion *string `json:"available_version,omitempty" yaml:"available_version,omitempty"`
