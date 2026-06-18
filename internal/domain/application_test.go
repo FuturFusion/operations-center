@@ -38,3 +38,44 @@ func TestIsApplicationNameIncusKind(t *testing.T) {
 		})
 	}
 }
+
+func TestIsPrimaryApplication(t *testing.T) {
+	tests := []struct {
+		name string
+
+		want bool
+	}{
+		{
+			name: "incus",
+
+			want: true,
+		},
+		{
+			name: "incus-lts-7.0",
+
+			want: true,
+		},
+		{
+			name: "operations-center",
+
+			want: true,
+		},
+		{
+			name: "migration-manager",
+
+			want: true,
+		},
+		{
+			name: "debug",
+
+			want: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := domain.IsPrimaryApplication(tc.name)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
