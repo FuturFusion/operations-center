@@ -68,6 +68,20 @@ func (_d ImageIncusServiceWithPrometheus) DeleteByName(ctx context.Context, name
 	return _d.base.DeleteByName(ctx, name)
 }
 
+// DeleteBySource implements image.ImageIncusService.
+func (_d ImageIncusServiceWithPrometheus) DeleteBySource(ctx context.Context, sourceName string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		imageIncusServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteBySource", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteBySource(ctx, sourceName)
+}
+
 // DeleteVersionByName implements image.ImageIncusService.
 func (_d ImageIncusServiceWithPrometheus) DeleteVersionByName(ctx context.Context, name string, version string) (err error) {
 	_since := time.Now()
@@ -138,6 +152,20 @@ func (_d ImageIncusServiceWithPrometheus) GetVersionFileByName(ctx context.Conte
 	return _d.base.GetVersionFileByName(ctx, name, version, filename)
 }
 
+// RefreshFromSource implements image.ImageIncusService.
+func (_d ImageIncusServiceWithPrometheus) RefreshFromSource(ctx context.Context, source image.IncusImageSource) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		imageIncusServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RefreshFromSource", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RefreshFromSource(ctx, source)
+}
+
 // Update implements image.ImageIncusService.
 func (_d ImageIncusServiceWithPrometheus) Update(ctx context.Context, incusImage image.IncusImage) (err error) {
 	_since := time.Now()
@@ -150,4 +178,18 @@ func (_d ImageIncusServiceWithPrometheus) Update(ctx context.Context, incusImage
 		imageIncusServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Update", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.Update(ctx, incusImage)
+}
+
+// ValidateFilterExpression implements image.ImageIncusService.
+func (_d ImageIncusServiceWithPrometheus) ValidateFilterExpression(ctx context.Context, filterExpression string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		imageIncusServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ValidateFilterExpression", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ValidateFilterExpression(ctx, filterExpression)
 }

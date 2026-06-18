@@ -28,6 +28,9 @@ var _ image.ImageIncusFileRepo = &ImageIncusFileRepoMock{}
 //			DeleteVersionFunc: func(ctx context.Context, img *image.IncusImage, versionIdentifier string) error {
 //				panic("mock out the DeleteVersion method")
 //			},
+//			DeleteVersionFileFunc: func(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string) error {
+//				panic("mock out the DeleteVersionFile method")
+//			},
 //			ExistsFunc: func(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string) (bool, error) {
 //				panic("mock out the Exists method")
 //			},
@@ -52,6 +55,9 @@ type ImageIncusFileRepoMock struct {
 
 	// DeleteVersionFunc mocks the DeleteVersion method.
 	DeleteVersionFunc func(ctx context.Context, img *image.IncusImage, versionIdentifier string) error
+
+	// DeleteVersionFileFunc mocks the DeleteVersionFile method.
+	DeleteVersionFileFunc func(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string) error
 
 	// ExistsFunc mocks the Exists method.
 	ExistsFunc func(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string) (bool, error)
@@ -82,6 +88,17 @@ type ImageIncusFileRepoMock struct {
 			Img *image.IncusImage
 			// VersionIdentifier is the versionIdentifier argument value.
 			VersionIdentifier string
+		}
+		// DeleteVersionFile holds details about calls to the DeleteVersionFile method.
+		DeleteVersionFile []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Img is the img argument value.
+			Img *image.IncusImage
+			// VersionIdentifier is the versionIdentifier argument value.
+			VersionIdentifier string
+			// Filename is the filename argument value.
+			Filename string
 		}
 		// Exists holds details about calls to the Exists method.
 		Exists []struct {
@@ -124,12 +141,13 @@ type ImageIncusFileRepoMock struct {
 			Ctx context.Context
 		}
 	}
-	lockDelete           sync.RWMutex
-	lockDeleteVersion    sync.RWMutex
-	lockExists           sync.RWMutex
-	lockGet              sync.RWMutex
-	lockPut              sync.RWMutex
-	lockUsageInformation sync.RWMutex
+	lockDelete            sync.RWMutex
+	lockDeleteVersion     sync.RWMutex
+	lockDeleteVersionFile sync.RWMutex
+	lockExists            sync.RWMutex
+	lockGet               sync.RWMutex
+	lockPut               sync.RWMutex
+	lockUsageInformation  sync.RWMutex
 }
 
 // Delete calls DeleteFunc.
@@ -205,6 +223,50 @@ func (mock *ImageIncusFileRepoMock) DeleteVersionCalls() []struct {
 	mock.lockDeleteVersion.RLock()
 	calls = mock.calls.DeleteVersion
 	mock.lockDeleteVersion.RUnlock()
+	return calls
+}
+
+// DeleteVersionFile calls DeleteVersionFileFunc.
+func (mock *ImageIncusFileRepoMock) DeleteVersionFile(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string) error {
+	if mock.DeleteVersionFileFunc == nil {
+		panic("ImageIncusFileRepoMock.DeleteVersionFileFunc: method is nil but ImageIncusFileRepo.DeleteVersionFile was just called")
+	}
+	callInfo := struct {
+		Ctx               context.Context
+		Img               *image.IncusImage
+		VersionIdentifier string
+		Filename          string
+	}{
+		Ctx:               ctx,
+		Img:               img,
+		VersionIdentifier: versionIdentifier,
+		Filename:          filename,
+	}
+	mock.lockDeleteVersionFile.Lock()
+	mock.calls.DeleteVersionFile = append(mock.calls.DeleteVersionFile, callInfo)
+	mock.lockDeleteVersionFile.Unlock()
+	return mock.DeleteVersionFileFunc(ctx, img, versionIdentifier, filename)
+}
+
+// DeleteVersionFileCalls gets all the calls that were made to DeleteVersionFile.
+// Check the length with:
+//
+//	len(mockedImageIncusFileRepo.DeleteVersionFileCalls())
+func (mock *ImageIncusFileRepoMock) DeleteVersionFileCalls() []struct {
+	Ctx               context.Context
+	Img               *image.IncusImage
+	VersionIdentifier string
+	Filename          string
+} {
+	var calls []struct {
+		Ctx               context.Context
+		Img               *image.IncusImage
+		VersionIdentifier string
+		Filename          string
+	}
+	mock.lockDeleteVersionFile.RLock()
+	calls = mock.calls.DeleteVersionFile
+	mock.lockDeleteVersionFile.RUnlock()
 	return calls
 }
 

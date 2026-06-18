@@ -29,6 +29,9 @@ var _ image.ImageIncusService = &ImageIncusServiceMock{}
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the DeleteByName method")
 //			},
+//			DeleteBySourceFunc: func(ctx context.Context, sourceName string) error {
+//				panic("mock out the DeleteBySource method")
+//			},
 //			DeleteVersionByNameFunc: func(ctx context.Context, name string, version string) error {
 //				panic("mock out the DeleteVersionByName method")
 //			},
@@ -44,8 +47,14 @@ var _ image.ImageIncusService = &ImageIncusServiceMock{}
 //			GetVersionFileByNameFunc: func(ctx context.Context, name string, version string, filename string) (io.ReadCloser, int64, error) {
 //				panic("mock out the GetVersionFileByName method")
 //			},
+//			RefreshFromSourceFunc: func(ctx context.Context, source image.IncusImageSource) error {
+//				panic("mock out the RefreshFromSource method")
+//			},
 //			UpdateFunc: func(ctx context.Context, incusImage image.IncusImage) error {
 //				panic("mock out the Update method")
+//			},
+//			ValidateFilterExpressionFunc: func(ctx context.Context, filterExpression string) error {
+//				panic("mock out the ValidateFilterExpression method")
 //			},
 //		}
 //
@@ -59,6 +68,9 @@ type ImageIncusServiceMock struct {
 
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
+
+	// DeleteBySourceFunc mocks the DeleteBySource method.
+	DeleteBySourceFunc func(ctx context.Context, sourceName string) error
 
 	// DeleteVersionByNameFunc mocks the DeleteVersionByName method.
 	DeleteVersionByNameFunc func(ctx context.Context, name string, version string) error
@@ -75,8 +87,14 @@ type ImageIncusServiceMock struct {
 	// GetVersionFileByNameFunc mocks the GetVersionFileByName method.
 	GetVersionFileByNameFunc func(ctx context.Context, name string, version string, filename string) (io.ReadCloser, int64, error)
 
+	// RefreshFromSourceFunc mocks the RefreshFromSource method.
+	RefreshFromSourceFunc func(ctx context.Context, source image.IncusImageSource) error
+
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, incusImage image.IncusImage) error
+
+	// ValidateFilterExpressionFunc mocks the ValidateFilterExpression method.
+	ValidateFilterExpressionFunc func(ctx context.Context, filterExpression string) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -93,6 +111,13 @@ type ImageIncusServiceMock struct {
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+		}
+		// DeleteBySource holds details about calls to the DeleteBySource method.
+		DeleteBySource []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// SourceName is the sourceName argument value.
+			SourceName string
 		}
 		// DeleteVersionByName holds details about calls to the DeleteVersionByName method.
 		DeleteVersionByName []struct {
@@ -131,6 +156,13 @@ type ImageIncusServiceMock struct {
 			// Filename is the filename argument value.
 			Filename string
 		}
+		// RefreshFromSource holds details about calls to the RefreshFromSource method.
+		RefreshFromSource []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Source is the source argument value.
+			Source image.IncusImageSource
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -138,15 +170,25 @@ type ImageIncusServiceMock struct {
 			// IncusImage is the incusImage argument value.
 			IncusImage image.IncusImage
 		}
+		// ValidateFilterExpression holds details about calls to the ValidateFilterExpression method.
+		ValidateFilterExpression []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// FilterExpression is the filterExpression argument value.
+			FilterExpression string
+		}
 	}
-	lockAddVersion           sync.RWMutex
-	lockDeleteByName         sync.RWMutex
-	lockDeleteVersionByName  sync.RWMutex
-	lockGetAll               sync.RWMutex
-	lockGetAllNames          sync.RWMutex
-	lockGetByName            sync.RWMutex
-	lockGetVersionFileByName sync.RWMutex
-	lockUpdate               sync.RWMutex
+	lockAddVersion               sync.RWMutex
+	lockDeleteByName             sync.RWMutex
+	lockDeleteBySource           sync.RWMutex
+	lockDeleteVersionByName      sync.RWMutex
+	lockGetAll                   sync.RWMutex
+	lockGetAllNames              sync.RWMutex
+	lockGetByName                sync.RWMutex
+	lockGetVersionFileByName     sync.RWMutex
+	lockRefreshFromSource        sync.RWMutex
+	lockUpdate                   sync.RWMutex
+	lockValidateFilterExpression sync.RWMutex
 }
 
 // AddVersion calls AddVersionFunc.
@@ -218,6 +260,42 @@ func (mock *ImageIncusServiceMock) DeleteByNameCalls() []struct {
 	mock.lockDeleteByName.RLock()
 	calls = mock.calls.DeleteByName
 	mock.lockDeleteByName.RUnlock()
+	return calls
+}
+
+// DeleteBySource calls DeleteBySourceFunc.
+func (mock *ImageIncusServiceMock) DeleteBySource(ctx context.Context, sourceName string) error {
+	if mock.DeleteBySourceFunc == nil {
+		panic("ImageIncusServiceMock.DeleteBySourceFunc: method is nil but ImageIncusService.DeleteBySource was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		SourceName string
+	}{
+		Ctx:        ctx,
+		SourceName: sourceName,
+	}
+	mock.lockDeleteBySource.Lock()
+	mock.calls.DeleteBySource = append(mock.calls.DeleteBySource, callInfo)
+	mock.lockDeleteBySource.Unlock()
+	return mock.DeleteBySourceFunc(ctx, sourceName)
+}
+
+// DeleteBySourceCalls gets all the calls that were made to DeleteBySource.
+// Check the length with:
+//
+//	len(mockedImageIncusService.DeleteBySourceCalls())
+func (mock *ImageIncusServiceMock) DeleteBySourceCalls() []struct {
+	Ctx        context.Context
+	SourceName string
+} {
+	var calls []struct {
+		Ctx        context.Context
+		SourceName string
+	}
+	mock.lockDeleteBySource.RLock()
+	calls = mock.calls.DeleteBySource
+	mock.lockDeleteBySource.RUnlock()
 	return calls
 }
 
@@ -405,6 +483,42 @@ func (mock *ImageIncusServiceMock) GetVersionFileByNameCalls() []struct {
 	return calls
 }
 
+// RefreshFromSource calls RefreshFromSourceFunc.
+func (mock *ImageIncusServiceMock) RefreshFromSource(ctx context.Context, source image.IncusImageSource) error {
+	if mock.RefreshFromSourceFunc == nil {
+		panic("ImageIncusServiceMock.RefreshFromSourceFunc: method is nil but ImageIncusService.RefreshFromSource was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Source image.IncusImageSource
+	}{
+		Ctx:    ctx,
+		Source: source,
+	}
+	mock.lockRefreshFromSource.Lock()
+	mock.calls.RefreshFromSource = append(mock.calls.RefreshFromSource, callInfo)
+	mock.lockRefreshFromSource.Unlock()
+	return mock.RefreshFromSourceFunc(ctx, source)
+}
+
+// RefreshFromSourceCalls gets all the calls that were made to RefreshFromSource.
+// Check the length with:
+//
+//	len(mockedImageIncusService.RefreshFromSourceCalls())
+func (mock *ImageIncusServiceMock) RefreshFromSourceCalls() []struct {
+	Ctx    context.Context
+	Source image.IncusImageSource
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Source image.IncusImageSource
+	}
+	mock.lockRefreshFromSource.RLock()
+	calls = mock.calls.RefreshFromSource
+	mock.lockRefreshFromSource.RUnlock()
+	return calls
+}
+
 // Update calls UpdateFunc.
 func (mock *ImageIncusServiceMock) Update(ctx context.Context, incusImage image.IncusImage) error {
 	if mock.UpdateFunc == nil {
@@ -438,5 +552,41 @@ func (mock *ImageIncusServiceMock) UpdateCalls() []struct {
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update
 	mock.lockUpdate.RUnlock()
+	return calls
+}
+
+// ValidateFilterExpression calls ValidateFilterExpressionFunc.
+func (mock *ImageIncusServiceMock) ValidateFilterExpression(ctx context.Context, filterExpression string) error {
+	if mock.ValidateFilterExpressionFunc == nil {
+		panic("ImageIncusServiceMock.ValidateFilterExpressionFunc: method is nil but ImageIncusService.ValidateFilterExpression was just called")
+	}
+	callInfo := struct {
+		Ctx              context.Context
+		FilterExpression string
+	}{
+		Ctx:              ctx,
+		FilterExpression: filterExpression,
+	}
+	mock.lockValidateFilterExpression.Lock()
+	mock.calls.ValidateFilterExpression = append(mock.calls.ValidateFilterExpression, callInfo)
+	mock.lockValidateFilterExpression.Unlock()
+	return mock.ValidateFilterExpressionFunc(ctx, filterExpression)
+}
+
+// ValidateFilterExpressionCalls gets all the calls that were made to ValidateFilterExpression.
+// Check the length with:
+//
+//	len(mockedImageIncusService.ValidateFilterExpressionCalls())
+func (mock *ImageIncusServiceMock) ValidateFilterExpressionCalls() []struct {
+	Ctx              context.Context
+	FilterExpression string
+} {
+	var calls []struct {
+		Ctx              context.Context
+		FilterExpression string
+	}
+	mock.lockValidateFilterExpression.RLock()
+	calls = mock.calls.ValidateFilterExpression
+	mock.lockValidateFilterExpression.RUnlock()
 	return calls
 }

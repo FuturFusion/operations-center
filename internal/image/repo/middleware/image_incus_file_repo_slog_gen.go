@@ -109,6 +109,42 @@ func (_d ImageIncusFileRepoWithSlog) DeleteVersion(ctx context.Context, img *ima
 	return _d._base.DeleteVersion(ctx, img, versionIdentifier)
 }
 
+// DeleteVersionFile implements image.ImageIncusFileRepo.
+func (_d ImageIncusFileRepoWithSlog) DeleteVersionFile(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("img", img),
+			slog.String("versionIdentifier", versionIdentifier),
+			slog.String("filename", filename),
+		)
+	}
+	log.DebugContext(ctx, "=> calling DeleteVersionFile")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method DeleteVersionFile returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method DeleteVersionFile returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method DeleteVersionFile finished")
+		}
+	}()
+	return _d._base.DeleteVersionFile(ctx, img, versionIdentifier, filename)
+}
+
 // Exists implements image.ImageIncusFileRepo.
 func (_d ImageIncusFileRepoWithSlog) Exists(ctx context.Context, img *image.IncusImage, versionIdentifier string, filename string) (b bool, err error) {
 	log := slog.With()

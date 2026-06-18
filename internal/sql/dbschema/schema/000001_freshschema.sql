@@ -361,6 +361,17 @@ CREATE TABLE warnings (
   UNIQUE (type, scope, entity_type, entity)
 );
 
+CREATE TABLE incus_image_sources (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name TEXT NOT NULL,
+  url TEXT NOT NULL,
+  filter_expression TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (name),
+  UNIQUE (url),
+  CHECK (name <> '')
+);
+
 CREATE TABLE incus_images (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   name TEXT NOT NULL,
@@ -372,7 +383,10 @@ CREATE TABLE incus_images (
   versions TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   aliases TEXT NOT NULL DEFAULT '',
-  UNIQUE (operating_system, release, variant, architecture)
+  incus_image_source_id INTEGER,
+  UNIQUE (operating_system, release, variant, architecture),
+  FOREIGN KEY (incus_image_source_id) REFERENCES incus_image_sources(id),
+  CHECK (name <> '')
 );
 
 CREATE VIEW resources AS
@@ -439,4 +453,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (36, strftime("%s"));
+INSERT INTO schema (version, updated_at) VALUES (37, strftime("%s"));

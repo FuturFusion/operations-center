@@ -14,22 +14,33 @@ import (
 )
 
 var incusImageObjects = RegisterStmt(`
-SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_images.last_updated
+SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.last_updated
   FROM incus_images
+  LEFT JOIN incus_image_sources ON incus_images.incus_image_source_id = incus_image_sources.id
   ORDER BY incus_images.name
 `)
 
 var incusImageObjectsByID = RegisterStmt(`
-SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_images.last_updated
+SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.last_updated
   FROM incus_images
+  LEFT JOIN incus_image_sources ON incus_images.incus_image_source_id = incus_image_sources.id
   WHERE ( incus_images.id = ? )
   ORDER BY incus_images.name
 `)
 
 var incusImageObjectsByName = RegisterStmt(`
-SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_images.last_updated
+SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.last_updated
   FROM incus_images
+  LEFT JOIN incus_image_sources ON incus_images.incus_image_source_id = incus_image_sources.id
   WHERE ( incus_images.name = ? )
+  ORDER BY incus_images.name
+`)
+
+var incusImageObjectsBySource = RegisterStmt(`
+SELECT incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.last_updated
+  FROM incus_images
+  LEFT JOIN incus_image_sources ON incus_images.incus_image_source_id = incus_image_sources.id
+  WHERE ( source = ? )
   ORDER BY incus_images.name
 `)
 
@@ -45,13 +56,18 @@ SELECT incus_images.id FROM incus_images
 `)
 
 var incusImageCreate = RegisterStmt(`
-INSERT INTO incus_images (name, aliases, description, operating_system, release, architecture, variant, versions, last_updated)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO incus_images (name, aliases, description, operating_system, release, architecture, variant, versions, incus_image_source_id, last_updated)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, (SELECT incus_image_sources.id FROM incus_image_sources WHERE incus_image_sources.name = ?), ?)
+`)
+
+var incusImageCreateOrReplace = RegisterStmt(`
+INSERT OR REPLACE INTO incus_images (name, aliases, description, operating_system, release, architecture, variant, versions, incus_image_source_id, last_updated)
+ VALUES (?, ?, ?, ?, ?, ?, ?, ?, (SELECT incus_image_sources.id FROM incus_image_sources WHERE incus_image_sources.name = ?), ?)
 `)
 
 var incusImageUpdate = RegisterStmt(`
 UPDATE incus_images
-  SET name = ?, aliases = ?, description = ?, operating_system = ?, release = ?, architecture = ?, variant = ?, versions = ?, last_updated = ?
+  SET name = ?, aliases = ?, description = ?, operating_system = ?, release = ?, architecture = ?, variant = ?, versions = ?, incus_image_source_id = (SELECT incus_image_sources.id FROM incus_image_sources WHERE incus_image_sources.name = ?), last_updated = ?
  WHERE id = ?
 `)
 
@@ -139,7 +155,7 @@ func GetIncusImage(ctx context.Context, db dbtx, name string) (_ *image.IncusIma
 // incusImageColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the IncusImage entity.
 func incusImageColumns() string {
-	return "incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_images.last_updated"
+	return "incus_images.id, incus_images.name, incus_images.aliases, incus_images.description, incus_images.operating_system, incus_images.release, incus_images.architecture, incus_images.variant, incus_images.versions, incus_image_sources.name AS source, incus_images.last_updated"
 }
 
 // getIncusImages can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -149,7 +165,7 @@ func getIncusImages(ctx context.Context, stmt *sql.Stmt, args ...any) ([]image.I
 	dest := func(scan func(dest ...any) error) error {
 		i := image.IncusImage{}
 		var aliasesStr string
-		err := scan(&i.ID, &i.Name, &aliasesStr, &i.Description, &i.OperatingSystem, &i.Release, &i.Architecture, &i.Variant, &i.Versions, &i.LastUpdated)
+		err := scan(&i.ID, &i.Name, &aliasesStr, &i.Description, &i.OperatingSystem, &i.Release, &i.Architecture, &i.Variant, &i.Versions, &i.Source, &i.LastUpdated)
 		if err != nil {
 			return err
 		}
@@ -179,7 +195,7 @@ func getIncusImagesRaw(ctx context.Context, db dbtx, sql string, args ...any) ([
 	dest := func(scan func(dest ...any) error) error {
 		i := image.IncusImage{}
 		var aliasesStr string
-		err := scan(&i.ID, &i.Name, &aliasesStr, &i.Description, &i.OperatingSystem, &i.Release, &i.Architecture, &i.Variant, &i.Versions, &i.LastUpdated)
+		err := scan(&i.ID, &i.Name, &aliasesStr, &i.Description, &i.OperatingSystem, &i.Release, &i.Architecture, &i.Variant, &i.Versions, &i.Source, &i.LastUpdated)
 		if err != nil {
 			return err
 		}
@@ -227,7 +243,31 @@ func GetIncusImages(ctx context.Context, db dbtx, filters ...image.IncusImageFil
 	}
 
 	for i, filter := range filters {
-		if filter.Name != nil && filter.ID == nil && filter.OperatingSystem == nil && filter.Release == nil && filter.Architecture == nil && filter.Variant == nil {
+		if filter.Source != nil && filter.ID == nil && filter.Name == nil && filter.OperatingSystem == nil && filter.Release == nil && filter.Architecture == nil && filter.Variant == nil {
+			args = append(args, []any{filter.Source}...)
+			if len(filters) == 1 {
+				sqlStmt, err = Stmt(db, incusImageObjectsBySource)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get \"incusImageObjectsBySource\" prepared statement: %w", err)
+				}
+
+				break
+			}
+
+			query, err := StmtString(incusImageObjectsBySource)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get \"incusImageObjects\" prepared statement: %w", err)
+			}
+
+			parts := strings.SplitN(query, "ORDER BY", 2)
+			if i == 0 {
+				copy(queryParts[:], parts)
+				continue
+			}
+
+			_, where, _ := strings.Cut(parts[0], "WHERE")
+			queryParts[0] += "OR" + where
+		} else if filter.Name != nil && filter.ID == nil && filter.OperatingSystem == nil && filter.Release == nil && filter.Architecture == nil && filter.Variant == nil && filter.Source == nil {
 			args = append(args, []any{filter.Name}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, incusImageObjectsByName)
@@ -251,7 +291,7 @@ func GetIncusImages(ctx context.Context, db dbtx, filters ...image.IncusImageFil
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.ID != nil && filter.Name == nil && filter.OperatingSystem == nil && filter.Release == nil && filter.Architecture == nil && filter.Variant == nil {
+		} else if filter.ID != nil && filter.Name == nil && filter.OperatingSystem == nil && filter.Release == nil && filter.Architecture == nil && filter.Variant == nil && filter.Source == nil {
 			args = append(args, []any{filter.ID}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, incusImageObjectsByID)
@@ -275,7 +315,7 @@ func GetIncusImages(ctx context.Context, db dbtx, filters ...image.IncusImageFil
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.ID == nil && filter.Name == nil && filter.OperatingSystem == nil && filter.Release == nil && filter.Architecture == nil && filter.Variant == nil {
+		} else if filter.ID == nil && filter.Name == nil && filter.OperatingSystem == nil && filter.Release == nil && filter.Architecture == nil && filter.Variant == nil && filter.Source == nil {
 			return nil, fmt.Errorf("Cannot filter on empty IncusImageFilter")
 		} else {
 			return nil, errors.New("No statement exists for the given Filter")
@@ -322,7 +362,7 @@ func GetIncusImageNames(ctx context.Context, db dbtx, filters ...image.IncusImag
 	}
 
 	for _, filter := range filters {
-		if filter.ID == nil && filter.Name == nil && filter.OperatingSystem == nil && filter.Release == nil && filter.Architecture == nil && filter.Variant == nil {
+		if filter.ID == nil && filter.Name == nil && filter.OperatingSystem == nil && filter.Release == nil && filter.Architecture == nil && filter.Variant == nil && filter.Source == nil {
 			return nil, fmt.Errorf("Cannot filter on empty IncusImageFilter")
 		} else {
 			return nil, errors.New("No statement exists for the given Filter")
@@ -368,7 +408,7 @@ func CreateIncusImage(ctx context.Context, db dbtx, object image.IncusImage) (_ 
 		_err = mapErr(_err, "Incus_image")
 	}()
 
-	args := make([]any, 9)
+	args := make([]any, 10)
 
 	// Populate the statement arguments.
 	args[0] = object.Name
@@ -384,12 +424,63 @@ func CreateIncusImage(ctx context.Context, db dbtx, object image.IncusImage) (_ 
 	args[5] = object.Architecture
 	args[6] = object.Variant
 	args[7] = object.Versions
-	args[8] = time.Now().UTC().Format(time.RFC3339)
+	args[8] = object.Source
+	args[9] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, incusImageCreate)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"incusImageCreate\" prepared statement: %w", err)
+	}
+
+	// Execute the statement.
+	result, err := stmt.Exec(args...)
+	if err != nil && strings.HasPrefix(err.Error(), "UNIQUE constraint failed:") {
+		return -1, ErrConflict
+	}
+
+	if err != nil {
+		return -1, fmt.Errorf("Failed to create \"incus_images\" entry: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return -1, fmt.Errorf("Failed to fetch \"incus_images\" entry ID: %w", err)
+	}
+
+	return id, nil
+}
+
+// CreateOrReplaceIncusImage adds a new incus_image to the database.
+// generator: incus_image CreateOrReplace
+func CreateOrReplaceIncusImage(ctx context.Context, db dbtx, object image.IncusImage) (_ int64, _err error) {
+	defer func() {
+		_err = mapErr(_err, "Incus_image")
+	}()
+
+	args := make([]any, 10)
+
+	// Populate the statement arguments.
+	args[0] = object.Name
+	marshaledAliases, err := marshalJSON(object.Aliases)
+	if err != nil {
+		return -1, err
+	}
+
+	args[1] = marshaledAliases
+	args[2] = object.Description
+	args[3] = object.OperatingSystem
+	args[4] = object.Release
+	args[5] = object.Architecture
+	args[6] = object.Variant
+	args[7] = object.Versions
+	args[8] = object.Source
+	args[9] = time.Now().UTC().Format(time.RFC3339)
+
+	// Prepared statement to use.
+	stmt, err := Stmt(db, incusImageCreateOrReplace)
+	if err != nil {
+		return -1, fmt.Errorf("Failed to get \"incusImageCreateOrReplace\" prepared statement: %w", err)
 	}
 
 	// Execute the statement.
@@ -432,7 +523,7 @@ func UpdateIncusImage(ctx context.Context, db tx, name string, object image.Incu
 		return err
 	}
 
-	result, err := stmt.Exec(object.Name, marshaledAliases, object.Description, object.OperatingSystem, object.Release, object.Architecture, object.Variant, object.Versions, time.Now().UTC().Format(time.RFC3339), id)
+	result, err := stmt.Exec(object.Name, marshaledAliases, object.Description, object.OperatingSystem, object.Release, object.Architecture, object.Variant, object.Versions, object.Source, time.Now().UTC().Format(time.RFC3339), id)
 	if err != nil {
 		return fmt.Errorf("Update \"incus_images\" entry failed: %w", err)
 	}
