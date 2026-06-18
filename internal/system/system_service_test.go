@@ -40,26 +40,75 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name                       string
-		skipIfRoot                 bool
-		setupEnv                   func(t *testing.T, targetDir string)
-		certPEM                    string
-		keyPEM                     string
-		serverGetAll               provisioning.Servers
-		serverGetAllErr            error
-		serverGetSystemProvider    []queue.Item[provisioning.ServerSystemProvider]
-		serverUpdateSystemProvider []queue.Item[struct{}]
+		name                        string
+		skipIfRoot                  bool
+		setupEnv                    func(t *testing.T, targetDir string)
+		certPEM                     string
+		keyPEM                      string
+		serverGetAllWithFilter      provisioning.Servers
+		serverGetAllWithFilterErr   error
+		serverGetAll                provisioning.Servers
+		serverGetAllErr             error
+		serverGetSystemProvider     []queue.Item[provisioning.ServerSystemProvider]
+		serverUpdateSystemProvider  []queue.Item[struct{}]
+		serverRestartApplicationErr error
 
 		assertErr                       require.ErrorAssertionFunc
 		wantServerCertificateUpdateEmit []queue.Item[string]
 	}{
 		{
-			name: "success - no registered servers",
+			name: "success - no registered servers except for self-registered operations-center",
 			setupEnv: func(t *testing.T, targetDir string) {
 				t.Helper()
 			},
 			certPEM: string(certPEM),
 			keyPEM:  string(keyPEM),
+			serverGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "operations-center",
+					Type: api.ServerTypeOperationsCenter,
+				},
+			},
+			serverGetAll: provisioning.Servers{
+				{
+					Name: "operations-center",
+					Type: api.ServerTypeOperationsCenter,
+				},
+			},
+
+			assertErr: require.NoError,
+			wantServerCertificateUpdateEmit: []queue.Item[string]{
+				{
+					Value: certFingerprint,
+				},
+			},
+		},
+		{
+			name: "success - self-registered operations-center with openfga",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+			},
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+			serverGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "operations-center",
+					Type: api.ServerTypeOperationsCenter,
+					VersionData: api.ServerVersionData{
+						Applications: []api.ApplicationVersionData{
+							{
+								Name: "openfga",
+							},
+						},
+					},
+				},
+			},
+			serverGetAll: provisioning.Servers{
+				{
+					Name: "operations-center",
+					Type: api.ServerTypeOperationsCenter,
+				},
+			},
 
 			assertErr: require.NoError,
 			wantServerCertificateUpdateEmit: []queue.Item[string]{
@@ -86,6 +135,12 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			},
 			certPEM: string(certPEM),
 			keyPEM:  string(keyPEM),
+			serverGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "operations-center",
+					Type: api.ServerTypeOperationsCenter,
+				},
+			},
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
@@ -211,12 +266,67 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 		},
 
 		{
+			name: "error - serverSvc.GetAllWithFilter",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+			},
+			certPEM:                   string(certPEM),
+			keyPEM:                    string(keyPEM),
+			serverGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - serverSvc.GetAllWithFilter",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+			},
+			certPEM:                string(certPEM),
+			keyPEM:                 string(keyPEM),
+			serverGetAllWithFilter: provisioning.Servers{}, // no operations-center instance
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Failed to get operations-center server entry, expected 1 entry, got 0")
+			},
+		},
+		{
+			name: "error - serverSvc.GetAllWithFilter",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+			},
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+			serverGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "operations-center",
+					Type: api.ServerTypeOperationsCenter,
+					VersionData: api.ServerVersionData{
+						Applications: []api.ApplicationVersionData{
+							{
+								Name: "openfga",
+							},
+						},
+					},
+				},
+			},
+			serverRestartApplicationErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+
+		{
 			name: "error - ServerCertificateUpdateSignal",
 			setupEnv: func(t *testing.T, targetDir string) {
 				t.Helper()
 			},
 			certPEM: string(certPEM),
 			keyPEM:  string(keyPEM),
+			serverGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "operations-center",
+					Type: api.ServerTypeOperationsCenter,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
 			wantServerCertificateUpdateEmit: []queue.Item[string]{
@@ -230,12 +340,18 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			},
 		},
 		{
-			name: "error - ServerCertificateUpdateSignal",
+			name: "error - ServerCertificateUpdateSignal - revert error",
 			setupEnv: func(t *testing.T, targetDir string) {
 				t.Helper()
 			},
 			certPEM: string(certPEM),
 			keyPEM:  string(keyPEM),
+			serverGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "operations-center",
+					Type: api.ServerTypeOperationsCenter,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
 			wantServerCertificateUpdateEmit: []queue.Item[string]{
@@ -254,8 +370,14 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			setupEnv: func(t *testing.T, targetDir string) {
 				t.Helper()
 			},
-			certPEM:         string(certPEM),
-			keyPEM:          string(keyPEM),
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+			serverGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "operations-center",
+					Type: api.ServerTypeOperationsCenter,
+				},
+			},
 			serverGetAllErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -275,6 +397,12 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			},
 			certPEM: string(certPEM),
 			keyPEM:  string(keyPEM),
+			serverGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "operations-center",
+					Type: api.ServerTypeOperationsCenter,
+				},
+			},
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
@@ -304,6 +432,12 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			},
 			certPEM: string(certPEM),
 			keyPEM:  string(keyPEM),
+			serverGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "operations-center",
+					Type: api.ServerTypeOperationsCenter,
+				},
+			},
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
@@ -344,6 +478,12 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			},
 			certPEM: string(certPEM),
 			keyPEM:  string(keyPEM),
+			serverGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "operations-center",
+					Type: api.ServerTypeOperationsCenter,
+				},
+			},
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
@@ -399,6 +539,12 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			},
 			certPEM: string(certPEM),
 			keyPEM:  string(keyPEM),
+			serverGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "operations-center",
+					Type: api.ServerTypeOperationsCenter,
+				},
+			},
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
@@ -473,6 +619,9 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 				VarDirFunc: func() string {
 					return tmpDir
 				},
+				IsIncusOSFunc: func() bool {
+					return true
+				},
 			}
 
 			tc.setupEnv(t, env.VarDir())
@@ -494,6 +643,9 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
 					return tc.serverGetAll, tc.serverGetAllErr
 				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.serverGetAllWithFilter, tc.serverGetAllWithFilterErr
+				},
 				GetSystemProviderFunc: func(ctx context.Context, name string) (provisioning.ServerSystemProvider, error) {
 					return queue.Pop(t, &tc.serverGetSystemProvider)
 				},
@@ -501,6 +653,9 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 					require.Equal(t, string(certPEM), providerConfig.Config.Config["server_certificate"])
 					_, err := queue.Pop(t, &tc.serverUpdateSystemProvider)
 					return err
+				},
+				RestartApplicationFunc: func(ctx context.Context, name, applicationName string) error {
+					return tc.serverRestartApplicationErr
 				},
 			}
 
@@ -605,11 +760,22 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 				CacheDirFunc: func() string {
 					return tmpDir
 				},
+				IsIncusOSFunc: func() bool {
+					return true
+				},
 			}
 
 			serverSvc := &mock.ProvisioningServerServiceMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
 					return nil, tc.serverGetAllErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return provisioning.Servers{
+						{
+							Name: "operations-center",
+							Type: api.ServerTypeOperationsCenter,
+						},
+					}, nil
 				},
 			}
 

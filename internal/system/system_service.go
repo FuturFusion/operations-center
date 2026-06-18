@@ -13,7 +13,9 @@ import (
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/acme"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -21,6 +23,7 @@ import (
 type environment interface {
 	VarDir() string
 	CacheDir() string
+	IsIncusOS() bool
 }
 
 type systemService struct {
@@ -105,6 +108,36 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 
 	reverter := revert.New()
 	defer reverter.Fail()
+
+	// Restart openfga application, if it is present as secondary application
+	// on IncusOS.
+	if s.env.IsIncusOS() {
+		servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
+			Type: ptr.To(api.ServerTypeOperationsCenter),
+		})
+		if err != nil {
+			return fmt.Errorf("Failed to get operations-center server entry: %w", err)
+		}
+
+		if len(servers) != 1 {
+			return fmt.Errorf("Failed to get operations-center server entry, expected 1 entry, got %d", len(servers))
+		}
+
+		hasOpenFGA := false
+		for _, app := range servers[0].VersionData.Applications {
+			if app.Name == "openfga" {
+				hasOpenFGA = true
+				break
+			}
+		}
+
+		if hasOpenFGA {
+			err = s.serverSvc.RestartApplication(ctx, servers[0].Name, "openfga")
+			if err != nil {
+				return fmt.Errorf("Failed to restart OpenFGA application: %w", err)
+			}
+		}
+	}
 
 	reverter.Add(func() {
 		revertErr := lifecycle.ServerCertificateUpdateSignal.TryEmit(ctx, currentCertificate)
