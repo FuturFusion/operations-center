@@ -622,7 +622,21 @@ func (c client) AddApplication(ctx context.Context, server provisioning.Server, 
 		"name": application,
 	}, "")
 	if err != nil {
-		return fmt.Errorf("Failed to add application on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		return fmt.Errorf("Failed to add application %q on %q (%s): %w", application, server.Name, server.GetConnectionURL(), err)
+	}
+
+	return nil
+}
+
+func (c client) RestartApplication(ctx context.Context, server provisioning.Server, application string) error {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = client.RawQuery(http.MethodPost, path.Join("/os/1.0/applications", application, ":restart"), nil, "")
+	if err != nil {
+		return fmt.Errorf("Failed to restart application %q on %q (%s): %w", application, server.Name, server.GetConnectionURL(), err)
 	}
 
 	return nil

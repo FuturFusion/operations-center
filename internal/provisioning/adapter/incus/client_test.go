@@ -1776,6 +1776,44 @@ func TestClientServer(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "RestartApplication",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.RestartApplication(ctx, target, "openfga")
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// POST /os/1.0/applications/openfga/:restart
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"POST /os/1.0/applications/openfga/:restart"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// POST /os/1.0/applications/openfga/:restart
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"POST /os/1.0/applications/openfga/:restart"},
+					assertResult: noResult,
+				},
+			},
+		},
 
 		{
 			name: "GetSystem",
