@@ -8873,7 +8873,18 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 			nameArg: "one",
 
 			serverSvcGetAllWithFilter: provisioning.Servers{
-				{},
+				{
+					VersionData: api.ServerVersionData{
+						Applications: []api.ApplicationVersionData{
+							{
+								Name: "debug",
+							},
+							{
+								Name: "incus-lts-7.0",
+							},
+						},
+					},
+				},
 				{},
 			},
 			tokenSvcCreate: provisioning.Token{

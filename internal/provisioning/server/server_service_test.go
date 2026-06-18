@@ -6807,6 +6807,16 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			repoGetByName: provisioning.Server{
 				Name: "server01",
 				Type: api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "debug",
+						},
+						{
+							Name: "incus-lts-7.0",
+						},
+					},
+				},
 			},
 			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{},
 
