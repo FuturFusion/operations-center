@@ -48,6 +48,7 @@ type ServerService interface {
 	GetSystemKernel(ctx context.Context, name string) (ServerSystemKernel, error)
 	UpdateSystemKernel(ctx context.Context, name string, kernelConfig ServerSystemKernel) error
 	AddApplication(ctx context.Context, name string, applicationName string) error
+	RestartApplication(ctx context.Context, name string, applicationName string) error
 }
 
 type ServerRepo interface {
@@ -85,6 +86,7 @@ type ServerClientPort interface {
 	UpdateOS(ctx context.Context, server Server) error
 	SystemFactoryReset(ctx context.Context, endpoint Endpoint, allowTPMResetFailure bool, seeds TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error
 	AddApplication(ctx context.Context, server Server, application string) error
+	RestartApplication(ctx context.Context, server Server, application string) error
 	GetSystemKernel(ctx context.Context, server Server) (ServerSystemKernel, error)
 	UpdateSystemKernel(ctx context.Context, server Server, config ServerSystemKernel) error
 	GetSystemLogging(ctx context.Context, server Server) (ServerSystemLogging, error)

@@ -7367,6 +7367,78 @@ func TestServerService_AddApplication(t *testing.T) {
 	}
 }
 
+func TestServerService_RestartApplication(t *testing.T) {
+	tests := []struct {
+		name                        string
+		argName                     string
+		argApplicationName          string
+		repoGetByName               *provisioning.Server
+		repoGetByNameErr            error
+		clientRestartApplicationErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:               "success",
+			argName:            "one",
+			argApplicationName: "debug",
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			argName:          "one",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - client.RestartApplication",
+			argName: "one",
+			repoGetByName: &provisioning.Server{
+				Channel: "stable",
+			},
+			clientRestartApplicationErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				RestartApplicationFunc: func(ctx context.Context, server provisioning.Server, application string) error {
+					return tc.clientRestartApplicationErr
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{})
+
+			// Run test
+			err := serverSvc.RestartApplication(t.Context(), tc.argName, tc.argApplicationName)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestServerService_SyncCluster(t *testing.T) {
 	s := provisioningServer.New(nil, nil, nil, nil, nil, nil, nil, tls.Certificate{})
 	err := s.SyncCluster(t.Context(), "")

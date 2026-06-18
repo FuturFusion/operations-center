@@ -1622,7 +1622,21 @@ func (s *serverService) AddApplication(ctx context.Context, name string, applica
 
 	err = s.client.AddApplication(ctx, *server, applicationName)
 	if err != nil {
-		return fmt.Errorf("Failed to add application to server %q: %w", name, err)
+		return fmt.Errorf("Failed to add application %q to server %q: %w", applicationName, name, err)
+	}
+
+	return nil
+}
+
+func (s *serverService) RestartApplication(ctx context.Context, name string, applicationName string) error {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	err = s.client.RestartApplication(ctx, *server, applicationName)
+	if err != nil {
+		return fmt.Errorf("Failed to restart application %q on server %q: %w", applicationName, name, err)
 	}
 
 	return nil
