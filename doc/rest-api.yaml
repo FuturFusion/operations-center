@@ -854,6 +854,11 @@ definitions:
         title: IncusImage defines an incus image.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    IncusImageAlias:
+        items:
+            type: string
+        type: array
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     IncusImagePost:
         properties:
             arch:
@@ -883,10 +888,6 @@ definitions:
                 x-go-name: Version
         title: IncusImagePost represents the fields available when creating an incus image version.
         type: object
-    IncusImageAlias:
-        items:
-            type: string
-        type: array
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     IncusImagePut:
         properties:
