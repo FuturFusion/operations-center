@@ -18,6 +18,31 @@ type IncusImagePut struct {
 	Description string `json:"description" yaml:"description"`
 }
 
+// IncusImagePost represents the fields available when creating an incus image version.
+//
+// swagger:model
+type IncusImagePost struct {
+	// OperatingSystem of the incus image.
+	// Example: almalinux
+	OperatingSystem string `json:"os" yaml:"os"`
+
+	// Release of the operating system of the incus image.
+	// Example: 10
+	Release string `json:"release" yaml:"release"`
+
+	// Architecture the incus image is built for.
+	// Example: amd64
+	Architecture string `json:"arch" yaml:"arch"`
+
+	// Variant of the incus image.
+	// Example: default
+	Variant string `json:"variant" yaml:"variant"`
+
+	// Version of the incus image.
+	// Example: 20260616
+	Version string `json:"version" yaml:"version"`
+}
+
 // IncusImage defines an incus image.
 //
 // swagger:model
@@ -73,10 +98,6 @@ type IncusImageVersionItem struct {
 	// CombinedSha256SquashFs holds the combinded sha256 hash of the incus image
 	// versions metadata ("incus.tar.xz") and the "root.squashfs" image.
 	CombinedSha256SquashFs string `json:"combined_squashfs_sha256,omitempty" yaml:"combined_squashfs_sha256"`
-
-	// CombinedType holds the type (container or virtual-machine) of a combined
-	// image.
-	CombinedType string `json:"combined_type,omitempty"`
 
 	// FileType holds the file type. This defaults to the file name like
 	// incus.tar.xz. Special file types are "squashfs" and "disk-kvm.img".

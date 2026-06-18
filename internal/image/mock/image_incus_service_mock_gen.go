@@ -23,7 +23,7 @@ var _ image.ImageIncusService = &ImageIncusServiceMock{}
 //
 //		// make and configure a mocked image.ImageIncusService
 //		mockedImageIncusService := &ImageIncusServiceMock{
-//			AddVersionFunc: func(ctx context.Context, name string, version string, mr *multipart.Reader) error {
+//			AddVersionFunc: func(ctx context.Context, mr *multipart.Reader) (string, error) {
 //				panic("mock out the AddVersion method")
 //			},
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
@@ -55,7 +55,7 @@ var _ image.ImageIncusService = &ImageIncusServiceMock{}
 //	}
 type ImageIncusServiceMock struct {
 	// AddVersionFunc mocks the AddVersion method.
-	AddVersionFunc func(ctx context.Context, name string, version string, mr *multipart.Reader) error
+	AddVersionFunc func(ctx context.Context, mr *multipart.Reader) (string, error)
 
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
@@ -84,10 +84,6 @@ type ImageIncusServiceMock struct {
 		AddVersion []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Name is the name argument value.
-			Name string
-			// Version is the version argument value.
-			Version string
 			// Mr is the mr argument value.
 			Mr *multipart.Reader
 		}
@@ -154,25 +150,21 @@ type ImageIncusServiceMock struct {
 }
 
 // AddVersion calls AddVersionFunc.
-func (mock *ImageIncusServiceMock) AddVersion(ctx context.Context, name string, version string, mr *multipart.Reader) error {
+func (mock *ImageIncusServiceMock) AddVersion(ctx context.Context, mr *multipart.Reader) (string, error) {
 	if mock.AddVersionFunc == nil {
 		panic("ImageIncusServiceMock.AddVersionFunc: method is nil but ImageIncusService.AddVersion was just called")
 	}
 	callInfo := struct {
-		Ctx     context.Context
-		Name    string
-		Version string
-		Mr      *multipart.Reader
+		Ctx context.Context
+		Mr  *multipart.Reader
 	}{
-		Ctx:     ctx,
-		Name:    name,
-		Version: version,
-		Mr:      mr,
+		Ctx: ctx,
+		Mr:  mr,
 	}
 	mock.lockAddVersion.Lock()
 	mock.calls.AddVersion = append(mock.calls.AddVersion, callInfo)
 	mock.lockAddVersion.Unlock()
-	return mock.AddVersionFunc(ctx, name, version, mr)
+	return mock.AddVersionFunc(ctx, mr)
 }
 
 // AddVersionCalls gets all the calls that were made to AddVersion.
@@ -180,16 +172,12 @@ func (mock *ImageIncusServiceMock) AddVersion(ctx context.Context, name string, 
 //
 //	len(mockedImageIncusService.AddVersionCalls())
 func (mock *ImageIncusServiceMock) AddVersionCalls() []struct {
-	Ctx     context.Context
-	Name    string
-	Version string
-	Mr      *multipart.Reader
+	Ctx context.Context
+	Mr  *multipart.Reader
 } {
 	var calls []struct {
-		Ctx     context.Context
-		Name    string
-		Version string
-		Mr      *multipart.Reader
+		Ctx context.Context
+		Mr  *multipart.Reader
 	}
 	mock.lockAddVersion.RLock()
 	calls = mock.calls.AddVersion

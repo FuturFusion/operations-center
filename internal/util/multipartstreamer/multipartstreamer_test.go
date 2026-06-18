@@ -24,7 +24,7 @@ func TestNew_NoFiles(t *testing.T) {
 	require.Empty(t, buf.String())
 }
 
-func TestNew_WithFiles(t *testing.T) {
+func TestNew_WithFilesAndFields(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	file1 := filepath.Join(tmpDir, "file1.txt")
@@ -35,7 +35,7 @@ func TestNew_WithFiles(t *testing.T) {
 	err = os.WriteFile(file2, []byte(`file2 content`), 0o600)
 	require.NoError(t, err)
 
-	mr := multipartstreamer.New(file1, file2)
+	mr := multipartstreamer.NewWithFields(map[string]string{"field": "field value"}, file1, file2)
 	defer func() {
 		err = mr.Close()
 		require.NoError(t, err)
@@ -53,6 +53,8 @@ func TestNew_WithFiles(t *testing.T) {
 	require.NotEmpty(t, boundary)
 
 	require.Contains(t, buf.String(), boundary)
+	require.Contains(t, buf.String(), `Content-Disposition: form-data; name="field"`)
+	require.Contains(t, buf.String(), `field value`)
 	require.Contains(t, buf.String(), `Content-Disposition: form-data; name="file00"; filename="file1.txt"`)
 	require.Contains(t, buf.String(), `file1 content`)
 	require.Contains(t, buf.String(), `Content-Disposition: form-data; name="file01"; filename="file2.txt"`)

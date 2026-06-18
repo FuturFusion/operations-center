@@ -7,7 +7,7 @@ import (
 )
 
 type ImageIncusService interface {
-	AddVersion(ctx context.Context, name string, version string, mr *multipart.Reader) error
+	AddVersion(ctx context.Context, mr *multipart.Reader) (name string, _ error)
 	GetAll(ctx context.Context) (IncusImages, error)
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetByName(ctx context.Context, name string) (*IncusImage, error)

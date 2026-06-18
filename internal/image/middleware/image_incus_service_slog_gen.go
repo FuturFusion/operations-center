@@ -42,13 +42,11 @@ func NewImageIncusServiceWithSlog(base image.ImageIncusService, opts ...ImageInc
 }
 
 // AddVersion implements image.ImageIncusService.
-func (_d ImageIncusServiceWithSlog) AddVersion(ctx context.Context, name string, version string, mr *multipart.Reader) (err error) {
+func (_d ImageIncusServiceWithSlog) AddVersion(ctx context.Context, mr *multipart.Reader) (name string, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("name", name),
-			slog.String("version", version),
 			slog.Any("mr", mr),
 		)
 	}
@@ -57,6 +55,7 @@ func (_d ImageIncusServiceWithSlog) AddVersion(ctx context.Context, name string,
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
+				slog.String("name", name),
 				slog.Any("err", err),
 			)
 		} else {
@@ -74,7 +73,7 @@ func (_d ImageIncusServiceWithSlog) AddVersion(ctx context.Context, name string,
 			log.DebugContext(ctx, "<= method AddVersion finished")
 		}
 	}()
-	return _d._base.AddVersion(ctx, name, version, mr)
+	return _d._base.AddVersion(ctx, mr)
 }
 
 // DeleteByName implements image.ImageIncusService.

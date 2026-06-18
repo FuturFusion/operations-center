@@ -952,7 +952,7 @@ func (d *Daemon) setupAPIRoutes(
 	)
 	registerAPI10Handler(api10router)
 
-	imageRouter := api10router.SubGroup("/image")
+	imageRouter := api10router.SubGroup("/images")
 	imageIncusRouter := imageRouter.SubGroup("/incus")
 	registerImageIncusHandler(imageIncusRouter, simplestreamsRouter, d.authorizer, incusImageSvc)
 
