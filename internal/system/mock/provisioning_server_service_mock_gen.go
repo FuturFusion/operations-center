@@ -25,8 +25,14 @@ var _ system.ProvisioningServerService = &ProvisioningServerServiceMock{}
 //			GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
 //				panic("mock out the GetAll method")
 //			},
+//			GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+//				panic("mock out the GetAllWithFilter method")
+//			},
 //			GetSystemProviderFunc: func(ctx context.Context, name string) (provisioning.ServerSystemProvider, error) {
 //				panic("mock out the GetSystemProvider method")
+//			},
+//			RestartApplicationFunc: func(ctx context.Context, name string, applicationName string) error {
+//				panic("mock out the RestartApplication method")
 //			},
 //			UpdateSystemProviderFunc: func(ctx context.Context, name string, providerConfig provisioning.ServerSystemProvider) error {
 //				panic("mock out the UpdateSystemProvider method")
@@ -41,8 +47,14 @@ type ProvisioningServerServiceMock struct {
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Servers, error)
 
+	// GetAllWithFilterFunc mocks the GetAllWithFilter method.
+	GetAllWithFilterFunc func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error)
+
 	// GetSystemProviderFunc mocks the GetSystemProvider method.
 	GetSystemProviderFunc func(ctx context.Context, name string) (provisioning.ServerSystemProvider, error)
+
+	// RestartApplicationFunc mocks the RestartApplication method.
+	RestartApplicationFunc func(ctx context.Context, name string, applicationName string) error
 
 	// UpdateSystemProviderFunc mocks the UpdateSystemProvider method.
 	UpdateSystemProviderFunc func(ctx context.Context, name string, providerConfig provisioning.ServerSystemProvider) error
@@ -54,12 +66,28 @@ type ProvisioningServerServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// GetAllWithFilter holds details about calls to the GetAllWithFilter method.
+		GetAllWithFilter []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Filter is the filter argument value.
+			Filter provisioning.ServerFilter
+		}
 		// GetSystemProvider holds details about calls to the GetSystemProvider method.
 		GetSystemProvider []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+		}
+		// RestartApplication holds details about calls to the RestartApplication method.
+		RestartApplication []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// ApplicationName is the applicationName argument value.
+			ApplicationName string
 		}
 		// UpdateSystemProvider holds details about calls to the UpdateSystemProvider method.
 		UpdateSystemProvider []struct {
@@ -72,7 +100,9 @@ type ProvisioningServerServiceMock struct {
 		}
 	}
 	lockGetAll               sync.RWMutex
+	lockGetAllWithFilter     sync.RWMutex
 	lockGetSystemProvider    sync.RWMutex
+	lockRestartApplication   sync.RWMutex
 	lockUpdateSystemProvider sync.RWMutex
 }
 
@@ -105,6 +135,42 @@ func (mock *ProvisioningServerServiceMock) GetAllCalls() []struct {
 	mock.lockGetAll.RLock()
 	calls = mock.calls.GetAll
 	mock.lockGetAll.RUnlock()
+	return calls
+}
+
+// GetAllWithFilter calls GetAllWithFilterFunc.
+func (mock *ProvisioningServerServiceMock) GetAllWithFilter(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+	if mock.GetAllWithFilterFunc == nil {
+		panic("ProvisioningServerServiceMock.GetAllWithFilterFunc: method is nil but ProvisioningServerService.GetAllWithFilter was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Filter provisioning.ServerFilter
+	}{
+		Ctx:    ctx,
+		Filter: filter,
+	}
+	mock.lockGetAllWithFilter.Lock()
+	mock.calls.GetAllWithFilter = append(mock.calls.GetAllWithFilter, callInfo)
+	mock.lockGetAllWithFilter.Unlock()
+	return mock.GetAllWithFilterFunc(ctx, filter)
+}
+
+// GetAllWithFilterCalls gets all the calls that were made to GetAllWithFilter.
+// Check the length with:
+//
+//	len(mockedProvisioningServerService.GetAllWithFilterCalls())
+func (mock *ProvisioningServerServiceMock) GetAllWithFilterCalls() []struct {
+	Ctx    context.Context
+	Filter provisioning.ServerFilter
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Filter provisioning.ServerFilter
+	}
+	mock.lockGetAllWithFilter.RLock()
+	calls = mock.calls.GetAllWithFilter
+	mock.lockGetAllWithFilter.RUnlock()
 	return calls
 }
 
@@ -141,6 +207,46 @@ func (mock *ProvisioningServerServiceMock) GetSystemProviderCalls() []struct {
 	mock.lockGetSystemProvider.RLock()
 	calls = mock.calls.GetSystemProvider
 	mock.lockGetSystemProvider.RUnlock()
+	return calls
+}
+
+// RestartApplication calls RestartApplicationFunc.
+func (mock *ProvisioningServerServiceMock) RestartApplication(ctx context.Context, name string, applicationName string) error {
+	if mock.RestartApplicationFunc == nil {
+		panic("ProvisioningServerServiceMock.RestartApplicationFunc: method is nil but ProvisioningServerService.RestartApplication was just called")
+	}
+	callInfo := struct {
+		Ctx             context.Context
+		Name            string
+		ApplicationName string
+	}{
+		Ctx:             ctx,
+		Name:            name,
+		ApplicationName: applicationName,
+	}
+	mock.lockRestartApplication.Lock()
+	mock.calls.RestartApplication = append(mock.calls.RestartApplication, callInfo)
+	mock.lockRestartApplication.Unlock()
+	return mock.RestartApplicationFunc(ctx, name, applicationName)
+}
+
+// RestartApplicationCalls gets all the calls that were made to RestartApplication.
+// Check the length with:
+//
+//	len(mockedProvisioningServerService.RestartApplicationCalls())
+func (mock *ProvisioningServerServiceMock) RestartApplicationCalls() []struct {
+	Ctx             context.Context
+	Name            string
+	ApplicationName string
+} {
+	var calls []struct {
+		Ctx             context.Context
+		Name            string
+		ApplicationName string
+	}
+	mock.lockRestartApplication.RLock()
+	calls = mock.calls.RestartApplication
+	mock.lockRestartApplication.RUnlock()
 	return calls
 }
 

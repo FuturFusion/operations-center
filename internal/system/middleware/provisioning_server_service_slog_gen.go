@@ -74,6 +74,41 @@ func (_d ProvisioningServerServiceWithSlog) GetAll(ctx context.Context) (servers
 	return _d._base.GetAll(ctx)
 }
 
+// GetAllWithFilter implements system.ProvisioningServerService.
+func (_d ProvisioningServerServiceWithSlog) GetAllWithFilter(ctx context.Context, filter provisioning.ServerFilter) (servers provisioning.Servers, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetAllWithFilter")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("servers", servers),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
 // GetSystemProvider implements system.ProvisioningServerService.
 func (_d ProvisioningServerServiceWithSlog) GetSystemProvider(ctx context.Context, name string) (v provisioning.ServerSystemProvider, err error) {
 	log := slog.With()
@@ -107,6 +142,41 @@ func (_d ProvisioningServerServiceWithSlog) GetSystemProvider(ctx context.Contex
 		}
 	}()
 	return _d._base.GetSystemProvider(ctx, name)
+}
+
+// RestartApplication implements system.ProvisioningServerService.
+func (_d ProvisioningServerServiceWithSlog) RestartApplication(ctx context.Context, name string, applicationName string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.String("applicationName", applicationName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RestartApplication")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method RestartApplication returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method RestartApplication returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method RestartApplication finished")
+		}
+	}()
+	return _d._base.RestartApplication(ctx, name, applicationName)
 }
 
 // UpdateSystemProvider implements system.ProvisioningServerService.

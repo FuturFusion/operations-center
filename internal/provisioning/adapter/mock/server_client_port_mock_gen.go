@@ -70,6 +70,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			RebootFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the Reboot method")
 //			},
+//			RestartApplicationFunc: func(ctx context.Context, server provisioning.Server, application string) error {
+//				panic("mock out the RestartApplication method")
+//			},
 //			RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) error {
 //				panic("mock out the Restore method")
 //			},
@@ -151,6 +154,9 @@ type ServerClientPortMock struct {
 
 	// RebootFunc mocks the Reboot method.
 	RebootFunc func(ctx context.Context, server provisioning.Server) error
+
+	// RestartApplicationFunc mocks the RestartApplication method.
+	RestartApplicationFunc func(ctx context.Context, server provisioning.Server, application string) error
 
 	// RestoreFunc mocks the Restore method.
 	RestoreFunc func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) error
@@ -297,6 +303,15 @@ type ServerClientPortMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
+		// RestartApplication holds details about calls to the RestartApplication method.
+		RestartApplication []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Application is the application argument value.
+			Application string
+		}
 		// Restore holds details about calls to the Restore method.
 		Restore []struct {
 			// Ctx is the ctx argument value.
@@ -395,6 +410,7 @@ type ServerClientPortMock struct {
 	lockPing                 sync.RWMutex
 	lockPoweroff             sync.RWMutex
 	lockReboot               sync.RWMutex
+	lockRestartApplication   sync.RWMutex
 	lockRestore              sync.RWMutex
 	lockSystemFactoryReset   sync.RWMutex
 	lockUpdateNetworkConfig  sync.RWMutex
@@ -987,6 +1003,46 @@ func (mock *ServerClientPortMock) RebootCalls() []struct {
 	mock.lockReboot.RLock()
 	calls = mock.calls.Reboot
 	mock.lockReboot.RUnlock()
+	return calls
+}
+
+// RestartApplication calls RestartApplicationFunc.
+func (mock *ServerClientPortMock) RestartApplication(ctx context.Context, server provisioning.Server, application string) error {
+	if mock.RestartApplicationFunc == nil {
+		panic("ServerClientPortMock.RestartApplicationFunc: method is nil but ServerClientPort.RestartApplication was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		Server      provisioning.Server
+		Application string
+	}{
+		Ctx:         ctx,
+		Server:      server,
+		Application: application,
+	}
+	mock.lockRestartApplication.Lock()
+	mock.calls.RestartApplication = append(mock.calls.RestartApplication, callInfo)
+	mock.lockRestartApplication.Unlock()
+	return mock.RestartApplicationFunc(ctx, server, application)
+}
+
+// RestartApplicationCalls gets all the calls that were made to RestartApplication.
+// Check the length with:
+//
+//	len(mockedServerClientPort.RestartApplicationCalls())
+func (mock *ServerClientPortMock) RestartApplicationCalls() []struct {
+	Ctx         context.Context
+	Server      provisioning.Server
+	Application string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		Server      provisioning.Server
+		Application string
+	}
+	mock.lockRestartApplication.RLock()
+	calls = mock.calls.RestartApplication
+	mock.lockRestartApplication.RUnlock()
 	return calls
 }
 

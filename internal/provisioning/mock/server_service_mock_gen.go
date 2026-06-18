@@ -88,6 +88,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
+//			RestartApplicationFunc: func(ctx context.Context, name string, applicationName string) error {
+//				panic("mock out the RestartApplication method")
+//			},
 //			RestoreSystemByNameFunc: func(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) error {
 //				panic("mock out the RestoreSystemByName method")
 //			},
@@ -199,6 +202,9 @@ type ServerServiceMock struct {
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
+
+	// RestartApplicationFunc mocks the RestartApplication method.
+	RestartApplicationFunc func(ctx context.Context, name string, applicationName string) error
 
 	// RestoreSystemByNameFunc mocks the RestoreSystemByName method.
 	RestoreSystemByNameFunc func(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) error
@@ -411,6 +417,15 @@ type ServerServiceMock struct {
 			// NewName is the newName argument value.
 			NewName string
 		}
+		// RestartApplication holds details about calls to the RestartApplication method.
+		RestartApplication []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// ApplicationName is the applicationName argument value.
+			ApplicationName string
+		}
 		// RestoreSystemByName holds details about calls to the RestoreSystemByName method.
 		RestoreSystemByName []struct {
 			// Ctx is the ctx argument value.
@@ -555,6 +570,7 @@ type ServerServiceMock struct {
 	lockPoweroffSystemByName         sync.RWMutex
 	lockRebootSystemByName           sync.RWMutex
 	lockRename                       sync.RWMutex
+	lockRestartApplication           sync.RWMutex
 	lockRestoreSystemByName          sync.RWMutex
 	lockResyncByName                 sync.RWMutex
 	lockSelfRegisterOperationsCenter sync.RWMutex
@@ -1364,6 +1380,46 @@ func (mock *ServerServiceMock) RenameCalls() []struct {
 	mock.lockRename.RLock()
 	calls = mock.calls.Rename
 	mock.lockRename.RUnlock()
+	return calls
+}
+
+// RestartApplication calls RestartApplicationFunc.
+func (mock *ServerServiceMock) RestartApplication(ctx context.Context, name string, applicationName string) error {
+	if mock.RestartApplicationFunc == nil {
+		panic("ServerServiceMock.RestartApplicationFunc: method is nil but ServerService.RestartApplication was just called")
+	}
+	callInfo := struct {
+		Ctx             context.Context
+		Name            string
+		ApplicationName string
+	}{
+		Ctx:             ctx,
+		Name:            name,
+		ApplicationName: applicationName,
+	}
+	mock.lockRestartApplication.Lock()
+	mock.calls.RestartApplication = append(mock.calls.RestartApplication, callInfo)
+	mock.lockRestartApplication.Unlock()
+	return mock.RestartApplicationFunc(ctx, name, applicationName)
+}
+
+// RestartApplicationCalls gets all the calls that were made to RestartApplication.
+// Check the length with:
+//
+//	len(mockedServerService.RestartApplicationCalls())
+func (mock *ServerServiceMock) RestartApplicationCalls() []struct {
+	Ctx             context.Context
+	Name            string
+	ApplicationName string
+} {
+	var calls []struct {
+		Ctx             context.Context
+		Name            string
+		ApplicationName string
+	}
+	mock.lockRestartApplication.RLock()
+	calls = mock.calls.RestartApplication
+	mock.lockRestartApplication.RUnlock()
 	return calls
 }
 

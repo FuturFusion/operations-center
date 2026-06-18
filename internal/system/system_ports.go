@@ -26,6 +26,8 @@ type SystemService interface {
 
 type ProvisioningServerService interface {
 	GetAll(ctx context.Context) (provisioning.Servers, error)
+	GetAllWithFilter(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error)
 	GetSystemProvider(ctx context.Context, name string) (provisioning.ServerSystemProvider, error)
 	UpdateSystemProvider(ctx context.Context, name string, providerConfig provisioning.ServerSystemProvider) error
+	RestartApplication(ctx context.Context, name string, applicationName string) error
 }

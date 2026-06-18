@@ -778,6 +778,41 @@ func (_d ServerServiceWithSlog) Rename(ctx context.Context, oldName string, newN
 	return _d._base.Rename(ctx, oldName, newName)
 }
 
+// RestartApplication implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) RestartApplication(ctx context.Context, name string, applicationName string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.String("applicationName", applicationName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RestartApplication")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method RestartApplication returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method RestartApplication returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method RestartApplication finished")
+		}
+	}()
+	return _d._base.RestartApplication(ctx, name, applicationName)
+}
+
 // RestoreSystemByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) RestoreSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) (err error) {
 	log := slog.With()
