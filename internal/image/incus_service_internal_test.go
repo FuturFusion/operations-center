@@ -3,19 +3,175 @@ package image
 import (
 	"archive/tar"
 	"bytes"
-	"compress/gzip"
-	"context"
-	"io"
 	"mime/multipart"
 	"net/textproto"
 	"testing"
-	"testing/iotest"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
-	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
+
+func Test_filterImageVersionFilesByFilterExpression(t *testing.T) {
+	tests := []struct {
+		name             string
+		in               IncusImages
+		filterExpression string
+
+		assertErr require.ErrorAssertionFunc
+		want      IncusImages
+	}{
+		{
+			name: "success - no filter expression",
+			in: IncusImages{
+				IncusImage{
+					Versions: api.IncusImageVersions{
+						"1": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"file": {},
+							},
+						},
+					},
+				},
+			},
+			filterExpression: "", // empty filter expression
+
+			assertErr: require.NoError,
+			want:      IncusImages{},
+		},
+		{
+			name:             "success - empty",
+			filterExpression: "true",
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - without filtering",
+			in: IncusImages{
+				IncusImage{
+					Versions: api.IncusImageVersions{
+						"1": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"file": {},
+							},
+						},
+					},
+				},
+			},
+			filterExpression: "true",
+
+			assertErr: require.NoError,
+			want: IncusImages{
+				IncusImage{
+					Versions: api.IncusImageVersions{
+						"1": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"file": {},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "success - with filtering for architecture, version and file_type",
+			in: IncusImages{
+				IncusImage{
+					Architecture: "amd64",
+					Versions: api.IncusImageVersions{
+						"1": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"root.squashfs": {
+									FileType: "squashfs",
+								},
+								// filtered, since file_type != "squashfs"
+								"disk.qcow2": {
+									FileType: "disk-kvm.img",
+								},
+							},
+						},
+						// filtered, since version != "1"
+						"2": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"root.squashfs": {
+									FileType: "squashfs",
+								},
+							},
+						},
+					},
+				},
+				// filtered, since architecture != "amd64"
+				IncusImage{
+					Architecture: "aarch64",
+					Versions: api.IncusImageVersions{
+						"1": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"root.squashfs": {
+									FileType: "squashfs",
+								},
+							},
+						},
+					},
+				},
+			},
+			filterExpression: `architecture == "amd64" and version == "1" and file_type == "squashfs"`,
+
+			assertErr: require.NoError,
+			want: IncusImages{
+				IncusImage{
+					Architecture: "amd64",
+					Versions: api.IncusImageVersions{
+						"1": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"root.squashfs": {
+									FileType: "squashfs",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+
+		{
+			name:             "error - invalid filter expression",
+			filterExpression: `"string"`, // invalid, does not return boolean result
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "expected bool, but got string")
+			},
+		},
+		{
+			name: "error - filter expression run",
+			in: IncusImages{
+				IncusImage{
+					Versions: api.IncusImageVersions{
+						"1": api.IncusImageVersion{
+							Items: map[string]api.IncusImageVersionItem{
+								"file": {},
+							},
+						},
+					},
+				},
+			},
+			filterExpression: `fromBase64("~invalid") == ""`, // invalid, returns runtime error during evauluation of the expression.
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "illegal base64 data")
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := filterImageVersionFilesByFilterExpression(tc.in, tc.filterExpression)
+			tc.assertErr(t, err)
+
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
 
 func Test_metadataFromRequestJSON(t *testing.T) {
 	tests := []struct {
@@ -94,43 +250,8 @@ func Test_metadataFromIncusTarXZ(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "success - virtual-machine",
-			rc:   generateTarGz(t, "rootfs.img"),
-
-			assertErr:     require.NoError,
-			wantImageType: "virtual-machine",
-		},
-		{
-			name:           "error - fileRepo.Get",
-			fileRepoGetErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - read error",
-			rc:   io.NopCloser(iotest.ErrReader(boom.Error)),
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - read error",
-			rc: func() io.ReadCloser {
-				var buf bytes.Buffer
-
-				gzw := gzip.NewWriter(&buf)
-				defer gzw.Close()
-
-				_, err := gzw.Write([]byte("invalid tar"))
-				require.NoError(t, err)
-
-				return io.NopCloser(&buf)
-			}(),
-
-			assertErr: require.Error,
-		},
-		{
-			name: "error - neither container nor virtual-machine",
-			rc:   generateTarGz(t, "foobar"),
+			name:            "error - not metadata.yaml",
+			multipartReader: multipartReaderIncusTarXZ(t, "invalid", "architecture: amd64"),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Failed to find metadata.yaml in incus.tar.xz")
@@ -236,66 +357,38 @@ func multipartReaderNotXZ(t *testing.T) *multipart.Reader {
 	return multipart.NewReader(&body, writer.Boundary())
 }
 
-func generateTarGz(t *testing.T, filename string) io.ReadCloser {
-	t.Helper()
+func Test_fixArchitectureMapping(t *testing.T) {
+	tests := []struct {
+		name         string
+		architecture string
 
-	var buf bytes.Buffer
+		want string
+	}{
+		{
+			name:         "x86_64 - amd64",
+			architecture: "x86_64",
 
-	gzw := gzip.NewWriter(&buf)
-	defer gzw.Close()
+			want: "amd64",
+		},
+		{
+			name:         "aarch64 - arm64",
+			architecture: "aarch64",
 
-	tw := tar.NewWriter(gzw)
+			want: "arm64",
+		},
+		{
+			name:         "other",
+			architecture: "other",
 
-	content := []byte(filename)
-
-	hdr := &tar.Header{
-		Name: filename,
-		Mode: 0o600,
-		Size: int64(len(content)),
+			want: "other",
+		},
 	}
 
-	err := tw.WriteHeader(hdr)
-	require.NoError(t, err)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := fixArchitectureMapping(tc.architecture)
 
-	_, err = tw.Write(content)
-	require.NoError(t, err)
-
-	err = tw.Close()
-	require.NoError(t, err)
-
-	return io.NopCloser(&buf)
-}
-
-type fileRepoMock struct {
-	rc  io.ReadCloser
-	err error
-	t   *testing.T
-}
-
-func (f fileRepoMock) Get(ctx context.Context, img *IncusImage, versionIdentifier string, filename string) (_ io.ReadCloser, size int64, _ error) {
-	return f.rc, 0, f.err
-}
-
-func (fileRepoMock) Exists(ctx context.Context, img *IncusImage, versionIdentifier string, filename string) (bool, error) {
-	panic("not implemented")
-}
-
-func (fileRepoMock) Put(ctx context.Context, img *IncusImage, versionIdentifier string, filename string, content io.ReadCloser) (_ CommitFunc, _ CancelFunc, size int64, _ error) {
-	panic("not implemented")
-}
-
-func (fileRepoMock) Delete(ctx context.Context, img *IncusImage) error {
-	panic("not implemented")
-}
-
-func (fileRepoMock) DeleteVersion(ctx context.Context, img *IncusImage, versionIdentifier string) error {
-	panic("not implemented")
-}
-
-func (fileRepoMock) DeleteVersionFile(ctx context.Context, img *IncusImage, versionIdentifier string, filename string) error {
-	panic("not implemented")
-}
-
-func (fileRepoMock) UsageInformation(ctx context.Context) (UsageInformation, error) {
-	panic("not implemented")
+			require.Equal(t, tc.want, got)
+		})
+	}
 }
