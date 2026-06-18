@@ -335,6 +335,20 @@ func (_d ServerServiceWithPrometheus) Rename(ctx context.Context, oldName string
 	return _d.base.Rename(ctx, oldName, newName)
 }
 
+// RestartApplication implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) RestartApplication(ctx context.Context, name string, applicationName string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RestartApplication", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RestartApplication(ctx, name, applicationName)
+}
+
 // RestoreSystemByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) RestoreSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) (err error) {
 	_since := time.Now()

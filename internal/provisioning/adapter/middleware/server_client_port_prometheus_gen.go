@@ -263,6 +263,20 @@ func (_d ServerClientPortWithPrometheus) Reboot(ctx context.Context, server prov
 	return _d.base.Reboot(ctx, server)
 }
 
+// RestartApplication implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) RestartApplication(ctx context.Context, server provisioning.Server, application string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "RestartApplication", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RestartApplication(ctx, server, application)
+}
+
 // Restore implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithPrometheus) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) (err error) {
 	_since := time.Now()

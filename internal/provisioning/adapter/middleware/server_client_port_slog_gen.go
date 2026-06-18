@@ -596,6 +596,41 @@ func (_d ServerClientPortWithSlog) Reboot(ctx context.Context, server provisioni
 	return _d._base.Reboot(ctx, server)
 }
 
+// RestartApplication implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) RestartApplication(ctx context.Context, server provisioning.Server, application string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.String("application", application),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RestartApplication")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method RestartApplication returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method RestartApplication returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method RestartApplication finished")
+		}
+	}()
+	return _d._base.RestartApplication(ctx, server, application)
+}
+
 // Restore implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) (err error) {
 	log := slog.With()

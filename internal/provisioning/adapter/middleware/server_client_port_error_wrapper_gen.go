@@ -186,6 +186,16 @@ func (_d ServerClientPortWithErrorWrapper) Reboot(ctx context.Context, server pr
 	return _d._base.Reboot(ctx, server)
 }
 
+// RestartApplication implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithErrorWrapper) RestartApplication(ctx context.Context, server provisioning.Server, application string) (err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.RestartApplication(ctx, server, application)
+}
+
 // Restore implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithErrorWrapper) Restore(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) (err error) {
 	defer func() {
