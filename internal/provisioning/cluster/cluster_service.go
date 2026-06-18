@@ -1573,14 +1573,23 @@ func (s *clusterService) DeleteAndFactoryResetByName(ctx context.Context, name s
 	}
 
 	if tokenSeedName == nil {
+		applications := make([]api.SeedApplication, 0, 1)
+		for _, application := range servers[0].VersionData.Applications {
+			if !domain.IsPrimaryApplication(application.Name) {
+				continue
+			}
+
+			applications = append(applications, api.SeedApplication{
+				Name: application.Name,
+			})
+
+			break
+		}
+
 		seed = provisioning.TokenImageSeedConfigs{
 			Applications: api.SeedApplications{
-				Version: "1",
-				Applications: []api.SeedApplication{
-					{
-						Name: "incus",
-					},
-				},
+				Version:      "1",
+				Applications: applications,
 			},
 			Incus: api.SeedIncus{
 				Version:       "1",
