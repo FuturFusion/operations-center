@@ -41,7 +41,7 @@ Since the end to end tests use snapshots, it is recommended to use a ZFS storage
 ```shell
 incus storage create zfs local-zfs
 incus create images:debian/13 e2e --vm -c limits.cpu=8 -c limits.memory=24GiB
-incus config device override e2e root size=50GiB
+incus config device override e2e root size=50GiB io.cache=unsafe
 incus storage volume create local-zfs zstorage --type=block size=150GiB
 incus storage volume attach local-zfs zstorage e2e
 incus start e2e
