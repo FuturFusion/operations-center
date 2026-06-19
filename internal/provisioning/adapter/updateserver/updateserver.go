@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -148,10 +149,8 @@ func (u *updateServer) fetchAndVerifyIndexSJSON(ctx context.Context) ([]byte, er
 
 	token, err := u.tokenProvider.GetToken(ctx)
 	if err == nil {
-		if config.GetUpdates().ImageServerAuthenticationByQueryParam {
-			q := req.URL.Query()
-			q.Set("token", token)
-			req.URL.RawQuery = q.Encode()
+		if config.GetUpdates().ImageServerAuthenticationByURLPath {
+			req.URL.Path = filepath.Join(req.URL.Path, token)
 		} else {
 			req.Header.Add("X-IncusOS-Authentication", token)
 		}
@@ -217,10 +216,8 @@ func (u *updateServer) GetUpdateFileByFilenameUnverified(ctx context.Context, in
 
 	token, err := u.tokenProvider.GetToken(ctx)
 	if err == nil {
-		if config.GetUpdates().ImageServerAuthenticationByQueryParam {
-			q := req.URL.Query()
-			q.Set("token", token)
-			req.URL.RawQuery = q.Encode()
+		if config.GetUpdates().ImageServerAuthenticationByURLPath {
+			req.URL.Path = filepath.Join(req.URL.Path, token)
 		} else {
 			req.Header.Add("X-IncusOS-Authentication", token)
 		}

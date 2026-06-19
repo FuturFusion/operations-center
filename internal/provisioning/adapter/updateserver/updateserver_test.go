@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -165,7 +166,7 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 
 			config.InitTest(t, envMock, nil)
 			updatesConfig := config.GetUpdates()
-			updatesConfig.ImageServerAuthenticationByQueryParam = tc.queryParameterAuthentication
+			updatesConfig.ImageServerAuthenticationByURLPath = tc.queryParameterAuthentication
 			err := config.UpdateUpdates(t.Context(), updatesConfig.UpdatesPut)
 			require.NoError(t, err)
 
@@ -185,7 +186,7 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 					}
 
 					if tc.queryParameterAuthentication {
-						gotToken = r.URL.Query().Get("token")
+						gotToken = filepath.Base(r.URL.Path)
 					} else {
 						gotToken = r.Header.Get("X-IncusOS-Authentication")
 					}
