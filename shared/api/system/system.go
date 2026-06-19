@@ -225,9 +225,9 @@ type UpdatesPut struct {
 	// and cluster instances.
 	ServerDefaultChannel string `json:"server_default_channel" yaml:"server_default_channel"`
 
-	// ImageServerAuthenticationByQueryParam is a flag that allows to switch from
-	// HTTP header based image server authentication to query parameter instead.
-	// If set to true, authentication is done by `token` query parameter on the
+	// ImageServerAuthenticationByURLPath is a flag that allows to switch from
+	// HTTP header based image server authentication to URL path instead.
+	// If set to true, authentication is appended to the registration URL on the
 	// first request, if set to false, authentication is done by HTTP header.
-	ImageServerAuthenticationByQueryParam bool `json:"image_server_authentication_by_query_param" yaml:"image_server_authentication_by_query_param"`
+	ImageServerAuthenticationByURLPath bool `json:"image_server_authentication_by_url_path" yaml:"image_server_authentication_by_url_path"`
 }
