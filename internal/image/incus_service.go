@@ -547,7 +547,7 @@ func (s *imageIncusService) GetVersionFileByName(ctx context.Context, name strin
 }
 
 func (s *imageIncusService) Update(ctx context.Context, incusImage IncusImage) error {
-	err := incusImage.Validate()
+	err := ValidateIncusImageName(incusImage.Name)
 	if err != nil {
 		return fmt.Errorf("Failed to validate incus image %q for update: %w", incusImage.Name, err)
 	}
