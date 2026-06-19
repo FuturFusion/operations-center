@@ -60,7 +60,7 @@ const IncusImageVersions = () => {
   return (
     <>
       <div className="d-flex flex-column">
-        <div className="mx-2 mx-md-4">
+        <div className="mx-2 mx-md-4 mb-3">
           <div className="row">
             <div className="col-12">
               <UploadIncusImageBtn image={image} />
