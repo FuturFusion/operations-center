@@ -4276,14 +4276,14 @@ definitions:
                 example: '''stable'' in upstream_channels'
                 type: string
                 x-go-name: FilterExpression
-            image_server_authentication_by_query_param:
+            image_server_authentication_by_url_path:
                 description: |-
-                    ImageServerAuthenticationByQueryParam is a flag that allows to switch from
-                    HTTP header based image server authentication to query parameter instead.
-                    If set to true, authentication is done by `token` query parameter on the
+                    ImageServerAuthenticationByURLPath is a flag that allows to switch from
+                    HTTP header based image server authentication to URL path instead.
+                    If set to true, authentication is appended to the registration URL on the
                     first request, if set to false, authentication is done by HTTP header.
                 type: boolean
-                x-go-name: ImageServerAuthenticationByQueryParam
+                x-go-name: ImageServerAuthenticationByURLPath
             server_default_channel:
                 description: |-
                     ServerDefaultChannel is the default channel assigned to new server
@@ -4342,14 +4342,14 @@ definitions:
                 example: '''stable'' in upstream_channels'
                 type: string
                 x-go-name: FilterExpression
-            image_server_authentication_by_query_param:
+            image_server_authentication_by_url_path:
                 description: |-
-                    ImageServerAuthenticationByQueryParam is a flag that allows to switch from
-                    HTTP header based image server authentication to query parameter instead.
-                    If set to true, authentication is done by `token` query parameter on the
+                    ImageServerAuthenticationByURLPath is a flag that allows to switch from
+                    HTTP header based image server authentication to URL path instead.
+                    If set to true, authentication is appended to the registration URL on the
                     first request, if set to false, authentication is done by HTTP header.
                 type: boolean
-                x-go-name: ImageServerAuthenticationByQueryParam
+                x-go-name: ImageServerAuthenticationByURLPath
             server_default_channel:
                 description: |-
                     ServerDefaultChannel is the default channel assigned to new server
