@@ -56,14 +56,6 @@ const IncusImageOverview = () => {
         <div className="col-10 detail-table-cell">{image?.description}</div>
       </div>
       <div className="row">
-        <div className="col-2 detail-table-header">Versions</div>
-        <div className="col-10 detail-table-cell">
-          {Object.keys(image?.versions ?? {})
-            .sort()
-            .join(", ")}
-        </div>
-      </div>
-      <div className="row">
         <div className="col-2 detail-table-header">Last updated</div>
         <div className="col-10 detail-table-cell">
           {formatDate(image?.last_updated || "")}

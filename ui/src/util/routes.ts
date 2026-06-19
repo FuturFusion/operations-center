@@ -21,6 +21,8 @@ import ClusterDetail from "pages/ClusterDetail";
 import ClusterTemplateCreate from "pages/ClusterTemplateCreate";
 import ClusterTemplateDetail from "pages/ClusterTemplateDetail";
 import ImageServer from "pages/ImageServer";
+import ImageSourceCreate from "pages/ImageSourceCreate";
+import ImageSourceDetail from "pages/ImageSourceDetail";
 import IncusImageDetail from "pages/IncusImageDetail";
 import IncusOS from "pages/IncusOS";
 import OSServiceDetails from "pages/OSServiceDetails";
@@ -121,11 +123,19 @@ export const routes = [
   },
 
   { path: "/ui/images-view", component: ImageServer },
+  { path: "/ui/images-view/:activeTab", component: ImageServer },
 
   { path: "/ui/images/incus/:name", component: IncusImageDetail },
   {
     path: "/ui/images/incus/:name/:activeTab",
     component: IncusImageDetail,
+  },
+
+  { path: "/ui/images/sources/create", component: ImageSourceCreate },
+  { path: "/ui/images/sources/:name", component: ImageSourceDetail },
+  {
+    path: "/ui/images/sources/:name/:activeTab",
+    component: ImageSourceDetail,
   },
 
   { path: "/ui/provisioning/updates-view", component: Update },

@@ -3,6 +3,7 @@ import { routes } from "util/routes";
 
 const breadcrumbPathMap: Record<string, string> = {
   "/ui/images": "/ui/images-view",
+  "/ui/images/sources": "/ui/images-view/sources",
   "/ui/provisioning/clusters": "/ui/provisioning/clusters-view",
   "/ui/provisioning/cluster-templates":
     "/ui/provisioning/clusters-view/templates",
@@ -14,6 +15,8 @@ const breadcrumbPathMap: Record<string, string> = {
 
 const customLabels: Record<string, string> = {
   "/ui/images-view": "Images",
+  "/ui/images-view/images": "Images",
+  "/ui/images-view/sources": "Sources",
   "/ui/provisioning/clusters-view": "Clusters",
   "/ui/provisioning/clusters-view/clusters": "Clusters",
   "/ui/provisioning/clusters-view/templates": "Cluster templates",

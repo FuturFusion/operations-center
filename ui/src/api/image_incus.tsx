@@ -4,7 +4,7 @@ import { processResponse } from "util/response";
 
 export const fetchIncusImages = (): Promise<IncusImage[]> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/image/incus?recursion=1`)
+    fetch(`/1.0/images/incus?recursion=1`)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
@@ -13,7 +13,7 @@ export const fetchIncusImages = (): Promise<IncusImage[]> => {
 
 export const fetchIncusImage = (name: string): Promise<IncusImage> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/image/incus/${name}`)
+    fetch(`/1.0/images/incus/${name}`)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
@@ -25,7 +25,7 @@ export const updateIncusImage = (
   body: string,
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/image/incus/${name}`, {
+    fetch(`/1.0/images/incus/${name}`, {
       method: "PUT",
       body: body,
     })
@@ -37,7 +37,7 @@ export const updateIncusImage = (
 
 export const deleteIncusImage = (name: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/image/incus/${name}`, {
+    fetch(`/1.0/images/incus/${name}`, {
       method: "DELETE",
     })
       .then((response) => response.json())
@@ -57,7 +57,7 @@ export const uploadIncusImageVersion = (
   });
 
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/image/incus/${name}/${version}`, {
+    fetch(`/1.0/images/incus/${name}/${version}`, {
       method: "POST",
       body: body,
     })
@@ -72,7 +72,7 @@ export const deleteIncusImageVersion = (
   version: string,
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/image/incus/${name}/${version}`, {
+    fetch(`/1.0/images/incus/${name}/${version}`, {
       method: "DELETE",
     })
       .then((response) => response.json())
@@ -87,7 +87,7 @@ export const downloadIncusImageFile = (
   filename: string,
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/image/incus/${name}/${version}/${filename}`)
+    fetch(`/1.0/images/incus/${name}/${version}/${filename}`)
       .then(async (response) => {
         if (!response.ok) {
           const r = await response.json();
