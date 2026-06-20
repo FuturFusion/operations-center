@@ -181,6 +181,9 @@ func TestServerDatabaseActions(t *testing.T) {
 		GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 			return api.OSData{}, nil
 		},
+		GetNodeSpecificConfigKeysFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (map[string]map[string]bool, error) {
+			return map[string]map[string]bool{}, nil
+		},
 	}
 
 	terraformProvisioner := &adapterMock.ClusterProvisioningPortMock{

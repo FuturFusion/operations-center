@@ -359,6 +359,44 @@ func (c client) GetServerType(ctx context.Context, endpoint provisioning.Endpoin
 	return api.ServerTypeUnknown, fmt.Errorf("Server %q (%s) did not return any known server type defining application (%v)", endpoint.GetName(), endpoint.GetConnectionURL(), applications)
 }
 
+func (c client) GetNodeSpecificConfigKeys(ctx context.Context, endpoint provisioning.Endpoint) (map[string]map[string]bool, error) {
+	client, err := c.getClient(ctx, endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	meta, err := client.GetMetadataConfiguration()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get metadata configuration for node specific config keys: %w", err)
+	}
+
+	nodeSpecificConfigsMap := make(map[string]map[string]bool, len(meta.Config))
+
+	for entityKeyName, entities := range meta.Config {
+		for _, groups := range entities {
+			for _, values := range groups.Keys {
+				for key, value := range values {
+					if value.Scope == "local" {
+						entityKey := string(entityKeyName)
+						_, ok := nodeSpecificConfigsMap[entityKey]
+						if !ok {
+							nodeSpecificConfigsMap[entityKey] = map[string]bool{}
+						}
+
+						nodeSpecificConfigsMap[entityKey][key] = true
+					}
+				}
+			}
+		}
+	}
+
+	// NOTE: Manually added, since `/1.0/metadata/configuration` currently lacks details about `storage_lvmcluster`.
+	nodeSpecificConfigsMap["storage_lvmcluster"] = nodeSpecificConfigsMap["storage_lvm"]
+	delete(nodeSpecificConfigsMap["storage_lvmcluster"], "size")
+
+	return nodeSpecificConfigsMap, nil
+}
+
 func (c client) GetNetworkConfig(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemNetwork, error) {
 	client, err := c.getClient(ctx, server)
 	if err != nil {

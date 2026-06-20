@@ -185,6 +185,41 @@ func (_d ClusterClientPortWithSlog) GetNetworkConfig(ctx context.Context, server
 	return _d._base.GetNetworkConfig(ctx, server)
 }
 
+// GetNodeSpecificConfigKeys implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) GetNodeSpecificConfigKeys(ctx context.Context, endpoint provisioning.Endpoint) (stringToStringToBool map[string]map[string]bool, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("endpoint", endpoint),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetNodeSpecificConfigKeys")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("stringToStringToBool", stringToStringToBool),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetNodeSpecificConfigKeys returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetNodeSpecificConfigKeys returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetNodeSpecificConfigKeys finished")
+		}
+	}()
+	return _d._base.GetNodeSpecificConfigKeys(ctx, endpoint)
+}
+
 // GetOSData implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (oSData api.OSData, err error) {
 	log := slog.With()
