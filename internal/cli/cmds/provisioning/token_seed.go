@@ -2,10 +2,12 @@ package provisioning
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 	"time"
 
@@ -384,6 +386,8 @@ func (c *cmdTokenSeedRemove) run(cmd *cobra.Command, args []string) error {
 // Show token seed.
 type cmdTokenSeedShow struct {
 	ocClient *client.OperationsCenterClient
+
+	flagFormat string
 }
 
 func (c *cmdTokenSeedShow) Command() *cobra.Command {
@@ -393,6 +397,8 @@ func (c *cmdTokenSeedShow) Command() *cobra.Command {
 	cmd.Long = `Description:
   Show information about a token seed.
 `
+
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -407,6 +413,11 @@ func (c *cmdTokenSeedShow) validateArgsAndFlags(cmd *cobra.Command, args []strin
 		return err
 	}
 
+	validFormats := []string{"", "json", "yaml"}
+	if !slices.Contains(validFormats, c.flagFormat) {
+		return fmt.Errorf(`Invalid value for flag "--format": %q`, c.flagFormat)
+	}
+
 	return nil
 }
 
@@ -419,17 +430,36 @@ func (c *cmdTokenSeedShow) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	seeds, err := yaml.Marshal(tokenSeed.Seeds)
-	if err != nil {
-		return fmt.Errorf("Invalid token seed: %w", err)
-	}
+	switch c.flagFormat {
+	case "json":
+		enc := json.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent("", "  ")
+		err = enc.Encode(tokenSeed)
+		if err != nil {
+			return err
+		}
 
-	fmt.Printf("Token : %s\n", tokenSeed.Token)
-	fmt.Printf("Name: %s\n", tokenSeed.Name)
-	fmt.Printf("Public: %t\n", tokenSeed.Public)
-	fmt.Printf("Description: %s\n", tokenSeed.Description)
-	fmt.Printf("Last updated: %s\n", tokenSeed.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Seeds:\n%s\n", render.Indent(4, string(seeds)))
+	case "yaml":
+		enc := yaml.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent(2)
+		err = enc.Encode(tokenSeed)
+		if err != nil {
+			return err
+		}
+
+	default:
+		seeds, err := yaml.Marshal(tokenSeed.Seeds)
+		if err != nil {
+			return fmt.Errorf("Invalid token seed: %w", err)
+		}
+
+		fmt.Printf("Token : %s\n", tokenSeed.Token)
+		fmt.Printf("Name: %s\n", tokenSeed.Name)
+		fmt.Printf("Public: %t\n", tokenSeed.Public)
+		fmt.Printf("Description: %s\n", tokenSeed.Description)
+		fmt.Printf("Last updated: %s\n", tokenSeed.LastUpdated.Truncate(time.Second).String())
+		fmt.Printf("Seeds:\n%s\n", render.Indent(4, string(seeds)))
+	}
 
 	return nil
 }

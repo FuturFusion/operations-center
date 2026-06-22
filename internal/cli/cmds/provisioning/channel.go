@@ -1,7 +1,9 @@
 package provisioning
 
 import (
+	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -125,6 +127,8 @@ func (c *cmdChannelList) run(cmd *cobra.Command, args []string) error {
 // Show update.
 type cmdChannelShow struct {
 	ocClient *client.OperationsCenterClient
+
+	flagFormat string
 }
 
 func (c *cmdChannelShow) Command() *cobra.Command {
@@ -134,6 +138,8 @@ func (c *cmdChannelShow) Command() *cobra.Command {
 	cmd.Long = `Description:
   Show information about a channel.
 `
+
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -148,6 +154,11 @@ func (c *cmdChannelShow) validateArgsAndFlags(cmd *cobra.Command, args []string)
 		return err
 	}
 
+	validFormats := []string{"", "json", "yaml"}
+	if !slices.Contains(validFormats, c.flagFormat) {
+		return fmt.Errorf(`Invalid value for flag "--format": %q`, c.flagFormat)
+	}
+
 	return nil
 }
 
@@ -159,44 +170,63 @@ func (c *cmdChannelShow) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	clusters, err := c.ocClient.GetWithFilterClusters(cmd.Context(), provisioning.ClusterFilter{
-		Expression: ptr.To(fmt.Sprintf(`channel == %q`, name)),
-	})
-	if err != nil {
-		return err
-	}
+	switch c.flagFormat {
+	case "json":
+		enc := json.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent("", "  ")
+		err = enc.Encode(channel)
+		if err != nil {
+			return err
+		}
 
-	servers, err := c.ocClient.GetWithFilterServers(cmd.Context(), provisioning.ServerFilter{
-		Expression: ptr.To(fmt.Sprintf(`version_data.update_channel == %q`, name)),
-	})
-	if err != nil {
-		return err
-	}
+	case "yaml":
+		enc := yaml.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent(2)
+		err = enc.Encode(channel)
+		if err != nil {
+			return err
+		}
 
-	updates, err := c.ocClient.GetWithFilterUpdates(cmd.Context(), provisioning.UpdateFilter{
-		Channel: ptr.To(name),
-	})
-	if err != nil {
-		return err
-	}
+	default:
+		clusters, err := c.ocClient.GetWithFilterClusters(cmd.Context(), provisioning.ClusterFilter{
+			Expression: ptr.To(fmt.Sprintf(`channel == %q`, name)),
+		})
+		if err != nil {
+			return err
+		}
 
-	fmt.Printf("Name: %s\n", channel.Name)
-	fmt.Printf("Description: %s\n", channel.Description)
-	fmt.Printf("Last Updated: %s\n", channel.LastUpdated.Truncate(time.Second).String())
+		servers, err := c.ocClient.GetWithFilterServers(cmd.Context(), provisioning.ServerFilter{
+			Expression: ptr.To(fmt.Sprintf(`version_data.update_channel == %q`, name)),
+		})
+		if err != nil {
+			return err
+		}
 
-	fmt.Printf("Assigned Clusters\n")
-	for _, cluster := range clusters {
-		fmt.Printf("- %s (%s)\n", cluster.Name, cluster.ConnectionURL)
-	}
+		updates, err := c.ocClient.GetWithFilterUpdates(cmd.Context(), provisioning.UpdateFilter{
+			Channel: ptr.To(name),
+		})
+		if err != nil {
+			return err
+		}
 
-	fmt.Printf("Assigned Servers:\n")
-	for _, server := range servers {
-		fmt.Printf("- %s (%s)\n", server.Name, server.ConnectionURL)
-	}
+		fmt.Printf("Name: %s\n", channel.Name)
+		fmt.Printf("Description: %s\n", channel.Description)
+		fmt.Printf("Last Updated: %s\n", channel.LastUpdated.Truncate(time.Second).String())
 
-	fmt.Printf("Linked Updates:\n")
-	for _, update := range updates {
-		fmt.Printf("- %s, %s, %s\n", update.UUID.String(), update.Origin, update.Version)
+		fmt.Printf("Assigned Clusters\n")
+		for _, cluster := range clusters {
+			fmt.Printf("- %s (%s)\n", cluster.Name, cluster.ConnectionURL)
+		}
+
+		fmt.Printf("Assigned Servers:\n")
+		for _, server := range servers {
+			fmt.Printf("- %s (%s)\n", server.Name, server.ConnectionURL)
+		}
+
+		fmt.Printf("Linked Updates:\n")
+		for _, update := range updates {
+			fmt.Printf("- %s, %s, %s\n", update.UUID.String(), update.Origin, update.Version)
+		}
 	}
 
 	return nil
