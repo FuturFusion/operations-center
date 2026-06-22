@@ -2006,6 +2006,12 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 	}
 
 	for _, server := range servers {
+		// We intentionally ignore pending updates during during the rolling restart
+		// phase. All servers of a cluster have been updated to the same version
+		// before entering the rolling restart. This procedure should not be
+		// interrupted by new updates appearing while a rolling update is processed.
+		server.VersionData.NeedsUpdate = ptr.To(false)
+
 		if nextAction == nil {
 			switch server.UpdateState() {
 			case api.ServerUpdateStateUndefined:
@@ -2014,9 +2020,9 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 			case api.ServerUpdateStateUpToDate:
 				continue
 
-			case api.ServerUpdateStateUpdatePending:
-				return fmt.Errorf("Server %q has a pending update while a cluster wide rolling reboot cycle is ongoing", server.Name)
-
+			// Since we set NeedsUpdate = false above, this state is not possible.
+			// case api.ServerUpdateStateUpdatePending:
+			//
 			case api.ServerUpdateStateUpdating:
 				return fmt.Errorf("Server %q is updating while a cluster wide rolling reboot cycle is ongoing", server.Name)
 
@@ -2079,9 +2085,9 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 		case api.ServerUpdateStateUndefined:
 			return fmt.Errorf("Rolling update blocked, server %q (%s) is in unknown state", server.Name, server.ConnectionURL)
 
-		case api.ServerUpdateStateUpdatePending:
-			return fmt.Errorf("Server %q has a pending update while a cluster wide rolling reboot cycle is ongoing", server.Name)
-
+		// Since we set NeedsUpdate = false above, this state is not possible.
+		// case api.ServerUpdateStateUpdatePending:
+		//
 		case api.ServerUpdateStateUpdating:
 			return fmt.Errorf("Server %q is updating while a cluster wide rolling reboot cycle is ongoing", server.Name)
 
