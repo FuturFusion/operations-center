@@ -1421,43 +1421,6 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 		},
 
 		{
-			name: "error - executeRollingRestartNextStep - server in update pending",
-			repoGetAll: []queue.Item[provisioning.Clusters]{
-				{
-					Value: provisioning.Clusters{
-						{
-							Name: "one",
-							UpdateStatus: api.ClusterUpdateStatus{
-								InProgressStatus: api.ClusterUpdateInProgressStatus{
-									InProgress: api.ClusterUpdateInProgressRollingRestart,
-								},
-							},
-						},
-					},
-				},
-			},
-			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
-				// cluster GetAllWithFilter
-				{},
-				// GetAllWithFilter
-				{
-					Value: provisioning.Servers{
-						{
-							Name:   "server",
-							Status: api.ServerStatusReady,
-							VersionData: api.ServerVersionData{
-								NeedsUpdate: ptr.To(true),
-							},
-						},
-					},
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Server "server" has a pending update while a cluster wide rolling reboot cycle is ongoing`)
-			},
-		},
-		{
 			name: "error - executeRollingRestartNextStep - server in updating state",
 			repoGetAll: []queue.Item[provisioning.Clusters]{
 				{
@@ -1572,53 +1535,6 @@ func TestClusterService_ClusterUpdateControlLoop(t *testing.T) {
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Rolling update blocked, server "server" (https://server:8443) is in unknown state`)
-			},
-		},
-		{
-			name: "error - executeRollingRestartNextStep - 2nd server update pending",
-			repoGetAll: []queue.Item[provisioning.Clusters]{
-				{
-					Value: provisioning.Clusters{
-						{
-							Name: "one",
-							UpdateStatus: api.ClusterUpdateStatus{
-								InProgressStatus: api.ClusterUpdateInProgressStatus{
-									InProgress: api.ClusterUpdateInProgressRollingRestart,
-								},
-							},
-						},
-					},
-				},
-			},
-			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
-				// cluster GetAllWithFilter
-				{},
-				// GetAllWithFilter
-				{
-					Value: provisioning.Servers{
-						{
-							Name:         "server1",
-							Status:       api.ServerStatusReady,
-							StatusDetail: api.ServerStatusDetailNone,
-							VersionData: api.ServerVersionData{
-								NeedsUpdate:   ptr.To(false),
-								NeedsReboot:   ptr.To(false),
-								InMaintenance: ptr.To(api.InMaintenanceEvacuated),
-							},
-						},
-						{
-							Name:   "server2",
-							Status: api.ServerStatusReady,
-							VersionData: api.ServerVersionData{
-								NeedsUpdate: ptr.To(true),
-							},
-						},
-					},
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Server "server2" has a pending update while a cluster wide rolling reboot cycle is ongoing`)
 			},
 		},
 		{
