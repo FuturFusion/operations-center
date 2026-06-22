@@ -364,7 +364,7 @@ func applyDefaults(cfg *config) {
 		}
 
 		if cfg.Security.ACME.Address == "" {
-			cfg.Security.ACME.Address = ":8080"
+			cfg.Security.ACME.Address = ":80"
 		}
 
 		if cfg.Security.ACME.CAURL == "" {
