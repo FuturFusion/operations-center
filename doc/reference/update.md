@@ -65,3 +65,15 @@ They allow filtering of update files based on their metadata.
 | `sha256`       | SHA256 checksum of the update file      | `26705d5d610a8f450d92e073ac0f691197c16c8fbcbd0a3cf71e13fea93f54b2`                                                                                                           |
 | `size`         | Size of the update file in bytes        | `12345678`                                                                                                                                                                   |
 | `type`         | Type of the update file                 | `image-raw`, `image-iso`, `image-manifest`, `changelog`, `update-efi`, `update-usr`, `update-usr-verity`, `update-usr-verity-signature`, `udpate-secure-boot`, `application` |
+
+### Prepare manual updates
+
+Manual updates can be provided to Operations Center as tar files. Each tar file
+is expected to contain a single update, and the content of the tar file is
+expected to match the file system tree of
+`https://images.linuxcontainers.org/os/VERSION/`, so at its root it needs the
+`update.sjson` file and then have the folder structure with the architectures
+and the files inside those.
+
+It's possible to skip files that are not needed, for example, architectures
+not used, can be left out of the tar file.
