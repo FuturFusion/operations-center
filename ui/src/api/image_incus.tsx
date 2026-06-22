@@ -46,18 +46,17 @@ export const deleteIncusImage = (name: string): Promise<APIResponse<null>> => {
   });
 };
 
-export const uploadIncusImageVersion = (
-  name: string,
-  version: string,
-  files: File[],
-): Promise<APIResponse<null>> => {
-  const body = new FormData();
-  files.forEach((file, index) => {
-    body.append(`file${String(index).padStart(2, "0")}`, file);
-  });
+export interface IncusImageMetadata {
+  os: string;
+  release: string;
+  arch: string;
+  variant: string;
+  version: string;
+}
 
+const uploadIncusImage = (body: FormData): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/images/incus/${name}/${version}`, {
+    fetch(`/1.0/images/incus`, {
       method: "POST",
       body: body,
     })
@@ -65,6 +64,33 @@ export const uploadIncusImageVersion = (
       .then((data) => resolve(data))
       .catch(reject);
   });
+};
+
+// Upload a complete set of image files including incus.tar.xz. The server reads
+// the metadata from incus.tar.xz, which therefore has to be the first part.
+export const uploadIncusImageFull = (
+  files: File[],
+): Promise<APIResponse<null>> => {
+  const body = new FormData();
+  const incusTarXZ = files.filter((file) => file.name == "incus.tar.xz");
+  const others = files.filter((file) => file.name != "incus.tar.xz");
+  [...incusTarXZ, ...others].forEach((file) => body.append(file.name, file));
+
+  return uploadIncusImage(body);
+};
+
+// Upload image files together with the metadata. The server generates the
+// incus.tar.xz from the provided metadata, which therefore has to be the first
+// part.
+export const uploadIncusImageWithMetadata = (
+  metadata: IncusImageMetadata,
+  files: File[],
+): Promise<APIResponse<null>> => {
+  const body = new FormData();
+  body.append("request_json", JSON.stringify(metadata));
+  files.forEach((file) => body.append(file.name, file));
+
+  return uploadIncusImage(body);
 };
 
 export const deleteIncusImageVersion = (

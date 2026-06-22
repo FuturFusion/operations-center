@@ -1,13 +1,18 @@
 import { FC, useState } from "react";
 import { Button, Form } from "react-bootstrap";
 import { useQueryClient } from "@tanstack/react-query";
-import { uploadIncusImageVersion } from "api/image_incus";
+import {
+  uploadIncusImageFull,
+  uploadIncusImageWithMetadata,
+} from "api/image_incus";
 import LoadingButton from "components/LoadingButton";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { IncusImage } from "types/image_incus";
 
 const architectures = ["amd64", "arm64", "armhf", "riscv64"];
+
+type UploadMode = "full" | "metadata";
 
 interface Props {
   image?: IncusImage;
@@ -16,6 +21,7 @@ interface Props {
 const UploadIncusImageBtn: FC<Props> = ({ image }) => {
   const [showModal, setShowModal] = useState(false);
   const [opInProgress, setOpInProgress] = useState(false);
+  const [mode, setMode] = useState<UploadMode>("full");
   const [os, setOs] = useState(image?.os ?? "");
   const [release, setRelease] = useState(image?.release ?? "");
   const [architecture, setArchitecture] = useState(
@@ -27,30 +33,55 @@ const UploadIncusImageBtn: FC<Props> = ({ image }) => {
   const queryClient = useQueryClient();
   const { notify } = useNotification();
 
-  const name = image?.name ?? [os, release, architecture, variant].join(":");
-  const isValid =
+  const hasIncusTarXZ = files.some((file) => file.name == "incus.tar.xz");
+  const fullValid = files.length > 0 && hasIncusTarXZ;
+  const metadataValid =
     os != "" &&
     release != "" &&
     architecture != "" &&
     variant != "" &&
     version != "" &&
-    files.length > 0;
+    files.length > 0 &&
+    !hasIncusTarXZ;
+  const isValid = mode == "full" ? fullValid : metadataValid;
+
+  const reset = () => {
+    setShowModal(false);
+    setVersion("");
+    setFiles([]);
+  };
 
   const handleFilesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFiles(Array.from(event.target.files ?? []));
   };
 
+  const doUpload = () => {
+    if (mode == "full") {
+      return uploadIncusImageFull(files);
+    }
+
+    return uploadIncusImageWithMetadata(
+      {
+        os: os,
+        release: release,
+        arch: architecture,
+        variant: variant,
+        version: version,
+      },
+      files,
+    );
+  };
+
   const onUpload = () => {
     setOpInProgress(true);
-    uploadIncusImageVersion(name, version, files)
+
+    doUpload()
       .then((response) => {
         setOpInProgress(false);
         if (response.error_code == 0) {
-          notify.success(`Version ${version} of image ${name} uploaded`);
+          notify.success(`Image uploaded`);
           queryClient.invalidateQueries({ queryKey: ["incus-images"] });
-          setShowModal(false);
-          setVersion("");
-          setFiles([]);
+          reset();
           return;
         }
         notify.error(response.error);
@@ -72,7 +103,7 @@ const UploadIncusImageBtn: FC<Props> = ({ image }) => {
       </Button>
       <ModalWindow
         show={showModal}
-        handleClose={() => setShowModal(false)}
+        handleClose={reset}
         title={image ? `Upload version for ${image.name}` : "Upload image"}
         footer={
           <>
@@ -88,7 +119,25 @@ const UploadIncusImageBtn: FC<Props> = ({ image }) => {
         }
       >
         <Form noValidate>
-          {!image && (
+          <Form.Group className="mb-3" controlId="mode">
+            <Form.Check
+              type="radio"
+              name="mode"
+              id="mode-full"
+              label="Upload complete image files (including incus.tar.xz)"
+              checked={mode == "full"}
+              onChange={() => setMode("full")}
+            />
+            <Form.Check
+              type="radio"
+              name="mode"
+              id="mode-metadata"
+              label="Provide metadata and upload image files"
+              checked={mode == "metadata"}
+              onChange={() => setMode("metadata")}
+            />
+          </Form.Group>
+          {mode == "metadata" && !image && (
             <>
               <Form.Group className="mb-3" controlId="os">
                 <Form.Label>Operating system</Form.Label>
@@ -113,7 +162,9 @@ const UploadIncusImageBtn: FC<Props> = ({ image }) => {
                   onChange={(e) => setArchitecture(e.target.value)}
                 >
                   {architectures.map((arch) => (
-                    <option value={arch}>{arch}</option>
+                    <option key={arch} value={arch}>
+                      {arch}
+                    </option>
                   ))}
                 </Form.Select>
               </Form.Group>
@@ -127,21 +178,23 @@ const UploadIncusImageBtn: FC<Props> = ({ image }) => {
               </Form.Group>
             </>
           )}
-          <Form.Group className="mb-3" controlId="version">
-            <Form.Label>Version</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="yyyymmdd"
-              value={version}
-              onChange={(e) => setVersion(e.target.value)}
-            />
-          </Form.Group>
+          {mode == "metadata" && (
+            <Form.Group className="mb-3" controlId="version">
+              <Form.Label>Version</Form.Label>
+              <Form.Control
+                type="text"
+                value={version}
+                onChange={(e) => setVersion(e.target.value)}
+              />
+            </Form.Group>
+          )}
           <Form.Group className="mb-3" controlId="files">
             <Form.Label>Files</Form.Label>
             <Form.Control type="file" multiple onChange={handleFilesChange} />
             <Form.Text muted>
-              Image files, e.g. incus.tar.xz, root.tar.xz, root.squashfs,
-              disk.qcow2.
+              {mode == "full"
+                ? "Image files including incus.tar.xz, e.g. incus.tar.xz, root.tar.xz, root.squashfs, disk.qcow2."
+                : "Image files only, e.g. root.tar.xz, root.squashfs, disk.qcow2. The incus.tar.xz is generated from the metadata."}
             </Form.Text>
           </Form.Group>
         </Form>
