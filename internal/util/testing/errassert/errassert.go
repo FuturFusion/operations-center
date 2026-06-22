@@ -13,6 +13,17 @@ func Contains(contains string) require.ErrorAssertionFunc {
 	}
 }
 
+func NotFoundError(tt require.TestingT, err error, a ...any) {
+	require.ErrorIs(tt, err, domain.ErrNotFound, a...)
+}
+
+func NotFoundErrorContains(contains string) require.ErrorAssertionFunc {
+	return func(tt require.TestingT, err error, a ...any) {
+		require.ErrorIs(tt, err, domain.ErrNotFound, a...)
+		require.ErrorContains(tt, err, contains, a...)
+	}
+}
+
 func OperationNotPermittedError(tt require.TestingT, err error, a ...any) {
 	require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
 }

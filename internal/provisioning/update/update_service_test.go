@@ -32,6 +32,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
@@ -1823,10 +1824,8 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 				Files: provisioning.UpdateFiles{}, // foo.bar not included
 			},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Requested file "foo.bar" is not part of update`)
-			},
-			wantBody: []byte{},
+			assertErr: errassert.NotFoundErrorContains(`Requested file "foo.bar" is not part of update`),
+			wantBody:  []byte{},
 		},
 		{
 			name:  "error - source",
