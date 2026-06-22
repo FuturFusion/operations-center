@@ -283,7 +283,7 @@ func installOperationsCenterVM(t *testing.T) {
 		stop := timeTrack(t)
 		defer stop()
 
-		mustRun(t, `incus init --empty --vm OperationsCenter -c security.secureboot=false -c limits.cpu=%s -c limits.memory=%s -d root,size=%s`, cpuCount, memorySize, diskSize)
+		mustRun(t, `incus init --empty --vm OperationsCenter -c security.secureboot=false -c limits.cpu=%s -c limits.memory=%s -d root,size=%s -d root,io.cache=unsafe`, cpuCount, memorySize, diskSize)
 		mustRun(t, `incus config device add OperationsCenter vtpm tpm`)
 		mustRun(t, `incus config device add OperationsCenter boot-media disk pool=default source=IncusOS_OperationsCenter.iso boot.priority=10`)
 		mustRun(t, `incus config set OperationsCenter systemd.credential.fully-enable-incus-agent=true`)
@@ -525,7 +525,7 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string, na
 			if !regexp.MustCompile(fmt.Sprintf(`%s\s+RUNNING`, name)).MatchString(incusInstanceList.Output()) {
 				t.Logf("Setting up %s", name)
 
-				err = fmtRunErr(runWithContext(errgrpctx, t, `incus init --empty --vm %s -c security.secureboot=false -c limits.cpu=%s -c limits.memory=%s -d root,size=%s`, name, cpuCount, memorySize, diskSize))
+				err = fmtRunErr(runWithContext(errgrpctx, t, `incus init --empty --vm %s -c security.secureboot=false -c limits.cpu=%s -c limits.memory=%s -d root,size=%s -d root,io.cache=unsafe`, name, cpuCount, memorySize, diskSize))
 				if err != nil {
 					return err
 				}
