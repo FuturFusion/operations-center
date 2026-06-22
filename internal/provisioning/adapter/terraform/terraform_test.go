@@ -9,7 +9,7 @@ import (
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
