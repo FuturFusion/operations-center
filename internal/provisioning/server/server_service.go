@@ -1064,10 +1064,48 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 			return domain.NewRetryableErr(fmt.Errorf("server operation in flight"))
 		}
 
-		callback = func(ctx context.Context, err error) {
-			if err != nil {
-				slog.ErrorContext(ctx, "Failed to evacuate system", slog.String("name", name), logger.Err(err))
-				s.volatileServerStates.done(ctx, name, operationEvacuation, err)
+		callback = func(ctx context.Context, callbackErr error) {
+			if callbackErr != nil {
+				slog.ErrorContext(ctx, "Failed to evacuate system", slog.String("name", name), logger.Err(callbackErr))
+				s.volatileServerStates.done(ctx, name, operationEvacuation, callbackErr)
+
+				err := transaction.Do(ctx, func(ctx context.Context) error {
+					server, err := s.GetByName(ctx, name)
+					if err != nil {
+						return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+					}
+
+					if server.Cluster == nil {
+						return fmt.Errorf("Server %q is not part of a cluster", name)
+					}
+
+					cluster, err := s.clusterSvc.GetByName(ctx, *server.Cluster)
+					if err != nil {
+						return fmt.Errorf("Failed to get cluster %q: %w", *server.Cluster, err)
+					}
+
+					cluster.UpdateStatus.InProgressStatus.InProgress = api.ClusterUpdateInProgressError
+					cluster.UpdateStatus.InProgressStatus.Error = fmt.Sprintf("evacuation of server %q failed: %v", name, callbackErr)
+
+					err = s.clusterSvc.Update(ctx, *cluster, false)
+					if err != nil {
+						return fmt.Errorf("Failed to update cluster %q: %w", *server.Cluster, err)
+					}
+
+					server.StatusDetail = api.ServerStatusDetailNone
+					server.LastStatusUpdated = s.now()
+
+					err = s.repo.Update(ctx, *server)
+					if err != nil {
+						return fmt.Errorf("Failed to put server %q back in ready state: %w", name, err)
+					}
+
+					return nil
+				})
+				if err != nil {
+					slog.ErrorContext(ctx, "Failed to restore DB state during rolling update on evacuation error", logger.Err(err))
+				}
+
 				return
 			}
 		}

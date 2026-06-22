@@ -5375,10 +5375,12 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 		name                                            string
 		argClusterUpdate                                bool
 		argForce                                        bool
-		repoGetByName                                   provisioning.Server
-		repoGetByNameErr                                error
+		repoGetByName                                   []queue.Item[*provisioning.Server]
 		repoUpdateErrs                                  queue.Errs
 		clientEvacuateErr                               error
+		clusterSvcGetByName                             *provisioning.Cluster
+		clusterSvcGetByNameErr                          error
+		clusterSvcUpdateErr                             error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
 		doCallback                                      func(f func(ctx context.Context, err error))
 		initVolatileServerState                         func(serverSvc provisioning.ServerService)
@@ -5388,14 +5390,19 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 	}{
 		{
 			name: "success - lifecycle operation permitted",
-			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
-				VersionData: api.ServerVersionData{
-					Applications: []api.ApplicationVersionData{
-						{
-							Name: "incus",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
 						},
 					},
 				},
@@ -5411,14 +5418,19 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 		{
 			name:             "success - cluster update",
 			argClusterUpdate: true,
-			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
-				VersionData: api.ServerVersionData{
-					Applications: []api.ApplicationVersionData{
-						{
-							Name: "incus",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
 						},
 					},
 				},
@@ -5433,14 +5445,19 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 		{
 			name:     "success - force",
 			argForce: true,
-			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
-				VersionData: api.ServerVersionData{
-					Applications: []api.ApplicationVersionData{
-						{
-							Name: "incus",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
 						},
 					},
 				},
@@ -5455,14 +5472,19 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 		{
 			name:             "success - cluster update - operation in flight",
 			argClusterUpdate: true,
-			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
-				VersionData: api.ServerVersionData{
-					Applications: []api.ApplicationVersionData{
-						{
-							Name: "incus",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
 						},
 					},
 				},
@@ -5480,14 +5502,49 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 		{
 			name:             "success - cluster update - attempt limit reached",
 			argClusterUpdate: true,
-			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
-				VersionData: api.ServerVersionData{
-					Applications: []api.ApplicationVersionData{
-						{
-							Name: "incus",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
 						},
 					},
 				},
@@ -5507,14 +5564,19 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 		},
 		{
 			name: "error - callback error",
-			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
-				VersionData: api.ServerVersionData{
-					Applications: []api.ApplicationVersionData{
-						{
-							Name: "incus",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
 						},
 					},
 				},
@@ -5528,16 +5590,112 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			assertLog: log.Contains("Failed to evacuate system name=one err=boom!"),
 		},
 		{
-			name:             "error - cluster update - callback error",
+			name:             "error - cluster update - callback error - status update successful",
 			argClusterUpdate: true,
-			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
-				VersionData: api.ServerVersionData{
-					Applications: []api.ApplicationVersionData{
-						{
-							Name: "incus",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
+						},
+					},
+				},
+			},
+			clusterSvcGetByName: &provisioning.Cluster{},
+			doCallback: func(f func(ctx context.Context, err error)) {
+				f(t.Context(), boom.Error)
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Contains("Failed to evacuate system name=one err=boom!"),
+		},
+		{
+			name:             "error - cluster update - callback error - GetByName",
+			argClusterUpdate: true,
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
+						},
+					},
+				},
+				{
+					Err: boom.Error,
+				},
+			},
+			doCallback: func(f func(ctx context.Context, err error)) {
+				f(t.Context(), boom.Error)
+			},
+
+			assertErr: require.NoError,
+			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
+				log.Contains(`Failed to evacuate system name=one err=boom!`)(t, logBuf)
+				log.Contains(`Failed to restore DB state during rolling update on evacuation error err="Failed to get server \"one\" by name:`)(t, logBuf)
+			},
+		},
+		{
+			name:             "error - cluster update - callback error - Cluster nil",
+			argClusterUpdate: true,
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: nil, // cluster nil
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
 						},
 					},
 				},
@@ -5547,36 +5705,196 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			assertLog: log.Contains("Failed to evacuate system name=one err=boom!"),
+			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
+				log.Contains(`Failed to evacuate system name=one err=boom!`)(t, logBuf)
+				log.Contains(`Failed to restore DB state during rolling update on evacuation error err="Server \"one\" is not part of a cluster`)(t, logBuf)
+			},
 		},
 		{
-			name:             "error - repo.GetByName",
-			repoGetByNameErr: boom.Error,
+			name:             "error - cluster update - callback error - clusterSvc.GetByName",
+			argClusterUpdate: true,
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
+						},
+					},
+				},
+			},
+			clusterSvcGetByNameErr: boom.Error,
+			doCallback: func(f func(ctx context.Context, err error)) {
+				f(t.Context(), boom.Error)
+			},
+
+			assertErr: require.NoError,
+			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
+				log.Contains(`Failed to evacuate system name=one err=boom!`)(t, logBuf)
+				log.Contains(`Failed to restore DB state during rolling update on evacuation error err="Failed to get cluster \"cluster\":`)(t, logBuf)
+			},
+		},
+		{
+			name:             "error - cluster update - callback error - clusterSvc.Update",
+			argClusterUpdate: true,
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
+						},
+					},
+				},
+			},
+			clusterSvcGetByName: &provisioning.Cluster{},
+			clusterSvcUpdateErr: boom.Error,
+			doCallback: func(f func(ctx context.Context, err error)) {
+				f(t.Context(), boom.Error)
+			},
+
+			assertErr: require.NoError,
+			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
+				log.Contains(`Failed to evacuate system name=one err=boom!`)(t, logBuf)
+				log.Contains(`Failed to restore DB state during rolling update on evacuation error err="Failed to update cluster \"cluster\":`)(t, logBuf)
+			},
+		},
+		{
+			name:             "error - cluster update - callback error - repo.Update",
+			argClusterUpdate: true,
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
+						},
+					},
+				},
+			},
+			repoUpdateErrs: queue.Errs{
+				nil,
+				boom.Error,
+			},
+			clusterSvcGetByName: &provisioning.Cluster{},
+			doCallback: func(f func(ctx context.Context, err error)) {
+				f(t.Context(), boom.Error)
+			},
+
+			assertErr: require.NoError,
+			assertLog: func(t log.TestifyT, logBuf *bytes.Buffer) {
+				log.Contains(`Failed to evacuate system name=one err=boom!`)(t, logBuf)
+				log.Contains(`Failed to restore DB state during rolling update on evacuation error err="Failed to put server \"one\" back in ready state:`)(t, logBuf)
+			},
+		},
+		{
+			name: "error - repo.GetByName",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
 			assertLog: log.Noop,
 		},
 		{
-			name: "error - not type incus",
-			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeOperationsCenter,
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeOperationsCenter,
+					},
+				},
 			},
+			name: "error - not type incus",
 
 			assertErr: errassert.OperationNotPermittedError,
 			assertLog: log.Noop,
 		},
 		{
 			name: "error - cluster lifecycle operation not permitted",
-			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
-				VersionData: api.ServerVersionData{
-					Applications: []api.ApplicationVersionData{
-						{
-							Name: "incus",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
 						},
 					},
 				},
@@ -5588,14 +5906,19 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 		},
 		{
 			name: "error - repo.Update",
-			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
-				VersionData: api.ServerVersionData{
-					Applications: []api.ApplicationVersionData{
-						{
-							Name: "incus",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
 						},
 					},
 				},
@@ -5610,14 +5933,19 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 		},
 		{
 			name: "error - client.Evacuate",
-			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
-				VersionData: api.ServerVersionData{
-					Applications: []api.ApplicationVersionData{
-						{
-							Name: "incus",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
 						},
 					},
 				},
@@ -5633,14 +5961,19 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 		},
 		{
 			name: "error - client.Evacuate - reverter error",
-			repoGetByName: provisioning.Server{
-				Name:   "one",
-				Status: api.ServerStatusReady,
-				Type:   api.ServerTypeIncus,
-				VersionData: api.ServerVersionData{
-					Applications: []api.ApplicationVersionData{
-						{
-							Name: "incus",
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Cluster: ptr.To("cluster"),
+						Status:  api.ServerStatusReady,
+						Type:    api.ServerTypeIncus,
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name: "incus",
+								},
+							},
 						},
 					},
 				},
@@ -5662,6 +5995,9 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			// if tc.name != "error - cluster update - callback error" {
+			// 	t.SkipNow()
+			// }
 			// Setup
 			logBuf := &bytes.Buffer{}
 			err := logger.InitLogger(logBuf, "", false, true, true)
@@ -5669,7 +6005,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
-					return &tc.repoGetByName, tc.repoGetByNameErr
+					return queue.Pop(t, &tc.repoGetByName)
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
 					return tc.repoUpdateErrs.PopOrNil(t)
@@ -5684,6 +6020,12 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			}
 
 			clusterSvc := &svcMock.ClusterServiceMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.clusterSvcGetByName, tc.clusterSvcGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster, updateServers bool) error {
+					return tc.clusterSvcUpdateErr
+				},
 				IsInstanceLifecycleOperationPermittedFunc: func(ctx context.Context, name string) bool {
 					return tc.clusterSvcIsInstanceLifecycleOperationPermitted
 				},
@@ -5710,6 +6052,7 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 			tc.assertErr(t, err)
 			tc.assertLog(t, logBuf)
 
+			require.Empty(t, tc.repoGetByName)
 			require.Empty(t, tc.repoUpdateErrs)
 		})
 	}
