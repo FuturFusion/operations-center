@@ -34,7 +34,7 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
       challenge: security?.acme.challenge || "HTTP-01",
       email: security?.acme.email ?? "",
       domain: security?.acme.domain ?? "",
-      http_challenge_address: security?.acme.http_challenge_address || ":8080",
+      http_challenge_address: security?.acme.http_challenge_address || ":80",
       provider: security?.acme.provider ?? "",
       provider_environment: security?.acme.provider_environment ?? [],
       provider_resolvers: security?.acme.provider_resolvers ?? [],
