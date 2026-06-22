@@ -7,7 +7,7 @@ import (
 
 	"github.com/lxc/incus/v7/shared/api"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestConfigMap_UnmarshalJSON(t *testing.T) {
