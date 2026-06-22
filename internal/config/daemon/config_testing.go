@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func InitTest(t *testing.T, testEnv enver, saveErr error, internalConfig ...InternalConfig) {
