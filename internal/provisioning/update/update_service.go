@@ -527,7 +527,7 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 	}
 
 	if !found {
-		return nil, 0, fmt.Errorf("Requested file %q is not part of update %q", filename, id.String())
+		return nil, 0, fmt.Errorf("Requested file %q is not part of update %q: %w", filename, id.String(), domain.ErrNotFound)
 	}
 
 	return s.filesRepo.Get(ctx, *update, filename)
