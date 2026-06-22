@@ -39,6 +39,11 @@ func (s ServerType) String() string {
 	return string(s)
 }
 
+// IsIncus reports whether the server type is one of the Incus kinds.
+func (s ServerType) IsIncus() bool {
+	return s == ServerTypeIncus || s == ServerTypeIncusLTS70
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (s ServerType) MarshalText() ([]byte, error) {
 	return []byte(s), nil

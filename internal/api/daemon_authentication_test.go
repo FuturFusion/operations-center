@@ -15,7 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/go-connections/nat"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/oauth2-proxy/mockoidc"
 	"github.com/stretchr/testify/require"
@@ -793,7 +792,7 @@ func setupOpenFGA(ctx context.Context, t *testing.T) (endpoint string, storeID s
 		require.NoError(t, err)
 	})
 
-	openFGAEndpoint, err := openfgaContainer.PortEndpoint(ctx, nat.Port("8080"), "")
+	openFGAEndpoint, err := openfgaContainer.PortEndpoint(ctx, "8080", "")
 	require.NoError(t, err)
 	openFGAEndpoint = "http://" + openFGAEndpoint
 

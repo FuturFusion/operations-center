@@ -1085,7 +1085,7 @@ func (s *serverService) EvacuateSystemByName(ctx context.Context, name string, c
 
 		previousServer = server.Clone()
 
-		if server.Type != api.ServerTypeIncus {
+		if !server.Type.IsIncus() {
 			return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
 		}
 
@@ -1306,7 +1306,7 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 
 		previousServer = server.Clone()
 
-		if server.Type != api.ServerTypeIncus {
+		if !server.Type.IsIncus() {
 			return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
 		}
 
@@ -1365,7 +1365,7 @@ func (s *serverService) PostRestoreSystemDoneByName(ctx context.Context, name st
 			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
 		}
 
-		if server.Type != api.ServerTypeIncus {
+		if !server.Type.IsIncus() {
 			return fmt.Errorf("Server %q is not of type %q: %w", name, api.ServerTypeIncus, domain.ErrOperationNotPermitted)
 		}
 
@@ -1489,7 +1489,7 @@ func (s *serverService) FactoryResetByName(ctx context.Context, name string, tok
 		return fmt.Errorf("Factory reset of Operations Center: %w", domain.ErrOperationNotPermitted)
 	}
 
-	if server.Type == api.ServerTypeIncus && server.Cluster != nil && !force {
+	if server.Type.IsIncus() && server.Cluster != nil && !force {
 		return fmt.Errorf("Factory reset of clustered server: %w", domain.ErrOperationNotPermitted)
 	}
 
@@ -1690,7 +1690,7 @@ func (s *serverService) ResyncByName(ctx context.Context, _ string, event domain
 }
 
 func (s *serverService) handleMaintenanceUpdate(ctx context.Context, server *provisioning.Server, inMaintenance api.InMaintenanceState) error {
-	if server.Type != api.ServerTypeIncus {
+	if !server.Type.IsIncus() {
 		return nil
 	}
 
@@ -2096,7 +2096,7 @@ func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context,
 			defer cancelFunc()
 
 			isClusteredIncus := server.Cluster != nil && server.ClusterCertificate != nil && *server.ClusterCertificate != ""
-			isStandaloneNonIncusServerWithPublicConnectionURL := server.Cluster == nil && server.Type != api.ServerTypeIncus && server.PublicConnectionURL != ""
+			isStandaloneNonIncusServerWithPublicConnectionURL := server.Cluster == nil && !server.Type.IsIncus() && server.PublicConnectionURL != ""
 
 			switch {
 			case isClusteredIncus: // case 1, clustered Incus with cluster certificate set

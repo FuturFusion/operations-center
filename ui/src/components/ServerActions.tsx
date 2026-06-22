@@ -32,6 +32,7 @@ const ServerActions: FC<Props> = ({ server }) => {
     } else if (server.version_data.needs_reboot) {
       if (
         server.version_data.in_maintenance == 0 &&
+        server.cluster != "" &&
         (server.server_type == ServerType.Incus ||
           server.server_type == ServerType.IncusLTS70)
       ) {
@@ -45,6 +46,7 @@ const ServerActions: FC<Props> = ({ server }) => {
 
     setRecommendedAction(action);
   }, [
+    server.cluster,
     server.server_type,
     server.version_data.needs_update,
     server.version_data.needs_reboot,
@@ -89,8 +91,9 @@ const ServerActions: FC<Props> = ({ server }) => {
     }
 
     if (
-      server.server_type == ServerType.Incus ||
-      server.server_type == ServerType.IncusLTS70
+      server.cluster != "" &&
+      (server.server_type == ServerType.Incus ||
+        server.server_type == ServerType.IncusLTS70)
     ) {
       if (versionData.in_maintenance == 2 && action == ServerAction.Restore) {
         return true;
