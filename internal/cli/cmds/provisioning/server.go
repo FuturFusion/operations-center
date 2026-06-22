@@ -15,7 +15,7 @@ import (
 	"github.com/lxc/incus-os/incus-osd/cli"
 	"github.com/lxc/incus/v7/shared/termios"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	incusTLS "github.com/lxc/incus/v7/shared/tls"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/shared/api"
 )
