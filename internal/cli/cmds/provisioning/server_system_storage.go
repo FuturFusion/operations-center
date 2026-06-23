@@ -2,9 +2,11 @@ package provisioning
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"slices"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus/v7/shared/termios"
@@ -43,6 +45,13 @@ func (c *cmdServerSystemStorage) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(serverSystemStorageEditCmd.Command())
+
+	// Show
+	serverSystemStorageShowCmd := cmdServerSystemStorageShow{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverSystemStorageShowCmd.Command())
 
 	return cmd
 }
@@ -164,4 +173,65 @@ func (c *cmdServerSystemStorageEdit) run(cmd *cobra.Command, args []string) erro
 	}
 
 	return nil
+}
+
+// Show server system storage configuration.
+type cmdServerSystemStorageShow struct {
+	ocClient *client.OperationsCenterClient
+
+	flagFormat string
+}
+
+func (c *cmdServerSystemStorageShow) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "show <name>"
+	cmd.Short = "Show server system storage"
+	cmd.Long = `Description:
+  Show server system storage.
+`
+
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerSystemStorageShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	validFormats := []string{"", "json", "yaml"}
+	if !slices.Contains(validFormats, c.flagFormat) {
+		return fmt.Errorf(`Invalid value for flag "--format": %q`, c.flagFormat)
+	}
+
+	return nil
+}
+
+func (c *cmdServerSystemStorageShow) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	networkConfig, err := c.ocClient.GetServerSystemNetwork(cmd.Context(), name)
+	if err != nil {
+		return err
+	}
+
+	switch c.flagFormat {
+	case "json":
+		enc := json.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent("", "  ")
+		err = enc.Encode(networkConfig)
+
+	default:
+		enc := yaml.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent(2)
+		err = enc.Encode(networkConfig)
+	}
+
+	return err
 }
