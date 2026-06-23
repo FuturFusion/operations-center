@@ -23,6 +23,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	provisioningToken "github.com/FuturFusion/operations-center/internal/provisioning/token"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -1801,9 +1802,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			},
 			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{},
 
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Failed to find image file of type "iso" for architecture "x86_64" in latest update "00219aa8-ae44-4306-927e-728a2f780836"`)
-			},
+			assertErr:   errassert.NotFoundErrorContains(`Failed to find image file of type "iso" for architecture "x86_64" in latest update "00219aa8-ae44-4306-927e-728a2f780836"`),
 			wantChannel: "stable", // default value
 		},
 		{

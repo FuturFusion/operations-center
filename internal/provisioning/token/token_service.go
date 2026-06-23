@@ -349,7 +349,7 @@ func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageT
 	}
 
 	if filename == "" {
-		return nil, fmt.Errorf("Failed to find image file of type %q for architecture %q in latest update %q", imageType, architecture, latestUpdate.UUID.String())
+		return nil, fmt.Errorf("Failed to find image file of type %q for architecture %q in latest update %q: %w", imageType, architecture, latestUpdate.UUID.String(), domain.ErrNotFound)
 	}
 
 	filereader, _, err := s.updateSvc.GetUpdateFileByFilename(ctx, latestUpdate.UUID, filename)
