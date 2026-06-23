@@ -2,9 +2,11 @@ package image
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/lxc/incus/v7/shared/termios"
@@ -143,6 +145,8 @@ func (c *cmdImageSourceList) run(cmd *cobra.Command, args []string) error {
 // Show image source.
 type cmdImageSourceShow struct {
 	ocClient *client.OperationsCenterClient
+
+	flagFormat string
 }
 
 func (c *cmdImageSourceShow) Command() *cobra.Command {
@@ -152,6 +156,8 @@ func (c *cmdImageSourceShow) Command() *cobra.Command {
 	cmd.Long = `Description:
   Show information about an image source.
 `
+
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -166,6 +172,11 @@ func (c *cmdImageSourceShow) validateArgsAndFlags(cmd *cobra.Command, args []str
 		return err
 	}
 
+	validFormats := []string{"", "json", "yaml"}
+	if !slices.Contains(validFormats, c.flagFormat) {
+		return fmt.Errorf(`Invalid value for flag "--format": %q`, c.flagFormat)
+	}
+
 	return nil
 }
 
@@ -177,10 +188,29 @@ func (c *cmdImageSourceShow) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Name: %s\n", imageSource.Name)
-	fmt.Printf("URL: %s\n", imageSource.URL)
-	fmt.Printf("Filter Expression: %s\n", imageSource.FilterExpression)
-	fmt.Printf("Last Updated: %s\n", imageSource.LastUpdated.Truncate(time.Second).String())
+	switch c.flagFormat {
+	case "json":
+		enc := json.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent("", "  ")
+		err = enc.Encode(imageSource)
+		if err != nil {
+			return err
+		}
+
+	case "yaml":
+		enc := yaml.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent(2)
+		err = enc.Encode(imageSource)
+		if err != nil {
+			return err
+		}
+
+	default:
+		fmt.Printf("Name: %s\n", imageSource.Name)
+		fmt.Printf("URL: %s\n", imageSource.URL)
+		fmt.Printf("Filter Expression: %s\n", imageSource.FilterExpression)
+		fmt.Printf("Last Updated: %s\n", imageSource.LastUpdated.Truncate(time.Second).String())
+	}
 
 	return nil
 }
