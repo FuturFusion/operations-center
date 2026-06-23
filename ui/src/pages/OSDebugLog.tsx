@@ -1,6 +1,9 @@
 import type { FC } from "react";
+import { useState } from "react";
+import { Button, Form } from "react-bootstrap";
 import { useQuery } from "@tanstack/react-query";
 import { fetchDebugLogs } from "api/os";
+import type { DebugLogOptions } from "api/os";
 import type { IncusOSLog } from "types/os";
 
 function formatTimestamp(us: string) {
@@ -44,19 +47,72 @@ function JournalLine(item: IncusOSLog) {
   );
 }
 
-const OSLogs: FC = () => {
-  const entriesLimit = 200;
+const OSDebugLog: FC = () => {
+  const [unit, setUnit] = useState("");
+  const [boot, setBoot] = useState("");
+  const [entries, setEntries] = useState("200");
+  const [filters, setFilters] = useState<DebugLogOptions>({ entries: 200 });
 
   const {
     data: logs = [],
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["os-debug-logs"],
-    queryFn: async () => fetchDebugLogs(entriesLimit),
+    queryKey: ["os-debug-logs", filters],
+    queryFn: async () => fetchDebugLogs(filters),
   });
+
+  const applyFilters = () => {
+    setFilters({
+      unit: unit,
+      boot: boot,
+      entries: entries ? Number(entries) : undefined,
+    });
+  };
+
   return (
     <div>
+      <Form
+        className="d-flex gap-2 align-items-end mb-3 flex-wrap"
+        onSubmit={(e) => {
+          e.preventDefault();
+          applyFilters();
+        }}
+      >
+        <Form.Group>
+          <Form.Label className="mb-0">Unit</Form.Label>
+          <Form.Control
+            size="sm"
+            type="text"
+            value={unit}
+            onChange={(e) => setUnit(e.target.value)}
+          />
+        </Form.Group>
+        <Form.Group>
+          <Form.Label className="mb-0">Boot</Form.Label>
+          <Form.Control
+            size="sm"
+            type="text"
+            style={{ maxWidth: "120px" }}
+            value={boot}
+            onChange={(e) => setBoot(e.target.value)}
+          />
+        </Form.Group>
+        <Form.Group>
+          <Form.Label className="mb-0">Entries</Form.Label>
+          <Form.Control
+            size="sm"
+            type="number"
+            style={{ maxWidth: "120px" }}
+            value={entries}
+            onChange={(e) => setEntries(e.target.value)}
+          />
+        </Form.Group>
+        <Button size="sm" variant="primary" type="submit">
+          Apply
+        </Button>
+      </Form>
+
       {error && (
         <div className="u-align-text--center">Error during logs load</div>
       )}
@@ -72,4 +128,4 @@ const OSLogs: FC = () => {
   );
 };
 
-export default OSLogs;
+export default OSDebugLog;

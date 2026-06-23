@@ -25,7 +25,6 @@ import ImageSourceCreate from "pages/ImageSourceCreate";
 import ImageSourceDetail from "pages/ImageSourceDetail";
 import IncusImageDetail from "pages/IncusImageDetail";
 import IncusOS from "pages/IncusOS";
-import OSServiceDetails from "pages/OSServiceDetails";
 import Server from "pages/Server";
 import ServerDetail from "pages/ServerDetail";
 import TokenCreate from "pages/TokenCreate";
@@ -161,5 +160,5 @@ export const routes = [
   },
   { path: "/ui/os", component: IncusOS },
   { path: "/ui/os/:activeTab", component: IncusOS },
-  { path: "/ui/os/services/:name", component: OSServiceDetails },
+  { path: "/ui/os/:activeTab/:subTab", component: IncusOS },
 ];
