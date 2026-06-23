@@ -6,11 +6,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/spf13/cobra"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
@@ -220,6 +222,7 @@ func (c *cmdStorageVolumeList) run(cmd *cobra.Command, args []string) error {
 type cmdStorageVolumeShow struct {
 	ocClient *client.OperationsCenterClient
 
+	flagFormat     string
 	flagShowObject bool
 }
 
@@ -231,6 +234,7 @@ func (c *cmdStorageVolumeShow) Command() *cobra.Command {
   Show information about a storage_volume.
 `
 
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
 	cmd.Flags().BoolVar(&c.flagShowObject, "object", false, "show inventory object")
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -246,6 +250,11 @@ func (c *cmdStorageVolumeShow) validateArgsAndFlags(cmd *cobra.Command, args []s
 		return err
 	}
 
+	validFormats := []string{"", "json", "yaml"}
+	if !slices.Contains(validFormats, c.flagFormat) {
+		return fmt.Errorf(`Invalid value for flag "--format": %q`, c.flagFormat)
+	}
+
 	return nil
 }
 
@@ -257,43 +266,62 @@ func (c *cmdStorageVolumeShow) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Render the item.
-	fields := strings.Split(storageVolumeDefaultColumns, ",")
-	for _, field := range fields {
-		title := strings.Trim(field, "{} .")
-		titleAlias, ok := storageVolumeColumnAliases[title]
-		if !ok {
-			titleAlias = title
-		}
-
-		fieldTemplate := field
-		fieldPipeline, ok := storageVolumeShowColumnPipelines[title]
-		if ok {
-			fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
-		}
-
-		tmpl, err := template.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
+	switch c.flagFormat {
+	case "json":
+		enc := json.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent("", "  ")
+		err = enc.Encode(storageVolume)
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprint(cmd.OutOrStdout(), titleAlias)
-		fmt.Fprint(cmd.OutOrStdout(), ": ")
-		err = tmpl.ExecuteTemplate(cmd.OutOrStdout(), titleAlias, storageVolume)
+	case "yaml":
+		enc := yaml.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent(2)
+		err = enc.Encode(storageVolume)
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprintln(cmd.OutOrStdout(), "")
-	}
+	default:
+		// Render the item.
+		fields := strings.Split(storageVolumeDefaultColumns, ",")
+		for _, field := range fields {
+			title := strings.Trim(field, "{} .")
+			titleAlias, ok := storageVolumeColumnAliases[title]
+			if !ok {
+				titleAlias = title
+			}
 
-	if c.flagShowObject {
-		objectJSON, err := json.MarshalIndent(storageVolume.Object, "", "  ")
-		if err != nil {
-			return err
+			fieldTemplate := field
+			fieldPipeline, ok := storageVolumeShowColumnPipelines[title]
+			if ok {
+				fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
+			}
+
+			tmpl, err := template.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprint(cmd.OutOrStdout(), titleAlias)
+			fmt.Fprint(cmd.OutOrStdout(), ": ")
+			err = tmpl.ExecuteTemplate(cmd.OutOrStdout(), titleAlias, storageVolume)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintln(cmd.OutOrStdout(), "")
 		}
 
-		fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+		if c.flagShowObject {
+			objectJSON, err := json.MarshalIndent(storageVolume.Object, "", "  ")
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+		}
 	}
 
 	return nil

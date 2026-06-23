@@ -6,11 +6,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/spf13/cobra"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
@@ -208,6 +210,7 @@ func (c *cmdNetworkLoadBalancerList) run(cmd *cobra.Command, args []string) erro
 type cmdNetworkLoadBalancerShow struct {
 	ocClient *client.OperationsCenterClient
 
+	flagFormat     string
 	flagShowObject bool
 }
 
@@ -219,6 +222,7 @@ func (c *cmdNetworkLoadBalancerShow) Command() *cobra.Command {
   Show information about a network_load_balancer.
 `
 
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
 	cmd.Flags().BoolVar(&c.flagShowObject, "object", false, "show inventory object")
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -234,6 +238,11 @@ func (c *cmdNetworkLoadBalancerShow) validateArgsAndFlags(cmd *cobra.Command, ar
 		return err
 	}
 
+	validFormats := []string{"", "json", "yaml"}
+	if !slices.Contains(validFormats, c.flagFormat) {
+		return fmt.Errorf(`Invalid value for flag "--format": %q`, c.flagFormat)
+	}
+
 	return nil
 }
 
@@ -245,43 +254,62 @@ func (c *cmdNetworkLoadBalancerShow) run(cmd *cobra.Command, args []string) erro
 		return err
 	}
 
-	// Render the item.
-	fields := strings.Split(networkLoadBalancerDefaultColumns, ",")
-	for _, field := range fields {
-		title := strings.Trim(field, "{} .")
-		titleAlias, ok := networkLoadBalancerColumnAliases[title]
-		if !ok {
-			titleAlias = title
-		}
-
-		fieldTemplate := field
-		fieldPipeline, ok := networkLoadBalancerShowColumnPipelines[title]
-		if ok {
-			fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
-		}
-
-		tmpl, err := template.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
+	switch c.flagFormat {
+	case "json":
+		enc := json.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent("", "  ")
+		err = enc.Encode(networkLoadBalancer)
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprint(cmd.OutOrStdout(), titleAlias)
-		fmt.Fprint(cmd.OutOrStdout(), ": ")
-		err = tmpl.ExecuteTemplate(cmd.OutOrStdout(), titleAlias, networkLoadBalancer)
+	case "yaml":
+		enc := yaml.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent(2)
+		err = enc.Encode(networkLoadBalancer)
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprintln(cmd.OutOrStdout(), "")
-	}
+	default:
+		// Render the item.
+		fields := strings.Split(networkLoadBalancerDefaultColumns, ",")
+		for _, field := range fields {
+			title := strings.Trim(field, "{} .")
+			titleAlias, ok := networkLoadBalancerColumnAliases[title]
+			if !ok {
+				titleAlias = title
+			}
 
-	if c.flagShowObject {
-		objectJSON, err := json.MarshalIndent(networkLoadBalancer.Object, "", "  ")
-		if err != nil {
-			return err
+			fieldTemplate := field
+			fieldPipeline, ok := networkLoadBalancerShowColumnPipelines[title]
+			if ok {
+				fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
+			}
+
+			tmpl, err := template.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprint(cmd.OutOrStdout(), titleAlias)
+			fmt.Fprint(cmd.OutOrStdout(), ": ")
+			err = tmpl.ExecuteTemplate(cmd.OutOrStdout(), titleAlias, networkLoadBalancer)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintln(cmd.OutOrStdout(), "")
 		}
 
-		fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+		if c.flagShowObject {
+			objectJSON, err := json.MarshalIndent(networkLoadBalancer.Object, "", "  ")
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+		}
 	}
 
 	return nil

@@ -6,11 +6,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/spf13/cobra"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
@@ -194,6 +196,7 @@ func (c *cmdNetworkIntegrationList) run(cmd *cobra.Command, args []string) error
 type cmdNetworkIntegrationShow struct {
 	ocClient *client.OperationsCenterClient
 
+	flagFormat     string
 	flagShowObject bool
 }
 
@@ -205,6 +208,7 @@ func (c *cmdNetworkIntegrationShow) Command() *cobra.Command {
   Show information about a network_integration.
 `
 
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
 	cmd.Flags().BoolVar(&c.flagShowObject, "object", false, "show inventory object")
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -220,6 +224,11 @@ func (c *cmdNetworkIntegrationShow) validateArgsAndFlags(cmd *cobra.Command, arg
 		return err
 	}
 
+	validFormats := []string{"", "json", "yaml"}
+	if !slices.Contains(validFormats, c.flagFormat) {
+		return fmt.Errorf(`Invalid value for flag "--format": %q`, c.flagFormat)
+	}
+
 	return nil
 }
 
@@ -231,43 +240,62 @@ func (c *cmdNetworkIntegrationShow) run(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	// Render the item.
-	fields := strings.Split(networkIntegrationDefaultColumns, ",")
-	for _, field := range fields {
-		title := strings.Trim(field, "{} .")
-		titleAlias, ok := networkIntegrationColumnAliases[title]
-		if !ok {
-			titleAlias = title
-		}
-
-		fieldTemplate := field
-		fieldPipeline, ok := networkIntegrationShowColumnPipelines[title]
-		if ok {
-			fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
-		}
-
-		tmpl, err := template.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
+	switch c.flagFormat {
+	case "json":
+		enc := json.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent("", "  ")
+		err = enc.Encode(networkIntegration)
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprint(cmd.OutOrStdout(), titleAlias)
-		fmt.Fprint(cmd.OutOrStdout(), ": ")
-		err = tmpl.ExecuteTemplate(cmd.OutOrStdout(), titleAlias, networkIntegration)
+	case "yaml":
+		enc := yaml.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent(2)
+		err = enc.Encode(networkIntegration)
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprintln(cmd.OutOrStdout(), "")
-	}
+	default:
+		// Render the item.
+		fields := strings.Split(networkIntegrationDefaultColumns, ",")
+		for _, field := range fields {
+			title := strings.Trim(field, "{} .")
+			titleAlias, ok := networkIntegrationColumnAliases[title]
+			if !ok {
+				titleAlias = title
+			}
 
-	if c.flagShowObject {
-		objectJSON, err := json.MarshalIndent(networkIntegration.Object, "", "  ")
-		if err != nil {
-			return err
+			fieldTemplate := field
+			fieldPipeline, ok := networkIntegrationShowColumnPipelines[title]
+			if ok {
+				fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
+			}
+
+			tmpl, err := template.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprint(cmd.OutOrStdout(), titleAlias)
+			fmt.Fprint(cmd.OutOrStdout(), ": ")
+			err = tmpl.ExecuteTemplate(cmd.OutOrStdout(), titleAlias, networkIntegration)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintln(cmd.OutOrStdout(), "")
 		}
 
-		fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+		if c.flagShowObject {
+			objectJSON, err := json.MarshalIndent(networkIntegration.Object, "", "  ")
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+		}
 	}
 
 	return nil

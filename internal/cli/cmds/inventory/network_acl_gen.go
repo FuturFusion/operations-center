@@ -6,11 +6,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/spf13/cobra"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
@@ -203,6 +205,7 @@ func (c *cmdNetworkACLList) run(cmd *cobra.Command, args []string) error {
 type cmdNetworkACLShow struct {
 	ocClient *client.OperationsCenterClient
 
+	flagFormat     string
 	flagShowObject bool
 }
 
@@ -214,6 +217,7 @@ func (c *cmdNetworkACLShow) Command() *cobra.Command {
   Show information about a network_acl.
 `
 
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
 	cmd.Flags().BoolVar(&c.flagShowObject, "object", false, "show inventory object")
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -229,6 +233,11 @@ func (c *cmdNetworkACLShow) validateArgsAndFlags(cmd *cobra.Command, args []stri
 		return err
 	}
 
+	validFormats := []string{"", "json", "yaml"}
+	if !slices.Contains(validFormats, c.flagFormat) {
+		return fmt.Errorf(`Invalid value for flag "--format": %q`, c.flagFormat)
+	}
+
 	return nil
 }
 
@@ -240,43 +249,62 @@ func (c *cmdNetworkACLShow) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Render the item.
-	fields := strings.Split(networkACLDefaultColumns, ",")
-	for _, field := range fields {
-		title := strings.Trim(field, "{} .")
-		titleAlias, ok := networkACLColumnAliases[title]
-		if !ok {
-			titleAlias = title
-		}
-
-		fieldTemplate := field
-		fieldPipeline, ok := networkACLShowColumnPipelines[title]
-		if ok {
-			fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
-		}
-
-		tmpl, err := template.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
+	switch c.flagFormat {
+	case "json":
+		enc := json.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent("", "  ")
+		err = enc.Encode(networkACL)
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprint(cmd.OutOrStdout(), titleAlias)
-		fmt.Fprint(cmd.OutOrStdout(), ": ")
-		err = tmpl.ExecuteTemplate(cmd.OutOrStdout(), titleAlias, networkACL)
+	case "yaml":
+		enc := yaml.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent(2)
+		err = enc.Encode(networkACL)
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprintln(cmd.OutOrStdout(), "")
-	}
+	default:
+		// Render the item.
+		fields := strings.Split(networkACLDefaultColumns, ",")
+		for _, field := range fields {
+			title := strings.Trim(field, "{} .")
+			titleAlias, ok := networkACLColumnAliases[title]
+			if !ok {
+				titleAlias = title
+			}
 
-	if c.flagShowObject {
-		objectJSON, err := json.MarshalIndent(networkACL.Object, "", "  ")
-		if err != nil {
-			return err
+			fieldTemplate := field
+			fieldPipeline, ok := networkACLShowColumnPipelines[title]
+			if ok {
+				fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
+			}
+
+			tmpl, err := template.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprint(cmd.OutOrStdout(), titleAlias)
+			fmt.Fprint(cmd.OutOrStdout(), ": ")
+			err = tmpl.ExecuteTemplate(cmd.OutOrStdout(), titleAlias, networkACL)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintln(cmd.OutOrStdout(), "")
 		}
 
-		fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+		if c.flagShowObject {
+			objectJSON, err := json.MarshalIndent(networkACL.Object, "", "  ")
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+		}
 	}
 
 	return nil
