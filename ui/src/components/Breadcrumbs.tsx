@@ -70,7 +70,12 @@ const Breadcrumbs = () => {
           const matchedItems = match.path.split("/").filter((x) => x);
           const lastMatched = matchedItems[matchedItems.length - 1];
           const routeName =
-            lastMatched.startsWith(":") && lastMatched != ":activeTab"
+            (lastMatched.startsWith(":") &&
+              lastMatched != ":activeTab" &&
+              lastMatched != ":subTab") ||
+            (lastMatched === ":subTab" &&
+              (to.includes("/ui/os/applications") ||
+                to.includes("/ui/os/services")))
               ? pathnames[index]
               : formatBreadcrumb(pathnames[index]);
 
