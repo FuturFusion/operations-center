@@ -1,10 +1,12 @@
 import type { FC } from "react";
 import { useNavigate, useParams } from "react-router";
-import { runOSAction } from "api/os";
+import { useQuery } from "@tanstack/react-query";
+import { fetchOSSection, runOSAction } from "api/os";
 import OSAction from "components/OSAction";
 import type { OSActionInput, OSActionValues } from "components/OSAction";
 import OSConfigSection from "components/OSConfigSection";
 import TabView from "components/TabView";
+import type { IncusOSNetworkState } from "types/os";
 
 const str = (v: OSActionValues, k: string) => String(v[k] ?? "");
 const num = (v: OSActionValues, k: string) => Number(v[k] ?? 0);
@@ -46,24 +48,38 @@ const importPool = storageRun("import-pool", (v) => ({
   encryption_key: str(v, "encryption_key"),
 }));
 
-const NetworkActions: FC = () => (
-  <>
-    <OSAction
-      label="Confirm configuration"
-      mode="confirm"
-      confirmMessage="Confirm the new network configuration?"
-      run={() => runOSAction("system/network", "confirm")}
-      successMessage="Network configuration confirmed"
-    />
-    <OSAction
-      label="Flush DNS cache"
-      mode="confirm"
-      confirmMessage="Flush the DNS cache?"
-      run={() => runOSAction("system/network", "flush-dns")}
-      successMessage="DNS cache flushed"
-    />
-  </>
-);
+const NetworkActions: FC = () => {
+  const { data: network } = useQuery({
+    queryKey: ["os-network"],
+    queryFn: async () => fetchOSSection("system/network"),
+  });
+
+  const pendingChange =
+    (network?.state as IncusOSNetworkState | undefined)
+      ?.configuration_in_process ?? false;
+
+  return (
+    <>
+      {pendingChange && (
+        <OSAction
+          label="Confirm configuration"
+          mode="confirm"
+          confirmMessage="Confirm the new network configuration?"
+          run={() => runOSAction("system/network", "confirm")}
+          successMessage="Network configuration confirmed"
+          invalidateKeys={[["os-network"]]}
+        />
+      )}
+      <OSAction
+        label="Flush DNS cache"
+        mode="confirm"
+        confirmMessage="Flush the DNS cache?"
+        run={() => runOSAction("system/network", "flush-dns")}
+        successMessage="DNS cache flushed"
+      />
+    </>
+  );
+};
 
 const SecurityActions: FC = () => (
   <OSAction
