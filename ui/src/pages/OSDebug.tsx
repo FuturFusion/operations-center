@@ -49,7 +49,7 @@ const OSDebug: FC = () => {
 
   return (
     <TabView
-      defaultTab="log"
+      defaultTab={subTabs[0].key}
       activeTab={subTab}
       tabs={subTabs}
       onSelect={(key) => navigate(`/ui/os/debug/${key}`)}

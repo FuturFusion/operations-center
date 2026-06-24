@@ -303,7 +303,7 @@ const OSSystem: FC = () => {
 
   return (
     <TabView
-      defaultTab="network"
+      defaultTab={subTabs[0].key}
       activeTab={subTab}
       tabs={subTabs}
       onSelect={(key) => navigate(`/ui/os/system/${key}`)}
