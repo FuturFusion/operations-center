@@ -7,6 +7,7 @@ import {
   fetchSystemUpdate,
 } from "api/os";
 import { nameFromURL } from "util/os";
+import YAML from "yaml";
 
 const OSOverview: FC = () => {
   const { data: incusOSData } = useQuery({
@@ -42,6 +43,18 @@ const OSOverview: FC = () => {
       <h6 className="mb-3">General</h6>
       <div className="container">
         <div className="row">
+          <div className="col-2 detail-table-header">Hostname</div>
+          <div className="col-10 detail-table-cell">
+            {incusOSData?.environment?.hostname}
+          </div>
+        </div>
+        <div className="row">
+          <div className="col-2 detail-table-header">OS name</div>
+          <div className="col-10 detail-table-cell">
+            {incusOSData?.environment?.os_name}
+          </div>
+        </div>
+        <div className="row">
           <div className="col-2 detail-table-header">Version</div>
           <div className="col-10 detail-table-cell">
             {incusOSData?.environment?.os_version}
@@ -51,6 +64,7 @@ const OSOverview: FC = () => {
           <div className="col-2 detail-table-header">Update status</div>
           <div className="col-10 detail-table-cell">
             {systemUpdate?.state?.status}
+            {systemUpdate?.state?.needs_reboot && " (reboot required)"}
           </div>
         </div>
         <div className="row">
@@ -66,6 +80,11 @@ const OSOverview: FC = () => {
           </div>
         </div>
       </div>
+
+      <h6 className="mb-3 mt-4">System details</h6>
+      <pre className="bg-light border rounded-3 p-3 mb-0 yaml-editor">
+        {YAML.stringify(incusOSData, null, 2)}
+      </pre>
     </>
   );
 };

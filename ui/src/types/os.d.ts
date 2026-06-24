@@ -1,10 +1,13 @@
-export interface IncusOSApplicationConfig {
-  version: string;
+export interface IncusOSApplicationState {
+  initialized?: boolean;
+  friendly_version?: string;
+  version?: string;
+  available_versions?: string[];
 }
 
 export interface IncusOSApplication {
   config: object;
-  state: IncusOSApplicationCOnfig;
+  state: IncusOSApplicationState;
 }
 
 export interface IncusOSSettings {
