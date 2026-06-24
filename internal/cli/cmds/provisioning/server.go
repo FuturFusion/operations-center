@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"slices"
 	"strings"
 	"time"
 
@@ -458,6 +459,7 @@ func (c *cmdServerResync) run(cmd *cobra.Command, args []string) error {
 type cmdServerShow struct {
 	ocClient *client.OperationsCenterClient
 
+	flagFormat          string
 	flagShowProperties  bool
 	flagShowResources   bool
 	flagShowOSData      bool
@@ -472,6 +474,7 @@ func (c *cmdServerShow) Command() *cobra.Command {
   Show information about a server.
 `
 
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
 	cmd.Flags().BoolVar(&c.flagShowProperties, "properties", false, "show server properties")
 	cmd.Flags().BoolVar(&c.flagShowResources, "resources", false, "show server resource details")
 	cmd.Flags().BoolVar(&c.flagShowOSData, "os-data", false, "show server OS data")
@@ -490,6 +493,11 @@ func (c *cmdServerShow) validateArgsAndFlags(cmd *cobra.Command, args []string) 
 		return err
 	}
 
+	validFormats := []string{"", "json", "yaml"}
+	if !slices.Contains(validFormats, c.flagFormat) {
+		return fmt.Errorf(`Invalid value for flag "--format": %q`, c.flagFormat)
+	}
+
 	return nil
 }
 
@@ -501,55 +509,74 @@ func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Cluster: %s\n", server.Cluster)
-	fmt.Printf("Name: %s\n", server.Name)
-	fmt.Printf("Connection URL: %s\n", server.ConnectionURL)
-	fmt.Printf("Description: %s\n", server.Description)
-	fmt.Printf("Public Connection URL: %s\n", server.PublicConnectionURL)
-	fmt.Printf("Certificate:\n%s", indent("  ", strings.TrimSpace(server.Certificate)))
-	fmt.Printf("Certificate Fingerprint: %s\n", server.Fingerprint)
-	fmt.Printf("Type: %s\n", server.Type.String())
-	fmt.Printf("Channel: %s\n", server.Channel)
-	fmt.Printf("Status: %s\n", server.State())
-	fmt.Printf("Update Status: %s\n", server.UpdateState().String())
-	fmt.Printf("Last Updated: %s\n", server.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Last Seen: %s\n", server.LastSeen.Truncate(time.Second).String())
-	fmt.Printf("Recommended Action: %v\n", server.RecommendedAction())
-
-	if c.flagShowProperties {
-		propertiesYAML, err := yaml.Marshal(server.Properties)
+	switch c.flagFormat {
+	case "json":
+		enc := json.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent("", "  ")
+		err = enc.Encode(server)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Properties:\n%s\n", render.Indent(4, string(propertiesYAML)))
-	}
-
-	if c.flagShowResources {
-		hardwareDataJSON, err := json.MarshalIndent(server.HardwareData, "", "  ")
+	case "yaml":
+		enc := yaml.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent(2)
+		err = enc.Encode(server)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Resources:\n%s\n", render.Indent(4, string(hardwareDataJSON)))
-	}
+	default:
+		fmt.Printf("Cluster: %s\n", server.Cluster)
+		fmt.Printf("Name: %s\n", server.Name)
+		fmt.Printf("Connection URL: %s\n", server.ConnectionURL)
+		fmt.Printf("Description: %s\n", server.Description)
+		fmt.Printf("Public Connection URL: %s\n", server.PublicConnectionURL)
+		fmt.Printf("Certificate:\n%s", indent("  ", strings.TrimSpace(server.Certificate)))
+		fmt.Printf("Certificate Fingerprint: %s\n", server.Fingerprint)
+		fmt.Printf("Type: %s\n", server.Type.String())
+		fmt.Printf("Channel: %s\n", server.Channel)
+		fmt.Printf("Status: %s\n", server.State())
+		fmt.Printf("Update Status: %s\n", server.UpdateState().String())
+		fmt.Printf("Last Updated: %s\n", server.LastUpdated.Truncate(time.Second).String())
+		fmt.Printf("Last Seen: %s\n", server.LastSeen.Truncate(time.Second).String())
+		fmt.Printf("Recommended Action: %v\n", server.RecommendedAction())
 
-	if c.flagShowOSData {
-		osDataJSON, err := json.MarshalIndent(server.OSData, "", "  ")
-		if err != nil {
-			return err
+		if c.flagShowProperties {
+			propertiesYAML, err := yaml.Marshal(server.Properties)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Properties:\n%s\n", render.Indent(4, string(propertiesYAML)))
 		}
 
-		fmt.Printf("OS Data:\n%s\n", render.Indent(4, string(osDataJSON)))
-	}
+		if c.flagShowResources {
+			hardwareDataJSON, err := json.MarshalIndent(server.HardwareData, "", "  ")
+			if err != nil {
+				return err
+			}
 
-	if c.flagShowVersionData {
-		versionDataJSON, err := json.MarshalIndent(server.VersionData, "", "  ")
-		if err != nil {
-			return err
+			fmt.Printf("Resources:\n%s\n", render.Indent(4, string(hardwareDataJSON)))
 		}
 
-		fmt.Printf("Version Data:\n%s\n", render.Indent(4, string(versionDataJSON)))
+		if c.flagShowOSData {
+			osDataJSON, err := json.MarshalIndent(server.OSData, "", "  ")
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("OS Data:\n%s\n", render.Indent(4, string(osDataJSON)))
+		}
+
+		if c.flagShowVersionData {
+			versionDataJSON, err := json.MarshalIndent(server.VersionData, "", "  ")
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Version Data:\n%s\n", render.Indent(4, string(versionDataJSON)))
+		}
 	}
 
 	return nil

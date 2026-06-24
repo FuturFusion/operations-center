@@ -2,9 +2,11 @@ package system
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"slices"
 
 	"github.com/lxc/incus/v7/shared/termios"
 	"github.com/spf13/cobra"
@@ -55,6 +57,8 @@ func (c *CmdUpdates) Command() *cobra.Command {
 // Show updates config.
 type cmdUpdatesShow struct {
 	ocClient *client.OperationsCenterClient
+
+	flagFormat string
 }
 
 func (c *cmdUpdatesShow) Command() *cobra.Command {
@@ -64,6 +68,8 @@ func (c *cmdUpdatesShow) Command() *cobra.Command {
 	cmd.Long = `Description:
   Show updates config.
 `
+
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -78,6 +84,11 @@ func (c *cmdUpdatesShow) validateArgsAndFlags(cmd *cobra.Command, args []string)
 		return err
 	}
 
+	validFormats := []string{"", "json", "yaml"}
+	if !slices.Contains(validFormats, c.flagFormat) {
+		return fmt.Errorf(`Invalid value for flag "--format": %q`, c.flagFormat)
+	}
+
 	return nil
 }
 
@@ -87,9 +98,19 @@ func (c *cmdUpdatesShow) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	enc := yaml.NewEncoder(c.Command().OutOrStdout())
-	enc.SetIndent(2)
-	return enc.Encode(config)
+	switch c.flagFormat {
+	case "json":
+		enc := json.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent("", "  ")
+		err = enc.Encode(config)
+
+	default:
+		enc := yaml.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent(2)
+		err = enc.Encode(config)
+	}
+
+	return err
 }
 
 // Edit server system updates configuration.

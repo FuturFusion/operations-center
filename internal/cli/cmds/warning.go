@@ -1,11 +1,14 @@
 package cmds
 
 import (
+	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
@@ -122,6 +125,8 @@ func (c *cmdWarningList) run(cmd *cobra.Command, args []string) error {
 // Show warning.
 type cmdWarningShow struct {
 	ocClient *client.OperationsCenterClient
+
+	flagFormat string
 }
 
 func (c *cmdWarningShow) Command() *cobra.Command {
@@ -131,6 +136,8 @@ func (c *cmdWarningShow) Command() *cobra.Command {
 	cmd.Long = `Description:
   Show warning messages and data.
 `
+
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -145,6 +152,11 @@ func (c *cmdWarningShow) validateArgsAndFlags(cmd *cobra.Command, args []string)
 		return err
 	}
 
+	validFormats := []string{"", "json", "yaml"}
+	if !slices.Contains(validFormats, c.flagFormat) {
+		return fmt.Errorf(`Invalid value for flag "--format": %q`, c.flagFormat)
+	}
+
 	return nil
 }
 
@@ -156,22 +168,41 @@ func (c *cmdWarningShow) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("UUID: %s\n", warning.UUID.String())
-	fmt.Printf("Status: %s\n", warning.Status)
-	fmt.Printf("Scope: %s\n", warning.Scope.Scope)
-	fmt.Printf("Entity Type: %s\n", warning.Scope.EntityType)
-	fmt.Printf("Entity: %s\n", warning.Scope.Entity)
-	fmt.Printf("Type: %s\n", warning.Type)
-	fmt.Printf("First Occurrence: %s\n", warning.FirstOccurrence.Truncate(time.Second).String())
-	fmt.Printf("Last Occurrence: %s\n", warning.LastOccurrence.Truncate(time.Second).String())
-	fmt.Printf("Last Updated: %s\n", warning.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Messages:\n")
+	switch c.flagFormat {
+	case "json":
+		enc := json.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent("", "  ")
+		err = enc.Encode(warning)
+		if err != nil {
+			return err
+		}
 
-	for _, message := range warning.Messages {
-		fmt.Printf("  - %s\n", message)
+	case "yaml":
+		enc := yaml.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent(2)
+		err = enc.Encode(warning)
+		if err != nil {
+			return err
+		}
+
+	default:
+		fmt.Printf("UUID: %s\n", warning.UUID.String())
+		fmt.Printf("Status: %s\n", warning.Status)
+		fmt.Printf("Scope: %s\n", warning.Scope.Scope)
+		fmt.Printf("Entity Type: %s\n", warning.Scope.EntityType)
+		fmt.Printf("Entity: %s\n", warning.Scope.Entity)
+		fmt.Printf("Type: %s\n", warning.Type)
+		fmt.Printf("First Occurrence: %s\n", warning.FirstOccurrence.Truncate(time.Second).String())
+		fmt.Printf("Last Occurrence: %s\n", warning.LastOccurrence.Truncate(time.Second).String())
+		fmt.Printf("Last Updated: %s\n", warning.LastUpdated.Truncate(time.Second).String())
+		fmt.Printf("Messages:\n")
+
+		for _, message := range warning.Messages {
+			fmt.Printf("  - %s\n", message)
+		}
+
+		fmt.Printf("Count: %d\n", warning.Count)
 	}
-
-	fmt.Printf("Count: %d\n", warning.Count)
 
 	return nil
 }

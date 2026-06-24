@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -680,6 +681,7 @@ func (c *cmdClusterRename) run(cmd *cobra.Command, args []string) error {
 type cmdClusterShow struct {
 	ocClient *client.OperationsCenterClient
 
+	flagFormat         string
 	flagShowProperties bool
 }
 
@@ -691,6 +693,7 @@ func (c *cmdClusterShow) Command() *cobra.Command {
   Show information about a cluster.
 `
 
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
 	cmd.Flags().BoolVar(&c.flagShowProperties, "properties", false, "show cluster properties")
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -706,6 +709,11 @@ func (c *cmdClusterShow) validateArgsAndFlags(cmd *cobra.Command, args []string)
 		return err
 	}
 
+	validFormats := []string{"", "json", "yaml"}
+	if !slices.Contains(validFormats, c.flagFormat) {
+		return fmt.Errorf(`Invalid value for flag "--format": %q`, c.flagFormat)
+	}
+
 	return nil
 }
 
@@ -717,41 +725,60 @@ func (c *cmdClusterShow) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	needUpdate := strings.Join(cluster.UpdateStatus.NeedsUpdate, ", ")
-	if needUpdate == "" {
-		needUpdate = "-"
-	}
-
-	needReboot := strings.Join(cluster.UpdateStatus.NeedsReboot, ", ")
-	if needReboot == "" {
-		needReboot = "-"
-	}
-
-	inMaintenance := strings.Join(cluster.UpdateStatus.InMaintenance, ", ")
-	if inMaintenance == "" {
-		inMaintenance = "-"
-	}
-
-	fmt.Printf("Name: %s\n", cluster.Name)
-	fmt.Printf("Connection URL: %s\n", cluster.ConnectionURL)
-	fmt.Printf("Description: %s\n", cluster.Description)
-	fmt.Printf("Certificate:\n%s", indent("  ", strings.TrimSpace(cluster.Certificate)))
-	fmt.Printf("Certificate Fingerprint: %s\n", cluster.Fingerprint)
-	fmt.Printf("Channel: %s\n", cluster.Channel)
-	fmt.Printf("Status: %s\n", cluster.Status.String())
-	fmt.Printf("Update Status:\n")
-	fmt.Printf("  Need Update: %s\n", needUpdate)
-	fmt.Printf("  Need Reboot: %s\n", needReboot)
-	fmt.Printf("  In Maintenance: %s\n", inMaintenance)
-	fmt.Printf("Last Updated: %s\n", cluster.LastUpdated.Truncate(time.Second).String())
-
-	if c.flagShowProperties {
-		propertiesYAML, err := yaml.Marshal(cluster.Properties)
+	switch c.flagFormat {
+	case "json":
+		enc := json.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent("", "  ")
+		err = enc.Encode(cluster)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Properties:\n%s\n", render.Indent(4, string(propertiesYAML)))
+	case "yaml":
+		enc := yaml.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent(2)
+		err = enc.Encode(cluster)
+		if err != nil {
+			return err
+		}
+
+	default:
+		needUpdate := strings.Join(cluster.UpdateStatus.NeedsUpdate, ", ")
+		if needUpdate == "" {
+			needUpdate = "-"
+		}
+
+		needReboot := strings.Join(cluster.UpdateStatus.NeedsReboot, ", ")
+		if needReboot == "" {
+			needReboot = "-"
+		}
+
+		inMaintenance := strings.Join(cluster.UpdateStatus.InMaintenance, ", ")
+		if inMaintenance == "" {
+			inMaintenance = "-"
+		}
+
+		fmt.Printf("Name: %s\n", cluster.Name)
+		fmt.Printf("Connection URL: %s\n", cluster.ConnectionURL)
+		fmt.Printf("Description: %s\n", cluster.Description)
+		fmt.Printf("Certificate:\n%s", indent("  ", strings.TrimSpace(cluster.Certificate)))
+		fmt.Printf("Certificate Fingerprint: %s\n", cluster.Fingerprint)
+		fmt.Printf("Channel: %s\n", cluster.Channel)
+		fmt.Printf("Status: %s\n", cluster.Status.String())
+		fmt.Printf("Update Status:\n")
+		fmt.Printf("  Need Update: %s\n", needUpdate)
+		fmt.Printf("  Need Reboot: %s\n", needReboot)
+		fmt.Printf("  In Maintenance: %s\n", inMaintenance)
+		fmt.Printf("Last Updated: %s\n", cluster.LastUpdated.Truncate(time.Second).String())
+
+		if c.flagShowProperties {
+			propertiesYAML, err := yaml.Marshal(cluster.Properties)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Properties:\n%s\n", render.Indent(4, string(propertiesYAML)))
+		}
 	}
 
 	return nil

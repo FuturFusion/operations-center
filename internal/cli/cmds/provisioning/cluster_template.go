@@ -1,8 +1,10 @@
 package provisioning
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -250,6 +252,8 @@ func (c *cmdClusterTemplateRemove) run(cmd *cobra.Command, args []string) error 
 // Show clusterTemplate.
 type cmdClusterTemplateShow struct {
 	ocClient *client.OperationsCenterClient
+
+	flagFormat string
 }
 
 func (c *cmdClusterTemplateShow) Command() *cobra.Command {
@@ -259,6 +263,8 @@ func (c *cmdClusterTemplateShow) Command() *cobra.Command {
 	cmd.Long = `Description:
   Show information about a cluster-template.
 `
+
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -273,6 +279,11 @@ func (c *cmdClusterTemplateShow) validateArgsAndFlags(cmd *cobra.Command, args [
 		return err
 	}
 
+	validFormats := []string{"", "json", "yaml"}
+	if !slices.Contains(validFormats, c.flagFormat) {
+		return fmt.Errorf(`Invalid value for flag "--format": %q`, c.flagFormat)
+	}
+
 	return nil
 }
 
@@ -284,17 +295,36 @@ func (c *cmdClusterTemplateShow) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	variables, err := yaml.Marshal(clusterTemplate.Variables)
-	if err != nil {
-		return err
-	}
+	switch c.flagFormat {
+	case "json":
+		enc := json.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent("", "  ")
+		err = enc.Encode(clusterTemplate)
+		if err != nil {
+			return err
+		}
 
-	fmt.Printf("Name: %s\n", clusterTemplate.Name)
-	fmt.Printf("Description: %s\n", clusterTemplate.Description)
-	fmt.Printf("Service config template:\n%s\n", render.Indent(4, clusterTemplate.ServiceConfigTemplate))
-	fmt.Printf("Application config template:\n%s\n", render.Indent(4, clusterTemplate.ApplicationConfigTemplate))
-	fmt.Printf("Variables:\n%s\n", render.Indent(4, string(variables)))
-	fmt.Printf("Last Updated: %s\n", clusterTemplate.LastUpdated.Truncate(time.Second).String())
+	case "yaml":
+		enc := yaml.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent(2)
+		err = enc.Encode(clusterTemplate)
+		if err != nil {
+			return err
+		}
+
+	default:
+		variables, err := yaml.Marshal(clusterTemplate.Variables)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Name: %s\n", clusterTemplate.Name)
+		fmt.Printf("Description: %s\n", clusterTemplate.Description)
+		fmt.Printf("Service config template:\n%s\n", render.Indent(4, clusterTemplate.ServiceConfigTemplate))
+		fmt.Printf("Application config template:\n%s\n", render.Indent(4, clusterTemplate.ApplicationConfigTemplate))
+		fmt.Printf("Variables:\n%s\n", render.Indent(4, string(variables)))
+		fmt.Printf("Last Updated: %s\n", clusterTemplate.LastUpdated.Truncate(time.Second).String())
+	}
 
 	return nil
 }

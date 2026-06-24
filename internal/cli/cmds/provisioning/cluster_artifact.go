@@ -1,13 +1,16 @@
 package provisioning
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/lxc/incus/v7/shared/units"
 	"github.com/spf13/cobra"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
@@ -120,6 +123,8 @@ func (c *cmdClusterArtifactList) run(cmd *cobra.Command, args []string) error {
 // Show cluster artifact.
 type cmdClusterArtifactShow struct {
 	ocClient *client.OperationsCenterClient
+
+	flagFormat string
 }
 
 func (c *cmdClusterArtifactShow) Command() *cobra.Command {
@@ -129,6 +134,8 @@ func (c *cmdClusterArtifactShow) Command() *cobra.Command {
 	cmd.Long = `Description:
   Show information about a cluster artifact.
 `
+
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -143,6 +150,11 @@ func (c *cmdClusterArtifactShow) validateArgsAndFlags(cmd *cobra.Command, args [
 		return err
 	}
 
+	validFormats := []string{"", "json", "yaml"}
+	if !slices.Contains(validFormats, c.flagFormat) {
+		return fmt.Errorf(`Invalid value for flag "--format": %q`, c.flagFormat)
+	}
+
 	return nil
 }
 
@@ -155,45 +167,64 @@ func (c *cmdClusterArtifactShow) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Name: %s\n", clusterArtifact.Name)
-	fmt.Printf("Cluster: %s\n", clusterArtifact.Cluster)
-	fmt.Printf("Description: %s\n", clusterArtifact.Description)
-
-	fmt.Printf("Properties:\n")
-	header := []string{"Key", "Value"}
-	data := [][]string{}
-
-	for key, value := range clusterArtifact.Properties {
-		data = append(data, []string{key, value})
-	}
-
-	if len(data) > 0 {
-		sort.ColumnsNaturally(data)
-
-		renderErr := render.Table(cmd.OutOrStdout(), "compact", header, data, nil)
-		if renderErr != nil {
-			err = renderErr
-		}
-	}
-
-	fmt.Printf("Files:\n")
-	header = []string{"Filename", "Mimetype", "Size"}
-	data = [][]string{}
-
-	for _, f := range clusterArtifact.Files {
-		data = append(data, []string{f.Name, f.MimeType, units.GetByteSizeString(f.Size, 2)})
-	}
-
-	if len(data) > 0 {
-		sort.ColumnsNaturally(data)
-
-		renderErr := render.Table(cmd.OutOrStdout(), "compact", header, data, nil)
+	switch c.flagFormat {
+	case "json":
+		enc := json.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent("", "  ")
+		err = enc.Encode(clusterArtifact)
 		if err != nil {
-			err = errors.Join(err, renderErr)
+			return err
 		}
-	}
 
-	fmt.Printf("Last Updated: %s\n", clusterArtifact.LastUpdated.Truncate(time.Second).String())
+	case "yaml":
+		enc := yaml.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent(2)
+		err = enc.Encode(clusterArtifact)
+		if err != nil {
+			return err
+		}
+
+	default:
+		fmt.Printf("Name: %s\n", clusterArtifact.Name)
+		fmt.Printf("Cluster: %s\n", clusterArtifact.Cluster)
+		fmt.Printf("Description: %s\n", clusterArtifact.Description)
+
+		fmt.Printf("Properties:\n")
+		header := []string{"Key", "Value"}
+		data := [][]string{}
+
+		for key, value := range clusterArtifact.Properties {
+			data = append(data, []string{key, value})
+		}
+
+		if len(data) > 0 {
+			sort.ColumnsNaturally(data)
+
+			renderErr := render.Table(cmd.OutOrStdout(), "compact", header, data, nil)
+			if renderErr != nil {
+				err = renderErr
+			}
+		}
+
+		fmt.Printf("Files:\n")
+		header = []string{"Filename", "Mimetype", "Size"}
+		data = [][]string{}
+
+		for _, f := range clusterArtifact.Files {
+			data = append(data, []string{f.Name, f.MimeType, units.GetByteSizeString(f.Size, 2)})
+		}
+
+		if len(data) > 0 {
+			sort.ColumnsNaturally(data)
+
+			renderErr := render.Table(cmd.OutOrStdout(), "compact", header, data, nil)
+			if err != nil {
+				err = errors.Join(err, renderErr)
+			}
+		}
+
+		fmt.Printf("Last Updated: %s\n", clusterArtifact.LastUpdated.Truncate(time.Second).String())
+	}
 
 	return err
 }

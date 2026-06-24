@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/lxc/incus/v7/shared/termios"
@@ -165,6 +166,8 @@ func (c *cmdIncusImagesList) run(cmd *cobra.Command, args []string) error {
 // Show incus image.
 type cmdIncusImageShow struct {
 	ocClient *client.OperationsCenterClient
+
+	flagFormat string
 }
 
 func (c *cmdIncusImageShow) Command() *cobra.Command {
@@ -174,6 +177,8 @@ func (c *cmdIncusImageShow) Command() *cobra.Command {
 	cmd.Long = `Description:
   Show information about an Incus image.
 `
+
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -188,6 +193,11 @@ func (c *cmdIncusImageShow) validateArgsAndFlags(cmd *cobra.Command, args []stri
 		return err
 	}
 
+	validFormats := []string{"", "json", "yaml"}
+	if !slices.Contains(validFormats, c.flagFormat) {
+		return fmt.Errorf(`Invalid value for flag "--format": %q`, c.flagFormat)
+	}
+
 	return nil
 }
 
@@ -199,24 +209,43 @@ func (c *cmdIncusImageShow) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Name: %s\n", incusImage.Name)
-	fmt.Printf("Aliases:\n")
-	for _, alias := range incusImage.Aliases {
-		fmt.Printf("  - %s\n", alias)
-	}
+	switch c.flagFormat {
+	case "json":
+		enc := json.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent("", "  ")
+		err = enc.Encode(incusImage)
+		if err != nil {
+			return err
+		}
 
-	fmt.Printf("Operating system: %s\n", incusImage.OperatingSystem)
-	fmt.Printf("Release: %s\n", incusImage.Release)
-	fmt.Printf("Architecture: %s\n", incusImage.Architecture)
-	fmt.Printf("Variant: %s\n", incusImage.Variant)
-	fmt.Printf("Description: %s\n", incusImage.Description)
-	fmt.Printf("Last Updated: %s\n", incusImage.LastUpdated.Truncate(time.Second).String())
+	case "yaml":
+		enc := yaml.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent(2)
+		err = enc.Encode(incusImage)
+		if err != nil {
+			return err
+		}
 
-	fmt.Printf("Versions:\n")
-	for versionIdentifier, imageVersion := range maps.OrderedByKey(incusImage.Versions) {
-		fmt.Printf("  %s:\n", versionIdentifier)
-		for filename, item := range maps.OrderedByKey(imageVersion.Items) {
-			fmt.Printf("    %s: %s\n", filename, units.GetByteSizeString(item.Size, 2))
+	default:
+		fmt.Printf("Name: %s\n", incusImage.Name)
+		fmt.Printf("Aliases:\n")
+		for _, alias := range incusImage.Aliases {
+			fmt.Printf("  - %s\n", alias)
+		}
+
+		fmt.Printf("Operating system: %s\n", incusImage.OperatingSystem)
+		fmt.Printf("Release: %s\n", incusImage.Release)
+		fmt.Printf("Architecture: %s\n", incusImage.Architecture)
+		fmt.Printf("Variant: %s\n", incusImage.Variant)
+		fmt.Printf("Description: %s\n", incusImage.Description)
+		fmt.Printf("Last Updated: %s\n", incusImage.LastUpdated.Truncate(time.Second).String())
+
+		fmt.Printf("Versions:\n")
+		for versionIdentifier, imageVersion := range maps.OrderedByKey(incusImage.Versions) {
+			fmt.Printf("  %s:\n", versionIdentifier)
+			for filename, item := range maps.OrderedByKey(imageVersion.Items) {
+				fmt.Printf("    %s: %s\n", filename, units.GetByteSizeString(item.Size, 2))
+			}
 		}
 	}
 

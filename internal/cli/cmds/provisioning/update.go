@@ -1,9 +1,11 @@
 package provisioning
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -203,6 +205,8 @@ func (c *cmdUpdateList) run(cmd *cobra.Command, args []string) error {
 // Show update.
 type cmdUpdateShow struct {
 	ocClient *client.OperationsCenterClient
+
+	flagFormat string
 }
 
 func (c *cmdUpdateShow) Command() *cobra.Command {
@@ -212,6 +216,8 @@ func (c *cmdUpdateShow) Command() *cobra.Command {
 	cmd.Long = `Description:
   Show information about an update.
 `
+
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -226,6 +232,11 @@ func (c *cmdUpdateShow) validateArgsAndFlags(cmd *cobra.Command, args []string) 
 		return err
 	}
 
+	validFormats := []string{"", "json", "yaml"}
+	if !slices.Contains(validFormats, c.flagFormat) {
+		return fmt.Errorf(`Invalid value for flag "--format": %q`, c.flagFormat)
+	}
+
 	return nil
 }
 
@@ -237,23 +248,42 @@ func (c *cmdUpdateShow) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	updateFiles, err := c.ocClient.GetUpdateFiles(cmd.Context(), id)
-	if err != nil {
-		return err
-	}
+	switch c.flagFormat {
+	case "json":
+		enc := json.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent("", "  ")
+		err = enc.Encode(update)
+		if err != nil {
+			return err
+		}
 
-	fmt.Printf("UUID: %s\n", update.UUID.String())
-	fmt.Printf("Origin: %s\n", update.Origin)
-	fmt.Printf("Channels: %s\n", strings.Join(update.Channels, ", "))
-	fmt.Printf("Upstream Channels: %s\n", strings.Join(update.UpstreamChannels, ", "))
-	fmt.Printf("Version: %s\n", update.Version)
-	fmt.Printf("Published At: %s\n", update.PublishedAt.Truncate(time.Second).String())
-	fmt.Printf("Severity: %s\n", update.Severity.String())
-	fmt.Printf("Status: %s\n", update.Status.String())
-	fmt.Println("Files:")
+	case "yaml":
+		enc := yaml.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent(2)
+		err = enc.Encode(update)
+		if err != nil {
+			return err
+		}
 
-	for _, updateFile := range updateFiles {
-		fmt.Printf("- %s (%s)\n", updateFile.Filename, humanize.Bytes(uint64(updateFile.Size)))
+	default:
+		updateFiles, err := c.ocClient.GetUpdateFiles(cmd.Context(), id)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("UUID: %s\n", update.UUID.String())
+		fmt.Printf("Origin: %s\n", update.Origin)
+		fmt.Printf("Channels: %s\n", strings.Join(update.Channels, ", "))
+		fmt.Printf("Upstream Channels: %s\n", strings.Join(update.UpstreamChannels, ", "))
+		fmt.Printf("Version: %s\n", update.Version)
+		fmt.Printf("Published At: %s\n", update.PublishedAt.Truncate(time.Second).String())
+		fmt.Printf("Severity: %s\n", update.Severity.String())
+		fmt.Printf("Status: %s\n", update.Status.String())
+		fmt.Println("Files:")
+
+		for _, updateFile := range updateFiles {
+			fmt.Printf("- %s (%s)\n", updateFile.Filename, humanize.Bytes(uint64(updateFile.Size)))
+		}
 	}
 
 	return nil

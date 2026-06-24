@@ -1,9 +1,11 @@
 package provisioning
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"time"
 
@@ -248,6 +250,8 @@ func (c *cmdTokenRemove) run(cmd *cobra.Command, args []string) error {
 // Show token.
 type cmdTokenShow struct {
 	ocClient *client.OperationsCenterClient
+
+	flagFormat string
 }
 
 func (c *cmdTokenShow) Command() *cobra.Command {
@@ -257,6 +261,8 @@ func (c *cmdTokenShow) Command() *cobra.Command {
 	cmd.Long = `Description:
   Show information about a token.
 `
+
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "", `Format (json|yaml)`)
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -271,6 +277,11 @@ func (c *cmdTokenShow) validateArgsAndFlags(cmd *cobra.Command, args []string) e
 		return err
 	}
 
+	validFormats := []string{"", "json", "yaml"}
+	if !slices.Contains(validFormats, c.flagFormat) {
+		return fmt.Errorf(`Invalid value for flag "--format": %q`, c.flagFormat)
+	}
+
 	return nil
 }
 
@@ -282,11 +293,30 @@ func (c *cmdTokenShow) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("UUID: %s\n", token.UUID.String())
-	fmt.Printf("Uses Remaining: %s\n", strconv.FormatInt(int64(token.UsesRemaining), 10))
-	fmt.Printf("Expire At: %s\n", token.ExpireAt.Truncate(time.Second).String())
-	fmt.Printf("Channel: %s\n", token.Channel)
-	fmt.Printf("Description: %s\n", token.Description)
+	switch c.flagFormat {
+	case "json":
+		enc := json.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent("", "  ")
+		err = enc.Encode(token)
+		if err != nil {
+			return err
+		}
+
+	case "yaml":
+		enc := yaml.NewEncoder(c.Command().OutOrStdout())
+		enc.SetIndent(2)
+		err = enc.Encode(token)
+		if err != nil {
+			return err
+		}
+
+	default:
+		fmt.Printf("UUID: %s\n", token.UUID.String())
+		fmt.Printf("Uses Remaining: %s\n", strconv.FormatInt(int64(token.UsesRemaining), 10))
+		fmt.Printf("Expire At: %s\n", token.ExpireAt.Truncate(time.Second).String())
+		fmt.Printf("Channel: %s\n", token.Channel)
+		fmt.Printf("Description: %s\n", token.Description)
+	}
 
 	return nil
 }
