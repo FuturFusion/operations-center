@@ -181,7 +181,6 @@ const OSApplications: FC = () => {
         <OSAction
           label="Add application"
           mode="fields"
-          variant="primary"
           submitLabel="Add"
           fields={[{ name: "name", label: "Name", required: true }]}
           run={(input) =>

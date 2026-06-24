@@ -11,7 +11,6 @@ const SecureBootActions: FC = () => (
   <OSAction
     label="Update keys"
     mode="confirm"
-    variant="primary"
     confirmMessage="Update the secure boot keys?"
     run={() => runOSAction("debug/secureboot", "update")}
     successMessage="Secure boot keys update triggered"

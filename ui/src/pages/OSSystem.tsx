@@ -51,7 +51,6 @@ const NetworkActions: FC = () => (
     <OSAction
       label="Confirm configuration"
       mode="confirm"
-      variant="primary"
       confirmMessage="Confirm the new network configuration?"
       run={() => runOSAction("system/network", "confirm")}
       successMessage="Network configuration confirmed"
@@ -81,7 +80,6 @@ const StorageActions: FC = () => (
     <OSAction
       label="Create volume"
       mode="fields"
-      variant="primary"
       submitLabel="Create"
       fields={[
         { name: "pool", label: "Pool" },
@@ -96,6 +94,7 @@ const StorageActions: FC = () => (
     <OSAction
       label="Delete volume"
       mode="fields"
+      variant="danger"
       submitLabel="Delete"
       confirmMessage="This will delete the storage volume."
       fields={[
@@ -110,6 +109,7 @@ const StorageActions: FC = () => (
     <OSAction
       label="Delete pool"
       mode="fields"
+      variant="danger"
       submitLabel="Delete"
       confirmMessage="This will delete the storage pool."
       fields={[{ name: "name", label: "Name" }]}
@@ -128,6 +128,7 @@ const StorageActions: FC = () => (
     <OSAction
       label="Encrypt drive"
       mode="fields"
+      variant="danger"
       submitLabel="Encrypt"
       confirmMessage="This will wipe and encrypt the drive."
       fields={[
@@ -141,6 +142,7 @@ const StorageActions: FC = () => (
     <OSAction
       label="Wipe drive"
       mode="fields"
+      variant="danger"
       submitLabel="Wipe"
       confirmMessage="This will wipe the drive."
       fields={[
@@ -182,7 +184,6 @@ const UpdateActions: FC = () => (
   <OSAction
     label="Check for updates"
     mode="confirm"
-    variant="primary"
     confirmMessage="Check for updates and apply any pending update?"
     run={() => runOSAction("system/update", "check", {})}
     successMessage="Update check triggered"

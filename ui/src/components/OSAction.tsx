@@ -148,7 +148,7 @@ const OSAction: FC<Props> = ({
   ) : (
     <Button
       size="sm"
-      variant={variant}
+      variant={variant === "danger" ? "danger" : "success"}
       disabled={inProgress}
       onClick={handleClick}
     >
