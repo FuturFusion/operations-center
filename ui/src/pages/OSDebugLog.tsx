@@ -108,7 +108,7 @@ const OSDebugLog: FC = () => {
             onChange={(e) => setEntries(e.target.value)}
           />
         </Form.Group>
-        <Button size="sm" variant="primary" type="submit">
+        <Button size="sm" variant="success" type="submit">
           Apply
         </Button>
       </Form>

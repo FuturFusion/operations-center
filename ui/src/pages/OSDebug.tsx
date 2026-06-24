@@ -11,7 +11,6 @@ const SecureBootActions: FC = () => (
   <OSAction
     label="Update keys"
     mode="confirm"
-    variant="primary"
     confirmMessage="Update the secure boot keys?"
     run={() => runOSAction("debug/secureboot", "update")}
     successMessage="Secure boot keys update triggered"
@@ -50,7 +49,7 @@ const OSDebug: FC = () => {
 
   return (
     <TabView
-      defaultTab="log"
+      defaultTab={subTabs[0].key}
       activeTab={subTab}
       tabs={subTabs}
       onSelect={(key) => navigate(`/ui/os/debug/${key}`)}
