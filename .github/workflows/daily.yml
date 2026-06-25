@@ -31,7 +31,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
         run: |
           sudo apt install -y linux-headers-$(uname -r)
-          sudo apt install -y curl jq make build-essential systemd-timesyncd unzip zfsutils-linux
+          sudo --preserve-env=DEBIAN_FRONTEND apt install -y curl jq make build-essential systemd-timesyncd unzip zfsutils-linux
 
           sudo systemctl enable systemd-timesyncd
           sudo systemctl restart systemd-timesyncd
