@@ -16,6 +16,7 @@ FuturFusion
 gapped
 github
 GitHub
+GPG
 https
 Incus
 incusos
@@ -28,6 +29,7 @@ Keychain
 keypair
 lang
 linuxcontainers
+LLMs
 LVM
 MacOS
 multipath
