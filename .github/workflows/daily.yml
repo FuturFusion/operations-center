@@ -15,11 +15,8 @@ jobs:
     timeout-minutes: 181
     runs-on:
       - self-hosted
-      - cpu-24
-      - mem-32G
-      - disk-250G
       - arch-amd64
-      - image-debian-13
+      - futurfusion-operations-center-daily
     steps:
       - name: Checkout
         uses: actions/checkout@v6
