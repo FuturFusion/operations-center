@@ -81,6 +81,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/system"
 	systemServiceMiddleware "github.com/FuturFusion/operations-center/internal/system/middleware"
+	"github.com/FuturFusion/operations-center/internal/util/cors"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
@@ -968,6 +969,12 @@ func (d *Daemon) setupAPIRoutes(
 	}
 
 	simplestreamsRouter := router.SubGroup("/incus-images")
+	simplestreamsRouter.AddMiddlewares(cors.Handler(cors.CORSConfig{
+		AllowedOrigins:   "*",
+		AllowedMethods:   "GET",
+		AllowedHeaders:   "*",
+		AllowCredentials: false,
+	}))
 
 	api10router := router.SubGroup("/1.0").AddMiddlewares(
 		d.authenticator.Middleware(authn.WithIsAuthenticationRequired(isAuthenticationRequired)),
