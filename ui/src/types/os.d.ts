@@ -42,3 +42,7 @@ export interface IncusOSConfig {
   state: object;
   config: object;
 }
+
+export interface IncusOSNetworkState {
+  configuration_in_process?: boolean;
+}
