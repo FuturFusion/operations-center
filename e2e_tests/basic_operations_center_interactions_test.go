@@ -100,7 +100,7 @@ func ocIncusImagesRemoteLaunchInstance(names []string) func(t *testing.T, tmpDir
 		fmt.Println(resp.Output())
 
 		t.Logf("Add images to operations-center")
-		mustRun(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s %[3]s/incus.tar.xz %[3]s/root.squashfs %[3]s/disk.qcow2`, cpuArch, currentAlpineVersion, tmpImagesDir)
+		mustRun(t, `../bin/operations-center.linux.%[1]s image incus add %[2]s/incus.tar.xz %[2]s/root.squashfs %[2]s/disk.qcow2`, cpuArch, tmpImagesDir)
 		resp = mustRun(t, `../bin/operations-center.linux.%[1]s image incus list`, cpuArch)
 		fmt.Println(resp.Output())
 
