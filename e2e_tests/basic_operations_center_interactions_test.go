@@ -112,7 +112,7 @@ func ocIncusImagesRemoteLaunchInstance(names []string) func(t *testing.T, tmpDir
 		fmt.Println(resp.Output())
 
 		t.Logf("Start container from operations-center-images remote on %s", name)
-		resp = mustRun(t, `incus exec %s -- incus image list operations-center-images: --format json | jq -r '[ .[] | select(.type == "container" and .properties.os == "alpine") | .fingerprint ] | first'`, name)
+		resp = mustRun(t, `incus exec %s -- incus image list operations-center-images: --format json | jq -r '[ .[] | select(.type == "container" and .properties.os == "alpinelinux") | .fingerprint ] | first'`, name)
 		alpineContainerFingerprint := resp.OutputTrimmed()
 
 		mustRun(t, `incus exec %s -- incus launch operations-center-images:%s a1`, name, alpineContainerFingerprint)
