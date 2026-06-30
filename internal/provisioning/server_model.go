@@ -171,6 +171,12 @@ func (s Server) SignalLifecycleEvent() {
 	}()
 }
 
+var ServerSelf = Server{
+	Name:          "operations-center",
+	Type:          api.ServerTypeOperationsCenter,
+	ConnectionURL: "socket.unix",
+}
+
 type Servers []Server
 
 type ServerFilter struct {
@@ -245,6 +251,8 @@ type ServerSystemUpdate = api.ServerSystemUpdate
 type ServerSystemKernel = api.ServerSystemKernel
 
 type ServerSystemLogging = api.ServerSystemLogging
+
+type ServerSystemSecurity = api.ServerSystemSecurity
 
 // ErrSelfUpdateNotification is used as cause when the context is
 // cancelled while waiting for the update of the network config
