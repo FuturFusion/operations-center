@@ -24,6 +24,7 @@ type tokenService struct {
 	updateSvc  provisioning.UpdateService
 	channelSvc provisioning.ChannelService
 	flasher    provisioning.FlasherPort
+	client     provisioning.TokenClientPort
 
 	randomUUID func() (uuid.UUID, error)
 
@@ -35,12 +36,13 @@ var _ provisioning.TokenService = &tokenService{}
 
 type Option func(s *tokenService)
 
-func New(repo provisioning.TokenRepo, updateSvc provisioning.UpdateService, channelSvc provisioning.ChannelService, flasher provisioning.FlasherPort, opts ...Option) *tokenService {
+func New(repo provisioning.TokenRepo, updateSvc provisioning.UpdateService, channelSvc provisioning.ChannelService, flasher provisioning.FlasherPort, client provisioning.TokenClientPort, opts ...Option) *tokenService {
 	tokenSvc := &tokenService{
 		repo:       repo,
 		updateSvc:  updateSvc,
 		channelSvc: channelSvc,
 		flasher:    flasher,
+		client:     client,
 		randomUUID: uuid.NewRandom,
 		imagesMu:   sync.Mutex{},
 		images:     map[uuid.UUID]imageRecord{},
@@ -340,6 +342,11 @@ func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageT
 		return nil, fmt.Errorf("Failed to get files for update %q: %w", latestUpdate.UUID.String(), err)
 	}
 
+	securityConfig, err := s.client.GetSecurityConfig(ctx, provisioning.ServerSelf)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get operations-center's security config")
+	}
+
 	var filename string
 	for _, file := range updateFiles {
 		if file.Type == imageType.UpdateFileType() && file.Architecture == architecture {
@@ -376,6 +383,9 @@ func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageT
 
 	seeds.Incus.Version = "1"
 	seeds.Incus.ApplyDefaults = false
+
+	seeds.Security.Version = "1"
+	seeds.Security.CustomCACerts = securityConfig.Config.CustomCACerts
 
 	seeds.Update.Version = "1"
 	seeds.Update.AutoReboot = false

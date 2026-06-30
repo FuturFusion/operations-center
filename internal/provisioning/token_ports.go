@@ -45,6 +45,10 @@ type TokenRepo interface {
 	DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) error
 }
 
+type TokenClientPort interface {
+	GetSecurityConfig(ctx context.Context, server Server) (ServerSystemSecurity, error)
+}
+
 type FlasherPort interface {
 	GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (*api.TokenProviderConfig, error)
 	GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error)

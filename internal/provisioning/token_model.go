@@ -52,6 +52,7 @@ type TokenImageSeedConfigs struct {
 	MigrationManager api.SeedMigrationManager `json:"migration_manager"`
 	Network          api.SeedNetwork          `json:"network"`
 	OperationsCenter api.SeedOperationsCenter `json:"operations_center"`
+	Security         api.SeedSecurity         `json:"security"`
 	Update           api.SeedUpdate           `json:"update"`
 }
 

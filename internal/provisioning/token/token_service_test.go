@@ -116,7 +116,7 @@ func TestTokenService_Create(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, nil, nil, nil,
+			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil,
 				provisioningToken.WithRandomUUID(func() (uuid.UUID, error) { return tc.randomUUIDValue, tc.randomUUIDErr }),
 			)
 
@@ -176,7 +176,7 @@ func TestTokenService_GetAll(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, nil, nil, nil)
+			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil)
 
 			// Run test
 			tokens, err := tokenSvc.GetAll(context.Background())
@@ -225,7 +225,7 @@ func TestTokenService_GetAllUUIDs(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, nil, nil, nil)
+			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil)
 
 			// Run test
 			tokenIDs, err := tokenSvc.GetAllUUIDs(context.Background())
@@ -276,7 +276,7 @@ func TestTokenService_GetByID(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, nil, nil, nil)
+			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil)
 
 			// Run test
 			token, err := tokenSvc.GetByUUID(context.Background(), tc.idArg)
@@ -347,7 +347,7 @@ func TestTokenService_Update(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, nil, nil, nil)
+			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil)
 
 			// Run test
 			err := tokenSvc.Update(context.Background(), tc.token)
@@ -390,7 +390,7 @@ func TestTokenService_DeleteByUUID(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, nil, nil, nil)
+			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil)
 
 			// Run test
 			err := tokenSvc.DeleteByUUID(context.Background(), tc.idArg)
@@ -542,7 +542,7 @@ func TestTokenService_Consume(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, nil, nil, nil)
+			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil)
 
 			// Run test
 			channel, err := tokenSvc.Consume(context.Background(), tc.tokenArg)
@@ -658,7 +658,7 @@ func TestTokenService_PreparePreSeededImage(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, nil, nil, nil)
+			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil)
 			for _, image := range tc.existingImages {
 				tokenSvc.AddImage(image.imageUUID, image.tokenID, image.imageType, image.architecture, image.channel, image.seedConfig, image.createdAt)
 			}
@@ -1185,7 +1185,13 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, updateSvc, channelSvc, flasherAdapter)
+			client := &adapterMock.TokenClientPortMock{
+				GetSecurityConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemSecurity, error) {
+					return provisioning.ServerSystemSecurity{}, nil
+				},
+			}
+
+			tokenSvc := provisioningToken.New(repo, updateSvc, channelSvc, flasherAdapter, client)
 			for _, image := range tc.existingImages {
 				tokenSvc.AddImage(image.imageUUID, image.tokenID, image.imageType, image.architecture, image.channel, image.seedConfig, image.createdAt)
 			}
@@ -1249,7 +1255,7 @@ func TestTokenService_GetTokenProviderConfig(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(nil, nil, nil, flasher)
+			tokenSvc := provisioningToken.New(nil, nil, nil, flasher, nil)
 
 			// Run test
 			got, err := tokenSvc.GetTokenProviderConfig(t.Context(), uuidgen.FromPattern(t, "1"))
@@ -1308,7 +1314,7 @@ func TestTokenService_CreateTokenSeed(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, nil, nil, nil)
+			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil)
 
 			// Run test
 			_, err := tokenSvc.CreateTokenSeed(t.Context(), tc.tokenSeed)
@@ -1364,7 +1370,7 @@ func TestTokenService_GetTokenSeedsAll(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, nil, nil, nil)
+			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil)
 
 			// Run test
 			tokens, err := tokenSvc.GetTokenSeedAll(context.Background(), uuidgen.FromPattern(t, "1"))
@@ -1416,7 +1422,7 @@ func TestTokenService_GetTokenSeedAllNames(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, nil, nil, nil)
+			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil)
 
 			// Run test
 			tokenIDs, err := tokenSvc.GetTokenSeedAllNames(context.Background(), tc.idArg)
@@ -1469,7 +1475,7 @@ func TestTokenService_GetTokenSeedByName(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, nil, nil, nil)
+			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil)
 
 			// Run test
 			tokenSeed, err := tokenSvc.GetTokenSeedByName(t.Context(), tc.idArg, tc.nameArg)
@@ -1534,7 +1540,7 @@ func TestTokenService_UpdateTokenSeed(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, nil, nil, nil)
+			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil)
 
 			// Run test
 			err := tokenSvc.UpdateTokenSeed(context.Background(), tc.token)
@@ -1580,7 +1586,7 @@ func TestTokenService_DeleteTokenSeedByUUID(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, nil, nil, nil)
+			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil)
 
 			// Run test
 			err := tokenSvc.DeleteTokenSeedByName(context.Background(), tc.idArg, tc.nameArg)
@@ -1959,7 +1965,13 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, updateSvc, channelSvc, flasherAdapter)
+			client := &adapterMock.TokenClientPortMock{
+				GetSecurityConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemSecurity, error) {
+					return provisioning.ServerSystemSecurity{}, nil
+				},
+			}
+
+			tokenSvc := provisioningToken.New(repo, updateSvc, channelSvc, flasherAdapter, client)
 
 			// Run test
 			rc, err := tokenSvc.GetTokenImageFromTokenSeed(context.Background(), uuidgen.FromPattern(t, "1"), "config", tc.imageTypeArg, tc.architectureArg, tc.channelArg)
