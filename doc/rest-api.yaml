@@ -4162,6 +4162,9 @@ definitions:
         x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemNetworkState:
         properties:
+            configuration_in_process:
+                type: boolean
+                x-go-name: ConfigurationInProcess
             interfaces:
                 additionalProperties:
                     $ref: '#/definitions/SystemNetworkInterfaceState'
@@ -4507,12 +4510,14 @@ definitions:
             system_state_is_trusted:
                 type: boolean
                 x-go-name: SystemStateIsTrusted
+            system_state_status:
+                type: string
+                x-go-name: SystemStateStatus
             tpm_public_key:
                 type: string
                 x-go-name: TPMPublicKey
             tpm_status:
-                type: string
-                x-go-name: TPMStatus
+                $ref: '#/definitions/TPMStatus'
         title: SystemSecurityState holds information about the current security state.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
@@ -4823,6 +4828,10 @@ definitions:
                 x-go-name: StartMinute
         title: SystemUpdateMaintenanceWindow defines a maintenance window for when it is acceptable to check for and apply updates.
         type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    TPMStatus:
+        title: TPMStatus defines a custom type for reporting the system's TPM status.
+        type: string
         x-go-package: github.com/lxc/incus-os/incus-osd/api
     Token:
         properties:
