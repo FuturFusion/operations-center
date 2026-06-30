@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -40,6 +42,11 @@ type Server struct {
 	StatusDetail         api.ServerStatusDetail `json:"status_detail"`
 	Description          string                 `json:"description"`
 	Properties           api.ConfigMap          `json:"properties"`
+	BMCAPIType           api.BMCAPIType         `json:"bmc_api_type"           db:"sql=servers.bmc_api_type&marshal=json"`
+	BMCEndpoint          string                 `json:"bmc_endpoint"`
+	BMCUsername          string                 `json:"bmc_username"`
+	BMCPassword          string                 `json:"bmc_password"`
+	RegistrationToken    uuid.UUID              `json:"registration_token"`
 	LastUpdated          time.Time              `json:"last_updated"           db:"update_timestamp"`
 	LastSeen             time.Time              `json:"last_seen"`
 	LastStatusUpdated    time.Time              `json:"last_status_updated"`
@@ -93,17 +100,8 @@ func (s Server) Validate() error {
 		return domain.NewValidationErrf("Invalid server, name can not be empty")
 	}
 
-	if s.Name == ":self" {
-		return domain.NewValidationErrf(`Invalid server, ":self" is reserved for internal use and not allowed as server name`)
-	}
-
-	if s.Type != api.ServerTypeOperationsCenter && s.ConnectionURL == "" {
-		return domain.NewValidationErrf("Invalid server, connection URL can not be empty for server type %s", s.Type)
-	}
-
-	_, err := url.Parse(s.ConnectionURL)
-	if err != nil {
-		return domain.NewValidationErrf("Invalid server, connection URL is not valid: %v", err)
+	if strings.HasPrefix(s.Name, ":") {
+		return domain.NewValidationErrf(`Invalid server, prefix ":" is reserved for internal use and not allowed as server name`)
 	}
 
 	if s.PublicConnectionURL != "" {
@@ -113,18 +111,8 @@ func (s Server) Validate() error {
 		}
 	}
 
-	if s.Certificate == "" {
-		return domain.NewValidationErrf("Invalid server, certificate can not be empty")
-	}
-
-	var serverType api.ServerType
-	err = serverType.UnmarshalText([]byte(s.Type))
-	if s.Type == "" || err != nil {
-		return domain.NewValidationErrf("Invalid server, validation of type failed: %v", err)
-	}
-
 	var serverStatus api.ServerStatus
-	err = serverStatus.UnmarshalText([]byte(s.Status))
+	err := serverStatus.UnmarshalText([]byte(s.Status))
 	if s.Status == "" || err != nil {
 		return domain.NewValidationErrf("Invalid server, validation of status failed: %v", err)
 	}
@@ -137,6 +125,42 @@ func (s Server) Validate() error {
 
 	if s.Channel == "" {
 		return domain.NewValidationErrf("Invalid server, channel can not be empty")
+	}
+
+	_, ok := api.BMCAPITypes[s.BMCAPIType]
+	if !ok {
+		return domain.NewValidationErrf("Invalid server, BMC type is invalid")
+	}
+
+	if s.BMCEndpoint != "" {
+		_, err := url.Parse(s.BMCEndpoint)
+		if err != nil {
+			return domain.NewValidationErrf("Invalid server, BMC endpoint URL is not valid: %v", err)
+		}
+	}
+
+	if s.Status == api.ServerStatusUnregistered {
+		// Everything relevant for status unregistered is validated at this point.
+		return nil
+	}
+
+	var serverType api.ServerType
+	err = serverType.UnmarshalText([]byte(s.Type))
+	if s.Type == "" || err != nil {
+		return domain.NewValidationErrf("Invalid server, validation of type failed: %v", err)
+	}
+
+	if s.Type != api.ServerTypeOperationsCenter && s.ConnectionURL == "" {
+		return domain.NewValidationErrf("Invalid server, connection URL can not be empty for server type %s", s.Type)
+	}
+
+	_, err = url.Parse(s.ConnectionURL)
+	if err != nil {
+		return domain.NewValidationErrf("Invalid server, connection URL is not valid: %v", err)
+	}
+
+	if s.Certificate == "" {
+		return domain.NewValidationErrf("Invalid server, certificate can not be empty")
 	}
 
 	return nil
