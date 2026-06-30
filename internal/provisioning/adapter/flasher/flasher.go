@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -182,7 +183,7 @@ func (f *Flasher) UpdateCertificate(cert tls.Certificate) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	if !isSelfSigned(cert) {
+	if isSystemCertPoolTrusted(cert) {
 		f.serverCertificate = ""
 		return
 	}
@@ -195,19 +196,16 @@ func (f *Flasher) UpdateCertificate(cert tls.Certificate) {
 	f.serverCertificate = string(serverCert)
 }
 
-// isSelfSigned checks if the provided TLS certificate is self-signed.
-// A certificate is considered self-signed if its subject and issuer are the same.
-// If in doubt, it returns false.
-func isSelfSigned(cert tls.Certificate) bool {
-	if cert.Leaf == nil {
+func isSystemCertPoolTrusted(cert tls.Certificate) bool {
+	roots, err := x509.SystemCertPool()
+	if err != nil {
 		return false
 	}
 
-	if cert.Leaf.Subject.String() == cert.Leaf.Issuer.String() {
-		return true
-	}
+	opts := x509.VerifyOptions{Roots: roots}
+	_, err = cert.Leaf.Verify(opts)
 
-	return false
+	return err == nil
 }
 
 func (f *Flasher) UpdateServerURL(serverURL string) {
