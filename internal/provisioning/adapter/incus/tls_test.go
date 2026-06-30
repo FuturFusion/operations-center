@@ -25,7 +25,7 @@ func Test(t *testing.T) {
 			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 			t.Cleanup(server.Close)
 
-			c := incus.New("", "")
+			c := incus.New("", "", nil)
 			cert, err := c.GetRemoteCertificate(t.Context(), provisioning.Server{
 				ConnectionURL: server.URL,
 			})

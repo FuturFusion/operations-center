@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus-os/incus-osd/api/seed"
@@ -23,10 +25,15 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+type environment interface {
+	GetUnixSocket() string
+}
+
 type client struct {
 	clientCert string
 	clientKey  string
 	clientCA   string
+	env        environment
 }
 
 var (
@@ -46,10 +53,11 @@ func (t *transportWrapper) RoundTrip(req *http.Request) (*http.Response, error) 
 	return t.transport.RoundTrip(req)
 }
 
-func New(clientCert string, clientKey string) client {
+func New(clientCert string, clientKey string, env environment) client {
 	return client{
 		clientCert: clientCert,
 		clientKey:  clientKey,
+		env:        env,
 	}
 }
 
@@ -63,24 +71,49 @@ func (c client) getClient(ctx context.Context, endpoint provisioning.Endpoint) (
 		return nil, err
 	}
 
-	args := &incus.ConnectionArgs{
-		TLSClientCert: c.clientCert,
-		TLSClientKey:  c.clientKey,
-		TLSServerCert: endpoint.GetCertificate(),
-		TLSCA:         c.clientCA,
-		SkipGetServer: true,
-		TransportWrapper: func(t *http.Transport) incus.HTTPTransporter {
-			if endpoint.GetCertificate() == "" {
-				t.TLSClientConfig.ServerName = serverName
+	var args *incus.ConnectionArgs
+
+	if endpoint.GetConnectionURL() == provisioning.ServerSelf.ConnectionURL {
+		unixDial := func(_ context.Context, network, addr string) (net.Conn, error) {
+			raddr, err := net.ResolveUnixAddr("unix", c.env.GetUnixSocket())
+			if err != nil {
+				return nil, err
 			}
 
-			return &transportWrapper{transport: t}
-		},
+			return net.DialUnix("unix", nil, raddr)
+		}
 
-		// Bypass system proxy for communication to IncusOS servers.
-		Proxy: func(r *http.Request) (*url.URL, error) {
-			return nil, nil
-		},
+		args = &incus.ConnectionArgs{
+			HTTPClient: &http.Client{
+				Transport: &http.Transport{
+					DialContext:           unixDial,
+					DisableKeepAlives:     true,
+					ExpectContinueTimeout: time.Second * 30,
+					ResponseHeaderTimeout: time.Second * 3600,
+					TLSHandshakeTimeout:   time.Second * 5,
+				},
+			},
+		}
+	} else {
+		args = &incus.ConnectionArgs{
+			TLSClientCert: c.clientCert,
+			TLSClientKey:  c.clientKey,
+			TLSServerCert: endpoint.GetCertificate(),
+			TLSCA:         c.clientCA,
+			SkipGetServer: true,
+			TransportWrapper: func(t *http.Transport) incus.HTTPTransporter {
+				if endpoint.GetCertificate() == "" {
+					t.TLSClientConfig.ServerName = serverName
+				}
+
+				return &transportWrapper{transport: t}
+			},
+
+			// Bypass system proxy for communication to IncusOS servers.
+			Proxy: func(r *http.Request) (*url.URL, error) {
+				return nil, nil
+			},
+		}
 	}
 
 	return incus.ConnectIncusWithContext(ctx, endpoint.GetConnectionURL(), args)
@@ -1170,6 +1203,26 @@ func (c client) SystemFactoryReset(ctx context.Context, endpoint provisioning.En
 	}
 
 	return nil
+}
+
+func (c client) GetSecurityConfig(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemSecurity, error) {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return provisioning.ServerSystemSecurity{}, err
+	}
+
+	resp, _, err := client.RawQuery(http.MethodGet, "/os/1.0/system/security", http.NoBody, "")
+	if err != nil {
+		return provisioning.ServerSystemSecurity{}, fmt.Errorf("Failed to get system security configuration on %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+	}
+
+	var securityConfig provisioning.ServerSystemSecurity
+	err = json.Unmarshal(resp.Metadata, &securityConfig)
+	if err != nil {
+		return provisioning.ServerSystemSecurity{}, fmt.Errorf("Unexpected response metadata while fetching system security configuration from %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+	}
+
+	return securityConfig, nil
 }
 
 func (c client) SubscribeLifecycleEvents(ctx context.Context, endpoint provisioning.Endpoint) (chan domain.LifecycleEvent, chan error, error) {

@@ -98,7 +98,7 @@ func TestClient_ClusterEndpointWithCA(t *testing.T) {
 			server.StartTLS()
 			defer server.Close()
 
-			client := New(string(clientCertPEMByte), string(clientKeyPEMByte))
+			client := New(string(clientCertPEMByte), string(clientKeyPEMByte), nil)
 			client.clientCA = string(serverCA)
 
 			// serverTarget without cluster certificate set, which is simulating the
@@ -483,7 +483,7 @@ func Test_getClient(t *testing.T) {
 	require.NoError(t, err)
 
 	err = transaction.Do(t.Context(), func(ctx context.Context) error {
-		_, err := New("", "").getClient(ctx, provisioning.Server{
+		_, err := New("", "", nil).getClient(ctx, provisioning.Server{
 			Name: "name",
 		})
 		require.NoError(t, err)

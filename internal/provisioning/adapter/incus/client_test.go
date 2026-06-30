@@ -385,7 +385,7 @@ func TestClient_Endpoint(t *testing.T) {
 					server.StartTLS()
 					defer server.Close()
 
-					client := incus.New(certPEM, keyPEM)
+					client := incus.New(certPEM, keyPEM, nil)
 
 					serverCert := pem.EncodeToMemory(&pem.Block{
 						Type:  "CERTIFICATE",
@@ -433,7 +433,7 @@ func endpointGetClientErr(t *testing.T, method methodTestSetEndpoint, caPool *x5
 	server.StartTLS()
 	defer server.Close()
 
-	client := incus.New(certPEM, certPEM) // invalid key
+	client := incus.New(certPEM, certPEM, nil) // invalid key
 
 	serverCert := pem.EncodeToMemory(&pem.Block{
 		Type:  "CERTIFICATE",
@@ -4291,7 +4291,7 @@ func TestClientServer(t *testing.T) {
 					server.StartTLS()
 					defer server.Close()
 
-					client := incus.New(certPEM, keyPEM)
+					client := incus.New(certPEM, keyPEM, nil)
 
 					serverCert := pem.EncodeToMemory(&pem.Block{
 						Type:  "CERTIFICATE",
@@ -4646,7 +4646,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 
 			httpHandler = tc.handler(ready, done)
 
-			client := incus.New(tc.clientCertPEM, tc.clientKeyPEM)
+			client := incus.New(tc.clientCertPEM, tc.clientKeyPEM, nil)
 
 			// Run test
 			events, errChan, err := client.SubscribeLifecycleEvents(ctx, target)
@@ -4726,7 +4726,7 @@ func serverGetClientErr(t *testing.T, method methodTestSetServer, caPool *x509.C
 	server.StartTLS()
 	defer server.Close()
 
-	client := incus.New(certPEM, certPEM) // invalid key
+	client := incus.New(certPEM, certPEM, nil) // invalid key
 
 	serverCert := pem.EncodeToMemory(&pem.Block{
 		Type:  "CERTIFICATE",
@@ -4755,7 +4755,7 @@ func setupCerts(t *testing.T) (caPool *x509.CertPool, certPEM string, keyPEM str
 }
 
 func TestClient_input_validation(t *testing.T) {
-	client := incus.New("", "")
+	client := incus.New("", "", nil)
 
 	_, err := client.GetSystem(t.Context(), provisioning.Server{}, "invalid/resource")
 	require.ErrorContains(t, err, "must not contain forward slashes")
