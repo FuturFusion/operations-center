@@ -19,6 +19,8 @@ type (
 
 	SeedOperationsCenter = seed.OperationsCenter
 
+	SeedSecurity = seed.Security
+
 	SeedUpdate       = seed.Update
 	SeedUpdateConfig = api.SystemUpdateConfig
 )

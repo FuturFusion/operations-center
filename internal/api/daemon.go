@@ -215,6 +215,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	client := provisioningIncusAdapter.New(
 		d.clientCertificate,
 		d.clientKey,
+		d.env,
 	)
 
 	loader := incusScriptlet.NewLoader()
@@ -273,7 +274,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	channelSvc := d.setupChannelService(dbWithTransaction, updateSvc)
 
-	tokenSvc := d.setupTokenService(dbWithTransaction, updateSvc, channelSvc)
+	tokenSvc := d.setupTokenService(dbWithTransaction, client, updateSvc, channelSvc)
 	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter)
 	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc)
 	if err != nil {
@@ -645,7 +646,7 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 	), nil
 }
 
-func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.UpdateService, channelSvc provisioning.ChannelService) provisioning.TokenService {
+func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenClientPort, updateSvc provisioning.UpdateService, channelSvc provisioning.ChannelService) provisioning.TokenService {
 	imageFlasher := flasher.New(
 		config.GetNetwork().OperationsCenterAddress,
 		d.serverCertificate,
@@ -667,6 +668,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 			updateSvc,
 			channelSvc,
 			imageFlasher,
+			client,
 		),
 		provisioningServiceMiddleware.TokenServiceWithSlogWithInformativeErrFunc(
 			func(err error) bool {

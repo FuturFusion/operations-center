@@ -896,6 +896,9 @@ type ServerSystemKernel = incusosapi.SystemKernel
 // ServerSystemLogging is a type alias to hold the system logging configuration from IncusOS.
 type ServerSystemLogging = incusosapi.SystemLogging
 
+// ServerSystemSecurity is a type alias to hold the system security configuration from IncusOS.
+type ServerSystemSecurity = incusosapi.SystemSecurity
+
 // ServerUpdatePost defines the update trigger information for an update
 // request for a server including the OS and/or its applications.
 //

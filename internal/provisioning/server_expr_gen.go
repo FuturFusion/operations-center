@@ -176,7 +176,8 @@ type ExprOsapiSystemNetworkRoute struct {
 }
 
 type ExprOsapiSystemNetworkState struct {
-	Interfaces map[string]ExprOsapiSystemNetworkInterfaceState `json:"interfaces" yaml:"interfaces" expr:"interfaces"`
+	Interfaces             map[string]ExprOsapiSystemNetworkInterfaceState `json:"interfaces"               yaml:"interfaces" expr:"interfaces"`
+	ConfigurationInProcess bool                                            `json:"configuration_in_process" yaml:"configuration_in_process" expr:"configuration_in_process"`
 }
 
 type ExprOsapiSystemNetworkTime struct {
@@ -262,7 +263,8 @@ type ExprOsapiSystemSecurityState struct {
 	SecureBootCertificates          []ExprOsapiSystemSecuritySecureBootCertificate `incusos:"-"                               json:"secure_boot_certificates"           yaml:"secure_boot_certificates" expr:"secure_boot_certificates"`
 	SecureBootEnabled               bool                                           `incusos:"-"                               json:"secure_boot_enabled"                yaml:"secure_boot_enabled" expr:"secure_boot_enabled"`
 	SystemStateIsTrusted            bool                                           `incusos:"-"                               json:"system_state_is_trusted"            yaml:"system_state_is_trusted" expr:"system_state_is_trusted"`
-	TPMStatus                       string                                         `incusos:"-"                               json:"tpm_status"                         yaml:"tpm_status" expr:"tpm_status"`
+	SystemStateStatus               string                                         `incusos:"-"                               json:"system_state_status"                yaml:"system_state_status" expr:"system_state_status"`
+	TPMStatus                       osapi.TPMStatus                                `incusos:"-"                               json:"tpm_status"                         yaml:"tpm_status" expr:"tpm_status"`
 	TPMPublicKey                    string                                         `incusos:"-"                               json:"tpm_public_key,omitempty"           yaml:"tpm_public_key,omitempty" expr:"tpm_public_key"`
 }
 
@@ -585,7 +587,8 @@ func ToExprOsapiSystemNetworkRoute(s osapi.SystemNetworkRoute) ExprOsapiSystemNe
 
 func ToExprOsapiSystemNetworkState(s osapi.SystemNetworkState) ExprOsapiSystemNetworkState {
 	return ExprOsapiSystemNetworkState{
-		Interfaces: mapConvert(s.Interfaces, ToExprOsapiSystemNetworkInterfaceState),
+		Interfaces:             mapConvert(s.Interfaces, ToExprOsapiSystemNetworkInterfaceState),
+		ConfigurationInProcess: s.ConfigurationInProcess,
 	}
 }
 
@@ -693,6 +696,7 @@ func ToExprOsapiSystemSecurityState(s osapi.SystemSecurityState) ExprOsapiSystem
 		SecureBootCertificates:          sliceConvert(s.SecureBootCertificates, ToExprOsapiSystemSecuritySecureBootCertificate),
 		SecureBootEnabled:               s.SecureBootEnabled,
 		SystemStateIsTrusted:            s.SystemStateIsTrusted,
+		SystemStateStatus:               s.SystemStateStatus,
 		TPMStatus:                       s.TPMStatus,
 		TPMPublicKey:                    s.TPMPublicKey,
 	}
