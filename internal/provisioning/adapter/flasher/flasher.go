@@ -134,6 +134,10 @@ func createSeedTarball(seedConfig provisioning.TokenImageSeedConfigs, providerSe
 			data:     providerSeed,
 		},
 		{
+			filename: "security.yaml",
+			data:     seedConfig.Security,
+		},
+		{
 			filename: "update.yaml",
 			data:     seedConfig.Update,
 		},
