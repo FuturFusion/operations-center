@@ -5,12 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
-	"time"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus-os/incus-osd/api/seed"
@@ -71,49 +69,29 @@ func (c client) getClient(ctx context.Context, endpoint provisioning.Endpoint) (
 		return nil, err
 	}
 
-	var args *incus.ConnectionArgs
-
+	// If the provisioning.ServerSelf endpoint is used, connect through unix socket.
 	if endpoint.GetConnectionURL() == provisioning.ServerSelf.ConnectionURL {
-		unixDial := func(_ context.Context, network, addr string) (net.Conn, error) {
-			raddr, err := net.ResolveUnixAddr("unix", c.env.GetUnixSocket())
-			if err != nil {
-				return nil, err
+		return incus.ConnectIncusUnix(c.env.GetUnixSocket(), &incus.ConnectionArgs{})
+	}
+
+	args := &incus.ConnectionArgs{
+		TLSClientCert: c.clientCert,
+		TLSClientKey:  c.clientKey,
+		TLSServerCert: endpoint.GetCertificate(),
+		TLSCA:         c.clientCA,
+		SkipGetServer: true,
+		TransportWrapper: func(t *http.Transport) incus.HTTPTransporter {
+			if endpoint.GetCertificate() == "" {
+				t.TLSClientConfig.ServerName = serverName
 			}
 
-			return net.DialUnix("unix", nil, raddr)
-		}
+			return &transportWrapper{transport: t}
+		},
 
-		args = &incus.ConnectionArgs{
-			HTTPClient: &http.Client{
-				Transport: &http.Transport{
-					DialContext:           unixDial,
-					DisableKeepAlives:     true,
-					ExpectContinueTimeout: time.Second * 30,
-					ResponseHeaderTimeout: time.Second * 3600,
-					TLSHandshakeTimeout:   time.Second * 5,
-				},
-			},
-		}
-	} else {
-		args = &incus.ConnectionArgs{
-			TLSClientCert: c.clientCert,
-			TLSClientKey:  c.clientKey,
-			TLSServerCert: endpoint.GetCertificate(),
-			TLSCA:         c.clientCA,
-			SkipGetServer: true,
-			TransportWrapper: func(t *http.Transport) incus.HTTPTransporter {
-				if endpoint.GetCertificate() == "" {
-					t.TLSClientConfig.ServerName = serverName
-				}
-
-				return &transportWrapper{transport: t}
-			},
-
-			// Bypass system proxy for communication to IncusOS servers.
-			Proxy: func(r *http.Request) (*url.URL, error) {
-				return nil, nil
-			},
-		}
+		// Bypass system proxy for communication to IncusOS servers.
+		Proxy: func(r *http.Request) (*url.URL, error) {
+			return nil, nil
+		},
 	}
 
 	return incus.ConnectIncusWithContext(ctx, endpoint.GetConnectionURL(), args)
