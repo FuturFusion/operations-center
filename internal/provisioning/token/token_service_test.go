@@ -1627,6 +1627,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 		updateSvcGetFileByFilenameErr         error
 		channelSvcGetByNameErr                error
 		flasherAdapterGenerateSeededImageErr  error
+		clientGetSecurityConfigErr            error
 
 		assertErr   require.ErrorAssertionFunc
 		wantChannel string
@@ -1812,6 +1813,21 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			wantChannel: "stable", // default value
 		},
 		{
+			name:                   "error - client.GetSecurityConfig",
+			imageTypeArg:           api.ImageTypeISO,
+			architectureArg:        images.UpdateFileArchitecture64BitX86,
+			repoGetTokenSeedByName: &provisioning.TokenSeed{},
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID: updateUUID,
+				},
+			},
+			clientGetSecurityConfigErr: boom.Error,
+
+			assertErr:   boom.ErrorIs,
+			wantChannel: "stable", // default value
+		},
+		{
 			name:                   "error - updateSvc.GetUpdateByFilename",
 			imageTypeArg:           api.ImageTypeISO,
 			architectureArg:        images.UpdateFileArchitecture64BitX86,
@@ -1967,7 +1983,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 
 			client := &adapterMock.TokenClientPortMock{
 				GetSecurityConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemSecurity, error) {
-					return provisioning.ServerSystemSecurity{}, nil
+					return provisioning.ServerSystemSecurity{}, tc.clientGetSecurityConfigErr
 				},
 			}
 
