@@ -32,12 +32,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      # Currently the repository is not yet setup for dependency review.
-      # Setup: Enable Dependency graph along with GitHub Advanced Security on
-      # private repositories, see https://github.com/FuturFusion/operations-center/settings/security_analysis
-      # - name: Dependency Review
-      #   uses: actions/dependency-review-action@v4
-      #   if: github.event_name == 'pull_request'
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v5
+        if: github.event_name == 'pull_request'
 
       - name: Install Go (${{ matrix.go }})
         uses: actions/setup-go@v6
