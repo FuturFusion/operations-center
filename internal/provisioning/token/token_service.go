@@ -344,7 +344,7 @@ func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageT
 
 	securityConfig, err := s.client.GetSecurityConfig(ctx, provisioning.ServerSelf)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get operations-center's security config")
+		return nil, fmt.Errorf("Failed to get operations-center's security config: %w", err)
 	}
 
 	var filename string
