@@ -18,6 +18,7 @@ import (
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -76,7 +77,7 @@ func daemonSetup(t *testing.T) (socketClient client.OperationsCenterClient, unau
 
 	err = config.UpdateNetwork(ctx, system.NetworkPut{
 		OperationsCenterAddress: "https://127.0.0.1:" + port,
-		RestServerAddress:       "[::1]:" + port,
+		RestServerAddress:       testingnet.LocalhostIP(t) + ":" + port,
 	})
 	require.NoError(t, err)
 
@@ -116,7 +117,7 @@ func daemonSetup(t *testing.T) (socketClient client.OperationsCenterClient, unau
 func getFreeTCPPort(t *testing.T) string {
 	t.Helper()
 
-	l, err := net.Listen("tcp", "[::1]:0")
+	l, err := net.Listen("tcp", testingnet.LocalhostIP(t)+":0")
 	require.NoError(t, err)
 
 	defer func() {
