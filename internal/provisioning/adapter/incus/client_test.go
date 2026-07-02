@@ -2209,6 +2209,89 @@ func TestClientServer(t *testing.T) {
 			},
 		},
 		{
+			name: "GetSecurityConfig",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				c, ok := client.(provisioning.TokenClientPort)
+				require.True(t, ok)
+
+				return c.GetSecurityConfig(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/security
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "custom_ca_certs": [
+        "certificate"
+      ]
+    },
+    "state": {}
+  },
+  "status": "Success",
+  "status_code": 200,
+  "type": "sync"
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /os/1.0/system/security"},
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantLoggingConfig := provisioning.ServerSystemSecurity{
+							Config: incusosapi.SystemSecurityConfig{
+								CustomCACerts: []string{"certificate"},
+							},
+							State: incusosapi.SystemSecurityState{},
+						}
+
+						require.Equal(t, wantLoggingConfig, res)
+					},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/security
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/security"},
+					assertResult: noResult,
+				},
+				{
+					name: "error - security config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/security
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/security"},
+					assertResult: noResult,
+				},
+			},
+		},
+		{
 			name: "GetOSService",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
 				return client.GetOSService(ctx, target, "lvm")
