@@ -18,6 +18,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/api"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
+	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -52,7 +53,7 @@ func TestSystemCertificatePut(t *testing.T) {
 	})
 	err := config.UpdateNetwork(ctx, system.NetworkPut{
 		OperationsCenterAddress: "https://127.0.0.1:17443",
-		RestServerAddress:       "[::1]:17443",
+		RestServerAddress:       testingnet.LocalhostIP(t) + ":17443",
 	})
 	require.NoError(t, err)
 

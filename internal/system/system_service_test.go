@@ -21,6 +21,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/system"
 	"github.com/FuturFusion/operations-center/internal/system/mock"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
 	systemapi "github.com/FuturFusion/operations-center/shared/api/system"
@@ -1157,7 +1158,7 @@ func TestSystemService_GetNetworkConfig(t *testing.T) {
 			networkConfig := systemapi.Network{
 				NetworkPut: systemapi.NetworkPut{
 					OperationsCenterAddress: "https://someaddress:1234",
-					RestServerAddress:       "[::1]:1234",
+					RestServerAddress:       testingnet.LocalhostIP(t) + ":1234",
 				},
 			}
 
