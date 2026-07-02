@@ -627,8 +627,8 @@ func (mock *ServerServiceMock) AddApplicationCalls() []struct {
 	return calls
 }
 
-// Create calls CreateFunc.
-func (mock *ServerServiceMock) Create(ctx context.Context, token uuid.UUID, server provisioning.Server) (provisioning.Server, error) {
+// Register calls CreateFunc.
+func (mock *ServerServiceMock) Register(ctx context.Context, token uuid.UUID, server provisioning.Server) (provisioning.Server, error) {
 	if mock.CreateFunc == nil {
 		panic("ServerServiceMock.CreateFunc: method is nil but ServerService.Create was just called")
 	}

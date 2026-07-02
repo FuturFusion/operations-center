@@ -111,7 +111,7 @@ func (_d ServerServiceWithSlog) Create(ctx context.Context, token uuid.UUID, ser
 			log.DebugContext(ctx, "<= method Create finished")
 		}
 	}()
-	return _d._base.Create(ctx, token, server)
+	return _d._base.Register(ctx, token, server)
 }
 
 // DeleteByName implements provisioning.ServerService.
