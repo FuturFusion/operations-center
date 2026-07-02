@@ -55,20 +55,6 @@ func (_d ServerServiceWithPrometheus) AddApplication(ctx context.Context, name s
 	return _d.base.AddApplication(ctx, name, applicationName)
 }
 
-// Create implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) Create(ctx context.Context, token uuid.UUID, server provisioning.Server) (server1 provisioning.Server, err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Create", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.Register(ctx, token, server)
-}
-
 // DeleteByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) DeleteByName(ctx context.Context, name string) (err error) {
 	_since := time.Now()
@@ -307,6 +293,20 @@ func (_d ServerServiceWithPrometheus) PoweroffSystemByName(ctx context.Context, 
 	return _d.base.PoweroffSystemByName(ctx, name, force)
 }
 
+// PreRegister implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) PreRegister(ctx context.Context, server provisioning.Server) (server1 provisioning.Server, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PreRegister", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.PreRegister(ctx, server)
+}
+
 // RebootSystemByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) RebootSystemByName(ctx context.Context, name string, force bool) (err error) {
 	_since := time.Now()
@@ -319,6 +319,20 @@ func (_d ServerServiceWithPrometheus) RebootSystemByName(ctx context.Context, na
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RebootSystemByName", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.RebootSystemByName(ctx, name, force)
+}
+
+// Register implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) Register(ctx context.Context, token uuid.UUID, server provisioning.Server) (server1 provisioning.Server, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Register", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Register(ctx, token, server)
 }
 
 // Rename implements provisioning.ServerService.

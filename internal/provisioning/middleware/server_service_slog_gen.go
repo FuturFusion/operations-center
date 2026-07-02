@@ -78,42 +78,6 @@ func (_d ServerServiceWithSlog) AddApplication(ctx context.Context, name string,
 	return _d._base.AddApplication(ctx, name, applicationName)
 }
 
-// Create implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) Create(ctx context.Context, token uuid.UUID, server provisioning.Server) (server1 provisioning.Server, err error) {
-	log := slog.With()
-	if slog.Default().Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.Any("token", token),
-			slog.Any("server", server),
-		)
-	}
-	log.DebugContext(ctx, "=> calling Create")
-	defer func() {
-		log := slog.With()
-		if slog.Default().Enabled(ctx, logger.LevelTrace) {
-			log = slog.With(
-				slog.Any("server1", server1),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = slog.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Create returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Create returned an error")
-			}
-		} else {
-			log.DebugContext(ctx, "<= method Create finished")
-		}
-	}()
-	return _d._base.Register(ctx, token, server)
-}
-
 // DeleteByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
 	log := slog.With()
@@ -708,6 +672,41 @@ func (_d ServerServiceWithSlog) PoweroffSystemByName(ctx context.Context, name s
 	return _d._base.PoweroffSystemByName(ctx, name, force)
 }
 
+// PreRegister implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) PreRegister(ctx context.Context, server provisioning.Server) (server1 provisioning.Server, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling PreRegister")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("server1", server1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method PreRegister returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method PreRegister returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method PreRegister finished")
+		}
+	}()
+	return _d._base.PreRegister(ctx, server)
+}
+
 // RebootSystemByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) RebootSystemByName(ctx context.Context, name string, force bool) (err error) {
 	log := slog.With()
@@ -741,6 +740,42 @@ func (_d ServerServiceWithSlog) RebootSystemByName(ctx context.Context, name str
 		}
 	}()
 	return _d._base.RebootSystemByName(ctx, name, force)
+}
+
+// Register implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) Register(ctx context.Context, token uuid.UUID, server provisioning.Server) (server1 provisioning.Server, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("token", token),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Register")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("server1", server1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method Register returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method Register returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method Register finished")
+		}
+	}()
+	return _d._base.Register(ctx, token, server)
 }
 
 // Rename implements provisioning.ServerService.
