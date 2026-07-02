@@ -37,6 +37,7 @@ type client struct {
 var (
 	_ provisioning.ServerClientPort  = client{}
 	_ provisioning.ClusterClientPort = client{}
+	_ provisioning.TokenClientPort   = client{}
 )
 
 type transportWrapper struct {
