@@ -66,7 +66,7 @@ func (_d ServerServiceWithPrometheus) Create(ctx context.Context, token uuid.UUI
 
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Create", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.Create(ctx, token, server)
+	return _d.base.Register(ctx, token, server)
 }
 
 // DeleteByName implements provisioning.ServerService.
