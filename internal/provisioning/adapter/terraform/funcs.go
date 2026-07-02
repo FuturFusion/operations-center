@@ -1,6 +1,24 @@
 package terraform
 
-import "reflect"
+import (
+	"reflect"
+	"strings"
+)
+
+// hclStringReplacer escapes a string for use in a HCL quoted string.
+var hclStringReplacer = strings.NewReplacer(
+	`\`, `\\`,
+	`"`, `\"`,
+	"\n", `\n`,
+	"\r", `\r`,
+	"\t", `\t`,
+	"${", "$${",
+	"%{", "%%{",
+)
+
+func tfString(s string) string {
+	return hclStringReplacer.Replace(s)
+}
 
 func maxKeyLength(m any) int {
 	v := reflect.ValueOf(m)

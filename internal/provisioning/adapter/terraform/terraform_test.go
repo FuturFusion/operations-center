@@ -65,6 +65,9 @@ func TestTerraform_Init(t *testing.T) {
 config:
   user.ui.sso_only: "true"
   storage.images_volume: shared
+  acme.provider.environment: |-
+    PROVIDER_EMAIL=admin@example.com
+    PROVIDER_TOKEN=secret
 storage_pools:
   - name: shared
     driver: lvmcluster

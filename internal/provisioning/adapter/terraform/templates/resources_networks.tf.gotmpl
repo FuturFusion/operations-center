@@ -20,7 +20,7 @@ resource "incus_network" "{{ $projectPrefix }}{{ .Name }}_per_node" {
   config = {
     {{- range $key, $value := $splitConfigs.Specific }}
       {{- $indent := repeat (int (sub (maxKeyLength $splitConfigs.Specific) (len $key))) " " }}
-    "{{ $key }}"{{ $indent }} = "{{ $value }}"
+    "{{ $key }}"{{ $indent }} = "{{ tfString $value }}"
     {{- end }}
   }
 
@@ -40,7 +40,7 @@ resource "incus_network" "{{ $projectPrefix }}{{ .Name }}" {
   config = {
     {{- range $key, $value := $splitConfigs.Global }}
       {{- $indent := repeat (int (sub (maxKeyLength $splitConfigs.Global) (len $key))) " " }}
-    "{{ $key }}"{{ $indent }} = "{{ $value }}"
+    "{{ $key }}"{{ $indent }} = "{{ tfString $value }}"
     {{- end }}
   }
 
