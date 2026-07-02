@@ -136,6 +136,7 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 	tmpl = tmpl.Funcs(template.FuncMap{
 		"splitConfig":  splitConfig,
 		"maxKeyLength": maxKeyLength,
+		"tfString":     tfString,
 	})
 	tmpl, err = tmpl.ParseFS(templatesFS, "templates/*")
 	if err != nil {

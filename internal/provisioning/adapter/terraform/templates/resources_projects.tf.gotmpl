@@ -6,7 +6,7 @@ resource "incus_project" "{{ .Name }}" {
   config = {
     {{- range $key, $value := .Config }}
       {{- $indent := repeat (int (sub (maxKeyLength $item.Config) (len $key))) " " }}
-    "{{ $key }}"{{ $indent }} = "{{ $value }}",
+    "{{ $key }}"{{ $indent }} = "{{ tfString $value }}",
     {{- end }}
   }
 
