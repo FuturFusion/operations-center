@@ -115,6 +115,9 @@ definitions:
         title: Applications represents the applications seed file.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api/seed
+    BMCAPIType:
+        type: string
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     CertificatePost:
         description: |-
             CertificatePost represents the fields available for an update of the
@@ -3156,6 +3159,20 @@ definitions:
         x-go-package: github.com/lxc/incus-os/incus-osd/api/seed
     Server:
         properties:
+            bmc_api_type:
+                $ref: '#/definitions/BMCAPIType'
+            bmc_endpoint:
+                description: BMCEndpoint holds the base URL of the bmc of the server.
+                type: string
+                x-go-name: BMCEndpoint
+            bmc_password:
+                description: BMCPassword holds the password used to authenticate with the bmc of the server.
+                type: string
+                x-go-name: BMCPassword
+            bmc_username:
+                description: BMCUsername holds the username used to authenticate with the bmc of the server.
+                type: string
+                x-go-name: BMCUsername
             certificate:
                 description: Certificate of the server endpoint in PEM encoded format.
                 example: |-
@@ -3261,6 +3278,20 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerPost:
         properties:
+            bmc_api_type:
+                $ref: '#/definitions/BMCAPIType'
+            bmc_endpoint:
+                description: BMCEndpoint holds the base URL of the bmc of the server.
+                type: string
+                x-go-name: BMCEndpoint
+            bmc_password:
+                description: BMCPassword holds the password used to authenticate with the bmc of the server.
+                type: string
+                x-go-name: BMCPassword
+            bmc_username:
+                description: BMCUsername holds the username used to authenticate with the bmc of the server.
+                type: string
+                x-go-name: BMCUsername
             channel:
                 description: Channel the server is following for updates.
                 example: stable
@@ -3298,6 +3329,20 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerPut:
         properties:
+            bmc_api_type:
+                $ref: '#/definitions/BMCAPIType'
+            bmc_endpoint:
+                description: BMCEndpoint holds the base URL of the bmc of the server.
+                type: string
+                x-go-name: BMCEndpoint
+            bmc_password:
+                description: BMCPassword holds the password used to authenticate with the bmc of the server.
+                type: string
+                x-go-name: BMCPassword
+            bmc_username:
+                description: BMCUsername holds the username used to authenticate with the bmc of the server.
+                type: string
+                x-go-name: BMCUsername
             channel:
                 description: Channel the server is following for updates.
                 example: stable
@@ -9743,7 +9788,11 @@ paths:
         post:
             consumes:
                 - application/json
-            description: Creates a new server.
+            description: |-
+                Registers a server in Operations Center. If an existing server record
+                identified by the registration token and in state "unregistered" is found,
+                this server record is updated. Otherwise a new server is created as
+                registered.
             operationId: servers_post
             parameters:
                 - description: Server configuration
@@ -9761,7 +9810,7 @@ paths:
                         description: Sync response
                         properties:
                             metadata:
-                                description: Resgister server response details
+                                description: Register server response details
                                 items:
                                     $ref: '#/definitions/ServerRegistrationResponse'
                                 type: array
@@ -9784,7 +9833,34 @@ paths:
                     $ref: '#/responses/Forbidden'
                 "500":
                     $ref: '#/responses/InternalServerError'
-            summary: Add a server
+            summary: Register a server using token
+            tags:
+                - servers
+    /1.0/provisioning/servers/:pre-register:
+        post:
+            consumes:
+                - application/json
+            description: Creates a new unregistered server.
+            operationId: servers_post_pre_register
+            parameters:
+                - description: Server configuration
+                  in: body
+                  name: server
+                  required: true
+                  schema:
+                    $ref: '#/definitions/Server'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Add a new unregistered server
             tags:
                 - servers
     /1.0/provisioning/servers/:self:
