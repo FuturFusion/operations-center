@@ -17,6 +17,7 @@ import (
 	restapi "github.com/FuturFusion/operations-center/internal/api"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
+	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 )
 
 func TestSystemConfigUpdate(t *testing.T) {
@@ -120,9 +121,9 @@ func TestSystemConfigUpdate(t *testing.T) {
 		t.Log(`2. Update network configuration, listen on port 17443`)
 		req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/network", bytes.NewBufferString(fmt.Sprintf(`{
   "address": "https://127.0.0.1:17443",
-  "rest_server_address": "[::1]:%d"
+  "rest_server_address": "%s:%d"
 }
-`, port)))
+`, testingnet.LocalhostIP(t), port)))
 		require.NoError(t, err)
 		req.Header.Add("Content-Type", "application/json")
 		resp, err = socketClient.Do(req)

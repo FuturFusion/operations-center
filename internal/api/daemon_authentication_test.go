@@ -25,6 +25,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/client"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
+	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -693,7 +694,7 @@ func TestAuthentication(t *testing.T) {
 	})
 	err = config.UpdateNetwork(ctx, system.NetworkPut{
 		OperationsCenterAddress: "https://127.0.0.1:17443",
-		RestServerAddress:       "[::1]:17443",
+		RestServerAddress:       testingnet.LocalhostIP(t) + ":17443",
 	})
 	require.NoError(t, err)
 	err = config.UpdateSecurity(ctx, system.SecurityPut{
