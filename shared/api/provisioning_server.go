@@ -92,17 +92,19 @@ func (s *ServerType) Scan(value any) error {
 type ServerStatus string
 
 const (
-	ServerStatusUnknown ServerStatus = "unknown"
-	ServerStatusPending ServerStatus = "pending"
-	ServerStatusReady   ServerStatus = "ready"
-	ServerStatusOffline ServerStatus = "offline"
+	ServerStatusUnknown      ServerStatus = "unknown"
+	ServerStatusUnregistered ServerStatus = "unregistered"
+	ServerStatusPending      ServerStatus = "pending"
+	ServerStatusReady        ServerStatus = "ready"
+	ServerStatusOffline      ServerStatus = "offline"
 )
 
 var serverStatuses = map[ServerStatus]struct{}{
-	ServerStatusUnknown: {},
-	ServerStatusPending: {},
-	ServerStatusReady:   {},
-	ServerStatusOffline: {},
+	ServerStatusUnknown:      {},
+	ServerStatusUnregistered: {},
+	ServerStatusPending:      {},
+	ServerStatusReady:        {},
+	ServerStatusOffline:      {},
 }
 
 func (s ServerStatus) String() string {
@@ -557,6 +559,22 @@ func availableVersionGreaterThan(currentVersion string, availableVersion string)
 	return available > current
 }
 
+type BMCAPIType string
+
+const (
+	BMCAPITypeNone             BMCAPIType = ""
+	BMCAPITypeRedfishV1Generic BMCAPIType = "redfish-v1-generic"
+)
+
+var BMCAPITypes = map[BMCAPIType]struct{}{
+	BMCAPITypeNone:             {},
+	BMCAPITypeRedfishV1Generic: {},
+}
+
+func (s BMCAPIType) String() string {
+	return string(s)
+}
+
 // ServerPost defines a new server running Hypervisor OS.
 //
 // swagger:model
@@ -597,6 +615,19 @@ type ServerPut struct {
 	//     arch: x86_64
 	//     os: linux
 	Properties ConfigMap `json:"properties" yaml:"properties"`
+
+	// BMCAPIType specifies the BMC API type of the server, which is used to
+	// determine the correct BMC adapter to talk to the server.
+	BMCAPIType BMCAPIType `json:"bmc_api_type" yaml:"bmc_api_type"`
+
+	// BMCEndpoint holds the base URL of the bmc of the server.
+	BMCEndpoint string `json:"bmc_endpoint" yaml:"bmc_endpoint"`
+
+	// BMCUsername holds the username used to authenticate with the bmc of the server.
+	BMCUsername string `json:"bmc_username" yaml:"bmc_username"`
+
+	// BMCPassword holds the password used to authenticate with the bmc of the server.
+	BMCPassword string `json:"bmc_password" yaml:"bmc_password"`
 }
 
 // Server defines a server running Hypervisor OS.

@@ -148,12 +148,29 @@ func (s *serverService) SetClusterService(clusterSvc provisioning.ClusterService
 	s.clusterSvc = clusterSvc
 }
 
-func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer provisioning.Server) (provisioning.Server, error) {
+func (s *serverService) PreRegister(ctx context.Context, newServer provisioning.Server) (provisioning.Server, error) {
+	err := newServer.Validate()
+	if err != nil {
+		return provisioning.Server{}, err
+	}
+
+	newServer.ID, err = s.repo.Create(ctx, newServer)
+	if err != nil {
+		return provisioning.Server{}, err
+	}
+
+	return newServer, nil
+}
+
+func (s *serverService) Register(ctx context.Context, token uuid.UUID, newServer provisioning.Server) (provisioning.Server, error) {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		channel, err := s.tokenSvc.Consume(ctx, token)
 		if err != nil {
 			return fmt.Errorf("Consume token for server creation: %w", err)
 		}
+
+		// FIXME: how is a server mapped to an existing server record, if it has been registered using BMC before
+		// and we should update the existing record here?
 
 		newServer.Status = api.ServerStatusPending
 		newServer.StatusDetail = api.ServerStatusDetailPendingRegistering

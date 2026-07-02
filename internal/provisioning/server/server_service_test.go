@@ -206,7 +206,71 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 	}
 }
 
-func TestServerService_Create(t *testing.T) {
+func TestServerService_PreRegister(t *testing.T) {
+	tests := []struct {
+		name          string
+		server        provisioning.Server
+		repoCreateErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			server: provisioning.Server{
+				Name:    "A",
+				Status:  api.ServerStatusUnregistered,
+				Channel: "stable",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - validation",
+			server: provisioning.Server{
+				Name:    "", // invalid
+				Status:  api.ServerStatusUnregistered,
+				Channel: "stable",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - repo.Create",
+			server: provisioning.Server{
+				Name:    "A",
+				Status:  api.ServerStatusUnregistered,
+				Channel: "stable",
+			},
+			repoCreateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				CreateFunc: func(ctx context.Context, newServer provisioning.Server) (int64, error) {
+					return -1, tc.repoCreateErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, nil, tls.Certificate{})
+
+			// Run test
+			_, err := serverSvc.PreRegister(t.Context(), tc.server)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestServerService_Register(t *testing.T) {
 	config.InitTest(t, &envMock.EnvironmentMock{}, nil)
 
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
@@ -383,7 +447,7 @@ one
 			)
 
 			// Run test
-			_, err := serverSvc.Create(t.Context(), token, tc.server)
+			_, err := serverSvc.Register(t.Context(), token, tc.server)
 
 			// Assert
 			tc.assertErr(t, err)

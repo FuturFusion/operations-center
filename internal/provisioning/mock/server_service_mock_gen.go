@@ -28,9 +28,6 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			AddApplicationFunc: func(ctx context.Context, name string, applicationName string) error {
 //				panic("mock out the AddApplication method")
 //			},
-//			CreateFunc: func(ctx context.Context, token uuid.UUID, server provisioning.Server) (provisioning.Server, error) {
-//				panic("mock out the Create method")
-//			},
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the DeleteByName method")
 //			},
@@ -82,8 +79,14 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			PoweroffSystemByNameFunc: func(ctx context.Context, name string, force bool) error {
 //				panic("mock out the PoweroffSystemByName method")
 //			},
+//			PreRegisterFunc: func(ctx context.Context, server provisioning.Server) (provisioning.Server, error) {
+//				panic("mock out the PreRegister method")
+//			},
 //			RebootSystemByNameFunc: func(ctx context.Context, name string, force bool) error {
 //				panic("mock out the RebootSystemByName method")
+//			},
+//			RegisterFunc: func(ctx context.Context, token uuid.UUID, server provisioning.Server) (provisioning.Server, error) {
+//				panic("mock out the Register method")
 //			},
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
@@ -143,9 +146,6 @@ type ServerServiceMock struct {
 	// AddApplicationFunc mocks the AddApplication method.
 	AddApplicationFunc func(ctx context.Context, name string, applicationName string) error
 
-	// CreateFunc mocks the Create method.
-	CreateFunc func(ctx context.Context, token uuid.UUID, server provisioning.Server) (provisioning.Server, error)
-
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
 
@@ -197,8 +197,14 @@ type ServerServiceMock struct {
 	// PoweroffSystemByNameFunc mocks the PoweroffSystemByName method.
 	PoweroffSystemByNameFunc func(ctx context.Context, name string, force bool) error
 
+	// PreRegisterFunc mocks the PreRegister method.
+	PreRegisterFunc func(ctx context.Context, server provisioning.Server) (provisioning.Server, error)
+
 	// RebootSystemByNameFunc mocks the RebootSystemByName method.
 	RebootSystemByNameFunc func(ctx context.Context, name string, force bool) error
+
+	// RegisterFunc mocks the Register method.
+	RegisterFunc func(ctx context.Context, token uuid.UUID, server provisioning.Server) (provisioning.Server, error)
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
@@ -258,15 +264,6 @@ type ServerServiceMock struct {
 			Name string
 			// ApplicationName is the applicationName argument value.
 			ApplicationName string
-		}
-		// Create holds details about calls to the Create method.
-		Create []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Token is the token argument value.
-			Token uuid.UUID
-			// Server is the server argument value.
-			Server provisioning.Server
 		}
 		// DeleteByName holds details about calls to the DeleteByName method.
 		DeleteByName []struct {
@@ -399,6 +396,13 @@ type ServerServiceMock struct {
 			// Force is the force argument value.
 			Force bool
 		}
+		// PreRegister holds details about calls to the PreRegister method.
+		PreRegister []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// RebootSystemByName holds details about calls to the RebootSystemByName method.
 		RebootSystemByName []struct {
 			// Ctx is the ctx argument value.
@@ -407,6 +411,15 @@ type ServerServiceMock struct {
 			Name string
 			// Force is the force argument value.
 			Force bool
+		}
+		// Register holds details about calls to the Register method.
+		Register []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Token is the token argument value.
+			Token uuid.UUID
+			// Server is the server argument value.
+			Server provisioning.Server
 		}
 		// Rename holds details about calls to the Rename method.
 		Rename []struct {
@@ -550,7 +563,6 @@ type ServerServiceMock struct {
 		}
 	}
 	lockAddApplication               sync.RWMutex
-	lockCreate                       sync.RWMutex
 	lockDeleteByName                 sync.RWMutex
 	lockEvacuateSystemByName         sync.RWMutex
 	lockFactoryResetByName           sync.RWMutex
@@ -568,7 +580,9 @@ type ServerServiceMock struct {
 	lockPollServers                  sync.RWMutex
 	lockPostRestoreSystemDoneByName  sync.RWMutex
 	lockPoweroffSystemByName         sync.RWMutex
+	lockPreRegister                  sync.RWMutex
 	lockRebootSystemByName           sync.RWMutex
+	lockRegister                     sync.RWMutex
 	lockRename                       sync.RWMutex
 	lockRestartApplication           sync.RWMutex
 	lockRestoreSystemByName          sync.RWMutex
@@ -624,46 +638,6 @@ func (mock *ServerServiceMock) AddApplicationCalls() []struct {
 	mock.lockAddApplication.RLock()
 	calls = mock.calls.AddApplication
 	mock.lockAddApplication.RUnlock()
-	return calls
-}
-
-// Create calls CreateFunc.
-func (mock *ServerServiceMock) Create(ctx context.Context, token uuid.UUID, server provisioning.Server) (provisioning.Server, error) {
-	if mock.CreateFunc == nil {
-		panic("ServerServiceMock.CreateFunc: method is nil but ServerService.Create was just called")
-	}
-	callInfo := struct {
-		Ctx    context.Context
-		Token  uuid.UUID
-		Server provisioning.Server
-	}{
-		Ctx:    ctx,
-		Token:  token,
-		Server: server,
-	}
-	mock.lockCreate.Lock()
-	mock.calls.Create = append(mock.calls.Create, callInfo)
-	mock.lockCreate.Unlock()
-	return mock.CreateFunc(ctx, token, server)
-}
-
-// CreateCalls gets all the calls that were made to Create.
-// Check the length with:
-//
-//	len(mockedServerService.CreateCalls())
-func (mock *ServerServiceMock) CreateCalls() []struct {
-	Ctx    context.Context
-	Token  uuid.UUID
-	Server provisioning.Server
-} {
-	var calls []struct {
-		Ctx    context.Context
-		Token  uuid.UUID
-		Server provisioning.Server
-	}
-	mock.lockCreate.RLock()
-	calls = mock.calls.Create
-	mock.lockCreate.RUnlock()
 	return calls
 }
 
@@ -1303,6 +1277,42 @@ func (mock *ServerServiceMock) PoweroffSystemByNameCalls() []struct {
 	return calls
 }
 
+// PreRegister calls PreRegisterFunc.
+func (mock *ServerServiceMock) PreRegister(ctx context.Context, server provisioning.Server) (provisioning.Server, error) {
+	if mock.PreRegisterFunc == nil {
+		panic("ServerServiceMock.PreRegisterFunc: method is nil but ServerService.PreRegister was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockPreRegister.Lock()
+	mock.calls.PreRegister = append(mock.calls.PreRegister, callInfo)
+	mock.lockPreRegister.Unlock()
+	return mock.PreRegisterFunc(ctx, server)
+}
+
+// PreRegisterCalls gets all the calls that were made to PreRegister.
+// Check the length with:
+//
+//	len(mockedServerService.PreRegisterCalls())
+func (mock *ServerServiceMock) PreRegisterCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockPreRegister.RLock()
+	calls = mock.calls.PreRegister
+	mock.lockPreRegister.RUnlock()
+	return calls
+}
+
 // RebootSystemByName calls RebootSystemByNameFunc.
 func (mock *ServerServiceMock) RebootSystemByName(ctx context.Context, name string, force bool) error {
 	if mock.RebootSystemByNameFunc == nil {
@@ -1340,6 +1350,46 @@ func (mock *ServerServiceMock) RebootSystemByNameCalls() []struct {
 	mock.lockRebootSystemByName.RLock()
 	calls = mock.calls.RebootSystemByName
 	mock.lockRebootSystemByName.RUnlock()
+	return calls
+}
+
+// Register calls RegisterFunc.
+func (mock *ServerServiceMock) Register(ctx context.Context, token uuid.UUID, server provisioning.Server) (provisioning.Server, error) {
+	if mock.RegisterFunc == nil {
+		panic("ServerServiceMock.RegisterFunc: method is nil but ServerService.Register was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Token  uuid.UUID
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Token:  token,
+		Server: server,
+	}
+	mock.lockRegister.Lock()
+	mock.calls.Register = append(mock.calls.Register, callInfo)
+	mock.lockRegister.Unlock()
+	return mock.RegisterFunc(ctx, token, server)
+}
+
+// RegisterCalls gets all the calls that were made to Register.
+// Check the length with:
+//
+//	len(mockedServerService.RegisterCalls())
+func (mock *ServerServiceMock) RegisterCalls() []struct {
+	Ctx    context.Context
+	Token  uuid.UUID
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Token  uuid.UUID
+		Server provisioning.Server
+	}
+	mock.lockRegister.RLock()
+	calls = mock.calls.Register
+	mock.lockRegister.RUnlock()
 	return calls
 }
 

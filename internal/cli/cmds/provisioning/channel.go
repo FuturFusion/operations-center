@@ -124,7 +124,7 @@ func (c *cmdChannelList) run(cmd *cobra.Command, args []string) error {
 	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, channels)
 }
 
-// Show update.
+// Show channel.
 type cmdChannelShow struct {
 	ocClient *client.OperationsCenterClient
 
@@ -232,7 +232,7 @@ func (c *cmdChannelShow) run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Add update.
+// Add channel.
 type cmdChannelAdd struct {
 	ocClient *client.OperationsCenterClient
 
@@ -281,7 +281,7 @@ func (c *cmdChannelAdd) run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Update changelog.
+// Show changelog of a channel.
 type cmdChannelChangelog struct {
 	ocClient *client.OperationsCenterClient
 
