@@ -11,7 +11,7 @@ import (
 
 type ServerService interface {
 	SetClusterService(clusterSvc ClusterService)
-	Create(ctx context.Context, token uuid.UUID, server Server) (Server, error)
+	Register(ctx context.Context, token uuid.UUID, server Server) (Server, error)
 	GetAll(ctx context.Context) (Servers, error)
 	GetAllWithFilter(ctx context.Context, filter ServerFilter) (Servers, error)
 	GetAllNames(ctx context.Context) ([]string, error)
