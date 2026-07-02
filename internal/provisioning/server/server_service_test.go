@@ -206,7 +206,7 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 	}
 }
 
-func TestServerService_Create(t *testing.T) {
+func TestServerService_Register(t *testing.T) {
 	config.InitTest(t, &envMock.EnvironmentMock{}, nil)
 
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
@@ -383,7 +383,7 @@ one
 			)
 
 			// Run test
-			_, err := serverSvc.Create(t.Context(), token, tc.server)
+			_, err := serverSvc.Register(t.Context(), token, tc.server)
 
 			// Assert
 			tc.assertErr(t, err)

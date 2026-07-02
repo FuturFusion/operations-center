@@ -148,7 +148,7 @@ func (s *serverService) SetClusterService(clusterSvc provisioning.ClusterService
 	s.clusterSvc = clusterSvc
 }
 
-func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer provisioning.Server) (provisioning.Server, error) {
+func (s *serverService) Register(ctx context.Context, token uuid.UUID, newServer provisioning.Server) (provisioning.Server, error) {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		channel, err := s.tokenSvc.Consume(ctx, token)
 		if err != nil {
