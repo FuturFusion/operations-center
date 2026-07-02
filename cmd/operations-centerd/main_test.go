@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
+	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 	"github.com/FuturFusion/operations-center/internal/version"
 )
 
@@ -51,11 +53,11 @@ func TestMain0RunDaemon(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create minimal config
-	const minimalConfig = `---
+	minimalConfig := fmt.Sprintf(`---
 network:
   address: "https://127.0.0.1:27443"
-  rest_server_address: "[::1]:27443"
-`
+  rest_server_address: "%s:27443"
+`, testingnet.LocalhostIP(t))
 	err = os.WriteFile(filepath.Join(tmpDir, "config.yml"), []byte(minimalConfig), 0o600)
 	require.NoError(t, err)
 
