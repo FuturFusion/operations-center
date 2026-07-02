@@ -19,7 +19,8 @@ resource "incus_server" "this_per_node" {
 
 resource "incus_server" "this" {
   config = {
-    "user.ui.sso_only" = "true"
+    "acme.provider.environment" = "PROVIDER_EMAIL=admin@example.com\nPROVIDER_TOKEN=secret"
+    "user.ui.sso_only"          = "true"
   }
 
   depends_on = [
