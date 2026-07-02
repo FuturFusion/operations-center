@@ -50,7 +50,7 @@ const ShutdownOSBtn: FC = () => {
           </>
         }
       >
-        <p>Are you sure you want to power off the server ?</p>
+        <p>Are you sure you want to power off the server?</p>
       </ModalWindow>
     </>
   );

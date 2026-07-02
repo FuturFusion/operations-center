@@ -55,7 +55,7 @@ const RebootOSBtn: FC<Props> = ({ pending = false }) => {
           </>
         }
       >
-        <p>Are you sure you want to reboot the server ?</p>
+        <p>Are you sure you want to reboot the server?</p>
       </ModalWindow>
     </>
   );
