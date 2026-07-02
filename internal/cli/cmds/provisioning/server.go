@@ -54,6 +54,13 @@ func (c *CmdServer) Command() *cobra.Command {
 
 	cmd.AddCommand(serverListCmd.Command())
 
+	// Pre-register
+	serverPreRegisterCmd := cmdServerPreRegister{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(serverPreRegisterCmd.Command())
+
 	// Edit
 	serverEditCmd := cmdServerEdit{
 		ocClient: c.OCClient,
@@ -205,6 +212,73 @@ func (c *cmdServerList) run(cmd *cobra.Command, args []string) error {
 	sort.ColumnsNaturally(data)
 
 	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, servers)
+}
+
+// New server.
+type cmdServerPreRegister struct {
+	ocClient *client.OperationsCenterClient
+
+	description         string
+	channel             string
+	publicConnectionURL string
+	bmcAPIType          string
+	bmcEndpoint         string
+	bmcUsername         string
+	bmcPassword         string
+}
+
+func (c *cmdServerPreRegister) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "pre-register <name>"
+	cmd.Short = "Pre register a server"
+	cmd.Long = `Description:
+  Pre register a server for deployment through BMC.
+`
+
+	cmd.Flags().StringVar(&c.description, "description", "", "Description of the server")
+	cmd.Flags().StringVar(&c.channel, "channel", "", "Channel the server should subscribe to")
+	cmd.Flags().StringVar(&c.publicConnectionURL, "public-connection-url", "", "Public connection URL of the server")
+	cmd.Flags().StringVar(&c.bmcAPIType, "bmc-api-type", "", "API type of the BMC of the server")
+	cmd.Flags().StringVar(&c.bmcEndpoint, "bmc-endpoint", "", "Endpoint of the BMC")
+	cmd.Flags().StringVar(&c.bmcUsername, "bmc-username", "", "Username for the BMC")
+	cmd.Flags().StringVar(&c.bmcPassword, "bmc-password", "", "Password for the BMC")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerPreRegister) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdServerPreRegister) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.PreRegisterServer(cmd.Context(), api.ServerPost{
+		Name: name,
+		ServerPut: api.ServerPut{
+			Description:         c.description,
+			Channel:             c.channel,
+			PublicConnectionURL: c.publicConnectionURL,
+			BMCAPIType:          api.BMCAPIType(c.bmcAPIType),
+			BMCEndpoint:         c.bmcEndpoint,
+			BMCUsername:         c.bmcUsername,
+			BMCPassword:         c.bmcPassword,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to pre register server %q: %w", name, err)
+	}
+
+	return nil
 }
 
 // Edit servers.
@@ -536,6 +610,9 @@ func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Certificate Fingerprint: %s\n", server.Fingerprint)
 		fmt.Printf("Type: %s\n", server.Type.String())
 		fmt.Printf("Channel: %s\n", server.Channel)
+		fmt.Printf("BMC API Type: %s\n", server.BMCAPIType.String())
+		fmt.Printf("BMC Endpoint: %s\n", server.BMCEndpoint)
+		fmt.Printf("BMC Username: %s\n", server.BMCUsername)
 		fmt.Printf("Status: %s\n", server.State())
 		fmt.Printf("Update Status: %s\n", server.UpdateState().String())
 		fmt.Printf("Last Updated: %s\n", server.LastUpdated.Truncate(time.Second).String())
