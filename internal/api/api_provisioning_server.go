@@ -67,6 +67,7 @@ func registerProvisioningServerHandler(
 
 	router.HandleFunc("GET /{$}", response.With(handler.serversGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}", response.With(handler.serverGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /:pre-register", response.With(handler.serversPostPreRegister, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
 	router.HandleFunc("PUT /{name}", response.With(handler.serverPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{name}", response.With(handler.serverDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{name}", response.With(handler.serverPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
@@ -239,6 +240,10 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 						Channel:             server.Channel,
 						Description:         server.Description,
 						Properties:          server.Properties,
+						BMCAPIType:          server.BMCAPIType,
+						BMCEndpoint:         server.BMCEndpoint,
+						BMCUsername:         server.BMCUsername,
+						BMCPassword:         server.BMCPassword,
 					},
 				},
 				Certificate:          server.Certificate,
@@ -274,9 +279,12 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 
 // swagger:operation POST /1.0/provisioning/servers servers servers_post
 //
-//	Add a server
+//	Register a server using token
 //
-//	Creates a new server.
+//	Registers a server in Operations Center. If an existing server record
+//	identified by the registration token and in state "unregistered" is found,
+//	this server record is updated. Otherwise a new server is created as
+//	registered.
 //
 //	---
 //	consumes:
@@ -311,7 +319,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: Resgister server response details
+//	          description: Register server response details
 //	          items:
 //	            $ref: "#/definitions/ServerRegistrationResponse"
 //	  "400":
@@ -351,12 +359,72 @@ func (s *serverHandler) serversPost(r *http.Request) response.Response {
 		Bytes: r.TLS.PeerCertificates[0].Raw,
 	})
 
-	_, err = s.service.Create(r.Context(), token, provisioning.Server{
+	_, err = s.service.Register(r.Context(), token, provisioning.Server{
 		Name:                server.Name,
 		ConnectionURL:       server.ConnectionURL,
 		PublicConnectionURL: server.PublicConnectionURL,
 		Certificate:         string(certificate),
 		Channel:             server.Channel,
+	})
+	if err != nil {
+		return response.Forbidden(fmt.Errorf("Failed registering server: %w", err))
+	}
+
+	result := api.ServerRegistrationResponse{
+		ClientCertificate: s.clientCertificate,
+	}
+
+	return response.SyncResponseLocation(true, result, "/"+api.APIVersion+"/provisioning/servers/"+server.Name)
+}
+
+// swagger:operation POST /1.0/provisioning/servers/:pre-register servers servers_post_pre_register
+//
+//	Add a new unregistered server
+//
+//	Creates a new unregistered server.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: server
+//	    description: Server configuration
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/Server"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serversPostPreRegister(r *http.Request) response.Response {
+	var server api.ServerPost
+
+	// Decode into the new server.
+	err := json.NewDecoder(r.Body).Decode(&server)
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Request decoding: %v", err))
+	}
+
+	_, err = s.service.PreRegister(r.Context(), provisioning.Server{
+		Name:                server.Name,
+		Status:              api.ServerStatusUnregistered,
+		StatusDetail:        api.ServerStatusDetailNone,
+		Description:         server.Description,
+		Properties:          server.Properties,
+		PublicConnectionURL: server.PublicConnectionURL,
+		Channel:             server.Channel,
+		BMCAPIType:          server.BMCAPIType,
+		BMCEndpoint:         server.BMCEndpoint,
+		BMCUsername:         server.BMCUsername,
+		BMCPassword:         server.BMCPassword,
 	})
 	if err != nil {
 		return response.Forbidden(fmt.Errorf("Failed creating server: %w", err))
@@ -422,6 +490,10 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 					Channel:             server.Channel,
 					Description:         server.Description,
 					Properties:          server.Properties,
+					BMCAPIType:          server.BMCAPIType,
+					BMCEndpoint:         server.BMCEndpoint,
+					BMCUsername:         server.BMCUsername,
+					BMCPassword:         server.BMCPassword,
 				},
 			},
 			Certificate:          server.Certificate,
@@ -502,6 +574,10 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 	currentServer.PublicConnectionURL = server.PublicConnectionURL
 	currentServer.Description = server.Description
 	currentServer.Properties = server.Properties
+	currentServer.BMCAPIType = server.BMCAPIType
+	currentServer.BMCEndpoint = server.BMCEndpoint
+	currentServer.BMCUsername = server.BMCUsername
+	currentServer.BMCPassword = server.BMCPassword
 
 	// Only allow changing of Channel, if server is not clustered. Otherwise
 	// the change of the channel needs to happen through the cluster.
