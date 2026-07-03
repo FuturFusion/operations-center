@@ -45,7 +45,7 @@ const ClusterTemplateOverview = () => {
           Service configuration template
         </div>
         <div className="col-10 detail-table-cell">
-          {template?.service_config_template}
+          <pre className="yaml-code">{template?.service_config_template}</pre>
         </div>
       </div>
       <div className="row">
@@ -53,7 +53,9 @@ const ClusterTemplateOverview = () => {
           Application configuration template
         </div>
         <div className="col-10 detail-table-cell">
-          {template?.application_config_template}
+          <pre className="yaml-code">
+            {template?.application_config_template}
+          </pre>
         </div>
       </div>
       <div className="row">

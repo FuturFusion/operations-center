@@ -66,3 +66,13 @@ tr.overview-table-header th {
   margin: 0 5px;
   color: #aaa;
 }
+
+.yaml-code {
+  background: #f6f8fa;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 6px;
+  white-space: pre-wrap;
+  font-family: Consolas, Monaco, 'Courier New', monospace;
+}
