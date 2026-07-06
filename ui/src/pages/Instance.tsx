@@ -35,7 +35,14 @@ const Instance = () => {
     retry: false,
   });
 
-  const headers = ["Name", "Project", "Cluster", "Server", "Last updated"];
+  const headers = [
+    "Name",
+    "Project",
+    "Cluster",
+    "Server",
+    "Type",
+    "Last updated",
+  ];
   const rows = instances.map((item) => {
     return {
       cols: [
@@ -65,6 +72,10 @@ const Instance = () => {
         {
           content: <ServerLink server={item.server} />,
           sortKey: item.server,
+        },
+        {
+          content: item.object?.type,
+          sortKey: item.object?.type,
         },
         {
           content: formatDate(item.last_updated),
