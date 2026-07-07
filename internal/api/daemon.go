@@ -593,14 +593,15 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 	updateServer := updateserver.New(
 		config.GetUpdates().Source,
 		config.GetUpdates().SignatureVerificationRootCA,
+		config.GetUpdates().ImageServerAuthenticationByQueryParam,
 		d.env,
 	)
 	listenerKey := uuid.New().String()
 	lifecycle.UpdatesValidateSignal.AddListenerWithErr(func(ctx context.Context, su apisystem.Updates) error {
-		return updateServer.SourceConnectionTest(ctx, su.Source, su.SignatureVerificationRootCA)
+		return updateServer.SourceConnectionTest(ctx, su.Source, su.SignatureVerificationRootCA, su.ImageServerAuthenticationByQueryParam)
 	}, listenerKey)
 	lifecycle.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg apisystem.Updates) {
-		updateServer.UpdateConfig(ctx, cfg.Source, cfg.SignatureVerificationRootCA)
+		updateServer.UpdateConfig(ctx, cfg.Source, cfg.SignatureVerificationRootCA, cfg.ImageServerAuthenticationByQueryParam)
 	}, listenerKey)
 	runtime.AddCleanup(d, func(listenerKey string) {
 		// config.UpdatesValidateSignal.RemoveListener(listenerKey)
