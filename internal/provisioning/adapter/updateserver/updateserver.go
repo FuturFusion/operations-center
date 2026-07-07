@@ -16,7 +16,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 
-	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/signature"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -33,6 +32,7 @@ type updateServer struct {
 	configUpdateMu              *sync.Mutex
 	baseURL                     string
 	signatureVerificationRootCA string
+	authenticationByQueryParam  bool
 	verifier                    signature.Verifier
 
 	client        *http.Client
@@ -41,13 +41,14 @@ type updateServer struct {
 
 var _ provisioning.UpdateSourcePort = &updateServer{}
 
-func New(baseURL string, signatureVerificationRootCA string, tokenProvider tokenProvider) *updateServer {
+func New(baseURL string, signatureVerificationRootCA string, authenticationByQueryParam bool, tokenProvider tokenProvider) *updateServer {
 	return &updateServer{
 		configUpdateMu: &sync.Mutex{},
 
 		// Normalize URL, remove trailing slash.
 		baseURL:                     strings.TrimSuffix(baseURL, "/"),
 		signatureVerificationRootCA: signatureVerificationRootCA,
+		authenticationByQueryParam:  authenticationByQueryParam,
 		client:                      http.DefaultClient,
 		verifier:                    signature.NewVerifier([]byte(signatureVerificationRootCA)),
 
@@ -138,6 +139,7 @@ func (u *updateServer) GetLatest(ctx context.Context, limit int) (provisioning.U
 func (u *updateServer) fetchAndVerifyIndexSJSON(ctx context.Context) ([]byte, error) {
 	u.configUpdateMu.Lock()
 	baseURL := u.baseURL
+	authenticationByQueryParam := u.authenticationByQueryParam
 	u.configUpdateMu.Unlock()
 
 	indexURL := baseURL + "/index.sjson"
@@ -148,7 +150,7 @@ func (u *updateServer) fetchAndVerifyIndexSJSON(ctx context.Context) ([]byte, er
 
 	token, err := u.tokenProvider.GetToken(ctx)
 	if err == nil {
-		if config.GetUpdates().ImageServerAuthenticationByQueryParam {
+		if authenticationByQueryParam {
 			q := req.URL.Query()
 			q.Set("token", token)
 			req.URL.RawQuery = q.Encode()
@@ -207,6 +209,7 @@ func uuidFromUpdateServer(update Update) uuid.UUID {
 func (u *updateServer) GetUpdateFileByFilenameUnverified(ctx context.Context, inUpdate provisioning.Update, filename string) (io.ReadCloser, int, error) {
 	u.configUpdateMu.Lock()
 	baseURL := u.baseURL
+	authenticationByQueryParam := u.authenticationByQueryParam
 	u.configUpdateMu.Unlock()
 
 	updateURL := baseURL + path.Join(inUpdate.URL, filename)
@@ -217,7 +220,7 @@ func (u *updateServer) GetUpdateFileByFilenameUnverified(ctx context.Context, in
 
 	token, err := u.tokenProvider.GetToken(ctx)
 	if err == nil {
-		if config.GetUpdates().ImageServerAuthenticationByQueryParam {
+		if authenticationByQueryParam {
 			q := req.URL.Query()
 			q.Set("token", token)
 			req.URL.RawQuery = q.Encode()
@@ -240,27 +243,28 @@ func (u *updateServer) GetUpdateFileByFilenameUnverified(ctx context.Context, in
 	return resp.Body, int(resp.ContentLength), nil
 }
 
-func (u *updateServer) UpdateConfig(_ context.Context, baseURL string, signatureVerificationRootCA string) {
+func (u *updateServer) UpdateConfig(_ context.Context, baseURL string, signatureVerificationRootCA string, authenticationByQueryParam bool) {
 	u.configUpdateMu.Lock()
 	defer u.configUpdateMu.Unlock()
 
 	u.baseURL = strings.TrimSuffix(baseURL, "/")
 	u.signatureVerificationRootCA = signatureVerificationRootCA
+	u.authenticationByQueryParam = authenticationByQueryParam
 	u.verifier = signature.NewVerifier([]byte(signatureVerificationRootCA))
 }
 
-func (u *updateServer) SourceConnectionTest(ctx context.Context, newBaseURL string, newSignatureVerificationRootCA string) error {
+func (u *updateServer) SourceConnectionTest(ctx context.Context, newBaseURL string, newSignatureVerificationRootCA string, newAuthenticationByQueryParam bool) error {
 	u.configUpdateMu.Lock()
-	baseURL, signatureVerificationRootCA := u.baseURL, u.signatureVerificationRootCA
+	baseURL, signatureVerificationRootCA, authenticationByQueryParam := u.baseURL, u.signatureVerificationRootCA, u.authenticationByQueryParam
 	u.configUpdateMu.Unlock()
 
-	if strings.TrimSuffix(baseURL, "/") == strings.TrimSuffix(newBaseURL, "/") && signatureVerificationRootCA == newSignatureVerificationRootCA {
+	if strings.TrimSuffix(baseURL, "/") == strings.TrimSuffix(newBaseURL, "/") && signatureVerificationRootCA == newSignatureVerificationRootCA && authenticationByQueryParam == newAuthenticationByQueryParam {
 		return nil
 	}
 
 	// New instance of updateServer with provided baseURL and signatureVerificationCA
 	// used temporarily for the verification only.
-	updateSvr := New(newBaseURL, newSignatureVerificationRootCA, u.tokenProvider)
+	updateSvr := New(newBaseURL, newSignatureVerificationRootCA, newAuthenticationByQueryParam, u.tokenProvider)
 	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
