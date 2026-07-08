@@ -1333,7 +1333,7 @@ func TestImageIncusService_DeleteBySource(t *testing.T) {
 	}{
 		{
 			name:    "success",
-			argName: "almalinux:10:amd64:cloud",
+			argName: "images.linuxcontainers.org",
 			repoGetAllWithFilter: image.IncusImages{
 				image.IncusImage{
 					Name: "almalinux:10:amd64:cloud",
@@ -1349,19 +1349,19 @@ func TestImageIncusService_DeleteBySource(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(tt, err, `Invalid incus image name, expect name in the format "os:release:architecture:variant"`)
+				require.ErrorContains(tt, err, "Invalid image source name, name can not be empty")
 			},
 		},
 		{
 			name:                    "error - repo.GetByName",
-			argName:                 "almalinux:10:amd64:cloud",
+			argName:                 "images.linuxcontainers.org",
 			repoGetAllWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name:    "error - repo.DeleteByName",
-			argName: "almalinux:10:amd64:cloud",
+			argName: "images.linuxcontainers.org",
 			repoGetAllWithFilter: image.IncusImages{
 				image.IncusImage{
 					Name: "almalinux:10:amd64:cloud",
@@ -1373,7 +1373,7 @@ func TestImageIncusService_DeleteBySource(t *testing.T) {
 		},
 		{
 			name:    "error - filesRepo.Delete",
-			argName: "almalinux:10:amd64:cloud",
+			argName: "images.linuxcontainers.org",
 			repoGetAllWithFilter: image.IncusImages{
 				image.IncusImage{
 					Name: "almalinux:10:amd64:cloud",

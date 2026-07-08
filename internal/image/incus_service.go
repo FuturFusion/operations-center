@@ -443,12 +443,11 @@ func (s *imageIncusService) DeleteByName(ctx context.Context, name string) error
 }
 
 func (s *imageIncusService) DeleteBySource(ctx context.Context, sourceName string) error {
-	err := ValidateIncusImageName(sourceName)
-	if err != nil {
-		return err
+	if sourceName == "" {
+		return domain.NewValidationErrf("Invalid image source name, name can not be empty")
 	}
 
-	err = transaction.Do(ctx, func(ctx context.Context) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
 		images, err := s.repo.GetAllWithFilter(ctx, IncusImageFilter{
 			Source: ptr.To(sourceName),
 		})
