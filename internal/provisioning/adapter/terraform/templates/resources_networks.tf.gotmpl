@@ -1,6 +1,6 @@
 {{- range .IncusPreseed.Networks }}
 
-{{- $splitConfigs := splitConfig .Config "network" -}}
+{{- $splitConfigs := splitConfig .Config ( printf "network_%s" .Type ) -}}
 
 {{- $projectPrefix := "" }}
 {{- if ne .Project "" }}

@@ -1,6 +1,6 @@
 {{- range .IncusPreseed.StoragePools }}
 
-{{- $splitConfigs := splitConfig .Config "storage" -}}
+{{- $splitConfigs := splitConfig .Config ( printf "storage_%s" .Driver ) -}}
 
 resource "incus_storage_pool" "{{ .Name }}_per_node" {
   for_each = local.members

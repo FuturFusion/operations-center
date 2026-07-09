@@ -7,6 +7,12 @@ import (
 )
 
 func Test_splitConfig(t *testing.T) {
+	nodeSpecificConfigKeys := map[string]map[string]bool{
+		"server": {
+			"core.https_address": true,
+		},
+	}
+
 	tests := []struct {
 		name string
 		in   any
@@ -15,12 +21,12 @@ func Test_splitConfig(t *testing.T) {
 		want splitConfigs
 	}{
 		{
-			name: "node",
+			name: "server",
 			in: map[string]string{
 				"core.https_address": "foo",
 				"global_key":         "bar",
 			},
-			kind: "node",
+			kind: "server",
 
 			want: splitConfigs{
 				Specific: map[string]string{
@@ -31,45 +37,11 @@ func Test_splitConfig(t *testing.T) {
 				},
 			},
 		},
-		{
-			name: "storage",
-			in: map[string]string{
-				"source":     "foo",
-				"global_key": "bar",
-			},
-			kind: "storage",
-
-			want: splitConfigs{
-				Specific: map[string]string{
-					"source": "foo",
-				},
-				Global: map[string]string{
-					"global_key": "bar",
-				},
-			},
-		},
-		{
-			name: "network",
-			in: map[string]string{
-				"parent":     "foo",
-				"global_key": "bar",
-			},
-			kind: "network",
-
-			want: splitConfigs{
-				Specific: map[string]string{
-					"parent": "foo",
-				},
-				Global: map[string]string{
-					"global_key": "bar",
-				},
-			},
-		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := splitConfig(tc.in, tc.kind)
+			got := splitConfig(nodeSpecificConfigKeys)(tc.in, tc.kind)
 
 			require.Equal(t, tc.want, got)
 		})
@@ -92,17 +64,12 @@ func Test_splitConfig_panics(t *testing.T) {
 			in:   map[int]bool{},
 			kind: "node",
 		},
-		{
-			name: "unsupported kind",
-			in:   map[string]string{},
-			kind: "foobar",
-		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			require.Panics(t, func() {
-				_ = splitConfig(tc.in, tc.kind)
+				_ = splitConfig(map[string]map[string]bool{})(tc.in, tc.kind)
 			})
 		})
 	}

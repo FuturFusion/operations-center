@@ -1,4 +1,4 @@
-{{- $splitConfigs := splitConfig .IncusPreseed.Config "node" -}}
+{{- $splitConfigs := splitConfig .IncusPreseed.Config "server" -}}
 resource "incus_server" "this_per_node" {
   for_each = local.members
 
