@@ -5,5 +5,5 @@
 
 .breadcrumb-text {
   font-size: 18px;
-  color: #00000090;
+  color: var(--bs-secondary-color);
 }

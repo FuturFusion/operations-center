@@ -8,6 +8,9 @@ import "react-datepicker/dist/react-datepicker.css";
 import App from "./App.tsx";
 import { AuthProvider } from "context/authProvider";
 import { NotificationProvider } from "context/notificationProvider";
+import { initTheme } from "util/theme";
+
+initTheme();
 
 const queryClient = new QueryClient();
 

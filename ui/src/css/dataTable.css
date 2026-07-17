@@ -14,11 +14,11 @@
 }
 
 .data-table tr:not(:last-child) td, .data-table tr th {
-  border-bottom: 1px solid #ccc;
+  border-bottom: 1px solid var(--bs-border-color);
 }
 
 .additional-data-row:hover {
-  --bs-table-hover-bg: white !important;
+  --bs-table-hover-bg: var(--bs-body-bg) !important;
 }
 
 .data-table-link {
