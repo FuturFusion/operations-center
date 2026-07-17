@@ -82,7 +82,7 @@ const ClusterTemplateVariablesWidget: FC<Props> = ({ value, onChange }) => {
                   title="Delete"
                   size="sm"
                   variant="outline-secondary"
-                  className="bg-white border no-hover"
+                  className="bg-body border no-hover"
                   onClick={() => handleDelete(key)}
                 >
                   <BsTrash />
@@ -127,7 +127,7 @@ const ClusterTemplateVariablesWidget: FC<Props> = ({ value, onChange }) => {
                 title="Add"
                 size="sm"
                 variant="outline-secondary"
-                className="bg-white border no-hover"
+                className="bg-body border no-hover"
                 onClick={handleAdd}
                 disabled={!newName || newName in entries}
               >

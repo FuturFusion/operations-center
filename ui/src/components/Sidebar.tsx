@@ -23,6 +23,7 @@ import {
   RiPassPendingLine,
 } from "react-icons/ri";
 import { useQuery } from "@tanstack/react-query";
+import logo from "../assets/logo.png";
 import { isIncusOS } from "api/os";
 import { fetchSettings } from "api/server";
 import { MenuItem, NavItemLink } from "components/NavItemLink";
@@ -197,6 +198,9 @@ const Sidebar = () => {
   return (
     <>
       <Navbar bg="dark" variant="dark" className="d-flex flex-column vh-100">
+        <Navbar.Brand href="/ui/">
+          <img src={logo} alt="FuturFusion" />
+        </Navbar.Brand>
         <Navbar.Brand href="/ui/" style={{ margin: "5px 15px" }}>
           Operations Center
         </Navbar.Brand>

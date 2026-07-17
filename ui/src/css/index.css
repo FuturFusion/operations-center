@@ -12,7 +12,7 @@ h5 {
 }
 
 .detail-table-header {
-  color: #00000090;
+  color: var(--bs-secondary-color);
   padding: 8px 0px;
 }
 
@@ -21,7 +21,7 @@ h5 {
 }
 
 tr.overview-table-header th {
-  color: #00000090;
+  color: var(--bs-secondary-color);
 }
 
 .form-container {
@@ -64,13 +64,13 @@ tr.overview-table-header th {
 .action-sep li:not(:last-child)::after {
   content: "|";
   margin: 0 5px;
-  color: #aaa;
+  color: var(--bs-secondary-color);
 }
 
 .yaml-code {
-  background: #f6f8fa;
-  color: #111827;
-  border: 1px solid #e5e7eb;
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-body-color);
+  border: 1px solid var(--bs-border-color);
   border-radius: 4px;
   padding: 6px;
   white-space: pre-wrap;

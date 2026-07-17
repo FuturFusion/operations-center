@@ -43,7 +43,7 @@ const ClusterStatus: FC<Props> = ({ cluster }) => {
       {cluster.update_status?.in_progress_status?.status_description != "" && (
         <>
           <br />
-          <span style={{ color: "#00000090" }}>
+          <span style={{ color: "var(--bs-secondary-color)" }}>
             {cluster.update_status.in_progress_status.status_description}
           </span>
         </>

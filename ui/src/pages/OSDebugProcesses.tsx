@@ -23,7 +23,7 @@ const OSDebugProcesses: FC = () => {
   }
 
   return (
-    <pre className="bg-light" style={{ width: "80vw" }}>
+    <pre className="bg-body-tertiary" style={{ width: "80vw" }}>
       {processes}
     </pre>
   );

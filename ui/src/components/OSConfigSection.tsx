@@ -68,7 +68,7 @@ const OSConfigSection: FC<Props> = ({
       {actions && <div className="d-flex gap-2 mb-3 flex-wrap">{actions}</div>}
       <div className="flex-grow-1">
         {readOnly ? (
-          <pre className="bg-light border rounded-3 p-3 mb-0 yaml-editor">
+          <pre className="bg-body-tertiary border rounded-3 p-3 mb-0 yaml-editor">
             {YAML.stringify(sectionData, null, 2)}
           </pre>
         ) : (
