@@ -55,7 +55,7 @@ const YamlEditor: FC<Props> = ({ yamlData, onSubmit }) => {
           onKeyDown={handleKeyDown}
         />
       ) : (
-        <pre className="bg-light border rounded-3 p-3 mb-0 yaml-editor">
+        <pre className="bg-body-tertiary border rounded-3 p-3 mb-0 yaml-editor">
           {yaml}
         </pre>
       )}

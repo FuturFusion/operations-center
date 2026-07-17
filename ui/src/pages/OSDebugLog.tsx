@@ -120,7 +120,7 @@ const OSDebugLog: FC = () => {
         <div className="u-align-text--center">There are no logs.</div>
       )}
       {!isLoading && logs.length > 0 && (
-        <pre className="bg-light" style={{ width: "80vw" }}>
+        <pre className="bg-body-tertiary" style={{ width: "80vw" }}>
           {logs?.map((item, i) => <span key={i}>{JournalLine(item)}</span>)}
         </pre>
       )}

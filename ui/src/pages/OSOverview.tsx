@@ -82,7 +82,7 @@ const OSOverview: FC = () => {
       </div>
 
       <h6 className="mb-3 mt-4">System details</h6>
-      <pre className="bg-light border rounded-3 p-3 mb-0 yaml-editor">
+      <pre className="bg-body-tertiary border rounded-3 p-3 mb-0 yaml-editor">
         {YAML.stringify(incusOSData, null, 2)}
       </pre>
     </>
