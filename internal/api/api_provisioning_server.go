@@ -45,9 +45,12 @@ func registerProvisioningServerHandler(
 		clientKey:         clientKey,
 	}
 
-	// Creating new servers (POST requests for servers) is authenticated using
-	// a token. Therefore no authorization is performed for these requests.
-	router.HandleFunc("POST /{$}", response.With(handler.serversPost))
+	// Creating new servers (POST requests for servers) supports two ways of
+	// authentication:
+	// 1. normal user authentication
+	// 2. provided registration token
+	// Therefore no authorization middleware is used for this handler.
+	router.HandleFunc("POST /{$}", response.With(handler.serversPost(authorizer)))
 
 	// Self update of existing servers (PUT request of a server for their own record)
 	// is authenticated using the stored certificate of the server or by using
@@ -67,7 +70,6 @@ func registerProvisioningServerHandler(
 
 	router.HandleFunc("GET /{$}", response.With(handler.serversGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}", response.With(handler.serverGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /:pre-register", response.With(handler.serversPostPreRegister, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
 	router.HandleFunc("PUT /{name}", response.With(handler.serverPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{name}", response.With(handler.serverDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{name}", response.With(handler.serverPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
@@ -277,7 +279,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation POST /1.0/provisioning/servers servers servers_post
+// swagger:operation POST /1.0/provisioning/servers?token=token servers servers_post
 //
 //	Register a server using token
 //
@@ -292,6 +294,8 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: query
+//	    name: token
 //	  - in: body
 //	    name: server
 //	    description: Server configuration
@@ -318,7 +322,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 //	          description: Status code
 //	          example: 200
 //	        metadata:
-//	          type: array
+//	          type: object
 //	          description: Register server response details
 //	          items:
 //	            $ref: "#/definitions/ServerRegistrationResponse"
@@ -328,13 +332,54 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (s *serverHandler) serversPost(r *http.Request) response.Response {
+
+// swagger:operation POST /1.0/provisioning/servers servers servers_post_pre_register
+//
+//	Add a new unregistered server
+//
+//	Creates a new unregistered server.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: server
+//	    description: Server configuration
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/Server"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serversPost(authorizer *authz.Authorizer) func(r *http.Request) response.Response {
+	return func(r *http.Request) response.Response {
+		// If we got a server registration token, this is used to authenticate the request.
+		if r.URL.Query().Get("token") != "" {
+			return s.serversPostWithToken(r)
+		}
+
+		// Without registration token, the request requires proper authentication.
+		resp := checkPermission(authorizer, r, authz.ObjectTypeServer, authz.EntitlementCanCreate)
+		if resp != nil {
+			return resp
+		}
+
+		return s.serversPostPreRegister(r)
+	}
+}
+
+func (s *serverHandler) serversPostWithToken(r *http.Request) response.Response {
 	// Parse the token.
 	tokenParam := r.URL.Query().Get("token")
-	if tokenParam == "" {
-		return response.BadRequest(fmt.Errorf("Missing token"))
-	}
-
 	token, err := uuid.Parse(tokenParam)
 	if err != nil {
 		return response.BadRequest(fmt.Errorf("Invalid token: %v", err))
@@ -377,33 +422,6 @@ func (s *serverHandler) serversPost(r *http.Request) response.Response {
 	return response.SyncResponseLocation(true, result, "/"+api.APIVersion+"/provisioning/servers/"+server.Name)
 }
 
-// swagger:operation POST /1.0/provisioning/servers/:pre-register servers servers_post_pre_register
-//
-//	Add a new unregistered server
-//
-//	Creates a new unregistered server.
-//
-//	---
-//	consumes:
-//	  - application/json
-//	produces:
-//	  - application/json
-//	parameters:
-//	  - in: body
-//	    name: server
-//	    description: Server configuration
-//	    required: true
-//	    schema:
-//	      $ref: "#/definitions/Server"
-//	responses:
-//	  "200":
-//	    $ref: "#/responses/EmptySyncResponse"
-//	  "400":
-//	    $ref: "#/responses/BadRequest"
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serversPostPreRegister(r *http.Request) response.Response {
 	var server api.ServerPost
 
