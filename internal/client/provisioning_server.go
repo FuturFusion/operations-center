@@ -50,7 +50,7 @@ func (c OperationsCenterClient) GetServer(ctx context.Context, name string) (api
 }
 
 func (c OperationsCenterClient) PreRegisterServer(ctx context.Context, server api.ServerPost) error {
-	_, err := c.DoRequest(ctx, http.MethodPost, "/provisioning/servers/:pre-register", nil, server)
+	_, err := c.DoRequest(ctx, http.MethodPost, "/provisioning/servers", nil, server)
 	if err != nil {
 		return err
 	}
