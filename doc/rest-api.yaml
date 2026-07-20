@@ -10974,7 +10974,7 @@ paths:
                 - application/json
             responses:
                 "200":
-                    $ref: '#/responses/SyncResponse'
+                    $ref: '#/responses/EmptySyncResponse'
                 "400":
                     $ref: '#/responses/BadRequest'
                 "403":
@@ -11763,4 +11763,113 @@ paths:
             summary: Get incus images simplestreams index
             tags:
                 - simplestreams
+responses:
+    BadRequest:
+        description: Bad Request
+        schema:
+            properties:
+                error:
+                    example: bad request
+                    type: string
+                    x-go-name: Error
+                error_code:
+                    example: 400
+                    format: int64
+                    type: integer
+                    x-go-name: ErrorCode
+                type:
+                    example: error
+                    type: string
+                    x-go-name: Type
+            type: object
+    EmptySyncResponse:
+        description: Empty sync response
+        schema:
+            properties:
+                status:
+                    example: Success
+                    type: string
+                    x-go-name: Status
+                status_code:
+                    example: 200
+                    format: int64
+                    type: integer
+                    x-go-name: StatusCode
+                type:
+                    example: sync
+                    type: string
+                    x-go-name: Type
+            type: object
+    Forbidden:
+        description: Forbidden
+        schema:
+            properties:
+                error:
+                    example: not authorized
+                    type: string
+                    x-go-name: Error
+                error_code:
+                    example: 403
+                    format: int64
+                    type: integer
+                    x-go-name: ErrorCode
+                type:
+                    example: error
+                    type: string
+                    x-go-name: Type
+            type: object
+    InternalServerError:
+        description: Internal Server Error
+        schema:
+            properties:
+                error:
+                    example: internal server error
+                    type: string
+                    x-go-name: Error
+                error_code:
+                    example: 500
+                    format: int64
+                    type: integer
+                    x-go-name: ErrorCode
+                type:
+                    example: error
+                    type: string
+                    x-go-name: Type
+            type: object
+    NotFound:
+        description: Not found
+        schema:
+            properties:
+                error:
+                    example: not found
+                    type: string
+                    x-go-name: Error
+                error_code:
+                    example: 404
+                    format: int64
+                    type: integer
+                    x-go-name: ErrorCode
+                type:
+                    example: error
+                    type: string
+                    x-go-name: Type
+            type: object
+    PreconditionFailed:
+        description: Precondition Failed
+        schema:
+            properties:
+                error:
+                    example: precondition failed
+                    type: string
+                    x-go-name: Error
+                error_code:
+                    example: 412
+                    format: int64
+                    type: integer
+                    x-go-name: ErrorCode
+                type:
+                    example: error
+                    type: string
+                    x-go-name: Type
+            type: object
 swagger: "2.0"
