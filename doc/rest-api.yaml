@@ -9788,12 +9788,8 @@ paths:
         post:
             consumes:
                 - application/json
-            description: |-
-                Registers a server in Operations Center. If an existing server record
-                identified by the registration token and in state "unregistered" is found,
-                this server record is updated. Otherwise a new server is created as
-                registered.
-            operationId: servers_post
+            description: Creates a new unregistered server.
+            operationId: servers_post_pre_register
             parameters:
                 - description: Server configuration
                   in: body
@@ -9805,35 +9801,14 @@ paths:
                 - application/json
             responses:
                 "200":
-                    description: Register server response
-                    schema:
-                        description: Sync response
-                        properties:
-                            metadata:
-                                description: Register server response details
-                                items:
-                                    $ref: '#/definitions/ServerRegistrationResponse'
-                                type: array
-                            status:
-                                description: Status description
-                                example: Success
-                                type: string
-                            status_code:
-                                description: Status code
-                                example: 200
-                                type: integer
-                            type:
-                                description: Response type
-                                example: sync
-                                type: string
-                        type: object
+                    $ref: '#/responses/EmptySyncResponse'
                 "400":
                     $ref: '#/responses/BadRequest'
                 "403":
                     $ref: '#/responses/Forbidden'
                 "500":
                     $ref: '#/responses/InternalServerError'
-            summary: Register a server using token
+            summary: Add a new unregistered server
             tags:
                 - servers
     /1.0/provisioning/servers/:pre-register:
@@ -10497,6 +10472,60 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Get the servers
+            tags:
+                - servers
+    /1.0/provisioning/servers?token=token:
+        post:
+            consumes:
+                - application/json
+            description: |-
+                Registers a server in Operations Center. If an existing server record
+                identified by the registration token and in state "unregistered" is found,
+                this server record is updated. Otherwise a new server is created as
+                registered.
+            operationId: servers_post
+            parameters:
+                - in: query
+                  name: token
+                - description: Server configuration
+                  in: body
+                  name: server
+                  required: true
+                  schema:
+                    $ref: '#/definitions/Server'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Register server response
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: Register server response details
+                                items:
+                                    $ref: '#/definitions/ServerRegistrationResponse'
+                                type: object
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Register a server using token
             tags:
                 - servers
     /1.0/provisioning/tokens:
