@@ -60,6 +60,8 @@ type ServerRepo interface {
 	GetAllNamesWithFilter(ctx context.Context, filter ServerFilter) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Server, error)
 	GetByCertificate(ctx context.Context, certificatePEM string) (*Server, error)
+	GetBySystemUUID(ctx context.Context, systemUUID string) (*Server, error)
+	GetByMachineID(ctx context.Context, machineID string) (*Server, error)
 	Update(ctx context.Context, server Server) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error

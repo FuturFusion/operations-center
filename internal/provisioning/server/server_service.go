@@ -169,8 +169,26 @@ func (s *serverService) Register(ctx context.Context, token uuid.UUID, newServer
 			return fmt.Errorf("Consume token for server creation: %w", err)
 		}
 
-		// FIXME: how is a server mapped to an existing server record, if it has been registered using BMC before
-		// and we should update the existing record here?
+		var preRegisteredServer *provisioning.Server
+		if newServer.SystemUUID != nil {
+			preRegisteredServer, err = s.repo.GetBySystemUUID(ctx, *newServer.SystemUUID)
+			if err != nil && !errors.Is(err, domain.ErrNotFound) {
+				return fmt.Errorf("Failed to lookup server by system uuid: %w", err)
+			}
+		}
+
+		if preRegisteredServer == nil && newServer.MachineID != nil {
+			preRegisteredServer, err = s.repo.GetByMachineID(ctx, *newServer.MachineID)
+			if err != nil && !errors.Is(err, domain.ErrNotFound) {
+				return fmt.Errorf("Failed to lookup server by machine-id: %w", err)
+			}
+		}
+
+		if preRegisteredServer != nil {
+			preRegisteredServer.ConnectionURL = newServer.ConnectionURL
+			preRegisteredServer.Certificate = newServer.Certificate
+			newServer = *preRegisteredServer
+		}
 
 		newServer.Status = api.ServerStatusPending
 		newServer.StatusDetail = api.ServerStatusDetailPendingRegistering
@@ -191,9 +209,16 @@ func (s *serverService) Register(ctx context.Context, token uuid.UUID, newServer
 			return domain.NewValidationErrf("Remote operations centers can not be registered")
 		}
 
-		newServer.ID, err = s.repo.Create(ctx, newServer)
-		if err != nil {
-			return fmt.Errorf("Create server: %w", err)
+		if preRegisteredServer != nil {
+			err = s.repo.Update(ctx, newServer)
+			if err != nil {
+				return fmt.Errorf("Update pre registered server: %w", err)
+			}
+		} else {
+			newServer.ID, err = s.repo.Create(ctx, newServer)
+			if err != nil {
+				return fmt.Errorf("Create server: %w", err)
+			}
 		}
 
 		return nil

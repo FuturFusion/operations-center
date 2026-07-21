@@ -46,7 +46,9 @@ type Server struct {
 	BMCEndpoint          string                 `json:"bmc_endpoint"`
 	BMCUsername          string                 `json:"bmc_username"`
 	BMCPassword          string                 `json:"bmc_password"`
-	RegistrationToken    uuid.UUID              `json:"registration_token"`
+	RegistrationToken    *uuid.UUID             `json:"registration_token"`
+	SystemUUID           *string                `json:"system_uuid"`
+	MachineID            *string                `json:"machine_id"`
 	LastUpdated          time.Time              `json:"last_updated"           db:"update_timestamp"`
 	LastSeen             time.Time              `json:"last_seen"`
 	LastStatusUpdated    time.Time              `json:"last_status_updated"`
@@ -211,6 +213,8 @@ type ServerFilter struct {
 	StatusDetail *api.ServerStatusDetail
 	Certificate  *string
 	Type         *api.ServerType
+	SystemUUID   *string
+	MachineID    *string
 	Expression   *string `db:"ignore"`
 }
 
