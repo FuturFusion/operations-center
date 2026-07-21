@@ -249,13 +249,24 @@ func TestCluster_Filter(t *testing.T) {
 		name   string
 		filter provisioning.ClusterFilter
 
-		want string
+		want        string
+		wantIsEmpty bool
 	}{
 		{
 			name:   "empty filter",
 			filter: provisioning.ClusterFilter{},
 
-			want: ``,
+			want:        ``,
+			wantIsEmpty: true,
+		},
+		{
+			name: "empty filter",
+			filter: provisioning.ClusterFilter{
+				Name: ptr.To("name"),
+			},
+
+			want:        ``,
+			wantIsEmpty: false,
 		},
 		{
 			name: "complete filter",
@@ -263,13 +274,15 @@ func TestCluster_Filter(t *testing.T) {
 				Expression: ptr.To("true"),
 			},
 
-			want: `filter=true`,
+			want:        `filter=true`,
+			wantIsEmpty: true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			require.Equal(t, tc.want, tc.filter.String())
+			require.Equal(t, tc.wantIsEmpty, tc.filter.IsEmpty())
 		})
 	}
 }

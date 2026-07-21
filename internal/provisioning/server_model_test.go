@@ -361,6 +361,32 @@ one
 	}
 }
 
+func TestServer_UpdateState(t *testing.T) {
+	tests := []struct {
+		name   string
+		server provisioning.Server
+
+		want api.ServerUpdateState
+	}{
+		{
+			name: "success",
+			server: provisioning.Server{
+				Status: api.ServerStatusReady,
+			},
+
+			want: api.ServerUpdateStateUpToDate,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			state := tc.server.UpdateState()
+
+			require.Equal(t, tc.want, state)
+		})
+	}
+}
+
 func TestServer_Filter(t *testing.T) {
 	tests := []struct {
 		name   string

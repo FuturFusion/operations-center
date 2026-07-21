@@ -32,3 +32,18 @@ func TestLogWarningService(t *testing.T) {
 
 	log.Match(`boom!.*type="Server unreachable" scope=test entity_type=test entity=1`)(t, logBuf)
 }
+
+func TestNoopWarningService(t *testing.T) {
+	warn := NoopWarningService{}
+
+	warn.Emit(t.Context(), warning.NewWarning(
+		api.WarningTypeUnreachable,
+		api.WarningScope{
+			Scope:      "test",
+			EntityType: "test",
+			Entity:     "1",
+		},
+		"boom!",
+	))
+	warn.RemoveStale(t.Context(), api.WarningScope{}, nil)
+}
