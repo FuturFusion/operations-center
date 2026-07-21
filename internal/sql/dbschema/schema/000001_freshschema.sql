@@ -68,6 +68,7 @@ CREATE TABLE servers (
   registration_token TEXT,
   system_uuid TEXT,
   machine_id TEXT,
+  bmc_server_details TEXT NOT NULL DEFAULT '',
   UNIQUE (name),
   UNIQUE (certificate),
   UNIQUE (system_uuid),
@@ -462,4 +463,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (38, strftime("%s"));
+INSERT INTO schema (version, updated_at) VALUES (39, strftime("%s"));
