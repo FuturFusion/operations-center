@@ -78,6 +78,40 @@ func (_d ServerServiceWithSlog) AddApplication(ctx context.Context, name string,
 	return _d._base.AddApplication(ctx, name, applicationName)
 }
 
+// BMCRefreshByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCRefreshByName(ctx context.Context, name string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCRefreshByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BMCRefreshByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BMCRefreshByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BMCRefreshByName finished")
+		}
+	}()
+	return _d._base.BMCRefreshByName(ctx, name)
+}
+
 // DeleteByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
 	log := slog.With()
@@ -883,6 +917,39 @@ func (_d ServerServiceWithSlog) RestoreSystemByName(ctx context.Context, name st
 		}
 	}()
 	return _d._base.RestoreSystemByName(ctx, name, clusterUpdate, force, restoreModeSkip)
+}
+
+// ResyncBMCData implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) ResyncBMCData(ctx context.Context) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ResyncBMCData")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method ResyncBMCData returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method ResyncBMCData returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method ResyncBMCData finished")
+		}
+	}()
+	return _d._base.ResyncBMCData(ctx)
 }
 
 // ResyncByName implements provisioning.ServerService.
