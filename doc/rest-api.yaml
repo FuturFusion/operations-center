@@ -118,6 +118,22 @@ definitions:
     BMCAPIType:
         type: string
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BMCServerDetails:
+        properties:
+            last_updated:
+                description: LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
+                example: "2024-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: LastUpdated
+            system_uuid:
+                description: SystemUUID is the unique system UUID typically derived from hardware, e.g. mainboard.
+                example: e9de436e-b94e-4aef-8563-883aec84096e
+                type: string
+                x-go-name: SystemUUID
+        title: BMCServerDetails defines the server details, that have been collected from the BMC.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     CertificatePost:
         description: |-
             CertificatePost represents the fields available for an update of the
@@ -3169,6 +3185,8 @@ definitions:
                 description: BMCPassword holds the password used to authenticate with the bmc of the server.
                 type: string
                 x-go-name: BMCPassword
+            bmc_server_details:
+                $ref: '#/definitions/BMCServerDetails'
             bmc_username:
                 description: BMCUsername holds the username used to authenticate with the bmc of the server.
                 type: string
