@@ -63,8 +63,10 @@ func TestServerDatabaseActions(t *testing.T) {
 				},
 			},
 		},
-		Status:  api.ServerStatusReady,
-		Channel: "stable",
+		Status:     api.ServerStatusReady,
+		Channel:    "stable",
+		SystemUUID: ptr.To("1"),
+		MachineID:  ptr.To("1"),
 	}
 
 	serverB := provisioning.Server{
@@ -247,6 +249,18 @@ func TestServerDatabaseActions(t *testing.T) {
 	serverB.ID = dbServerB.ID
 	serverB.LastUpdated = dbServerB.LastUpdated
 	require.Equal(t, serverB, *dbServerB)
+
+	dbServerA, err = server.GetBySystemUUID(ctx, *serverA.SystemUUID)
+	require.NoError(t, err)
+	serverA.ID = dbServerA.ID
+	serverA.LastUpdated = dbServerA.LastUpdated
+	require.Equal(t, serverA, *dbServerA)
+
+	dbServerA, err = server.GetByMachineID(ctx, *serverA.MachineID)
+	require.NoError(t, err)
+	serverA.ID = dbServerA.ID
+	serverA.LastUpdated = dbServerA.LastUpdated
+	require.Equal(t, serverA, *dbServerA)
 
 	// GetByCertificate
 	dbServerA, err = server.GetByCertificate(ctx, serverA.Certificate)
