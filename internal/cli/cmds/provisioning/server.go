@@ -613,6 +613,8 @@ func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 		fmt.Printf("BMC API Type: %s\n", server.BMCAPIType.String())
 		fmt.Printf("BMC Endpoint: %s\n", server.BMCEndpoint)
 		fmt.Printf("BMC Username: %s\n", server.BMCUsername)
+		fmt.Printf("System UUID: %s\n", server.SystemUUID)
+		fmt.Printf("Machine ID: %s\n", server.MachineID)
 		fmt.Printf("Status: %s\n", server.State())
 		fmt.Printf("Update Status: %s\n", server.UpdateState().String())
 		fmt.Printf("Last Updated: %s\n", server.LastUpdated.Truncate(time.Second).String())
