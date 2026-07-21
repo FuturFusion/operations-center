@@ -560,18 +560,35 @@ func availableVersionGreaterThan(currentVersion string, availableVersion string)
 }
 
 type BMCConfig struct {
-	// BMCAPIType specifies the BMC API type of the server, which is used to
+	// APIType specifies the BMC API type of the server, which is used to
 	// determine the correct BMC adapter to talk to the server.
-	BMCAPIType BMCAPIType `json:"bmc_api_type" yaml:"bmc_api_type"`
+	APIType BMCAPIType `json:"api_type" yaml:"api_type"`
 
-	// BMCEndpoint holds the base URL of the bmc of the server.
-	BMCEndpoint string `json:"bmc_endpoint" yaml:"bmc_endpoint"`
+	// Endpoint holds the base URL of the bmc of the server.
+	Endpoint string `json:"endpoint" yaml:"endpoint"`
 
-	// BMCUsername holds the username used to authenticate with the bmc of the server.
-	BMCUsername string `json:"bmc_username" yaml:"bmc_username"`
+	// Certificate holds the PEM encoded certificate of the BMC used to establish
+	// trust for the TLS connection.
+	Certificate string `json:"certificate" yaml:"certificate"`
 
-	// BMCPassword holds the password used to authenticate with the bmc of the server.
-	BMCPassword string `json:"bmc_password" yaml:"bmc_password"`
+	// AutoPinCertificate defines, if the certificate presented by the BMC should be
+	// accepted on the first connection test. If set to true and Certificate is
+	// empty, the certificate presented by the BMC during the connection test is
+	// persisted in the Certificate property. If a certificate is provided in the
+	// Certificate property or if AutoPinCertificate is set to false, any not trusted
+	// Certificate presented by the BMC will cause an error during the connection
+	// test.
+	AutoPinCertificate bool `json:"auto_pin_certificate" yaml:"auto_pin_certificate"`
+
+	// Username holds the username used to authenticate with the bmc of the server.
+	Username string `json:"username" yaml:"username"`
+
+	// Password holds the password used to authenticate with the bmc of the server.
+	Password string `json:"password" yaml:"password"`
+}
+
+func (c BMCConfig) HasBMC() bool {
+	return c.APIType != BMCAPITypeNone
 }
 
 type BMCAPIType string
@@ -588,6 +605,91 @@ var BMCAPITypes = map[BMCAPIType]struct{}{
 
 func (s BMCAPIType) String() string {
 	return string(s)
+}
+
+// BMCData defines the data, that have been collected from the BMC.
+//
+// swagger:model
+type BMCData struct {
+	// BMCProtocol holds the protocol name, that is used to interact with the BMC.
+	// Example: Redfish
+	BMCProtocol string `json:"bmc_protocol" yaml:"bmc_protocol"`
+
+	// BMCProtocolVersion holds the protocol version reported by the BMC.
+	// Example: 1.16.0
+	BMCProtocolVersion string `json:"bmc_protocol_version" yaml:"bmc_protocol_version"`
+
+	// BMCVendor holds the vendor name reported by the BMC.
+	// Example: Dell
+	BMCVendor string `json:"bmc_vendor" yaml:"bmc_vendor"`
+
+	// BMCModel holds the model name reported by the BMC manager.
+	// Example: 17G Monolithic
+	BMCModel string `json:"bmc_model" yaml:"bmc_model"`
+
+	// BMCFirmwareVersion holds the firmware version of the BMC manager.
+	// Example: 1.30.20.10
+	BMCFirmwareVersion string `json:"bmc_firmware_version" yaml:"bmc_firmware_version"`
+
+	// BMCServiceIdentification holds the service identification of the BMC manager.
+	// Example: XXXXXXX
+	BMCServiceIdentification string `json:"bmc_service_identification" yaml:"bmc_service_identification"`
+
+	// ServerManufacturer holds the manufacturer reported for the system.
+	// Example: Dell Inc.
+	ServerManufacturer string `json:"server_manufacturer" yaml:"server_manufacturer"`
+
+	// ServerModel holds the model of the system.
+	// Example: PowerEdge R770
+	ServerModel string `json:"server_model" yaml:"server_model"`
+
+	// ServerSubModel holds information about the sub-model or configuration of the system.
+	ServerSubModel string `json:"server_sub_model" yaml:"server_sub_model"`
+
+	// ServerUUID is the unique system UUID typically derived from hardware, e.g. mainboard.
+	// Example: e9de436e-b94e-4aef-8563-883aec84096e
+	ServerUUID string `json:"system_uuid" yaml:"system_uuid"`
+
+	// ServerAssetTag holds the asset tag of the system.
+	// Example: XXXXXXX
+	ServerAssetTag string `json:"server_asset_tag" yaml:"server_asset_tag"`
+
+	// ServerHostName hold the host name as reported by the BMC for the server.
+	ServerHostName string `json:"server_host_name" yaml:"server_host_name"`
+
+	// ServerSKU holds the Stock Keeping Unit (SKU) for the server.
+	ServerSKU string `json:"server_sku" yaml:"server_sku"`
+
+	// ServerSerialNumber holds the serial number of the server.
+	ServerSerialNumber string `json:"server_serial_number" yaml:"server_serial_number"`
+
+	// ServerBIOSVersion holds the version of the BIOS.
+	// Example: 1.7.5
+	ServerBIOSVersion string `json:"server_bios_version" yaml:"server_bios_version"`
+
+	// ServerProcessorArchitecture holds the architecture reported for the first CPU.
+	// Example: x86
+	ServerProcessorArchitecture string `json:"server_processor_architecture" yaml:"server_processor_architecture"`
+
+	// ServerProcessorInstructionSet holds the instruction set reported for the first CPU.
+	// Example: x86-64
+	ServerProcessorInstructionSet string `json:"server_processor_instruction_set" yaml:"server_processor_instruction_set"`
+
+	// ServerPowerState holds the power state reported for the server.
+	// Example: On
+	ServerPowerState string `json:"server_power_state" yaml:"server_power_state"`
+
+	// ServerLocationIndicatorActive reports, if the location indicator LED is active.
+	// Example: false
+	ServerLocationIndicatorActive bool `json:"server_location_indicator_active" yaml:"server_location_indicator_active"`
+
+	// ServerHealthStatus holds the reported overall health status for the server.
+	// Example: Warning
+	ServerHealthStatus string `json:"server_health_status" yaml:"server_health_status"`
+
+	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
+	// Example: 2024-11-12T16:15:00Z
+	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
 }
 
 // ServerPost defines a new server running Hypervisor OS.
@@ -678,6 +780,9 @@ type Server struct {
 
 	// VersionData contains information about the servers version.
 	VersionData ServerVersionData `json:"version_data" yaml:"version_data"`
+
+	// BMCData contains the data, that is collected from the BMC.
+	BMCData BMCData `json:"bmc_data" yaml:"bmc_data"`
 
 	// Status contains the status the server is currently in from the point of view of Operations Center.
 	// Possible values for status are: pending, ready
