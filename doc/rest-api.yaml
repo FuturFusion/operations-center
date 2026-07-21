@@ -3225,6 +3225,14 @@ definitions:
                 format: date-time
                 type: string
                 x-go-name: LastUpdated
+            machine_id:
+                description: |-
+                    MachineID is the unique machine ID of the server, this might be the same as
+                    the SystemUUID, but it can also be a distinct value. It is defined as
+                    a 128-bit value encoded as hex characters without any delimiters.
+                example: e9de436eb94e4aef8563883aec84096e
+                type: string
+                x-go-name: MachineID
             name:
                 description: Name of the server.
                 example: incus.local
@@ -3271,6 +3279,11 @@ definitions:
                     trusted.
                 type: boolean
                 x-go-name: SystemStateIsTrusted
+            system_uuid:
+                description: SystemUUID is the unique system UUID typically derived from hardware, e.g. mainboard.
+                example: e9de436e-b94e-4aef-8563-883aec84096e
+                type: string
+                x-go-name: SystemUUID
             version_data:
                 $ref: '#/definitions/ServerVersionData'
         title: Server defines a server running Hypervisor OS.
@@ -3309,6 +3322,14 @@ definitions:
                 example: Lab server with limited resources
                 type: string
                 x-go-name: Description
+            machine_id:
+                description: |-
+                    MachineID is the unique machine ID of the server, this might be the same as
+                    the SystemUUID, but it can also be a distinct value. It is defined as
+                    a 128-bit value encoded as hex characters without any delimiters.
+                example: e9de436eb94e4aef8563883aec84096e
+                type: string
+                x-go-name: MachineID
             name:
                 description: Name of the server.
                 example: incus.local
@@ -3324,6 +3345,11 @@ definitions:
                 example: https://incus.local:6443
                 type: string
                 x-go-name: PublicConnectionURL
+            system_uuid:
+                description: SystemUUID is the unique system UUID typically derived from hardware, e.g. mainboard.
+                example: e9de436e-b94e-4aef-8563-883aec84096e
+                type: string
+                x-go-name: SystemUUID
         title: ServerPost defines a new server running Hypervisor OS.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
@@ -9785,33 +9811,6 @@ paths:
             summary: Get the servers
             tags:
                 - servers
-        post:
-            consumes:
-                - application/json
-            description: Creates a new unregistered server.
-            operationId: servers_post_pre_register
-            parameters:
-                - description: Server configuration
-                  in: body
-                  name: server
-                  required: true
-                  schema:
-                    $ref: '#/definitions/Server'
-            produces:
-                - application/json
-            responses:
-                "200":
-                    $ref: '#/responses/EmptySyncResponse'
-                "400":
-                    $ref: '#/responses/BadRequest'
-                "403":
-                    $ref: '#/responses/Forbidden'
-                "500":
-                    $ref: '#/responses/InternalServerError'
-            summary: Add a new unregistered server
-            tags:
-                - servers
-    /1.0/provisioning/servers/:pre-register:
         post:
             consumes:
                 - application/json
