@@ -575,6 +575,19 @@ func (s BMCAPIType) String() string {
 	return string(s)
 }
 
+// BMCServerDetails defines the server details, that have been collected from the BMC.
+//
+// swagger:model
+type BMCServerDetails struct {
+	// SystemUUID is the unique system UUID typically derived from hardware, e.g. mainboard.
+	// Example: e9de436e-b94e-4aef-8563-883aec84096e
+	SystemUUID string `json:"system_uuid" yaml:"system_uuid"`
+
+	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
+	// Example: 2024-11-12T16:15:00Z
+	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
+}
+
 // ServerPost defines a new server running Hypervisor OS.
 //
 // swagger:model
@@ -673,6 +686,10 @@ type Server struct {
 
 	// VersionData contains information about the servers version.
 	VersionData ServerVersionData `json:"version_data" yaml:"version_data"`
+
+	// BMCServerDetails contains the server details, that have been collected
+	// from the BMC.
+	BMCServerDetails BMCServerDetails `json:"bmc_server_details" yaml:"bmc_server_details"`
 
 	// Status contains the status the server is currently in from the point of view of Operations Center.
 	// Possible values for status are: pending, ready
