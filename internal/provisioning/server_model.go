@@ -49,6 +49,7 @@ type Server struct {
 	RegistrationToken    *uuid.UUID             `json:"registration_token"`
 	SystemUUID           *string                `json:"system_uuid"`
 	MachineID            *string                `json:"machine_id"`
+	BMCServerDetails     api.BMCServerDetails   `json:"bmc_server_details"     db:"sql=servers.bmc_server_details&marshal=json"`
 	LastUpdated          time.Time              `json:"last_updated"           db:"update_timestamp"`
 	LastSeen             time.Time              `json:"last_seen"`
 	LastStatusUpdated    time.Time              `json:"last_status_updated"`
