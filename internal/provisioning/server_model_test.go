@@ -64,8 +64,8 @@ one
 				Status:        api.ServerStatusUnregistered,
 				Channel:       "stable",
 				BMCConfig: api.BMCConfig{
-					BMCAPIType:  api.BMCAPITypeRedfishV1Generic,
-					BMCEndpoint: "https://1.2.3.4",
+					APIType:  api.BMCAPITypeRedfishV1Generic,
+					Endpoint: "https://1.2.3.4",
 				},
 			},
 
@@ -323,7 +323,31 @@ one
 				Status:  api.ServerStatusPending,
 				Channel: "stable",
 				BMCConfig: api.BMCConfig{
-					BMCAPIType: api.BMCAPIType("invalid"), // invalid
+					APIType: api.BMCAPIType("invalid"), // invalid
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - BMC endpoint empty with BMC type not none",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status:  api.ServerStatusPending,
+				Channel: "stable",
+				BMCConfig: api.BMCConfig{
+					APIType:  api.BMCAPITypeRedfishV1Generic,
+					Endpoint: "", // empty
 				},
 			},
 
@@ -346,8 +370,33 @@ one
 				Status:  api.ServerStatusPending,
 				Channel: "stable",
 				BMCConfig: api.BMCConfig{
-					BMCAPIType:  api.BMCAPITypeRedfishV1Generic,
-					BMCEndpoint: ":|\\", // invalid
+					APIType:  api.BMCAPITypeRedfishV1Generic,
+					Endpoint: ":|\\", // invalid
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - BMC certificate invalid",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status:  api.ServerStatusPending,
+				Channel: "stable",
+				BMCConfig: api.BMCConfig{
+					APIType:     api.BMCAPITypeRedfishV1Generic,
+					Endpoint:    "https://1.2.3.4",
+					Certificate: "invalid", // invalid
 				},
 			},
 

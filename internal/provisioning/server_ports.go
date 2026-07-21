@@ -35,6 +35,7 @@ type ServerService interface {
 
 	PollServers(ctx context.Context, serverFilter ServerFilter, updateServerConfiguration bool) error
 	PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error
+	ResyncBMCData(ctx context.Context) error
 
 	EvacuateSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool) error
 	PoweroffSystemByName(ctx context.Context, name string, force bool) error
@@ -50,6 +51,8 @@ type ServerService interface {
 	UpdateSystemKernel(ctx context.Context, name string, kernelConfig ServerSystemKernel) error
 	AddApplication(ctx context.Context, name string, applicationName string) error
 	RestartApplication(ctx context.Context, name string, applicationName string) error
+
+	BMCRefreshByName(ctx context.Context, name string) error
 }
 
 type ServerRepo interface {
@@ -98,4 +101,9 @@ type ServerClientPort interface {
 
 type ServerScriptletPort interface {
 	ServerRegistrationRun(ctx context.Context, server *Server) error
+}
+
+type BMCServerClientPort interface {
+	ConnectionTest(ctx context.Context, server Server) (certificate string, _ error)
+	GetData(ctx context.Context, server Server) (api.BMCData, error)
 }

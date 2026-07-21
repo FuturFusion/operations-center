@@ -39,14 +39,15 @@ import (
 const rebootStatusUpdateGracePeriod = 30 * time.Second
 
 type serverService struct {
-	repo       provisioning.ServerRepo
-	client     provisioning.ServerClientPort
-	scriptlet  provisioning.ServerScriptletPort
-	tokenSvc   provisioning.TokenService
-	clusterSvc provisioning.ClusterService
-	channelSvc provisioning.ChannelService
-	updateSvc  provisioning.UpdateService
-	warning    provisioning.WarningServicePort
+	repo             provisioning.ServerRepo
+	client           provisioning.ServerClientPort
+	bmcServerClients map[api.BMCAPIType]provisioning.BMCServerClientPort
+	scriptlet        provisioning.ServerScriptletPort
+	tokenSvc         provisioning.TokenService
+	clusterSvc       provisioning.ClusterService
+	channelSvc       provisioning.ChannelService
+	updateSvc        provisioning.UpdateService
+	warning          provisioning.WarningServicePort
 
 	httpClient *http.Client
 
@@ -91,6 +92,12 @@ func WithRebootStatusUpdateGracePeriod(rebootStatusUpdateGracePeriod time.Durati
 	}
 }
 
+func AddBMCServerClient(bmcAPIType api.BMCAPIType, client provisioning.BMCServerClientPort) Option {
+	return func(s *serverService) {
+		s.bmcServerClients[bmcAPIType] = client
+	}
+}
+
 func (s *serverService) UpdateServerCertificate(ctx context.Context, serverCertificate tls.Certificate) error {
 	s.mu.Lock()
 	s.serverCertificate = serverCertificate
@@ -111,15 +118,16 @@ func New(
 	opts ...Option,
 ) *serverService {
 	serverSvc := &serverService{
-		repo:       repo,
-		client:     client,
-		scriptlet:  scriptlet,
-		tokenSvc:   tokenSvc,
-		clusterSvc: clusterSvc,
-		channelSvc: channelSvc,
-		updateSvc:  updateSvc,
-		warning:    provisioning.LogWarningService{},
-		httpClient: &http.Client{},
+		repo:             repo,
+		client:           client,
+		bmcServerClients: map[api.BMCAPIType]provisioning.BMCServerClientPort{},
+		scriptlet:        scriptlet,
+		tokenSvc:         tokenSvc,
+		clusterSvc:       clusterSvc,
+		channelSvc:       channelSvc,
+		updateSvc:        updateSvc,
+		warning:          provisioning.LogWarningService{},
+		httpClient:       &http.Client{},
 
 		serverCertificate: serverCertificate,
 
@@ -154,10 +162,38 @@ func (s *serverService) PreRegister(ctx context.Context, newServer provisioning.
 		return provisioning.Server{}, err
 	}
 
+	if newServer.BMCConfig.HasBMC() {
+		client, ok := s.bmcServerClients[newServer.BMCConfig.APIType]
+		if !ok {
+			return provisioning.Server{}, fmt.Errorf("Failed to get BMC server client for type %q", newServer.BMCConfig.APIType)
+		}
+
+		certificate, err := client.ConnectionTest(ctx, newServer)
+		if err != nil {
+			return provisioning.Server{}, fmt.Errorf("Failed to perform connection test to BMC: %w", err)
+		}
+
+		if newServer.BMCConfig.AutoPinCertificate && newServer.BMCConfig.Certificate == "" {
+			newServer.BMCConfig.Certificate = certificate
+		}
+
+		newServer.BMCConfig.AutoPinCertificate = false
+	}
+
 	newServer.ID, err = s.repo.Create(ctx, newServer)
 	if err != nil {
 		return provisioning.Server{}, err
 	}
+
+	go func() {
+		// Use a detached context in order to make sure, no existing DB transaction is inherited.
+		ctx := context.Background()
+
+		err = s.resyncBMCData(ctx, newServer)
+		if err != nil {
+			slog.WarnContext(ctx, "Initial resync of BMC data failed (non-critical)", logger.Err(err), slog.String("name", newServer.Name))
+		}
+	}()
 
 	return newServer, nil
 }
@@ -448,7 +484,8 @@ func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, serv
 		// This is a possible case, e.g. if someone clears and refreshes all the
 		// updates and then queries servers, registered in Operations Center, before
 		// Operations Center has refreshed the Updates from upstream.
-		s.warning.Emit(ctx,
+		s.warning.Emit(
+			ctx,
 			warning.NewWarning(
 				api.WarningTypeVersionDatailsMissing,
 				scope,
@@ -484,6 +521,24 @@ func (s *serverService) Update(ctx context.Context, server provisioning.Server, 
 	err := server.Validate()
 	if err != nil {
 		return fmt.Errorf("Failed to validate server for update: %w", err)
+	}
+
+	if server.BMCConfig.HasBMC() {
+		client, ok := s.bmcServerClients[server.BMCConfig.APIType]
+		if !ok {
+			return fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
+		}
+
+		certificate, err := client.ConnectionTest(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to perform connection test to BMC: %w", err)
+		}
+
+		if server.BMCConfig.AutoPinCertificate && server.BMCConfig.Certificate == "" {
+			server.BMCConfig.Certificate = certificate
+		}
+
+		server.BMCConfig.AutoPinCertificate = false
 	}
 
 	reverter := revert.New()
@@ -1934,6 +1989,13 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 							"Server connection test failed (offline unresponsive)",
 						))
 					}
+
+					if server.BMCConfig.HasBMC() && server.BMCData.ServerPowerState != "Off" {
+						err = s.resyncBMCData(ctx, server)
+						if err != nil {
+							log.WarnContext(ctx, "Failed to update BMC data for offline server", logger.Err(err))
+						}
+					}
 				}
 
 				return nil
@@ -1953,6 +2015,13 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 	}
 
 	s.warning.RemoveStale(ctx, scope, nil)
+
+	if server.BMCConfig.HasBMC() && server.BMCData.ServerPowerState != "On" {
+		err = s.resyncBMCData(ctx, server)
+		if err != nil {
+			log.WarnContext(ctx, "Failed to update BMC data for online server", logger.Err(err))
+		}
+	}
 
 	err = s.client.IsReady(ctx, server)
 	if err != nil {
@@ -1992,7 +2061,8 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 		}
 
 		if server.Channel != versionData.UpdateChannel {
-			s.warning.Emit(ctx,
+			s.warning.Emit(
+				ctx,
 				warning.NewWarning(
 					api.WarningTypeUpdateChannelMismatch,
 					scope,
@@ -2101,7 +2171,8 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 
 			err = s.scriptlet.ServerRegistrationRun(ctx, server)
 			if err != nil {
-				s.warning.Emit(ctx,
+				s.warning.Emit(
+					ctx,
 					warning.NewWarning(
 						api.WarningTypeServerRegistrationScriptletFailed,
 						scope,
@@ -2217,7 +2288,7 @@ func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context,
 					break refreshAttempt
 				}
 
-				resp, retryErr := (s.httpClient).Do(req)
+				resp, retryErr := s.httpClient.Do(req)
 				if resp != nil && resp.Body != nil {
 					_ = resp.Body.Close()
 				}
@@ -2275,6 +2346,88 @@ func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context,
 	return domain.NewRetryableErr(err)
 }
 
+func (s *serverService) ResyncBMCData(ctx context.Context) error {
+	servers, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to get servers for BMC resync: %w", err)
+	}
+
+	var errs []error
+	for _, server := range servers {
+		err = s.resyncBMCData(ctx, server)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("Failed to update bmc data for server %q: %w", server.Name, err))
+			continue
+		}
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+
+	return nil
+}
+
+func (s *serverService) resyncBMCData(ctx context.Context, server provisioning.Server) error {
+	if !server.BMCConfig.HasBMC() {
+		return nil
+	}
+
+	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
+	if !ok {
+		return fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
+	}
+
+	details, err := client.GetData(ctx, server)
+	if err != nil {
+		return fmt.Errorf("Failed to get BMC data from %q: %w", server.Name, err)
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		server, err := s.repo.GetByName(ctx, server.Name)
+		if err != nil {
+			return err
+		}
+
+		details.LastUpdated = s.now()
+		if details.ServerUUID != "" {
+			server.SystemUUID = &details.ServerUUID
+		}
+
+		server.BMCData = details
+
+		err = s.repo.Update(ctx, *server)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to update bmc data for server %q: %w", server.Name, err)
+	}
+
+	return nil
+}
+
 func (s *serverService) SyncCluster(ctx context.Context, clusterName string) error {
+	return nil
+}
+
+func (s *serverService) BMCRefreshByName(ctx context.Context, name string) error {
+	if name == "" {
+		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	err = s.resyncBMCData(ctx, *server)
+	if err != nil {
+		return fmt.Errorf("Failed to trigger BMC data refresh of server %q: %w", server.Name, err)
+	}
+
 	return nil
 }
