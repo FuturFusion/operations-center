@@ -341,6 +341,10 @@ install_claude_cli() {
     # Create a global symlink so it's accessible system-wide
     ln -sf "$CLAUDE_PATH" /usr/local/bin/claude
 
+    # Install gopls-lsp plugin for Claude CLI (for Go language support)
+    su - "$CODE_USER" -c 'claude plugin marketplace add anthropics/claude-plugins-official'
+    su - "$CODE_USER" -c 'claude plugin install gopls-lsp'
+
     log "Claude CLI $(claude --version 2>/dev/null || echo 'installed')"
 }
 
