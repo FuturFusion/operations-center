@@ -237,6 +237,8 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 				ServerPost: api.ServerPost{
 					Name:          server.Name,
 					ConnectionURL: server.ConnectionURL,
+					SystemUUID:    ptr.From(server.SystemUUID),
+					MachineID:     ptr.From(server.MachineID),
 					ServerPut: api.ServerPut{
 						PublicConnectionURL: server.PublicConnectionURL,
 						Channel:             server.Channel,
@@ -404,12 +406,24 @@ func (s *serverHandler) serversPostWithToken(r *http.Request) response.Response 
 		Bytes: r.TLS.PeerCertificates[0].Raw,
 	})
 
+	var systemUUID *string
+	if server.SystemUUID != "" {
+		systemUUID = &server.SystemUUID
+	}
+
+	var machineID *string
+	if server.MachineID != "" {
+		machineID = &server.MachineID
+	}
+
 	_, err = s.service.Register(r.Context(), token, provisioning.Server{
 		Name:                server.Name,
 		ConnectionURL:       server.ConnectionURL,
 		PublicConnectionURL: server.PublicConnectionURL,
 		Certificate:         string(certificate),
 		Channel:             server.Channel,
+		SystemUUID:          systemUUID,
+		MachineID:           machineID,
 	})
 	if err != nil {
 		return response.Forbidden(fmt.Errorf("Failed registering server: %w", err))
@@ -503,6 +517,8 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 			ServerPost: api.ServerPost{
 				Name:          server.Name,
 				ConnectionURL: server.ConnectionURL,
+				SystemUUID:    ptr.From(server.SystemUUID),
+				MachineID:     ptr.From(server.MachineID),
 				ServerPut: api.ServerPut{
 					PublicConnectionURL: server.PublicConnectionURL,
 					Channel:             server.Channel,
