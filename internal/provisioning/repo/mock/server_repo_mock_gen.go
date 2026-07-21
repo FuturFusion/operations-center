@@ -42,8 +42,14 @@ var _ provisioning.ServerRepo = &ServerRepoMock{}
 //			GetByCertificateFunc: func(ctx context.Context, certificatePEM string) (*provisioning.Server, error) {
 //				panic("mock out the GetByCertificate method")
 //			},
+//			GetByMachineIDFunc: func(ctx context.Context, machineID string) (*provisioning.Server, error) {
+//				panic("mock out the GetByMachineID method")
+//			},
 //			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 //				panic("mock out the GetByName method")
+//			},
+//			GetBySystemUUIDFunc: func(ctx context.Context, systemUUID string) (*provisioning.Server, error) {
+//				panic("mock out the GetBySystemUUID method")
 //			},
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
@@ -79,8 +85,14 @@ type ServerRepoMock struct {
 	// GetByCertificateFunc mocks the GetByCertificate method.
 	GetByCertificateFunc func(ctx context.Context, certificatePEM string) (*provisioning.Server, error)
 
+	// GetByMachineIDFunc mocks the GetByMachineID method.
+	GetByMachineIDFunc func(ctx context.Context, machineID string) (*provisioning.Server, error)
+
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Server, error)
+
+	// GetBySystemUUIDFunc mocks the GetBySystemUUID method.
+	GetBySystemUUIDFunc func(ctx context.Context, systemUUID string) (*provisioning.Server, error)
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
@@ -135,12 +147,26 @@ type ServerRepoMock struct {
 			// CertificatePEM is the certificatePEM argument value.
 			CertificatePEM string
 		}
+		// GetByMachineID holds details about calls to the GetByMachineID method.
+		GetByMachineID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// MachineID is the machineID argument value.
+			MachineID string
+		}
 		// GetByName holds details about calls to the GetByName method.
 		GetByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+		}
+		// GetBySystemUUID holds details about calls to the GetBySystemUUID method.
+		GetBySystemUUID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// SystemUUID is the systemUUID argument value.
+			SystemUUID string
 		}
 		// Rename holds details about calls to the Rename method.
 		Rename []struct {
@@ -166,7 +192,9 @@ type ServerRepoMock struct {
 	lockGetAllNamesWithFilter sync.RWMutex
 	lockGetAllWithFilter      sync.RWMutex
 	lockGetByCertificate      sync.RWMutex
+	lockGetByMachineID        sync.RWMutex
 	lockGetByName             sync.RWMutex
+	lockGetBySystemUUID       sync.RWMutex
 	lockRename                sync.RWMutex
 	lockUpdate                sync.RWMutex
 }
@@ -415,6 +443,42 @@ func (mock *ServerRepoMock) GetByCertificateCalls() []struct {
 	return calls
 }
 
+// GetByMachineID calls GetByMachineIDFunc.
+func (mock *ServerRepoMock) GetByMachineID(ctx context.Context, machineID string) (*provisioning.Server, error) {
+	if mock.GetByMachineIDFunc == nil {
+		panic("ServerRepoMock.GetByMachineIDFunc: method is nil but ServerRepo.GetByMachineID was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		MachineID string
+	}{
+		Ctx:       ctx,
+		MachineID: machineID,
+	}
+	mock.lockGetByMachineID.Lock()
+	mock.calls.GetByMachineID = append(mock.calls.GetByMachineID, callInfo)
+	mock.lockGetByMachineID.Unlock()
+	return mock.GetByMachineIDFunc(ctx, machineID)
+}
+
+// GetByMachineIDCalls gets all the calls that were made to GetByMachineID.
+// Check the length with:
+//
+//	len(mockedServerRepo.GetByMachineIDCalls())
+func (mock *ServerRepoMock) GetByMachineIDCalls() []struct {
+	Ctx       context.Context
+	MachineID string
+} {
+	var calls []struct {
+		Ctx       context.Context
+		MachineID string
+	}
+	mock.lockGetByMachineID.RLock()
+	calls = mock.calls.GetByMachineID
+	mock.lockGetByMachineID.RUnlock()
+	return calls
+}
+
 // GetByName calls GetByNameFunc.
 func (mock *ServerRepoMock) GetByName(ctx context.Context, name string) (*provisioning.Server, error) {
 	if mock.GetByNameFunc == nil {
@@ -448,6 +512,42 @@ func (mock *ServerRepoMock) GetByNameCalls() []struct {
 	mock.lockGetByName.RLock()
 	calls = mock.calls.GetByName
 	mock.lockGetByName.RUnlock()
+	return calls
+}
+
+// GetBySystemUUID calls GetBySystemUUIDFunc.
+func (mock *ServerRepoMock) GetBySystemUUID(ctx context.Context, systemUUID string) (*provisioning.Server, error) {
+	if mock.GetBySystemUUIDFunc == nil {
+		panic("ServerRepoMock.GetBySystemUUIDFunc: method is nil but ServerRepo.GetBySystemUUID was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		SystemUUID string
+	}{
+		Ctx:        ctx,
+		SystemUUID: systemUUID,
+	}
+	mock.lockGetBySystemUUID.Lock()
+	mock.calls.GetBySystemUUID = append(mock.calls.GetBySystemUUID, callInfo)
+	mock.lockGetBySystemUUID.Unlock()
+	return mock.GetBySystemUUIDFunc(ctx, systemUUID)
+}
+
+// GetBySystemUUIDCalls gets all the calls that were made to GetBySystemUUID.
+// Check the length with:
+//
+//	len(mockedServerRepo.GetBySystemUUIDCalls())
+func (mock *ServerRepoMock) GetBySystemUUIDCalls() []struct {
+	Ctx        context.Context
+	SystemUUID string
+} {
+	var calls []struct {
+		Ctx        context.Context
+		SystemUUID string
+	}
+	mock.lockGetBySystemUUID.RLock()
+	calls = mock.calls.GetBySystemUUID
+	mock.lockGetBySystemUUID.RUnlock()
 	return calls
 }
 

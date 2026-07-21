@@ -281,6 +281,41 @@ func (_d ServerRepoWithSlog) GetByCertificate(ctx context.Context, certificatePE
 	return _d._base.GetByCertificate(ctx, certificatePEM)
 }
 
+// GetByMachineID implements provisioning.ServerRepo.
+func (_d ServerRepoWithSlog) GetByMachineID(ctx context.Context, machineID string) (server *provisioning.Server, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("machineID", machineID),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetByMachineID")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("server", server),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetByMachineID returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetByMachineID returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetByMachineID finished")
+		}
+	}()
+	return _d._base.GetByMachineID(ctx, machineID)
+}
+
 // GetByName implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) GetByName(ctx context.Context, name string) (server *provisioning.Server, err error) {
 	log := slog.With()
@@ -314,6 +349,41 @@ func (_d ServerRepoWithSlog) GetByName(ctx context.Context, name string) (server
 		}
 	}()
 	return _d._base.GetByName(ctx, name)
+}
+
+// GetBySystemUUID implements provisioning.ServerRepo.
+func (_d ServerRepoWithSlog) GetBySystemUUID(ctx context.Context, systemUUID string) (server *provisioning.Server, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("systemUUID", systemUUID),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetBySystemUUID")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("server", server),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetBySystemUUID returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetBySystemUUID returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetBySystemUUID finished")
+		}
+	}()
+	return _d._base.GetBySystemUUID(ctx, systemUUID)
 }
 
 // Rename implements provisioning.ServerRepo.
