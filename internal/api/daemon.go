@@ -47,6 +47,7 @@ import (
 	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/bmc/redfish"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/flasher"
 	provisioningIncusAdapter "github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
 	provisioningAdapterMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
@@ -219,7 +220,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 	)
 
 	loader := incusScriptlet.NewLoader()
-	runner, err := scriptlet.New(loader,
+	runner, err := scriptlet.New(
+		loader,
 		provisioningAdapterMiddleware.NewScriptletClientPortWithSlog(
 			client,
 		),
@@ -734,6 +736,12 @@ func (d *Daemon) setupServerService(
 		updateSvc,
 		d.serverCertificate,
 		provisioningServer.WithWarningEmitter(warningSvc),
+		provisioningServer.AddBMCServerClient(
+			api.BMCAPITypeRedfishV1Generic,
+			provisioningAdapterMiddleware.NewBMCServerClientPortWithSlog(
+				redfish.New(),
+			),
+		),
 	)
 
 	// Server service needs to learn about updates of the public Operations Center
@@ -1068,7 +1076,8 @@ func (d *Daemon) setupBackgroundTasks(
 			Entity:     "-",
 		}
 		if err != nil {
-			warningSvc.Emit(ctx,
+			warningSvc.Emit(
+				ctx,
 				warning.NewWarning(
 					api.WarningTypeUpdateRefreshFailed,
 					scope,
@@ -1115,7 +1124,8 @@ func (d *Daemon) setupBackgroundTasks(
 			Entity:     "-",
 		}
 		if err != nil {
-			warningSvc.Emit(ctx,
+			warningSvc.Emit(
+				ctx,
 				warning.NewWarning(
 					api.WarningTypeUpdateRefreshFailed,
 					scope,
@@ -1306,6 +1316,29 @@ func (d *Daemon) setupBackgroundTasks(
 		return refreshInventoryTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
 
+	// Start background task to refresh BMC data.
+	refreshBMCDataTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "BMC data resync triggered")
+		err := serverSvc.ResyncBMCData(ctx)
+		if err != nil {
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "BMC data resync failed", logger.Err(err))
+
+			return
+		}
+
+		slog.InfoContext(ctx, "BMC data resync completed")
+	}
+
+	refreshBMCDataTaskStop, _ := task.Start(ctx, refreshBMCDataTask, task.Every(config.BMCDataResyncInterval))
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return refreshBMCDataTaskStop(deadlineFrom(ctx, 10*time.Second))
+	})
+
 	// Start background task to renew ACME server certificate.
 	renewACMEServerCertificateTask := func(ctx context.Context) {
 		slog.InfoContext(ctx, "ACME server certificate renewal triggered")
@@ -1318,7 +1351,8 @@ func (d *Daemon) setupBackgroundTasks(
 
 		changed, err := d.systemSvc.TriggerCertificateRenew(ctx, false)
 		if err != nil {
-			warningSvc.Emit(ctx,
+			warningSvc.Emit(
+				ctx,
 				warning.NewWarning(
 					api.WarningTypeACMECertificateUpdateFailed,
 					scope,

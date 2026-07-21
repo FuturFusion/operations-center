@@ -74,6 +74,7 @@ func registerProvisioningServerHandler(
 	router.HandleFunc("DELETE /{name}", response.With(handler.serverDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{name}", response.With(handler.serverPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/:resync", response.With(handler.serverResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/bmc/:refresh", response.With(handler.serverBMCRefreshPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}/changelog", response.With(handler.serverChangelogGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("/{name}/os", response.With(handler.serverOSProxy, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("/{name}/os/", response.With(handler.serverOSProxy, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
@@ -256,6 +257,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 				VersionData:          server.VersionData,
 				Status:               server.Status,
 				StatusDetail:         server.StatusDetail,
+				BMCData:              server.BMCData,
 				LastUpdated:          server.LastUpdated,
 				LastSeen:             server.LastSeen,
 				SystemStateIsTrusted: server.OSData.Security.State.SystemStateIsTrusted,
@@ -530,6 +532,7 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 			VersionData:          server.VersionData,
 			Status:               server.Status,
 			StatusDetail:         server.StatusDetail,
+			BMCData:              server.BMCData,
 			LastUpdated:          server.LastUpdated,
 			LastSeen:             server.LastSeen,
 			SystemStateIsTrusted: server.OSData.Security.State.SystemStateIsTrusted,
@@ -874,6 +877,38 @@ func (s *serverHandler) serverResyncPost(r *http.Request) response.Response {
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync server %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:refresh servers_bmc_refresh server_bmc_refresh_post
+//
+//	Refresh the BMC data
+//
+//	Triggers a refresh of the server's BMC data.
+//
+//	---
+//	parameters:
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverBMCRefreshPost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	err := s.service.BMCRefreshByName(r.Context(), name)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to start server %q: %w", name, err))
 	}
 
 	return response.EmptySyncResponse
