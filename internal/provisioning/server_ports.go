@@ -35,6 +35,7 @@ type ServerService interface {
 
 	PollServers(ctx context.Context, serverFilter ServerFilter, updateServerConfiguration bool) error
 	PollServer(ctx context.Context, server Server, updateServerConfiguration bool) error
+	ResyncBMCServerDetails(ctx context.Context) error
 
 	EvacuateSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool) error
 	PoweroffSystemByName(ctx context.Context, name string, force bool) error
@@ -98,4 +99,8 @@ type ServerClientPort interface {
 
 type ServerScriptletPort interface {
 	ServerRegistrationRun(ctx context.Context, server *Server) error
+}
+
+type BMCServerClientPort interface {
+	GetServerDetails(ctx context.Context, server Server) (api.BMCServerDetails, error)
 }
