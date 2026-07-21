@@ -136,6 +136,113 @@ definitions:
                 x-go-name: BMCUsername
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BMCServerDetails:
+        properties:
+            bmc_firmware_version:
+                description: BMCFirmwareVersion holds the firmware version of the BMC manager.
+                example: 1.30.20.10
+                type: string
+                x-go-name: BMCFirmwareVersion
+            bmc_model:
+                description: BMCModel holds the model name reported by the BMC manager.
+                example: 17G Monolithic
+                type: string
+                x-go-name: BMCModel
+            bmc_protocol:
+                description: BMCProtocol holds the protocol name, that is used to interact with the BMC.
+                example: Redfish
+                type: string
+                x-go-name: BMCProtocol
+            bmc_protocol_version:
+                description: BMCProtocolVersion holds the protocol version reported by the BMC.
+                example: 1.16.0
+                type: string
+                x-go-name: BMCProtocolVersion
+            bmc_service_identification:
+                description: BMCServiceIdentification holds the service identification of the BMC manager.
+                example: XXXXXXX
+                type: string
+                x-go-name: BMCServiceIdentification
+            bmc_vendor:
+                description: BMCVendor holds the vendor name reported by the BMC.
+                example: Dell
+                type: string
+                x-go-name: BMCVendor
+            last_updated:
+                description: LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
+                example: "2024-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: LastUpdated
+            server_asset_tag:
+                description: ServerAssetTag holds the asset tag of the system.
+                example: XXXXXXX
+                type: string
+                x-go-name: ServerAssetTag
+            server_bios_version:
+                description: ServerBIOSVersion holds the version of the BIOS.
+                example: 1.7.5
+                type: string
+                x-go-name: ServerBIOSVersion
+            server_health_status:
+                description: ServerHealthStatus holds the reported overall health status for the server.
+                example: Warning
+                type: string
+                x-go-name: ServerHealthStatus
+            server_host_name:
+                description: ServerHostName hold the host name as reported by the BMC for the server.
+                type: string
+                x-go-name: ServerHostName
+            server_location_indicator_active:
+                description: ServerLocationIndicatorActive reports, if the location indicator LED is active.
+                example: false
+                type: boolean
+                x-go-name: ServerLocationIndicatorActive
+            server_manufacturer:
+                description: ServerManufacturer holds the manufacturer reported for the system.
+                example: Dell Inc
+                type: string
+                x-go-name: ServerManufacturer
+            server_model:
+                description: ServerModel holds the model of the system.
+                example: PowerEdge R770
+                type: string
+                x-go-name: ServerModel
+            server_power_state:
+                description: ServerPowerState holds the power state reported for the server.
+                example: "On"
+                type: string
+                x-go-name: ServerPowerState
+            server_processor_architecture:
+                description: ServerProcessorArchitecture holds the architecture reported for the first CPU.
+                example: x86
+                type: string
+                x-go-name: ServerProcessorArchitecture
+            server_processor_instruction_set:
+                description: ServerProcessorInstructionSet holds the instruction set reported for the first CPU.
+                example: x86-64
+                type: string
+                x-go-name: ServerProcessorInstructionSet
+            server_serial_number:
+                description: ServerSerialNumber holds the serial number of the server.
+                type: string
+                x-go-name: ServerSerialNumber
+            server_sku:
+                description: ServerSKU holds the Stock Keeping Unit (SKU) for the server.
+                type: string
+                x-go-name: ServerSKU
+            server_sub_model:
+                description: ServerSubModel holds information about the sub-model or configuration of the system.
+                type: string
+                x-go-name: ServerSubModel
+            system_uuid:
+                description: ServerUUID is the unique system UUID typically derived from hardware, e.g. mainboard.
+                example: e9de436e-b94e-4aef-8563-883aec84096e
+                type: string
+                x-go-name: ServerUUID
+        title: BMCServerDetails defines the server details, that have been collected from the BMC.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     CertificatePost:
         description: |-
             CertificatePost represents the fields available for an update of the
@@ -3179,6 +3286,8 @@ definitions:
         properties:
             bmc_config:
                 $ref: '#/definitions/BMCConfig'
+            bmc_server_details:
+                $ref: '#/definitions/BMCServerDetails'
             certificate:
                 description: Certificate of the server endpoint in PEM encoded format.
                 example: |-
