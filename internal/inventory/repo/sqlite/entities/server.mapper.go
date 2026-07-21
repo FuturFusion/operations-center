@@ -10,7 +10,7 @@ import (
 )
 
 var serverObjects = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_api_type, servers.bmc_endpoint, servers.bmc_username, servers.bmc_password, servers.registration_token, servers.system_uuid, servers.machine_id, servers.last_updated, servers.last_seen, servers.last_status_updated
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_api_type, servers.bmc_endpoint, servers.bmc_username, servers.bmc_password, servers.registration_token, servers.system_uuid, servers.machine_id, servers.bmc_server_details, servers.last_updated, servers.last_seen, servers.last_status_updated
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   JOIN channels ON servers.channel_id = channels.id
