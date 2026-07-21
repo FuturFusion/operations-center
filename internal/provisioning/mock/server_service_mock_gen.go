@@ -97,6 +97,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			RestoreSystemByNameFunc: func(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) error {
 //				panic("mock out the RestoreSystemByName method")
 //			},
+//			ResyncBMCServerDetailsFunc: func(ctx context.Context) error {
+//				panic("mock out the ResyncBMCServerDetails method")
+//			},
 //			ResyncByNameFunc: func(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 //				panic("mock out the ResyncByName method")
 //			},
@@ -214,6 +217,9 @@ type ServerServiceMock struct {
 
 	// RestoreSystemByNameFunc mocks the RestoreSystemByName method.
 	RestoreSystemByNameFunc func(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) error
+
+	// ResyncBMCServerDetailsFunc mocks the ResyncBMCServerDetails method.
+	ResyncBMCServerDetailsFunc func(ctx context.Context) error
 
 	// ResyncByNameFunc mocks the ResyncByName method.
 	ResyncByNameFunc func(ctx context.Context, clusterName string, event domain.LifecycleEvent) error
@@ -452,6 +458,11 @@ type ServerServiceMock struct {
 			// RestoreModeSkip is the restoreModeSkip argument value.
 			RestoreModeSkip bool
 		}
+		// ResyncBMCServerDetails holds details about calls to the ResyncBMCServerDetails method.
+		ResyncBMCServerDetails []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// ResyncByName holds details about calls to the ResyncByName method.
 		ResyncByName []struct {
 			// Ctx is the ctx argument value.
@@ -586,6 +597,7 @@ type ServerServiceMock struct {
 	lockRename                       sync.RWMutex
 	lockRestartApplication           sync.RWMutex
 	lockRestoreSystemByName          sync.RWMutex
+	lockResyncBMCServerDetails       sync.RWMutex
 	lockResyncByName                 sync.RWMutex
 	lockSelfRegisterOperationsCenter sync.RWMutex
 	lockSelfUpdate                   sync.RWMutex
@@ -1518,6 +1530,38 @@ func (mock *ServerServiceMock) RestoreSystemByNameCalls() []struct {
 	mock.lockRestoreSystemByName.RLock()
 	calls = mock.calls.RestoreSystemByName
 	mock.lockRestoreSystemByName.RUnlock()
+	return calls
+}
+
+// ResyncBMCServerDetails calls ResyncBMCServerDetailsFunc.
+func (mock *ServerServiceMock) ResyncBMCServerDetails(ctx context.Context) error {
+	if mock.ResyncBMCServerDetailsFunc == nil {
+		panic("ServerServiceMock.ResyncBMCServerDetailsFunc: method is nil but ServerService.ResyncBMCServerDetails was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockResyncBMCServerDetails.Lock()
+	mock.calls.ResyncBMCServerDetails = append(mock.calls.ResyncBMCServerDetails, callInfo)
+	mock.lockResyncBMCServerDetails.Unlock()
+	return mock.ResyncBMCServerDetailsFunc(ctx)
+}
+
+// ResyncBMCServerDetailsCalls gets all the calls that were made to ResyncBMCServerDetails.
+// Check the length with:
+//
+//	len(mockedServerService.ResyncBMCServerDetailsCalls())
+func (mock *ServerServiceMock) ResyncBMCServerDetailsCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockResyncBMCServerDetails.RLock()
+	calls = mock.calls.ResyncBMCServerDetails
+	mock.lockResyncBMCServerDetails.RUnlock()
 	return calls
 }
 
