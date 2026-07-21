@@ -47,6 +47,7 @@ import (
 	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/bmc/redfish"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/flasher"
 	provisioningIncusAdapter "github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
 	provisioningAdapterMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
@@ -734,6 +735,12 @@ func (d *Daemon) setupServerService(
 		updateSvc,
 		d.serverCertificate,
 		provisioningServer.WithWarningEmitter(warningSvc),
+		provisioningServer.AddBMCServerClient(
+			api.BMCAPITypeRedfishV1Generic,
+			provisioningAdapterMiddleware.NewBMCServerClientPortWithSlog(
+				redfish.New(),
+			),
+		),
 	)
 
 	// Server service needs to learn about updates of the public Operations Center
@@ -1304,6 +1311,29 @@ func (d *Daemon) setupBackgroundTasks(
 	refreshInventoryTaskStop, _ := task.Start(ctx, refreshInventoryTask, task.Every(config.InventoryUpdateInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return refreshInventoryTaskStop(deadlineFrom(ctx, 10*time.Second))
+	})
+
+	// Start background task to refresh BMC server details.
+	refreshBMCServerDetailsTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "BMC server details resync triggered")
+		err := serverSvc.ResyncBMCServerDetails(ctx)
+		if err != nil {
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.DebugContext
+			}
+
+			logCtx(ctx, "BMC server details resync failed", logger.Err(err))
+
+			return
+		}
+
+		slog.InfoContext(ctx, "BMC server details resync completed")
+	}
+
+	refreshBMCServerDetailsTaskStop, _ := task.Start(ctx, refreshBMCServerDetailsTask, task.Every(config.BMCServerDetailResyncInterval))
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return refreshBMCServerDetailsTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
 
 	// Start background task to renew ACME server certificate.
