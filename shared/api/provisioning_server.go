@@ -589,6 +589,16 @@ type ServerPost struct {
 	// Center for its communication.
 	// Example: https://incus.local:6443
 	ConnectionURL string `json:"connection_url" yaml:"connection_url"`
+
+	// SystemUUID is the unique system UUID typically derived from hardware, e.g. mainboard.
+	// Example: e9de436e-b94e-4aef-8563-883aec84096e
+	SystemUUID string `json:"system_uuid" yaml:"system_uuid"`
+
+	// MachineID is the unique machine ID of the server, this might be the same as
+	// the SystemUUID, but it can also be a distinct value. It is defined as
+	// a 128-bit value encoded as hex characters without any delimiters.
+	// Example: e9de436eb94e4aef8563883aec84096e
+	MachineID string `json:"machine_id" yaml:"machine_id"`
 }
 
 // ServerPut defines the updateable part of a server running Hypervisor OS.
