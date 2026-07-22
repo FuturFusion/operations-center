@@ -117,6 +117,13 @@ func (c *CmdServer) Command() *cobra.Command {
 
 	cmd.AddCommand(serverSystemCmd.Command())
 
+	// BMC
+	serverBMCCmd := cmdServerBMC{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(serverBMCCmd.Command())
+
 	return cmd
 }
 
