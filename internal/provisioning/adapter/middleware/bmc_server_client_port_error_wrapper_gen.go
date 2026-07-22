@@ -35,3 +35,43 @@ func (_d BMCServerClientPortWithErrorWrapper) GetServerDetails(ctx context.Conte
 	}()
 	return _d._base.GetServerDetails(ctx, server)
 }
+
+// Restart implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) Restart(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.Restart(ctx, server, force)
+}
+
+// Start implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) Start(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.Start(ctx, server, force)
+}
+
+// Stop implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) Stop(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.Stop(ctx, server, force)
+}
+
+// WaitForTask implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) WaitForTask(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.WaitForTask(ctx, server, taskMonitor)
+}

@@ -52,3 +52,59 @@ func (_d BMCServerClientPortWithPrometheus) GetServerDetails(ctx context.Context
 	}()
 	return _d.base.GetServerDetails(ctx, server)
 }
+
+// Restart implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) Restart(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Restart", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Restart(ctx, server, force)
+}
+
+// Start implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) Start(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Start", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Start(ctx, server, force)
+}
+
+// Stop implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) Stop(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Stop", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Stop(ctx, server, force)
+}
+
+// WaitForTask implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) WaitForTask(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "WaitForTask", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.WaitForTask(ctx, server, taskMonitor)
+}

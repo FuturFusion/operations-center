@@ -74,3 +74,146 @@ func (_d BMCServerClientPortWithSlog) GetServerDetails(ctx context.Context, serv
 	}()
 	return _d._base.GetServerDetails(ctx, server)
 }
+
+// Restart implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) Restart(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.Bool("force", force),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Restart")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bMCTaskMonitor", bMCTaskMonitor),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method Restart returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method Restart returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method Restart finished")
+		}
+	}()
+	return _d._base.Restart(ctx, server, force)
+}
+
+// Start implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) Start(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.Bool("force", force),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Start")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bMCTaskMonitor", bMCTaskMonitor),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method Start returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method Start returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method Start finished")
+		}
+	}()
+	return _d._base.Start(ctx, server, force)
+}
+
+// Stop implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) Stop(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.Bool("force", force),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Stop")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bMCTaskMonitor", bMCTaskMonitor),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method Stop returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method Stop returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method Stop finished")
+		}
+	}()
+	return _d._base.Stop(ctx, server, force)
+}
+
+// WaitForTask implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) WaitForTask(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.Any("taskMonitor", taskMonitor),
+		)
+	}
+	log.DebugContext(ctx, "=> calling WaitForTask")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method WaitForTask returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method WaitForTask returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method WaitForTask finished")
+		}
+	}()
+	return _d._base.WaitForTask(ctx, server, taskMonitor)
+}

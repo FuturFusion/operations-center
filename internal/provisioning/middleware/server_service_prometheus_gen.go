@@ -55,6 +55,48 @@ func (_d ServerServiceWithPrometheus) AddApplication(ctx context.Context, name s
 	return _d.base.AddApplication(ctx, name, applicationName)
 }
 
+// BMCRestartByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BMCRestartByName(ctx context.Context, name string, force bool) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCRestartByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BMCRestartByName(ctx, name, force)
+}
+
+// BMCStartByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BMCStartByName(ctx context.Context, name string, force bool) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCStartByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BMCStartByName(ctx, name, force)
+}
+
+// BMCStopByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BMCStopByName(ctx context.Context, name string, force bool) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCStopByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BMCStopByName(ctx, name, force)
+}
+
 // DeleteByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) DeleteByName(ctx context.Context, name string) (err error) {
 	_since := time.Now()
