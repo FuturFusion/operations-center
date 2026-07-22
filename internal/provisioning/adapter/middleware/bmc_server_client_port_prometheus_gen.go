@@ -67,6 +67,34 @@ func (_d BMCServerClientPortWithPrometheus) Restart(ctx context.Context, server 
 	return _d.base.Restart(ctx, server, force)
 }
 
+// SetupBIOS implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) SetupBIOS(ctx context.Context, server provisioning.Server) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "SetupBIOS", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.SetupBIOS(ctx, server)
+}
+
+// SetupSecureBootCertificates implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) SetupSecureBootCertificates(ctx context.Context, server provisioning.Server) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "SetupSecureBootCertificates", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.SetupSecureBootCertificates(ctx, server)
+}
+
 // Start implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithPrometheus) Start(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
 	_since := time.Now()

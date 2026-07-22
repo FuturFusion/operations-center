@@ -111,6 +111,75 @@ func (_d BMCServerClientPortWithSlog) Restart(ctx context.Context, server provis
 	return _d._base.Restart(ctx, server, force)
 }
 
+// SetupBIOS implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) SetupBIOS(ctx context.Context, server provisioning.Server) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling SetupBIOS")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bMCTaskMonitor", bMCTaskMonitor),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method SetupBIOS returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method SetupBIOS returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method SetupBIOS finished")
+		}
+	}()
+	return _d._base.SetupBIOS(ctx, server)
+}
+
+// SetupSecureBootCertificates implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) SetupSecureBootCertificates(ctx context.Context, server provisioning.Server) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling SetupSecureBootCertificates")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method SetupSecureBootCertificates returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method SetupSecureBootCertificates returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method SetupSecureBootCertificates finished")
+		}
+	}()
+	return _d._base.SetupSecureBootCertificates(ctx, server)
+}
+
 // Start implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) Start(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
 	log := slog.With()

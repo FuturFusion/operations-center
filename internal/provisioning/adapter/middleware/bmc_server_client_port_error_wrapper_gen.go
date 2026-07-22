@@ -46,6 +46,26 @@ func (_d BMCServerClientPortWithErrorWrapper) Restart(ctx context.Context, serve
 	return _d._base.Restart(ctx, server, force)
 }
 
+// SetupBIOS implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) SetupBIOS(ctx context.Context, server provisioning.Server) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.SetupBIOS(ctx, server)
+}
+
+// SetupSecureBootCertificates implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) SetupSecureBootCertificates(ctx context.Context, server provisioning.Server) (err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.SetupSecureBootCertificates(ctx, server)
+}
+
 // Start implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithErrorWrapper) Start(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
 	defer func() {
