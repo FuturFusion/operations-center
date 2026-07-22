@@ -13,7 +13,9 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/stmcginnis/gofish"
@@ -270,4 +272,131 @@ func getFirstProcessor(system *schemas.ComputerSystem) (*schemas.Processor, erro
 	sort.Slice(processors, func(i, j int) bool { return processors[i].ID < processors[j].ID })
 
 	return processors[0], nil
+}
+
+func (r redfish) ServerPowerOn(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+	resetType := schemas.OnResetType
+	if force {
+		resetType = schemas.ForceOnResetType
+	}
+
+	return r.performReset(ctx, server, resetType)
+}
+
+func (r redfish) ServerPowerOff(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+	resetType := schemas.GracefulShutdownResetType
+	if force {
+		resetType = schemas.ForceOffResetType
+	}
+
+	return r.performReset(ctx, server, resetType)
+}
+
+func (r redfish) ServerRestart(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+	resetType := schemas.GracefulRestartResetType
+	if force {
+		resetType = schemas.ForceRestartResetType
+	}
+
+	return r.performReset(ctx, server, resetType)
+}
+
+const defaultWaitForTaskRetryAfter = 2 * time.Second
+
+func (r redfish) WaitForTask(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) error {
+	if taskMonitor == nil {
+		return nil
+	}
+
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	uri := taskMonitor.URI
+
+	for {
+		err := ctx.Err()
+		if err != nil {
+			return fmt.Errorf("Waiting for task %s: %w", uri, err)
+		}
+
+		resp, err := client.Get(uri)
+		if err != nil {
+			return err
+		}
+
+		resp.Body.Close()
+
+		switch resp.StatusCode {
+		case http.StatusAccepted: // still running
+
+		case http.StatusOK, http.StatusCreated: // task finished
+			return nil
+
+		default:
+			return fmt.Errorf("Unexpected status %d polling %s", resp.StatusCode, uri)
+		}
+
+		wait := defaultWaitForTaskRetryAfter
+		ra := resp.Header.Get("Retry-After")
+		if ra != "" {
+			secs, err := strconv.Atoi(ra)
+			if err == nil {
+				wait = time.Duration(secs) * time.Second
+			}
+		}
+
+		select {
+		case <-time.After(wait):
+			continue
+
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
+func (r redfish) performReset(ctx context.Context, server provisioning.Server, resetType schemas.ResetType) (*provisioning.BMCTaskMonitor, error) {
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	system, err := getFirstSystem(client)
+	if err != nil {
+		return nil, fmt.Errorf("Failed get BMC system: %w", err)
+	}
+
+	actionInfo, err := system.ResetActionInfo()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get BMC reset action info: %w", err)
+	}
+
+	allowedResetTypes, err := actionInfo.GetParamValues("ResetType", schemas.StringParameterTypes)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get supported reset types from BMC: %w", err)
+	}
+
+	if !slices.Contains(allowedResetTypes, string(resetType)) {
+		return nil, fmt.Errorf("Reset type %q is not supported by the BMC, supported types are: %v", resetType, allowedResetTypes)
+	}
+
+	taskMonitor, err := system.Reset(resetType)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to perform BMC reset operation: %w", err)
+	}
+
+	// If taskMonitor is nil, the BMC completed synchronously.
+	if taskMonitor == nil {
+		return nil, nil
+	}
+
+	return &provisioning.BMCTaskMonitor{
+		URI: taskMonitor.TaskMonitor,
+	}, nil
 }
