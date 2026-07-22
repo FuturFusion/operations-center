@@ -74,6 +74,9 @@ func registerProvisioningServerHandler(
 	router.HandleFunc("DELETE /{name}", response.With(handler.serverDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{name}", response.With(handler.serverPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/:resync", response.With(handler.serverResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/bmc/:start", response.With(handler.serverBMCStartPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/bmc/:stop", response.With(handler.serverBMCStopPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/bmc/:restart", response.With(handler.serverBMCRestartPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}/changelog", response.With(handler.serverChangelogGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("/{name}/os", response.With(handler.serverOSProxy, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("/{name}/os/", response.With(handler.serverOSProxy, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
@@ -876,6 +879,123 @@ func (s *serverHandler) serverResyncPost(r *http.Request) response.Response {
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync server %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:start servers_bmc_start server_bmc_start_post
+//
+//	Start server via BMC
+//
+//	Triggers a server start via BMC.
+//
+//	---
+//	parameters:
+//	  - in: query
+//	    name: force
+//	    description: |-
+//	      Boolean indicating, if the operations should be applied forcefully or
+//	      not.
+//	      Defaults to false.
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverBMCStartPost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
+
+	err := s.service.BMCStartByName(r.Context(), name, force)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to start server %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:stop servers_bmc_stop server_bmc_stop_post
+//
+//	Stop server via BMC
+//
+//	Triggers a server stop via BMC.
+//
+//	---
+//	parameters:
+//	  - in: query
+//	    name: force
+//	    description: |-
+//	      Boolean indicating, if the operations should be applied forcefully or
+//	      not.
+//	      Defaults to false.
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverBMCStopPost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
+
+	err := s.service.BMCStopByName(r.Context(), name, force)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to stop server %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:restart servers_bmc_restart server_bmc_restart_post
+//
+//	Restart server via BMC
+//
+//	Triggers a server restart via BMC.
+//
+//	---
+//	parameters:
+//	  - in: query
+//	    name: force
+//	    description: |-
+//	      Boolean indicating, if the operations should be applied forcefully or
+//	      not.
+//	      Defaults to false.
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverBMCRestartPost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
+
+	err := s.service.BMCRestartByName(r.Context(), name, force)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to restart server %q: %w", name, err))
 	}
 
 	return response.EmptySyncResponse
