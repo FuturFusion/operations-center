@@ -1,0 +1,1103 @@
+package redfish_test
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/bmc/redfish"
+	"github.com/FuturFusion/operations-center/shared/api"
+)
+
+func TestRedfish_GetServerDetails(t *testing.T) {
+	tests := []struct {
+		name string
+
+		serviceRootStatusCode int
+		systemsStatusCode     int
+		systemsBody           string
+		systemStatusCode      int
+		systemBody            string
+
+		assertErr require.ErrorAssertionFunc
+		want      api.BMCServerDetails
+	}{
+		{
+			name: "success",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`,
+			systemStatusCode: http.StatusOK,
+			systemBody: `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1"
+}`,
+
+			assertErr: require.NoError,
+			want: api.BMCServerDetails{
+				SystemUUID: "1",
+			},
+		},
+		{
+			name: "error - failed to connect to BMC",
+
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to get BMC systems",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - no BMC systems found",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody: `{
+  "Members@odata.count": 0,
+  "Members": []
+}`,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to get individual BMC system",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`,
+			systemStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode: tc.serviceRootStatusCode,
+				systemsStatusCode:     tc.systemsStatusCode,
+				systemsBody:           tc.systemsBody,
+				systemStatusCode:      tc.systemStatusCode,
+				systemBody:            tc.systemBody,
+			}, nil)
+
+			client := redfish.New()
+			details, err := client.GetServerDetails(t.Context(), provisioning.Server{
+				BMCEndpoint: svr.URL,
+			})
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, details)
+		})
+	}
+}
+
+const (
+	resetSystemsBody = `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`
+
+	resetSystemBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Actions": {
+    "#ComputerSystem.Reset": {
+      "Target": "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset"
+    }
+  }
+}`
+
+	resetEmptySystemsBody = `{
+  "Members@odata.count": 0,
+  "Members": []
+}`
+)
+
+func TestRedfish_Start(t *testing.T) {
+	tests := []struct {
+		name  string
+		force bool
+
+		serviceRootStatusCode int
+		systemsStatusCode     int
+		systemsBody           string
+		systemStatusCode      int
+		systemBody            string
+		resetStatusCode       int
+		resetLocation         string
+
+		wantResetType   string
+		wantTaskMonitor *provisioning.BMCTaskMonitor
+		assertErr       require.ErrorAssertionFunc
+	}{
+		{
+			name:  "success - not forced",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemBody,
+			resetStatusCode:       http.StatusNoContent,
+
+			wantResetType: "On",
+			assertErr:     require.NoError,
+		},
+		{
+			name:  "success - forced",
+			force: true,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemBody,
+			resetStatusCode:       http.StatusNoContent,
+
+			wantResetType: "ForceOn",
+			assertErr:     require.NoError,
+		},
+		{
+			name:  "success - task monitor returned",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemBody,
+			resetStatusCode:       http.StatusAccepted,
+			resetLocation:         "/redfish/v1/TaskMonitor/1",
+
+			wantResetType: "On",
+			wantTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - failed to connect to BMC",
+
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to get BMC systems",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - no BMC systems found",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetEmptySystemsBody,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - reset action failed",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemBody,
+			resetStatusCode:       http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotBody []byte
+
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode: tc.serviceRootStatusCode,
+				systemsStatusCode:     tc.systemsStatusCode,
+				systemsBody:           tc.systemsBody,
+				systemStatusCode:      tc.systemStatusCode,
+				systemBody:            tc.systemBody,
+				resetStatusCode:       tc.resetStatusCode,
+				resetLocation:         tc.resetLocation,
+			}, &gotBody)
+
+			client := redfish.New()
+			taskMonitor, err := client.Start(t.Context(), provisioning.Server{BMCEndpoint: svr.URL}, tc.force)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantTaskMonitor, taskMonitor)
+
+			if tc.wantResetType != "" {
+				require.JSONEq(t, fmt.Sprintf(`{"ResetType":%q}`, tc.wantResetType), string(gotBody))
+			}
+		})
+	}
+}
+
+func TestRedfish_Stop(t *testing.T) {
+	tests := []struct {
+		name  string
+		force bool
+
+		serviceRootStatusCode int
+		systemsStatusCode     int
+		systemsBody           string
+		systemStatusCode      int
+		systemBody            string
+		resetStatusCode       int
+		resetLocation         string
+
+		wantResetType   string
+		wantTaskMonitor *provisioning.BMCTaskMonitor
+		assertErr       require.ErrorAssertionFunc
+	}{
+		{
+			name:  "success - not forced",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemBody,
+			resetStatusCode:       http.StatusNoContent,
+
+			wantResetType: "GracefulShutdown",
+			assertErr:     require.NoError,
+		},
+		{
+			name:  "success - forced",
+			force: true,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemBody,
+			resetStatusCode:       http.StatusNoContent,
+
+			wantResetType: "ForceOff",
+			assertErr:     require.NoError,
+		},
+		{
+			name:  "success - task monitor returned",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemBody,
+			resetStatusCode:       http.StatusAccepted,
+			resetLocation:         "/redfish/v1/TaskMonitor/1",
+
+			wantResetType: "GracefulShutdown",
+			wantTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - failed to connect to BMC",
+
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to get BMC systems",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - no BMC systems found",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetEmptySystemsBody,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - reset action failed",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemBody,
+			resetStatusCode:       http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotBody []byte
+
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode: tc.serviceRootStatusCode,
+				systemsStatusCode:     tc.systemsStatusCode,
+				systemsBody:           tc.systemsBody,
+				systemStatusCode:      tc.systemStatusCode,
+				systemBody:            tc.systemBody,
+				resetStatusCode:       tc.resetStatusCode,
+				resetLocation:         tc.resetLocation,
+			}, &gotBody)
+
+			client := redfish.New()
+			taskMonitor, err := client.Stop(t.Context(), provisioning.Server{BMCEndpoint: svr.URL}, tc.force)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantTaskMonitor, taskMonitor)
+
+			if tc.wantResetType != "" {
+				require.JSONEq(t, fmt.Sprintf(`{"ResetType":%q}`, tc.wantResetType), string(gotBody))
+			}
+		})
+	}
+}
+
+func TestRedfish_Restart(t *testing.T) {
+	tests := []struct {
+		name  string
+		force bool
+
+		serviceRootStatusCode int
+		systemsStatusCode     int
+		systemsBody           string
+		systemStatusCode      int
+		systemBody            string
+		resetStatusCode       int
+		resetLocation         string
+
+		wantResetType   string
+		wantTaskMonitor *provisioning.BMCTaskMonitor
+		assertErr       require.ErrorAssertionFunc
+	}{
+		{
+			name:  "success - not forced",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemBody,
+			resetStatusCode:       http.StatusNoContent,
+
+			wantResetType: "GracefulRestart",
+			assertErr:     require.NoError,
+		},
+		{
+			name:  "success - forced",
+			force: true,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemBody,
+			resetStatusCode:       http.StatusNoContent,
+
+			wantResetType: "ForceRestart",
+			assertErr:     require.NoError,
+		},
+		{
+			name:  "success - task monitor returned",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemBody,
+			resetStatusCode:       http.StatusAccepted,
+			resetLocation:         "/redfish/v1/TaskMonitor/1",
+
+			wantResetType: "GracefulRestart",
+			wantTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - failed to connect to BMC",
+
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to get BMC systems",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - no BMC systems found",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetEmptySystemsBody,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - reset action failed",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemBody,
+			resetStatusCode:       http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotBody []byte
+
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode: tc.serviceRootStatusCode,
+				systemsStatusCode:     tc.systemsStatusCode,
+				systemsBody:           tc.systemsBody,
+				systemStatusCode:      tc.systemStatusCode,
+				systemBody:            tc.systemBody,
+				resetStatusCode:       tc.resetStatusCode,
+				resetLocation:         tc.resetLocation,
+			}, &gotBody)
+
+			client := redfish.New()
+			taskMonitor, err := client.Restart(t.Context(), provisioning.Server{BMCEndpoint: svr.URL}, tc.force)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantTaskMonitor, taskMonitor)
+
+			if tc.wantResetType != "" {
+				require.JSONEq(t, fmt.Sprintf(`{"ResetType":%q}`, tc.wantResetType), string(gotBody))
+			}
+		})
+	}
+}
+
+func TestRedfish_WaitForTask(t *testing.T) {
+	tests := []struct {
+		name           string
+		argCtx         func(t *testing.T) context.Context
+		argTaskMonitor *provisioning.BMCTaskMonitor
+
+		serviceRootStatusCode  int
+		taskMonitorStatusCodes []int
+		taskMonitorRetryAfter  string
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - nil TaskMonitor",
+			argCtx: func(t *testing.T) context.Context {
+				t.Helper()
+				return t.Context()
+			},
+			argTaskMonitor: nil,
+
+			serviceRootStatusCode:  http.StatusOK,
+			taskMonitorStatusCodes: []int{http.StatusOK},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - already finished",
+			argCtx: func(t *testing.T) context.Context {
+				t.Helper()
+				return t.Context()
+			},
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode:  http.StatusOK,
+			taskMonitorStatusCodes: []int{http.StatusOK},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - finished with created status",
+			argCtx: func(t *testing.T) context.Context {
+				t.Helper()
+				return t.Context()
+			},
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode:  http.StatusOK,
+			taskMonitorStatusCodes: []int{http.StatusCreated},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - polls until finished",
+			argCtx: func(t *testing.T) context.Context {
+				t.Helper()
+				return t.Context()
+			},
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode:  http.StatusOK,
+			taskMonitorStatusCodes: []int{http.StatusAccepted, http.StatusAccepted, http.StatusOK},
+			taskMonitorRetryAfter:  "0",
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - failed to connect to BMC",
+			argCtx: func(t *testing.T) context.Context {
+				t.Helper()
+				return t.Context()
+			},
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - unexpected status code polling task",
+			argCtx: func(t *testing.T) context.Context {
+				t.Helper()
+				return t.Context()
+			},
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode:  http.StatusOK,
+			taskMonitorStatusCodes: []int{http.StatusNotFound},
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - context already canceled",
+			argCtx: func(t *testing.T) context.Context {
+				t.Helper()
+
+				ctx, cancel := context.WithCancel(t.Context())
+				cancel()
+
+				return ctx
+			},
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode:  http.StatusOK,
+			taskMonitorStatusCodes: []int{http.StatusOK},
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - context canceled while waiting",
+			argCtx: func(t *testing.T) context.Context {
+				t.Helper()
+
+				ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+				t.Cleanup(cancel)
+
+				return ctx
+			},
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode:  http.StatusOK,
+			taskMonitorStatusCodes: []int{http.StatusAccepted},
+			taskMonitorRetryAfter:  "5",
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode:  tc.serviceRootStatusCode,
+				taskMonitorStatusCodes: tc.taskMonitorStatusCodes,
+				taskMonitorRetryAfter:  tc.taskMonitorRetryAfter,
+			}, nil)
+
+			client := redfish.New()
+			err := client.WaitForTask(tc.argCtx(t), provisioning.Server{BMCEndpoint: svr.URL}, tc.argTaskMonitor)
+
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+const biosSystemBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Bios": { "@odata.id": "/redfish/v1/Systems/1/Bios" }
+}`
+
+const biosBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/Bios",
+  "Id": "Bios",
+  "Attributes": {}
+}`
+
+const wantBiosPatchBody = `{
+  "Attributes": {
+    "NumaNodesPerSocket": "4",
+    "SecureBoot": "Enabled",
+    "SecureBootMode": "UserMode",
+    "SecureBootPolicy": "Custom",
+    "TpmSecurity": "On"
+  },
+  "@Redfish.SettingsApplyTime": { "ApplyTime": "OnReset" }
+}`
+
+func TestRedfish_SetupBIOS(t *testing.T) {
+	tests := []struct {
+		name string
+
+		serviceRootStatusCode int
+		systemsStatusCode     int
+		systemsBody           string
+		systemStatusCode      int
+		systemBody            string
+		biosStatusCode        int
+		biosBody              string
+		biosPatchStatusCode   int
+
+		wantPatchBody string
+		assertErr     require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBody,
+			biosPatchStatusCode:   http.StatusOK,
+
+			wantPatchBody: wantBiosPatchBody,
+			assertErr:     require.NoError,
+		},
+		{
+			name: "error - failed to connect to BMC",
+
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to get BMC systems",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - no BMC systems found",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetEmptySystemsBody,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to get bios information",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to apply bios attributes",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBody,
+			biosPatchStatusCode:   http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotPatchBody []byte
+
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode: tc.serviceRootStatusCode,
+				systemsStatusCode:     tc.systemsStatusCode,
+				systemsBody:           tc.systemsBody,
+				systemStatusCode:      tc.systemStatusCode,
+				systemBody:            tc.systemBody,
+				biosStatusCode:        tc.biosStatusCode,
+				biosBody:              tc.biosBody,
+				biosPatchStatusCode:   tc.biosPatchStatusCode,
+				gotBiosPatchBody:      &gotPatchBody,
+			}, nil)
+
+			client := redfish.New()
+			taskMonitor, err := client.SetupBIOS(t.Context(), provisioning.Server{BMCEndpoint: svr.URL})
+
+			tc.assertErr(t, err)
+			require.Nil(t, taskMonitor)
+
+			if tc.wantPatchBody != "" {
+				require.JSONEq(t, tc.wantPatchBody, string(gotPatchBody))
+			}
+		})
+	}
+}
+
+const secureBootSystemBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "SecureBoot": { "@odata.id": "/redfish/v1/Systems/1/SecureBoot" }
+}`
+
+const secureBootBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/SecureBoot",
+  "Id": "SecureBoot",
+  "SecureBootDatabases": { "@odata.id": "/redfish/v1/Systems/1/SecureBoot/SecureBootDatabases" }
+}`
+
+func TestRedfish_SetupSecureBootCertificates(t *testing.T) {
+	tests := []struct {
+		name string
+
+		serviceRootStatusCode         int
+		systemsStatusCode             int
+		systemsBody                   string
+		systemStatusCode              int
+		systemBody                    string
+		secureBootStatusCode          int
+		secureBootBody                string
+		secureBootDatabasesStatusCode int
+		secureBootDatabasesBody       string
+		secureBootDatabases           map[string]mockSecureBootDatabase
+
+		wantDeletedCertPaths []string
+		wantPostedCerts      map[string][]postedCertificate
+		assertErr            require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+
+			serviceRootStatusCode:         http.StatusOK,
+			systemsStatusCode:             http.StatusOK,
+			systemsBody:                   resetSystemsBody,
+			systemStatusCode:              http.StatusOK,
+			systemBody:                    secureBootSystemBody,
+			secureBootStatusCode:          http.StatusOK,
+			secureBootBody:                secureBootBody,
+			secureBootDatabasesStatusCode: http.StatusOK,
+			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("PK", "KEK", "DB", "DBX"),
+			secureBootDatabases: map[string]mockSecureBootDatabase{
+				"PK": {
+					statusCode: http.StatusOK,
+					body:       secureBootDatabaseBody("PK", false),
+				},
+				"KEK": newSecureBootDatabaseFixture("KEK", http.StatusOK, http.StatusCreated, "1"),
+				"DB":  newSecureBootDatabaseFixture("DB", http.StatusOK, http.StatusCreated, "1", "2"),
+				"DBX": newSecureBootDatabaseFixture("DBX", http.StatusOK, http.StatusCreated, "1"),
+			},
+
+			wantDeletedCertPaths: []string{
+				secureBootDatabasesPathPrefix + "KEK/Certificates/1",
+				secureBootDatabasesPathPrefix + "DB/Certificates/1",
+				secureBootDatabasesPathPrefix + "DB/Certificates/2",
+				secureBootDatabasesPathPrefix + "DBX/Certificates/1",
+			},
+			wantPostedCerts: map[string][]postedCertificate{
+				"KEK": {{CertificateString: "certPEM", CertificateType: "PEM"}},
+				"DB": {
+					{CertificateString: "certPEM1", CertificateType: "PEM"},
+					{CertificateString: "certPEM2", CertificateType: "PEM"},
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - certificate deletion failure is ignored",
+
+			serviceRootStatusCode:         http.StatusOK,
+			systemsStatusCode:             http.StatusOK,
+			systemsBody:                   resetSystemsBody,
+			systemStatusCode:              http.StatusOK,
+			systemBody:                    secureBootSystemBody,
+			secureBootStatusCode:          http.StatusOK,
+			secureBootBody:                secureBootBody,
+			secureBootDatabasesStatusCode: http.StatusOK,
+			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("KEK"),
+			secureBootDatabases: map[string]mockSecureBootDatabase{
+				"KEK": newSecureBootDatabaseFixture("KEK", http.StatusInternalServerError, http.StatusCreated, "1"),
+			},
+
+			wantDeletedCertPaths: []string{
+				secureBootDatabasesPathPrefix + "KEK/Certificates/1",
+			},
+			wantPostedCerts: map[string][]postedCertificate{
+				"KEK": {{CertificateString: "certPEM", CertificateType: "PEM"}},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - failed to connect to BMC",
+
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - no BMC systems found",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetEmptySystemsBody,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to get secure boot information",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            secureBootSystemBody,
+			secureBootStatusCode:  http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to get secure boot databases",
+
+			serviceRootStatusCode:         http.StatusOK,
+			systemsStatusCode:             http.StatusOK,
+			systemsBody:                   resetSystemsBody,
+			systemStatusCode:              http.StatusOK,
+			systemBody:                    secureBootSystemBody,
+			secureBootStatusCode:          http.StatusOK,
+			secureBootBody:                secureBootBody,
+			secureBootDatabasesStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to get secure boot database certificates",
+
+			serviceRootStatusCode:         http.StatusOK,
+			systemsStatusCode:             http.StatusOK,
+			systemsBody:                   resetSystemsBody,
+			systemStatusCode:              http.StatusOK,
+			systemBody:                    secureBootSystemBody,
+			secureBootStatusCode:          http.StatusOK,
+			secureBootBody:                secureBootBody,
+			secureBootDatabasesStatusCode: http.StatusOK,
+			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("KEK"),
+			secureBootDatabases: map[string]mockSecureBootDatabase{
+				"KEK": {
+					statusCode:             http.StatusOK,
+					body:                   secureBootDatabaseBody("KEK", true),
+					certificatesStatusCode: http.StatusInternalServerError,
+				},
+			},
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - unexpected status when adding certificate to secure boot DB",
+
+			serviceRootStatusCode:         http.StatusOK,
+			systemsStatusCode:             http.StatusOK,
+			systemsBody:                   resetSystemsBody,
+			systemStatusCode:              http.StatusOK,
+			systemBody:                    secureBootSystemBody,
+			secureBootStatusCode:          http.StatusOK,
+			secureBootBody:                secureBootBody,
+			secureBootDatabasesStatusCode: http.StatusOK,
+			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("KEK"),
+			secureBootDatabases: map[string]mockSecureBootDatabase{
+				"KEK": newSecureBootDatabaseFixture("KEK", http.StatusOK, http.StatusBadRequest),
+			},
+
+			wantPostedCerts: map[string][]postedCertificate{
+				"KEK": {{CertificateString: "certPEM", CertificateType: "PEM"}},
+			},
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotDeletedCertPaths []string
+
+			gotPostedCerts := map[string][]string{}
+
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode:         tc.serviceRootStatusCode,
+				systemsStatusCode:             tc.systemsStatusCode,
+				systemsBody:                   tc.systemsBody,
+				systemStatusCode:              tc.systemStatusCode,
+				systemBody:                    tc.systemBody,
+				secureBootStatusCode:          tc.secureBootStatusCode,
+				secureBootBody:                tc.secureBootBody,
+				secureBootDatabasesStatusCode: tc.secureBootDatabasesStatusCode,
+				secureBootDatabasesBody:       tc.secureBootDatabasesBody,
+				secureBootDatabases:           tc.secureBootDatabases,
+				gotDeletedCertPaths:           &gotDeletedCertPaths,
+				gotPostedCerts:                &gotPostedCerts,
+			}, nil)
+
+			client := redfish.New()
+			err := client.SetupSecureBootCertificates(t.Context(), provisioning.Server{BMCEndpoint: svr.URL})
+
+			tc.assertErr(t, err)
+			require.ElementsMatch(t, tc.wantDeletedCertPaths, gotDeletedCertPaths)
+
+			require.Len(t, gotPostedCerts, len(tc.wantPostedCerts))
+
+			for dbID, want := range tc.wantPostedCerts {
+				require.Equal(t, want, parsePostedCertificates(t, gotPostedCerts[dbID]))
+			}
+		})
+	}
+}
+
+func secureBootDatabasesCollectionBody(dbIDs ...string) string {
+	members := make([]string, 0, len(dbIDs))
+	for _, dbID := range dbIDs {
+		members = append(members, fmt.Sprintf(`{"@odata.id": %q}`, secureBootDatabasesPathPrefix+dbID))
+	}
+
+	return fmt.Sprintf(`{"Members@odata.count": %d, "Members": [%s]}`, len(members), strings.Join(members, ","))
+}
+
+func secureBootDatabaseBody(dbID string, withCertificatesLink bool) string {
+	if !withCertificatesLink {
+		return fmt.Sprintf(`{"@odata.id": %q, "Id": %q, "Name": %q}`, secureBootDatabasesPathPrefix+dbID, dbID, dbID)
+	}
+
+	return fmt.Sprintf(`{"@odata.id": %q, "Id": %q, "Name": %q, "Certificates": {"@odata.id": %q}}`,
+		secureBootDatabasesPathPrefix+dbID, dbID, dbID, secureBootDatabasesPathPrefix+dbID+"/Certificates")
+}
+
+func secureBootCertificatesCollectionBody(dbID string, certIDs ...string) string {
+	members := make([]string, 0, len(certIDs))
+	for _, certID := range certIDs {
+		members = append(members, fmt.Sprintf(`{"@odata.id": %q}`, secureBootDatabasesPathPrefix+dbID+"/Certificates/"+certID))
+	}
+
+	return fmt.Sprintf(`{"Members@odata.count": %d, "Members": [%s]}`, len(members), strings.Join(members, ","))
+}
+
+func secureBootCertificateBody(dbID string, certID string) string {
+	return fmt.Sprintf(`{"@odata.id": %q, "Id": %q}`, secureBootDatabasesPathPrefix+dbID+"/Certificates/"+certID, certID)
+}
+
+func newSecureBootDatabaseFixture(dbID string, certDeleteStatusCode, postStatusCode int, certIDs ...string) mockSecureBootDatabase {
+	certificates := make(map[string]mockCertificate, len(certIDs))
+	for _, certID := range certIDs {
+		certificates[certID] = mockCertificate{
+			statusCode:       http.StatusOK,
+			body:             secureBootCertificateBody(dbID, certID),
+			deleteStatusCode: certDeleteStatusCode,
+		}
+	}
+
+	return mockSecureBootDatabase{
+		statusCode:             http.StatusOK,
+		body:                   secureBootDatabaseBody(dbID, true),
+		postStatusCode:         postStatusCode,
+		certificatesStatusCode: http.StatusOK,
+		certificatesBody:       secureBootCertificatesCollectionBody(dbID, certIDs...),
+		certificates:           certificates,
+	}
+}
+
+type postedCertificate struct {
+	CertificateString string
+	CertificateType   string
+}
+
+func parsePostedCertificates(t *testing.T, raw []string) []postedCertificate {
+	t.Helper()
+
+	certs := make([]postedCertificate, 0, len(raw))
+	for _, body := range raw {
+		var cert postedCertificate
+
+		require.NoError(t, json.Unmarshal([]byte(body), &cert))
+
+		certs = append(certs, cert)
+	}
+
+	return certs
+}

@@ -28,6 +28,15 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			AddApplicationFunc: func(ctx context.Context, name string, applicationName string) error {
 //				panic("mock out the AddApplication method")
 //			},
+//			BMCRestartByNameFunc: func(ctx context.Context, name string, force bool) error {
+//				panic("mock out the BMCRestartByName method")
+//			},
+//			BMCStartByNameFunc: func(ctx context.Context, name string, force bool) error {
+//				panic("mock out the BMCStartByName method")
+//			},
+//			BMCStopByNameFunc: func(ctx context.Context, name string, force bool) error {
+//				panic("mock out the BMCStopByName method")
+//			},
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the DeleteByName method")
 //			},
@@ -97,6 +106,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			RestoreSystemByNameFunc: func(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) error {
 //				panic("mock out the RestoreSystemByName method")
 //			},
+//			ResyncBMCServerDetailsFunc: func(ctx context.Context) error {
+//				panic("mock out the ResyncBMCServerDetails method")
+//			},
 //			ResyncByNameFunc: func(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 //				panic("mock out the ResyncByName method")
 //			},
@@ -145,6 +157,15 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 type ServerServiceMock struct {
 	// AddApplicationFunc mocks the AddApplication method.
 	AddApplicationFunc func(ctx context.Context, name string, applicationName string) error
+
+	// BMCRestartByNameFunc mocks the BMCRestartByName method.
+	BMCRestartByNameFunc func(ctx context.Context, name string, force bool) error
+
+	// BMCStartByNameFunc mocks the BMCStartByName method.
+	BMCStartByNameFunc func(ctx context.Context, name string, force bool) error
+
+	// BMCStopByNameFunc mocks the BMCStopByName method.
+	BMCStopByNameFunc func(ctx context.Context, name string, force bool) error
 
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
@@ -215,6 +236,9 @@ type ServerServiceMock struct {
 	// RestoreSystemByNameFunc mocks the RestoreSystemByName method.
 	RestoreSystemByNameFunc func(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) error
 
+	// ResyncBMCServerDetailsFunc mocks the ResyncBMCServerDetails method.
+	ResyncBMCServerDetailsFunc func(ctx context.Context) error
+
 	// ResyncByNameFunc mocks the ResyncByName method.
 	ResyncByNameFunc func(ctx context.Context, clusterName string, event domain.LifecycleEvent) error
 
@@ -264,6 +288,33 @@ type ServerServiceMock struct {
 			Name string
 			// ApplicationName is the applicationName argument value.
 			ApplicationName string
+		}
+		// BMCRestartByName holds details about calls to the BMCRestartByName method.
+		BMCRestartByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// Force is the force argument value.
+			Force bool
+		}
+		// BMCStartByName holds details about calls to the BMCStartByName method.
+		BMCStartByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// Force is the force argument value.
+			Force bool
+		}
+		// BMCStopByName holds details about calls to the BMCStopByName method.
+		BMCStopByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// Force is the force argument value.
+			Force bool
 		}
 		// DeleteByName holds details about calls to the DeleteByName method.
 		DeleteByName []struct {
@@ -452,6 +503,11 @@ type ServerServiceMock struct {
 			// RestoreModeSkip is the restoreModeSkip argument value.
 			RestoreModeSkip bool
 		}
+		// ResyncBMCServerDetails holds details about calls to the ResyncBMCServerDetails method.
+		ResyncBMCServerDetails []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// ResyncByName holds details about calls to the ResyncByName method.
 		ResyncByName []struct {
 			// Ctx is the ctx argument value.
@@ -563,6 +619,9 @@ type ServerServiceMock struct {
 		}
 	}
 	lockAddApplication               sync.RWMutex
+	lockBMCRestartByName             sync.RWMutex
+	lockBMCStartByName               sync.RWMutex
+	lockBMCStopByName                sync.RWMutex
 	lockDeleteByName                 sync.RWMutex
 	lockEvacuateSystemByName         sync.RWMutex
 	lockFactoryResetByName           sync.RWMutex
@@ -586,6 +645,7 @@ type ServerServiceMock struct {
 	lockRename                       sync.RWMutex
 	lockRestartApplication           sync.RWMutex
 	lockRestoreSystemByName          sync.RWMutex
+	lockResyncBMCServerDetails       sync.RWMutex
 	lockResyncByName                 sync.RWMutex
 	lockSelfRegisterOperationsCenter sync.RWMutex
 	lockSelfUpdate                   sync.RWMutex
@@ -638,6 +698,126 @@ func (mock *ServerServiceMock) AddApplicationCalls() []struct {
 	mock.lockAddApplication.RLock()
 	calls = mock.calls.AddApplication
 	mock.lockAddApplication.RUnlock()
+	return calls
+}
+
+// BMCRestartByName calls BMCRestartByNameFunc.
+func (mock *ServerServiceMock) BMCRestartByName(ctx context.Context, name string, force bool) error {
+	if mock.BMCRestartByNameFunc == nil {
+		panic("ServerServiceMock.BMCRestartByNameFunc: method is nil but ServerService.BMCRestartByName was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Name  string
+		Force bool
+	}{
+		Ctx:   ctx,
+		Name:  name,
+		Force: force,
+	}
+	mock.lockBMCRestartByName.Lock()
+	mock.calls.BMCRestartByName = append(mock.calls.BMCRestartByName, callInfo)
+	mock.lockBMCRestartByName.Unlock()
+	return mock.BMCRestartByNameFunc(ctx, name, force)
+}
+
+// BMCRestartByNameCalls gets all the calls that were made to BMCRestartByName.
+// Check the length with:
+//
+//	len(mockedServerService.BMCRestartByNameCalls())
+func (mock *ServerServiceMock) BMCRestartByNameCalls() []struct {
+	Ctx   context.Context
+	Name  string
+	Force bool
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Name  string
+		Force bool
+	}
+	mock.lockBMCRestartByName.RLock()
+	calls = mock.calls.BMCRestartByName
+	mock.lockBMCRestartByName.RUnlock()
+	return calls
+}
+
+// BMCStartByName calls BMCStartByNameFunc.
+func (mock *ServerServiceMock) BMCStartByName(ctx context.Context, name string, force bool) error {
+	if mock.BMCStartByNameFunc == nil {
+		panic("ServerServiceMock.BMCStartByNameFunc: method is nil but ServerService.BMCStartByName was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Name  string
+		Force bool
+	}{
+		Ctx:   ctx,
+		Name:  name,
+		Force: force,
+	}
+	mock.lockBMCStartByName.Lock()
+	mock.calls.BMCStartByName = append(mock.calls.BMCStartByName, callInfo)
+	mock.lockBMCStartByName.Unlock()
+	return mock.BMCStartByNameFunc(ctx, name, force)
+}
+
+// BMCStartByNameCalls gets all the calls that were made to BMCStartByName.
+// Check the length with:
+//
+//	len(mockedServerService.BMCStartByNameCalls())
+func (mock *ServerServiceMock) BMCStartByNameCalls() []struct {
+	Ctx   context.Context
+	Name  string
+	Force bool
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Name  string
+		Force bool
+	}
+	mock.lockBMCStartByName.RLock()
+	calls = mock.calls.BMCStartByName
+	mock.lockBMCStartByName.RUnlock()
+	return calls
+}
+
+// BMCStopByName calls BMCStopByNameFunc.
+func (mock *ServerServiceMock) BMCStopByName(ctx context.Context, name string, force bool) error {
+	if mock.BMCStopByNameFunc == nil {
+		panic("ServerServiceMock.BMCStopByNameFunc: method is nil but ServerService.BMCStopByName was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Name  string
+		Force bool
+	}{
+		Ctx:   ctx,
+		Name:  name,
+		Force: force,
+	}
+	mock.lockBMCStopByName.Lock()
+	mock.calls.BMCStopByName = append(mock.calls.BMCStopByName, callInfo)
+	mock.lockBMCStopByName.Unlock()
+	return mock.BMCStopByNameFunc(ctx, name, force)
+}
+
+// BMCStopByNameCalls gets all the calls that were made to BMCStopByName.
+// Check the length with:
+//
+//	len(mockedServerService.BMCStopByNameCalls())
+func (mock *ServerServiceMock) BMCStopByNameCalls() []struct {
+	Ctx   context.Context
+	Name  string
+	Force bool
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Name  string
+		Force bool
+	}
+	mock.lockBMCStopByName.RLock()
+	calls = mock.calls.BMCStopByName
+	mock.lockBMCStopByName.RUnlock()
 	return calls
 }
 
@@ -1518,6 +1698,38 @@ func (mock *ServerServiceMock) RestoreSystemByNameCalls() []struct {
 	mock.lockRestoreSystemByName.RLock()
 	calls = mock.calls.RestoreSystemByName
 	mock.lockRestoreSystemByName.RUnlock()
+	return calls
+}
+
+// ResyncBMCServerDetails calls ResyncBMCServerDetailsFunc.
+func (mock *ServerServiceMock) ResyncBMCServerDetails(ctx context.Context) error {
+	if mock.ResyncBMCServerDetailsFunc == nil {
+		panic("ServerServiceMock.ResyncBMCServerDetailsFunc: method is nil but ServerService.ResyncBMCServerDetails was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockResyncBMCServerDetails.Lock()
+	mock.calls.ResyncBMCServerDetails = append(mock.calls.ResyncBMCServerDetails, callInfo)
+	mock.lockResyncBMCServerDetails.Unlock()
+	return mock.ResyncBMCServerDetailsFunc(ctx)
+}
+
+// ResyncBMCServerDetailsCalls gets all the calls that were made to ResyncBMCServerDetails.
+// Check the length with:
+//
+//	len(mockedServerService.ResyncBMCServerDetailsCalls())
+func (mock *ServerServiceMock) ResyncBMCServerDetailsCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockResyncBMCServerDetails.RLock()
+	calls = mock.calls.ResyncBMCServerDetails
+	mock.lockResyncBMCServerDetails.RUnlock()
 	return calls
 }
 

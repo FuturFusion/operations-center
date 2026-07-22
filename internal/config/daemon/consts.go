@@ -55,6 +55,9 @@ const (
 	// excessively.
 	InventoryUpdateInterval = 6 * time.Hour
 
+	// Interval in which the BMC server details is resynced.
+	BMCServerDetailResyncInterval = 1 * time.Hour
+
 	// ACME server certificate renew interval.
 	ACMEServerCertificateRenewInterval = 24 * time.Hour
 

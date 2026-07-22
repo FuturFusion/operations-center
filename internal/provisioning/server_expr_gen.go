@@ -20,6 +20,11 @@ type ExprApiApplicationVersionData struct {
 	InMaintenance    api.InMaintenanceState `json:"in_maintenance" yaml:"in_maintenance" expr:"in_maintenance"`
 }
 
+type ExprApiBMCServerDetails struct {
+	SystemUUID  string    `json:"system_uuid" yaml:"system_uuid" expr:"system_uuid"`
+	LastUpdated time.Time `json:"last_updated" yaml:"last_updated" expr:"last_updated"`
+}
+
 type ExprApiOSData struct {
 	Network  ExprOsapiSystemNetwork  `json:"network" yaml:"network" expr:"network"`
 	Security ExprOsapiSystemSecurity `json:"security" yaml:"security" expr:"security"`
@@ -385,6 +390,7 @@ type ExprServer struct {
 	RegistrationToken    *uuid.UUID               `json:"registration_token" expr:"registration_token"`
 	SystemUUID           *string                  `json:"system_uuid" expr:"system_uuid"`
 	MachineID            *string                  `json:"machine_id" expr:"machine_id"`
+	BMCServerDetails     ExprApiBMCServerDetails  `json:"bmc_server_details"     db:"sql=servers.bmc_server_details&marshal=json" expr:"bmc_server_details"`
 	LastUpdated          time.Time                `json:"last_updated"           db:"update_timestamp" expr:"last_updated"`
 	LastSeen             time.Time                `json:"last_seen" expr:"last_seen"`
 	LastStatusUpdated    time.Time                `json:"last_status_updated" expr:"last_status_updated"`
@@ -398,6 +404,13 @@ func ToExprApiApplicationVersionData(a api.ApplicationVersionData) ExprApiApplic
 		AvailableVersion: a.AvailableVersion,
 		NeedsUpdate:      a.NeedsUpdate,
 		InMaintenance:    a.InMaintenance,
+	}
+}
+
+func ToExprApiBMCServerDetails(b api.BMCServerDetails) ExprApiBMCServerDetails {
+	return ExprApiBMCServerDetails{
+		SystemUUID:  b.SystemUUID,
+		LastUpdated: b.LastUpdated,
 	}
 }
 
@@ -845,6 +858,7 @@ func ToExprServer(s Server) ExprServer {
 		RegistrationToken:    s.RegistrationToken,
 		SystemUUID:           s.SystemUUID,
 		MachineID:            s.MachineID,
+		BMCServerDetails:     ToExprApiBMCServerDetails(s.BMCServerDetails),
 		LastUpdated:          s.LastUpdated,
 		LastSeen:             s.LastSeen,
 		LastStatusUpdated:    s.LastStatusUpdated,

@@ -117,6 +117,13 @@ func (c *CmdServer) Command() *cobra.Command {
 
 	cmd.AddCommand(serverSystemCmd.Command())
 
+	// BMC
+	serverBMCCmd := cmdServerBMC{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(serverBMCCmd.Command())
+
 	return cmd
 }
 
@@ -533,11 +540,12 @@ func (c *cmdServerResync) run(cmd *cobra.Command, args []string) error {
 type cmdServerShow struct {
 	ocClient *client.OperationsCenterClient
 
-	flagFormat          string
-	flagShowProperties  bool
-	flagShowResources   bool
-	flagShowOSData      bool
-	flagShowVersionData bool
+	flagFormat               string
+	flagShowProperties       bool
+	flagShowResources        bool
+	flagShowOSData           bool
+	flagShowVersionData      bool
+	flagShowBMCServerDetails bool
 }
 
 func (c *cmdServerShow) Command() *cobra.Command {
@@ -553,6 +561,7 @@ func (c *cmdServerShow) Command() *cobra.Command {
 	cmd.Flags().BoolVar(&c.flagShowResources, "resources", false, "show server resource details")
 	cmd.Flags().BoolVar(&c.flagShowOSData, "os-data", false, "show server OS data")
 	cmd.Flags().BoolVar(&c.flagShowVersionData, "version-data", false, "show server version data")
+	cmd.Flags().BoolVar(&c.flagShowBMCServerDetails, "bmc-server-details", false, "show bmc server details")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -655,6 +664,15 @@ func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 			}
 
 			fmt.Printf("Version Data:\n%s\n", render.Indent(4, string(versionDataJSON)))
+		}
+
+		if c.flagShowBMCServerDetails {
+			bmcServerDetailsJSON, err := json.MarshalIndent(server.BMCServerDetails, "", "  ")
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("BMC Server Details:\n%s\n", render.Indent(4, string(bmcServerDetailsJSON)))
 		}
 	}
 
