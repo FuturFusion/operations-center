@@ -53,6 +53,9 @@ type ServerService interface {
 	RestartApplication(ctx context.Context, name string, applicationName string) error
 
 	BMCRefreshByName(ctx context.Context, name string) error
+	BMCServerPowerOnByName(ctx context.Context, name string, force bool) error
+	BMCServerPowerOffByName(ctx context.Context, name string, force bool) error
+	BMCServerRestartByName(ctx context.Context, name string, force bool) error
 }
 
 type ServerRepo interface {
@@ -106,4 +109,8 @@ type ServerScriptletPort interface {
 type BMCServerClientPort interface {
 	ConnectionTest(ctx context.Context, server Server) (certificate string, _ error)
 	GetData(ctx context.Context, server Server) (api.BMCData, error)
+	ServerPowerOn(ctx context.Context, server Server, force bool) (*BMCTaskMonitor, error)
+	ServerPowerOff(ctx context.Context, server Server, force bool) (*BMCTaskMonitor, error)
+	ServerRestart(ctx context.Context, server Server, force bool) (*BMCTaskMonitor, error)
+	WaitForTask(ctx context.Context, server Server, taskMonitor *BMCTaskMonitor) error
 }

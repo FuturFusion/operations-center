@@ -305,3 +305,7 @@ func DetermineManagementRoleURL(osdata api.OSData) (string, error) {
 
 	return "https://" + net.JoinHostPort(ip.String(), "8443"), nil
 }
+
+type BMCTaskMonitor struct {
+	URI string
+}
