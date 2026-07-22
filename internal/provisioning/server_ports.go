@@ -51,6 +51,10 @@ type ServerService interface {
 	UpdateSystemKernel(ctx context.Context, name string, kernelConfig ServerSystemKernel) error
 	AddApplication(ctx context.Context, name string, applicationName string) error
 	RestartApplication(ctx context.Context, name string, applicationName string) error
+
+	BMCStartByName(ctx context.Context, name string, force bool) error
+	BMCStopByName(ctx context.Context, name string, force bool) error
+	BMCRestartByName(ctx context.Context, name string, force bool) error
 }
 
 type ServerRepo interface {
@@ -103,4 +107,8 @@ type ServerScriptletPort interface {
 
 type BMCServerClientPort interface {
 	GetServerDetails(ctx context.Context, server Server) (api.BMCServerDetails, error)
+	Start(ctx context.Context, server Server, force bool) (*BMCTaskMonitor, error)
+	Stop(ctx context.Context, server Server, force bool) (*BMCTaskMonitor, error)
+	Restart(ctx context.Context, server Server, force bool) (*BMCTaskMonitor, error)
+	WaitForTask(ctx context.Context, server Server, taskMonitor *BMCTaskMonitor) error
 }
