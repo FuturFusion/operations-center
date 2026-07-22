@@ -26,6 +26,36 @@ func NewBMCServerClientPortWithErrorWrapper(base provisioning.BMCServerClientPor
 	return this
 }
 
+// ApplyBIOSAttributes implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) ApplyBIOSAttributes(ctx context.Context, server provisioning.Server, attributes map[string]any) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.ApplyBIOSAttributes(ctx, server, attributes)
+}
+
+// BIOSAttribute implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) BIOSAttribute(ctx context.Context, server provisioning.Server, attributeName string) (bIOSAttribute api.BIOSAttribute, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.BIOSAttribute(ctx, server, attributeName)
+}
+
+// BIOSAttributes implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) BIOSAttributes(ctx context.Context, server provisioning.Server) (bIOSAttributes []api.BIOSAttribute, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.BIOSAttributes(ctx, server)
+}
+
 // ConnectionTest implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithErrorWrapper) ConnectionTest(ctx context.Context, server provisioning.Server) (certificate string, err error) {
 	defer func() {

@@ -28,6 +28,15 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			AddApplicationFunc: func(ctx context.Context, name string, applicationName string) error {
 //				panic("mock out the AddApplication method")
 //			},
+//			ApplyBIOSAttributesByNameFunc: func(ctx context.Context, name string, attributes map[string]any) error {
+//				panic("mock out the ApplyBIOSAttributesByName method")
+//			},
+//			BMCBIOSAttributeByNameFunc: func(ctx context.Context, name string, attributeName string) (api.BIOSAttribute, error) {
+//				panic("mock out the BMCBIOSAttributeByName method")
+//			},
+//			BMCBIOSAttributesByNameFunc: func(ctx context.Context, name string) ([]api.BIOSAttribute, error) {
+//				panic("mock out the BMCBIOSAttributesByName method")
+//			},
 //			BMCDumpByNameFunc: func(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error) {
 //				panic("mock out the BMCDumpByName method")
 //			},
@@ -169,6 +178,15 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 type ServerServiceMock struct {
 	// AddApplicationFunc mocks the AddApplication method.
 	AddApplicationFunc func(ctx context.Context, name string, applicationName string) error
+
+	// ApplyBIOSAttributesByNameFunc mocks the ApplyBIOSAttributesByName method.
+	ApplyBIOSAttributesByNameFunc func(ctx context.Context, name string, attributes map[string]any) error
+
+	// BMCBIOSAttributeByNameFunc mocks the BMCBIOSAttributeByName method.
+	BMCBIOSAttributeByNameFunc func(ctx context.Context, name string, attributeName string) (api.BIOSAttribute, error)
+
+	// BMCBIOSAttributesByNameFunc mocks the BMCBIOSAttributesByName method.
+	BMCBIOSAttributesByNameFunc func(ctx context.Context, name string) ([]api.BIOSAttribute, error)
 
 	// BMCDumpByNameFunc mocks the BMCDumpByName method.
 	BMCDumpByNameFunc func(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error)
@@ -312,6 +330,31 @@ type ServerServiceMock struct {
 			Name string
 			// ApplicationName is the applicationName argument value.
 			ApplicationName string
+		}
+		// ApplyBIOSAttributesByName holds details about calls to the ApplyBIOSAttributesByName method.
+		ApplyBIOSAttributesByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// Attributes is the attributes argument value.
+			Attributes map[string]any
+		}
+		// BMCBIOSAttributeByName holds details about calls to the BMCBIOSAttributeByName method.
+		BMCBIOSAttributeByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// AttributeName is the attributeName argument value.
+			AttributeName string
+		}
+		// BMCBIOSAttributesByName holds details about calls to the BMCBIOSAttributesByName method.
+		BMCBIOSAttributesByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
 		}
 		// BMCDumpByName holds details about calls to the BMCDumpByName method.
 		BMCDumpByName []struct {
@@ -679,6 +722,9 @@ type ServerServiceMock struct {
 		}
 	}
 	lockAddApplication                  sync.RWMutex
+	lockApplyBIOSAttributesByName       sync.RWMutex
+	lockBMCBIOSAttributeByName          sync.RWMutex
+	lockBMCBIOSAttributesByName         sync.RWMutex
 	lockBMCDumpByName                   sync.RWMutex
 	lockBMCLogEntriesByNameAndLogSource sync.RWMutex
 	lockBMCLogSourcesByName             sync.RWMutex
@@ -762,6 +808,122 @@ func (mock *ServerServiceMock) AddApplicationCalls() []struct {
 	mock.lockAddApplication.RLock()
 	calls = mock.calls.AddApplication
 	mock.lockAddApplication.RUnlock()
+	return calls
+}
+
+// ApplyBIOSAttributesByName calls ApplyBIOSAttributesByNameFunc.
+func (mock *ServerServiceMock) ApplyBIOSAttributesByName(ctx context.Context, name string, attributes map[string]any) error {
+	if mock.ApplyBIOSAttributesByNameFunc == nil {
+		panic("ServerServiceMock.ApplyBIOSAttributesByNameFunc: method is nil but ServerService.ApplyBIOSAttributesByName was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		Name       string
+		Attributes map[string]any
+	}{
+		Ctx:        ctx,
+		Name:       name,
+		Attributes: attributes,
+	}
+	mock.lockApplyBIOSAttributesByName.Lock()
+	mock.calls.ApplyBIOSAttributesByName = append(mock.calls.ApplyBIOSAttributesByName, callInfo)
+	mock.lockApplyBIOSAttributesByName.Unlock()
+	return mock.ApplyBIOSAttributesByNameFunc(ctx, name, attributes)
+}
+
+// ApplyBIOSAttributesByNameCalls gets all the calls that were made to ApplyBIOSAttributesByName.
+// Check the length with:
+//
+//	len(mockedServerService.ApplyBIOSAttributesByNameCalls())
+func (mock *ServerServiceMock) ApplyBIOSAttributesByNameCalls() []struct {
+	Ctx        context.Context
+	Name       string
+	Attributes map[string]any
+} {
+	var calls []struct {
+		Ctx        context.Context
+		Name       string
+		Attributes map[string]any
+	}
+	mock.lockApplyBIOSAttributesByName.RLock()
+	calls = mock.calls.ApplyBIOSAttributesByName
+	mock.lockApplyBIOSAttributesByName.RUnlock()
+	return calls
+}
+
+// BMCBIOSAttributeByName calls BMCBIOSAttributeByNameFunc.
+func (mock *ServerServiceMock) BMCBIOSAttributeByName(ctx context.Context, name string, attributeName string) (api.BIOSAttribute, error) {
+	if mock.BMCBIOSAttributeByNameFunc == nil {
+		panic("ServerServiceMock.BMCBIOSAttributeByNameFunc: method is nil but ServerService.BMCBIOSAttributeByName was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		Name          string
+		AttributeName string
+	}{
+		Ctx:           ctx,
+		Name:          name,
+		AttributeName: attributeName,
+	}
+	mock.lockBMCBIOSAttributeByName.Lock()
+	mock.calls.BMCBIOSAttributeByName = append(mock.calls.BMCBIOSAttributeByName, callInfo)
+	mock.lockBMCBIOSAttributeByName.Unlock()
+	return mock.BMCBIOSAttributeByNameFunc(ctx, name, attributeName)
+}
+
+// BMCBIOSAttributeByNameCalls gets all the calls that were made to BMCBIOSAttributeByName.
+// Check the length with:
+//
+//	len(mockedServerService.BMCBIOSAttributeByNameCalls())
+func (mock *ServerServiceMock) BMCBIOSAttributeByNameCalls() []struct {
+	Ctx           context.Context
+	Name          string
+	AttributeName string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		Name          string
+		AttributeName string
+	}
+	mock.lockBMCBIOSAttributeByName.RLock()
+	calls = mock.calls.BMCBIOSAttributeByName
+	mock.lockBMCBIOSAttributeByName.RUnlock()
+	return calls
+}
+
+// BMCBIOSAttributesByName calls BMCBIOSAttributesByNameFunc.
+func (mock *ServerServiceMock) BMCBIOSAttributesByName(ctx context.Context, name string) ([]api.BIOSAttribute, error) {
+	if mock.BMCBIOSAttributesByNameFunc == nil {
+		panic("ServerServiceMock.BMCBIOSAttributesByNameFunc: method is nil but ServerService.BMCBIOSAttributesByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockBMCBIOSAttributesByName.Lock()
+	mock.calls.BMCBIOSAttributesByName = append(mock.calls.BMCBIOSAttributesByName, callInfo)
+	mock.lockBMCBIOSAttributesByName.Unlock()
+	return mock.BMCBIOSAttributesByNameFunc(ctx, name)
+}
+
+// BMCBIOSAttributesByNameCalls gets all the calls that were made to BMCBIOSAttributesByName.
+// Check the length with:
+//
+//	len(mockedServerService.BMCBIOSAttributesByNameCalls())
+func (mock *ServerServiceMock) BMCBIOSAttributesByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockBMCBIOSAttributesByName.RLock()
+	calls = mock.calls.BMCBIOSAttributesByName
+	mock.lockBMCBIOSAttributesByName.RUnlock()
 	return calls
 }
 

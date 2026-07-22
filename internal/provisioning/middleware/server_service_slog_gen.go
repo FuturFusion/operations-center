@@ -78,6 +78,112 @@ func (_d ServerServiceWithSlog) AddApplication(ctx context.Context, name string,
 	return _d._base.AddApplication(ctx, name, applicationName)
 }
 
+// ApplyBIOSAttributesByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) ApplyBIOSAttributesByName(ctx context.Context, name string, attributes map[string]any) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Any("attributes", attributes),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ApplyBIOSAttributesByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method ApplyBIOSAttributesByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method ApplyBIOSAttributesByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method ApplyBIOSAttributesByName finished")
+		}
+	}()
+	return _d._base.ApplyBIOSAttributesByName(ctx, name, attributes)
+}
+
+// BMCBIOSAttributeByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCBIOSAttributeByName(ctx context.Context, name string, attributeName string) (bIOSAttribute api.BIOSAttribute, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.String("attributeName", attributeName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCBIOSAttributeByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bIOSAttribute", bIOSAttribute),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BMCBIOSAttributeByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BMCBIOSAttributeByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BMCBIOSAttributeByName finished")
+		}
+	}()
+	return _d._base.BMCBIOSAttributeByName(ctx, name, attributeName)
+}
+
+// BMCBIOSAttributesByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCBIOSAttributesByName(ctx context.Context, name string) (bIOSAttributes []api.BIOSAttribute, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCBIOSAttributesByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bIOSAttributes", bIOSAttributes),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BMCBIOSAttributesByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BMCBIOSAttributesByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BMCBIOSAttributesByName finished")
+		}
+	}()
+	return _d._base.BMCBIOSAttributesByName(ctx, name)
+}
+
 // BMCDumpByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (bMCDump api.BMCDump, err error) {
 	log := slog.With()

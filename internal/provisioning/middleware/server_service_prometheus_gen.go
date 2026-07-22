@@ -55,6 +55,48 @@ func (_d ServerServiceWithPrometheus) AddApplication(ctx context.Context, name s
 	return _d.base.AddApplication(ctx, name, applicationName)
 }
 
+// ApplyBIOSAttributesByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) ApplyBIOSAttributesByName(ctx context.Context, name string, attributes map[string]any) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ApplyBIOSAttributesByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ApplyBIOSAttributesByName(ctx, name, attributes)
+}
+
+// BMCBIOSAttributeByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BMCBIOSAttributeByName(ctx context.Context, name string, attributeName string) (bIOSAttribute api.BIOSAttribute, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCBIOSAttributeByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BMCBIOSAttributeByName(ctx, name, attributeName)
+}
+
+// BMCBIOSAttributesByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BMCBIOSAttributesByName(ctx context.Context, name string) (bIOSAttributes []api.BIOSAttribute, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCBIOSAttributesByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BMCBIOSAttributesByName(ctx, name)
+}
+
 // BMCDumpByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (bMCDump api.BMCDump, err error) {
 	_since := time.Now()
