@@ -253,3 +253,45 @@ func (c OperationsCenterClient) UpdateServerSystemStorage(ctx context.Context, n
 
 	return nil
 }
+
+func (c OperationsCenterClient) BMCStartServer(ctx context.Context, name string, force bool) error {
+	query := url.Values{}
+	if force {
+		query.Add("force", "1")
+	}
+
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "bmc/:start"), query, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c OperationsCenterClient) BMCStopServer(ctx context.Context, name string, force bool) error {
+	query := url.Values{}
+	if force {
+		query.Add("force", "1")
+	}
+
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "bmc/:stop"), query, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c OperationsCenterClient) BMCRestartServer(ctx context.Context, name string, force bool) error {
+	query := url.Values{}
+	if force {
+		query.Add("force", "1")
+	}
+
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "bmc/:restart"), query, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
