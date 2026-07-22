@@ -111,4 +111,7 @@ type BMCServerClientPort interface {
 	Stop(ctx context.Context, server Server, force bool) (*BMCTaskMonitor, error)
 	Restart(ctx context.Context, server Server, force bool) (*BMCTaskMonitor, error)
 	WaitForTask(ctx context.Context, server Server, taskMonitor *BMCTaskMonitor) error
+
+	SetupBIOS(ctx context.Context, server Server) (*BMCTaskMonitor, error)
+	SetupSecureBootCertificates(ctx context.Context, server Server) error
 }
