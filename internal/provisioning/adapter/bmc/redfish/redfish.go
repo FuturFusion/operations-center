@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/stmcginnis/gofish"
@@ -153,6 +155,129 @@ func (r redfish) WaitForTask(ctx context.Context, server provisioning.Server, ta
 			return ctx.Err()
 		}
 	}
+}
+
+func (r redfish) SetupBIOS(ctx context.Context, server provisioning.Server) (*provisioning.BMCTaskMonitor, error) {
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCEndpoint, err)
+	}
+
+	defer logout()
+
+	system, err := getFirstSystem(client)
+	if err != nil {
+		return nil, fmt.Errorf("Failed get BMC system: %w", err)
+	}
+
+	bios, err := system.Bios()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get bios information: %w", err)
+	}
+
+	// TODO: unfortunately, UpdateBiosAttributesApplyAt does not return the
+	// location of the task created for this operation, therfore there is
+	// currently no good way to wait for the task to complete.
+	// See discussion in: https://github.com/stmcginnis/gofish/issues/472#issuecomment-5045603910
+	err = bios.UpdateBiosAttributesApplyAt(schemas.SettingsAttributes{
+		"NumaNodesPerSocket": "4",
+		"SecureBoot":         "Enabled",
+		"SecureBootMode":     "UserMode",
+		"SecureBootPolicy":   "Custom",
+		"TpmSecurity":        "On",
+	}, schemas.OnResetSettingsApplyTime)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to apply bios attributes: %w", err)
+	}
+
+	return nil, nil
+}
+
+func (r redfish) SetupSecureBootCertificates(ctx context.Context, server provisioning.Server) error {
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCEndpoint, err)
+	}
+
+	defer logout()
+
+	system, err := getFirstSystem(client)
+	if err != nil {
+		return fmt.Errorf("Failed get BMC system: %w", err)
+	}
+
+	secureBoot, err := system.SecureBoot()
+	if err != nil {
+		return fmt.Errorf("Failed to get secure boot information: %w", err)
+	}
+
+	secureBootDatabases, err := secureBoot.SecureBootDatabases()
+	if err != nil {
+		return fmt.Errorf("Failed to get secure boot databases: %w", err)
+	}
+
+	// Wipe certificates from secure boot databases and reinitialize the
+	// secure boot databases with the Incus certificates.
+	toBeCleanedSecureBootDatabases := []string{"KEK", "DB", "DBX"}
+	for _, secureBootDB := range secureBootDatabases {
+		dbName := strings.ToUpper(secureBootDB.Name)
+		if !slices.Contains(toBeCleanedSecureBootDatabases, dbName) {
+			continue
+		}
+
+		certs, err := secureBootDB.Certificates()
+		if err != nil {
+			return fmt.Errorf("Failed to get secure boot database certificates: %w", err)
+		}
+
+		for _, cert := range certs {
+			resp, err := client.Delete(cert.ODataID)
+			if err != nil {
+				slog.WarnContext(ctx, "Failed to delete secure boot certificate", slog.String("odata_id", cert.ODataID), logger.Err(err))
+				continue
+			}
+
+			_ = resp.Body.Close()
+		}
+
+		uploadCerts := []schemas.Certificate{}
+
+		switch dbName {
+		case "KEK":
+			uploadCerts = append(uploadCerts, schemas.Certificate{
+				// FIXME: add the correct certificates here
+				CertificateString: "certPEM",
+				CertificateType:   schemas.PEMCertificateType,
+			})
+
+		case "DB":
+			uploadCerts = append(uploadCerts, schemas.Certificate{
+				// FIXME: add the correct certificates here
+				CertificateString: "certPEM1",
+				CertificateType:   schemas.PEMCertificateType,
+			})
+			uploadCerts = append(uploadCerts, schemas.Certificate{
+				// FIXME: add the correct certificates here
+				CertificateString: "certPEM2",
+				CertificateType:   schemas.PEMCertificateType,
+			})
+		}
+
+		for _, cert := range uploadCerts {
+			resp, err := client.Post(secureBootDB.ODataID, cert)
+			if err != nil {
+				return fmt.Errorf("Failed to add certificate to secure boot DB %q: %w", secureBootDB.ODataID, err)
+			}
+
+			_ = resp.Body.Close()
+
+			if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+				return fmt.Errorf("Unexpected status %d when adding certificate to secure boot DB %q", resp.StatusCode, secureBootDB.ODataID)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (r redfish) performReset(ctx context.Context, server provisioning.Server, resetType schemas.ResetType) (*provisioning.BMCTaskMonitor, error) {
