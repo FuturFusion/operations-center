@@ -65,6 +65,57 @@ var updates = map[int]update{
 	35: updateFromV34,
 	36: updateFromV35,
 	37: updateFromV36,
+	38: updateFromV37,
+}
+
+func updateFromV37(ctx context.Context, tx *sql.Tx) error {
+	// v37..v38 add BMC related fields to servers table.
+	stmt := withResourcesView(`
+CREATE TABLE servers_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  cluster_id INTEGER,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  connection_url TEXT NOT NULL,
+  certificate TEXT NOT NULL,
+  status TEXT NOT NULL,
+  hardware_data TEXT NOT NULL,
+  os_data TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  last_seen DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00',
+  public_connection_url TEXT NOT NULL DEFAULT '',
+  version_data TEXT NOT NULL DEFAULT '',
+  channel_id INTEGER NOT NULL DEFAULT 0,
+  status_detail TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  properties TEXT NOT NULL DEFAULT '',
+  last_status_updated DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00',
+  bmc_api_type TEXT NOT NULL DEFAULT '',
+  bmc_endpoint TEXT NOT NULL DEFAULT '',
+  bmc_username TEXT NOT NULL DEFAULT '',
+  bmc_password TEXT NOT NULL DEFAULT '',
+  registration_token TEXT,
+  system_uuid TEXT,
+  machine_id TEXT,
+  UNIQUE (name),
+  UNIQUE (certificate),
+  UNIQUE (system_uuid),
+  UNIQUE (machine_id),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE,
+  FOREIGN KEY (channel_id) REFERENCES channels(id),
+  CHECK (name <> '')
+);
+
+INSERT INTO servers_new
+  SELECT id, cluster_id, name, type, connection_url, certificate, status, hardware_data, os_data, last_updated,
+  last_seen, public_connection_url, version_data, channel_id, status_detail, description, properties,
+  last_status_updated, '', '', '', '', null, null, null
+  FROM servers;
+DROP TABLE servers;
+ALTER TABLE servers_new RENAME TO servers;
+`)
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV36(ctx context.Context, tx *sql.Tx) error {

@@ -112,6 +112,44 @@ func (s server) GetByCertificate(ctx context.Context, certificatePEM string) (*p
 	return &servers[0], nil
 }
 
+func (s server) GetBySystemUUID(ctx context.Context, systemUUID string) (*provisioning.Server, error) {
+	servers, err := s.getAllWithFilter(ctx, &provisioning.ServerFilter{
+		SystemUUID: &systemUUID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(servers) == 0 {
+		return nil, domain.ErrNotFound
+	}
+
+	if len(servers) != 1 {
+		return nil, fmt.Errorf("More than one server matches the system UUID") // this should never happen, since we have a unique constraint on column servers.certificate in the database.
+	}
+
+	return &servers[0], nil
+}
+
+func (s server) GetByMachineID(ctx context.Context, machineID string) (*provisioning.Server, error) {
+	servers, err := s.getAllWithFilter(ctx, &provisioning.ServerFilter{
+		MachineID: &machineID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(servers) == 0 {
+		return nil, domain.ErrNotFound
+	}
+
+	if len(servers) != 1 {
+		return nil, fmt.Errorf("More than one server matches the machine-id") // this should never happen, since we have a unique constraint on column servers.certificate in the database.
+	}
+
+	return &servers[0], nil
+}
+
 func (s server) Update(ctx context.Context, in provisioning.Server) error {
 	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, s.db), func(ctx context.Context, tx transaction.TX) error {
 		return entities.UpdateServer(ctx, tx, in.Name, in)

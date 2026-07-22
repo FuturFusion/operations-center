@@ -61,8 +61,17 @@ CREATE TABLE servers (
   description TEXT NOT NULL DEFAULT '',
   properties TEXT NOT NULL DEFAULT '',
   last_status_updated DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00',
+  bmc_api_type TEXT NOT NULL DEFAULT '',
+  bmc_endpoint TEXT NOT NULL DEFAULT '',
+  bmc_username TEXT NOT NULL DEFAULT '',
+  bmc_password TEXT NOT NULL DEFAULT '',
+  registration_token TEXT,
+  system_uuid TEXT,
+  machine_id TEXT,
   UNIQUE (name),
   UNIQUE (certificate),
+  UNIQUE (system_uuid),
+  UNIQUE (machine_id),
   FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE,
   FOREIGN KEY (channel_id) REFERENCES channels(id),
   CHECK (name <> '')
@@ -453,4 +462,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (37, strftime("%s"));
+INSERT INTO schema (version, updated_at) VALUES (38, strftime("%s"));

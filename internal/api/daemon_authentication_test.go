@@ -346,7 +346,7 @@ func TestAuthentication(t *testing.T) {
 			wantStatusCode: http.StatusCreated,
 		},
 		{
-			name: "http POST /1.0/provisioning/servers without token",
+			name: "http POST /1.0/provisioning/servers without token and without authentication",
 			client: func() *http.Client {
 				return &http.Client{
 					Transport: &http.Transport{
@@ -365,7 +365,7 @@ func TestAuthentication(t *testing.T) {
   "channel": "stable"
 }`),
 
-			wantStatusCode: http.StatusBadRequest,
+			wantStatusCode: http.StatusForbidden,
 		},
 		{
 			name: "http POST /1.0/provisioning/servers with invalid token",

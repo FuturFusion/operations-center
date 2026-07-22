@@ -5,6 +5,7 @@ package provisioning
 import (
 	"time"
 
+	"github.com/google/uuid"
 	osapi "github.com/lxc/incus-os/incus-osd/api"
 
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -377,6 +378,13 @@ type ExprServer struct {
 	StatusDetail         api.ServerStatusDetail   `json:"status_detail" expr:"status_detail"`
 	Description          string                   `json:"description" expr:"description"`
 	Properties           api.ConfigMap            `json:"properties" expr:"properties"`
+	BMCAPIType           api.BMCAPIType           `json:"bmc_api_type"           db:"sql=servers.bmc_api_type&marshal=json" expr:"bmc_api_type"`
+	BMCEndpoint          string                   `json:"bmc_endpoint" expr:"bmc_endpoint"`
+	BMCUsername          string                   `json:"bmc_username" expr:"bmc_username"`
+	BMCPassword          string                   `json:"bmc_password" expr:"bmc_password"`
+	RegistrationToken    *uuid.UUID               `json:"registration_token" expr:"registration_token"`
+	SystemUUID           *string                  `json:"system_uuid" expr:"system_uuid"`
+	MachineID            *string                  `json:"machine_id" expr:"machine_id"`
 	LastUpdated          time.Time                `json:"last_updated"           db:"update_timestamp" expr:"last_updated"`
 	LastSeen             time.Time                `json:"last_seen" expr:"last_seen"`
 	LastStatusUpdated    time.Time                `json:"last_status_updated" expr:"last_status_updated"`
@@ -830,6 +838,13 @@ func ToExprServer(s Server) ExprServer {
 		StatusDetail:         s.StatusDetail,
 		Description:          s.Description,
 		Properties:           s.Properties,
+		BMCAPIType:           s.BMCAPIType,
+		BMCEndpoint:          s.BMCEndpoint,
+		BMCUsername:          s.BMCUsername,
+		BMCPassword:          s.BMCPassword,
+		RegistrationToken:    s.RegistrationToken,
+		SystemUUID:           s.SystemUUID,
+		MachineID:            s.MachineID,
 		LastUpdated:          s.LastUpdated,
 		LastSeen:             s.LastSeen,
 		LastStatusUpdated:    s.LastStatusUpdated,

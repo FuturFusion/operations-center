@@ -206,31 +206,135 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 	}
 }
 
-func TestServerService_Create(t *testing.T) {
-	config.InitTest(t, &envMock.EnvironmentMock{}, nil)
-
-	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
-
+func TestServerService_PreRegister(t *testing.T) {
 	tests := []struct {
-		name               string
-		server             provisioning.Server
-		repoCreateErr      error
-		tokenSvcConsumeErr error
-		repoUpdateErr      error
+		name          string
+		server        provisioning.Server
+		repoCreateErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
 			server: provisioning.Server{
+				Name:    "A",
+				Status:  api.ServerStatusUnregistered,
+				Channel: "stable",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - validation",
+			server: provisioning.Server{
+				Name:    "", // invalid
+				Status:  api.ServerStatusUnregistered,
+				Channel: "stable",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - repo.Create",
+			server: provisioning.Server{
+				Name:    "A",
+				Status:  api.ServerStatusUnregistered,
+				Channel: "stable",
+			},
+			repoCreateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				CreateFunc: func(ctx context.Context, newServer provisioning.Server) (int64, error) {
+					return -1, tc.repoCreateErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, nil, tls.Certificate{})
+
+			// Run test
+			_, err := serverSvc.PreRegister(t.Context(), tc.server)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestServerService_Register(t *testing.T) {
+	config.InitTest(t, &envMock.EnvironmentMock{}, nil)
+
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	tests := []struct {
+		name                   string
+		server                 provisioning.Server
+		repoCreateErr          error
+		tokenSvcConsumeErr     error
+		repoGetBySystemUUID    *provisioning.Server
+		repoGetBySystemUUIDErr error
+		repoGetByMachineID     *provisioning.Server
+		repoGetByMachineIDErr  error
+		repoUpdateErr          error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - new registration",
+			server: provisioning.Server{
 				Name:          "one",
-				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
 `,
-				Status: api.ServerStatusReady,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - pre registered server by system UUID",
+			server: provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+		one
+		-----END CERTIFICATE-----
+		`,
+				SystemUUID: ptr.To("1"),
+			},
+			repoGetBySystemUUID: &provisioning.Server{
+				ID:         1,
+				Name:       "one",
+				SystemUUID: ptr.To("1"),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - pre registered server by machine ID",
+			server: provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+		one
+		-----END CERTIFICATE-----
+		`,
+				MachineID: ptr.To("1"),
+			},
+			repoGetBySystemUUID: &provisioning.Server{
+				ID:        1,
+				Name:      "one",
+				MachineID: ptr.To("1"),
 			},
 
 			assertErr: require.NoError,
@@ -242,17 +346,44 @@ one
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - pre registered server by system UUID",
+			server: provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+		one
+		-----END CERTIFICATE-----
+		`,
+				SystemUUID: ptr.To("1"),
+			},
+			repoGetBySystemUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - pre registered server by machine ID",
+			server: provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+		one
+		-----END CERTIFICATE-----
+		`,
+				MachineID: ptr.To("1"),
+			},
+			repoGetByMachineIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - validation",
 			server: provisioning.Server{
 				Name:          "", // invalid
-				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
 `,
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
 			},
 
 			assertErr: errassert.ValidationError,
@@ -261,15 +392,12 @@ one
 			name: "error - remote Operations Center",
 			server: provisioning.Server{
 				Name:          "one",
-				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
 `,
-				Type:    api.ServerTypeOperationsCenter,
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
+				Type: api.ServerTypeOperationsCenter,
 			},
 
 			assertErr: errassert.ValidationErrorContains("Remote operations centers can not be registered"),
@@ -278,16 +406,33 @@ one
 			name: "error - repo.Create",
 			server: provisioning.Server{
 				Name:          "one",
-				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
 `,
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
 			},
 			repoCreateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.Update - pre registered server by system UUID",
+			server: provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+		one
+		-----END CERTIFICATE-----
+		`,
+				SystemUUID: ptr.To("1"),
+			},
+			repoGetBySystemUUID: &provisioning.Server{
+				ID:         1,
+				Name:       "one",
+				SystemUUID: ptr.To("1"),
+			},
+			repoUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -295,14 +440,11 @@ one
 			name: "error - Ping",
 			server: provisioning.Server{
 				Name:          "one",
-				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
 `,
-				Status:  api.ServerStatusReady,
-				Channel: "stable",
 			},
 			repoUpdateErr: boom.Error,
 
@@ -320,6 +462,12 @@ one
 				},
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return &provisioning.Server{}, nil
+				},
+				GetBySystemUUIDFunc: func(ctx context.Context, systemUUID string) (*provisioning.Server, error) {
+					return tc.repoGetBySystemUUID, tc.repoGetBySystemUUIDErr
+				},
+				GetByMachineIDFunc: func(ctx context.Context, machineID string) (*provisioning.Server, error) {
+					return tc.repoGetByMachineID, tc.repoGetByMachineIDErr
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
 					return tc.repoUpdateErr
@@ -383,7 +531,7 @@ one
 			)
 
 			// Run test
-			_, err := serverSvc.Create(t.Context(), token, tc.server)
+			_, err := serverSvc.Register(t.Context(), token, tc.server)
 
 			// Assert
 			tc.assertErr(t, err)

@@ -54,6 +54,22 @@ one
 			assertErr: require.NoError,
 		},
 		{
+			name: "valid - with BMC",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerType(""), // not yet defined at this point
+				Cluster:       nil,                // not yet part of a cluster when created with BMC
+				ConnectionURL: "",                 // not yet known when created with BMC
+				Certificate:   ``,                 // not yet known when created with BMC
+				Status:        api.ServerStatusUnregistered,
+				Channel:       "stable",
+				BMCAPIType:    api.BMCAPITypeRedfishV1Generic,
+				BMCEndpoint:   "https://1.2.3.4",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name: "error - name empty",
 			server: provisioning.Server{
 				Name:          "", // invalid
@@ -291,6 +307,49 @@ one
 				require.ErrorAs(tt, err, &verr, a...)
 			},
 		},
+		{
+			name: "error - BMC type invalid",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status:     api.ServerStatusPending,
+				Channel:    "stable",
+				BMCAPIType: api.BMCAPIType("invalid"), // invalid
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - BMC endpoint invalid",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status:      api.ServerStatusPending,
+				Channel:     "stable",
+				BMCAPIType:  api.BMCAPITypeRedfishV1Generic,
+				BMCEndpoint: ":|\\", // invalid
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -298,6 +357,32 @@ one
 			err := tc.server.Validate()
 
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestServer_UpdateState(t *testing.T) {
+	tests := []struct {
+		name   string
+		server provisioning.Server
+
+		want api.ServerUpdateState
+	}{
+		{
+			name: "success",
+			server: provisioning.Server{
+				Status: api.ServerStatusReady,
+			},
+
+			want: api.ServerUpdateStateUpToDate,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			state := tc.server.UpdateState()
+
+			require.Equal(t, tc.want, state)
 		})
 	}
 }

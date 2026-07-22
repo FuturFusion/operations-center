@@ -148,11 +148,46 @@ func (s *serverService) SetClusterService(clusterSvc provisioning.ClusterService
 	s.clusterSvc = clusterSvc
 }
 
-func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer provisioning.Server) (provisioning.Server, error) {
+func (s *serverService) PreRegister(ctx context.Context, newServer provisioning.Server) (provisioning.Server, error) {
+	err := newServer.Validate()
+	if err != nil {
+		return provisioning.Server{}, err
+	}
+
+	newServer.ID, err = s.repo.Create(ctx, newServer)
+	if err != nil {
+		return provisioning.Server{}, err
+	}
+
+	return newServer, nil
+}
+
+func (s *serverService) Register(ctx context.Context, token uuid.UUID, newServer provisioning.Server) (provisioning.Server, error) {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		channel, err := s.tokenSvc.Consume(ctx, token)
 		if err != nil {
 			return fmt.Errorf("Consume token for server creation: %w", err)
+		}
+
+		var preRegisteredServer *provisioning.Server
+		if newServer.SystemUUID != nil {
+			preRegisteredServer, err = s.repo.GetBySystemUUID(ctx, *newServer.SystemUUID)
+			if err != nil && !errors.Is(err, domain.ErrNotFound) {
+				return fmt.Errorf("Failed to lookup server by system uuid: %w", err)
+			}
+		}
+
+		if preRegisteredServer == nil && newServer.MachineID != nil {
+			preRegisteredServer, err = s.repo.GetByMachineID(ctx, *newServer.MachineID)
+			if err != nil && !errors.Is(err, domain.ErrNotFound) {
+				return fmt.Errorf("Failed to lookup server by machine-id: %w", err)
+			}
+		}
+
+		if preRegisteredServer != nil {
+			preRegisteredServer.ConnectionURL = newServer.ConnectionURL
+			preRegisteredServer.Certificate = newServer.Certificate
+			newServer = *preRegisteredServer
 		}
 
 		newServer.Status = api.ServerStatusPending
@@ -174,9 +209,16 @@ func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer p
 			return domain.NewValidationErrf("Remote operations centers can not be registered")
 		}
 
-		newServer.ID, err = s.repo.Create(ctx, newServer)
-		if err != nil {
-			return fmt.Errorf("Create server: %w", err)
+		if preRegisteredServer != nil {
+			err = s.repo.Update(ctx, newServer)
+			if err != nil {
+				return fmt.Errorf("Update pre registered server: %w", err)
+			}
+		} else {
+			newServer.ID, err = s.repo.Create(ctx, newServer)
+			if err != nil {
+				return fmt.Errorf("Create server: %w", err)
+			}
 		}
 
 		return nil

@@ -136,6 +136,20 @@ func (_d ServerRepoWithPrometheus) GetByCertificate(ctx context.Context, certifi
 	return _d.base.GetByCertificate(ctx, certificatePEM)
 }
 
+// GetByMachineID implements provisioning.ServerRepo.
+func (_d ServerRepoWithPrometheus) GetByMachineID(ctx context.Context, machineID string) (server *provisioning.Server, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByMachineID", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetByMachineID(ctx, machineID)
+}
+
 // GetByName implements provisioning.ServerRepo.
 func (_d ServerRepoWithPrometheus) GetByName(ctx context.Context, name string) (server *provisioning.Server, err error) {
 	_since := time.Now()
@@ -148,6 +162,20 @@ func (_d ServerRepoWithPrometheus) GetByName(ctx context.Context, name string) (
 		serverRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByName", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetByName(ctx, name)
+}
+
+// GetBySystemUUID implements provisioning.ServerRepo.
+func (_d ServerRepoWithPrometheus) GetBySystemUUID(ctx context.Context, systemUUID string) (server *provisioning.Server, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetBySystemUUID", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetBySystemUUID(ctx, systemUUID)
 }
 
 // Rename implements provisioning.ServerRepo.

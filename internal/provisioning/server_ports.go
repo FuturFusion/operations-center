@@ -11,7 +11,8 @@ import (
 
 type ServerService interface {
 	SetClusterService(clusterSvc ClusterService)
-	Create(ctx context.Context, token uuid.UUID, server Server) (Server, error)
+	PreRegister(ctx context.Context, server Server) (Server, error)
+	Register(ctx context.Context, token uuid.UUID, server Server) (Server, error)
 	GetAll(ctx context.Context) (Servers, error)
 	GetAllWithFilter(ctx context.Context, filter ServerFilter) (Servers, error)
 	GetAllNames(ctx context.Context) ([]string, error)
@@ -59,6 +60,8 @@ type ServerRepo interface {
 	GetAllNamesWithFilter(ctx context.Context, filter ServerFilter) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Server, error)
 	GetByCertificate(ctx context.Context, certificatePEM string) (*Server, error)
+	GetBySystemUUID(ctx context.Context, systemUUID string) (*Server, error)
+	GetByMachineID(ctx context.Context, machineID string) (*Server, error)
 	Update(ctx context.Context, server Server) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
