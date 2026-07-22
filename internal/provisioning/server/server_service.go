@@ -2340,3 +2340,72 @@ func (s *serverService) ResyncBMCServerDetails(ctx context.Context) error {
 func (s *serverService) SyncCluster(ctx context.Context, clusterName string) error {
 	return nil
 }
+
+func (s *serverService) BMCStartByName(ctx context.Context, name string, force bool) error {
+	if name == "" {
+		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	client, ok := s.bmcServerClients[server.BMCAPIType]
+	if !ok {
+		return fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCAPIType, err)
+	}
+
+	_, err = client.Start(ctx, *server, false)
+	if err != nil {
+		return fmt.Errorf("Failed to trigger start of server %q via BMC: %w", server.Name, err)
+	}
+
+	return nil
+}
+
+func (s *serverService) BMCStopByName(ctx context.Context, name string, force bool) error {
+	if name == "" {
+		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	client, ok := s.bmcServerClients[server.BMCAPIType]
+	if !ok {
+		return fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCAPIType, err)
+	}
+
+	_, err = client.Stop(ctx, *server, false)
+	if err != nil {
+		return fmt.Errorf("Failed to trigger stop of server %q via BMC: %w", server.Name, err)
+	}
+
+	return nil
+}
+
+func (s *serverService) BMCRestartByName(ctx context.Context, name string, force bool) error {
+	if name == "" {
+		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	client, ok := s.bmcServerClients[server.BMCAPIType]
+	if !ok {
+		return fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCAPIType, err)
+	}
+
+	_, err = client.Restart(ctx, *server, false)
+	if err != nil {
+		return fmt.Errorf("Failed to trigger restart of server %q via BMC: %w", server.Name, err)
+	}
+
+	return nil
+}
