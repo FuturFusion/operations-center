@@ -59,6 +59,9 @@ type ServerService interface {
 	BMCLogSourcesByName(ctx context.Context, name string) ([]string, error)
 	BMCLogEntriesByNameAndLogSource(ctx context.Context, name string, logSource string) ([]api.BMCLogEvent, error)
 	BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error)
+	ApplyBIOSAttributesByName(ctx context.Context, name string, attributes map[string]any) error
+	BMCBIOSAttributesByName(ctx context.Context, name string) ([]api.BIOSAttribute, error)
+	BMCBIOSAttributeByName(ctx context.Context, name string, attributeName string) (api.BIOSAttribute, error)
 }
 
 type ServerRepo interface {
@@ -119,4 +122,7 @@ type BMCServerClientPort interface {
 	LogSources(ctx context.Context, server Server) ([]string, error)
 	LogEntriesBySource(ctx context.Context, server Server, logSource string) ([]api.BMCLogEvent, error)
 	Dump(ctx context.Context, server Server, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error)
+	ApplyBIOSAttributes(ctx context.Context, server Server, attributes map[string]any) (*BMCTaskMonitor, error)
+	BIOSAttributes(ctx context.Context, server Server) ([]api.BIOSAttribute, error)
+	BIOSAttribute(ctx context.Context, server Server, attributeName string) (api.BIOSAttribute, error)
 }
