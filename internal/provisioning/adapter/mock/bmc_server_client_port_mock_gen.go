@@ -22,6 +22,9 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //
 //		// make and configure a mocked provisioning.BMCServerClientPort
 //		mockedBMCServerClientPort := &BMCServerClientPortMock{
+//			ApplyBIOSAttributesFunc: func(ctx context.Context, server provisioning.Server, attributes map[string]any) (*provisioning.BMCTaskMonitor, error) {
+//				panic("mock out the ApplyBIOSAttributes method")
+//			},
 //			ConnectionTestFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
 //				panic("mock out the ConnectionTest method")
 //			},
@@ -46,6 +49,9 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //			ServerRestartFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
 //				panic("mock out the ServerRestart method")
 //			},
+//			SetupSecureBootCertificatesFunc: func(ctx context.Context, server provisioning.Server) error {
+//				panic("mock out the SetupSecureBootCertificates method")
+//			},
 //			WaitForTaskFunc: func(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) error {
 //				panic("mock out the WaitForTask method")
 //			},
@@ -56,6 +62,9 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //
 //	}
 type BMCServerClientPortMock struct {
+	// ApplyBIOSAttributesFunc mocks the ApplyBIOSAttributes method.
+	ApplyBIOSAttributesFunc func(ctx context.Context, server provisioning.Server, attributes map[string]any) (*provisioning.BMCTaskMonitor, error)
+
 	// ConnectionTestFunc mocks the ConnectionTest method.
 	ConnectionTestFunc func(ctx context.Context, server provisioning.Server) (string, error)
 
@@ -80,11 +89,23 @@ type BMCServerClientPortMock struct {
 	// ServerRestartFunc mocks the ServerRestart method.
 	ServerRestartFunc func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error)
 
+	// SetupSecureBootCertificatesFunc mocks the SetupSecureBootCertificates method.
+	SetupSecureBootCertificatesFunc func(ctx context.Context, server provisioning.Server) error
+
 	// WaitForTaskFunc mocks the WaitForTask method.
 	WaitForTaskFunc func(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) error
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// ApplyBIOSAttributes holds details about calls to the ApplyBIOSAttributes method.
+		ApplyBIOSAttributes []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Attributes is the attributes argument value.
+			Attributes map[string]any
+		}
 		// ConnectionTest holds details about calls to the ConnectionTest method.
 		ConnectionTest []struct {
 			// Ctx is the ctx argument value.
@@ -155,6 +176,13 @@ type BMCServerClientPortMock struct {
 			// Force is the force argument value.
 			Force bool
 		}
+		// SetupSecureBootCertificates holds details about calls to the SetupSecureBootCertificates method.
+		SetupSecureBootCertificates []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// WaitForTask holds details about calls to the WaitForTask method.
 		WaitForTask []struct {
 			// Ctx is the ctx argument value.
@@ -165,15 +193,57 @@ type BMCServerClientPortMock struct {
 			TaskMonitor *provisioning.BMCTaskMonitor
 		}
 	}
-	lockConnectionTest     sync.RWMutex
-	lockDump               sync.RWMutex
-	lockGetData            sync.RWMutex
-	lockLogEntriesBySource sync.RWMutex
-	lockLogSources         sync.RWMutex
-	lockServerPowerOff     sync.RWMutex
-	lockServerPowerOn      sync.RWMutex
-	lockServerRestart      sync.RWMutex
-	lockWaitForTask        sync.RWMutex
+	lockApplyBIOSAttributes         sync.RWMutex
+	lockConnectionTest              sync.RWMutex
+	lockDump                        sync.RWMutex
+	lockGetData                     sync.RWMutex
+	lockLogEntriesBySource          sync.RWMutex
+	lockLogSources                  sync.RWMutex
+	lockServerPowerOff              sync.RWMutex
+	lockServerPowerOn               sync.RWMutex
+	lockServerRestart               sync.RWMutex
+	lockSetupSecureBootCertificates sync.RWMutex
+	lockWaitForTask                 sync.RWMutex
+}
+
+// ApplyBIOSAttributes calls ApplyBIOSAttributesFunc.
+func (mock *BMCServerClientPortMock) ApplyBIOSAttributes(ctx context.Context, server provisioning.Server, attributes map[string]any) (*provisioning.BMCTaskMonitor, error) {
+	if mock.ApplyBIOSAttributesFunc == nil {
+		panic("BMCServerClientPortMock.ApplyBIOSAttributesFunc: method is nil but BMCServerClientPort.ApplyBIOSAttributes was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		Server     provisioning.Server
+		Attributes map[string]any
+	}{
+		Ctx:        ctx,
+		Server:     server,
+		Attributes: attributes,
+	}
+	mock.lockApplyBIOSAttributes.Lock()
+	mock.calls.ApplyBIOSAttributes = append(mock.calls.ApplyBIOSAttributes, callInfo)
+	mock.lockApplyBIOSAttributes.Unlock()
+	return mock.ApplyBIOSAttributesFunc(ctx, server, attributes)
+}
+
+// ApplyBIOSAttributesCalls gets all the calls that were made to ApplyBIOSAttributes.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.ApplyBIOSAttributesCalls())
+func (mock *BMCServerClientPortMock) ApplyBIOSAttributesCalls() []struct {
+	Ctx        context.Context
+	Server     provisioning.Server
+	Attributes map[string]any
+} {
+	var calls []struct {
+		Ctx        context.Context
+		Server     provisioning.Server
+		Attributes map[string]any
+	}
+	mock.lockApplyBIOSAttributes.RLock()
+	calls = mock.calls.ApplyBIOSAttributes
+	mock.lockApplyBIOSAttributes.RUnlock()
+	return calls
 }
 
 // ConnectionTest calls ConnectionTestFunc.
@@ -489,6 +559,42 @@ func (mock *BMCServerClientPortMock) ServerRestartCalls() []struct {
 	mock.lockServerRestart.RLock()
 	calls = mock.calls.ServerRestart
 	mock.lockServerRestart.RUnlock()
+	return calls
+}
+
+// SetupSecureBootCertificates calls SetupSecureBootCertificatesFunc.
+func (mock *BMCServerClientPortMock) SetupSecureBootCertificates(ctx context.Context, server provisioning.Server) error {
+	if mock.SetupSecureBootCertificatesFunc == nil {
+		panic("BMCServerClientPortMock.SetupSecureBootCertificatesFunc: method is nil but BMCServerClientPort.SetupSecureBootCertificates was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockSetupSecureBootCertificates.Lock()
+	mock.calls.SetupSecureBootCertificates = append(mock.calls.SetupSecureBootCertificates, callInfo)
+	mock.lockSetupSecureBootCertificates.Unlock()
+	return mock.SetupSecureBootCertificatesFunc(ctx, server)
+}
+
+// SetupSecureBootCertificatesCalls gets all the calls that were made to SetupSecureBootCertificates.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.SetupSecureBootCertificatesCalls())
+func (mock *BMCServerClientPortMock) SetupSecureBootCertificatesCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockSetupSecureBootCertificates.RLock()
+	calls = mock.calls.SetupSecureBootCertificates
+	mock.lockSetupSecureBootCertificates.RUnlock()
 	return calls
 }
 

@@ -39,6 +39,20 @@ func NewBMCServerClientPortWithPrometheus(base provisioning.BMCServerClientPort,
 	}
 }
 
+// ApplyBIOSAttributes implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) ApplyBIOSAttributes(ctx context.Context, server provisioning.Server, attributes map[string]any) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "ApplyBIOSAttributes", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ApplyBIOSAttributes(ctx, server, attributes)
+}
+
 // ConnectionTest implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithPrometheus) ConnectionTest(ctx context.Context, server provisioning.Server) (certificate string, err error) {
 	_since := time.Now()
@@ -149,6 +163,20 @@ func (_d BMCServerClientPortWithPrometheus) ServerRestart(ctx context.Context, s
 		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "ServerRestart", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.ServerRestart(ctx, server, force)
+}
+
+// SetupSecureBootCertificates implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) SetupSecureBootCertificates(ctx context.Context, server provisioning.Server) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "SetupSecureBootCertificates", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.SetupSecureBootCertificates(ctx, server)
 }
 
 // WaitForTask implements provisioning.BMCServerClientPort.

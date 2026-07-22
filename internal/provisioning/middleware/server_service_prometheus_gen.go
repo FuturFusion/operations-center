@@ -55,6 +55,20 @@ func (_d ServerServiceWithPrometheus) AddApplication(ctx context.Context, name s
 	return _d.base.AddApplication(ctx, name, applicationName)
 }
 
+// ApplyBIOSAttributesByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) ApplyBIOSAttributesByName(ctx context.Context, name string, attributes map[string]any) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ApplyBIOSAttributesByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ApplyBIOSAttributesByName(ctx, name, attributes)
+}
+
 // BMCDumpByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (bMCDump api.BMCDump, err error) {
 	_since := time.Now()
@@ -151,6 +165,20 @@ func (_d ServerServiceWithPrometheus) BMCServerRestartByName(ctx context.Context
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCServerRestartByName", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.BMCServerRestartByName(ctx, name, force)
+}
+
+// BMCSetupSecureBootCertificatesByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BMCSetupSecureBootCertificatesByName(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCSetupSecureBootCertificatesByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BMCSetupSecureBootCertificatesByName(ctx, name)
 }
 
 // DeleteByName implements provisioning.ServerService.

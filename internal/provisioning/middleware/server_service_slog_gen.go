@@ -78,6 +78,41 @@ func (_d ServerServiceWithSlog) AddApplication(ctx context.Context, name string,
 	return _d._base.AddApplication(ctx, name, applicationName)
 }
 
+// ApplyBIOSAttributesByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) ApplyBIOSAttributesByName(ctx context.Context, name string, attributes map[string]any) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Any("attributes", attributes),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ApplyBIOSAttributesByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method ApplyBIOSAttributesByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method ApplyBIOSAttributesByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method ApplyBIOSAttributesByName finished")
+		}
+	}()
+	return _d._base.ApplyBIOSAttributesByName(ctx, name, attributes)
+}
+
 // BMCDumpByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (bMCDump api.BMCDump, err error) {
 	log := slog.With()
@@ -324,6 +359,40 @@ func (_d ServerServiceWithSlog) BMCServerRestartByName(ctx context.Context, name
 		}
 	}()
 	return _d._base.BMCServerRestartByName(ctx, name, force)
+}
+
+// BMCSetupSecureBootCertificatesByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCSetupSecureBootCertificatesByName(ctx context.Context, name string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCSetupSecureBootCertificatesByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BMCSetupSecureBootCertificatesByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BMCSetupSecureBootCertificatesByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BMCSetupSecureBootCertificatesByName finished")
+		}
+	}()
+	return _d._base.BMCSetupSecureBootCertificatesByName(ctx, name)
 }
 
 // DeleteByName implements provisioning.ServerService.
