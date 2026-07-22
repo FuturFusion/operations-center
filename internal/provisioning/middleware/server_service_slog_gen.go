@@ -78,6 +78,111 @@ func (_d ServerServiceWithSlog) AddApplication(ctx context.Context, name string,
 	return _d._base.AddApplication(ctx, name, applicationName)
 }
 
+// BMCRestartByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCRestartByName(ctx context.Context, name string, force bool) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Bool("force", force),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCRestartByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BMCRestartByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BMCRestartByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BMCRestartByName finished")
+		}
+	}()
+	return _d._base.BMCRestartByName(ctx, name, force)
+}
+
+// BMCStartByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCStartByName(ctx context.Context, name string, force bool) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Bool("force", force),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCStartByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BMCStartByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BMCStartByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BMCStartByName finished")
+		}
+	}()
+	return _d._base.BMCStartByName(ctx, name, force)
+}
+
+// BMCStopByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCStopByName(ctx context.Context, name string, force bool) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Bool("force", force),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCStopByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BMCStopByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BMCStopByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BMCStopByName finished")
+		}
+	}()
+	return _d._base.BMCStopByName(ctx, name, force)
+}
+
 // DeleteByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
 	log := slog.With()

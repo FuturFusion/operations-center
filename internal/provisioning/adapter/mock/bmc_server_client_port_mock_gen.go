@@ -25,6 +25,18 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //			GetServerDetailsFunc: func(ctx context.Context, server provisioning.Server) (api.BMCServerDetails, error) {
 //				panic("mock out the GetServerDetails method")
 //			},
+//			RestartFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+//				panic("mock out the Restart method")
+//			},
+//			StartFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+//				panic("mock out the Start method")
+//			},
+//			StopFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+//				panic("mock out the Stop method")
+//			},
+//			WaitForTaskFunc: func(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) error {
+//				panic("mock out the WaitForTask method")
+//			},
 //		}
 //
 //		// use mockedBMCServerClientPort in code that requires provisioning.BMCServerClientPort
@@ -35,6 +47,18 @@ type BMCServerClientPortMock struct {
 	// GetServerDetailsFunc mocks the GetServerDetails method.
 	GetServerDetailsFunc func(ctx context.Context, server provisioning.Server) (api.BMCServerDetails, error)
 
+	// RestartFunc mocks the Restart method.
+	RestartFunc func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error)
+
+	// StartFunc mocks the Start method.
+	StartFunc func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error)
+
+	// StopFunc mocks the Stop method.
+	StopFunc func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error)
+
+	// WaitForTaskFunc mocks the WaitForTask method.
+	WaitForTaskFunc func(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) error
+
 	// calls tracks calls to the methods.
 	calls struct {
 		// GetServerDetails holds details about calls to the GetServerDetails method.
@@ -44,8 +68,48 @@ type BMCServerClientPortMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
+		// Restart holds details about calls to the Restart method.
+		Restart []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Force is the force argument value.
+			Force bool
+		}
+		// Start holds details about calls to the Start method.
+		Start []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Force is the force argument value.
+			Force bool
+		}
+		// Stop holds details about calls to the Stop method.
+		Stop []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Force is the force argument value.
+			Force bool
+		}
+		// WaitForTask holds details about calls to the WaitForTask method.
+		WaitForTask []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// TaskMonitor is the taskMonitor argument value.
+			TaskMonitor *provisioning.BMCTaskMonitor
+		}
 	}
 	lockGetServerDetails sync.RWMutex
+	lockRestart          sync.RWMutex
+	lockStart            sync.RWMutex
+	lockStop             sync.RWMutex
+	lockWaitForTask      sync.RWMutex
 }
 
 // GetServerDetails calls GetServerDetailsFunc.
@@ -81,5 +145,165 @@ func (mock *BMCServerClientPortMock) GetServerDetailsCalls() []struct {
 	mock.lockGetServerDetails.RLock()
 	calls = mock.calls.GetServerDetails
 	mock.lockGetServerDetails.RUnlock()
+	return calls
+}
+
+// Restart calls RestartFunc.
+func (mock *BMCServerClientPortMock) Restart(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+	if mock.RestartFunc == nil {
+		panic("BMCServerClientPortMock.RestartFunc: method is nil but BMCServerClientPort.Restart was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Force  bool
+	}{
+		Ctx:    ctx,
+		Server: server,
+		Force:  force,
+	}
+	mock.lockRestart.Lock()
+	mock.calls.Restart = append(mock.calls.Restart, callInfo)
+	mock.lockRestart.Unlock()
+	return mock.RestartFunc(ctx, server, force)
+}
+
+// RestartCalls gets all the calls that were made to Restart.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.RestartCalls())
+func (mock *BMCServerClientPortMock) RestartCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+	Force  bool
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Force  bool
+	}
+	mock.lockRestart.RLock()
+	calls = mock.calls.Restart
+	mock.lockRestart.RUnlock()
+	return calls
+}
+
+// Start calls StartFunc.
+func (mock *BMCServerClientPortMock) Start(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+	if mock.StartFunc == nil {
+		panic("BMCServerClientPortMock.StartFunc: method is nil but BMCServerClientPort.Start was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Force  bool
+	}{
+		Ctx:    ctx,
+		Server: server,
+		Force:  force,
+	}
+	mock.lockStart.Lock()
+	mock.calls.Start = append(mock.calls.Start, callInfo)
+	mock.lockStart.Unlock()
+	return mock.StartFunc(ctx, server, force)
+}
+
+// StartCalls gets all the calls that were made to Start.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.StartCalls())
+func (mock *BMCServerClientPortMock) StartCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+	Force  bool
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Force  bool
+	}
+	mock.lockStart.RLock()
+	calls = mock.calls.Start
+	mock.lockStart.RUnlock()
+	return calls
+}
+
+// Stop calls StopFunc.
+func (mock *BMCServerClientPortMock) Stop(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+	if mock.StopFunc == nil {
+		panic("BMCServerClientPortMock.StopFunc: method is nil but BMCServerClientPort.Stop was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Force  bool
+	}{
+		Ctx:    ctx,
+		Server: server,
+		Force:  force,
+	}
+	mock.lockStop.Lock()
+	mock.calls.Stop = append(mock.calls.Stop, callInfo)
+	mock.lockStop.Unlock()
+	return mock.StopFunc(ctx, server, force)
+}
+
+// StopCalls gets all the calls that were made to Stop.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.StopCalls())
+func (mock *BMCServerClientPortMock) StopCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+	Force  bool
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Force  bool
+	}
+	mock.lockStop.RLock()
+	calls = mock.calls.Stop
+	mock.lockStop.RUnlock()
+	return calls
+}
+
+// WaitForTask calls WaitForTaskFunc.
+func (mock *BMCServerClientPortMock) WaitForTask(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) error {
+	if mock.WaitForTaskFunc == nil {
+		panic("BMCServerClientPortMock.WaitForTaskFunc: method is nil but BMCServerClientPort.WaitForTask was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		Server      provisioning.Server
+		TaskMonitor *provisioning.BMCTaskMonitor
+	}{
+		Ctx:         ctx,
+		Server:      server,
+		TaskMonitor: taskMonitor,
+	}
+	mock.lockWaitForTask.Lock()
+	mock.calls.WaitForTask = append(mock.calls.WaitForTask, callInfo)
+	mock.lockWaitForTask.Unlock()
+	return mock.WaitForTaskFunc(ctx, server, taskMonitor)
+}
+
+// WaitForTaskCalls gets all the calls that were made to WaitForTask.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.WaitForTaskCalls())
+func (mock *BMCServerClientPortMock) WaitForTaskCalls() []struct {
+	Ctx         context.Context
+	Server      provisioning.Server
+	TaskMonitor *provisioning.BMCTaskMonitor
+} {
+	var calls []struct {
+		Ctx         context.Context
+		Server      provisioning.Server
+		TaskMonitor *provisioning.BMCTaskMonitor
+	}
+	mock.lockWaitForTask.RLock()
+	calls = mock.calls.WaitForTask
+	mock.lockWaitForTask.RUnlock()
 	return calls
 }
