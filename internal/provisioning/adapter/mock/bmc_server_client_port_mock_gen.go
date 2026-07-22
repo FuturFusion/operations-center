@@ -28,6 +28,18 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //			GetDataFunc: func(ctx context.Context, server provisioning.Server) (api.BMCData, error) {
 //				panic("mock out the GetData method")
 //			},
+//			ServerPowerOffFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+//				panic("mock out the ServerPowerOff method")
+//			},
+//			ServerPowerOnFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+//				panic("mock out the ServerPowerOn method")
+//			},
+//			ServerRestartFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+//				panic("mock out the ServerRestart method")
+//			},
+//			WaitForTaskFunc: func(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) error {
+//				panic("mock out the WaitForTask method")
+//			},
 //		}
 //
 //		// use mockedBMCServerClientPort in code that requires provisioning.BMCServerClientPort
@@ -40,6 +52,18 @@ type BMCServerClientPortMock struct {
 
 	// GetDataFunc mocks the GetData method.
 	GetDataFunc func(ctx context.Context, server provisioning.Server) (api.BMCData, error)
+
+	// ServerPowerOffFunc mocks the ServerPowerOff method.
+	ServerPowerOffFunc func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error)
+
+	// ServerPowerOnFunc mocks the ServerPowerOn method.
+	ServerPowerOnFunc func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error)
+
+	// ServerRestartFunc mocks the ServerRestart method.
+	ServerRestartFunc func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error)
+
+	// WaitForTaskFunc mocks the WaitForTask method.
+	WaitForTaskFunc func(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -57,9 +81,49 @@ type BMCServerClientPortMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
+		// ServerPowerOff holds details about calls to the ServerPowerOff method.
+		ServerPowerOff []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Force is the force argument value.
+			Force bool
+		}
+		// ServerPowerOn holds details about calls to the ServerPowerOn method.
+		ServerPowerOn []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Force is the force argument value.
+			Force bool
+		}
+		// ServerRestart holds details about calls to the ServerRestart method.
+		ServerRestart []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Force is the force argument value.
+			Force bool
+		}
+		// WaitForTask holds details about calls to the WaitForTask method.
+		WaitForTask []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// TaskMonitor is the taskMonitor argument value.
+			TaskMonitor *provisioning.BMCTaskMonitor
+		}
 	}
 	lockConnectionTest sync.RWMutex
 	lockGetData        sync.RWMutex
+	lockServerPowerOff sync.RWMutex
+	lockServerPowerOn  sync.RWMutex
+	lockServerRestart  sync.RWMutex
+	lockWaitForTask    sync.RWMutex
 }
 
 // ConnectionTest calls ConnectionTestFunc.
@@ -131,5 +195,165 @@ func (mock *BMCServerClientPortMock) GetDataCalls() []struct {
 	mock.lockGetData.RLock()
 	calls = mock.calls.GetData
 	mock.lockGetData.RUnlock()
+	return calls
+}
+
+// ServerPowerOff calls ServerPowerOffFunc.
+func (mock *BMCServerClientPortMock) ServerPowerOff(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+	if mock.ServerPowerOffFunc == nil {
+		panic("BMCServerClientPortMock.ServerPowerOffFunc: method is nil but BMCServerClientPort.ServerPowerOff was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Force  bool
+	}{
+		Ctx:    ctx,
+		Server: server,
+		Force:  force,
+	}
+	mock.lockServerPowerOff.Lock()
+	mock.calls.ServerPowerOff = append(mock.calls.ServerPowerOff, callInfo)
+	mock.lockServerPowerOff.Unlock()
+	return mock.ServerPowerOffFunc(ctx, server, force)
+}
+
+// ServerPowerOffCalls gets all the calls that were made to ServerPowerOff.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.ServerPowerOffCalls())
+func (mock *BMCServerClientPortMock) ServerPowerOffCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+	Force  bool
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Force  bool
+	}
+	mock.lockServerPowerOff.RLock()
+	calls = mock.calls.ServerPowerOff
+	mock.lockServerPowerOff.RUnlock()
+	return calls
+}
+
+// ServerPowerOn calls ServerPowerOnFunc.
+func (mock *BMCServerClientPortMock) ServerPowerOn(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+	if mock.ServerPowerOnFunc == nil {
+		panic("BMCServerClientPortMock.ServerPowerOnFunc: method is nil but BMCServerClientPort.ServerPowerOn was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Force  bool
+	}{
+		Ctx:    ctx,
+		Server: server,
+		Force:  force,
+	}
+	mock.lockServerPowerOn.Lock()
+	mock.calls.ServerPowerOn = append(mock.calls.ServerPowerOn, callInfo)
+	mock.lockServerPowerOn.Unlock()
+	return mock.ServerPowerOnFunc(ctx, server, force)
+}
+
+// ServerPowerOnCalls gets all the calls that were made to ServerPowerOn.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.ServerPowerOnCalls())
+func (mock *BMCServerClientPortMock) ServerPowerOnCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+	Force  bool
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Force  bool
+	}
+	mock.lockServerPowerOn.RLock()
+	calls = mock.calls.ServerPowerOn
+	mock.lockServerPowerOn.RUnlock()
+	return calls
+}
+
+// ServerRestart calls ServerRestartFunc.
+func (mock *BMCServerClientPortMock) ServerRestart(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+	if mock.ServerRestartFunc == nil {
+		panic("BMCServerClientPortMock.ServerRestartFunc: method is nil but BMCServerClientPort.ServerRestart was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Force  bool
+	}{
+		Ctx:    ctx,
+		Server: server,
+		Force:  force,
+	}
+	mock.lockServerRestart.Lock()
+	mock.calls.ServerRestart = append(mock.calls.ServerRestart, callInfo)
+	mock.lockServerRestart.Unlock()
+	return mock.ServerRestartFunc(ctx, server, force)
+}
+
+// ServerRestartCalls gets all the calls that were made to ServerRestart.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.ServerRestartCalls())
+func (mock *BMCServerClientPortMock) ServerRestartCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+	Force  bool
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Force  bool
+	}
+	mock.lockServerRestart.RLock()
+	calls = mock.calls.ServerRestart
+	mock.lockServerRestart.RUnlock()
+	return calls
+}
+
+// WaitForTask calls WaitForTaskFunc.
+func (mock *BMCServerClientPortMock) WaitForTask(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) error {
+	if mock.WaitForTaskFunc == nil {
+		panic("BMCServerClientPortMock.WaitForTaskFunc: method is nil but BMCServerClientPort.WaitForTask was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		Server      provisioning.Server
+		TaskMonitor *provisioning.BMCTaskMonitor
+	}{
+		Ctx:         ctx,
+		Server:      server,
+		TaskMonitor: taskMonitor,
+	}
+	mock.lockWaitForTask.Lock()
+	mock.calls.WaitForTask = append(mock.calls.WaitForTask, callInfo)
+	mock.lockWaitForTask.Unlock()
+	return mock.WaitForTaskFunc(ctx, server, taskMonitor)
+}
+
+// WaitForTaskCalls gets all the calls that were made to WaitForTask.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.WaitForTaskCalls())
+func (mock *BMCServerClientPortMock) WaitForTaskCalls() []struct {
+	Ctx         context.Context
+	Server      provisioning.Server
+	TaskMonitor *provisioning.BMCTaskMonitor
+} {
+	var calls []struct {
+		Ctx         context.Context
+		Server      provisioning.Server
+		TaskMonitor *provisioning.BMCTaskMonitor
+	}
+	mock.lockWaitForTask.RLock()
+	calls = mock.calls.WaitForTask
+	mock.lockWaitForTask.RUnlock()
 	return calls
 }

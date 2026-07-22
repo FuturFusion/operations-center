@@ -112,6 +112,111 @@ func (_d ServerServiceWithSlog) BMCRefreshByName(ctx context.Context, name strin
 	return _d._base.BMCRefreshByName(ctx, name)
 }
 
+// BMCServerPowerOffByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCServerPowerOffByName(ctx context.Context, name string, force bool) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Bool("force", force),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCServerPowerOffByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BMCServerPowerOffByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BMCServerPowerOffByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BMCServerPowerOffByName finished")
+		}
+	}()
+	return _d._base.BMCServerPowerOffByName(ctx, name, force)
+}
+
+// BMCServerPowerOnByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCServerPowerOnByName(ctx context.Context, name string, force bool) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Bool("force", force),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCServerPowerOnByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BMCServerPowerOnByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BMCServerPowerOnByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BMCServerPowerOnByName finished")
+		}
+	}()
+	return _d._base.BMCServerPowerOnByName(ctx, name, force)
+}
+
+// BMCServerRestartByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCServerRestartByName(ctx context.Context, name string, force bool) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Bool("force", force),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCServerRestartByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BMCServerRestartByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BMCServerRestartByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BMCServerRestartByName finished")
+		}
+	}()
+	return _d._base.BMCServerRestartByName(ctx, name, force)
+}
+
 // DeleteByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
 	log := slog.With()
