@@ -21,11 +21,12 @@ type ExprApiApplicationVersionData struct {
 }
 
 type ExprApiBMCConfig struct {
-	APIType  api.BMCAPIType `json:"api_type" yaml:"api_type" expr:"api_type"`
-	Endpoint string         `json:"endpoint" yaml:"endpoint" expr:"endpoint"`
-	Insecure bool           `json:"insecure" yaml:"insecure" expr:"insecure"`
-	Username string         `json:"username" yaml:"username" expr:"username"`
-	Password string         `json:"password" yaml:"password" expr:"password"`
+	APIType   api.BMCAPIType `json:"api_type" yaml:"api_type" expr:"api_type"`
+	Endpoint  string         `json:"endpoint" yaml:"endpoint" expr:"endpoint"`
+	Insecure  bool           `json:"insecure" yaml:"insecure" expr:"insecure"`
+	Username  string         `json:"username" yaml:"username" expr:"username"`
+	Password  string         `json:"password" yaml:"password" expr:"password"`
+	BasicAuth bool           `json:"basic_auth" yaml:"basic_auth" expr:"basic_auth"`
 }
 
 type ExprApiBMCServerDetails struct {
@@ -433,11 +434,12 @@ func ToExprApiApplicationVersionData(a api.ApplicationVersionData) ExprApiApplic
 
 func ToExprApiBMCConfig(b api.BMCConfig) ExprApiBMCConfig {
 	return ExprApiBMCConfig{
-		APIType:  b.APIType,
-		Endpoint: b.Endpoint,
-		Insecure: b.Insecure,
-		Username: b.Username,
-		Password: b.Password,
+		APIType:   b.APIType,
+		Endpoint:  b.Endpoint,
+		Insecure:  b.Insecure,
+		Username:  b.Username,
+		Password:  b.Password,
+		BasicAuth: b.BasicAuth,
 	}
 }
 
