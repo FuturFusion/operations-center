@@ -560,18 +560,24 @@ func availableVersionGreaterThan(currentVersion string, availableVersion string)
 }
 
 type BMCConfig struct {
-	// BMCAPIType specifies the BMC API type of the server, which is used to
+	// APIType specifies the BMC API type of the server, which is used to
 	// determine the correct BMC adapter to talk to the server.
-	BMCAPIType BMCAPIType `json:"bmc_api_type" yaml:"bmc_api_type"`
+	APIType BMCAPIType `json:"api_type" yaml:"api_type"`
 
-	// BMCEndpoint holds the base URL of the bmc of the server.
-	BMCEndpoint string `json:"bmc_endpoint" yaml:"bmc_endpoint"`
+	// Endpoint holds the base URL of the bmc of the server.
+	Endpoint string `json:"endpoint" yaml:"endpoint"`
 
-	// BMCUsername holds the username used to authenticate with the bmc of the server.
-	BMCUsername string `json:"bmc_username" yaml:"bmc_username"`
+	// Insecure defines, if certificate validation for the BMC endpoint is
+	// preformed or not.
+	// If insecure is set to false, certificate validation is done. Otherwise
+	// certificate validation is skipped. Defaults to false.
+	Insecure bool `json:"insecure" yaml:"insecure"`
 
-	// BMCPassword holds the password used to authenticate with the bmc of the server.
-	BMCPassword string `json:"bmc_password" yaml:"bmc_password"`
+	// Username holds the username used to authenticate with the bmc of the server.
+	Username string `json:"username" yaml:"username"`
+
+	// Password holds the password used to authenticate with the bmc of the server.
+	Password string `json:"password" yaml:"password"`
 }
 
 type BMCAPIType string
