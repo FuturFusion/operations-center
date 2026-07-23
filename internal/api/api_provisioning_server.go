@@ -424,7 +424,7 @@ func (s *serverHandler) serversPostWithToken(r *http.Request) response.Response 
 		MachineID:           machineID,
 	})
 	if err != nil {
-		return response.Forbidden(fmt.Errorf("Failed registering server: %w", err))
+		return response.SmartError(err)
 	}
 
 	result := api.ServerRegistrationResponse{
@@ -454,7 +454,7 @@ func (s *serverHandler) serversPostPreRegister(r *http.Request) response.Respons
 		BMCConfig:           server.BMCConfig,
 	})
 	if err != nil {
-		return response.Forbidden(fmt.Errorf("Failed creating server: %w", err))
+		return response.SmartError(err)
 	}
 
 	result := api.ServerRegistrationResponse{
