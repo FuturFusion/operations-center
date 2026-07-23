@@ -30,10 +30,10 @@ func (r redfish) getClient(ctx context.Context, server provisioning.Server) (_ *
 	}
 
 	c, err := gofish.ConnectContext(ctx, gofish.ClientConfig{
-		Endpoint: server.BMCConfig.BMCEndpoint,
-		Username: server.BMCConfig.BMCUsername,
-		Password: server.BMCConfig.BMCPassword,
-		// Insecure: true,
+		Endpoint: server.BMCConfig.Endpoint,
+		Username: server.BMCConfig.Username,
+		Password: server.BMCConfig.Password,
+		Insecure: server.BMCConfig.Insecure,
 		// BasicAuth: true,
 		// DumpWriter: os.Stdout,
 	})
@@ -47,7 +47,7 @@ func (r redfish) getClient(ctx context.Context, server provisioning.Server) (_ *
 func (r redfish) GetServerDetails(ctx context.Context, server provisioning.Server) (api.BMCServerDetails, error) {
 	client, logout, err := r.getClient(ctx, server)
 	if err != nil {
-		return api.BMCServerDetails{}, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.BMCEndpoint, err)
+		return api.BMCServerDetails{}, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
 	}
 
 	defer logout()

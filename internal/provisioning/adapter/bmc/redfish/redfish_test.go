@@ -397,7 +397,7 @@ func TestRedfish_GetServerDetails(t *testing.T) {
 			before := time.Now()
 			details, err := client.GetServerDetails(t.Context(), provisioning.Server{
 				BMCConfig: api.BMCConfig{
-					BMCEndpoint: svr.URL,
+					Endpoint: svr.URL,
 				},
 			})
 			after := time.Now()
