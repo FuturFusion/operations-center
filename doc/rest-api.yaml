@@ -122,6 +122,14 @@ definitions:
         properties:
             api_type:
                 $ref: '#/definitions/BMCAPIType'
+            basic_auth:
+                description: |-
+                    BasicAuth defines, if basic authentication (send credentials with every
+                    API request) should be used instead of token based authentication.
+                    Basic authentication is used, if this property is set to true.
+                    Otherwiese token based authentication is used. Defaults to false.
+                type: boolean
+                x-go-name: BasicAuth
             endpoint:
                 description: Endpoint holds the base URL of the bmc of the server.
                 type: string
