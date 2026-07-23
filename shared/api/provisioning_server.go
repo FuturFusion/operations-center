@@ -559,6 +559,21 @@ func availableVersionGreaterThan(currentVersion string, availableVersion string)
 	return available > current
 }
 
+type BMCConfig struct {
+	// BMCAPIType specifies the BMC API type of the server, which is used to
+	// determine the correct BMC adapter to talk to the server.
+	BMCAPIType BMCAPIType `json:"bmc_api_type" yaml:"bmc_api_type"`
+
+	// BMCEndpoint holds the base URL of the bmc of the server.
+	BMCEndpoint string `json:"bmc_endpoint" yaml:"bmc_endpoint"`
+
+	// BMCUsername holds the username used to authenticate with the bmc of the server.
+	BMCUsername string `json:"bmc_username" yaml:"bmc_username"`
+
+	// BMCPassword holds the password used to authenticate with the bmc of the server.
+	BMCPassword string `json:"bmc_password" yaml:"bmc_password"`
+}
+
 type BMCAPIType string
 
 const (
@@ -626,18 +641,8 @@ type ServerPut struct {
 	//     os: linux
 	Properties ConfigMap `json:"properties" yaml:"properties"`
 
-	// BMCAPIType specifies the BMC API type of the server, which is used to
-	// determine the correct BMC adapter to talk to the server.
-	BMCAPIType BMCAPIType `json:"bmc_api_type" yaml:"bmc_api_type"`
-
-	// BMCEndpoint holds the base URL of the bmc of the server.
-	BMCEndpoint string `json:"bmc_endpoint" yaml:"bmc_endpoint"`
-
-	// BMCUsername holds the username used to authenticate with the bmc of the server.
-	BMCUsername string `json:"bmc_username" yaml:"bmc_username"`
-
-	// BMCPassword holds the password used to authenticate with the bmc of the server.
-	BMCPassword string `json:"bmc_password" yaml:"bmc_password"`
+	// BMCConfig holds the BMC related configuration.
+	BMCConfig BMCConfig `json:"bmc_config" yaml:"bmc_config"`
 }
 
 // Server defines a server running Hypervisor OS.
