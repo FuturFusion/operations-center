@@ -167,6 +167,16 @@ func (s *serverService) PreRegister(ctx context.Context, newServer provisioning.
 		return provisioning.Server{}, err
 	}
 
+	go func() {
+		// Use a detached context in order to make sure, no existing DB transaction is inherited.
+		ctx := context.Background()
+
+		err = s.resyncBMCServerDetails(ctx, newServer)
+		if err != nil {
+			slog.WarnContext(ctx, "Initial resync of BMC server details failed (non-critical)", logger.Err(err), slog.String("name", newServer.Name))
+		}
+	}()
+
 	return newServer, nil
 }
 
@@ -456,7 +466,8 @@ func (s *serverService) enrichServerWithVersionDetails(ctx context.Context, serv
 		// This is a possible case, e.g. if someone clears and refreshes all the
 		// updates and then queries servers, registered in Operations Center, before
 		// Operations Center has refreshed the Updates from upstream.
-		s.warning.Emit(ctx,
+		s.warning.Emit(
+			ctx,
 			warning.NewWarning(
 				api.WarningTypeVersionDatailsMissing,
 				scope,
@@ -2000,7 +2011,8 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 		}
 
 		if server.Channel != versionData.UpdateChannel {
-			s.warning.Emit(ctx,
+			s.warning.Emit(
+				ctx,
 				warning.NewWarning(
 					api.WarningTypeUpdateChannelMismatch,
 					scope,
@@ -2109,7 +2121,8 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 
 			err = s.scriptlet.ServerRegistrationRun(ctx, server)
 			if err != nil {
-				s.warning.Emit(ctx,
+				s.warning.Emit(
+					ctx,
 					warning.NewWarning(
 						api.WarningTypeServerRegistrationScriptletFailed,
 						scope,
@@ -2225,7 +2238,7 @@ func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context,
 					break refreshAttempt
 				}
 
-				resp, retryErr := (s.httpClient).Do(req)
+				resp, retryErr := s.httpClient.Do(req)
 				if resp != nil && resp.Body != nil {
 					_ = resp.Body.Close()
 				}
@@ -2291,42 +2304,7 @@ func (s *serverService) ResyncBMCServerDetails(ctx context.Context) error {
 
 	var errs []error
 	for _, server := range servers {
-		if server.BMCConfig.BMCAPIType == api.BMCAPITypeNone || server.BMCConfig.BMCEndpoint == "" {
-			continue
-		}
-
-		client, ok := s.bmcServerClients[server.BMCConfig.BMCAPIType]
-		if !ok {
-			errs = append(errs, fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.BMCAPIType))
-			continue
-		}
-
-		details, err := client.GetServerDetails(ctx, server)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("Failed to get BMC server details from %q: %w", server.Name, err))
-			continue
-		}
-
-		err = transaction.Do(ctx, func(ctx context.Context) error {
-			server, err := s.repo.GetByName(ctx, server.Name)
-			if err != nil {
-				return err
-			}
-
-			details.LastUpdated = s.now()
-			if details.ServerUUID != "" {
-				server.SystemUUID = &details.ServerUUID
-			}
-
-			server.BMCServerDetails = details
-
-			err = s.repo.Update(ctx, *server)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		})
+		err = s.resyncBMCServerDetails(ctx, server)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("Failed to update bmc server details for server %q: %w", server.Name, err))
 			continue
@@ -2335,6 +2313,48 @@ func (s *serverService) ResyncBMCServerDetails(ctx context.Context) error {
 
 	if len(errs) > 0 {
 		return errors.Join(errs...)
+	}
+
+	return nil
+}
+
+func (s *serverService) resyncBMCServerDetails(ctx context.Context, server provisioning.Server) error {
+	if server.BMCConfig.BMCAPIType == api.BMCAPITypeNone || server.BMCConfig.BMCEndpoint == "" {
+		return nil
+	}
+
+	client, ok := s.bmcServerClients[server.BMCConfig.BMCAPIType]
+	if !ok {
+		return fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.BMCAPIType)
+	}
+
+	details, err := client.GetServerDetails(ctx, server)
+	if err != nil {
+		return fmt.Errorf("Failed to get BMC server details from %q: %w", server.Name, err)
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		server, err := s.repo.GetByName(ctx, server.Name)
+		if err != nil {
+			return err
+		}
+
+		details.LastUpdated = s.now()
+		if details.ServerUUID != "" {
+			server.SystemUUID = &details.ServerUUID
+		}
+
+		server.BMCServerDetails = details
+
+		err = s.repo.Update(ctx, *server)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to update bmc server details for server %q: %w", server.Name, err)
 	}
 
 	return nil
