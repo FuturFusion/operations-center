@@ -885,6 +885,39 @@ func (_d ServerServiceWithSlog) RestoreSystemByName(ctx context.Context, name st
 	return _d._base.RestoreSystemByName(ctx, name, clusterUpdate, force, restoreModeSkip)
 }
 
+// ResyncBMCServerDetails implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) ResyncBMCServerDetails(ctx context.Context) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ResyncBMCServerDetails")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method ResyncBMCServerDetails returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method ResyncBMCServerDetails returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method ResyncBMCServerDetails finished")
+		}
+	}()
+	return _d._base.ResyncBMCServerDetails(ctx)
+}
+
 // ResyncByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
 	log := slog.With()

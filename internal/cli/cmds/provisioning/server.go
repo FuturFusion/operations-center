@@ -223,8 +223,10 @@ type cmdServerPreRegister struct {
 	publicConnectionURL string
 	bmcAPIType          string
 	bmcEndpoint         string
+	bmcInsecure         bool
 	bmcUsername         string
 	bmcPassword         string
+	bmcBasicAuth        bool
 }
 
 func (c *cmdServerPreRegister) Command() *cobra.Command {
@@ -236,12 +238,14 @@ func (c *cmdServerPreRegister) Command() *cobra.Command {
 `
 
 	cmd.Flags().StringVar(&c.description, "description", "", "Description of the server")
-	cmd.Flags().StringVar(&c.channel, "channel", "", "Channel the server should subscribe to")
+	cmd.Flags().StringVar(&c.channel, "channel", "stable", "Channel the server should subscribe to")
 	cmd.Flags().StringVar(&c.publicConnectionURL, "public-connection-url", "", "Public connection URL of the server")
 	cmd.Flags().StringVar(&c.bmcAPIType, "bmc-api-type", "", "API type of the BMC of the server")
 	cmd.Flags().StringVar(&c.bmcEndpoint, "bmc-endpoint", "", "Endpoint of the BMC")
+	cmd.Flags().BoolVar(&c.bmcInsecure, "bmc-insecure", false, "Allow insecure connections without certificate validation")
 	cmd.Flags().StringVar(&c.bmcUsername, "bmc-username", "", "Username for the BMC")
 	cmd.Flags().StringVar(&c.bmcPassword, "bmc-password", "", "Password for the BMC")
+	cmd.Flags().BoolVar(&c.bmcBasicAuth, "bmc-basic-auth", false, "Use basic auth instead of token based authentication")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -269,10 +273,12 @@ func (c *cmdServerPreRegister) run(cmd *cobra.Command, args []string) error {
 			Channel:             c.channel,
 			PublicConnectionURL: c.publicConnectionURL,
 			BMCConfig: api.BMCConfig{
-				BMCAPIType:  api.BMCAPIType(c.bmcAPIType),
-				BMCEndpoint: c.bmcEndpoint,
-				BMCUsername: c.bmcUsername,
-				BMCPassword: c.bmcPassword,
+				APIType:   api.BMCAPIType(c.bmcAPIType),
+				Endpoint:  c.bmcEndpoint,
+				Insecure:  c.bmcInsecure,
+				Username:  c.bmcUsername,
+				Password:  c.bmcPassword,
+				BasicAuth: c.bmcBasicAuth,
 			},
 		},
 	})
@@ -535,11 +541,12 @@ func (c *cmdServerResync) run(cmd *cobra.Command, args []string) error {
 type cmdServerShow struct {
 	ocClient *client.OperationsCenterClient
 
-	flagFormat          string
-	flagShowProperties  bool
-	flagShowResources   bool
-	flagShowOSData      bool
-	flagShowVersionData bool
+	flagFormat               string
+	flagShowProperties       bool
+	flagShowResources        bool
+	flagShowOSData           bool
+	flagShowVersionData      bool
+	flagShowBMCServerDetails bool
 }
 
 func (c *cmdServerShow) Command() *cobra.Command {
@@ -555,6 +562,7 @@ func (c *cmdServerShow) Command() *cobra.Command {
 	cmd.Flags().BoolVar(&c.flagShowResources, "resources", false, "show server resource details")
 	cmd.Flags().BoolVar(&c.flagShowOSData, "os-data", false, "show server OS data")
 	cmd.Flags().BoolVar(&c.flagShowVersionData, "version-data", false, "show server version data")
+	cmd.Flags().BoolVar(&c.flagShowBMCServerDetails, "bmc-server-details", false, "show bmc server details")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -612,9 +620,11 @@ func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Certificate Fingerprint: %s\n", server.Fingerprint)
 		fmt.Printf("Type: %s\n", server.Type.String())
 		fmt.Printf("Channel: %s\n", server.Channel)
-		fmt.Printf("BMC API Type: %s\n", server.BMCConfig.BMCAPIType.String())
-		fmt.Printf("BMC Endpoint: %s\n", server.BMCConfig.BMCEndpoint)
-		fmt.Printf("BMC Username: %s\n", server.BMCConfig.BMCUsername)
+		fmt.Printf("BMC API Type: %s\n", server.BMCConfig.APIType.String())
+		fmt.Printf("BMC Endpoint: %s\n", server.BMCConfig.Endpoint)
+		fmt.Printf("BMC Insecure: %t\n", server.BMCConfig.Insecure)
+		fmt.Printf("BMC Username: %s\n", server.BMCConfig.Username)
+		fmt.Printf("BMC Basic Auth: %t\n", server.BMCConfig.BasicAuth)
 		fmt.Printf("System UUID: %s\n", server.SystemUUID)
 		fmt.Printf("Machine ID: %s\n", server.MachineID)
 		fmt.Printf("Status: %s\n", server.State())
@@ -657,6 +667,15 @@ func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 			}
 
 			fmt.Printf("Version Data:\n%s\n", render.Indent(4, string(versionDataJSON)))
+		}
+
+		if c.flagShowBMCServerDetails {
+			bmcServerDetailsJSON, err := json.MarshalIndent(server.BMCServerDetails, "", "  ")
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("BMC Server Details:\n%s\n", render.Indent(4, string(bmcServerDetailsJSON)))
 		}
 	}
 

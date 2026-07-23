@@ -256,6 +256,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 				VersionData:          server.VersionData,
 				Status:               server.Status,
 				StatusDetail:         server.StatusDetail,
+				BMCServerDetails:     server.BMCServerDetails,
 				LastUpdated:          server.LastUpdated,
 				LastSeen:             server.LastSeen,
 				SystemStateIsTrusted: server.OSData.Security.State.SystemStateIsTrusted,
@@ -423,7 +424,7 @@ func (s *serverHandler) serversPostWithToken(r *http.Request) response.Response 
 		MachineID:           machineID,
 	})
 	if err != nil {
-		return response.Forbidden(fmt.Errorf("Failed registering server: %w", err))
+		return response.SmartError(err)
 	}
 
 	result := api.ServerRegistrationResponse{
@@ -453,7 +454,7 @@ func (s *serverHandler) serversPostPreRegister(r *http.Request) response.Respons
 		BMCConfig:           server.BMCConfig,
 	})
 	if err != nil {
-		return response.Forbidden(fmt.Errorf("Failed creating server: %w", err))
+		return response.SmartError(err)
 	}
 
 	result := api.ServerRegistrationResponse{
@@ -530,6 +531,7 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 			VersionData:          server.VersionData,
 			Status:               server.Status,
 			StatusDetail:         server.StatusDetail,
+			BMCServerDetails:     server.BMCServerDetails,
 			LastUpdated:          server.LastUpdated,
 			LastSeen:             server.LastSeen,
 			SystemStateIsTrusted: server.OSData.Security.State.SystemStateIsTrusted,

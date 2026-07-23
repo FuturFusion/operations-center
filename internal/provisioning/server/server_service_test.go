@@ -193,7 +193,8 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, serverCertificate,
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, nil, nil, updateSvc, serverCertificate,
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 			)
 
@@ -524,7 +525,8 @@ one
 
 			token := uuid.MustParse("686d2a12-20f9-11f0-82c6-7fff26bab0c4")
 
-			serverSvc := provisioningServer.New(repo, client, nil, tokenSvc, nil, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, tokenSvc, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithInitialConnectionDelay(0), // Disable delay for initial connection test
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
@@ -1224,7 +1226,8 @@ func TestServerService_GetByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
@@ -1494,7 +1497,8 @@ one
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 			)
 
@@ -1724,7 +1728,8 @@ one
 			// have been removed after successful processing.
 			selfUpdateSignal := signals.New[provisioning.Server]()
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithSelfUpdateSignal(selfUpdateSignal),
 			)
@@ -1950,7 +1955,8 @@ one
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 			)
 
@@ -2140,11 +2146,12 @@ one
 			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{})
 
 			// Run test
-			err := serverSvc.UpdateSystemProvider(t.Context(), "one", incusosapi.SystemProvider{
-				Config: incusosapi.SystemProviderConfig{
-					Name: "operations-center-new",
+			err := serverSvc.UpdateSystemProvider(
+				t.Context(), "one", incusosapi.SystemProvider{
+					Config: incusosapi.SystemProviderConfig{
+						Name: "operations-center-new",
+					},
 				},
-			},
 			)
 
 			// Assert
@@ -2386,13 +2393,14 @@ one
 			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{})
 
 			// Run test
-			err := serverSvc.UpdateSystemUpdate(t.Context(), "one", incusosapi.SystemUpdate{
-				Config: incusosapi.SystemUpdateConfig{
-					AutoReboot:     true,
-					Channel:        "testing",
-					CheckFrequency: "2h",
+			err := serverSvc.UpdateSystemUpdate(
+				t.Context(), "one", incusosapi.SystemUpdate{
+					Config: incusosapi.SystemUpdateConfig{
+						AutoReboot:     true,
+						Channel:        "testing",
+						CheckFrequency: "2h",
+					},
 				},
-			},
 			)
 
 			// Assert
@@ -2477,7 +2485,8 @@ one
 
 			selfUpdateSignal := signals.New[provisioning.Server]()
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithSelfUpdateSignal(selfUpdateSignal),
 			)
@@ -3033,7 +3042,8 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, serverCertificate,
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, nil, nil, updateSvc, serverCertificate,
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithInitialConnectionDelay(1*time.Millisecond),
 			)
@@ -3197,7 +3207,8 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, serverCertificate,
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, nil, nil, updateSvc, serverCertificate,
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 			)
 
@@ -3299,7 +3310,8 @@ func TestServerService_Rename(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 			)
 
@@ -3454,7 +3466,8 @@ func TestServerService_PollServers(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, nil, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, nil, nil, nil, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
@@ -4102,7 +4115,8 @@ foobar
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, runner, nil, nil, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, runner, nil, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithHTTPClient(httpsServer.Client()),
 			)
@@ -4791,7 +4805,8 @@ func TestServerService_PollServer(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, runner, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, runner, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithRebootStatusUpdateGracePeriod(5*time.Second),
 			)
@@ -4839,7 +4854,8 @@ func TestServerService_PollServer_in_transaction(t *testing.T) {
 		},
 	}
 
-	serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+	serverSvc := provisioningServer.New(
+		repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
 		provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 	)
 
@@ -5120,7 +5136,8 @@ func TestServerService_ResyncByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, serverCertificate,
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, clusterSvc, nil, updateSvc, serverCertificate,
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
@@ -6185,7 +6202,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
@@ -6361,7 +6379,8 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
@@ -6551,7 +6570,8 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
@@ -6896,7 +6916,8 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
@@ -6996,7 +7017,8 @@ func TestServerService_PostRestoreSystemDoneByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
@@ -7256,7 +7278,8 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, channelSvc, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, clusterSvc, channelSvc, updateSvc, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
@@ -7933,6 +7956,191 @@ func TestServerService_RestartApplication(t *testing.T) {
 
 			// Run test
 			err := serverSvc.RestartApplication(t.Context(), tc.argName, tc.argApplicationName)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestServerService_ResyncBMCServerDetails(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	tests := []struct {
+		name string
+
+		repoGetAllServers provisioning.Servers
+		repoGetAllErr     error
+
+		bmcClientGetServerDetails    api.BMCServerDetails
+		bmcClientGetServerDetailsErr error
+
+		repoGetByNameServer *provisioning.Server
+		repoGetByNameErr    error
+		repoUpdateErr       error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - no servers",
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - server without BMC type configured",
+			repoGetAllServers: provisioning.Servers{
+				{
+					Name: "one",
+					BMCConfig: api.BMCConfig{
+						APIType:  api.BMCAPITypeNone,
+						Endpoint: "https://bmc.local",
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - server with BMC type but no endpoint",
+			repoGetAllServers: provisioning.Servers{
+				{
+					Name: "one",
+					BMCConfig: api.BMCConfig{
+						APIType:  api.BMCAPITypeRedfishV1Generic,
+						Endpoint: "",
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - resync",
+			repoGetAllServers: provisioning.Servers{
+				{
+					Name: "one",
+					BMCConfig: api.BMCConfig{
+						APIType:  api.BMCAPITypeRedfishV1Generic,
+						Endpoint: "https://bmc.local",
+					},
+				},
+			},
+			bmcClientGetServerDetails: api.BMCServerDetails{
+				ServerUUID: "e9de436e-b94e-4aef-8563-883aec84096e",
+			},
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:          "error - repo.GetAll",
+			repoGetAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - no BMC server client registered for type",
+			repoGetAllServers: provisioning.Servers{
+				{
+					Name: "one",
+					BMCConfig: api.BMCConfig{
+						APIType:  api.BMCAPIType("unknown"),
+						Endpoint: "https://bmc.local",
+					},
+				},
+			},
+
+			assertErr: errassert.Contains(`Failed to get BMC server client for type "unknown"`),
+		},
+		{
+			name: "error - client.GetServerDetails",
+			repoGetAllServers: provisioning.Servers{
+				{
+					Name: "one",
+					BMCConfig: api.BMCConfig{
+						APIType:  api.BMCAPITypeRedfishV1Generic,
+						Endpoint: "https://bmc.local",
+					},
+				},
+			},
+			bmcClientGetServerDetailsErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.GetByName",
+			repoGetAllServers: provisioning.Servers{
+				{
+					Name: "one",
+					BMCConfig: api.BMCConfig{
+						APIType:  api.BMCAPITypeRedfishV1Generic,
+						Endpoint: "https://bmc.local",
+					},
+				},
+			},
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.Update",
+			repoGetAllServers: provisioning.Servers{
+				{
+					Name: "one",
+					BMCConfig: api.BMCConfig{
+						APIType:  api.BMCAPITypeRedfishV1Generic,
+						Endpoint: "https://bmc.local",
+					},
+				},
+			},
+			bmcClientGetServerDetails: api.BMCServerDetails{
+				ServerUUID: "e9de436e-b94e-4aef-8563-883aec84096e",
+			},
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
+					return tc.repoGetAllServers, tc.repoGetAllErr
+				},
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					wantDetails := tc.bmcClientGetServerDetails
+					wantDetails.LastUpdated = fixedDate
+					require.Equal(t, wantDetails, in.BMCServerDetails)
+					require.Equal(t, &wantDetails.ServerUUID, in.SystemUUID)
+
+					return tc.repoUpdateErr
+				},
+			}
+
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				GetServerDetailsFunc: func(ctx context.Context, server provisioning.Server) (api.BMCServerDetails, error) {
+					return tc.bmcClientGetServerDetails, tc.bmcClientGetServerDetailsErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				provisioningServer.WithNow(func() time.Time { return fixedDate }),
+				provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+			)
+
+			// Run test
+			err := serverSvc.ResyncBMCServerDetails(t.Context())
 
 			// Assert
 			tc.assertErr(t, err)

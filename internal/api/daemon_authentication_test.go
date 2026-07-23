@@ -351,7 +351,6 @@ func TestAuthentication(t *testing.T) {
 				return &http.Client{
 					Transport: &http.Transport{
 						TLSClientConfig: &tls.Config{
-							Certificates:       []tls.Certificate{cert},
 							InsecureSkipVerify: true,
 						},
 					},

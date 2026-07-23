@@ -14,7 +14,7 @@ import (
 )
 
 var serverObjects = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.last_updated, servers.last_seen, servers.last_status_updated
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.bmc_server_details, servers.last_updated, servers.last_seen, servers.last_status_updated
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   JOIN channels ON servers.channel_id = channels.id
@@ -22,7 +22,7 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
 `)
 
 var serverObjectsByName = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.last_updated, servers.last_seen, servers.last_status_updated
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.bmc_server_details, servers.last_updated, servers.last_seen, servers.last_status_updated
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   JOIN channels ON servers.channel_id = channels.id
@@ -31,7 +31,7 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
 `)
 
 var serverObjectsByCluster = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.last_updated, servers.last_seen, servers.last_status_updated
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.bmc_server_details, servers.last_updated, servers.last_seen, servers.last_status_updated
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   JOIN channels ON servers.channel_id = channels.id
@@ -40,7 +40,7 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
 `)
 
 var serverObjectsByClusterAndName = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.last_updated, servers.last_seen, servers.last_status_updated
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.bmc_server_details, servers.last_updated, servers.last_seen, servers.last_status_updated
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   JOIN channels ON servers.channel_id = channels.id
@@ -49,7 +49,7 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
 `)
 
 var serverObjectsByClusterAndStatus = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.last_updated, servers.last_seen, servers.last_status_updated
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.bmc_server_details, servers.last_updated, servers.last_seen, servers.last_status_updated
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   JOIN channels ON servers.channel_id = channels.id
@@ -58,7 +58,7 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
 `)
 
 var serverObjectsByStatus = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.last_updated, servers.last_seen, servers.last_status_updated
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.bmc_server_details, servers.last_updated, servers.last_seen, servers.last_status_updated
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   JOIN channels ON servers.channel_id = channels.id
@@ -67,7 +67,7 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
 `)
 
 var serverObjectsByStatusAndStatusDetail = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.last_updated, servers.last_seen, servers.last_status_updated
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.bmc_server_details, servers.last_updated, servers.last_seen, servers.last_status_updated
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   JOIN channels ON servers.channel_id = channels.id
@@ -76,7 +76,7 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
 `)
 
 var serverObjectsByCertificate = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.last_updated, servers.last_seen, servers.last_status_updated
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.bmc_server_details, servers.last_updated, servers.last_seen, servers.last_status_updated
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   JOIN channels ON servers.channel_id = channels.id
@@ -85,7 +85,7 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
 `)
 
 var serverObjectsByType = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.last_updated, servers.last_seen, servers.last_status_updated
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.bmc_server_details, servers.last_updated, servers.last_seen, servers.last_status_updated
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   JOIN channels ON servers.channel_id = channels.id
@@ -94,7 +94,7 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
 `)
 
 var serverObjectsBySystemUUID = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.last_updated, servers.last_seen, servers.last_status_updated
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.bmc_server_details, servers.last_updated, servers.last_seen, servers.last_status_updated
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   JOIN channels ON servers.channel_id = channels.id
@@ -103,7 +103,7 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
 `)
 
 var serverObjectsByMachineID = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.last_updated, servers.last_seen, servers.last_status_updated
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.bmc_server_details, servers.last_updated, servers.last_seen, servers.last_status_updated
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   JOIN channels ON servers.channel_id = channels.id
@@ -131,13 +131,13 @@ SELECT servers.id FROM servers
 `)
 
 var serverCreate = RegisterStmt(`
-INSERT INTO servers (cluster_id, name, type, connection_url, public_connection_url, certificate, hardware_data, os_data, version_data, channel_id, status, status_detail, description, properties, bmc_config, registration_token, system_uuid, machine_id, last_updated, last_seen, last_status_updated)
-  VALUES ((SELECT clusters.id FROM clusters WHERE clusters.name = ?), ?, ?, ?, ?, ?, ?, ?, ?, (SELECT channels.id FROM channels WHERE channels.name = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO servers (cluster_id, name, type, connection_url, public_connection_url, certificate, hardware_data, os_data, version_data, channel_id, status, status_detail, description, properties, bmc_config, registration_token, system_uuid, machine_id, bmc_server_details, last_updated, last_seen, last_status_updated)
+  VALUES ((SELECT clusters.id FROM clusters WHERE clusters.name = ?), ?, ?, ?, ?, ?, ?, ?, ?, (SELECT channels.id FROM channels WHERE channels.name = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
 var serverUpdate = RegisterStmt(`
 UPDATE servers
-  SET cluster_id = (SELECT clusters.id FROM clusters WHERE clusters.name = ?), name = ?, type = ?, connection_url = ?, public_connection_url = ?, certificate = ?, hardware_data = ?, os_data = ?, version_data = ?, channel_id = (SELECT channels.id FROM channels WHERE channels.name = ?), status = ?, status_detail = ?, description = ?, properties = ?, bmc_config = ?, registration_token = ?, system_uuid = ?, machine_id = ?, last_updated = ?, last_seen = ?, last_status_updated = ?
+  SET cluster_id = (SELECT clusters.id FROM clusters WHERE clusters.name = ?), name = ?, type = ?, connection_url = ?, public_connection_url = ?, certificate = ?, hardware_data = ?, os_data = ?, version_data = ?, channel_id = (SELECT channels.id FROM channels WHERE channels.name = ?), status = ?, status_detail = ?, description = ?, properties = ?, bmc_config = ?, registration_token = ?, system_uuid = ?, machine_id = ?, bmc_server_details = ?, last_updated = ?, last_seen = ?, last_status_updated = ?
  WHERE id = ?
 `)
 
@@ -229,7 +229,7 @@ func GetServer(ctx context.Context, db dbtx, name string) (_ *provisioning.Serve
 // serverColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the Server entity.
 func serverColumns() string {
-	return "servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.last_updated, servers.last_seen, servers.last_status_updated"
+	return "servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, channels.name AS channel, servers.status, servers.status_detail, servers.description, servers.properties, servers.bmc_config, servers.registration_token, servers.system_uuid, servers.machine_id, servers.bmc_server_details, servers.last_updated, servers.last_seen, servers.last_status_updated"
 }
 
 // getServers can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -239,12 +239,18 @@ func getServers(ctx context.Context, stmt *sql.Stmt, args ...any) ([]provisionin
 	dest := func(scan func(dest ...any) error) error {
 		s := provisioning.Server{}
 		var bMCConfigStr string
-		err := scan(&s.ID, &s.Cluster, &s.Name, &s.Type, &s.ConnectionURL, &s.PublicConnectionURL, &s.Certificate, &s.ClusterCertificate, &s.ClusterConnectionURL, &s.HardwareData, &s.OSData, &s.VersionData, &s.Channel, &s.Status, &s.StatusDetail, &s.Description, &s.Properties, &bMCConfigStr, &s.RegistrationToken, &s.SystemUUID, &s.MachineID, &s.LastUpdated, &s.LastSeen, &s.LastStatusUpdated)
+		var bMCServerDetailsStr string
+		err := scan(&s.ID, &s.Cluster, &s.Name, &s.Type, &s.ConnectionURL, &s.PublicConnectionURL, &s.Certificate, &s.ClusterCertificate, &s.ClusterConnectionURL, &s.HardwareData, &s.OSData, &s.VersionData, &s.Channel, &s.Status, &s.StatusDetail, &s.Description, &s.Properties, &bMCConfigStr, &s.RegistrationToken, &s.SystemUUID, &s.MachineID, &bMCServerDetailsStr, &s.LastUpdated, &s.LastSeen, &s.LastStatusUpdated)
 		if err != nil {
 			return err
 		}
 
 		err = unmarshalJSON(bMCConfigStr, &s.BMCConfig)
+		if err != nil {
+			return err
+		}
+
+		err = unmarshalJSON(bMCServerDetailsStr, &s.BMCServerDetails)
 		if err != nil {
 			return err
 		}
@@ -269,12 +275,18 @@ func getServersRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]pro
 	dest := func(scan func(dest ...any) error) error {
 		s := provisioning.Server{}
 		var bMCConfigStr string
-		err := scan(&s.ID, &s.Cluster, &s.Name, &s.Type, &s.ConnectionURL, &s.PublicConnectionURL, &s.Certificate, &s.ClusterCertificate, &s.ClusterConnectionURL, &s.HardwareData, &s.OSData, &s.VersionData, &s.Channel, &s.Status, &s.StatusDetail, &s.Description, &s.Properties, &bMCConfigStr, &s.RegistrationToken, &s.SystemUUID, &s.MachineID, &s.LastUpdated, &s.LastSeen, &s.LastStatusUpdated)
+		var bMCServerDetailsStr string
+		err := scan(&s.ID, &s.Cluster, &s.Name, &s.Type, &s.ConnectionURL, &s.PublicConnectionURL, &s.Certificate, &s.ClusterCertificate, &s.ClusterConnectionURL, &s.HardwareData, &s.OSData, &s.VersionData, &s.Channel, &s.Status, &s.StatusDetail, &s.Description, &s.Properties, &bMCConfigStr, &s.RegistrationToken, &s.SystemUUID, &s.MachineID, &bMCServerDetailsStr, &s.LastUpdated, &s.LastSeen, &s.LastStatusUpdated)
 		if err != nil {
 			return err
 		}
 
 		err = unmarshalJSON(bMCConfigStr, &s.BMCConfig)
+		if err != nil {
+			return err
+		}
+
+		err = unmarshalJSON(bMCServerDetailsStr, &s.BMCServerDetails)
 		if err != nil {
 			return err
 		}
@@ -674,7 +686,7 @@ func CreateServer(ctx context.Context, db dbtx, object provisioning.Server) (_ i
 		_err = mapErr(_err, "Server")
 	}()
 
-	args := make([]any, 21)
+	args := make([]any, 22)
 
 	// Populate the statement arguments.
 	args[0] = object.Cluster
@@ -700,9 +712,15 @@ func CreateServer(ctx context.Context, db dbtx, object provisioning.Server) (_ i
 	args[15] = object.RegistrationToken
 	args[16] = object.SystemUUID
 	args[17] = object.MachineID
-	args[18] = time.Now().UTC().Format(time.RFC3339)
-	args[19] = object.LastSeen
-	args[20] = object.LastStatusUpdated
+	marshaledBMCServerDetails, err := marshalJSON(object.BMCServerDetails)
+	if err != nil {
+		return -1, err
+	}
+
+	args[18] = marshaledBMCServerDetails
+	args[19] = time.Now().UTC().Format(time.RFC3339)
+	args[20] = object.LastSeen
+	args[21] = object.LastStatusUpdated
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, serverCreate)
@@ -750,7 +768,12 @@ func UpdateServer(ctx context.Context, db tx, name string, object provisioning.S
 		return err
 	}
 
-	result, err := stmt.Exec(object.Cluster, object.Name, object.Type, object.ConnectionURL, object.PublicConnectionURL, object.Certificate, object.HardwareData, object.OSData, object.VersionData, object.Channel, object.Status, object.StatusDetail, object.Description, object.Properties, marshaledBMCConfig, object.RegistrationToken, object.SystemUUID, object.MachineID, time.Now().UTC().Format(time.RFC3339), object.LastSeen, object.LastStatusUpdated, id)
+	marshaledBMCServerDetails, err := marshalJSON(object.BMCServerDetails)
+	if err != nil {
+		return err
+	}
+
+	result, err := stmt.Exec(object.Cluster, object.Name, object.Type, object.ConnectionURL, object.PublicConnectionURL, object.Certificate, object.HardwareData, object.OSData, object.VersionData, object.Channel, object.Status, object.StatusDetail, object.Description, object.Properties, marshaledBMCConfig, object.RegistrationToken, object.SystemUUID, object.MachineID, marshaledBMCServerDetails, time.Now().UTC().Format(time.RFC3339), object.LastSeen, object.LastStatusUpdated, id)
 	if err != nil {
 		return fmt.Errorf("Update \"servers\" entry failed: %w", err)
 	}

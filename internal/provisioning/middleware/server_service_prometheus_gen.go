@@ -377,6 +377,20 @@ func (_d ServerServiceWithPrometheus) RestoreSystemByName(ctx context.Context, n
 	return _d.base.RestoreSystemByName(ctx, name, clusterUpdate, force, restoreModeSkip)
 }
 
+// ResyncBMCServerDetails implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) ResyncBMCServerDetails(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncBMCServerDetails", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ResyncBMCServerDetails(ctx)
+}
+
 // ResyncByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
 	_since := time.Now()

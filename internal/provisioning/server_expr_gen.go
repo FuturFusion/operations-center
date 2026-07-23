@@ -21,10 +21,36 @@ type ExprApiApplicationVersionData struct {
 }
 
 type ExprApiBMCConfig struct {
-	BMCAPIType  api.BMCAPIType `json:"bmc_api_type" yaml:"bmc_api_type" expr:"bmc_api_type"`
-	BMCEndpoint string         `json:"bmc_endpoint" yaml:"bmc_endpoint" expr:"bmc_endpoint"`
-	BMCUsername string         `json:"bmc_username" yaml:"bmc_username" expr:"bmc_username"`
-	BMCPassword string         `json:"bmc_password" yaml:"bmc_password" expr:"bmc_password"`
+	APIType   api.BMCAPIType `json:"api_type" yaml:"api_type" expr:"api_type"`
+	Endpoint  string         `json:"endpoint" yaml:"endpoint" expr:"endpoint"`
+	Insecure  bool           `json:"insecure" yaml:"insecure" expr:"insecure"`
+	Username  string         `json:"username" yaml:"username" expr:"username"`
+	Password  string         `json:"password" yaml:"password" expr:"password"`
+	BasicAuth bool           `json:"basic_auth" yaml:"basic_auth" expr:"basic_auth"`
+}
+
+type ExprApiBMCServerDetails struct {
+	BMCProtocol                   string    `json:"bmc_protocol" yaml:"bmc_protocol" expr:"bmc_protocol"`
+	BMCProtocolVersion            string    `json:"bmc_protocol_version" yaml:"bmc_protocol_version" expr:"bmc_protocol_version"`
+	BMCVendor                     string    `json:"bmc_vendor" yaml:"bmc_vendor" expr:"bmc_vendor"`
+	BMCModel                      string    `json:"bmc_model" yaml:"bmc_model" expr:"bmc_model"`
+	BMCFirmwareVersion            string    `json:"bmc_firmware_version" yaml:"bmc_firmware_version" expr:"bmc_firmware_version"`
+	BMCServiceIdentification      string    `json:"bmc_service_identification" yaml:"bmc_service_identification" expr:"bmc_service_identification"`
+	ServerManufacturer            string    `json:"server_manufacturer" yaml:"server_manufacturer" expr:"server_manufacturer"`
+	ServerModel                   string    `json:"server_model" yaml:"server_model" expr:"server_model"`
+	ServerSubModel                string    `json:"server_sub_model" yaml:"server_sub_model" expr:"server_sub_model"`
+	ServerUUID                    string    `json:"system_uuid" yaml:"system_uuid" expr:"system_uuid"`
+	ServerAssetTag                string    `json:"server_asset_tag" yaml:"server_asset_tag" expr:"server_asset_tag"`
+	ServerHostName                string    `json:"server_host_name" yaml:"server_host_name" expr:"server_host_name"`
+	ServerSKU                     string    `json:"server_sku" yaml:"server_sku" expr:"server_sku"`
+	ServerSerialNumber            string    `json:"server_serial_number" yaml:"server_serial_number" expr:"server_serial_number"`
+	ServerBIOSVersion             string    `json:"server_bios_version" yaml:"server_bios_version" expr:"server_bios_version"`
+	ServerProcessorArchitecture   string    `json:"server_processor_architecture" yaml:"server_processor_architecture" expr:"server_processor_architecture"`
+	ServerProcessorInstructionSet string    `json:"server_processor_instruction_set" yaml:"server_processor_instruction_set" expr:"server_processor_instruction_set"`
+	ServerPowerState              string    `json:"server_power_state" yaml:"server_power_state" expr:"server_power_state"`
+	ServerLocationIndicatorActive bool      `json:"server_location_indicator_active" yaml:"server_location_indicator_active" expr:"server_location_indicator_active"`
+	ServerHealthStatus            string    `json:"server_health_status" yaml:"server_health_status" expr:"server_health_status"`
+	LastUpdated                   time.Time `json:"last_updated" yaml:"last_updated" expr:"last_updated"`
 }
 
 type ExprApiOSData struct {
@@ -389,6 +415,7 @@ type ExprServer struct {
 	RegistrationToken    *uuid.UUID               `json:"registration_token" expr:"registration_token"`
 	SystemUUID           *string                  `json:"system_uuid" expr:"system_uuid"`
 	MachineID            *string                  `json:"machine_id" expr:"machine_id"`
+	BMCServerDetails     ExprApiBMCServerDetails  `json:"bmc_server_details"     db:"sql=servers.bmc_server_details&marshal=json" expr:"bmc_server_details"`
 	LastUpdated          time.Time                `json:"last_updated"           db:"update_timestamp" expr:"last_updated"`
 	LastSeen             time.Time                `json:"last_seen" expr:"last_seen"`
 	LastStatusUpdated    time.Time                `json:"last_status_updated" expr:"last_status_updated"`
@@ -407,10 +434,38 @@ func ToExprApiApplicationVersionData(a api.ApplicationVersionData) ExprApiApplic
 
 func ToExprApiBMCConfig(b api.BMCConfig) ExprApiBMCConfig {
 	return ExprApiBMCConfig{
-		BMCAPIType:  b.BMCAPIType,
-		BMCEndpoint: b.BMCEndpoint,
-		BMCUsername: b.BMCUsername,
-		BMCPassword: b.BMCPassword,
+		APIType:   b.APIType,
+		Endpoint:  b.Endpoint,
+		Insecure:  b.Insecure,
+		Username:  b.Username,
+		Password:  b.Password,
+		BasicAuth: b.BasicAuth,
+	}
+}
+
+func ToExprApiBMCServerDetails(b api.BMCServerDetails) ExprApiBMCServerDetails {
+	return ExprApiBMCServerDetails{
+		BMCProtocol:                   b.BMCProtocol,
+		BMCProtocolVersion:            b.BMCProtocolVersion,
+		BMCVendor:                     b.BMCVendor,
+		BMCModel:                      b.BMCModel,
+		BMCFirmwareVersion:            b.BMCFirmwareVersion,
+		BMCServiceIdentification:      b.BMCServiceIdentification,
+		ServerManufacturer:            b.ServerManufacturer,
+		ServerModel:                   b.ServerModel,
+		ServerSubModel:                b.ServerSubModel,
+		ServerUUID:                    b.ServerUUID,
+		ServerAssetTag:                b.ServerAssetTag,
+		ServerHostName:                b.ServerHostName,
+		ServerSKU:                     b.ServerSKU,
+		ServerSerialNumber:            b.ServerSerialNumber,
+		ServerBIOSVersion:             b.ServerBIOSVersion,
+		ServerProcessorArchitecture:   b.ServerProcessorArchitecture,
+		ServerProcessorInstructionSet: b.ServerProcessorInstructionSet,
+		ServerPowerState:              b.ServerPowerState,
+		ServerLocationIndicatorActive: b.ServerLocationIndicatorActive,
+		ServerHealthStatus:            b.ServerHealthStatus,
+		LastUpdated:                   b.LastUpdated,
 	}
 }
 
@@ -855,6 +910,7 @@ func ToExprServer(s Server) ExprServer {
 		RegistrationToken:    s.RegistrationToken,
 		SystemUUID:           s.SystemUUID,
 		MachineID:            s.MachineID,
+		BMCServerDetails:     ToExprApiBMCServerDetails(s.BMCServerDetails),
 		LastUpdated:          s.LastUpdated,
 		LastSeen:             s.LastSeen,
 		LastStatusUpdated:    s.LastStatusUpdated,
