@@ -458,6 +458,16 @@ func TestTokenService_Consume(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name:     "error - GetByUUID - NotFound",
+			tokenArg: token,
+
+			repoGetByUUIDErr: domain.ErrNotFound,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(t, err, domain.ErrNotAuthorized)
+			},
+		},
+		{
 			name:     "error - token exhausted",
 			tokenArg: token,
 
