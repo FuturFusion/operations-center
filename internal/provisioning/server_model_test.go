@@ -63,8 +63,10 @@ one
 				Certificate:   ``,                 // not yet known when created with BMC
 				Status:        api.ServerStatusUnregistered,
 				Channel:       "stable",
-				BMCAPIType:    api.BMCAPITypeRedfishV1Generic,
-				BMCEndpoint:   "https://1.2.3.4",
+				BMCConfig: api.BMCConfig{
+					BMCAPIType:  api.BMCAPITypeRedfishV1Generic,
+					BMCEndpoint: "https://1.2.3.4",
+				},
 			},
 
 			assertErr: require.NoError,
@@ -318,9 +320,11 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status:     api.ServerStatusPending,
-				Channel:    "stable",
-				BMCAPIType: api.BMCAPIType("invalid"), // invalid
+				Status:  api.ServerStatusPending,
+				Channel: "stable",
+				BMCConfig: api.BMCConfig{
+					BMCAPIType: api.BMCAPIType("invalid"), // invalid
+				},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -339,10 +343,12 @@ one
 one
 -----END CERTIFICATE-----
 `,
-				Status:      api.ServerStatusPending,
-				Channel:     "stable",
-				BMCAPIType:  api.BMCAPITypeRedfishV1Generic,
-				BMCEndpoint: ":|\\", // invalid
+				Status:  api.ServerStatusPending,
+				Channel: "stable",
+				BMCConfig: api.BMCConfig{
+					BMCAPIType:  api.BMCAPITypeRedfishV1Generic,
+					BMCEndpoint: ":|\\", // invalid
+				},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {

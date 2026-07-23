@@ -42,10 +42,7 @@ type Server struct {
 	StatusDetail         api.ServerStatusDetail `json:"status_detail"`
 	Description          string                 `json:"description"`
 	Properties           api.ConfigMap          `json:"properties"`
-	BMCAPIType           api.BMCAPIType         `json:"bmc_api_type"           db:"sql=servers.bmc_api_type&marshal=json"`
-	BMCEndpoint          string                 `json:"bmc_endpoint"`
-	BMCUsername          string                 `json:"bmc_username"`
-	BMCPassword          string                 `json:"bmc_password"`
+	BMCConfig            api.BMCConfig          `json:"bmc_config"             db:"marshal=json"`
 	RegistrationToken    *uuid.UUID             `json:"registration_token"`
 	SystemUUID           *string                `json:"system_uuid"`
 	MachineID            *string                `json:"machine_id"`
@@ -129,13 +126,13 @@ func (s Server) Validate() error {
 		return domain.NewValidationErrf("Invalid server, channel can not be empty")
 	}
 
-	_, ok := api.BMCAPITypes[s.BMCAPIType]
+	_, ok := api.BMCAPITypes[s.BMCConfig.BMCAPIType]
 	if !ok {
 		return domain.NewValidationErrf("Invalid server, BMC type is invalid")
 	}
 
-	if s.BMCEndpoint != "" {
-		_, err := url.Parse(s.BMCEndpoint)
+	if s.BMCConfig.BMCEndpoint != "" {
+		_, err := url.Parse(s.BMCConfig.BMCEndpoint)
 		if err != nil {
 			return domain.NewValidationErrf("Invalid server, BMC endpoint URL is not valid: %v", err)
 		}
