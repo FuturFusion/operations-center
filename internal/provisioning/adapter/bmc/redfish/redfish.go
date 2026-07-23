@@ -30,11 +30,11 @@ func (r redfish) getClient(ctx context.Context, server provisioning.Server) (_ *
 	}
 
 	c, err := gofish.ConnectContext(ctx, gofish.ClientConfig{
-		Endpoint: server.BMCConfig.Endpoint,
-		Username: server.BMCConfig.Username,
-		Password: server.BMCConfig.Password,
-		Insecure: server.BMCConfig.Insecure,
-		// BasicAuth: true,
+		Endpoint:  server.BMCConfig.Endpoint,
+		Username:  server.BMCConfig.Username,
+		Password:  server.BMCConfig.Password,
+		Insecure:  server.BMCConfig.Insecure,
+		BasicAuth: server.BMCConfig.BasicAuth,
 		// DumpWriter: os.Stdout,
 	})
 	if err != nil {
