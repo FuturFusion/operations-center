@@ -268,10 +268,12 @@ func (c *cmdServerPreRegister) run(cmd *cobra.Command, args []string) error {
 			Description:         c.description,
 			Channel:             c.channel,
 			PublicConnectionURL: c.publicConnectionURL,
-			BMCAPIType:          api.BMCAPIType(c.bmcAPIType),
-			BMCEndpoint:         c.bmcEndpoint,
-			BMCUsername:         c.bmcUsername,
-			BMCPassword:         c.bmcPassword,
+			BMCConfig: api.BMCConfig{
+				BMCAPIType:  api.BMCAPIType(c.bmcAPIType),
+				BMCEndpoint: c.bmcEndpoint,
+				BMCUsername: c.bmcUsername,
+				BMCPassword: c.bmcPassword,
+			},
 		},
 	})
 	if err != nil {
@@ -610,9 +612,9 @@ func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Certificate Fingerprint: %s\n", server.Fingerprint)
 		fmt.Printf("Type: %s\n", server.Type.String())
 		fmt.Printf("Channel: %s\n", server.Channel)
-		fmt.Printf("BMC API Type: %s\n", server.BMCAPIType.String())
-		fmt.Printf("BMC Endpoint: %s\n", server.BMCEndpoint)
-		fmt.Printf("BMC Username: %s\n", server.BMCUsername)
+		fmt.Printf("BMC API Type: %s\n", server.BMCConfig.BMCAPIType.String())
+		fmt.Printf("BMC Endpoint: %s\n", server.BMCConfig.BMCEndpoint)
+		fmt.Printf("BMC Username: %s\n", server.BMCConfig.BMCUsername)
 		fmt.Printf("System UUID: %s\n", server.SystemUUID)
 		fmt.Printf("Machine ID: %s\n", server.MachineID)
 		fmt.Printf("Status: %s\n", server.State())
