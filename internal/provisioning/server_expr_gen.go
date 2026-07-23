@@ -20,6 +20,13 @@ type ExprApiApplicationVersionData struct {
 	InMaintenance    api.InMaintenanceState `json:"in_maintenance" yaml:"in_maintenance" expr:"in_maintenance"`
 }
 
+type ExprApiBMCConfig struct {
+	BMCAPIType  api.BMCAPIType `json:"bmc_api_type" yaml:"bmc_api_type" expr:"bmc_api_type"`
+	BMCEndpoint string         `json:"bmc_endpoint" yaml:"bmc_endpoint" expr:"bmc_endpoint"`
+	BMCUsername string         `json:"bmc_username" yaml:"bmc_username" expr:"bmc_username"`
+	BMCPassword string         `json:"bmc_password" yaml:"bmc_password" expr:"bmc_password"`
+}
+
 type ExprApiOSData struct {
 	Network  ExprOsapiSystemNetwork  `json:"network" yaml:"network" expr:"network"`
 	Security ExprOsapiSystemSecurity `json:"security" yaml:"security" expr:"security"`
@@ -378,10 +385,7 @@ type ExprServer struct {
 	StatusDetail         api.ServerStatusDetail   `json:"status_detail" expr:"status_detail"`
 	Description          string                   `json:"description" expr:"description"`
 	Properties           api.ConfigMap            `json:"properties" expr:"properties"`
-	BMCAPIType           api.BMCAPIType           `json:"bmc_api_type"           db:"sql=servers.bmc_api_type&marshal=json" expr:"bmc_api_type"`
-	BMCEndpoint          string                   `json:"bmc_endpoint" expr:"bmc_endpoint"`
-	BMCUsername          string                   `json:"bmc_username" expr:"bmc_username"`
-	BMCPassword          string                   `json:"bmc_password" expr:"bmc_password"`
+	BMCConfig            ExprApiBMCConfig         `json:"bmc_config"             db:"marshal=json" expr:"bmc_config"`
 	RegistrationToken    *uuid.UUID               `json:"registration_token" expr:"registration_token"`
 	SystemUUID           *string                  `json:"system_uuid" expr:"system_uuid"`
 	MachineID            *string                  `json:"machine_id" expr:"machine_id"`
@@ -398,6 +402,15 @@ func ToExprApiApplicationVersionData(a api.ApplicationVersionData) ExprApiApplic
 		AvailableVersion: a.AvailableVersion,
 		NeedsUpdate:      a.NeedsUpdate,
 		InMaintenance:    a.InMaintenance,
+	}
+}
+
+func ToExprApiBMCConfig(b api.BMCConfig) ExprApiBMCConfig {
+	return ExprApiBMCConfig{
+		BMCAPIType:  b.BMCAPIType,
+		BMCEndpoint: b.BMCEndpoint,
+		BMCUsername: b.BMCUsername,
+		BMCPassword: b.BMCPassword,
 	}
 }
 
@@ -838,10 +851,7 @@ func ToExprServer(s Server) ExprServer {
 		StatusDetail:         s.StatusDetail,
 		Description:          s.Description,
 		Properties:           s.Properties,
-		BMCAPIType:           s.BMCAPIType,
-		BMCEndpoint:          s.BMCEndpoint,
-		BMCUsername:          s.BMCUsername,
-		BMCPassword:          s.BMCPassword,
+		BMCConfig:            ToExprApiBMCConfig(s.BMCConfig),
 		RegistrationToken:    s.RegistrationToken,
 		SystemUUID:           s.SystemUUID,
 		MachineID:            s.MachineID,

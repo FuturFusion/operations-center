@@ -90,10 +90,7 @@ CREATE TABLE servers_new (
   description TEXT NOT NULL DEFAULT '',
   properties TEXT NOT NULL DEFAULT '',
   last_status_updated DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00',
-  bmc_api_type TEXT NOT NULL DEFAULT '',
-  bmc_endpoint TEXT NOT NULL DEFAULT '',
-  bmc_username TEXT NOT NULL DEFAULT '',
-  bmc_password TEXT NOT NULL DEFAULT '',
+  bmc_config TEXT NOT NULL DEFAULT '{}',
   registration_token TEXT,
   system_uuid TEXT,
   machine_id TEXT,
@@ -109,7 +106,7 @@ CREATE TABLE servers_new (
 INSERT INTO servers_new
   SELECT id, cluster_id, name, type, connection_url, certificate, status, hardware_data, os_data, last_updated,
   last_seen, public_connection_url, version_data, channel_id, status_detail, description, properties,
-  last_status_updated, '', '', '', '', null, null, null
+  last_status_updated, '{}', null, null, null
   FROM servers;
 DROP TABLE servers;
 ALTER TABLE servers_new RENAME TO servers;

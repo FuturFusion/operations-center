@@ -118,6 +118,24 @@ definitions:
     BMCAPIType:
         type: string
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BMCConfig:
+        properties:
+            bmc_api_type:
+                $ref: '#/definitions/BMCAPIType'
+            bmc_endpoint:
+                description: BMCEndpoint holds the base URL of the bmc of the server.
+                type: string
+                x-go-name: BMCEndpoint
+            bmc_password:
+                description: BMCPassword holds the password used to authenticate with the bmc of the server.
+                type: string
+                x-go-name: BMCPassword
+            bmc_username:
+                description: BMCUsername holds the username used to authenticate with the bmc of the server.
+                type: string
+                x-go-name: BMCUsername
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     CertificatePost:
         description: |-
             CertificatePost represents the fields available for an update of the
@@ -3159,20 +3177,8 @@ definitions:
         x-go-package: github.com/lxc/incus-os/incus-osd/api/seed
     Server:
         properties:
-            bmc_api_type:
-                $ref: '#/definitions/BMCAPIType'
-            bmc_endpoint:
-                description: BMCEndpoint holds the base URL of the bmc of the server.
-                type: string
-                x-go-name: BMCEndpoint
-            bmc_password:
-                description: BMCPassword holds the password used to authenticate with the bmc of the server.
-                type: string
-                x-go-name: BMCPassword
-            bmc_username:
-                description: BMCUsername holds the username used to authenticate with the bmc of the server.
-                type: string
-                x-go-name: BMCUsername
+            bmc_config:
+                $ref: '#/definitions/BMCConfig'
             certificate:
                 description: Certificate of the server endpoint in PEM encoded format.
                 example: |-
@@ -3291,20 +3297,8 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerPost:
         properties:
-            bmc_api_type:
-                $ref: '#/definitions/BMCAPIType'
-            bmc_endpoint:
-                description: BMCEndpoint holds the base URL of the bmc of the server.
-                type: string
-                x-go-name: BMCEndpoint
-            bmc_password:
-                description: BMCPassword holds the password used to authenticate with the bmc of the server.
-                type: string
-                x-go-name: BMCPassword
-            bmc_username:
-                description: BMCUsername holds the username used to authenticate with the bmc of the server.
-                type: string
-                x-go-name: BMCUsername
+            bmc_config:
+                $ref: '#/definitions/BMCConfig'
             channel:
                 description: Channel the server is following for updates.
                 example: stable
@@ -3355,20 +3349,8 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerPut:
         properties:
-            bmc_api_type:
-                $ref: '#/definitions/BMCAPIType'
-            bmc_endpoint:
-                description: BMCEndpoint holds the base URL of the bmc of the server.
-                type: string
-                x-go-name: BMCEndpoint
-            bmc_password:
-                description: BMCPassword holds the password used to authenticate with the bmc of the server.
-                type: string
-                x-go-name: BMCPassword
-            bmc_username:
-                description: BMCUsername holds the username used to authenticate with the bmc of the server.
-                type: string
-                x-go-name: BMCUsername
+            bmc_config:
+                $ref: '#/definitions/BMCConfig'
             channel:
                 description: Channel the server is following for updates.
                 example: stable

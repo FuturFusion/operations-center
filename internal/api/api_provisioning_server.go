@@ -244,10 +244,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 						Channel:             server.Channel,
 						Description:         server.Description,
 						Properties:          server.Properties,
-						BMCAPIType:          server.BMCAPIType,
-						BMCEndpoint:         server.BMCEndpoint,
-						BMCUsername:         server.BMCUsername,
-						BMCPassword:         server.BMCPassword,
+						BMCConfig:           server.BMCConfig,
 					},
 				},
 				Certificate:          server.Certificate,
@@ -453,10 +450,7 @@ func (s *serverHandler) serversPostPreRegister(r *http.Request) response.Respons
 		Properties:          server.Properties,
 		PublicConnectionURL: server.PublicConnectionURL,
 		Channel:             server.Channel,
-		BMCAPIType:          server.BMCAPIType,
-		BMCEndpoint:         server.BMCEndpoint,
-		BMCUsername:         server.BMCUsername,
-		BMCPassword:         server.BMCPassword,
+		BMCConfig:           server.BMCConfig,
 	})
 	if err != nil {
 		return response.Forbidden(fmt.Errorf("Failed creating server: %w", err))
@@ -524,10 +518,7 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 					Channel:             server.Channel,
 					Description:         server.Description,
 					Properties:          server.Properties,
-					BMCAPIType:          server.BMCAPIType,
-					BMCEndpoint:         server.BMCEndpoint,
-					BMCUsername:         server.BMCUsername,
-					BMCPassword:         server.BMCPassword,
+					BMCConfig:           server.BMCConfig,
 				},
 			},
 			Certificate:          server.Certificate,
@@ -608,10 +599,7 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 	currentServer.PublicConnectionURL = server.PublicConnectionURL
 	currentServer.Description = server.Description
 	currentServer.Properties = server.Properties
-	currentServer.BMCAPIType = server.BMCAPIType
-	currentServer.BMCEndpoint = server.BMCEndpoint
-	currentServer.BMCUsername = server.BMCUsername
-	currentServer.BMCPassword = server.BMCPassword
+	currentServer.BMCConfig = server.BMCConfig
 
 	// Only allow changing of Channel, if server is not clustered. Otherwise
 	// the change of the channel needs to happen through the cluster.
