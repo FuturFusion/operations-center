@@ -64,8 +64,8 @@ one
 				Status:        api.ServerStatusUnregistered,
 				Channel:       "stable",
 				BMCConfig: api.BMCConfig{
-					BMCAPIType:  api.BMCAPITypeRedfishV1Generic,
-					BMCEndpoint: "https://1.2.3.4",
+					APIType:  api.BMCAPITypeRedfishV1Generic,
+					Endpoint: "https://1.2.3.4",
 				},
 			},
 
@@ -323,7 +323,7 @@ one
 				Status:  api.ServerStatusPending,
 				Channel: "stable",
 				BMCConfig: api.BMCConfig{
-					BMCAPIType: api.BMCAPIType("invalid"), // invalid
+					APIType: api.BMCAPIType("invalid"), // invalid
 				},
 			},
 
@@ -346,8 +346,8 @@ one
 				Status:  api.ServerStatusPending,
 				Channel: "stable",
 				BMCConfig: api.BMCConfig{
-					BMCAPIType:  api.BMCAPITypeRedfishV1Generic,
-					BMCEndpoint: ":|\\", // invalid
+					APIType:  api.BMCAPITypeRedfishV1Generic,
+					Endpoint: ":|\\", // invalid
 				},
 			},
 

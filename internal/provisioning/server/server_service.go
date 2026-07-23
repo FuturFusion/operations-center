@@ -2319,13 +2319,13 @@ func (s *serverService) ResyncBMCServerDetails(ctx context.Context) error {
 }
 
 func (s *serverService) resyncBMCServerDetails(ctx context.Context, server provisioning.Server) error {
-	if server.BMCConfig.BMCAPIType == api.BMCAPITypeNone || server.BMCConfig.BMCEndpoint == "" {
+	if server.BMCConfig.APIType == api.BMCAPITypeNone || server.BMCConfig.Endpoint == "" {
 		return nil
 	}
 
-	client, ok := s.bmcServerClients[server.BMCConfig.BMCAPIType]
+	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
 	if !ok {
-		return fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.BMCAPIType)
+		return fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
 	}
 
 	details, err := client.GetServerDetails(ctx, server)
