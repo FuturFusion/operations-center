@@ -120,20 +120,143 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     BMCConfig:
         properties:
-            bmc_api_type:
+            api_type:
                 $ref: '#/definitions/BMCAPIType'
-            bmc_endpoint:
-                description: BMCEndpoint holds the base URL of the bmc of the server.
+            basic_auth:
+                description: |-
+                    BasicAuth defines, if basic authentication (send credentials with every
+                    API request) should be used instead of token based authentication.
+                    Basic authentication is used, if this property is set to true.
+                    Otherwiese token based authentication is used. Defaults to false.
+                type: boolean
+                x-go-name: BasicAuth
+            endpoint:
+                description: Endpoint holds the base URL of the bmc of the server.
                 type: string
-                x-go-name: BMCEndpoint
-            bmc_password:
-                description: BMCPassword holds the password used to authenticate with the bmc of the server.
+                x-go-name: Endpoint
+            insecure:
+                description: |-
+                    Insecure defines, if certificate validation for the BMC endpoint is
+                    preformed or not.
+                    If insecure is set to false, certificate validation is done. Otherwise
+                    certificate validation is skipped. Defaults to false.
+                type: boolean
+                x-go-name: Insecure
+            password:
+                description: Password holds the password used to authenticate with the bmc of the server.
                 type: string
-                x-go-name: BMCPassword
-            bmc_username:
-                description: BMCUsername holds the username used to authenticate with the bmc of the server.
+                x-go-name: Password
+            username:
+                description: Username holds the username used to authenticate with the bmc of the server.
                 type: string
-                x-go-name: BMCUsername
+                x-go-name: Username
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BMCServerDetails:
+        properties:
+            bmc_firmware_version:
+                description: BMCFirmwareVersion holds the firmware version of the BMC manager.
+                example: 1.30.20.10
+                type: string
+                x-go-name: BMCFirmwareVersion
+            bmc_model:
+                description: BMCModel holds the model name reported by the BMC manager.
+                example: 17G Monolithic
+                type: string
+                x-go-name: BMCModel
+            bmc_protocol:
+                description: BMCProtocol holds the protocol name, that is used to interact with the BMC.
+                example: Redfish
+                type: string
+                x-go-name: BMCProtocol
+            bmc_protocol_version:
+                description: BMCProtocolVersion holds the protocol version reported by the BMC.
+                example: 1.16.0
+                type: string
+                x-go-name: BMCProtocolVersion
+            bmc_service_identification:
+                description: BMCServiceIdentification holds the service identification of the BMC manager.
+                example: XXXXXXX
+                type: string
+                x-go-name: BMCServiceIdentification
+            bmc_vendor:
+                description: BMCVendor holds the vendor name reported by the BMC.
+                example: Dell
+                type: string
+                x-go-name: BMCVendor
+            last_updated:
+                description: LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
+                example: "2024-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: LastUpdated
+            server_asset_tag:
+                description: ServerAssetTag holds the asset tag of the system.
+                example: XXXXXXX
+                type: string
+                x-go-name: ServerAssetTag
+            server_bios_version:
+                description: ServerBIOSVersion holds the version of the BIOS.
+                example: 1.7.5
+                type: string
+                x-go-name: ServerBIOSVersion
+            server_health_status:
+                description: ServerHealthStatus holds the reported overall health status for the server.
+                example: Warning
+                type: string
+                x-go-name: ServerHealthStatus
+            server_host_name:
+                description: ServerHostName hold the host name as reported by the BMC for the server.
+                type: string
+                x-go-name: ServerHostName
+            server_location_indicator_active:
+                description: ServerLocationIndicatorActive reports, if the location indicator LED is active.
+                example: false
+                type: boolean
+                x-go-name: ServerLocationIndicatorActive
+            server_manufacturer:
+                description: ServerManufacturer holds the manufacturer reported for the system.
+                example: Dell Inc
+                type: string
+                x-go-name: ServerManufacturer
+            server_model:
+                description: ServerModel holds the model of the system.
+                example: PowerEdge R770
+                type: string
+                x-go-name: ServerModel
+            server_power_state:
+                description: ServerPowerState holds the power state reported for the server.
+                example: "On"
+                type: string
+                x-go-name: ServerPowerState
+            server_processor_architecture:
+                description: ServerProcessorArchitecture holds the architecture reported for the first CPU.
+                example: x86
+                type: string
+                x-go-name: ServerProcessorArchitecture
+            server_processor_instruction_set:
+                description: ServerProcessorInstructionSet holds the instruction set reported for the first CPU.
+                example: x86-64
+                type: string
+                x-go-name: ServerProcessorInstructionSet
+            server_serial_number:
+                description: ServerSerialNumber holds the serial number of the server.
+                type: string
+                x-go-name: ServerSerialNumber
+            server_sku:
+                description: ServerSKU holds the Stock Keeping Unit (SKU) for the server.
+                type: string
+                x-go-name: ServerSKU
+            server_sub_model:
+                description: ServerSubModel holds information about the sub-model or configuration of the system.
+                type: string
+                x-go-name: ServerSubModel
+            system_uuid:
+                description: ServerUUID is the unique system UUID typically derived from hardware, e.g. mainboard.
+                example: e9de436e-b94e-4aef-8563-883aec84096e
+                type: string
+                x-go-name: ServerUUID
+        title: BMCServerDetails defines the server details, that have been collected from the BMC.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     CertificatePost:
@@ -3179,6 +3302,8 @@ definitions:
         properties:
             bmc_config:
                 $ref: '#/definitions/BMCConfig'
+            bmc_server_details:
+                $ref: '#/definitions/BMCServerDetails'
             certificate:
                 description: Certificate of the server endpoint in PEM encoded format.
                 example: |-
@@ -10004,6 +10129,87 @@ paths:
             summary: Sync server state
             tags:
                 - servers
+    /1.0/provisioning/servers/{name}/bmc/:restart:
+        post:
+            description: Triggers a server restart via BMC.
+            operationId: server_bmc_restart_post
+            parameters:
+                - description: |-
+                    Boolean indicating, if the operations should be applied forcefully or
+                    not.
+                    Defaults to false.
+                  in: query
+                  name: force
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Restart server via BMC
+            tags:
+                - servers_bmc_restart
+    /1.0/provisioning/servers/{name}/bmc/:start:
+        post:
+            description: Triggers a server start via BMC.
+            operationId: server_bmc_start_post
+            parameters:
+                - description: |-
+                    Boolean indicating, if the operations should be applied forcefully or
+                    not.
+                    Defaults to false.
+                  in: query
+                  name: force
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Start server via BMC
+            tags:
+                - servers_bmc_start
+    /1.0/provisioning/servers/{name}/bmc/:stop:
+        post:
+            description: Triggers a server stop via BMC.
+            operationId: server_bmc_stop_post
+            parameters:
+                - description: |-
+                    Boolean indicating, if the operations should be applied forcefully or
+                    not.
+                    Defaults to false.
+                  in: query
+                  name: force
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Stop server via BMC
+            tags:
+                - servers_bmc_stop
     /1.0/provisioning/servers/{name}/changelog:
         get:
             description: Gets a specific server's changelog from available update to current update.

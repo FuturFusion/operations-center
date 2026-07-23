@@ -24,7 +24,7 @@
         "go.gopath": "/go",
         "go.lintTool": "golangci-lint",
         "go.lintOnSave": "package",
-        "go.lintFlags": [ "--fast" ],
+        "go.lintFlags": [ "--fast-only" ],
         "go.useLanguageServer": true,
         "goOutliner.extendExplorerTab": true,
         "gopls": {
