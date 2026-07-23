@@ -2,6 +2,7 @@ package token
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -108,6 +109,10 @@ func (s *tokenService) Consume(ctx context.Context, id uuid.UUID) (channel strin
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		token, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				return fmt.Errorf("Consume token: %w", domain.ErrNotAuthorized)
+			}
+
 			return fmt.Errorf("Consume token: %w", err)
 		}
 
