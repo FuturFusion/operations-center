@@ -578,6 +578,12 @@ type BMCConfig struct {
 
 	// Password holds the password used to authenticate with the bmc of the server.
 	Password string `json:"password" yaml:"password"`
+
+	// BasicAuth defines, if basic authentication (send credentials with every
+	// API request) should be used instead of token based authentication.
+	// Basic authentication is used, if this property is set to true.
+	// Otherwiese token based authentication is used. Defaults to false.
+	BasicAuth bool `json:"basic_auth" yaml:"basic_auth"`
 }
 
 type BMCAPIType string
