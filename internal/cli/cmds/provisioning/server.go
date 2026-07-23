@@ -226,6 +226,7 @@ type cmdServerPreRegister struct {
 	bmcInsecure         bool
 	bmcUsername         string
 	bmcPassword         string
+	bmcBasicAuth        bool
 }
 
 func (c *cmdServerPreRegister) Command() *cobra.Command {
@@ -244,6 +245,7 @@ func (c *cmdServerPreRegister) Command() *cobra.Command {
 	cmd.Flags().BoolVar(&c.bmcInsecure, "bmc-insecure", false, "Allow insecure connections without certificate validation")
 	cmd.Flags().StringVar(&c.bmcUsername, "bmc-username", "", "Username for the BMC")
 	cmd.Flags().StringVar(&c.bmcPassword, "bmc-password", "", "Password for the BMC")
+	cmd.Flags().BoolVar(&c.bmcBasicAuth, "bmc-basic-auth", false, "Use basic auth instead of token based authentication")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -271,11 +273,12 @@ func (c *cmdServerPreRegister) run(cmd *cobra.Command, args []string) error {
 			Channel:             c.channel,
 			PublicConnectionURL: c.publicConnectionURL,
 			BMCConfig: api.BMCConfig{
-				APIType:  api.BMCAPIType(c.bmcAPIType),
-				Endpoint: c.bmcEndpoint,
-				Insecure: c.bmcInsecure,
-				Username: c.bmcUsername,
-				Password: c.bmcPassword,
+				APIType:   api.BMCAPIType(c.bmcAPIType),
+				Endpoint:  c.bmcEndpoint,
+				Insecure:  c.bmcInsecure,
+				Username:  c.bmcUsername,
+				Password:  c.bmcPassword,
+				BasicAuth: c.bmcBasicAuth,
 			},
 		},
 	})
@@ -621,6 +624,7 @@ func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 		fmt.Printf("BMC Endpoint: %s\n", server.BMCConfig.Endpoint)
 		fmt.Printf("BMC Insecure: %t\n", server.BMCConfig.Insecure)
 		fmt.Printf("BMC Username: %s\n", server.BMCConfig.Username)
+		fmt.Printf("BMC Basic Auth: %t\n", server.BMCConfig.BasicAuth)
 		fmt.Printf("System UUID: %s\n", server.SystemUUID)
 		fmt.Printf("Machine ID: %s\n", server.MachineID)
 		fmt.Printf("Status: %s\n", server.State())
