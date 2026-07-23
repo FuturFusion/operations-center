@@ -120,20 +120,28 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     BMCConfig:
         properties:
-            bmc_api_type:
+            api_type:
                 $ref: '#/definitions/BMCAPIType'
-            bmc_endpoint:
-                description: BMCEndpoint holds the base URL of the bmc of the server.
+            endpoint:
+                description: Endpoint holds the base URL of the bmc of the server.
                 type: string
-                x-go-name: BMCEndpoint
-            bmc_password:
-                description: BMCPassword holds the password used to authenticate with the bmc of the server.
+                x-go-name: Endpoint
+            insecure:
+                description: |-
+                    Insecure defines, if certificate validation for the BMC endpoint is
+                    preformed or not.
+                    If insecure is set to false, certificate validation is done. Otherwise
+                    certificate validation is skipped. Defaults to false.
+                type: boolean
+                x-go-name: Insecure
+            password:
+                description: Password holds the password used to authenticate with the bmc of the server.
                 type: string
-                x-go-name: BMCPassword
-            bmc_username:
-                description: BMCUsername holds the username used to authenticate with the bmc of the server.
+                x-go-name: Password
+            username:
+                description: Username holds the username used to authenticate with the bmc of the server.
                 type: string
-                x-go-name: BMCUsername
+                x-go-name: Username
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     BMCServerDetails:

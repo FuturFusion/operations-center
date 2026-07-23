@@ -223,6 +223,7 @@ type cmdServerPreRegister struct {
 	publicConnectionURL string
 	bmcAPIType          string
 	bmcEndpoint         string
+	bmcInsecure         bool
 	bmcUsername         string
 	bmcPassword         string
 }
@@ -236,10 +237,11 @@ func (c *cmdServerPreRegister) Command() *cobra.Command {
 `
 
 	cmd.Flags().StringVar(&c.description, "description", "", "Description of the server")
-	cmd.Flags().StringVar(&c.channel, "channel", "", "Channel the server should subscribe to")
+	cmd.Flags().StringVar(&c.channel, "channel", "stable", "Channel the server should subscribe to")
 	cmd.Flags().StringVar(&c.publicConnectionURL, "public-connection-url", "", "Public connection URL of the server")
 	cmd.Flags().StringVar(&c.bmcAPIType, "bmc-api-type", "", "API type of the BMC of the server")
 	cmd.Flags().StringVar(&c.bmcEndpoint, "bmc-endpoint", "", "Endpoint of the BMC")
+	cmd.Flags().BoolVar(&c.bmcInsecure, "bmc-insecure", false, "Allow insecure connections without certificate validation")
 	cmd.Flags().StringVar(&c.bmcUsername, "bmc-username", "", "Username for the BMC")
 	cmd.Flags().StringVar(&c.bmcPassword, "bmc-password", "", "Password for the BMC")
 
@@ -269,10 +271,11 @@ func (c *cmdServerPreRegister) run(cmd *cobra.Command, args []string) error {
 			Channel:             c.channel,
 			PublicConnectionURL: c.publicConnectionURL,
 			BMCConfig: api.BMCConfig{
-				BMCAPIType:  api.BMCAPIType(c.bmcAPIType),
-				BMCEndpoint: c.bmcEndpoint,
-				BMCUsername: c.bmcUsername,
-				BMCPassword: c.bmcPassword,
+				APIType:  api.BMCAPIType(c.bmcAPIType),
+				Endpoint: c.bmcEndpoint,
+				Insecure: c.bmcInsecure,
+				Username: c.bmcUsername,
+				Password: c.bmcPassword,
 			},
 		},
 	})
@@ -614,9 +617,10 @@ func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Certificate Fingerprint: %s\n", server.Fingerprint)
 		fmt.Printf("Type: %s\n", server.Type.String())
 		fmt.Printf("Channel: %s\n", server.Channel)
-		fmt.Printf("BMC API Type: %s\n", server.BMCConfig.BMCAPIType.String())
-		fmt.Printf("BMC Endpoint: %s\n", server.BMCConfig.BMCEndpoint)
-		fmt.Printf("BMC Username: %s\n", server.BMCConfig.BMCUsername)
+		fmt.Printf("BMC API Type: %s\n", server.BMCConfig.APIType.String())
+		fmt.Printf("BMC Endpoint: %s\n", server.BMCConfig.Endpoint)
+		fmt.Printf("BMC Insecure: %t\n", server.BMCConfig.Insecure)
+		fmt.Printf("BMC Username: %s\n", server.BMCConfig.Username)
 		fmt.Printf("System UUID: %s\n", server.SystemUUID)
 		fmt.Printf("Machine ID: %s\n", server.MachineID)
 		fmt.Printf("Status: %s\n", server.State())
