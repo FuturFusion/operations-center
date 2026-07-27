@@ -253,3 +253,12 @@ func (c OperationsCenterClient) UpdateServerSystemStorage(ctx context.Context, n
 
 	return nil
 }
+
+func (c OperationsCenterClient) BMCDataRefresh(ctx context.Context, name string) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "bmc/:refresh"), nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
