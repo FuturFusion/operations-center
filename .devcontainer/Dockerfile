@@ -38,6 +38,7 @@ apt install -y \
   man \
   python3.13-venv \
   ruby-mdl \
+  ripgrep \
   sqlite3 \
   sudo \
   tofu \

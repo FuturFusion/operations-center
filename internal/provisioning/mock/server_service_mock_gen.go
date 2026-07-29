@@ -28,6 +28,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			AddApplicationFunc: func(ctx context.Context, name string, applicationName string) error {
 //				panic("mock out the AddApplication method")
 //			},
+//			BMCRefreshByNameFunc: func(ctx context.Context, name string) error {
+//				panic("mock out the BMCRefreshByName method")
+//			},
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the DeleteByName method")
 //			},
@@ -97,6 +100,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			RestoreSystemByNameFunc: func(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) error {
 //				panic("mock out the RestoreSystemByName method")
 //			},
+//			ResyncBMCDataFunc: func(ctx context.Context) error {
+//				panic("mock out the ResyncBMCData method")
+//			},
 //			ResyncByNameFunc: func(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 //				panic("mock out the ResyncByName method")
 //			},
@@ -145,6 +151,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 type ServerServiceMock struct {
 	// AddApplicationFunc mocks the AddApplication method.
 	AddApplicationFunc func(ctx context.Context, name string, applicationName string) error
+
+	// BMCRefreshByNameFunc mocks the BMCRefreshByName method.
+	BMCRefreshByNameFunc func(ctx context.Context, name string) error
 
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
@@ -215,6 +224,9 @@ type ServerServiceMock struct {
 	// RestoreSystemByNameFunc mocks the RestoreSystemByName method.
 	RestoreSystemByNameFunc func(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) error
 
+	// ResyncBMCDataFunc mocks the ResyncBMCData method.
+	ResyncBMCDataFunc func(ctx context.Context) error
+
 	// ResyncByNameFunc mocks the ResyncByName method.
 	ResyncByNameFunc func(ctx context.Context, clusterName string, event domain.LifecycleEvent) error
 
@@ -264,6 +276,13 @@ type ServerServiceMock struct {
 			Name string
 			// ApplicationName is the applicationName argument value.
 			ApplicationName string
+		}
+		// BMCRefreshByName holds details about calls to the BMCRefreshByName method.
+		BMCRefreshByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
 		}
 		// DeleteByName holds details about calls to the DeleteByName method.
 		DeleteByName []struct {
@@ -452,6 +471,11 @@ type ServerServiceMock struct {
 			// RestoreModeSkip is the restoreModeSkip argument value.
 			RestoreModeSkip bool
 		}
+		// ResyncBMCData holds details about calls to the ResyncBMCData method.
+		ResyncBMCData []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// ResyncByName holds details about calls to the ResyncByName method.
 		ResyncByName []struct {
 			// Ctx is the ctx argument value.
@@ -563,6 +587,7 @@ type ServerServiceMock struct {
 		}
 	}
 	lockAddApplication               sync.RWMutex
+	lockBMCRefreshByName             sync.RWMutex
 	lockDeleteByName                 sync.RWMutex
 	lockEvacuateSystemByName         sync.RWMutex
 	lockFactoryResetByName           sync.RWMutex
@@ -586,6 +611,7 @@ type ServerServiceMock struct {
 	lockRename                       sync.RWMutex
 	lockRestartApplication           sync.RWMutex
 	lockRestoreSystemByName          sync.RWMutex
+	lockResyncBMCData                sync.RWMutex
 	lockResyncByName                 sync.RWMutex
 	lockSelfRegisterOperationsCenter sync.RWMutex
 	lockSelfUpdate                   sync.RWMutex
@@ -638,6 +664,42 @@ func (mock *ServerServiceMock) AddApplicationCalls() []struct {
 	mock.lockAddApplication.RLock()
 	calls = mock.calls.AddApplication
 	mock.lockAddApplication.RUnlock()
+	return calls
+}
+
+// BMCRefreshByName calls BMCRefreshByNameFunc.
+func (mock *ServerServiceMock) BMCRefreshByName(ctx context.Context, name string) error {
+	if mock.BMCRefreshByNameFunc == nil {
+		panic("ServerServiceMock.BMCRefreshByNameFunc: method is nil but ServerService.BMCRefreshByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockBMCRefreshByName.Lock()
+	mock.calls.BMCRefreshByName = append(mock.calls.BMCRefreshByName, callInfo)
+	mock.lockBMCRefreshByName.Unlock()
+	return mock.BMCRefreshByNameFunc(ctx, name)
+}
+
+// BMCRefreshByNameCalls gets all the calls that were made to BMCRefreshByName.
+// Check the length with:
+//
+//	len(mockedServerService.BMCRefreshByNameCalls())
+func (mock *ServerServiceMock) BMCRefreshByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockBMCRefreshByName.RLock()
+	calls = mock.calls.BMCRefreshByName
+	mock.lockBMCRefreshByName.RUnlock()
 	return calls
 }
 
@@ -1518,6 +1580,38 @@ func (mock *ServerServiceMock) RestoreSystemByNameCalls() []struct {
 	mock.lockRestoreSystemByName.RLock()
 	calls = mock.calls.RestoreSystemByName
 	mock.lockRestoreSystemByName.RUnlock()
+	return calls
+}
+
+// ResyncBMCData calls ResyncBMCDataFunc.
+func (mock *ServerServiceMock) ResyncBMCData(ctx context.Context) error {
+	if mock.ResyncBMCDataFunc == nil {
+		panic("ServerServiceMock.ResyncBMCDataFunc: method is nil but ServerService.ResyncBMCData was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockResyncBMCData.Lock()
+	mock.calls.ResyncBMCData = append(mock.calls.ResyncBMCData, callInfo)
+	mock.lockResyncBMCData.Unlock()
+	return mock.ResyncBMCDataFunc(ctx)
+}
+
+// ResyncBMCDataCalls gets all the calls that were made to ResyncBMCData.
+// Check the length with:
+//
+//	len(mockedServerService.ResyncBMCDataCalls())
+func (mock *ServerServiceMock) ResyncBMCDataCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockResyncBMCData.RLock()
+	calls = mock.calls.ResyncBMCData
+	mock.lockResyncBMCData.RUnlock()
 	return calls
 }
 

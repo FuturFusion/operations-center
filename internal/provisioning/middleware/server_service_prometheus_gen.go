@@ -55,6 +55,20 @@ func (_d ServerServiceWithPrometheus) AddApplication(ctx context.Context, name s
 	return _d.base.AddApplication(ctx, name, applicationName)
 }
 
+// BMCRefreshByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BMCRefreshByName(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCRefreshByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BMCRefreshByName(ctx, name)
+}
+
 // DeleteByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) DeleteByName(ctx context.Context, name string) (err error) {
 	_since := time.Now()
@@ -375,6 +389,20 @@ func (_d ServerServiceWithPrometheus) RestoreSystemByName(ctx context.Context, n
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RestoreSystemByName", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.RestoreSystemByName(ctx, name, clusterUpdate, force, restoreModeSkip)
+}
+
+// ResyncBMCData implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) ResyncBMCData(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncBMCData", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ResyncBMCData(ctx)
 }
 
 // ResyncByName implements provisioning.ServerService.

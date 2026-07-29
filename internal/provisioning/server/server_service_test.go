@@ -193,7 +193,8 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, serverCertificate,
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, nil, nil, updateSvc, serverCertificate,
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 			)
 
@@ -207,12 +208,21 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 }
 
 func TestServerService_PreRegister(t *testing.T) {
+	certificatePEM, _, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+	certificate := string(certificatePEM)
+
 	tests := []struct {
 		name          string
 		server        provisioning.Server
 		repoCreateErr error
 
-		assertErr require.ErrorAssertionFunc
+		registerBMCClient    bool
+		bmcConnectionTestCrt string
+		bmcConnectionTestErr error
+
+		assertErr    require.ErrorAssertionFunc
+		assertServer func(t *testing.T, server provisioning.Server)
 	}{
 		{
 			name: "success",
@@ -222,7 +232,111 @@ func TestServerService_PreRegister(t *testing.T) {
 				Channel: "stable",
 			},
 
+			assertErr:    require.NoError,
+			assertServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
+		},
+		{
+			name: "success - BMC connection test - auto pin certificate - certificate returned",
+			server: provisioning.Server{
+				Name:    "A",
+				Status:  api.ServerStatusUnregistered,
+				Channel: "stable",
+				BMCConfig: api.BMCConfig{
+					APIType:            api.BMCAPITypeRedfishV1Generic,
+					Endpoint:           "https://bmc.example.com/",
+					AutoPinCertificate: true,
+				},
+			},
+			registerBMCClient:    true,
+			bmcConnectionTestCrt: "cert-pem",
+
 			assertErr: require.NoError,
+			assertServer: func(t *testing.T, server provisioning.Server) {
+				t.Helper()
+				require.Equal(t, "cert-pem", server.BMCConfig.Certificate)
+				require.False(t, server.BMCConfig.AutoPinCertificate)
+			},
+		},
+		{
+			name: "success - BMC connection test - auto pin certificate with provided cert",
+			server: provisioning.Server{
+				Name:    "A",
+				Status:  api.ServerStatusUnregistered,
+				Channel: "stable",
+				BMCConfig: api.BMCConfig{
+					APIType:            api.BMCAPITypeRedfishV1Generic,
+					Endpoint:           "https://bmc.example.com/",
+					Certificate:        certificate,
+					AutoPinCertificate: true,
+				},
+			},
+			registerBMCClient:    true,
+			bmcConnectionTestCrt: "cert-pem",
+
+			assertErr: require.NoError,
+			assertServer: func(t *testing.T, server provisioning.Server) {
+				t.Helper()
+				require.Equal(t, certificate, server.BMCConfig.Certificate)
+				require.False(t, server.BMCConfig.AutoPinCertificate)
+			},
+		},
+		{
+			name: "success - BMC connection test - not auto pin certificate - certificate not persisted",
+			server: provisioning.Server{
+				Name:    "A",
+				Status:  api.ServerStatusUnregistered,
+				Channel: "stable",
+				BMCConfig: api.BMCConfig{
+					APIType:            api.BMCAPITypeRedfishV1Generic,
+					Endpoint:           "https://bmc.example.com/",
+					Certificate:        certificate,
+					AutoPinCertificate: false,
+				},
+			},
+			registerBMCClient:    true,
+			bmcConnectionTestCrt: "cert-pem",
+
+			assertErr: require.NoError,
+			assertServer: func(t *testing.T, server provisioning.Server) {
+				t.Helper()
+				require.Equal(t, certificate, server.BMCConfig.Certificate)
+				require.False(t, server.BMCConfig.AutoPinCertificate)
+			},
+		},
+		{
+			name: "error - BMC connection test - unknown BMC client type",
+			server: provisioning.Server{
+				Name:    "A",
+				Status:  api.ServerStatusUnregistered,
+				Channel: "stable",
+				BMCConfig: api.BMCConfig{
+					APIType:            api.BMCAPITypeRedfishV1Generic,
+					Endpoint:           "https://bmc.example.com/",
+					AutoPinCertificate: true,
+				},
+			},
+			registerBMCClient: false, // client for redfish-v1-generic is not registered
+
+			assertErr:    errassert.Contains(`Failed to get BMC server client for type "redfish-v1-generic"`),
+			assertServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
+		},
+		{
+			name: "error - BMC connection test - ConnectionTest failure",
+			server: provisioning.Server{
+				Name:    "A",
+				Status:  api.ServerStatusUnregistered,
+				Channel: "stable",
+				BMCConfig: api.BMCConfig{
+					APIType:            api.BMCAPITypeRedfishV1Generic,
+					Endpoint:           "https://bmc.example.com/",
+					AutoPinCertificate: true,
+				},
+			},
+			registerBMCClient:    true,
+			bmcConnectionTestErr: boom.Error,
+
+			assertErr:    boom.ErrorIs,
+			assertServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
 		},
 		{
 			name: "error - validation",
@@ -236,6 +350,7 @@ func TestServerService_PreRegister(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+			assertServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
 		},
 		{
 			name: "error - repo.Create",
@@ -246,26 +361,44 @@ func TestServerService_PreRegister(t *testing.T) {
 			},
 			repoCreateErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:    boom.ErrorIs,
+			assertServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			var createdServer provisioning.Server
 			repo := &repoMock.ServerRepoMock{
 				CreateFunc: func(ctx context.Context, newServer provisioning.Server) (int64, error) {
+					createdServer = newServer
 					return -1, tc.repoCreateErr
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, nil, tls.Certificate{})
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				ConnectionTestFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
+					return tc.bmcConnectionTestCrt, tc.bmcConnectionTestErr
+				},
+				GetDataFunc: func(ctx context.Context, server provisioning.Server) (api.BMCData, error) {
+					return api.BMCData{}, errors.New("not relevant for this test")
+				},
+			}
+
+			var opts []provisioningServer.Option
+			if tc.registerBMCClient {
+				opts = append(opts, provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient))
+			}
+
+			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, nil, tls.Certificate{}, opts...)
 
 			// Run test
 			_, err := serverSvc.PreRegister(t.Context(), tc.server)
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertServer(t, createdServer)
 		})
 	}
 }
@@ -307,8 +440,8 @@ one
 				Name:          "one",
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
-		one
-		-----END CERTIFICATE-----
+one
+-----END CERTIFICATE-----
 		`,
 				SystemUUID: ptr.To("1"),
 			},
@@ -326,8 +459,8 @@ one
 				Name:          "one",
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
-		one
-		-----END CERTIFICATE-----
+one
+-----END CERTIFICATE-----
 		`,
 				MachineID: ptr.To("1"),
 			},
@@ -351,8 +484,8 @@ one
 				Name:          "one",
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
-		one
-		-----END CERTIFICATE-----
+one
+-----END CERTIFICATE-----
 		`,
 				SystemUUID: ptr.To("1"),
 			},
@@ -366,8 +499,8 @@ one
 				Name:          "one",
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
-		one
-		-----END CERTIFICATE-----
+one
+-----END CERTIFICATE-----
 		`,
 				MachineID: ptr.To("1"),
 			},
@@ -422,8 +555,8 @@ one
 				Name:          "one",
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
-		one
-		-----END CERTIFICATE-----
+one
+-----END CERTIFICATE-----
 		`,
 				SystemUUID: ptr.To("1"),
 			},
@@ -524,7 +657,8 @@ one
 
 			token := uuid.MustParse("686d2a12-20f9-11f0-82c6-7fff26bab0c4")
 
-			serverSvc := provisioningServer.New(repo, client, nil, tokenSvc, nil, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, tokenSvc, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithInitialConnectionDelay(0), // Disable delay for initial connection test
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
@@ -1224,7 +1358,8 @@ func TestServerService_GetByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
@@ -1241,6 +1376,10 @@ func TestServerService_GetByName(t *testing.T) {
 func TestServerService_Update(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
+	certificatePEM, _, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+	certificate := string(certificatePEM)
+
 	tests := []struct {
 		name           string
 		argForce       bool
@@ -1248,8 +1387,13 @@ func TestServerService_Update(t *testing.T) {
 		repoUpdateErrs queue.Errs
 		repoGetByName  []queue.Item[*provisioning.Server]
 
-		assertErr require.ErrorAssertionFunc
-		assertLog log.MatcherFunc
+		registerBMCClient    bool
+		bmcConnectionTestCrt string
+		bmcConnectionTestErr error
+
+		assertErr           require.ErrorAssertionFunc
+		assertLog           log.MatcherFunc
+		assertUpdatedServer func(t *testing.T, server provisioning.Server)
 	}{
 		{
 			name: "success",
@@ -1286,8 +1430,214 @@ one
 				},
 			},
 
+			assertErr:           require.NoError,
+			assertLog:           log.Empty,
+			assertUpdatedServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
+		},
+		{
+			name: "success - BMC connection test - auto pin certificate - certificate returned",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+				BMCConfig: api.BMCConfig{
+					APIType:            api.BMCAPITypeRedfishV1Generic,
+					Endpoint:           "https://bmc.example.com/",
+					AutoPinCertificate: true,
+				},
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+			},
+			registerBMCClient:    true,
+			bmcConnectionTestCrt: "cert-pem",
+
 			assertErr: require.NoError,
 			assertLog: log.Empty,
+			assertUpdatedServer: func(t *testing.T, server provisioning.Server) {
+				t.Helper()
+				require.Equal(t, "cert-pem", server.BMCConfig.Certificate)
+				require.False(t, server.BMCConfig.AutoPinCertificate)
+			},
+		},
+		{
+			name: "success - BMC connection test - not auto pin certificate - certificate not persisted",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+				BMCConfig: api.BMCConfig{
+					APIType:            api.BMCAPITypeRedfishV1Generic,
+					Endpoint:           "https://bmc.example.com/",
+					Certificate:        certificate,
+					AutoPinCertificate: false,
+				},
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+			},
+			registerBMCClient:    true,
+			bmcConnectionTestCrt: "cert-pem",
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+			assertUpdatedServer: func(t *testing.T, server provisioning.Server) {
+				t.Helper()
+				require.Equal(t, certificate, server.BMCConfig.Certificate)
+				require.False(t, server.BMCConfig.AutoPinCertificate)
+			},
+		},
+		{
+			name: "success - BMC connection test - auto pin certificate with provided certificate",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+				BMCConfig: api.BMCConfig{
+					APIType:            api.BMCAPITypeRedfishV1Generic,
+					Endpoint:           "https://bmc.example.com/",
+					Certificate:        certificate,
+					AutoPinCertificate: true,
+				},
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+			},
+			registerBMCClient:    true,
+			bmcConnectionTestCrt: "cert-pem",
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+			assertUpdatedServer: func(t *testing.T, server provisioning.Server) {
+				t.Helper()
+				require.Equal(t, certificate, server.BMCConfig.Certificate)
+				require.False(t, server.BMCConfig.AutoPinCertificate)
+			},
+		},
+		{
+			name:     "error - BMC connection test - unknown BMC client type",
+			argForce: false,
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+				BMCConfig: api.BMCConfig{
+					APIType:            api.BMCAPITypeRedfishV1Generic,
+					Endpoint:           "https://bmc.example.com/",
+					AutoPinCertificate: true,
+				},
+			},
+			registerBMCClient: false, // client for redfish-v1-generic is not registered
+
+			assertErr:           errassert.Contains(`Failed to get BMC server client for type "redfish-v1-generic"`),
+			assertLog:           log.Empty,
+			assertUpdatedServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
+		},
+		{
+			name:     "error - BMC connection test - ConnectionTest failure",
+			argForce: false,
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+				BMCConfig: api.BMCConfig{
+					APIType:            api.BMCAPITypeRedfishV1Generic,
+					Endpoint:           "https://bmc.example.com/",
+					AutoPinCertificate: true,
+				},
+			},
+			registerBMCClient:    true,
+			bmcConnectionTestErr: boom.Error,
+
+			assertErr:           boom.ErrorIs,
+			assertLog:           log.Empty,
+			assertUpdatedServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
 		},
 		{
 			name: "error - validation",
@@ -1304,8 +1654,9 @@ one
 				Channel: "stable",
 			},
 
-			assertErr: errassert.ValidationError,
-			assertLog: log.Empty,
+			assertErr:           errassert.ValidationError,
+			assertLog:           log.Empty,
+			assertUpdatedServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
 		},
 		{
 			name:     "error - repo.GetByName - without force",
@@ -1328,8 +1679,9 @@ one
 				},
 			},
 
-			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertErr:           boom.ErrorIs,
+			assertLog:           log.Empty,
+			assertUpdatedServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
 		},
 		{
 			name:     "error - channel update for clustered server",
@@ -1356,8 +1708,9 @@ one
 				},
 			},
 
-			assertErr: errassert.OperationNotPermittedErrorContains(`Update of channel not allowed for clustered server "one"`),
-			assertLog: log.Empty,
+			assertErr:           errassert.OperationNotPermittedErrorContains(`Update of channel not allowed for clustered server "one"`),
+			assertLog:           log.Empty,
+			assertUpdatedServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
 		},
 		{
 			name: "error - repo.UpdateByID",
@@ -1385,8 +1738,9 @@ one
 				boom.Error,
 			},
 
-			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertErr:           boom.ErrorIs,
+			assertLog:           log.Empty,
+			assertUpdatedServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
 		},
 		{
 			name:     "error - repo.GetByName - force", // UpdateSystemUpdate
@@ -1415,8 +1769,9 @@ one
 				},
 			},
 
-			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertErr:           boom.ErrorIs,
+			assertLog:           log.Empty,
+			assertUpdatedServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
 		},
 		{
 			name:     "error - repo.GetByName - force - revert error", // UpdateSystemUpdate
@@ -1449,8 +1804,9 @@ one
 				boom.Error,
 			},
 
-			assertErr: boom.ErrorIs,
-			assertLog: log.Contains("Failed to restore previous server state after failed to update system update config"),
+			assertErr:           boom.ErrorIs,
+			assertLog:           log.Contains("Failed to restore previous server state after failed to update system update config"),
+			assertUpdatedServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
 		},
 	}
 
@@ -1461,12 +1817,21 @@ one
 			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
 
+			var updatedServer provisioning.Server
 			repo := &repoMock.ServerRepoMock{
 				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					updatedServer = in
+
 					return tc.repoUpdateErrs.PopOrNil(t)
 				},
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return queue.Pop(t, &tc.repoGetByName)
+				},
+			}
+
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				ConnectionTestFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
+					return tc.bmcConnectionTestCrt, tc.bmcConnectionTestErr
 				},
 			}
 
@@ -1494,8 +1859,16 @@ one
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{},
+			opts := []provisioningServer.Option{
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
+			}
+			if tc.registerBMCClient {
+				opts = append(opts, provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient))
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{},
+				opts...,
 			)
 
 			// Run test
@@ -1504,6 +1877,7 @@ one
 			// Assert
 			tc.assertErr(t, err)
 			tc.assertLog(t, logBuf)
+			tc.assertUpdatedServer(t, updatedServer)
 
 			require.Empty(t, tc.repoUpdateErrs)
 		})
@@ -1724,7 +2098,8 @@ one
 			// have been removed after successful processing.
 			selfUpdateSignal := signals.New[provisioning.Server]()
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithSelfUpdateSignal(selfUpdateSignal),
 			)
@@ -1950,7 +2325,8 @@ one
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 			)
 
@@ -2140,11 +2516,12 @@ one
 			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{})
 
 			// Run test
-			err := serverSvc.UpdateSystemProvider(t.Context(), "one", incusosapi.SystemProvider{
-				Config: incusosapi.SystemProviderConfig{
-					Name: "operations-center-new",
+			err := serverSvc.UpdateSystemProvider(
+				t.Context(), "one", incusosapi.SystemProvider{
+					Config: incusosapi.SystemProviderConfig{
+						Name: "operations-center-new",
+					},
 				},
-			},
 			)
 
 			// Assert
@@ -2386,13 +2763,14 @@ one
 			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{})
 
 			// Run test
-			err := serverSvc.UpdateSystemUpdate(t.Context(), "one", incusosapi.SystemUpdate{
-				Config: incusosapi.SystemUpdateConfig{
-					AutoReboot:     true,
-					Channel:        "testing",
-					CheckFrequency: "2h",
+			err := serverSvc.UpdateSystemUpdate(
+				t.Context(), "one", incusosapi.SystemUpdate{
+					Config: incusosapi.SystemUpdateConfig{
+						AutoReboot:     true,
+						Channel:        "testing",
+						CheckFrequency: "2h",
+					},
 				},
-			},
 			)
 
 			// Assert
@@ -2477,7 +2855,8 @@ one
 
 			selfUpdateSignal := signals.New[provisioning.Server]()
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithSelfUpdateSignal(selfUpdateSignal),
 			)
@@ -3033,7 +3412,8 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, serverCertificate,
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, nil, nil, updateSvc, serverCertificate,
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithInitialConnectionDelay(1*time.Millisecond),
 			)
@@ -3197,7 +3577,8 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, serverCertificate,
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, nil, nil, updateSvc, serverCertificate,
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 			)
 
@@ -3299,7 +3680,8 @@ func TestServerService_Rename(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 			)
 
@@ -3454,7 +3836,8 @@ func TestServerService_PollServers(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, nil, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, nil, nil, nil, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
@@ -4102,7 +4485,8 @@ foobar
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, runner, nil, nil, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, runner, nil, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithHTTPClient(httpsServer.Client()),
 			)
@@ -4791,7 +5175,8 @@ func TestServerService_PollServer(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, runner, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, runner, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithRebootStatusUpdateGracePeriod(5*time.Second),
 			)
@@ -4802,6 +5187,249 @@ func TestServerService_PollServer(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			tc.assertLog(t, logBuf)
+		})
+	}
+}
+
+func TestServerService_PollServer_resyncBMCData(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	tests := []struct {
+		name string
+
+		serverArg           provisioning.Server
+		clientPingErr       error
+		repoGetByNameServer *provisioning.Server
+
+		bmcClientGetDataErr error
+
+		wantBMCClientGetDataCalled bool
+		assertErr                  require.ErrorAssertionFunc
+		assertLog                  log.MatcherFunc
+	}{
+		{
+			name: "success - online server without BMC configured does not resync",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+			},
+			repoGetByNameServer: &provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+			},
+
+			wantBMCClientGetDataCalled: false,
+			assertErr:                  require.NoError,
+			assertLog:                  log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+		},
+		{
+			name: "success - online server already reporting power state on does not resync",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				BMCConfig: api.BMCConfig{
+					APIType:  api.BMCAPITypeRedfishV1Generic,
+					Endpoint: "https://bmc.local",
+				},
+				BMCData: api.BMCData{
+					ServerPowerState: "On",
+				},
+			},
+			repoGetByNameServer: &provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+			},
+
+			wantBMCClientGetDataCalled: false,
+			assertErr:                  require.NoError,
+			assertLog:                  log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+		},
+		{
+			name: "success - online server resyncs BMC data",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				BMCConfig: api.BMCConfig{
+					APIType:  api.BMCAPITypeRedfishV1Generic,
+					Endpoint: "https://bmc.local",
+				},
+				BMCData: api.BMCData{
+					ServerPowerState: "Off",
+				},
+			},
+			repoGetByNameServer: &provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+			},
+
+			wantBMCClientGetDataCalled: true,
+			assertErr:                  require.NoError,
+			assertLog:                  log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+		},
+		{
+			name: "error - online server resyncBMCData failure is only logged",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+				BMCConfig: api.BMCConfig{
+					APIType:  api.BMCAPITypeRedfishV1Generic,
+					Endpoint: "https://bmc.local",
+				},
+			},
+			repoGetByNameServer: &provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusReady,
+			},
+			bmcClientGetDataErr: boom.Error,
+
+			wantBMCClientGetDataCalled: true,
+			assertErr:                  require.NoError,
+			assertLog:                  log.Match(`Failed to update BMC data for online server`),
+		},
+		{
+			name: "success - offline server without BMC configured does not resync",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+			},
+			clientPingErr: boom.Error,
+			repoGetByNameServer: &provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusOffline,
+				StatusDetail: api.ServerStatusDetailOfflineUnresponsive,
+			},
+
+			wantBMCClientGetDataCalled: false,
+			assertErr:                  require.NoError,
+			assertLog:                  log.Match(`Server connection test failed \(offline unresponsive\)`),
+		},
+		{
+			name: "success - offline server already reporting power state off does not resync",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+				BMCConfig: api.BMCConfig{
+					APIType:  api.BMCAPITypeRedfishV1Generic,
+					Endpoint: "https://bmc.local",
+				},
+				BMCData: api.BMCData{
+					ServerPowerState: "Off",
+				},
+			},
+			clientPingErr: boom.Error,
+			repoGetByNameServer: &provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusOffline,
+				StatusDetail: api.ServerStatusDetailOfflineUnresponsive,
+			},
+
+			wantBMCClientGetDataCalled: false,
+			assertErr:                  require.NoError,
+			assertLog:                  log.Match(`Server connection test failed \(offline unresponsive\)`),
+		},
+		{
+			name: "success - offline server resyncs BMC data",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+				BMCConfig: api.BMCConfig{
+					APIType:  api.BMCAPITypeRedfishV1Generic,
+					Endpoint: "https://bmc.local",
+				},
+				BMCData: api.BMCData{
+					ServerPowerState: "On",
+				},
+			},
+			clientPingErr: boom.Error,
+			repoGetByNameServer: &provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusOffline,
+				StatusDetail: api.ServerStatusDetailOfflineUnresponsive,
+			},
+
+			wantBMCClientGetDataCalled: true,
+			assertErr:                  require.NoError,
+			assertLog:                  log.Match(`Server connection test failed \(offline unresponsive\)`),
+		},
+		{
+			name: "error - offline server resyncBMCData failure is only logged",
+			serverArg: provisioning.Server{
+				Name:   "one",
+				Status: api.ServerStatusPending,
+				BMCConfig: api.BMCConfig{
+					APIType:  api.BMCAPITypeRedfishV1Generic,
+					Endpoint: "https://bmc.local",
+				},
+			},
+			clientPingErr: boom.Error,
+			repoGetByNameServer: &provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusOffline,
+				StatusDetail: api.ServerStatusDetailOfflineUnresponsive,
+			},
+			bmcClientGetDataErr: boom.Error,
+
+			wantBMCClientGetDataCalled: true,
+			assertErr:                  require.NoError,
+			assertLog:                  log.Match(`(?s)Server connection test failed \(offline unresponsive\).*Failed to update BMC data for offline server`),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, true, true)
+			require.NoError(t, err)
+
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, nil
+				},
+				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+					return nil
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return tc.clientPingErr
+				},
+				IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
+					return nil
+				},
+			}
+
+			bmcClientGetDataCalled := false
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				GetDataFunc: func(ctx context.Context, server provisioning.Server) (api.BMCData, error) {
+					bmcClientGetDataCalled = true
+
+					return api.BMCData{
+						ServerUUID: "e9de436e-b94e-4aef-8563-883aec84096e",
+					}, tc.bmcClientGetDataErr
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+				provisioningServer.WithNow(func() time.Time { return fixedDate }),
+				provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+			)
+
+			// Run test
+			err = serverSvc.PollServer(context.Background(), tc.serverArg, false)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Equal(t, tc.wantBMCClientGetDataCalled, bmcClientGetDataCalled)
 		})
 	}
 }
@@ -4839,7 +5467,8 @@ func TestServerService_PollServer_in_transaction(t *testing.T) {
 		},
 	}
 
-	serverSvc := provisioningServer.New(repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+	serverSvc := provisioningServer.New(
+		repo, client, nil, nil, nil, nil, updateSvc, tls.Certificate{},
 		provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 	)
 
@@ -5120,7 +5749,8 @@ func TestServerService_ResyncByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, serverCertificate,
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, clusterSvc, nil, updateSvc, serverCertificate,
 				provisioningServer.WithNow(func() time.Time { return fixedDate }),
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
@@ -6185,7 +6815,8 @@ func TestServerService_EvacuateSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
@@ -6361,7 +6992,8 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
@@ -6551,7 +7183,8 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
@@ -6896,7 +7529,8 @@ func TestServerService_RestoreSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, clusterSvc, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
@@ -6996,7 +7630,8 @@ func TestServerService_PostRestoreSystemDoneByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, nil, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, updateSvc, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
@@ -7256,7 +7891,8 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioningServer.New(repo, client, nil, nil, clusterSvc, channelSvc, updateSvc, tls.Certificate{},
+			serverSvc := provisioningServer.New(
+				repo, client, nil, nil, clusterSvc, channelSvc, updateSvc, tls.Certificate{},
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
@@ -7940,8 +8576,329 @@ func TestServerService_RestartApplication(t *testing.T) {
 	}
 }
 
+func TestServerService_ResyncBMCData(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	tests := []struct {
+		name string
+
+		repoGetAllServers provisioning.Servers
+		repoGetAllErr     error
+
+		bmcClientGetData    api.BMCData
+		bmcClientGetDataErr error
+
+		repoGetByNameServer *provisioning.Server
+		repoGetByNameErr    error
+		repoUpdateErr       error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - no servers",
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - server without BMC type configured",
+			repoGetAllServers: provisioning.Servers{
+				{
+					Name: "one",
+					BMCConfig: api.BMCConfig{
+						APIType:  api.BMCAPITypeNone,
+						Endpoint: "https://bmc.local",
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - server with BMC type but no endpoint",
+			repoGetAllServers: provisioning.Servers{
+				{
+					Name: "one",
+					BMCConfig: api.BMCConfig{
+						APIType:  api.BMCAPITypeRedfishV1Generic,
+						Endpoint: "",
+					},
+				},
+			},
+			bmcClientGetData: api.BMCData{
+				ServerUUID: "e9de436e-b94e-4aef-8563-883aec84096e",
+			},
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - resync",
+			repoGetAllServers: provisioning.Servers{
+				{
+					Name: "one",
+					BMCConfig: api.BMCConfig{
+						APIType:  api.BMCAPITypeRedfishV1Generic,
+						Endpoint: "https://bmc.local",
+					},
+				},
+			},
+			bmcClientGetData: api.BMCData{
+				ServerUUID: "e9de436e-b94e-4aef-8563-883aec84096e",
+			},
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:          "error - repo.GetAll",
+			repoGetAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - no BMC server client registered for type",
+			repoGetAllServers: provisioning.Servers{
+				{
+					Name: "one",
+					BMCConfig: api.BMCConfig{
+						APIType:  api.BMCAPIType("unknown"),
+						Endpoint: "https://bmc.local",
+					},
+				},
+			},
+
+			assertErr: errassert.Contains(`Failed to get BMC server client for type "unknown"`),
+		},
+		{
+			name: "error - client.GetServerDetails",
+			repoGetAllServers: provisioning.Servers{
+				{
+					Name: "one",
+					BMCConfig: api.BMCConfig{
+						APIType:  api.BMCAPITypeRedfishV1Generic,
+						Endpoint: "https://bmc.local",
+					},
+				},
+			},
+			bmcClientGetDataErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.GetByName",
+			repoGetAllServers: provisioning.Servers{
+				{
+					Name: "one",
+					BMCConfig: api.BMCConfig{
+						APIType:  api.BMCAPITypeRedfishV1Generic,
+						Endpoint: "https://bmc.local",
+					},
+				},
+			},
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.Update",
+			repoGetAllServers: provisioning.Servers{
+				{
+					Name: "one",
+					BMCConfig: api.BMCConfig{
+						APIType:  api.BMCAPITypeRedfishV1Generic,
+						Endpoint: "https://bmc.local",
+					},
+				},
+			},
+			bmcClientGetData: api.BMCData{
+				ServerUUID: "e9de436e-b94e-4aef-8563-883aec84096e",
+			},
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
+					return tc.repoGetAllServers, tc.repoGetAllErr
+				},
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					wantDetails := tc.bmcClientGetData
+					wantDetails.LastUpdated = fixedDate
+					require.Equal(t, wantDetails, in.BMCData)
+					require.Equal(t, &wantDetails.ServerUUID, in.SystemUUID)
+
+					return tc.repoUpdateErr
+				},
+			}
+
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				GetDataFunc: func(ctx context.Context, server provisioning.Server) (api.BMCData, error) {
+					return tc.bmcClientGetData, tc.bmcClientGetDataErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				provisioningServer.WithNow(func() time.Time { return fixedDate }),
+				provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+			)
+
+			// Run test
+			err := serverSvc.ResyncBMCData(t.Context())
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestServerService_SyncCluster(t *testing.T) {
 	s := provisioningServer.New(nil, nil, nil, nil, nil, nil, nil, tls.Certificate{})
 	err := s.SyncCluster(t.Context(), "")
 	require.NoError(t, err)
+}
+
+func TestServerService_BMCRefreshByName(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	tests := []struct {
+		name    string
+		nameArg string
+
+		repoGetByNameServer *provisioning.Server
+		repoGetByNameErr    error
+
+		bmcClientGetData    api.BMCData
+		bmcClientGetDataErr error
+
+		repoUpdateErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType:  api.BMCAPITypeRedfishV1Generic,
+					Endpoint: "https://bmc.local",
+				},
+			},
+			bmcClientGetData: api.BMCData{
+				ServerUUID: "e9de436e-b94e-4aef-8563-883aec84096e",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "error - name empty",
+			nameArg: "", // invalid
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			nameArg:          "one",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - no BMC server client registered for type",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType:  api.BMCAPIType("unknown"),
+					Endpoint: "https://bmc.local",
+				},
+			},
+
+			assertErr: errassert.Contains(`Failed to get BMC server client for type "unknown"`),
+		},
+		{
+			name:    "error - client.GetData",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType:  api.BMCAPITypeRedfishV1Generic,
+					Endpoint: "https://bmc.local",
+				},
+			},
+			bmcClientGetDataErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - repo.Update",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType:  api.BMCAPITypeRedfishV1Generic,
+					Endpoint: "https://bmc.local",
+				},
+			},
+			bmcClientGetData: api.BMCData{
+				ServerUUID: "e9de436e-b94e-4aef-8563-883aec84096e",
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					wantDetails := tc.bmcClientGetData
+					wantDetails.LastUpdated = fixedDate
+					require.Equal(t, wantDetails, in.BMCData)
+					require.Equal(t, &wantDetails.ServerUUID, in.SystemUUID)
+
+					return tc.repoUpdateErr
+				},
+			}
+
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				GetDataFunc: func(ctx context.Context, server provisioning.Server) (api.BMCData, error) {
+					return tc.bmcClientGetData, tc.bmcClientGetDataErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				provisioningServer.WithNow(func() time.Time { return fixedDate }),
+				provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+			)
+
+			// Run test
+			err := serverSvc.BMCRefreshByName(t.Context(), tc.nameArg)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
 }

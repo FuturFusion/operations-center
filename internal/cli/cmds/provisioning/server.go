@@ -117,6 +117,13 @@ func (c *CmdServer) Command() *cobra.Command {
 
 	cmd.AddCommand(serverSystemCmd.Command())
 
+	// BMC
+	serverBMCCmd := cmdServerBMC{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(serverBMCCmd.Command())
+
 	return cmd
 }
 
@@ -218,13 +225,15 @@ func (c *cmdServerList) run(cmd *cobra.Command, args []string) error {
 type cmdServerPreRegister struct {
 	ocClient *client.OperationsCenterClient
 
-	description         string
-	channel             string
-	publicConnectionURL string
-	bmcAPIType          string
-	bmcEndpoint         string
-	bmcUsername         string
-	bmcPassword         string
+	description           string
+	channel               string
+	publicConnectionURL   string
+	bmcAPIType            string
+	bmcEndpoint           string
+	bmcCertificateFile    string
+	bmcAutoPinCertificate bool
+	bmcUsername           string
+	bmcPassword           string
 }
 
 func (c *cmdServerPreRegister) Command() *cobra.Command {
@@ -236,10 +245,12 @@ func (c *cmdServerPreRegister) Command() *cobra.Command {
 `
 
 	cmd.Flags().StringVar(&c.description, "description", "", "Description of the server")
-	cmd.Flags().StringVar(&c.channel, "channel", "", "Channel the server should subscribe to")
+	cmd.Flags().StringVar(&c.channel, "channel", "stable", "Channel the server should subscribe to")
 	cmd.Flags().StringVar(&c.publicConnectionURL, "public-connection-url", "", "Public connection URL of the server")
 	cmd.Flags().StringVar(&c.bmcAPIType, "bmc-api-type", "", "API type of the BMC of the server")
 	cmd.Flags().StringVar(&c.bmcEndpoint, "bmc-endpoint", "", "Endpoint of the BMC")
+	cmd.Flags().StringVar(&c.bmcCertificateFile, "bmc-certificate-file", "", "Filename pointing to the trusted server certificate PEM of the BMC")
+	cmd.Flags().BoolVar(&c.bmcAutoPinCertificate, "bmc-auto-pin-certificate", false, "Auto accept and pin the certificate presented by the BMC")
 	cmd.Flags().StringVar(&c.bmcUsername, "bmc-username", "", "Username for the BMC")
 	cmd.Flags().StringVar(&c.bmcPassword, "bmc-password", "", "Password for the BMC")
 
@@ -256,23 +267,38 @@ func (c *cmdServerPreRegister) validateArgsAndFlags(cmd *cobra.Command, args []s
 		return err
 	}
 
+	if c.bmcAutoPinCertificate && c.bmcCertificateFile != "" {
+		return fmt.Errorf("Providing a certificate and using auto pinning are mutual exclusive")
+	}
+
 	return nil
 }
 
 func (c *cmdServerPreRegister) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	err := c.ocClient.PreRegisterServer(cmd.Context(), api.ServerPost{
+	var certificatePEM []byte
+	var err error
+	if c.bmcCertificateFile != "" {
+		certificatePEM, err = os.ReadFile(c.bmcCertificateFile)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = c.ocClient.PreRegisterServer(cmd.Context(), api.ServerPost{
 		Name: name,
 		ServerPut: api.ServerPut{
 			Description:         c.description,
 			Channel:             c.channel,
 			PublicConnectionURL: c.publicConnectionURL,
 			BMCConfig: api.BMCConfig{
-				BMCAPIType:  api.BMCAPIType(c.bmcAPIType),
-				BMCEndpoint: c.bmcEndpoint,
-				BMCUsername: c.bmcUsername,
-				BMCPassword: c.bmcPassword,
+				APIType:            api.BMCAPIType(c.bmcAPIType),
+				Endpoint:           c.bmcEndpoint,
+				Certificate:        string(certificatePEM),
+				AutoPinCertificate: c.bmcAutoPinCertificate,
+				Username:           c.bmcUsername,
+				Password:           c.bmcPassword,
 			},
 		},
 	})
@@ -540,6 +566,7 @@ type cmdServerShow struct {
 	flagShowResources   bool
 	flagShowOSData      bool
 	flagShowVersionData bool
+	flagShowBMCData     bool
 }
 
 func (c *cmdServerShow) Command() *cobra.Command {
@@ -555,6 +582,7 @@ func (c *cmdServerShow) Command() *cobra.Command {
 	cmd.Flags().BoolVar(&c.flagShowResources, "resources", false, "show server resource details")
 	cmd.Flags().BoolVar(&c.flagShowOSData, "os-data", false, "show server OS data")
 	cmd.Flags().BoolVar(&c.flagShowVersionData, "version-data", false, "show server version data")
+	cmd.Flags().BoolVar(&c.flagShowBMCData, "bmc-data", false, "show bmc data")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -612,9 +640,9 @@ func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Certificate Fingerprint: %s\n", server.Fingerprint)
 		fmt.Printf("Type: %s\n", server.Type.String())
 		fmt.Printf("Channel: %s\n", server.Channel)
-		fmt.Printf("BMC API Type: %s\n", server.BMCConfig.BMCAPIType.String())
-		fmt.Printf("BMC Endpoint: %s\n", server.BMCConfig.BMCEndpoint)
-		fmt.Printf("BMC Username: %s\n", server.BMCConfig.BMCUsername)
+		fmt.Printf("BMC API Type: %s\n", server.BMCConfig.APIType.String())
+		fmt.Printf("BMC Endpoint: %s\n", server.BMCConfig.Endpoint)
+		fmt.Printf("BMC Username: %s\n", server.BMCConfig.Username)
 		fmt.Printf("System UUID: %s\n", server.SystemUUID)
 		fmt.Printf("Machine ID: %s\n", server.MachineID)
 		fmt.Printf("Status: %s\n", server.State())
@@ -657,6 +685,15 @@ func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 			}
 
 			fmt.Printf("Version Data:\n%s\n", render.Indent(4, string(versionDataJSON)))
+		}
+
+		if c.flagShowBMCData {
+			bmcDataJSON, err := json.MarshalIndent(server.BMCData, "", "  ")
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("BMC Data:\n%s\n", render.Indent(4, string(bmcDataJSON)))
 		}
 	}
 
