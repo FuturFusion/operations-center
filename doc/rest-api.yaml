@@ -260,6 +260,33 @@ definitions:
         title: BMCData defines the data, that have been collected from the BMC.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BMCLogEvent:
+        properties:
+            EntryCode:
+                description: EntryCode holds the entry code for the log entry if the entry type is `SEL`.
+                example: Informational
+                type: string
+            EntryType:
+                description: |-
+                    EntryType holds the type of the entry. Possible values include (but not
+                    limited to): SEL, Event, CXL, Oem.
+                example: SEL
+                type: string
+            Message:
+                description: Message holds the actual message of the log event.
+                example: This is a test log event
+                type: string
+            Severity:
+                description: 'Severity of the log event. Possible values: OK, Warning, Critical'
+                example: OK
+                type: string
+            Timestamp:
+                description: Timestamp of the log event in RFC3339 format.
+                example: "2026-07-30T08:04:00Z"
+                type: string
+        title: BMCLogEvent defines a log event from the BMC.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     CertificatePost:
         description: |-
             CertificatePost represents the fields available for an update of the
@@ -10231,6 +10258,87 @@ paths:
             summary: Restart server via BMC
             tags:
                 - servers_bmc_server_restart
+    /1.0/provisioning/servers/{name}/bmc/logs:
+        get:
+            description: Returns the list of log sources available via the server's BMC.
+            operationId: server_bmc_logs_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: BMC log sources
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of log sources
+                                items:
+                                    type: string
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the available BMC log sources
+            tags:
+                - servers_bmc_logs
+    /1.0/provisioning/servers/{name}/bmc/logs/{logSource}:
+        get:
+            description: |-
+                Returns the log entries of the given log source available via the server's
+                BMC. The log source has the structure "service/logService", e.g.
+                "chassis/Logs".
+            operationId: server_bmc_log_entries_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: BMC log entries
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of log entries
+                                items:
+                                    $ref: '#/definitions/BMCLogEvent'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the BMC log entries of a log source
+            tags:
+                - servers_bmc_logs
     /1.0/provisioning/servers/{name}/changelog:
         get:
             description: Gets a specific server's changelog from available update to current update.

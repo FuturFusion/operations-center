@@ -9212,6 +9212,238 @@ func TestServerService_BMCServerRestartByName(t *testing.T) {
 	}
 }
 
+func TestServerService_BMCLogSourcesByName(t *testing.T) {
+	logSources := []string{"chassis/Logs", "manager/SEL", "system/Logs"}
+
+	tests := []struct {
+		name                   string
+		nameArg                string
+		repoGetByNameServer    *provisioning.Server
+		repoGetByNameErr       error
+		bmcClientLogSourcesErr error
+
+		assertErr require.ErrorAssertionFunc
+		want      []string
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+
+			assertErr: require.NoError,
+			want:      logSources,
+		},
+		{
+			name:    "error - name empty",
+			nameArg: "", // invalid
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			nameArg:          "one",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - no BMC server client registered for type",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPIType("unknown"),
+				},
+			},
+
+			assertErr: errassert.Contains(`Failed to get BMC server client for type "unknown"`),
+		},
+		{
+			name:    "error - client.LogSources",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientLogSourcesErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+			}
+
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				LogSourcesFunc: func(ctx context.Context, server provisioning.Server) ([]string, error) {
+					return logSources, tc.bmcClientLogSourcesErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+			)
+
+			// Run test
+			gotLogSources, err := serverSvc.BMCLogSourcesByName(t.Context(), tc.nameArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, gotLogSources)
+		})
+	}
+}
+
+func TestServerService_BMCLogEntriesByNameAndLogSource(t *testing.T) {
+	logEntries := []api.BMCLogEvent{
+		{
+			EntryType: "SEL",
+			Message:   "A log message",
+			Severity:  "OK",
+		},
+	}
+
+	tests := []struct {
+		name                   string
+		nameArg                string
+		logSourceArg           string
+		repoGetByNameServer    *provisioning.Server
+		repoGetByNameErr       error
+		bmcClientLogEntriesErr error
+
+		assertErr require.ErrorAssertionFunc
+		want      []api.BMCLogEvent
+	}{
+		{
+			name:         "success",
+			nameArg:      "one",
+			logSourceArg: "chassis/Logs",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+
+			assertErr: require.NoError,
+			want:      logEntries,
+		},
+		{
+			name:         "error - name empty",
+			nameArg:      "", // invalid
+			logSourceArg: "chassis/Logs",
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:         "error - log source empty",
+			nameArg:      "one",
+			logSourceArg: "", // invalid
+
+			assertErr: errassert.OperationNotPermittedErrorContains(`Log source "" must have the structure "service/logService"`),
+		},
+		{
+			name:         "error - log source without log service",
+			nameArg:      "one",
+			logSourceArg: "chassis", // invalid
+
+			assertErr: errassert.OperationNotPermittedErrorContains(`Log source "chassis" must have the structure "service/logService"`),
+		},
+		{
+			name:         "error - log source with empty log service",
+			nameArg:      "one",
+			logSourceArg: "chassis/", // invalid
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:         "error - log source with too many parts",
+			nameArg:      "one",
+			logSourceArg: "chassis/Logs/Entries", // invalid
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			nameArg:          "one",
+			logSourceArg:     "chassis/Logs",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:         "error - no BMC server client registered for type",
+			nameArg:      "one",
+			logSourceArg: "chassis/Logs",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPIType("unknown"),
+				},
+			},
+
+			assertErr: errassert.Contains(`Failed to get BMC server client for type "unknown"`),
+		},
+		{
+			name:         "error - client.LogEntriesBySource",
+			nameArg:      "one",
+			logSourceArg: "chassis/Logs",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientLogEntriesErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+			}
+
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				LogEntriesBySourceFunc: func(ctx context.Context, server provisioning.Server, logSource string) ([]api.BMCLogEvent, error) {
+					return logEntries, tc.bmcClientLogEntriesErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+			)
+
+			// Run test
+			gotLogEntries, err := serverSvc.BMCLogEntriesByNameAndLogSource(t.Context(), tc.nameArg, tc.logSourceArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, gotLogEntries)
+		})
+	}
+}
+
 func TestServerService_SyncCluster(t *testing.T) {
 	s := provisioningServer.New(nil, nil, nil, nil, nil, nil, nil, tls.Certificate{})
 	err := s.SyncCluster(t.Context(), "")

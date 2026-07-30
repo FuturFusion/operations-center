@@ -78,6 +78,77 @@ func (_d ServerServiceWithSlog) AddApplication(ctx context.Context, name string,
 	return _d._base.AddApplication(ctx, name, applicationName)
 }
 
+// BMCLogEntriesByNameAndLogSource implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCLogEntriesByNameAndLogSource(ctx context.Context, name string, logSource string) (bMCLogEvents []api.BMCLogEvent, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.String("logSource", logSource),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCLogEntriesByNameAndLogSource")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bMCLogEvents", bMCLogEvents),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BMCLogEntriesByNameAndLogSource returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BMCLogEntriesByNameAndLogSource returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BMCLogEntriesByNameAndLogSource finished")
+		}
+	}()
+	return _d._base.BMCLogEntriesByNameAndLogSource(ctx, name, logSource)
+}
+
+// BMCLogSourcesByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCLogSourcesByName(ctx context.Context, name string) (strings []string, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCLogSourcesByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("strings", strings),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BMCLogSourcesByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BMCLogSourcesByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BMCLogSourcesByName finished")
+		}
+	}()
+	return _d._base.BMCLogSourcesByName(ctx, name)
+}
+
 // BMCRefreshByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCRefreshByName(ctx context.Context, name string) (err error) {
 	log := slog.With()

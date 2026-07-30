@@ -5,6 +5,8 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/internal/util/render"
+	"github.com/FuturFusion/operations-center/internal/util/sort"
 )
 
 // Interact with BMC of servers.
@@ -50,6 +52,20 @@ func (c *cmdServerBMC) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(serverBMCServerRestartCmd.Command())
+
+	// Logs
+	serverBMCLogsCmd := cmdServerBMCLogs{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverBMCLogsCmd.Command())
+
+	// Log entries
+	serverBMCLogEntriesCmd := cmdServerBMCLogEntries{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverBMCLogEntriesCmd.Command())
 
 	return cmd
 }
@@ -230,4 +246,121 @@ func (c *cmdServerBMCServerRestart) run(cmd *cobra.Command, args []string) error
 	}
 
 	return nil
+}
+
+// List server's BMC log sources.
+type cmdServerBMCLogs struct {
+	ocClient *client.OperationsCenterClient
+
+	flagFormat string
+}
+
+func (c *cmdServerBMCLogs) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "logs <name>"
+	cmd.Short = "List a server's BMC log sources"
+	cmd.Long = `Description:
+  List the log sources available via a server's BMC.
+`
+
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerBMCLogs) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return validate.FormatFlag(cmd.Flag("format").Value.String())
+}
+
+func (c *cmdServerBMCLogs) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	logSources, err := c.ocClient.GetServerBMCLogSources(cmd.Context(), name)
+	if err != nil {
+		return err
+	}
+
+	// Render the table.
+	header := []string{"Log Source"}
+	data := [][]string{}
+
+	for _, logSource := range logSources {
+		data = append(data, []string{logSource})
+	}
+
+	sort.ColumnsNaturally(data)
+
+	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, logSources)
+}
+
+// List server's BMC log entries of a log source.
+type cmdServerBMCLogEntries struct {
+	ocClient *client.OperationsCenterClient
+
+	flagFormat string
+}
+
+func (c *cmdServerBMCLogEntries) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "log-entries <name> <source>"
+	cmd.Short = "List a server's BMC log entries of a log source"
+	cmd.Long = `Description:
+  List the log entries of a log source available via a server's BMC.
+
+  The log source has the structure "service/logService", e.g. "chassis/Logs".
+  The available log sources can be listed with the "logs" command.
+`
+
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerBMCLogEntries) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 2, 2)
+	if exit {
+		return err
+	}
+
+	return validate.FormatFlag(cmd.Flag("format").Value.String())
+}
+
+func (c *cmdServerBMCLogEntries) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+	logSource := args[1]
+
+	logEntries, err := c.ocClient.GetServerBMCLogEntries(cmd.Context(), name, logSource)
+	if err != nil {
+		return err
+	}
+
+	// Render the table. The entries are already ordered by timestamp, so the
+	// order is kept as returned.
+	header := []string{"Timestamp", "Severity", "Type", "Code", "Message"}
+	data := [][]string{}
+
+	for _, logEntry := range logEntries {
+		data = append(data, []string{
+			logEntry.Timestamp,
+			logEntry.Severity,
+			logEntry.EntryType,
+			logEntry.EntryCode,
+			logEntry.Message,
+		})
+	}
+
+	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, logEntries)
 }

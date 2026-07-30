@@ -304,3 +304,33 @@ func (c OperationsCenterClient) BMCServerRestart(ctx context.Context, name strin
 
 	return nil
 }
+
+func (c OperationsCenterClient) GetServerBMCLogSources(ctx context.Context, name string) ([]string, error) {
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name, "bmc/logs"), nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	logSources := []string{}
+	err = json.Unmarshal(response.Metadata, &logSources)
+	if err != nil {
+		return nil, err
+	}
+
+	return logSources, nil
+}
+
+func (c OperationsCenterClient) GetServerBMCLogEntries(ctx context.Context, name string, logSource string) ([]api.BMCLogEvent, error) {
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name, "bmc/logs", logSource), nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	logEntries := []api.BMCLogEvent{}
+	err = json.Unmarshal(response.Metadata, &logEntries)
+	if err != nil {
+		return nil, err
+	}
+
+	return logEntries, nil
+}

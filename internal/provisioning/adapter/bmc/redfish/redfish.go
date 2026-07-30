@@ -16,11 +16,13 @@ import (
 	"slices"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/stmcginnis/gofish"
 	"github.com/stmcginnis/gofish/schemas"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -229,6 +231,21 @@ func (r redfish) GetData(ctx context.Context, server provisioning.Server) (api.B
 	}, nil
 }
 
+func getFirstChassis(client *gofish.APIClient) (*schemas.Chassis, error) {
+	chassis, err := client.Service.Chassis()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get BMC chassis: %w", err)
+	}
+
+	if len(chassis) == 0 {
+		return nil, fmt.Errorf("No BMC chassis found: %w", domain.ErrNotFound)
+	}
+
+	sort.Slice(chassis, func(i, j int) bool { return chassis[i].ID < chassis[j].ID })
+
+	return chassis[0], nil
+}
+
 func getFirstManager(client *gofish.APIClient) (*schemas.Manager, error) {
 	managers, err := client.Service.Managers()
 	if err != nil {
@@ -236,7 +253,7 @@ func getFirstManager(client *gofish.APIClient) (*schemas.Manager, error) {
 	}
 
 	if len(managers) == 0 {
-		return nil, fmt.Errorf("No BMC managers found")
+		return nil, fmt.Errorf("No BMC managers found: %w", domain.ErrNotFound)
 	}
 
 	sort.Slice(managers, func(i, j int) bool { return managers[i].ID < managers[j].ID })
@@ -251,7 +268,7 @@ func getFirstSystem(client *gofish.APIClient) (*schemas.ComputerSystem, error) {
 	}
 
 	if len(systems) == 0 {
-		return nil, fmt.Errorf("No BMC systems found")
+		return nil, fmt.Errorf("No BMC systems found: %w", domain.ErrNotFound)
 	}
 
 	sort.Slice(systems, func(i, j int) bool { return systems[i].ID < systems[j].ID })
@@ -399,4 +416,143 @@ func (r redfish) performReset(ctx context.Context, server provisioning.Server, r
 	return &provisioning.BMCTaskMonitor{
 		URI: taskMonitor.TaskMonitor,
 	}, nil
+}
+
+func (r redfish) LogSources(ctx context.Context, server provisioning.Server) ([]string, error) {
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	services := make(map[string]func() ([]*schemas.LogService, error), 3)
+
+	chassis, err := getFirstChassis(client)
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return nil, err
+	}
+
+	if err == nil {
+		services["chassis"] = chassis.LogServices
+	}
+
+	system, err := getFirstSystem(client)
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return nil, err
+	}
+
+	if err == nil {
+		services["system"] = system.LogServices
+	}
+
+	manager, err := getFirstManager(client)
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return nil, err
+	}
+
+	if err == nil {
+		services["manager"] = manager.LogServices
+	}
+
+	var logSources []string
+	for name, getLogServices := range services {
+		logServices, err := getLogServices()
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get log services for %q: %w", name, err)
+		}
+
+		for _, logService := range logServices {
+			logSources = append(logSources, name+"/"+logService.ID)
+		}
+	}
+
+	sort.Strings(logSources)
+
+	return logSources, nil
+}
+
+func (r redfish) LogEntriesBySource(ctx context.Context, server provisioning.Server, logSource string) ([]api.BMCLogEvent, error) {
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	logSourceParts := strings.Split(logSource, "/")
+	if len(logSourceParts) != 2 {
+		return nil, fmt.Errorf(`Invalid log source %q, expect "service/logType"`, logSource)
+	}
+
+	service := logSourceParts[0]
+	logType := logSourceParts[1]
+
+	var getLogServices func() ([]*schemas.LogService, error)
+
+	switch service {
+	case "chassis":
+		chassis, err := getFirstChassis(client)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get BMC chassis: %w", err)
+		}
+
+		getLogServices = chassis.LogServices
+
+	case "system":
+		system, err := getFirstSystem(client)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get BMC system: %w", err)
+		}
+
+		getLogServices = system.LogServices
+
+	case "manager":
+		manager, err := getFirstManager(client)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get BMC manager: %w", err)
+		}
+
+		getLogServices = manager.LogServices
+
+	default:
+		return nil, fmt.Errorf(`Invalid log source service %q, expect one of "chassis", "system" or "manager"`, service)
+	}
+
+	logServices, err := getLogServices()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get log services for %q: %w", logSource, err)
+	}
+
+	found := false
+	var entries []*schemas.LogEntry
+	for _, logService := range logServices {
+		if logService.ID != logType {
+			continue
+		}
+
+		entries, err = logService.Entries()
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get log entries for %q: %w", logSource, err)
+		}
+
+		found = true
+	}
+
+	if !found {
+		return nil, fmt.Errorf("Failed to find log type for %q", logSource)
+	}
+
+	bmcLogEvents := make([]api.BMCLogEvent, 0, len(entries))
+	for _, entry := range entries {
+		bmcLogEvents = append(bmcLogEvents, api.BMCLogEvent{
+			EntryCode: string(entry.EntryCode),
+			EntryType: string(entry.EntryType),
+			Message:   entry.Message,
+			Severity:  string(entry.Severity),
+			Timestamp: entry.EventTimestamp,
+		})
+	}
+
+	return bmcLogEvents, nil
 }

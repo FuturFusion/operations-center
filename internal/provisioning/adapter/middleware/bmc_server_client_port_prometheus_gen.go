@@ -67,6 +67,34 @@ func (_d BMCServerClientPortWithPrometheus) GetData(ctx context.Context, server 
 	return _d.base.GetData(ctx, server)
 }
 
+// LogEntriesBySource implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) LogEntriesBySource(ctx context.Context, server provisioning.Server, logSource string) (bMCLogEvents []api.BMCLogEvent, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "LogEntriesBySource", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.LogEntriesBySource(ctx, server, logSource)
+}
+
+// LogSources implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) LogSources(ctx context.Context, server provisioning.Server) (strings []string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "LogSources", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.LogSources(ctx, server)
+}
+
 // ServerPowerOff implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithPrometheus) ServerPowerOff(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
 	_since := time.Now()

@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -2529,4 +2530,55 @@ func (s *serverService) BMCServerRestartByName(ctx context.Context, name string,
 	}
 
 	return nil
+}
+
+func (s *serverService) BMCLogSourcesByName(ctx context.Context, name string) ([]string, error) {
+	if name == "" {
+		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
+	if !ok {
+		return nil, fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCConfig.APIType, err)
+	}
+
+	logSources, err := client.LogSources(ctx, *server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get BMC log sources of server %q: %w", server.Name, err)
+	}
+
+	return logSources, nil
+}
+
+func (s *serverService) BMCLogEntriesByNameAndLogSource(ctx context.Context, name string, logSource string) ([]api.BMCLogEvent, error) {
+	if name == "" {
+		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	logSourceParts := strings.Split(logSource, "/")
+	if len(logSourceParts) != 2 || logSourceParts[0] == "" || logSourceParts[1] == "" {
+		return nil, fmt.Errorf(`Log source %q must have the structure "service/logService": %w`, logSource, domain.ErrOperationNotPermitted)
+	}
+
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
+	if !ok {
+		return nil, fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCConfig.APIType, err)
+	}
+
+	logEntries, err := client.LogEntriesBySource(ctx, *server, logSource)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get BMC log entries of server %q for log source %q: %w", server.Name, logSource, err)
+	}
+
+	return logEntries, nil
 }

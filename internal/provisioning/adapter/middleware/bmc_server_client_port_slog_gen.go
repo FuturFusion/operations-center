@@ -110,6 +110,77 @@ func (_d BMCServerClientPortWithSlog) GetData(ctx context.Context, server provis
 	return _d._base.GetData(ctx, server)
 }
 
+// LogEntriesBySource implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) LogEntriesBySource(ctx context.Context, server provisioning.Server, logSource string) (bMCLogEvents []api.BMCLogEvent, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.String("logSource", logSource),
+		)
+	}
+	log.DebugContext(ctx, "=> calling LogEntriesBySource")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bMCLogEvents", bMCLogEvents),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method LogEntriesBySource returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method LogEntriesBySource returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method LogEntriesBySource finished")
+		}
+	}()
+	return _d._base.LogEntriesBySource(ctx, server, logSource)
+}
+
+// LogSources implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) LogSources(ctx context.Context, server provisioning.Server) (strings []string, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling LogSources")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("strings", strings),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method LogSources returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method LogSources returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method LogSources finished")
+		}
+	}()
+	return _d._base.LogSources(ctx, server)
+}
+
 // ServerPowerOff implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) ServerPowerOff(ctx context.Context, server provisioning.Server, force bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
 	log := slog.With()

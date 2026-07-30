@@ -30,6 +30,15 @@ type mockRedfishServer struct {
 	resetStatusCode           int
 	resetLocation             string
 
+	chassisStatusCode       int
+	chassisBody             string
+	chassisMemberStatusCode int
+	chassisMemberBody       string
+	logServicesStatusCode   int
+	logServicesBody         string
+	logEntriesStatusCode    int
+	logEntriesBody          string
+
 	taskMonitorStatusCodes []int
 	taskMonitorRetryAfter  string
 }
@@ -75,7 +84,8 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
   "RedfishVersion": "1.16.0",
   "Vendor": "Dell",
   "Systems": { "@odata.id": "/redfish/v1/Systems" },
-  "Managers": { "@odata.id": "/redfish/v1/Managers" }
+  "Managers": { "@odata.id": "/redfish/v1/Managers" },
+  "Chassis": { "@odata.id": "/redfish/v1/Chassis" }
 }`))
 			}
 
@@ -120,6 +130,24 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
 		case "/redfish/v1/Systems/1/Processors/1":
 			w.WriteHeader(cfg.processorStatusCode)
 			_, _ = w.Write([]byte(cfg.processorBody))
+
+		case "/redfish/v1/Chassis":
+			w.WriteHeader(cfg.chassisStatusCode)
+			_, _ = w.Write([]byte(cfg.chassisBody))
+
+		case "/redfish/v1/Chassis/1":
+			w.WriteHeader(cfg.chassisMemberStatusCode)
+			_, _ = w.Write([]byte(cfg.chassisMemberBody))
+
+		case "/redfish/v1/Chassis/1/LogServices",
+			"/redfish/v1/Systems/1/LogServices",
+			"/redfish/v1/Managers/1/LogServices":
+			w.WriteHeader(cfg.logServicesStatusCode)
+			_, _ = w.Write([]byte(cfg.logServicesBody))
+
+		case "/redfish/v1/LogEntries":
+			w.WriteHeader(cfg.logEntriesStatusCode)
+			_, _ = w.Write([]byte(cfg.logEntriesBody))
 
 		case "/redfish/v1/TaskMonitor/1":
 			statusCode := cfg.taskMonitorStatusCodes[min(taskMonitorCallCount, len(cfg.taskMonitorStatusCodes)-1)]
