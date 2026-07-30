@@ -28,6 +28,12 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //			GetDataFunc: func(ctx context.Context, server provisioning.Server) (api.BMCData, error) {
 //				panic("mock out the GetData method")
 //			},
+//			LogEntriesBySourceFunc: func(ctx context.Context, server provisioning.Server, logSource string) ([]api.BMCLogEvent, error) {
+//				panic("mock out the LogEntriesBySource method")
+//			},
+//			LogSourcesFunc: func(ctx context.Context, server provisioning.Server) ([]string, error) {
+//				panic("mock out the LogSources method")
+//			},
 //			ServerPowerOffFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
 //				panic("mock out the ServerPowerOff method")
 //			},
@@ -53,6 +59,12 @@ type BMCServerClientPortMock struct {
 	// GetDataFunc mocks the GetData method.
 	GetDataFunc func(ctx context.Context, server provisioning.Server) (api.BMCData, error)
 
+	// LogEntriesBySourceFunc mocks the LogEntriesBySource method.
+	LogEntriesBySourceFunc func(ctx context.Context, server provisioning.Server, logSource string) ([]api.BMCLogEvent, error)
+
+	// LogSourcesFunc mocks the LogSources method.
+	LogSourcesFunc func(ctx context.Context, server provisioning.Server) ([]string, error)
+
 	// ServerPowerOffFunc mocks the ServerPowerOff method.
 	ServerPowerOffFunc func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error)
 
@@ -76,6 +88,22 @@ type BMCServerClientPortMock struct {
 		}
 		// GetData holds details about calls to the GetData method.
 		GetData []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
+		// LogEntriesBySource holds details about calls to the LogEntriesBySource method.
+		LogEntriesBySource []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// LogSource is the logSource argument value.
+			LogSource string
+		}
+		// LogSources holds details about calls to the LogSources method.
+		LogSources []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Server is the server argument value.
@@ -118,12 +146,14 @@ type BMCServerClientPortMock struct {
 			TaskMonitor *provisioning.BMCTaskMonitor
 		}
 	}
-	lockConnectionTest sync.RWMutex
-	lockGetData        sync.RWMutex
-	lockServerPowerOff sync.RWMutex
-	lockServerPowerOn  sync.RWMutex
-	lockServerRestart  sync.RWMutex
-	lockWaitForTask    sync.RWMutex
+	lockConnectionTest     sync.RWMutex
+	lockGetData            sync.RWMutex
+	lockLogEntriesBySource sync.RWMutex
+	lockLogSources         sync.RWMutex
+	lockServerPowerOff     sync.RWMutex
+	lockServerPowerOn      sync.RWMutex
+	lockServerRestart      sync.RWMutex
+	lockWaitForTask        sync.RWMutex
 }
 
 // ConnectionTest calls ConnectionTestFunc.
@@ -195,6 +225,82 @@ func (mock *BMCServerClientPortMock) GetDataCalls() []struct {
 	mock.lockGetData.RLock()
 	calls = mock.calls.GetData
 	mock.lockGetData.RUnlock()
+	return calls
+}
+
+// LogEntriesBySource calls LogEntriesBySourceFunc.
+func (mock *BMCServerClientPortMock) LogEntriesBySource(ctx context.Context, server provisioning.Server, logSource string) ([]api.BMCLogEvent, error) {
+	if mock.LogEntriesBySourceFunc == nil {
+		panic("BMCServerClientPortMock.LogEntriesBySourceFunc: method is nil but BMCServerClientPort.LogEntriesBySource was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		Server    provisioning.Server
+		LogSource string
+	}{
+		Ctx:       ctx,
+		Server:    server,
+		LogSource: logSource,
+	}
+	mock.lockLogEntriesBySource.Lock()
+	mock.calls.LogEntriesBySource = append(mock.calls.LogEntriesBySource, callInfo)
+	mock.lockLogEntriesBySource.Unlock()
+	return mock.LogEntriesBySourceFunc(ctx, server, logSource)
+}
+
+// LogEntriesBySourceCalls gets all the calls that were made to LogEntriesBySource.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.LogEntriesBySourceCalls())
+func (mock *BMCServerClientPortMock) LogEntriesBySourceCalls() []struct {
+	Ctx       context.Context
+	Server    provisioning.Server
+	LogSource string
+} {
+	var calls []struct {
+		Ctx       context.Context
+		Server    provisioning.Server
+		LogSource string
+	}
+	mock.lockLogEntriesBySource.RLock()
+	calls = mock.calls.LogEntriesBySource
+	mock.lockLogEntriesBySource.RUnlock()
+	return calls
+}
+
+// LogSources calls LogSourcesFunc.
+func (mock *BMCServerClientPortMock) LogSources(ctx context.Context, server provisioning.Server) ([]string, error) {
+	if mock.LogSourcesFunc == nil {
+		panic("BMCServerClientPortMock.LogSourcesFunc: method is nil but BMCServerClientPort.LogSources was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockLogSources.Lock()
+	mock.calls.LogSources = append(mock.calls.LogSources, callInfo)
+	mock.lockLogSources.Unlock()
+	return mock.LogSourcesFunc(ctx, server)
+}
+
+// LogSourcesCalls gets all the calls that were made to LogSources.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.LogSourcesCalls())
+func (mock *BMCServerClientPortMock) LogSourcesCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockLogSources.RLock()
+	calls = mock.calls.LogSources
+	mock.lockLogSources.RUnlock()
 	return calls
 }
 

@@ -55,6 +55,34 @@ func (_d ServerServiceWithPrometheus) AddApplication(ctx context.Context, name s
 	return _d.base.AddApplication(ctx, name, applicationName)
 }
 
+// BMCLogEntriesByNameAndLogSource implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BMCLogEntriesByNameAndLogSource(ctx context.Context, name string, logSource string) (bMCLogEvents []api.BMCLogEvent, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCLogEntriesByNameAndLogSource", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BMCLogEntriesByNameAndLogSource(ctx, name, logSource)
+}
+
+// BMCLogSourcesByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BMCLogSourcesByName(ctx context.Context, name string) (strings []string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCLogSourcesByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BMCLogSourcesByName(ctx, name)
+}
+
 // BMCRefreshByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) BMCRefreshByName(ctx context.Context, name string) (err error) {
 	_since := time.Now()

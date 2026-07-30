@@ -28,6 +28,12 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			AddApplicationFunc: func(ctx context.Context, name string, applicationName string) error {
 //				panic("mock out the AddApplication method")
 //			},
+//			BMCLogEntriesByNameAndLogSourceFunc: func(ctx context.Context, name string, logSource string) ([]api.BMCLogEvent, error) {
+//				panic("mock out the BMCLogEntriesByNameAndLogSource method")
+//			},
+//			BMCLogSourcesByNameFunc: func(ctx context.Context, name string) ([]string, error) {
+//				panic("mock out the BMCLogSourcesByName method")
+//			},
 //			BMCRefreshByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the BMCRefreshByName method")
 //			},
@@ -160,6 +166,12 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 type ServerServiceMock struct {
 	// AddApplicationFunc mocks the AddApplication method.
 	AddApplicationFunc func(ctx context.Context, name string, applicationName string) error
+
+	// BMCLogEntriesByNameAndLogSourceFunc mocks the BMCLogEntriesByNameAndLogSource method.
+	BMCLogEntriesByNameAndLogSourceFunc func(ctx context.Context, name string, logSource string) ([]api.BMCLogEvent, error)
+
+	// BMCLogSourcesByNameFunc mocks the BMCLogSourcesByName method.
+	BMCLogSourcesByNameFunc func(ctx context.Context, name string) ([]string, error)
 
 	// BMCRefreshByNameFunc mocks the BMCRefreshByName method.
 	BMCRefreshByNameFunc func(ctx context.Context, name string) error
@@ -294,6 +306,22 @@ type ServerServiceMock struct {
 			Name string
 			// ApplicationName is the applicationName argument value.
 			ApplicationName string
+		}
+		// BMCLogEntriesByNameAndLogSource holds details about calls to the BMCLogEntriesByNameAndLogSource method.
+		BMCLogEntriesByNameAndLogSource []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// LogSource is the logSource argument value.
+			LogSource string
+		}
+		// BMCLogSourcesByName holds details about calls to the BMCLogSourcesByName method.
+		BMCLogSourcesByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
 		}
 		// BMCRefreshByName holds details about calls to the BMCRefreshByName method.
 		BMCRefreshByName []struct {
@@ -631,48 +659,50 @@ type ServerServiceMock struct {
 			UpdateConfig provisioning.ServerSystemUpdate
 		}
 	}
-	lockAddApplication               sync.RWMutex
-	lockBMCRefreshByName             sync.RWMutex
-	lockBMCServerPowerOffByName      sync.RWMutex
-	lockBMCServerPowerOnByName       sync.RWMutex
-	lockBMCServerRestartByName       sync.RWMutex
-	lockDeleteByName                 sync.RWMutex
-	lockEvacuateSystemByName         sync.RWMutex
-	lockFactoryResetByName           sync.RWMutex
-	lockGetAll                       sync.RWMutex
-	lockGetAllNames                  sync.RWMutex
-	lockGetAllNamesWithFilter        sync.RWMutex
-	lockGetAllWithFilter             sync.RWMutex
-	lockGetByName                    sync.RWMutex
-	lockGetChangelogByName           sync.RWMutex
-	lockGetSystemKernel              sync.RWMutex
-	lockGetSystemLogging             sync.RWMutex
-	lockGetSystemProvider            sync.RWMutex
-	lockGetSystemUpdate              sync.RWMutex
-	lockPollServer                   sync.RWMutex
-	lockPollServers                  sync.RWMutex
-	lockPostRestoreSystemDoneByName  sync.RWMutex
-	lockPoweroffSystemByName         sync.RWMutex
-	lockPreRegister                  sync.RWMutex
-	lockRebootSystemByName           sync.RWMutex
-	lockRegister                     sync.RWMutex
-	lockRename                       sync.RWMutex
-	lockRestartApplication           sync.RWMutex
-	lockRestoreSystemByName          sync.RWMutex
-	lockResyncBMCData                sync.RWMutex
-	lockResyncByName                 sync.RWMutex
-	lockSelfRegisterOperationsCenter sync.RWMutex
-	lockSelfUpdate                   sync.RWMutex
-	lockSetClusterService            sync.RWMutex
-	lockSyncCluster                  sync.RWMutex
-	lockUpdate                       sync.RWMutex
-	lockUpdateSystemByName           sync.RWMutex
-	lockUpdateSystemKernel           sync.RWMutex
-	lockUpdateSystemLogging          sync.RWMutex
-	lockUpdateSystemNetwork          sync.RWMutex
-	lockUpdateSystemProvider         sync.RWMutex
-	lockUpdateSystemStorage          sync.RWMutex
-	lockUpdateSystemUpdate           sync.RWMutex
+	lockAddApplication                  sync.RWMutex
+	lockBMCLogEntriesByNameAndLogSource sync.RWMutex
+	lockBMCLogSourcesByName             sync.RWMutex
+	lockBMCRefreshByName                sync.RWMutex
+	lockBMCServerPowerOffByName         sync.RWMutex
+	lockBMCServerPowerOnByName          sync.RWMutex
+	lockBMCServerRestartByName          sync.RWMutex
+	lockDeleteByName                    sync.RWMutex
+	lockEvacuateSystemByName            sync.RWMutex
+	lockFactoryResetByName              sync.RWMutex
+	lockGetAll                          sync.RWMutex
+	lockGetAllNames                     sync.RWMutex
+	lockGetAllNamesWithFilter           sync.RWMutex
+	lockGetAllWithFilter                sync.RWMutex
+	lockGetByName                       sync.RWMutex
+	lockGetChangelogByName              sync.RWMutex
+	lockGetSystemKernel                 sync.RWMutex
+	lockGetSystemLogging                sync.RWMutex
+	lockGetSystemProvider               sync.RWMutex
+	lockGetSystemUpdate                 sync.RWMutex
+	lockPollServer                      sync.RWMutex
+	lockPollServers                     sync.RWMutex
+	lockPostRestoreSystemDoneByName     sync.RWMutex
+	lockPoweroffSystemByName            sync.RWMutex
+	lockPreRegister                     sync.RWMutex
+	lockRebootSystemByName              sync.RWMutex
+	lockRegister                        sync.RWMutex
+	lockRename                          sync.RWMutex
+	lockRestartApplication              sync.RWMutex
+	lockRestoreSystemByName             sync.RWMutex
+	lockResyncBMCData                   sync.RWMutex
+	lockResyncByName                    sync.RWMutex
+	lockSelfRegisterOperationsCenter    sync.RWMutex
+	lockSelfUpdate                      sync.RWMutex
+	lockSetClusterService               sync.RWMutex
+	lockSyncCluster                     sync.RWMutex
+	lockUpdate                          sync.RWMutex
+	lockUpdateSystemByName              sync.RWMutex
+	lockUpdateSystemKernel              sync.RWMutex
+	lockUpdateSystemLogging             sync.RWMutex
+	lockUpdateSystemNetwork             sync.RWMutex
+	lockUpdateSystemProvider            sync.RWMutex
+	lockUpdateSystemStorage             sync.RWMutex
+	lockUpdateSystemUpdate              sync.RWMutex
 }
 
 // AddApplication calls AddApplicationFunc.
@@ -712,6 +742,82 @@ func (mock *ServerServiceMock) AddApplicationCalls() []struct {
 	mock.lockAddApplication.RLock()
 	calls = mock.calls.AddApplication
 	mock.lockAddApplication.RUnlock()
+	return calls
+}
+
+// BMCLogEntriesByNameAndLogSource calls BMCLogEntriesByNameAndLogSourceFunc.
+func (mock *ServerServiceMock) BMCLogEntriesByNameAndLogSource(ctx context.Context, name string, logSource string) ([]api.BMCLogEvent, error) {
+	if mock.BMCLogEntriesByNameAndLogSourceFunc == nil {
+		panic("ServerServiceMock.BMCLogEntriesByNameAndLogSourceFunc: method is nil but ServerService.BMCLogEntriesByNameAndLogSource was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		Name      string
+		LogSource string
+	}{
+		Ctx:       ctx,
+		Name:      name,
+		LogSource: logSource,
+	}
+	mock.lockBMCLogEntriesByNameAndLogSource.Lock()
+	mock.calls.BMCLogEntriesByNameAndLogSource = append(mock.calls.BMCLogEntriesByNameAndLogSource, callInfo)
+	mock.lockBMCLogEntriesByNameAndLogSource.Unlock()
+	return mock.BMCLogEntriesByNameAndLogSourceFunc(ctx, name, logSource)
+}
+
+// BMCLogEntriesByNameAndLogSourceCalls gets all the calls that were made to BMCLogEntriesByNameAndLogSource.
+// Check the length with:
+//
+//	len(mockedServerService.BMCLogEntriesByNameAndLogSourceCalls())
+func (mock *ServerServiceMock) BMCLogEntriesByNameAndLogSourceCalls() []struct {
+	Ctx       context.Context
+	Name      string
+	LogSource string
+} {
+	var calls []struct {
+		Ctx       context.Context
+		Name      string
+		LogSource string
+	}
+	mock.lockBMCLogEntriesByNameAndLogSource.RLock()
+	calls = mock.calls.BMCLogEntriesByNameAndLogSource
+	mock.lockBMCLogEntriesByNameAndLogSource.RUnlock()
+	return calls
+}
+
+// BMCLogSourcesByName calls BMCLogSourcesByNameFunc.
+func (mock *ServerServiceMock) BMCLogSourcesByName(ctx context.Context, name string) ([]string, error) {
+	if mock.BMCLogSourcesByNameFunc == nil {
+		panic("ServerServiceMock.BMCLogSourcesByNameFunc: method is nil but ServerService.BMCLogSourcesByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockBMCLogSourcesByName.Lock()
+	mock.calls.BMCLogSourcesByName = append(mock.calls.BMCLogSourcesByName, callInfo)
+	mock.lockBMCLogSourcesByName.Unlock()
+	return mock.BMCLogSourcesByNameFunc(ctx, name)
+}
+
+// BMCLogSourcesByNameCalls gets all the calls that were made to BMCLogSourcesByName.
+// Check the length with:
+//
+//	len(mockedServerService.BMCLogSourcesByNameCalls())
+func (mock *ServerServiceMock) BMCLogSourcesByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockBMCLogSourcesByName.RLock()
+	calls = mock.calls.BMCLogSourcesByName
+	mock.lockBMCLogSourcesByName.RUnlock()
 	return calls
 }
 
