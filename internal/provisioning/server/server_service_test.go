@@ -8767,6 +8767,451 @@ func TestServerService_ResyncBMCData(t *testing.T) {
 	}
 }
 
+func TestServerService_BMCServerPowerOnByName(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	taskMonitor := &provisioning.BMCTaskMonitor{
+		URI: "https://bmc.local/task/1",
+	}
+
+	closedChannel := func() chan struct{} {
+		ch := make(chan struct{})
+		close(ch)
+		return ch
+	}
+
+	tests := []struct {
+		name                      string
+		nameArg                   string
+		repoGetByNameServer       *provisioning.Server
+		repoGetByNameErr          error
+		bmcClientServerPowerOnErr error
+		bmcClientWaitErr          error
+		bmcClientGetData          api.BMCData
+		bmcClientGetDataErr       error
+		repoUpdateErr             error
+		resyncDone                chan struct{}
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientGetData: api.BMCData{
+				ServerUUID: "e9de436e-b94e-4aef-8563-883aec84096e",
+			},
+			resyncDone: make(chan struct{}),
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "success - task monitor wait fails but resync still runs",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientWaitErr: boom.Error,
+			bmcClientGetData: api.BMCData{
+				ServerUUID: "e9de436e-b94e-4aef-8563-883aec84096e",
+			},
+			resyncDone: make(chan struct{}),
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "success - resync fails",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientGetDataErr: boom.Error,
+			resyncDone:          make(chan struct{}),
+
+			assertErr: require.NoError,
+		},
+		{
+			name:       "error - name empty",
+			nameArg:    "", // invalid
+			resyncDone: closedChannel(),
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			nameArg:          "one",
+			repoGetByNameErr: boom.Error,
+			resyncDone:       closedChannel(),
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - no BMC server client registered for type",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPIType("unknown"),
+				},
+			},
+			resyncDone: closedChannel(),
+
+			assertErr: errassert.Contains(`Failed to get BMC server client for type "unknown"`),
+		},
+		{
+			name:    "error - client.ServerPowerOn",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientServerPowerOnErr: boom.Error,
+			resyncDone:                closedChannel(),
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					defer close(tc.resyncDone)
+
+					wantDetails := tc.bmcClientGetData
+					wantDetails.LastUpdated = fixedDate
+					require.Equal(t, wantDetails, in.BMCData)
+
+					return tc.repoUpdateErr
+				},
+			}
+
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				ServerPowerOnFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+					return taskMonitor, tc.bmcClientServerPowerOnErr
+				},
+				WaitForTaskFunc: func(ctx context.Context, server provisioning.Server, monitor *provisioning.BMCTaskMonitor) error {
+					require.Same(t, taskMonitor, monitor)
+
+					return tc.bmcClientWaitErr
+				},
+				GetDataFunc: func(ctx context.Context, server provisioning.Server) (api.BMCData, error) {
+					if tc.bmcClientGetDataErr != nil {
+						close(tc.resyncDone)
+					}
+
+					return tc.bmcClientGetData, tc.bmcClientGetDataErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				provisioningServer.WithNow(func() time.Time { return fixedDate }),
+				provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+			)
+
+			// Run test
+			err := serverSvc.BMCServerPowerOnByName(t.Context(), tc.nameArg, false)
+
+			// Assert
+			tc.assertErr(t, err)
+
+			select {
+			case <-tc.resyncDone:
+			case <-time.After(100 * time.Millisecond):
+				t.Fatal("timed out waiting for asynchronous BMC resync")
+			}
+		})
+	}
+}
+
+func TestServerService_BMCServerPowerOffByName(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	taskMonitor := &provisioning.BMCTaskMonitor{
+		URI: "https://bmc.local/task/1",
+	}
+
+	closedChannel := func() chan struct{} {
+		ch := make(chan struct{})
+		close(ch)
+		return ch
+	}
+
+	tests := []struct {
+		name                       string
+		nameArg                    string
+		repoGetByNameServer        *provisioning.Server
+		repoGetByNameErr           error
+		bmcClientServerPowerOffErr error
+		bmcClientWaitErr           error
+		bmcClientGetData           api.BMCData
+		bmcClientGetDataErr        error
+		repoUpdateErr              error
+		resyncDone                 chan struct{}
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientGetData: api.BMCData{
+				ServerUUID: "e9de436e-b94e-4aef-8563-883aec84096e",
+			},
+			resyncDone: make(chan struct{}),
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "success - task monitor wait fails but resync still runs",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientWaitErr: boom.Error,
+			bmcClientGetData: api.BMCData{
+				ServerUUID: "e9de436e-b94e-4aef-8563-883aec84096e",
+			},
+			resyncDone: make(chan struct{}),
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "success - resync fails",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientGetDataErr: boom.Error,
+			resyncDone:          make(chan struct{}),
+
+			assertErr: require.NoError,
+		},
+		{
+			name:       "error - name empty",
+			nameArg:    "", // invalid
+			resyncDone: closedChannel(),
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			nameArg:          "one",
+			repoGetByNameErr: boom.Error,
+			resyncDone:       closedChannel(),
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - no BMC server client registered for type",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPIType("unknown"),
+				},
+			},
+			resyncDone: closedChannel(),
+
+			assertErr: errassert.Contains(`Failed to get BMC server client for type "unknown"`),
+		},
+		{
+			name:    "error - client.ServerPowerOff",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientServerPowerOffErr: boom.Error,
+			resyncDone:                 closedChannel(),
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					defer close(tc.resyncDone)
+
+					wantDetails := tc.bmcClientGetData
+					wantDetails.LastUpdated = fixedDate
+					require.Equal(t, wantDetails, in.BMCData)
+
+					return tc.repoUpdateErr
+				},
+			}
+
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				ServerPowerOffFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+					return taskMonitor, tc.bmcClientServerPowerOffErr
+				},
+				WaitForTaskFunc: func(ctx context.Context, server provisioning.Server, monitor *provisioning.BMCTaskMonitor) error {
+					require.Same(t, taskMonitor, monitor)
+
+					return tc.bmcClientWaitErr
+				},
+				GetDataFunc: func(ctx context.Context, server provisioning.Server) (api.BMCData, error) {
+					if tc.bmcClientGetDataErr != nil {
+						close(tc.resyncDone)
+					}
+
+					return tc.bmcClientGetData, tc.bmcClientGetDataErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				provisioningServer.WithNow(func() time.Time { return fixedDate }),
+				provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+			)
+
+			// Run test
+			err := serverSvc.BMCServerPowerOffByName(t.Context(), tc.nameArg, false)
+
+			// Assert
+			tc.assertErr(t, err)
+
+			select {
+			case <-tc.resyncDone:
+			case <-time.After(100 * time.Millisecond):
+				t.Fatal("timed out waiting for asynchronous BMC resync")
+			}
+		})
+	}
+}
+
+func TestServerService_BMCServerRestartByName(t *testing.T) {
+	taskMonitor := &provisioning.BMCTaskMonitor{
+		URI: "https://bmc.local/task/1",
+	}
+
+	tests := []struct {
+		name                      string
+		nameArg                   string
+		repoGetByNameServer       *provisioning.Server
+		repoGetByNameErr          error
+		bmcClientServerRestartErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "error - name empty",
+			nameArg: "", // invalid
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			nameArg:          "one",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - no BMC server client registered for type",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPIType("unknown"),
+				},
+			},
+
+			assertErr: errassert.Contains(`Failed to get BMC server client for type "unknown"`),
+		},
+		{
+			name:    "error - client.ServerRestart",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientServerRestartErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+			}
+
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				ServerRestartFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+					return taskMonitor, tc.bmcClientServerRestartErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+			)
+
+			// Run test
+			err := serverSvc.BMCServerRestartByName(t.Context(), tc.nameArg, false)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestServerService_SyncCluster(t *testing.T) {
 	s := provisioningServer.New(nil, nil, nil, nil, nil, nil, nil, tls.Certificate{})
 	err := s.SyncCluster(t.Context(), "")

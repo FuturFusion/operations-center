@@ -2431,3 +2431,102 @@ func (s *serverService) BMCRefreshByName(ctx context.Context, name string) error
 
 	return nil
 }
+
+func (s *serverService) BMCServerPowerOnByName(ctx context.Context, name string, force bool) error {
+	if name == "" {
+		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
+	if !ok {
+		return fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCConfig.APIType, err)
+	}
+
+	taskMonitor, err := client.ServerPowerOn(ctx, *server, force)
+	if err != nil {
+		return fmt.Errorf("Failed to trigger power on of server %q via BMC: %w", server.Name, err)
+	}
+
+	go func() {
+		// Use a detached context in order to make sure, no existing DB transaction is inherited.
+		ctx := context.Background()
+
+		err = client.WaitForTask(ctx, *server, taskMonitor)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after server power on operation", logger.Err(err))
+		}
+
+		err = s.resyncBMCData(ctx, *server)
+		if err != nil {
+			slog.WarnContext(ctx, "Resync of BMC data after power on failed", logger.Err(err), slog.String("name", server.Name))
+		}
+	}()
+
+	return nil
+}
+
+func (s *serverService) BMCServerPowerOffByName(ctx context.Context, name string, force bool) error {
+	if name == "" {
+		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
+	if !ok {
+		return fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCConfig.APIType, err)
+	}
+
+	taskMonitor, err := client.ServerPowerOff(ctx, *server, force)
+	if err != nil {
+		return fmt.Errorf("Failed to trigger power off of server %q via BMC: %w", server.Name, err)
+	}
+
+	go func() {
+		// Use a detached context in order to make sure, no existing DB transaction is inherited.
+		ctx := context.Background()
+
+		err = client.WaitForTask(ctx, *server, taskMonitor)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after server power off operation", logger.Err(err))
+		}
+
+		err = s.resyncBMCData(ctx, *server)
+		if err != nil {
+			slog.WarnContext(ctx, "Resync of BMC data after power off failed", logger.Err(err), slog.String("name", server.Name))
+		}
+	}()
+
+	return nil
+}
+
+func (s *serverService) BMCServerRestartByName(ctx context.Context, name string, force bool) error {
+	if name == "" {
+		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
+	if !ok {
+		return fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCConfig.APIType, err)
+	}
+
+	_, err = client.ServerRestart(ctx, *server, force)
+	if err != nil {
+		return fmt.Errorf("Failed to trigger restart of server %q via BMC: %w", server.Name, err)
+	}
+
+	return nil
+}

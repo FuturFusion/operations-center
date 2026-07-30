@@ -262,3 +262,45 @@ func (c OperationsCenterClient) BMCDataRefresh(ctx context.Context, name string)
 
 	return nil
 }
+
+func (c OperationsCenterClient) BMCServerPowerOn(ctx context.Context, name string, force bool) error {
+	query := url.Values{}
+	if force {
+		query.Add("force", "1")
+	}
+
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "bmc/:server-power-on"), query, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c OperationsCenterClient) BMCServerPowerOff(ctx context.Context, name string, force bool) error {
+	query := url.Values{}
+	if force {
+		query.Add("force", "1")
+	}
+
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "bmc/:server-power-off"), query, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c OperationsCenterClient) BMCServerRestart(ctx context.Context, name string, force bool) error {
+	query := url.Values{}
+	if force {
+		query.Add("force", "1")
+	}
+
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "bmc/:server-restart"), query, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
