@@ -78,6 +78,8 @@ func registerProvisioningServerHandler(
 	router.HandleFunc("POST /{name}/bmc/:server-power-on", response.With(handler.serverBMCServerPowerOnPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/bmc/:server-power-off", response.With(handler.serverBMCServerPowerOffPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/bmc/:server-restart", response.With(handler.serverBMCServerRestartPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{name}/bmc/logs", response.With(handler.serverBMCLogSourcesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{name}/bmc/logs/{logSource...}", response.With(handler.serverBMCLogEntriesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}/changelog", response.With(handler.serverChangelogGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("/{name}/os", response.With(handler.serverOSProxy, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("/{name}/os/", response.With(handler.serverOSProxy, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
@@ -1032,6 +1034,109 @@ func (s *serverHandler) serverBMCServerRestartPost(r *http.Request) response.Res
 	}
 
 	return response.EmptySyncResponse
+}
+
+// swagger:operation GET /1.0/provisioning/servers/{name}/bmc/logs servers_bmc_logs server_bmc_logs_get
+//
+//	Get the available BMC log sources
+//
+//	Returns the list of log sources available via the server's BMC.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: BMC log sources
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of log sources
+//	          items:
+//	            type: string
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverBMCLogSourcesGet(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	logSources, err := s.service.BMCLogSourcesByName(r.Context(), name)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to get BMC log sources of server %q: %w", name, err))
+	}
+
+	return response.SyncResponse(true, logSources)
+}
+
+// swagger:operation GET /1.0/provisioning/servers/{name}/bmc/logs/{logSource} servers_bmc_logs server_bmc_log_entries_get
+//
+//	Get the BMC log entries of a log source
+//
+//	Returns the log entries of the given log source available via the server's
+//	BMC. The log source has the structure "service/logService", e.g.
+//	"chassis/Logs".
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: BMC log entries
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of log entries
+//	          items:
+//	            $ref: "#/definitions/BMCLogEvent"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverBMCLogEntriesGet(r *http.Request) response.Response {
+	name := r.PathValue("name")
+	logSource := r.PathValue("logSource")
+
+	logEntries, err := s.service.BMCLogEntriesByNameAndLogSource(r.Context(), name, logSource)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to get BMC log entries of server %q for log source %q: %w", name, logSource, err))
+	}
+
+	return response.SyncResponse(true, logEntries)
 }
 
 // swagger:operation GET /1.0/provisioning/servers/{name}/changelog servers server_changelog_get
