@@ -1307,3 +1307,442 @@ func TestRedfish_WaitForTask(t *testing.T) {
 		})
 	}
 }
+
+const (
+	logEmptyCollectionBody = `{
+  "Members@odata.count": 0,
+  "Members": []
+}`
+
+	logChassisCollectionBody = `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Chassis/1" }
+  ]
+}`
+
+	logChassisMemberBody = `{
+  "@odata.id": "/redfish/v1/Chassis/1",
+  "Id": "1",
+  "LogServices": { "@odata.id": "/redfish/v1/Chassis/1/LogServices" }
+}`
+
+	logSystemsCollectionBody = `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`
+
+	logSystemMemberBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "LogServices": { "@odata.id": "/redfish/v1/Systems/1/LogServices" }
+}`
+
+	logManagersCollectionBody = `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`
+
+	logManagerMemberBody = `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1",
+  "LogServices": { "@odata.id": "/redfish/v1/Managers/1/LogServices" }
+}`
+
+	logServicesBody = `{
+  "Members@odata.count": 2,
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/LogServices/Other",
+      "Id": "Other",
+      "Entries": { "@odata.id": "/redfish/v1/OtherEntries" }
+    },
+    {
+      "@odata.id": "/redfish/v1/LogServices/Logs",
+      "Id": "Logs",
+      "Entries": { "@odata.id": "/redfish/v1/LogEntries" }
+    }
+  ]
+}`
+
+	logEntriesBody = `{
+  "Members@odata.count": 2,
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/LogEntries/1",
+      "Id": "1",
+      "EntryCode": "Assert",
+      "EntryType": "SEL",
+      "Message": "First log message",
+      "Severity": "OK",
+      "EventTimestamp": "2026-07-30T08:04:00Z"
+    },
+    {
+      "@odata.id": "/redfish/v1/LogEntries/2",
+      "Id": "2",
+      "EntryType": "Event",
+      "Message": "Second log message",
+      "Severity": "Critical",
+      "EventTimestamp": "2026-07-30T09:00:00Z"
+    }
+  ]
+}`
+)
+
+func TestRedfish_LogEntriesBySource(t *testing.T) {
+	wantLogEntries := []api.BMCLogEvent{
+		{
+			EntryCode: "Assert",
+			EntryType: "SEL",
+			Message:   "First log message",
+			Severity:  "OK",
+			Timestamp: "2026-07-30T08:04:00Z",
+		},
+		{
+			EntryType: "Event",
+			Message:   "Second log message",
+			Severity:  "Critical",
+			Timestamp: "2026-07-30T09:00:00Z",
+		},
+	}
+
+	tests := []struct {
+		name      string
+		logSource string
+		responses mockRedfishServer
+
+		assertErr require.ErrorAssertionFunc
+		want      []api.BMCLogEvent
+	}{
+		{
+			name:      "success - chassis log source",
+			logSource: "chassis/Logs",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode:   http.StatusOK,
+				chassisStatusCode:       http.StatusOK,
+				chassisBody:             logChassisCollectionBody,
+				chassisMemberStatusCode: http.StatusOK,
+				chassisMemberBody:       logChassisMemberBody,
+				logServicesStatusCode:   http.StatusOK,
+				logServicesBody:         logServicesBody,
+				logEntriesStatusCode:    http.StatusOK,
+				logEntriesBody:          logEntriesBody,
+			},
+
+			assertErr: require.NoError,
+			want:      wantLogEntries,
+		},
+		{
+			name:      "success - system log source",
+			logSource: "system/Logs",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				systemsStatusCode:     http.StatusOK,
+				systemsBody:           logSystemsCollectionBody,
+				systemStatusCode:      http.StatusOK,
+				systemBody:            logSystemMemberBody,
+				logServicesStatusCode: http.StatusOK,
+				logServicesBody:       logServicesBody,
+				logEntriesStatusCode:  http.StatusOK,
+				logEntriesBody:        logEntriesBody,
+			},
+
+			assertErr: require.NoError,
+			want:      wantLogEntries,
+		},
+		{
+			name:      "success - manager log source",
+			logSource: "manager/Logs",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				managersStatusCode:    http.StatusOK,
+				managersBody:          logManagersCollectionBody,
+				managerStatusCode:     http.StatusOK,
+				managerBody:           logManagerMemberBody,
+				logServicesStatusCode: http.StatusOK,
+				logServicesBody:       logServicesBody,
+				logEntriesStatusCode:  http.StatusOK,
+				logEntriesBody:        logEntriesBody,
+			},
+
+			assertErr: require.NoError,
+			want:      wantLogEntries,
+		},
+		{
+			name:      "error - invalid log source format",
+			logSource: "invalid",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+			},
+
+			assertErr: errassert.Contains("Invalid log source"),
+		},
+		{
+			name:      "error - unknown log source service",
+			logSource: "foobar/Logs",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+			},
+
+			assertErr: errassert.Contains("Invalid log source service"),
+		},
+		{
+			name:      "error - failed to connect to BMC",
+			logSource: "chassis/Logs",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusInternalServerError,
+			},
+
+			assertErr: errassert.Contains("Failed to connect to BMC"),
+		},
+		{
+			name:      "error - failed to get BMC chassis",
+			logSource: "chassis/Logs",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				chassisStatusCode:     http.StatusInternalServerError,
+			},
+
+			assertErr: errassert.Contains("Failed to get BMC chassis"),
+		},
+		{
+			name:      "error - failed to get BMC system",
+			logSource: "system/Logs",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				systemsStatusCode:     http.StatusInternalServerError,
+			},
+
+			assertErr: errassert.Contains("Failed to get BMC system"),
+		},
+		{
+			name:      "error - failed to get BMC manager",
+			logSource: "manager/Logs",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				managersStatusCode:    http.StatusInternalServerError,
+			},
+
+			assertErr: errassert.Contains("Failed to get BMC manager"),
+		},
+		{
+			name:      "error - failed to get log services",
+			logSource: "chassis/Logs",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode:   http.StatusOK,
+				chassisStatusCode:       http.StatusOK,
+				chassisBody:             logChassisCollectionBody,
+				chassisMemberStatusCode: http.StatusOK,
+				chassisMemberBody:       logChassisMemberBody,
+				logServicesStatusCode:   http.StatusInternalServerError,
+			},
+
+			assertErr: errassert.Contains("Failed to get log services"),
+		},
+		{
+			name:      "error - log type not found",
+			logSource: "chassis/DoesNotExist",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode:   http.StatusOK,
+				chassisStatusCode:       http.StatusOK,
+				chassisBody:             logChassisCollectionBody,
+				chassisMemberStatusCode: http.StatusOK,
+				chassisMemberBody:       logChassisMemberBody,
+				logServicesStatusCode:   http.StatusOK,
+				logServicesBody:         logServicesBody,
+			},
+
+			assertErr: errassert.Contains("Failed to find log type"),
+		},
+		{
+			name:      "error - failed to get log entries",
+			logSource: "chassis/Logs",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode:   http.StatusOK,
+				chassisStatusCode:       http.StatusOK,
+				chassisBody:             logChassisCollectionBody,
+				chassisMemberStatusCode: http.StatusOK,
+				chassisMemberBody:       logChassisMemberBody,
+				logServicesStatusCode:   http.StatusOK,
+				logServicesBody:         logServicesBody,
+				logEntriesStatusCode:    http.StatusInternalServerError,
+			},
+
+			assertErr: errassert.Contains("Failed to get log entries"),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			svr := newMockRedfishServer(t, tc.responses, nil)
+
+			client := redfish.New()
+
+			events, err := client.LogEntriesBySource(t.Context(), provisioning.Server{
+				BMCConfig: api.BMCConfig{Endpoint: svr.URL},
+			}, tc.logSource)
+
+			tc.assertErr(t, err)
+
+			require.Equal(t, tc.want, events)
+		})
+	}
+}
+
+func TestRedfish_LogSources(t *testing.T) {
+	tests := []struct {
+		name      string
+		responses mockRedfishServer
+
+		assertErr require.ErrorAssertionFunc
+		want      []string
+	}{
+		{
+			name: "success - log sources from chassis, system and manager",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode:   http.StatusOK,
+				chassisStatusCode:       http.StatusOK,
+				chassisBody:             logChassisCollectionBody,
+				chassisMemberStatusCode: http.StatusOK,
+				chassisMemberBody:       logChassisMemberBody,
+				systemsStatusCode:       http.StatusOK,
+				systemsBody:             logSystemsCollectionBody,
+				systemStatusCode:        http.StatusOK,
+				systemBody:              logSystemMemberBody,
+				managersStatusCode:      http.StatusOK,
+				managersBody:            logManagersCollectionBody,
+				managerStatusCode:       http.StatusOK,
+				managerBody:             logManagerMemberBody,
+				logServicesStatusCode:   http.StatusOK,
+				logServicesBody:         logServicesBody,
+			},
+
+			assertErr: require.NoError,
+			want: []string{
+				"chassis/Logs",
+				"chassis/Other",
+				"manager/Logs",
+				"manager/Other",
+				"system/Logs",
+				"system/Other",
+			},
+		},
+		{
+			name: "error - failed to connect to BMC",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusInternalServerError,
+			},
+
+			assertErr: errassert.Contains("Failed to connect to BMC"),
+		},
+		{
+			name: "success - not found entity is skipped",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				chassisStatusCode:     http.StatusOK,
+				chassisBody:           logEmptyCollectionBody,
+				systemsStatusCode:     http.StatusOK,
+				systemsBody:           logSystemsCollectionBody,
+				systemStatusCode:      http.StatusOK,
+				systemBody:            logSystemMemberBody,
+				managersStatusCode:    http.StatusOK,
+				managersBody:          logManagersCollectionBody,
+				managerStatusCode:     http.StatusOK,
+				managerBody:           logManagerMemberBody,
+				logServicesStatusCode: http.StatusOK,
+				logServicesBody:       logServicesBody,
+			},
+
+			assertErr: require.NoError,
+			want: []string{
+				"manager/Logs",
+				"manager/Other",
+				"system/Logs",
+				"system/Other",
+			},
+		},
+		{
+			name: "success - no entities",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				chassisStatusCode:     http.StatusOK,
+				chassisBody:           logEmptyCollectionBody,
+				systemsStatusCode:     http.StatusOK,
+				systemsBody:           logEmptyCollectionBody,
+				managersStatusCode:    http.StatusOK,
+				managersBody:          logEmptyCollectionBody,
+			},
+
+			assertErr: require.NoError,
+			want:      nil,
+		},
+		{
+			name: "error - failed to get BMC chassis",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				chassisStatusCode:     http.StatusInternalServerError,
+			},
+
+			assertErr: errassert.Contains("Failed to get BMC chassis"),
+		},
+		{
+			name: "error - failed to get log services",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode:   http.StatusOK,
+				chassisStatusCode:       http.StatusOK,
+				chassisBody:             logChassisCollectionBody,
+				chassisMemberStatusCode: http.StatusOK,
+				chassisMemberBody:       logChassisMemberBody,
+				systemsStatusCode:       http.StatusOK,
+				systemsBody:             logSystemsCollectionBody,
+				systemStatusCode:        http.StatusOK,
+				systemBody:              logSystemMemberBody,
+				managersStatusCode:      http.StatusOK,
+				managersBody:            logManagersCollectionBody,
+				managerStatusCode:       http.StatusOK,
+				managerBody:             logManagerMemberBody,
+				logServicesStatusCode:   http.StatusInternalServerError,
+			},
+
+			assertErr: errassert.Contains("Failed to get log services"),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			svr := newMockRedfishServer(t, tc.responses, nil)
+
+			client := redfish.New()
+
+			logSources, err := client.LogSources(t.Context(), provisioning.Server{
+				BMCConfig: api.BMCConfig{Endpoint: svr.URL},
+			})
+
+			tc.assertErr(t, err)
+
+			require.Equal(t, tc.want, logSources)
+		})
+	}
+}
