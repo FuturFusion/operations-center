@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router";
 import {
   fetchServer,
@@ -19,12 +19,13 @@ const ServerConfiguration = () => {
   const { name } = useParams() as { name: string };
   const { notify } = useNotification();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const onSubmit = async (
     values: ServerFormValues,
     section: string,
   ): Promise<APIResponse<null> | void> => {
-    if (section === "configuration") {
+    if (section === "configuration" || section == "bmc") {
       return onConfigurationSubmit(values);
     } else if (section == "network") {
       return onNetworkSubmit(values);
@@ -44,6 +45,15 @@ const ServerConfiguration = () => {
           properties: values.properties,
           public_connection_url: values.public_connection_url,
           channel: values.channel,
+          bmc_config: {
+            // Only one API type is supported for now.
+            api_type: values.bmc_endpoint ? "redfish-v1-generic" : "",
+            endpoint: values.bmc_endpoint,
+            certificate: values.bmc_certificate,
+            auto_pin_certificate: values.bmc_auto_pin_certificate,
+            username: values.bmc_username,
+            password: values.bmc_password,
+          },
         },
         null,
         2,
@@ -52,6 +62,7 @@ const ServerConfiguration = () => {
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`Server ${values.name} updated`);
+          queryClient.invalidateQueries({ queryKey: ["servers", values.name] });
           return;
         }
         notify.error(`Error during server update: ${response.error}`);

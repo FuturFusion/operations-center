@@ -80,17 +80,7 @@ func SetLogLevel(level slog.Level) error {
 		replaceAttrFunc = logValueMaxSize(MaximumValueLength)
 	}
 
-	slogHandler := tint.NewHandler(
-		logger.writer,
-		&tint.Options{
-			Level:      level,
-			TimeFormat: time.RFC3339,
-			// Add source information, if debug level is enabled.
-			AddSource:   debug,
-			ReplaceAttr: replaceAttrFunc,
-			NoColor:     logger.noColor,
-		},
-	)
+	slogHandler := tint.NewTextHandler(logger.writer, &tint.Options{Level: level, TimeFormat: time.RFC3339, AddSource: debug, ReplaceAttr: replaceAttrFunc, NoColor: logger.noColor})
 
 	if logger.filepath != "" {
 		if logger.file == nil {

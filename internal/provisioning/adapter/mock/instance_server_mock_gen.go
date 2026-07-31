@@ -205,6 +205,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			DeleteInstanceLogfileFunc: func(name string, filename string) error {
 //				panic("mock out the DeleteInstanceLogfile method")
 //			},
+//			DeleteInstanceNVRAMGUIDVarFunc: func(name string, guid string, varName string) error {
+//				panic("mock out the DeleteInstanceNVRAMGUIDVar method")
+//			},
 //			DeleteInstanceSnapshotFunc: func(instanceName string, name string) (incus.Operation, error) {
 //				panic("mock out the DeleteInstanceSnapshot method")
 //			},
@@ -439,11 +442,23 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			GetInstanceNBDConnFunc: func(instanceName string, args incus.InstanceNBDArgs) (net.Conn, error) {
 //				panic("mock out the GetInstanceNBDConn method")
 //			},
+//			GetInstanceNVRAMFunc: func(name string) (map[string]map[string]*api.InstanceNVRAMVariable, error) {
+//				panic("mock out the GetInstanceNVRAM method")
+//			},
+//			GetInstanceNVRAMGUIDFunc: func(name string, guid string) (map[string]*api.InstanceNVRAMVariable, error) {
+//				panic("mock out the GetInstanceNVRAMGUID method")
+//			},
+//			GetInstanceNVRAMGUIDVarFunc: func(name string, guid string, varName string) (*api.InstanceNVRAMVariable, string, error) {
+//				panic("mock out the GetInstanceNVRAMGUIDVar method")
+//			},
 //			GetInstanceNamesFunc: func(instanceType api.InstanceType) ([]string, error) {
 //				panic("mock out the GetInstanceNames method")
 //			},
 //			GetInstanceNamesAllProjectsFunc: func(instanceType api.InstanceType) (map[string][]string, error) {
 //				panic("mock out the GetInstanceNamesAllProjects method")
+//			},
+//			GetInstancePortForwardConnFunc: func(instanceName string, forward api.InstancePortForwardPost) (net.Conn, error) {
+//				panic("mock out the GetInstancePortForwardConn method")
 //			},
 //			GetInstanceSnapshotFunc: func(instanceName string, name string) (*api.InstanceSnapshot, string, error) {
 //				panic("mock out the GetInstanceSnapshot method")
@@ -673,6 +688,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			GetProjectsWithFilterFunc: func(filters []string) ([]api.Project, error) {
 //				panic("mock out the GetProjectsWithFilter method")
 //			},
+//			GetRawInstanceNVRAMGUIDVarFunc: func(name string, guid string, varName string) ([]byte, uint32, error) {
+//				panic("mock out the GetRawInstanceNVRAMGUIDVar method")
+//			},
 //			GetServerFunc: func() (*api.Server, string, error) {
 //				panic("mock out the GetServer method")
 //			},
@@ -808,6 +826,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			GetStorageVolumeBackupsFunc: func(pool string, volName string) ([]api.StorageVolumeBackup, error) {
 //				panic("mock out the GetStorageVolumeBackups method")
 //			},
+//			GetStorageVolumeBitmapFunc: func(pool string, volumeType string, volumeName string, bitmapName string) (*api.StorageVolumeBitmap, error) {
+//				panic("mock out the GetStorageVolumeBitmap method")
+//			},
 //			GetStorageVolumeBitmapNamesFunc: func(pool string, volumeType string, volumeName string) ([]string, error) {
 //				panic("mock out the GetStorageVolumeBitmapNames method")
 //			},
@@ -910,6 +931,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			RenameStorageVolumeBackupFunc: func(pool string, volName string, name string, backup api.StorageVolumeBackupPost) (incus.Operation, error) {
 //				panic("mock out the RenameStorageVolumeBackup method")
 //			},
+//			RepairInstanceFunc: func(name string, repair api.InstanceDebugRepairPost) error {
+//				panic("mock out the RepairInstance method")
+//			},
 //			RequireAuthenticatedFunc: func(authenticated bool)  {
 //				panic("mock out the RequireAuthenticated method")
 //			},
@@ -945,6 +969,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			},
 //			UpdateInstanceMetadataFunc: func(name string, metadata api.ImageMetadata, ETag string) error {
 //				panic("mock out the UpdateInstanceMetadata method")
+//			},
+//			UpdateInstanceNVRAMGUIDVarFunc: func(name string, guid string, varName string, data api.InstanceNVRAMVariablePut, ETag string) error {
+//				panic("mock out the UpdateInstanceNVRAMGUIDVar method")
 //			},
 //			UpdateInstanceSnapshotFunc: func(instanceName string, name string, instance api.InstanceSnapshotPut, ETag string) (incus.Operation, error) {
 //				panic("mock out the UpdateInstanceSnapshot method")
@@ -987,6 +1014,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			},
 //			UpdateProjectFunc: func(name string, project api.ProjectPut, ETag string) error {
 //				panic("mock out the UpdateProject method")
+//			},
+//			UpdateRawInstanceNVRAMGUIDVarFunc: func(name string, guid string, varName string, data []byte, attributes uint32, timestamp int64) error {
+//				panic("mock out the UpdateRawInstanceNVRAMGUIDVar method")
 //			},
 //			UpdateServerFunc: func(server api.ServerPut, ETag string) error {
 //				panic("mock out the UpdateServer method")
@@ -1198,6 +1228,9 @@ type InstanceServerMock struct {
 
 	// DeleteInstanceLogfileFunc mocks the DeleteInstanceLogfile method.
 	DeleteInstanceLogfileFunc func(name string, filename string) error
+
+	// DeleteInstanceNVRAMGUIDVarFunc mocks the DeleteInstanceNVRAMGUIDVar method.
+	DeleteInstanceNVRAMGUIDVarFunc func(name string, guid string, varName string) error
 
 	// DeleteInstanceSnapshotFunc mocks the DeleteInstanceSnapshot method.
 	DeleteInstanceSnapshotFunc func(instanceName string, name string) (incus.Operation, error)
@@ -1433,11 +1466,23 @@ type InstanceServerMock struct {
 	// GetInstanceNBDConnFunc mocks the GetInstanceNBDConn method.
 	GetInstanceNBDConnFunc func(instanceName string, args incus.InstanceNBDArgs) (net.Conn, error)
 
+	// GetInstanceNVRAMFunc mocks the GetInstanceNVRAM method.
+	GetInstanceNVRAMFunc func(name string) (map[string]map[string]*api.InstanceNVRAMVariable, error)
+
+	// GetInstanceNVRAMGUIDFunc mocks the GetInstanceNVRAMGUID method.
+	GetInstanceNVRAMGUIDFunc func(name string, guid string) (map[string]*api.InstanceNVRAMVariable, error)
+
+	// GetInstanceNVRAMGUIDVarFunc mocks the GetInstanceNVRAMGUIDVar method.
+	GetInstanceNVRAMGUIDVarFunc func(name string, guid string, varName string) (*api.InstanceNVRAMVariable, string, error)
+
 	// GetInstanceNamesFunc mocks the GetInstanceNames method.
 	GetInstanceNamesFunc func(instanceType api.InstanceType) ([]string, error)
 
 	// GetInstanceNamesAllProjectsFunc mocks the GetInstanceNamesAllProjects method.
 	GetInstanceNamesAllProjectsFunc func(instanceType api.InstanceType) (map[string][]string, error)
+
+	// GetInstancePortForwardConnFunc mocks the GetInstancePortForwardConn method.
+	GetInstancePortForwardConnFunc func(instanceName string, forward api.InstancePortForwardPost) (net.Conn, error)
 
 	// GetInstanceSnapshotFunc mocks the GetInstanceSnapshot method.
 	GetInstanceSnapshotFunc func(instanceName string, name string) (*api.InstanceSnapshot, string, error)
@@ -1667,6 +1712,9 @@ type InstanceServerMock struct {
 	// GetProjectsWithFilterFunc mocks the GetProjectsWithFilter method.
 	GetProjectsWithFilterFunc func(filters []string) ([]api.Project, error)
 
+	// GetRawInstanceNVRAMGUIDVarFunc mocks the GetRawInstanceNVRAMGUIDVar method.
+	GetRawInstanceNVRAMGUIDVarFunc func(name string, guid string, varName string) ([]byte, uint32, error)
+
 	// GetServerFunc mocks the GetServer method.
 	GetServerFunc func() (*api.Server, string, error)
 
@@ -1802,6 +1850,9 @@ type InstanceServerMock struct {
 	// GetStorageVolumeBackupsFunc mocks the GetStorageVolumeBackups method.
 	GetStorageVolumeBackupsFunc func(pool string, volName string) ([]api.StorageVolumeBackup, error)
 
+	// GetStorageVolumeBitmapFunc mocks the GetStorageVolumeBitmap method.
+	GetStorageVolumeBitmapFunc func(pool string, volumeType string, volumeName string, bitmapName string) (*api.StorageVolumeBitmap, error)
+
 	// GetStorageVolumeBitmapNamesFunc mocks the GetStorageVolumeBitmapNames method.
 	GetStorageVolumeBitmapNamesFunc func(pool string, volumeType string, volumeName string) ([]string, error)
 
@@ -1904,6 +1955,9 @@ type InstanceServerMock struct {
 	// RenameStorageVolumeBackupFunc mocks the RenameStorageVolumeBackup method.
 	RenameStorageVolumeBackupFunc func(pool string, volName string, name string, backup api.StorageVolumeBackupPost) (incus.Operation, error)
 
+	// RepairInstanceFunc mocks the RepairInstance method.
+	RepairInstanceFunc func(name string, repair api.InstanceDebugRepairPost) error
+
 	// RequireAuthenticatedFunc mocks the RequireAuthenticated method.
 	RequireAuthenticatedFunc func(authenticated bool)
 
@@ -1939,6 +1993,9 @@ type InstanceServerMock struct {
 
 	// UpdateInstanceMetadataFunc mocks the UpdateInstanceMetadata method.
 	UpdateInstanceMetadataFunc func(name string, metadata api.ImageMetadata, ETag string) error
+
+	// UpdateInstanceNVRAMGUIDVarFunc mocks the UpdateInstanceNVRAMGUIDVar method.
+	UpdateInstanceNVRAMGUIDVarFunc func(name string, guid string, varName string, data api.InstanceNVRAMVariablePut, ETag string) error
 
 	// UpdateInstanceSnapshotFunc mocks the UpdateInstanceSnapshot method.
 	UpdateInstanceSnapshotFunc func(instanceName string, name string, instance api.InstanceSnapshotPut, ETag string) (incus.Operation, error)
@@ -1981,6 +2038,9 @@ type InstanceServerMock struct {
 
 	// UpdateProjectFunc mocks the UpdateProject method.
 	UpdateProjectFunc func(name string, project api.ProjectPut, ETag string) error
+
+	// UpdateRawInstanceNVRAMGUIDVarFunc mocks the UpdateRawInstanceNVRAMGUIDVar method.
+	UpdateRawInstanceNVRAMGUIDVarFunc func(name string, guid string, varName string, data []byte, attributes uint32, timestamp int64) error
 
 	// UpdateServerFunc mocks the UpdateServer method.
 	UpdateServerFunc func(server api.ServerPut, ETag string) error
@@ -2434,6 +2494,15 @@ type InstanceServerMock struct {
 			// Filename is the filename argument value.
 			Filename string
 		}
+		// DeleteInstanceNVRAMGUIDVar holds details about calls to the DeleteInstanceNVRAMGUIDVar method.
+		DeleteInstanceNVRAMGUIDVar []struct {
+			// Name is the name argument value.
+			Name string
+			// GUID is the guid argument value.
+			GUID string
+			// VarName is the varName argument value.
+			VarName string
+		}
 		// DeleteInstanceSnapshot holds details about calls to the DeleteInstanceSnapshot method.
 		DeleteInstanceSnapshot []struct {
 			// InstanceName is the instanceName argument value.
@@ -2868,6 +2937,27 @@ type InstanceServerMock struct {
 			// Args is the args argument value.
 			Args incus.InstanceNBDArgs
 		}
+		// GetInstanceNVRAM holds details about calls to the GetInstanceNVRAM method.
+		GetInstanceNVRAM []struct {
+			// Name is the name argument value.
+			Name string
+		}
+		// GetInstanceNVRAMGUID holds details about calls to the GetInstanceNVRAMGUID method.
+		GetInstanceNVRAMGUID []struct {
+			// Name is the name argument value.
+			Name string
+			// GUID is the guid argument value.
+			GUID string
+		}
+		// GetInstanceNVRAMGUIDVar holds details about calls to the GetInstanceNVRAMGUIDVar method.
+		GetInstanceNVRAMGUIDVar []struct {
+			// Name is the name argument value.
+			Name string
+			// GUID is the guid argument value.
+			GUID string
+			// VarName is the varName argument value.
+			VarName string
+		}
 		// GetInstanceNames holds details about calls to the GetInstanceNames method.
 		GetInstanceNames []struct {
 			// InstanceType is the instanceType argument value.
@@ -2877,6 +2967,13 @@ type InstanceServerMock struct {
 		GetInstanceNamesAllProjects []struct {
 			// InstanceType is the instanceType argument value.
 			InstanceType api.InstanceType
+		}
+		// GetInstancePortForwardConn holds details about calls to the GetInstancePortForwardConn method.
+		GetInstancePortForwardConn []struct {
+			// InstanceName is the instanceName argument value.
+			InstanceName string
+			// Forward is the forward argument value.
+			Forward api.InstancePortForwardPost
 		}
 		// GetInstanceSnapshot holds details about calls to the GetInstanceSnapshot method.
 		GetInstanceSnapshot []struct {
@@ -3242,6 +3339,15 @@ type InstanceServerMock struct {
 			// Filters is the filters argument value.
 			Filters []string
 		}
+		// GetRawInstanceNVRAMGUIDVar holds details about calls to the GetRawInstanceNVRAMGUIDVar method.
+		GetRawInstanceNVRAMGUIDVar []struct {
+			// Name is the name argument value.
+			Name string
+			// GUID is the guid argument value.
+			GUID string
+			// VarName is the varName argument value.
+			VarName string
+		}
 		// GetServer holds details about calls to the GetServer method.
 		GetServer []struct {
 		}
@@ -3547,6 +3653,17 @@ type InstanceServerMock struct {
 			// VolName is the volName argument value.
 			VolName string
 		}
+		// GetStorageVolumeBitmap holds details about calls to the GetStorageVolumeBitmap method.
+		GetStorageVolumeBitmap []struct {
+			// Pool is the pool argument value.
+			Pool string
+			// VolumeType is the volumeType argument value.
+			VolumeType string
+			// VolumeName is the volumeName argument value.
+			VolumeName string
+			// BitmapName is the bitmapName argument value.
+			BitmapName string
+		}
 		// GetStorageVolumeBitmapNames holds details about calls to the GetStorageVolumeBitmapNames method.
 		GetStorageVolumeBitmapNames []struct {
 			// Pool is the pool argument value.
@@ -3815,6 +3932,13 @@ type InstanceServerMock struct {
 			// Backup is the backup argument value.
 			Backup api.StorageVolumeBackupPost
 		}
+		// RepairInstance holds details about calls to the RepairInstance method.
+		RepairInstance []struct {
+			// Name is the name argument value.
+			Name string
+			// Repair is the repair argument value.
+			Repair api.InstanceDebugRepairPost
+		}
 		// RequireAuthenticated holds details about calls to the RequireAuthenticated method.
 		RequireAuthenticated []struct {
 			// Authenticated is the authenticated argument value.
@@ -3906,6 +4030,19 @@ type InstanceServerMock struct {
 			Name string
 			// Metadata is the metadata argument value.
 			Metadata api.ImageMetadata
+			// ETag is the ETag argument value.
+			ETag string
+		}
+		// UpdateInstanceNVRAMGUIDVar holds details about calls to the UpdateInstanceNVRAMGUIDVar method.
+		UpdateInstanceNVRAMGUIDVar []struct {
+			// Name is the name argument value.
+			Name string
+			// GUID is the guid argument value.
+			GUID string
+			// VarName is the varName argument value.
+			VarName string
+			// Data is the data argument value.
+			Data api.InstanceNVRAMVariablePut
 			// ETag is the ETag argument value.
 			ETag string
 		}
@@ -4042,6 +4179,21 @@ type InstanceServerMock struct {
 			Project api.ProjectPut
 			// ETag is the ETag argument value.
 			ETag string
+		}
+		// UpdateRawInstanceNVRAMGUIDVar holds details about calls to the UpdateRawInstanceNVRAMGUIDVar method.
+		UpdateRawInstanceNVRAMGUIDVar []struct {
+			// Name is the name argument value.
+			Name string
+			// GUID is the guid argument value.
+			GUID string
+			// VarName is the varName argument value.
+			VarName string
+			// Data is the data argument value.
+			Data []byte
+			// Attributes is the attributes argument value.
+			Attributes uint32
+			// Timestamp is the timestamp argument value.
+			Timestamp int64
 		}
 		// UpdateServer holds details about calls to the UpdateServer method.
 		UpdateServer []struct {
@@ -4190,6 +4342,7 @@ type InstanceServerMock struct {
 	lockDeleteInstanceConsoleLog                       sync.RWMutex
 	lockDeleteInstanceFile                             sync.RWMutex
 	lockDeleteInstanceLogfile                          sync.RWMutex
+	lockDeleteInstanceNVRAMGUIDVar                     sync.RWMutex
 	lockDeleteInstanceSnapshot                         sync.RWMutex
 	lockDeleteInstanceTemplateFile                     sync.RWMutex
 	lockDeleteNetwork                                  sync.RWMutex
@@ -4268,8 +4421,12 @@ type InstanceServerMock struct {
 	lockGetInstanceLogfiles                            sync.RWMutex
 	lockGetInstanceMetadata                            sync.RWMutex
 	lockGetInstanceNBDConn                             sync.RWMutex
+	lockGetInstanceNVRAM                               sync.RWMutex
+	lockGetInstanceNVRAMGUID                           sync.RWMutex
+	lockGetInstanceNVRAMGUIDVar                        sync.RWMutex
 	lockGetInstanceNames                               sync.RWMutex
 	lockGetInstanceNamesAllProjects                    sync.RWMutex
+	lockGetInstancePortForwardConn                     sync.RWMutex
 	lockGetInstanceSnapshot                            sync.RWMutex
 	lockGetInstanceSnapshotNames                       sync.RWMutex
 	lockGetInstanceSnapshots                           sync.RWMutex
@@ -4346,6 +4503,7 @@ type InstanceServerMock struct {
 	lockGetProjectState                                sync.RWMutex
 	lockGetProjects                                    sync.RWMutex
 	lockGetProjectsWithFilter                          sync.RWMutex
+	lockGetRawInstanceNVRAMGUIDVar                     sync.RWMutex
 	lockGetServer                                      sync.RWMutex
 	lockGetServerResources                             sync.RWMutex
 	lockGetStoragePool                                 sync.RWMutex
@@ -4391,6 +4549,7 @@ type InstanceServerMock struct {
 	lockGetStorageVolumeBackupFile                     sync.RWMutex
 	lockGetStorageVolumeBackupNames                    sync.RWMutex
 	lockGetStorageVolumeBackups                        sync.RWMutex
+	lockGetStorageVolumeBitmap                         sync.RWMutex
 	lockGetStorageVolumeBitmapNames                    sync.RWMutex
 	lockGetStorageVolumeBitmaps                        sync.RWMutex
 	lockGetStorageVolumeFile                           sync.RWMutex
@@ -4425,6 +4584,7 @@ type InstanceServerMock struct {
 	lockRenameStoragePoolVolume                        sync.RWMutex
 	lockRenameStoragePoolVolumeSnapshot                sync.RWMutex
 	lockRenameStorageVolumeBackup                      sync.RWMutex
+	lockRepairInstance                                 sync.RWMutex
 	lockRequireAuthenticated                           sync.RWMutex
 	lockSendEvent                                      sync.RWMutex
 	lockUpdateCertificate                              sync.RWMutex
@@ -4437,6 +4597,7 @@ type InstanceServerMock struct {
 	lockUpdateImageAlias                               sync.RWMutex
 	lockUpdateInstance                                 sync.RWMutex
 	lockUpdateInstanceMetadata                         sync.RWMutex
+	lockUpdateInstanceNVRAMGUIDVar                     sync.RWMutex
 	lockUpdateInstanceSnapshot                         sync.RWMutex
 	lockUpdateInstanceState                            sync.RWMutex
 	lockUpdateInstances                                sync.RWMutex
@@ -4451,6 +4612,7 @@ type InstanceServerMock struct {
 	lockUpdateNetworkZoneRecord                        sync.RWMutex
 	lockUpdateProfile                                  sync.RWMutex
 	lockUpdateProject                                  sync.RWMutex
+	lockUpdateRawInstanceNVRAMGUIDVar                  sync.RWMutex
 	lockUpdateServer                                   sync.RWMutex
 	lockUpdateStoragePool                              sync.RWMutex
 	lockUpdateStoragePoolBucket                        sync.RWMutex
@@ -6603,6 +6765,46 @@ func (mock *InstanceServerMock) DeleteInstanceLogfileCalls() []struct {
 	mock.lockDeleteInstanceLogfile.RLock()
 	calls = mock.calls.DeleteInstanceLogfile
 	mock.lockDeleteInstanceLogfile.RUnlock()
+	return calls
+}
+
+// DeleteInstanceNVRAMGUIDVar calls DeleteInstanceNVRAMGUIDVarFunc.
+func (mock *InstanceServerMock) DeleteInstanceNVRAMGUIDVar(name string, guid string, varName string) error {
+	if mock.DeleteInstanceNVRAMGUIDVarFunc == nil {
+		panic("InstanceServerMock.DeleteInstanceNVRAMGUIDVarFunc: method is nil but InstanceServer.DeleteInstanceNVRAMGUIDVar was just called")
+	}
+	callInfo := struct {
+		Name    string
+		GUID    string
+		VarName string
+	}{
+		Name:    name,
+		GUID:    guid,
+		VarName: varName,
+	}
+	mock.lockDeleteInstanceNVRAMGUIDVar.Lock()
+	mock.calls.DeleteInstanceNVRAMGUIDVar = append(mock.calls.DeleteInstanceNVRAMGUIDVar, callInfo)
+	mock.lockDeleteInstanceNVRAMGUIDVar.Unlock()
+	return mock.DeleteInstanceNVRAMGUIDVarFunc(name, guid, varName)
+}
+
+// DeleteInstanceNVRAMGUIDVarCalls gets all the calls that were made to DeleteInstanceNVRAMGUIDVar.
+// Check the length with:
+//
+//	len(mockedInstanceServer.DeleteInstanceNVRAMGUIDVarCalls())
+func (mock *InstanceServerMock) DeleteInstanceNVRAMGUIDVarCalls() []struct {
+	Name    string
+	GUID    string
+	VarName string
+} {
+	var calls []struct {
+		Name    string
+		GUID    string
+		VarName string
+	}
+	mock.lockDeleteInstanceNVRAMGUIDVar.RLock()
+	calls = mock.calls.DeleteInstanceNVRAMGUIDVar
+	mock.lockDeleteInstanceNVRAMGUIDVar.RUnlock()
 	return calls
 }
 
@@ -9173,6 +9375,114 @@ func (mock *InstanceServerMock) GetInstanceNBDConnCalls() []struct {
 	return calls
 }
 
+// GetInstanceNVRAM calls GetInstanceNVRAMFunc.
+func (mock *InstanceServerMock) GetInstanceNVRAM(name string) (map[string]map[string]*api.InstanceNVRAMVariable, error) {
+	if mock.GetInstanceNVRAMFunc == nil {
+		panic("InstanceServerMock.GetInstanceNVRAMFunc: method is nil but InstanceServer.GetInstanceNVRAM was just called")
+	}
+	callInfo := struct {
+		Name string
+	}{
+		Name: name,
+	}
+	mock.lockGetInstanceNVRAM.Lock()
+	mock.calls.GetInstanceNVRAM = append(mock.calls.GetInstanceNVRAM, callInfo)
+	mock.lockGetInstanceNVRAM.Unlock()
+	return mock.GetInstanceNVRAMFunc(name)
+}
+
+// GetInstanceNVRAMCalls gets all the calls that were made to GetInstanceNVRAM.
+// Check the length with:
+//
+//	len(mockedInstanceServer.GetInstanceNVRAMCalls())
+func (mock *InstanceServerMock) GetInstanceNVRAMCalls() []struct {
+	Name string
+} {
+	var calls []struct {
+		Name string
+	}
+	mock.lockGetInstanceNVRAM.RLock()
+	calls = mock.calls.GetInstanceNVRAM
+	mock.lockGetInstanceNVRAM.RUnlock()
+	return calls
+}
+
+// GetInstanceNVRAMGUID calls GetInstanceNVRAMGUIDFunc.
+func (mock *InstanceServerMock) GetInstanceNVRAMGUID(name string, guid string) (map[string]*api.InstanceNVRAMVariable, error) {
+	if mock.GetInstanceNVRAMGUIDFunc == nil {
+		panic("InstanceServerMock.GetInstanceNVRAMGUIDFunc: method is nil but InstanceServer.GetInstanceNVRAMGUID was just called")
+	}
+	callInfo := struct {
+		Name string
+		GUID string
+	}{
+		Name: name,
+		GUID: guid,
+	}
+	mock.lockGetInstanceNVRAMGUID.Lock()
+	mock.calls.GetInstanceNVRAMGUID = append(mock.calls.GetInstanceNVRAMGUID, callInfo)
+	mock.lockGetInstanceNVRAMGUID.Unlock()
+	return mock.GetInstanceNVRAMGUIDFunc(name, guid)
+}
+
+// GetInstanceNVRAMGUIDCalls gets all the calls that were made to GetInstanceNVRAMGUID.
+// Check the length with:
+//
+//	len(mockedInstanceServer.GetInstanceNVRAMGUIDCalls())
+func (mock *InstanceServerMock) GetInstanceNVRAMGUIDCalls() []struct {
+	Name string
+	GUID string
+} {
+	var calls []struct {
+		Name string
+		GUID string
+	}
+	mock.lockGetInstanceNVRAMGUID.RLock()
+	calls = mock.calls.GetInstanceNVRAMGUID
+	mock.lockGetInstanceNVRAMGUID.RUnlock()
+	return calls
+}
+
+// GetInstanceNVRAMGUIDVar calls GetInstanceNVRAMGUIDVarFunc.
+func (mock *InstanceServerMock) GetInstanceNVRAMGUIDVar(name string, guid string, varName string) (*api.InstanceNVRAMVariable, string, error) {
+	if mock.GetInstanceNVRAMGUIDVarFunc == nil {
+		panic("InstanceServerMock.GetInstanceNVRAMGUIDVarFunc: method is nil but InstanceServer.GetInstanceNVRAMGUIDVar was just called")
+	}
+	callInfo := struct {
+		Name    string
+		GUID    string
+		VarName string
+	}{
+		Name:    name,
+		GUID:    guid,
+		VarName: varName,
+	}
+	mock.lockGetInstanceNVRAMGUIDVar.Lock()
+	mock.calls.GetInstanceNVRAMGUIDVar = append(mock.calls.GetInstanceNVRAMGUIDVar, callInfo)
+	mock.lockGetInstanceNVRAMGUIDVar.Unlock()
+	return mock.GetInstanceNVRAMGUIDVarFunc(name, guid, varName)
+}
+
+// GetInstanceNVRAMGUIDVarCalls gets all the calls that were made to GetInstanceNVRAMGUIDVar.
+// Check the length with:
+//
+//	len(mockedInstanceServer.GetInstanceNVRAMGUIDVarCalls())
+func (mock *InstanceServerMock) GetInstanceNVRAMGUIDVarCalls() []struct {
+	Name    string
+	GUID    string
+	VarName string
+} {
+	var calls []struct {
+		Name    string
+		GUID    string
+		VarName string
+	}
+	mock.lockGetInstanceNVRAMGUIDVar.RLock()
+	calls = mock.calls.GetInstanceNVRAMGUIDVar
+	mock.lockGetInstanceNVRAMGUIDVar.RUnlock()
+	return calls
+}
+
 // GetInstanceNames calls GetInstanceNamesFunc.
 func (mock *InstanceServerMock) GetInstanceNames(instanceType api.InstanceType) ([]string, error) {
 	if mock.GetInstanceNamesFunc == nil {
@@ -9234,6 +9544,42 @@ func (mock *InstanceServerMock) GetInstanceNamesAllProjectsCalls() []struct {
 	mock.lockGetInstanceNamesAllProjects.RLock()
 	calls = mock.calls.GetInstanceNamesAllProjects
 	mock.lockGetInstanceNamesAllProjects.RUnlock()
+	return calls
+}
+
+// GetInstancePortForwardConn calls GetInstancePortForwardConnFunc.
+func (mock *InstanceServerMock) GetInstancePortForwardConn(instanceName string, forward api.InstancePortForwardPost) (net.Conn, error) {
+	if mock.GetInstancePortForwardConnFunc == nil {
+		panic("InstanceServerMock.GetInstancePortForwardConnFunc: method is nil but InstanceServer.GetInstancePortForwardConn was just called")
+	}
+	callInfo := struct {
+		InstanceName string
+		Forward      api.InstancePortForwardPost
+	}{
+		InstanceName: instanceName,
+		Forward:      forward,
+	}
+	mock.lockGetInstancePortForwardConn.Lock()
+	mock.calls.GetInstancePortForwardConn = append(mock.calls.GetInstancePortForwardConn, callInfo)
+	mock.lockGetInstancePortForwardConn.Unlock()
+	return mock.GetInstancePortForwardConnFunc(instanceName, forward)
+}
+
+// GetInstancePortForwardConnCalls gets all the calls that were made to GetInstancePortForwardConn.
+// Check the length with:
+//
+//	len(mockedInstanceServer.GetInstancePortForwardConnCalls())
+func (mock *InstanceServerMock) GetInstancePortForwardConnCalls() []struct {
+	InstanceName string
+	Forward      api.InstancePortForwardPost
+} {
+	var calls []struct {
+		InstanceName string
+		Forward      api.InstancePortForwardPost
+	}
+	mock.lockGetInstancePortForwardConn.RLock()
+	calls = mock.calls.GetInstancePortForwardConn
+	mock.lockGetInstancePortForwardConn.RUnlock()
 	return calls
 }
 
@@ -11611,6 +11957,46 @@ func (mock *InstanceServerMock) GetProjectsWithFilterCalls() []struct {
 	return calls
 }
 
+// GetRawInstanceNVRAMGUIDVar calls GetRawInstanceNVRAMGUIDVarFunc.
+func (mock *InstanceServerMock) GetRawInstanceNVRAMGUIDVar(name string, guid string, varName string) ([]byte, uint32, error) {
+	if mock.GetRawInstanceNVRAMGUIDVarFunc == nil {
+		panic("InstanceServerMock.GetRawInstanceNVRAMGUIDVarFunc: method is nil but InstanceServer.GetRawInstanceNVRAMGUIDVar was just called")
+	}
+	callInfo := struct {
+		Name    string
+		GUID    string
+		VarName string
+	}{
+		Name:    name,
+		GUID:    guid,
+		VarName: varName,
+	}
+	mock.lockGetRawInstanceNVRAMGUIDVar.Lock()
+	mock.calls.GetRawInstanceNVRAMGUIDVar = append(mock.calls.GetRawInstanceNVRAMGUIDVar, callInfo)
+	mock.lockGetRawInstanceNVRAMGUIDVar.Unlock()
+	return mock.GetRawInstanceNVRAMGUIDVarFunc(name, guid, varName)
+}
+
+// GetRawInstanceNVRAMGUIDVarCalls gets all the calls that were made to GetRawInstanceNVRAMGUIDVar.
+// Check the length with:
+//
+//	len(mockedInstanceServer.GetRawInstanceNVRAMGUIDVarCalls())
+func (mock *InstanceServerMock) GetRawInstanceNVRAMGUIDVarCalls() []struct {
+	Name    string
+	GUID    string
+	VarName string
+} {
+	var calls []struct {
+		Name    string
+		GUID    string
+		VarName string
+	}
+	mock.lockGetRawInstanceNVRAMGUIDVar.RLock()
+	calls = mock.calls.GetRawInstanceNVRAMGUIDVar
+	mock.lockGetRawInstanceNVRAMGUIDVar.RUnlock()
+	return calls
+}
+
 // GetServer calls GetServerFunc.
 func (mock *InstanceServerMock) GetServer() (*api.Server, string, error) {
 	if mock.GetServerFunc == nil {
@@ -13207,6 +13593,50 @@ func (mock *InstanceServerMock) GetStorageVolumeBackupsCalls() []struct {
 	return calls
 }
 
+// GetStorageVolumeBitmap calls GetStorageVolumeBitmapFunc.
+func (mock *InstanceServerMock) GetStorageVolumeBitmap(pool string, volumeType string, volumeName string, bitmapName string) (*api.StorageVolumeBitmap, error) {
+	if mock.GetStorageVolumeBitmapFunc == nil {
+		panic("InstanceServerMock.GetStorageVolumeBitmapFunc: method is nil but InstanceServer.GetStorageVolumeBitmap was just called")
+	}
+	callInfo := struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+		BitmapName string
+	}{
+		Pool:       pool,
+		VolumeType: volumeType,
+		VolumeName: volumeName,
+		BitmapName: bitmapName,
+	}
+	mock.lockGetStorageVolumeBitmap.Lock()
+	mock.calls.GetStorageVolumeBitmap = append(mock.calls.GetStorageVolumeBitmap, callInfo)
+	mock.lockGetStorageVolumeBitmap.Unlock()
+	return mock.GetStorageVolumeBitmapFunc(pool, volumeType, volumeName, bitmapName)
+}
+
+// GetStorageVolumeBitmapCalls gets all the calls that were made to GetStorageVolumeBitmap.
+// Check the length with:
+//
+//	len(mockedInstanceServer.GetStorageVolumeBitmapCalls())
+func (mock *InstanceServerMock) GetStorageVolumeBitmapCalls() []struct {
+	Pool       string
+	VolumeType string
+	VolumeName string
+	BitmapName string
+} {
+	var calls []struct {
+		Pool       string
+		VolumeType string
+		VolumeName string
+		BitmapName string
+	}
+	mock.lockGetStorageVolumeBitmap.RLock()
+	calls = mock.calls.GetStorageVolumeBitmap
+	mock.lockGetStorageVolumeBitmap.RUnlock()
+	return calls
+}
+
 // GetStorageVolumeBitmapNames calls GetStorageVolumeBitmapNamesFunc.
 func (mock *InstanceServerMock) GetStorageVolumeBitmapNames(pool string, volumeType string, volumeName string) ([]string, error) {
 	if mock.GetStorageVolumeBitmapNamesFunc == nil {
@@ -14488,6 +14918,42 @@ func (mock *InstanceServerMock) RenameStorageVolumeBackupCalls() []struct {
 	return calls
 }
 
+// RepairInstance calls RepairInstanceFunc.
+func (mock *InstanceServerMock) RepairInstance(name string, repair api.InstanceDebugRepairPost) error {
+	if mock.RepairInstanceFunc == nil {
+		panic("InstanceServerMock.RepairInstanceFunc: method is nil but InstanceServer.RepairInstance was just called")
+	}
+	callInfo := struct {
+		Name   string
+		Repair api.InstanceDebugRepairPost
+	}{
+		Name:   name,
+		Repair: repair,
+	}
+	mock.lockRepairInstance.Lock()
+	mock.calls.RepairInstance = append(mock.calls.RepairInstance, callInfo)
+	mock.lockRepairInstance.Unlock()
+	return mock.RepairInstanceFunc(name, repair)
+}
+
+// RepairInstanceCalls gets all the calls that were made to RepairInstance.
+// Check the length with:
+//
+//	len(mockedInstanceServer.RepairInstanceCalls())
+func (mock *InstanceServerMock) RepairInstanceCalls() []struct {
+	Name   string
+	Repair api.InstanceDebugRepairPost
+} {
+	var calls []struct {
+		Name   string
+		Repair api.InstanceDebugRepairPost
+	}
+	mock.lockRepairInstance.RLock()
+	calls = mock.calls.RepairInstance
+	mock.lockRepairInstance.RUnlock()
+	return calls
+}
+
 // RequireAuthenticated calls RequireAuthenticatedFunc.
 func (mock *InstanceServerMock) RequireAuthenticated(authenticated bool) {
 	if mock.RequireAuthenticatedFunc == nil {
@@ -14937,6 +15403,54 @@ func (mock *InstanceServerMock) UpdateInstanceMetadataCalls() []struct {
 	mock.lockUpdateInstanceMetadata.RLock()
 	calls = mock.calls.UpdateInstanceMetadata
 	mock.lockUpdateInstanceMetadata.RUnlock()
+	return calls
+}
+
+// UpdateInstanceNVRAMGUIDVar calls UpdateInstanceNVRAMGUIDVarFunc.
+func (mock *InstanceServerMock) UpdateInstanceNVRAMGUIDVar(name string, guid string, varName string, data api.InstanceNVRAMVariablePut, ETag string) error {
+	if mock.UpdateInstanceNVRAMGUIDVarFunc == nil {
+		panic("InstanceServerMock.UpdateInstanceNVRAMGUIDVarFunc: method is nil but InstanceServer.UpdateInstanceNVRAMGUIDVar was just called")
+	}
+	callInfo := struct {
+		Name    string
+		GUID    string
+		VarName string
+		Data    api.InstanceNVRAMVariablePut
+		ETag    string
+	}{
+		Name:    name,
+		GUID:    guid,
+		VarName: varName,
+		Data:    data,
+		ETag:    ETag,
+	}
+	mock.lockUpdateInstanceNVRAMGUIDVar.Lock()
+	mock.calls.UpdateInstanceNVRAMGUIDVar = append(mock.calls.UpdateInstanceNVRAMGUIDVar, callInfo)
+	mock.lockUpdateInstanceNVRAMGUIDVar.Unlock()
+	return mock.UpdateInstanceNVRAMGUIDVarFunc(name, guid, varName, data, ETag)
+}
+
+// UpdateInstanceNVRAMGUIDVarCalls gets all the calls that were made to UpdateInstanceNVRAMGUIDVar.
+// Check the length with:
+//
+//	len(mockedInstanceServer.UpdateInstanceNVRAMGUIDVarCalls())
+func (mock *InstanceServerMock) UpdateInstanceNVRAMGUIDVarCalls() []struct {
+	Name    string
+	GUID    string
+	VarName string
+	Data    api.InstanceNVRAMVariablePut
+	ETag    string
+} {
+	var calls []struct {
+		Name    string
+		GUID    string
+		VarName string
+		Data    api.InstanceNVRAMVariablePut
+		ETag    string
+	}
+	mock.lockUpdateInstanceNVRAMGUIDVar.RLock()
+	calls = mock.calls.UpdateInstanceNVRAMGUIDVar
+	mock.lockUpdateInstanceNVRAMGUIDVar.RUnlock()
 	return calls
 }
 
@@ -15513,6 +16027,58 @@ func (mock *InstanceServerMock) UpdateProjectCalls() []struct {
 	mock.lockUpdateProject.RLock()
 	calls = mock.calls.UpdateProject
 	mock.lockUpdateProject.RUnlock()
+	return calls
+}
+
+// UpdateRawInstanceNVRAMGUIDVar calls UpdateRawInstanceNVRAMGUIDVarFunc.
+func (mock *InstanceServerMock) UpdateRawInstanceNVRAMGUIDVar(name string, guid string, varName string, data []byte, attributes uint32, timestamp int64) error {
+	if mock.UpdateRawInstanceNVRAMGUIDVarFunc == nil {
+		panic("InstanceServerMock.UpdateRawInstanceNVRAMGUIDVarFunc: method is nil but InstanceServer.UpdateRawInstanceNVRAMGUIDVar was just called")
+	}
+	callInfo := struct {
+		Name       string
+		GUID       string
+		VarName    string
+		Data       []byte
+		Attributes uint32
+		Timestamp  int64
+	}{
+		Name:       name,
+		GUID:       guid,
+		VarName:    varName,
+		Data:       data,
+		Attributes: attributes,
+		Timestamp:  timestamp,
+	}
+	mock.lockUpdateRawInstanceNVRAMGUIDVar.Lock()
+	mock.calls.UpdateRawInstanceNVRAMGUIDVar = append(mock.calls.UpdateRawInstanceNVRAMGUIDVar, callInfo)
+	mock.lockUpdateRawInstanceNVRAMGUIDVar.Unlock()
+	return mock.UpdateRawInstanceNVRAMGUIDVarFunc(name, guid, varName, data, attributes, timestamp)
+}
+
+// UpdateRawInstanceNVRAMGUIDVarCalls gets all the calls that were made to UpdateRawInstanceNVRAMGUIDVar.
+// Check the length with:
+//
+//	len(mockedInstanceServer.UpdateRawInstanceNVRAMGUIDVarCalls())
+func (mock *InstanceServerMock) UpdateRawInstanceNVRAMGUIDVarCalls() []struct {
+	Name       string
+	GUID       string
+	VarName    string
+	Data       []byte
+	Attributes uint32
+	Timestamp  int64
+} {
+	var calls []struct {
+		Name       string
+		GUID       string
+		VarName    string
+		Data       []byte
+		Attributes uint32
+		Timestamp  int64
+	}
+	mock.lockUpdateRawInstanceNVRAMGUIDVar.RLock()
+	calls = mock.calls.UpdateRawInstanceNVRAMGUIDVar
+	mock.lockUpdateRawInstanceNVRAMGUIDVar.RUnlock()
 	return calls
 }
 
