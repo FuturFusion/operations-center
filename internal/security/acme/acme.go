@@ -145,7 +145,7 @@ func UpdateCertificate(
 		}
 	}()
 
-	certBytes, keyBytes, err := tls.RunACMEChallenge(ctx, dir, cfg.CAURL, cfg.Domain, cfg.Email, string(cfg.Challenge), cfg.Provider, cfg.Address, "", cfg.ProviderResolvers, cfg.ProviderEnvironment)
+	certBytes, keyBytes, err := tls.RunACMEChallenge(ctx, dir, cfg.CAURL, cfg.Domain, cfg.Email, string(cfg.Challenge), cfg.Provider, cfg.Address, "", "", "", cfg.ProviderResolvers, cfg.ProviderEnvironment)
 	if err != nil {
 		return nil, err
 	}
