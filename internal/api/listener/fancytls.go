@@ -45,7 +45,7 @@ func (l *FancyTLSListener) Accept() (net.Conn, error) {
 	config := l.config
 
 	if isProxy(c.RemoteAddr().String(), l.trustedProxy) {
-		c = proxyproto.NewConn(c)
+		c = proxyproto.NewConn(c, proxyproto.WithPolicy(proxyproto.USE))
 	}
 
 	return tls.Server(c, config), nil
