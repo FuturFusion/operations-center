@@ -7,6 +7,7 @@ import Breadcrumbs from "components/Breadcrumbs";
 import ModalWindow from "components/ModalWindow";
 import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
+import ServerBMC from "pages/ServerBMC";
 import ServerOverview from "pages/ServerOverview";
 import ServerConfiguration from "pages/ServerConfiguration";
 
@@ -60,6 +61,11 @@ const ServerDetail = () => {
       key: "configuration",
       title: "Configuration",
       content: <ServerConfiguration />,
+    },
+    {
+      key: "bmc",
+      title: "BMC",
+      content: <ServerBMC />,
     },
   ];
 

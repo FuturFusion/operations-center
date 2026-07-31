@@ -1,5 +1,5 @@
 import { APIResponse } from "types/response";
-import { Server, Settings } from "types/server";
+import { BMCLogEvent, Server, Settings } from "types/server";
 import { Changelog } from "types/changelog";
 import { processResponse } from "util/response";
 
@@ -149,6 +149,77 @@ export const updateSystemServer = (
     })
       .then((response) => response.json())
       .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
+export const refreshServerBMC = (name: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/servers/${name}/bmc/:refresh`, {
+      method: "POST",
+    })
+      .then(processResponse)
+      .then(() => resolve())
+      .catch(reject);
+  });
+};
+
+const serverBMCPowerAction = (
+  name: string,
+  action: string,
+  force: boolean,
+): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    fetch(
+      `/1.0/provisioning/servers/${name}/bmc/:${action}${force ? "?force=1" : ""}`,
+      {
+        method: "POST",
+      },
+    )
+      .then(processResponse)
+      .then(() => resolve())
+      .catch(reject);
+  });
+};
+
+export const powerOnServerBMC = (
+  name: string,
+  force: boolean,
+): Promise<void> => {
+  return serverBMCPowerAction(name, "server-power-on", force);
+};
+
+export const powerOffServerBMC = (
+  name: string,
+  force: boolean,
+): Promise<void> => {
+  return serverBMCPowerAction(name, "server-power-off", force);
+};
+
+export const restartServerBMC = (
+  name: string,
+  force: boolean,
+): Promise<void> => {
+  return serverBMCPowerAction(name, "server-restart", force);
+};
+
+export const fetchServerBMCLogSources = (name: string): Promise<string[]> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/servers/${name}/bmc/logs`)
+      .then(processResponse)
+      .then((data) => resolve(data.metadata))
+      .catch(reject);
+  });
+};
+
+export const fetchServerBMCLogEntries = (
+  name: string,
+  logSource: string,
+): Promise<BMCLogEvent[]> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/servers/${name}/bmc/logs/${logSource}`)
+      .then(processResponse)
+      .then((data) => resolve(data.metadata))
       .catch(reject);
   });
 };
