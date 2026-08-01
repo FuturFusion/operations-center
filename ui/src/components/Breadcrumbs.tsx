@@ -41,6 +41,10 @@ const Breadcrumbs = () => {
       return "OS";
     }
 
+    if (str === "bmc") {
+      return "BMC";
+    }
+
     return (str.charAt(0).toUpperCase() + str.slice(1)).replace("-", " ");
   };
 
