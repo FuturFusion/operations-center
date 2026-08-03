@@ -241,7 +241,8 @@ func getOperationsCenterIncusOSISO(t *testing.T, tmpDir string) {
 		clientCertificateJSONString, err := json.Marshal(clientCertificate)
 		require.NoError(t, err)
 
-		operationsCenterSeed := replacePlaceholders(operationsCenterSeedTemplate,
+		operationsCenterSeed := replacePlaceholders(
+			operationsCenterSeedTemplate,
 			map[string]string{
 				"$CLIENT_CERTIFICATE$": string(clientCertificateJSONString),
 			},
@@ -450,7 +451,7 @@ func createIncusOSPreseededISO(t *testing.T, tmpDir string, token string) string
 func createIncusOSPreseededISOFromTokenSeed(t *testing.T, tmpDir string, token string) string {
 	t.Helper()
 
-	incusOSPreseededISOFilename := fmt.Sprintf("IncusOS-preseeded-from-token-seed-%[1]s.iso", token)
+	incusOSPreseededISOFilename := fmt.Sprintf("IncusOS-preseeded-from-token-seed-%[1]s.iso", token[:8])
 	if !isFile(filepath.Join(tmpDir, incusOSPreseededISOFilename)) {
 		stop := timeTrack(t)
 		defer stop()
