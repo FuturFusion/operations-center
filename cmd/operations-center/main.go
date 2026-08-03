@@ -180,7 +180,7 @@ func (c *cmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 		c.config.ForceLocal = true
 	}
 
-	if c.config.DefaultRemote != "" {
+	if c.config.DefaultRemote != "" && !c.config.ForceLocal {
 		r, ok := c.config.Remotes[c.config.DefaultRemote]
 		if ok {
 			remote = r
