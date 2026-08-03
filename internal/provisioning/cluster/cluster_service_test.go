@@ -5374,6 +5374,112 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - network config nil - reference",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: nil, // no network config
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, `Server "one" () does not have any network config`)
+			},
+		},
+		{
+			name: "error - network config nil",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									Name: "uplink",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: nil, // no network config
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, `Server "two" () does not have any network config`)
+			},
+		},
+		{
 			name: "error - client.GetNetworkConfig",
 			servers: []provisioning.Server{
 				{

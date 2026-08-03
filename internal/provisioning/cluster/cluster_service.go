@@ -884,13 +884,20 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 		return false, "", fmt.Errorf("Failed to get network configuration for server %q: %w", servers[0].Name, err)
 	}
 
-	// FIXME: what if, referenceNetworkConfig.Config == nil?
+	if referenceNetworkConfig.Config == nil {
+		return false, "", domain.NewValidationErrf("Server %q (%s) does not have any network config", servers[0].Name, servers[0].GetConnectionURL())
+	}
+
 	referenceNetworkNamesAndVLANTags := networkNamesAndVLANTags(referenceNetworkConfig.Config)
 
 	for _, server := range servers[1:] {
 		networkConfig, err := s.client.GetNetworkConfig(ctx, server)
 		if err != nil {
 			return false, "", fmt.Errorf("Failed to get network configuration for server %q: %w", server.Name, err)
+		}
+
+		if networkConfig.Config == nil {
+			return false, "", domain.NewValidationErrf("Server %q (%s) does not have any network config", server.Name, server.GetConnectionURL())
 		}
 
 		namesAndVLANTags := networkNamesAndVLANTags(networkConfig.Config)
