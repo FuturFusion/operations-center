@@ -195,6 +195,10 @@ func (c *cmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 
 	opts = append(opts, client.WithClientCertificate(c.config.CertInfo))
 
+	if remote.ServerCert.Certificate != nil {
+		opts = append(opts, client.WithTrustedServerCertificate(remote.ServerCert.Certificate))
+	}
+
 	if remote.AuthType == config.AuthTypeOIDC {
 		opts = append(opts, client.WithOIDCTokensFile(filepath.Join(configDir, "oidc-tokens", c.config.DefaultRemote+".json")))
 	}
@@ -242,6 +246,15 @@ func (c *cmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 
 		// Run SaveConfig to store the server cert in case it changed.
 		err = c.config.SaveConfig()
+		if err != nil {
+			return err
+		}
+
+		// Recreate the client, with the just accepted server certificate.
+		*c.ocClient, err = client.New(
+			remote.Addr,
+			append(opts, client.WithTrustedServerCertificate(remote.ServerCert.Certificate))...,
+		)
 		if err != nil {
 			return err
 		}
