@@ -5492,7 +5492,91 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 			},
 
 			assertErr:               require.NoError,
-			wantInconsistencyReason: "Network interface names and vlans configuration mismatch",
+			wantInconsistencyReason: "Network interface and bond names and vlans configuration mismatch",
+		},
+		{
+			name: "error - network config bond mismatch",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									Name: "uplink",
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+							Bonds: []incusosapi.SystemNetworkBond{
+								{
+									Name: "bond0",
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									Name: "uplink",
+									VLANTags: []int{
+										1, // interfaces match
+									},
+								},
+							},
+							Bonds: []incusosapi.SystemNetworkBond{
+								{
+									Name: "bond0",
+									VLANTags: []int{
+										2, // bond mismatch
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: "Network interface and bond names and vlans configuration mismatch",
 		},
 		{
 			name: "error - client.GetStorageConfig - reference",

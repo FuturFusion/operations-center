@@ -864,14 +864,19 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 		}
 	}
 
-	// Compare network interface names and VLANs.
-	networkInterfaceNameAndVLANTags := func(ifaces []incusosapi.SystemNetworkInterface) map[string][]int {
-		ifaceNamesAndVLANTags := make(map[string][]int, len(ifaces))
-		for _, iface := range ifaces {
-			ifaceNamesAndVLANTags[iface.Name] = iface.VLANTags
+	// Compare network interface and bond names and VLANs. Interfaces and bonds
+	// share a single flat name space, so both are collected into one map.
+	networkNamesAndVLANTags := func(netConfig *incusosapi.SystemNetworkConfig) map[string][]int {
+		namesAndVLANTags := make(map[string][]int, len(netConfig.Interfaces)+len(netConfig.Bonds))
+		for _, iface := range netConfig.Interfaces {
+			namesAndVLANTags[iface.Name] = iface.VLANTags
 		}
 
-		return ifaceNamesAndVLANTags
+		for _, bond := range netConfig.Bonds {
+			namesAndVLANTags[bond.Name] = bond.VLANTags
+		}
+
+		return namesAndVLANTags
 	}
 
 	referenceNetworkConfig, err := s.client.GetNetworkConfig(ctx, servers[0])
@@ -880,7 +885,7 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 	}
 
 	// FIXME: what if, referenceNetworkConfig.Config == nil?
-	referenceNetworkInterfaceNamesAndVLANTags := networkInterfaceNameAndVLANTags(referenceNetworkConfig.Config.Interfaces)
+	referenceNetworkNamesAndVLANTags := networkNamesAndVLANTags(referenceNetworkConfig.Config)
 
 	for _, server := range servers[1:] {
 		networkConfig, err := s.client.GetNetworkConfig(ctx, server)
@@ -888,10 +893,10 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 			return false, "", fmt.Errorf("Failed to get network configuration for server %q: %w", server.Name, err)
 		}
 
-		interfaceNamesAndVLANTags := networkInterfaceNameAndVLANTags(networkConfig.Config.Interfaces)
+		namesAndVLANTags := networkNamesAndVLANTags(networkConfig.Config)
 
-		if !reflect.DeepEqual(referenceNetworkInterfaceNamesAndVLANTags, interfaceNamesAndVLANTags) {
-			return false, fmt.Sprintf("Network interface names and vlans configuration mismatch, found %v (%s) and %v (%s)", referenceNetworkInterfaceNamesAndVLANTags, servers[0].Name, interfaceNamesAndVLANTags, server.Name), nil
+		if !reflect.DeepEqual(referenceNetworkNamesAndVLANTags, namesAndVLANTags) {
+			return false, fmt.Sprintf("Network interface and bond names and vlans configuration mismatch, found %v (%s) and %v (%s)", referenceNetworkNamesAndVLANTags, servers[0].Name, namesAndVLANTags, server.Name), nil
 		}
 	}
 
