@@ -5374,6 +5374,112 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - network config nil - reference",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: nil, // no network config
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, `Server "one" () does not have any network config`)
+			},
+		},
+		{
+			name: "error - network config nil",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									Name: "uplink",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: nil, // no network config
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, `Server "two" () does not have any network config`)
+			},
+		},
+		{
 			name: "error - client.GetNetworkConfig",
 			servers: []provisioning.Server{
 				{
@@ -5492,7 +5598,91 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 			},
 
 			assertErr:               require.NoError,
-			wantInconsistencyReason: "Network interface names and vlans configuration mismatch",
+			wantInconsistencyReason: "Network interface and bond names and vlans configuration mismatch",
+		},
+		{
+			name: "error - network config bond mismatch",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									Name: "uplink",
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+							Bonds: []incusosapi.SystemNetworkBond{
+								{
+									Name: "bond0",
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									Name: "uplink",
+									VLANTags: []int{
+										1, // interfaces match
+									},
+								},
+							},
+							Bonds: []incusosapi.SystemNetworkBond{
+								{
+									Name: "bond0",
+									VLANTags: []int{
+										2, // bond mismatch
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: "Network interface and bond names and vlans configuration mismatch",
 		},
 		{
 			name: "error - client.GetStorageConfig - reference",
@@ -10445,6 +10635,128 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 			assertErr: require.NoError,
 			assertLog: log.Empty,
 		},
+		{
+			name:             "success - bond without any interfaces",
+			nameArg:          "one",
+			interfaceNameArg: "bond0",
+			vlanTagsArg:      []int{10, 20, 100},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										Bonds: []incusosapi.SystemNetworkBond{
+											{
+												Name:     "bond0",
+												VLANTags: []int{10, 50}, // vlan tag 10 already present
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientUpdateNetworkConfig: []queue.Item[*incusosapi.SystemNetworkConfig]{
+				{
+					Value: &incusosapi.SystemNetworkConfig{
+						Bonds: []incusosapi.SystemNetworkBond{
+							{
+								Name:     "bond0",
+								VLANTags: []int{10, 50, 20, 100}, // Expect the updated set of VLAN tags.
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+		{
+			name:             "success - bond next to unrelated interfaces",
+			nameArg:          "one",
+			interfaceNameArg: "bond0",
+			vlanTagsArg:      []int{10, 20, 100},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										Interfaces: []incusosapi.SystemNetworkInterface{
+											{
+												Name:     "uplink",
+												VLANTags: []int{50},
+											},
+										},
+										Bonds: []incusosapi.SystemNetworkBond{
+											{
+												Name:     "bond0",
+												VLANTags: []int{10},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientUpdateNetworkConfig: []queue.Item[*incusosapi.SystemNetworkConfig]{
+				{
+					Value: &incusosapi.SystemNetworkConfig{
+						Interfaces: []incusosapi.SystemNetworkInterface{
+							{
+								Name:     "uplink",
+								VLANTags: []int{50}, // Expect the interface to be left untouched.
+							},
+						},
+						Bonds: []incusosapi.SystemNetworkBond{
+							{
+								Name:     "bond0",
+								VLANTags: []int{10, 20, 100}, // Expect the updated set of VLAN tags.
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
 
 		{
 			name:             "error - GetByName error",
@@ -10609,7 +10921,7 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 			assertLog: log.Empty,
 		},
 		{
-			name:             "error - network interface missing on server",
+			name:             "error - network interface and bond missing on server",
 			nameArg:          "one",
 			interfaceNameArg: "uplink",
 			vlanTagsArg:      []int{10, 20, 100},
@@ -10634,7 +10946,12 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
 									Config: &incusosapi.SystemNetworkConfig{
-										Interfaces: []incusosapi.SystemNetworkInterface{}, // no network interfaces
+										Interfaces: []incusosapi.SystemNetworkInterface{}, // no matching network interface
+										Bonds: []incusosapi.SystemNetworkBond{
+											{
+												Name: "bond0", // no matching bond either
+											},
+										},
 									},
 								},
 							},
@@ -10646,7 +10963,7 @@ func TestClusterService_AddServerSystemNetworkVLANTags(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(t, err, `does not have interface "uplink"`)
+				require.ErrorContains(t, err, `does not have interface or bond "uplink"`)
 			},
 			assertLog: log.Empty,
 		},
@@ -10900,6 +11217,73 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 			assertErr: require.NoError,
 			assertLog: log.Empty,
 		},
+		{
+			name:             "success - bond next to unrelated interfaces",
+			nameArg:          "one",
+			interfaceNameArg: "bond0",
+			vlanTagsArg:      []int{10, 30},
+			repoGetByName: &provisioning.Cluster{
+				Name:   "one",
+				Status: api.ClusterStatusReady,
+			},
+			serverSvcGetAllWithFilter: []queue.Item[provisioning.Servers]{
+				// GetByName
+				{},
+				// serverSvc.GetAllWithFilter
+				{
+					Value: provisioning.Servers{
+						{
+							Name:         "one",
+							Cluster:      ptr.To("one"),
+							Status:       api.ServerStatusReady,
+							StatusDetail: api.ServerStatusDetailNone,
+							VersionData: api.ServerVersionData{
+								InMaintenance: ptr.To(api.NotInMaintenance),
+							},
+							OSData: api.OSData{
+								Network: incusosapi.SystemNetwork{
+									Config: &incusosapi.SystemNetworkConfig{
+										Interfaces: []incusosapi.SystemNetworkInterface{
+											{
+												Name:     "uplink",
+												VLANTags: []int{10, 50},
+											},
+										},
+										Bonds: []incusosapi.SystemNetworkBond{
+											{
+												Name:     "bond0",
+												VLANTags: []int{10, 50},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientUpdateNetworkConfig: []queue.Item[*incusosapi.SystemNetworkConfig]{
+				{
+					Value: &incusosapi.SystemNetworkConfig{
+						Interfaces: []incusosapi.SystemNetworkInterface{
+							{
+								Name:     "uplink",
+								VLANTags: []int{10, 50}, // Expect the interface to be left untouched.
+							},
+						},
+						Bonds: []incusosapi.SystemNetworkBond{
+							{
+								Name:     "bond0",
+								VLANTags: []int{50}, // Expect the updated set of VLAN tags.
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
 
 		{
 			name:                    "error - GetByName error",
@@ -10953,7 +11337,7 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 			assertLog: log.Empty,
 		},
 		{
-			name:             "error - network interface missing on server",
+			name:             "error - network interface and bond missing on server",
 			nameArg:          "one",
 			interfaceNameArg: "uplink",
 			vlanTagsArg:      []int{10},
@@ -10978,7 +11362,12 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 							OSData: api.OSData{
 								Network: incusosapi.SystemNetwork{
 									Config: &incusosapi.SystemNetworkConfig{
-										Interfaces: []incusosapi.SystemNetworkInterface{}, // no network interfaces
+										Interfaces: []incusosapi.SystemNetworkInterface{}, // no matching network interface
+										Bonds: []incusosapi.SystemNetworkBond{
+											{
+												Name: "bond0", // no matching bond either
+											},
+										},
 									},
 								},
 							},
@@ -10990,7 +11379,7 @@ func TestClusterService_RemoveServerSystemNetworkVLANTags(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
-				require.ErrorContains(t, err, `does not have interface "uplink"`)
+				require.ErrorContains(t, err, `does not have interface or bond "uplink"`)
 			},
 			assertLog: log.Empty,
 		},

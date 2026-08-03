@@ -864,14 +864,19 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 		}
 	}
 
-	// Compare network interface names and VLANs.
-	networkInterfaceNameAndVLANTags := func(ifaces []incusosapi.SystemNetworkInterface) map[string][]int {
-		ifaceNamesAndVLANTags := make(map[string][]int, len(ifaces))
-		for _, iface := range ifaces {
-			ifaceNamesAndVLANTags[iface.Name] = iface.VLANTags
+	// Compare network interface and bond names and VLANs. Interfaces and bonds
+	// share a single flat name space, so both are collected into one map.
+	networkNamesAndVLANTags := func(netConfig *incusosapi.SystemNetworkConfig) map[string][]int {
+		namesAndVLANTags := make(map[string][]int, len(netConfig.Interfaces)+len(netConfig.Bonds))
+		for _, iface := range netConfig.Interfaces {
+			namesAndVLANTags[iface.Name] = iface.VLANTags
 		}
 
-		return ifaceNamesAndVLANTags
+		for _, bond := range netConfig.Bonds {
+			namesAndVLANTags[bond.Name] = bond.VLANTags
+		}
+
+		return namesAndVLANTags
 	}
 
 	referenceNetworkConfig, err := s.client.GetNetworkConfig(ctx, servers[0])
@@ -879,8 +884,11 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 		return false, "", fmt.Errorf("Failed to get network configuration for server %q: %w", servers[0].Name, err)
 	}
 
-	// FIXME: what if, referenceNetworkConfig.Config == nil?
-	referenceNetworkInterfaceNamesAndVLANTags := networkInterfaceNameAndVLANTags(referenceNetworkConfig.Config.Interfaces)
+	if referenceNetworkConfig.Config == nil {
+		return false, "", domain.NewValidationErrf("Server %q (%s) does not have any network config", servers[0].Name, servers[0].GetConnectionURL())
+	}
+
+	referenceNetworkNamesAndVLANTags := networkNamesAndVLANTags(referenceNetworkConfig.Config)
 
 	for _, server := range servers[1:] {
 		networkConfig, err := s.client.GetNetworkConfig(ctx, server)
@@ -888,10 +896,14 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 			return false, "", fmt.Errorf("Failed to get network configuration for server %q: %w", server.Name, err)
 		}
 
-		interfaceNamesAndVLANTags := networkInterfaceNameAndVLANTags(networkConfig.Config.Interfaces)
+		if networkConfig.Config == nil {
+			return false, "", domain.NewValidationErrf("Server %q (%s) does not have any network config", server.Name, server.GetConnectionURL())
+		}
 
-		if !reflect.DeepEqual(referenceNetworkInterfaceNamesAndVLANTags, interfaceNamesAndVLANTags) {
-			return false, fmt.Sprintf("Network interface names and vlans configuration mismatch, found %v (%s) and %v (%s)", referenceNetworkInterfaceNamesAndVLANTags, servers[0].Name, interfaceNamesAndVLANTags, server.Name), nil
+		namesAndVLANTags := networkNamesAndVLANTags(networkConfig.Config)
+
+		if !reflect.DeepEqual(referenceNetworkNamesAndVLANTags, namesAndVLANTags) {
+			return false, fmt.Sprintf("Network interface and bond names and vlans configuration mismatch, found %v (%s) and %v (%s)", referenceNetworkNamesAndVLANTags, servers[0].Name, namesAndVLANTags, server.Name), nil
 		}
 	}
 
@@ -2321,6 +2333,24 @@ func (s *clusterService) AbortClusterUpdate(ctx context.Context, name string) er
 	return nil
 }
 
+// findVLANTags returns a reference to the VLAN tags of the interface or bond
+// called name, or nil if neither exists. Interfaces take precedence over bonds.
+func findVLANTags(networkConfig *incusosapi.SystemNetworkConfig, name string) *[]int {
+	for i, iface := range networkConfig.Interfaces {
+		if iface.Name == name {
+			return &networkConfig.Interfaces[i].VLANTags
+		}
+	}
+
+	for i, bond := range networkConfig.Bonds {
+		if bond.Name == name {
+			return &networkConfig.Bonds[i].VLANTags
+		}
+	}
+
+	return nil
+}
+
 func (s *clusterService) AddServerSystemNetworkVLANTags(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) (err error) {
 	defer func() {
 		if err != nil {
@@ -2336,40 +2366,30 @@ func (s *clusterService) AddServerSystemNetworkVLANTags(ctx context.Context, clu
 	// Ensure the interface is present on all of the servers and prepare
 	// the updated interface config.
 	currentNetworkConfig := make(map[string]*incusosapi.SystemNetworkConfig, len(servers))
-	for serverIdx, server := range servers {
-		found := false
+	for _, server := range servers {
 		if server.OSData.Network.Config == nil {
 			return domain.NewValidationErrf("Server %q (%s) does not have any network config", server.Name, server.GetConnectionURL())
 		}
 
-		ifaceIdx := 0
-		for i, iface := range server.OSData.Network.Config.Interfaces {
-			if iface.Name == interfaceName {
-				found = true
-
-				networkConfig := &incusosapi.SystemNetworkConfig{}
-				_ = structs.DeepCopy(server.OSData.Network.Config, networkConfig)
-				// Ignore the error, DeepCopy would fail, if source or dest are nil
-				// which is ensured already before.
-
-				currentNetworkConfig[server.Name] = networkConfig
-				ifaceIdx = i
-
-				break
-			}
+		vlanTagsRef := findVLANTags(server.OSData.Network.Config, interfaceName)
+		if vlanTagsRef == nil {
+			return domain.NewValidationErrf("Server %q (%s) does not have interface or bond %q", server.Name, server.GetConnectionURL(), interfaceName)
 		}
 
-		if !found {
-			return domain.NewValidationErrf("Server %q (%s) does not have interface %q", server.Name, server.GetConnectionURL(), interfaceName)
-		}
+		networkConfig := &incusosapi.SystemNetworkConfig{}
+		// Ignore the error, DeepCopy would fail, if source or dest are nil
+		// which is ensured already before.
+		_ = structs.DeepCopy(server.OSData.Network.Config, networkConfig)
+
+		currentNetworkConfig[server.Name] = networkConfig
 
 		// Append vlan tag if not yet present.
 		for _, vlanTag := range vlanTags {
-			if slices.Contains(server.OSData.Network.Config.Interfaces[ifaceIdx].VLANTags, vlanTag) {
+			if slices.Contains(*vlanTagsRef, vlanTag) {
 				continue
 			}
 
-			servers[serverIdx].OSData.Network.Config.Interfaces[ifaceIdx].VLANTags = append(servers[serverIdx].OSData.Network.Config.Interfaces[ifaceIdx].VLANTags, vlanTag)
+			*vlanTagsRef = append(*vlanTagsRef, vlanTag)
 		}
 	}
 
@@ -2412,40 +2432,27 @@ func (s *clusterService) RemoveServerSystemNetworkVLANTags(ctx context.Context, 
 	// Ensure the interface is present on all of the servers and prepare
 	// the updated interface config.
 	currentNetworkConfig := make(map[string]*incusosapi.SystemNetworkConfig, len(servers))
-	for serverIdx, server := range servers {
-		found := false
+	for _, server := range servers {
 		if server.OSData.Network.Config == nil {
 			return domain.NewValidationErrf("Server %q (%s) does not have any network config", server.Name, server.GetConnectionURL())
 		}
 
-		ifaceIdx := 0
-		for i, iface := range server.OSData.Network.Config.Interfaces {
-			if iface.Name == interfaceName {
-				found = true
-
-				networkConfig := &incusosapi.SystemNetworkConfig{}
-				// Ignore the error, DeepCopy would fail, if source or dest are nil
-				// which is ensured already before.
-				_ = structs.DeepCopy(server.OSData.Network.Config, networkConfig)
-
-				currentNetworkConfig[server.Name] = networkConfig
-				ifaceIdx = i
-
-				break
-			}
+		vlanTagsRef := findVLANTags(server.OSData.Network.Config, interfaceName)
+		if vlanTagsRef == nil {
+			return domain.NewValidationErrf("Server %q (%s) does not have interface or bond %q", server.Name, server.GetConnectionURL(), interfaceName)
 		}
 
-		if !found {
-			return domain.NewValidationErrf("Server %q (%s) does not have interface %q", server.Name, server.GetConnectionURL(), interfaceName)
-		}
+		networkConfig := &incusosapi.SystemNetworkConfig{}
+		// Ignore the error, DeepCopy would fail, if source or dest are nil
+		// which is ensured already before.
+		_ = structs.DeepCopy(server.OSData.Network.Config, networkConfig)
+
+		currentNetworkConfig[server.Name] = networkConfig
 
 		// Remove vlan tag if present.
-		servers[serverIdx].OSData.Network.Config.Interfaces[ifaceIdx].VLANTags = slices.DeleteFunc(
-			servers[serverIdx].OSData.Network.Config.Interfaces[ifaceIdx].VLANTags,
-			func(vlanTag int) bool {
-				return slices.Contains(vlanTags, vlanTag)
-			},
-		)
+		*vlanTagsRef = slices.DeleteFunc(*vlanTagsRef, func(vlanTag int) bool {
+			return slices.Contains(vlanTags, vlanTag)
+		})
 	}
 
 	// Perform change on all servers.
