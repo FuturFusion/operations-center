@@ -100,7 +100,11 @@ func daemonSetup(t *testing.T) (socketClient client.OperationsCenterClient, unau
 
 	socketClient, err = client.New("http://unix.socket/", client.WithForceLocal(filepath.Join(tmpDir, "unix.socket")))
 	require.NoError(t, err)
-	unauthorizedHTTPClient, err = client.New("https://localhost:" + port) // without client.WithClientCertificate(cert)
+
+	serverCert, err := incustls.ReadCert(filepath.Join(tmpDir, "server.crt"))
+	require.NoError(t, err)
+
+	unauthorizedHTTPClient, err = client.New("https://localhost:"+port, client.WithTrustedServerCertificate(serverCert)) // without client.WithClientCertificate(cert)
 	require.NoError(t, err)
 
 	db, err = dbdriver.Open(tmpDir)

@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -35,6 +36,7 @@ type OperationsCenterClient struct {
 	forceLocal         bool
 	unixSocket         string
 	tlsClientCert      tls.Certificate
+	trustedServerCert  *x509.Certificate
 	oidcTokensFilename *string
 }
 
@@ -52,6 +54,16 @@ func WithForceLocal(unixSocket string) Option {
 func WithClientCertificate(certInfo *incusTLS.CertInfo) Option {
 	return func(c *OperationsCenterClient) error {
 		c.tlsClientCert = certInfo.KeyPair()
+
+		return nil
+	}
+}
+
+// WithTrustedServerCertificate pins the certificate the remote server is
+// expected to present.
+func WithTrustedServerCertificate(trustedServerCert *x509.Certificate) Option {
+	return func(c *OperationsCenterClient) error {
+		c.trustedServerCert = trustedServerCert
 
 		return nil
 	}
@@ -109,13 +121,18 @@ func New(addr string, opts ...Option) (OperationsCenterClient, error) {
 		return c, nil
 	}
 
+	tlsConfig := incusTLS.InitTLSConfig()
+	tlsConfig.Certificates = []tls.Certificate{c.tlsClientCert}
+
+	if c.trustedServerCert != nil {
+		trustedServerCert := *c.trustedServerCert
+		incusTLS.TLSConfigWithTrustedCert(tlsConfig, &trustedServerCert)
+	}
+
 	httpClient := http.DefaultClient
 
 	httpClient.Transport = &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-			Certificates:       []tls.Certificate{c.tlsClientCert},
-		},
+		TLSClientConfig: tlsConfig,
 	}
 
 	c.httpClient = httpClient
