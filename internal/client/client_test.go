@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestNew_serverCertificateVerification(t *testing.T) {
@@ -63,6 +64,72 @@ func TestNew_serverCertificateVerification(t *testing.T) {
 
 			_, err = c.DoRequest(t.Context(), http.MethodGet, "", url.Values{}, nil)
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestIsServerTrusted(t *testing.T) {
+	serverCert, serverX509Cert := generateServerCert(t)
+	_, otherX509Cert := generateServerCert(t)
+
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"type":"sync","status":"Success","status_code":200,"metadata":{"auth":"untrusted"}}`))
+	}))
+
+	srv.TLS = &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+	}
+
+	srv.StartTLS()
+	t.Cleanup(srv.Close)
+
+	tests := []struct {
+		name       string
+		opts       []client.Option
+		pinnedCert api.Certificate
+
+		wantTrusted    bool
+		wantActualCert *x509.Certificate
+	}{
+		{
+			name:        "trusted - certificate of the server is pinned",
+			opts:        []client.Option{client.WithTrustedServerCertificate(serverX509Cert)},
+			pinnedCert:  api.Certificate{Certificate: serverX509Cert},
+			wantTrusted: true,
+		},
+		{
+			name: "untrusted - no certificate pinned, self-signed certificate is not trusted",
+			opts: nil,
+
+			wantTrusted:    false,
+			wantActualCert: serverX509Cert,
+		},
+		{
+			name:       "untrusted - pinned certificate does not match the one presented by the server",
+			opts:       []client.Option{client.WithTrustedServerCertificate(otherX509Cert)},
+			pinnedCert: api.Certificate{Certificate: otherX509Cert},
+
+			wantTrusted:    false,
+			wantActualCert: serverX509Cert,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			c, err := client.New(srv.URL, tc.opts...)
+			require.NoError(t, err)
+
+			actualCert, trusted, err := c.IsServerTrusted(t.Context(), tc.pinnedCert)
+			require.NoError(t, err)
+			require.Equal(t, tc.wantTrusted, trusted)
+
+			if tc.wantActualCert != nil {
+				require.NotNil(t, actualCert.Certificate)
+				require.True(t, tc.wantActualCert.Equal(actualCert.Certificate))
+			} else {
+				require.Nil(t, actualCert.Certificate)
+			}
 		})
 	}
 }

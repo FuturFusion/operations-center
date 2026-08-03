@@ -7,7 +7,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -81,6 +80,18 @@ func WithOIDCTokensFile(oidcTokensFilename string) Option {
 	}
 }
 
+func (c OperationsCenterClient) tlsConfig() *tls.Config {
+	tlsConfig := incusTLS.InitTLSConfig()
+	tlsConfig.Certificates = []tls.Certificate{c.tlsClientCert}
+
+	if c.trustedServerCert != nil {
+		trustedServerCert := *c.trustedServerCert
+		incusTLS.TLSConfigWithTrustedCert(tlsConfig, &trustedServerCert)
+	}
+
+	return tlsConfig
+}
+
 func New(addr string, opts ...Option) (OperationsCenterClient, error) {
 	c := OperationsCenterClient{
 		baseURL: strings.TrimSuffix(addr, "/"),
@@ -108,9 +119,9 @@ func New(addr string, opts ...Option) (OperationsCenterClient, error) {
 		transport := &http.Transport{
 			DialContext:           unixDial,
 			DisableKeepAlives:     true,
-			ExpectContinueTimeout: time.Second * 30,
-			ResponseHeaderTimeout: time.Second * 3600,
-			TLSHandshakeTimeout:   time.Second * 5,
+			ExpectContinueTimeout: 30 * time.Second,
+			ResponseHeaderTimeout: 3600 * time.Second,
+			TLSHandshakeTimeout:   5 * time.Second,
 		}
 
 		// Define the http client
@@ -121,18 +132,13 @@ func New(addr string, opts ...Option) (OperationsCenterClient, error) {
 		return c, nil
 	}
 
-	tlsConfig := incusTLS.InitTLSConfig()
-	tlsConfig.Certificates = []tls.Certificate{c.tlsClientCert}
-
-	if c.trustedServerCert != nil {
-		trustedServerCert := *c.trustedServerCert
-		incusTLS.TLSConfigWithTrustedCert(tlsConfig, &trustedServerCert)
-	}
-
-	httpClient := http.DefaultClient
-
-	httpClient.Transport = &http.Transport{
-		TLSClientConfig: tlsConfig,
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig:       c.tlsConfig(),
+			ExpectContinueTimeout: 30 * time.Second,
+			ResponseHeaderTimeout: 3600 * time.Second,
+			TLSHandshakeTimeout:   5 * time.Second,
+		},
 	}
 
 	c.httpClient = httpClient
@@ -286,19 +292,48 @@ func (c OperationsCenterClient) GetAPIServerInfo(ctx context.Context) (api.Serve
 // presented by the server is returned for further processing, e.g. manual
 // verification by the user.
 func (c OperationsCenterClient) IsServerTrusted(ctx context.Context, serverCertificate api.Certificate) (actualServerCertificate api.Certificate, _ bool, _ error) {
-	resp, err := (&http.Client{}).Get(c.baseURL)
-	if err != nil {
-		var urlErr *url.Error
-		if errors.As(err, &urlErr) {
-			switch actualErr := urlErr.Unwrap().(type) {
-			case *tls.CertificateVerificationError:
-				actualServerCertificate = api.Certificate{Certificate: actualErr.UnverifiedCertificates[0]}
-				if serverCertificate.String() != actualServerCertificate.String() {
-					return actualServerCertificate, false, nil
-				}
+	tlsConfig := c.tlsConfig()
 
-				return api.Certificate{}, true, nil
+	var peerCert *x509.Certificate
+
+	tlsConfig.InsecureSkipVerify = true
+	tlsConfig.VerifyConnection = func(cs tls.ConnectionState) error {
+		peerCert = cs.PeerCertificates[0]
+
+		intermediates := x509.NewCertPool()
+		for _, cert := range cs.PeerCertificates[1:] {
+			intermediates.AddCert(cert)
+		}
+
+		_, err := peerCert.Verify(x509.VerifyOptions{
+			DNSName:       cs.ServerName,
+			Roots:         tlsConfig.RootCAs,
+			Intermediates: intermediates,
+		})
+
+		return err
+	}
+
+	httpClient := http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+		},
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL, nil)
+	if err != nil {
+		return api.Certificate{}, false, err
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		if peerCert != nil {
+			actualServerCertificate = api.Certificate{Certificate: peerCert}
+			if serverCertificate.String() != actualServerCertificate.String() {
+				return actualServerCertificate, false, nil
 			}
+
+			return api.Certificate{}, true, nil
 		}
 
 		return api.Certificate{}, false, fmt.Errorf(`Failed to connect: %v`, err)
