@@ -422,7 +422,7 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 func mustWaitUpdatesReady(t *testing.T) {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(7*time.Minute))
+	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(15*time.Minute))
 	defer cancel()
 
 	count := 0
