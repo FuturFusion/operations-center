@@ -201,7 +201,7 @@ require (
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/lmittmann/tint v1.2.0
-	github.com/lxc/incus-os/incus-osd v0.0.0-20260730184923-2d1688e9a46b
+	github.com/lxc/incus-os/incus-osd v0.0.0-20260731023310-738899866ec6
 	github.com/lxc/incus/v7 v7.3.0
 	github.com/maniartech/signals v1.3.1
 	github.com/mattn/go-shellwords v1.0.14
