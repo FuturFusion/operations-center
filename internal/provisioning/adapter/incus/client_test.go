@@ -1739,6 +1739,90 @@ func TestClientServer(t *testing.T) {
 			},
 		},
 		{
+			name: "GetNodeSpecificConfigKeys",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetNodeSpecificConfigKeys(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "configs": {
+      "server": {
+        "core": {
+          "keys": [
+            {
+              "core.https_address": {
+                "scope": "local",
+                "shortdesc": "Address to bind for the remote API (HTTPS)",
+                "type": "string"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+						want := map[string]map[string]bool{
+							"server": {
+								"core.https_address": true,
+							},
+							// NOTE: compensate for the lack of information about "storage_lvmcluster" in /1.0/metadata/configuration.
+							"storage_lvmcluster": nil,
+						}
+
+						require.Equal(t, want, res)
+					},
+					wantPaths: []string{"GET /1.0/metadata/configuration"},
+				},
+				{
+					name: "error - resource data unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode:   http.StatusInternalServerError,
+								responseBody: []byte(http.StatusText(http.StatusInternalServerError)),
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/metadata/configuration"},
+				},
+				{
+					name: "error - resource data invalid JSON",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/metadata/configuration"},
+				},
+			},
+		},
+		{
 			name: "AddApplication",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
 				return nil, client.AddApplication(ctx, target, "debug")

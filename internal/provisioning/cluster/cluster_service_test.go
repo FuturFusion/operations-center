@@ -60,6 +60,7 @@ func TestClusterService_Create(t *testing.T) {
 		clientJoinClusterErr                              error
 		clientGetOSData                                   api.OSData
 		clientGetOSDataErr                                error
+		clientGetNodeSpecificConfigKeysErr                error
 		clientGetRemoteCertificateErr                     error
 		serverSvcGetByName                                []queue.Item[*provisioning.Server]
 		serverSvcUpdateErr                                error
@@ -1968,6 +1969,121 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
+			name: "error - client.GetNodeSpecificConfigKeys",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate:     "certificate",
+			clientGetNodeSpecificConfigKeysErr: boom.Error,
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
 			name: "error - provisioner.Init",
 			cluster: provisioning.Cluster{
 				Name:        "one",
@@ -3225,6 +3341,9 @@ func TestClusterService_Create(t *testing.T) {
 				},
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return tc.clientGetOSData, tc.clientGetOSDataErr
+				},
+				GetNodeSpecificConfigKeysFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (map[string]map[string]bool, error) {
+					return nil, tc.clientGetNodeSpecificConfigKeysErr
 				},
 				GetRemoteCertificateFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (*x509.Certificate, error) {
 					return &x509.Certificate{}, tc.clientGetRemoteCertificateErr

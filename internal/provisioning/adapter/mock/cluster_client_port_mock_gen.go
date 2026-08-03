@@ -38,6 +38,9 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			GetNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemNetwork, error) {
 //				panic("mock out the GetNetworkConfig method")
 //			},
+//			GetNodeSpecificConfigKeysFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (map[string]map[string]bool, error) {
+//				panic("mock out the GetNodeSpecificConfigKeys method")
+//			},
 //			GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 //				panic("mock out the GetOSData method")
 //			},
@@ -107,6 +110,9 @@ type ClusterClientPortMock struct {
 
 	// GetNetworkConfigFunc mocks the GetNetworkConfig method.
 	GetNetworkConfigFunc func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemNetwork, error)
+
+	// GetNodeSpecificConfigKeysFunc mocks the GetNodeSpecificConfigKeys method.
+	GetNodeSpecificConfigKeysFunc func(ctx context.Context, endpoint provisioning.Endpoint) (map[string]map[string]bool, error)
 
 	// GetOSDataFunc mocks the GetOSData method.
 	GetOSDataFunc func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error)
@@ -190,6 +196,13 @@ type ClusterClientPortMock struct {
 			Ctx context.Context
 			// Server is the server argument value.
 			Server provisioning.Server
+		}
+		// GetNodeSpecificConfigKeys holds details about calls to the GetNodeSpecificConfigKeys method.
+		GetNodeSpecificConfigKeys []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 		}
 		// GetOSData holds details about calls to the GetOSData method.
 		GetOSData []struct {
@@ -337,27 +350,28 @@ type ClusterClientPortMock struct {
 			UpdateConfig provisioning.ServerSystemUpdate
 		}
 	}
-	lockEnableCluster            sync.RWMutex
-	lockGetClusterJoinToken      sync.RWMutex
-	lockGetClusterNodeNames      sync.RWMutex
-	lockGetNetworkConfig         sync.RWMutex
-	lockGetOSData                sync.RWMutex
-	lockGetOSServiceISCSI        sync.RWMutex
-	lockGetOSServiceLVM          sync.RWMutex
-	lockGetOSServiceMultipath    sync.RWMutex
-	lockGetOSServiceNVME         sync.RWMutex
-	lockGetRemoteCertificate     sync.RWMutex
-	lockGetStorageConfig         sync.RWMutex
-	lockIncusClient              sync.RWMutex
-	lockJoinCluster              sync.RWMutex
-	lockPing                     sync.RWMutex
-	lockSetServerConfig          sync.RWMutex
-	lockSubscribeLifecycleEvents sync.RWMutex
-	lockSystemFactoryReset       sync.RWMutex
-	lockUpdateClusterCertificate sync.RWMutex
-	lockUpdateNetworkConfig      sync.RWMutex
-	lockUpdateOSService          sync.RWMutex
-	lockUpdateUpdateConfig       sync.RWMutex
+	lockEnableCluster             sync.RWMutex
+	lockGetClusterJoinToken       sync.RWMutex
+	lockGetClusterNodeNames       sync.RWMutex
+	lockGetNetworkConfig          sync.RWMutex
+	lockGetNodeSpecificConfigKeys sync.RWMutex
+	lockGetOSData                 sync.RWMutex
+	lockGetOSServiceISCSI         sync.RWMutex
+	lockGetOSServiceLVM           sync.RWMutex
+	lockGetOSServiceMultipath     sync.RWMutex
+	lockGetOSServiceNVME          sync.RWMutex
+	lockGetRemoteCertificate      sync.RWMutex
+	lockGetStorageConfig          sync.RWMutex
+	lockIncusClient               sync.RWMutex
+	lockJoinCluster               sync.RWMutex
+	lockPing                      sync.RWMutex
+	lockSetServerConfig           sync.RWMutex
+	lockSubscribeLifecycleEvents  sync.RWMutex
+	lockSystemFactoryReset        sync.RWMutex
+	lockUpdateClusterCertificate  sync.RWMutex
+	lockUpdateNetworkConfig       sync.RWMutex
+	lockUpdateOSService           sync.RWMutex
+	lockUpdateUpdateConfig        sync.RWMutex
 }
 
 // EnableCluster calls EnableClusterFunc.
@@ -505,6 +519,42 @@ func (mock *ClusterClientPortMock) GetNetworkConfigCalls() []struct {
 	mock.lockGetNetworkConfig.RLock()
 	calls = mock.calls.GetNetworkConfig
 	mock.lockGetNetworkConfig.RUnlock()
+	return calls
+}
+
+// GetNodeSpecificConfigKeys calls GetNodeSpecificConfigKeysFunc.
+func (mock *ClusterClientPortMock) GetNodeSpecificConfigKeys(ctx context.Context, endpoint provisioning.Endpoint) (map[string]map[string]bool, error) {
+	if mock.GetNodeSpecificConfigKeysFunc == nil {
+		panic("ClusterClientPortMock.GetNodeSpecificConfigKeysFunc: method is nil but ClusterClientPort.GetNodeSpecificConfigKeys was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
+	}{
+		Ctx:      ctx,
+		Endpoint: endpoint,
+	}
+	mock.lockGetNodeSpecificConfigKeys.Lock()
+	mock.calls.GetNodeSpecificConfigKeys = append(mock.calls.GetNodeSpecificConfigKeys, callInfo)
+	mock.lockGetNodeSpecificConfigKeys.Unlock()
+	return mock.GetNodeSpecificConfigKeysFunc(ctx, endpoint)
+}
+
+// GetNodeSpecificConfigKeysCalls gets all the calls that were made to GetNodeSpecificConfigKeys.
+// Check the length with:
+//
+//	len(mockedClusterClientPort.GetNodeSpecificConfigKeysCalls())
+func (mock *ClusterClientPortMock) GetNodeSpecificConfigKeysCalls() []struct {
+	Ctx      context.Context
+	Endpoint provisioning.Endpoint
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
+	}
+	mock.lockGetNodeSpecificConfigKeys.RLock()
+	calls = mock.calls.GetNodeSpecificConfigKeys
+	mock.lockGetNodeSpecificConfigKeys.RUnlock()
 	return calls
 }
 

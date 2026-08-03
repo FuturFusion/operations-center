@@ -134,7 +134,7 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 
 	tmpl := template.New("").Funcs(sprig.FuncMap())
 	tmpl = tmpl.Funcs(template.FuncMap{
-		"splitConfig":  splitConfig,
+		"splitConfig":  splitConfig(config.NodeSpecificConfigKeys),
 		"maxKeyLength": maxKeyLength,
 		"tfString":     tfString,
 	})

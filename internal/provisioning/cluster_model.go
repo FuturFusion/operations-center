@@ -186,6 +186,8 @@ type ClusterProvisioningConfig struct {
 	Servers         []Server
 
 	Cluster Cluster
+
+	NodeSpecificConfigKeys map[string]map[string]bool
 }
 
 type ClusterArtifact struct {

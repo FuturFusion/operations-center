@@ -70,6 +70,16 @@ func (_d ClusterClientPortWithErrorWrapper) GetNetworkConfig(ctx context.Context
 	return _d._base.GetNetworkConfig(ctx, server)
 }
 
+// GetNodeSpecificConfigKeys implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithErrorWrapper) GetNodeSpecificConfigKeys(ctx context.Context, endpoint provisioning.Endpoint) (stringToStringToBool map[string]map[string]bool, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.GetNodeSpecificConfigKeys(ctx, endpoint)
+}
+
 // GetOSData implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithErrorWrapper) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (oSData api.OSData, err error) {
 	defer func() {

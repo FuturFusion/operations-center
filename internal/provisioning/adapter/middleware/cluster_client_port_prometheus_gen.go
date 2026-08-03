@@ -98,6 +98,20 @@ func (_d ClusterClientPortWithPrometheus) GetNetworkConfig(ctx context.Context, 
 	return _d.base.GetNetworkConfig(ctx, server)
 }
 
+// GetNodeSpecificConfigKeys implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) GetNodeSpecificConfigKeys(ctx context.Context, endpoint provisioning.Endpoint) (stringToStringToBool map[string]map[string]bool, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNodeSpecificConfigKeys", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetNodeSpecificConfigKeys(ctx, endpoint)
+}
+
 // GetOSData implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithPrometheus) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (oSData api.OSData, err error) {
 	_since := time.Now()
