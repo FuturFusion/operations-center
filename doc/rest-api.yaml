@@ -278,6 +278,11 @@ definitions:
                 example: XXXXXXX
                 type: string
                 x-go-name: ServerAssetTag
+            server_bios_attributes:
+                additionalProperties: {}
+                description: ServerBIOSAttributes holds the BIOS settings/attributes as reported by the BMC.
+                type: object
+                x-go-name: ServerBIOSAttributes
             server_bios_version:
                 description: ServerBIOSVersion holds the version of the BIOS.
                 example: 1.7.5
@@ -339,6 +344,14 @@ definitions:
                 example: e9de436e-b94e-4aef-8563-883aec84096e
                 type: string
                 x-go-name: ServerUUID
+            virtual_media:
+                description: |-
+                    VirtualMedia holds all virtual media slots (e.g. CD, DVD, floppy, USB)
+                    reported by the BMC system or manager.
+                items:
+                    $ref: '#/definitions/BMCVirtualMedia'
+                type: array
+                x-go-name: VirtualMedia
         title: BMCData defines the data, that have been collected from the BMC.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
@@ -416,6 +429,58 @@ definitions:
                 type: string
                 x-go-name: Timestamp
         title: BMCLogEvent defines a log event from the BMC.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BMCVirtualMedia:
+        description: |-
+            BMCVirtualMedia defines a single virtual media slot exposed by the BMC
+            (system or manager), e.g. CD, DVD, floppy, or USB.
+        properties:
+            connected_via:
+                description: ConnectedVia holds the connection method of the virtual media (e.g. URI, Applet).
+                type: string
+                x-go-name: ConnectedVia
+            id:
+                description: |-
+                    ID uniquely identifies this virtual media entry among all virtual media
+                    reported by the BMC. It is derived from the service (e.g. "system") and ID.
+                example: system:1
+                type: string
+                x-go-name: ID
+            image:
+                description: Image holds the URI of the media attached to the virtual media.
+                type: string
+                x-go-name: Image
+            image_name:
+                description: ImageName holds the name of the inserted virtual media image.
+                type: string
+                x-go-name: ImageName
+            inserted:
+                description: Inserted reports, if a virtual media is currently inserted into this slot.
+                type: boolean
+                x-go-name: Inserted
+            media_types:
+                description: MediaTypes holds the media types supported by the virtual media.
+                items:
+                    type: string
+                type: array
+                x-go-name: MediaTypes
+            status:
+                description: Status holds the reported health status of the virtual media.
+                type: string
+                x-go-name: Status
+            transfer_method:
+                description: TransferMethod describes how the image transfer occurs.
+                type: string
+                x-go-name: TransferMethod
+            transfer_protocol_type:
+                description: TransferProtocolType holds the network protocol used with the image URI.
+                type: string
+                x-go-name: TransferProtocolType
+            write_protected:
+                description: WriteProtected reports, if the remote device media prevents writing to that media.
+                type: boolean
+                x-go-name: WriteProtected
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     CertificatePost:
