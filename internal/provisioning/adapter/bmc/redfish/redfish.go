@@ -98,6 +98,10 @@ func (r redfish) getClient(ctx context.Context, server provisioning.Server) (_ *
 
 		httpClient.Transport = &http.Transport{
 			TLSClientConfig: tlsConfig,
+
+			ExpectContinueTimeout: 30 * time.Second,
+			ResponseHeaderTimeout: 3600 * time.Second,
+			TLSHandshakeTimeout:   5 * time.Second,
 		}
 	}
 
