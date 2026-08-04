@@ -58,7 +58,7 @@ type ServerService interface {
 	BMCServerRestartByName(ctx context.Context, name string, force bool) error
 	BMCLogSourcesByName(ctx context.Context, name string) ([]string, error)
 	BMCLogEntriesByNameAndLogSource(ctx context.Context, name string, logSource string) ([]api.BMCLogEvent, error)
-	BMCDumpByName(ctx context.Context, name string, trace bool) (api.BMCDump, error)
+	BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, trace bool) (api.BMCDump, error)
 }
 
 type ServerRepo interface {
@@ -118,5 +118,5 @@ type BMCServerClientPort interface {
 	WaitForTask(ctx context.Context, server Server, taskMonitor *BMCTaskMonitor) error
 	LogSources(ctx context.Context, server Server) ([]string, error)
 	LogEntriesBySource(ctx context.Context, server Server, logSource string) ([]api.BMCLogEvent, error)
-	Dump(ctx context.Context, server Server, trace bool) (api.BMCDump, error)
+	Dump(ctx context.Context, server Server, additionalEndpoints []string, trace bool) (api.BMCDump, error)
 }

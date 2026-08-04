@@ -9453,19 +9453,21 @@ func TestServerService_BMCDumpByName(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                string
-		nameArg             string
-		traceArg            bool
-		repoGetByNameServer *provisioning.Server
-		repoGetByNameErr    error
-		bmcClientDumpErr    error
+		name                   string
+		nameArg                string
+		additionalEndpointsArg []string
+		traceArg               bool
+		repoGetByNameServer    *provisioning.Server
+		repoGetByNameErr       error
+		bmcClientDumpErr       error
 
 		assertErr require.ErrorAssertionFunc
 		want      api.BMCDump
 	}{
 		{
-			name:    "success",
-			nameArg: "one",
+			name:                   "success",
+			nameArg:                "one",
+			additionalEndpointsArg: []string{"/redfish/v1/Systems/1/Oem/Vendor"},
 			repoGetByNameServer: &provisioning.Server{
 				Name: "one",
 				BMCConfig: api.BMCConfig{
@@ -9526,7 +9528,7 @@ func TestServerService_BMCDumpByName(t *testing.T) {
 			}
 
 			bmcClient := &adapterMock.BMCServerClientPortMock{
-				DumpFunc: func(ctx context.Context, server provisioning.Server, trace bool) (api.BMCDump, error) {
+				DumpFunc: func(ctx context.Context, server provisioning.Server, additionalEndpoints []string, trace bool) (api.BMCDump, error) {
 					return dump, tc.bmcClientDumpErr
 				},
 			}
@@ -9537,11 +9539,16 @@ func TestServerService_BMCDumpByName(t *testing.T) {
 			)
 
 			// Run test
-			gotDump, err := serverSvc.BMCDumpByName(t.Context(), tc.nameArg, tc.traceArg)
+			gotDump, err := serverSvc.BMCDumpByName(t.Context(), tc.nameArg, tc.additionalEndpointsArg, tc.traceArg)
 
 			// Assert
 			tc.assertErr(t, err)
 			require.Equal(t, tc.want, gotDump)
+
+			if tc.repoGetByNameServer != nil && tc.repoGetByNameServer.BMCConfig.APIType == api.BMCAPITypeRedfishV1Generic {
+				require.Len(t, bmcClient.DumpCalls(), 1)
+				require.Equal(t, tc.additionalEndpointsArg, bmcClient.DumpCalls()[0].AdditionalEndpoints)
+			}
 		})
 	}
 }
