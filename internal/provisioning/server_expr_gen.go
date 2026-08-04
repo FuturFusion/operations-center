@@ -30,27 +30,42 @@ type ExprApiBMCConfig struct {
 }
 
 type ExprApiBMCData struct {
-	BMCProtocol                   string    `json:"bmc_protocol" yaml:"bmc_protocol" expr:"bmc_protocol"`
-	BMCProtocolVersion            string    `json:"bmc_protocol_version" yaml:"bmc_protocol_version" expr:"bmc_protocol_version"`
-	BMCVendor                     string    `json:"bmc_vendor" yaml:"bmc_vendor" expr:"bmc_vendor"`
-	BMCModel                      string    `json:"bmc_model" yaml:"bmc_model" expr:"bmc_model"`
-	BMCFirmwareVersion            string    `json:"bmc_firmware_version" yaml:"bmc_firmware_version" expr:"bmc_firmware_version"`
-	BMCServiceIdentification      string    `json:"bmc_service_identification" yaml:"bmc_service_identification" expr:"bmc_service_identification"`
-	ServerManufacturer            string    `json:"server_manufacturer" yaml:"server_manufacturer" expr:"server_manufacturer"`
-	ServerModel                   string    `json:"server_model" yaml:"server_model" expr:"server_model"`
-	ServerSubModel                string    `json:"server_sub_model" yaml:"server_sub_model" expr:"server_sub_model"`
-	ServerUUID                    string    `json:"system_uuid" yaml:"system_uuid" expr:"system_uuid"`
-	ServerAssetTag                string    `json:"server_asset_tag" yaml:"server_asset_tag" expr:"server_asset_tag"`
-	ServerHostName                string    `json:"server_host_name" yaml:"server_host_name" expr:"server_host_name"`
-	ServerSKU                     string    `json:"server_sku" yaml:"server_sku" expr:"server_sku"`
-	ServerSerialNumber            string    `json:"server_serial_number" yaml:"server_serial_number" expr:"server_serial_number"`
-	ServerBIOSVersion             string    `json:"server_bios_version" yaml:"server_bios_version" expr:"server_bios_version"`
-	ServerProcessorArchitecture   string    `json:"server_processor_architecture" yaml:"server_processor_architecture" expr:"server_processor_architecture"`
-	ServerProcessorInstructionSet string    `json:"server_processor_instruction_set" yaml:"server_processor_instruction_set" expr:"server_processor_instruction_set"`
-	ServerPowerState              string    `json:"server_power_state" yaml:"server_power_state" expr:"server_power_state"`
-	ServerLocationIndicatorActive bool      `json:"server_location_indicator_active" yaml:"server_location_indicator_active" expr:"server_location_indicator_active"`
-	ServerHealthStatus            string    `json:"server_health_status" yaml:"server_health_status" expr:"server_health_status"`
-	LastUpdated                   time.Time `json:"last_updated" yaml:"last_updated" expr:"last_updated"`
+	BMCProtocol                   string                            `json:"bmc_protocol" yaml:"bmc_protocol" expr:"bmc_protocol"`
+	BMCProtocolVersion            string                            `json:"bmc_protocol_version" yaml:"bmc_protocol_version" expr:"bmc_protocol_version"`
+	BMCVendor                     string                            `json:"bmc_vendor" yaml:"bmc_vendor" expr:"bmc_vendor"`
+	BMCModel                      string                            `json:"bmc_model" yaml:"bmc_model" expr:"bmc_model"`
+	BMCFirmwareVersion            string                            `json:"bmc_firmware_version" yaml:"bmc_firmware_version" expr:"bmc_firmware_version"`
+	BMCServiceIdentification      string                            `json:"bmc_service_identification" yaml:"bmc_service_identification" expr:"bmc_service_identification"`
+	ServerManufacturer            string                            `json:"server_manufacturer" yaml:"server_manufacturer" expr:"server_manufacturer"`
+	ServerModel                   string                            `json:"server_model" yaml:"server_model" expr:"server_model"`
+	ServerSubModel                string                            `json:"server_sub_model" yaml:"server_sub_model" expr:"server_sub_model"`
+	ServerUUID                    string                            `json:"system_uuid" yaml:"system_uuid" expr:"system_uuid"`
+	ServerAssetTag                string                            `json:"server_asset_tag" yaml:"server_asset_tag" expr:"server_asset_tag"`
+	ServerHostName                string                            `json:"server_host_name" yaml:"server_host_name" expr:"server_host_name"`
+	ServerSKU                     string                            `json:"server_sku" yaml:"server_sku" expr:"server_sku"`
+	ServerSerialNumber            string                            `json:"server_serial_number" yaml:"server_serial_number" expr:"server_serial_number"`
+	ServerBIOSVersion             string                            `json:"server_bios_version" yaml:"server_bios_version" expr:"server_bios_version"`
+	ServerBIOSAttributes          map[string]any                    `json:"server_bios_attributes" yaml:"server_bios_attributes" expr:"server_bios_attributes"`
+	ServerProcessorArchitecture   string                            `json:"server_processor_architecture" yaml:"server_processor_architecture" expr:"server_processor_architecture"`
+	ServerProcessorInstructionSet string                            `json:"server_processor_instruction_set" yaml:"server_processor_instruction_set" expr:"server_processor_instruction_set"`
+	ServerPowerState              string                            `json:"server_power_state" yaml:"server_power_state" expr:"server_power_state"`
+	ServerLocationIndicatorActive bool                              `json:"server_location_indicator_active" yaml:"server_location_indicator_active" expr:"server_location_indicator_active"`
+	ServerHealthStatus            string                            `json:"server_health_status" yaml:"server_health_status" expr:"server_health_status"`
+	VirtualMedia                  map[string]ExprApiBMCVirtualMedia `json:"virtual_media" yaml:"virtual_media" expr:"virtual_media"`
+	LastUpdated                   time.Time                         `json:"last_updated" yaml:"last_updated" expr:"last_updated"`
+}
+
+type ExprApiBMCVirtualMedia struct {
+	ID                   string   `json:"id" yaml:"id" expr:"id"`
+	Inserted             bool     `json:"inserted" yaml:"inserted" expr:"inserted"`
+	Image                string   `json:"image" yaml:"image" expr:"image"`
+	ImageName            string   `json:"image_name" yaml:"image_name" expr:"image_name"`
+	ConnectedVia         string   `json:"connected_via" yaml:"connected_via" expr:"connected_via"`
+	Status               string   `json:"status" yaml:"status" expr:"status"`
+	MediaTypes           []string `json:"media_types" yaml:"media_types" expr:"media_types"`
+	TransferMethod       string   `json:"transfer_method" yaml:"transfer_method" expr:"transfer_method"`
+	TransferProtocolType string   `json:"transfer_protocol_type" yaml:"transfer_protocol_type" expr:"transfer_protocol_type"`
+	WriteProtected       bool     `json:"write_protected" yaml:"write_protected" expr:"write_protected"`
 }
 
 type ExprApiOSData struct {
@@ -460,12 +475,29 @@ func ToExprApiBMCData(b api.BMCData) ExprApiBMCData {
 		ServerSKU:                     b.ServerSKU,
 		ServerSerialNumber:            b.ServerSerialNumber,
 		ServerBIOSVersion:             b.ServerBIOSVersion,
+		ServerBIOSAttributes:          b.ServerBIOSAttributes,
 		ServerProcessorArchitecture:   b.ServerProcessorArchitecture,
 		ServerProcessorInstructionSet: b.ServerProcessorInstructionSet,
 		ServerPowerState:              b.ServerPowerState,
 		ServerLocationIndicatorActive: b.ServerLocationIndicatorActive,
 		ServerHealthStatus:            b.ServerHealthStatus,
+		VirtualMedia:                  mapConvert(b.VirtualMedia, ToExprApiBMCVirtualMedia),
 		LastUpdated:                   b.LastUpdated,
+	}
+}
+
+func ToExprApiBMCVirtualMedia(b api.BMCVirtualMedia) ExprApiBMCVirtualMedia {
+	return ExprApiBMCVirtualMedia{
+		ID:                   b.ID,
+		Inserted:             b.Inserted,
+		Image:                b.Image,
+		ImageName:            b.ImageName,
+		ConnectedVia:         b.ConnectedVia,
+		Status:               b.Status,
+		MediaTypes:           b.MediaTypes,
+		TransferMethod:       b.TransferMethod,
+		TransferProtocolType: b.TransferProtocolType,
+		WriteProtected:       b.WriteProtected,
 	}
 }
 
