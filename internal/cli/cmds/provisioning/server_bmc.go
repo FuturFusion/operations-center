@@ -1,6 +1,8 @@
 package provisioning
 
 import (
+	"time"
+
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
@@ -354,7 +356,7 @@ func (c *cmdServerBMCLogEntries) run(cmd *cobra.Command, args []string) error {
 
 	for _, logEntry := range logEntries {
 		data = append(data, []string{
-			logEntry.Timestamp,
+			logEntry.Timestamp.Format(time.RFC3339),
 			logEntry.Severity,
 			logEntry.EntryType,
 			logEntry.EntryCode,
