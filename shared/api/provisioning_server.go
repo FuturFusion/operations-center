@@ -667,6 +667,9 @@ type BMCData struct {
 	// Example: 1.7.5
 	ServerBIOSVersion string `json:"server_bios_version" yaml:"server_bios_version"`
 
+	// ServerBIOSAttributes holds the BIOS settings/attributes as reported by the BMC.
+	ServerBIOSAttributes map[string]any `json:"server_bios_attributes" yaml:"server_bios_attributes"`
+
 	// ServerProcessorArchitecture holds the architecture reported for the first CPU.
 	// Example: x86
 	ServerProcessorArchitecture string `json:"server_processor_architecture" yaml:"server_processor_architecture"`
@@ -686,6 +689,10 @@ type BMCData struct {
 	// ServerHealthStatus holds the reported overall health status for the server.
 	// Example: Warning
 	ServerHealthStatus string `json:"server_health_status" yaml:"server_health_status"`
+
+	// VirtualMedia holds all virtual media slots (e.g. CD, DVD, floppy, USB)
+	// reported by the BMC system or manager.
+	VirtualMedia []BMCVirtualMedia `json:"virtual_media" yaml:"virtual_media"`
 
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z

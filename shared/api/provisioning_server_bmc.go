@@ -66,3 +66,41 @@ type BMCDumpError struct {
 	// StatusCode contains the http status code, if applicable.
 	StatusCode int `json:"status_code,omitempty" yaml:"status_code,omitempty"`
 }
+
+// BMCVirtualMedia defines a single virtual media slot exposed by the BMC
+// (system or manager), e.g. CD, DVD, floppy, or USB.
+//
+// swagger:model
+type BMCVirtualMedia struct {
+	// ID uniquely identifies this virtual media entry among all virtual media
+	// reported by the BMC. It is derived from the service (e.g. "system") and ID.
+	// Example: system:1
+	ID string `json:"id" yaml:"id"`
+
+	// Inserted reports, if a virtual media is currently inserted into this slot.
+	Inserted bool `json:"inserted" yaml:"inserted"`
+
+	// Image holds the URI of the media attached to the virtual media.
+	Image string `json:"image" yaml:"image"`
+
+	// ImageName holds the name of the inserted virtual media image.
+	ImageName string `json:"image_name" yaml:"image_name"`
+
+	// ConnectedVia holds the connection method of the virtual media (e.g. URI, Applet).
+	ConnectedVia string `json:"connected_via" yaml:"connected_via"`
+
+	// Status holds the reported health status of the virtual media.
+	Status string `json:"status" yaml:"status"`
+
+	// MediaTypes holds the media types supported by the virtual media.
+	MediaTypes []string `json:"media_types" yaml:"media_types"`
+
+	// TransferMethod describes how the image transfer occurs.
+	TransferMethod string `json:"transfer_method" yaml:"transfer_method"`
+
+	// TransferProtocolType holds the network protocol used with the image URI.
+	TransferProtocolType string `json:"transfer_protocol_type" yaml:"transfer_protocol_type"`
+
+	// WriteProtected reports, if the remote device media prevents writing to that media.
+	WriteProtected bool `json:"write_protected" yaml:"write_protected"`
+}
