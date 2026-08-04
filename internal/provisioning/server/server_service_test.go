@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"net/http"
@@ -9440,6 +9441,107 @@ func TestServerService_BMCLogEntriesByNameAndLogSource(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Equal(t, tc.want, gotLogEntries)
+		})
+	}
+}
+
+func TestServerService_BMCDumpByName(t *testing.T) {
+	dump := api.BMCDump{
+		"/redfish/v1/": api.BMCDumpEntry{
+			Response: json.RawMessage(`{"Id":"RootService"}`),
+		},
+	}
+
+	tests := []struct {
+		name                string
+		nameArg             string
+		traceArg            bool
+		repoGetByNameServer *provisioning.Server
+		repoGetByNameErr    error
+		bmcClientDumpErr    error
+
+		assertErr require.ErrorAssertionFunc
+		want      api.BMCDump
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+
+			assertErr: require.NoError,
+			want:      dump,
+		},
+		{
+			name:    "error - name empty",
+			nameArg: "", // invalid
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			nameArg:          "one",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - no BMC server client registered for type",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPIType("unknown"),
+				},
+			},
+
+			assertErr: errassert.Contains(`Failed to get BMC server client for type "unknown"`),
+		},
+		{
+			name:    "error - client.Dump",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientDumpErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+			}
+
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				DumpFunc: func(ctx context.Context, server provisioning.Server, trace bool) (api.BMCDump, error) {
+					return dump, tc.bmcClientDumpErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+			)
+
+			// Run test
+			gotDump, err := serverSvc.BMCDumpByName(t.Context(), tc.nameArg, tc.traceArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, gotDump)
 		})
 	}
 }
