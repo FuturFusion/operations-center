@@ -54,7 +54,7 @@ func (_d BMCServerClientPortWithPrometheus) ConnectionTest(ctx context.Context, 
 }
 
 // Dump implements provisioning.BMCServerClientPort.
-func (_d BMCServerClientPortWithPrometheus) Dump(ctx context.Context, server provisioning.Server, trace bool) (bMCDump api.BMCDump, err error) {
+func (_d BMCServerClientPortWithPrometheus) Dump(ctx context.Context, server provisioning.Server, additionalEndpoints []string, trace bool) (bMCDump api.BMCDump, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -64,7 +64,7 @@ func (_d BMCServerClientPortWithPrometheus) Dump(ctx context.Context, server pro
 
 		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Dump", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.Dump(ctx, server, trace)
+	return _d.base.Dump(ctx, server, additionalEndpoints, trace)
 }
 
 // GetData implements provisioning.BMCServerClientPort.

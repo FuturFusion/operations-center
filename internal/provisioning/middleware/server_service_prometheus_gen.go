@@ -56,7 +56,7 @@ func (_d ServerServiceWithPrometheus) AddApplication(ctx context.Context, name s
 }
 
 // BMCDumpByName implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) BMCDumpByName(ctx context.Context, name string, trace bool) (bMCDump api.BMCDump, err error) {
+func (_d ServerServiceWithPrometheus) BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, trace bool) (bMCDump api.BMCDump, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -66,7 +66,7 @@ func (_d ServerServiceWithPrometheus) BMCDumpByName(ctx context.Context, name st
 
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCDumpByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.BMCDumpByName(ctx, name, trace)
+	return _d.base.BMCDumpByName(ctx, name, additionalEndpoints, trace)
 }
 
 // BMCLogEntriesByNameAndLogSource implements provisioning.ServerService.

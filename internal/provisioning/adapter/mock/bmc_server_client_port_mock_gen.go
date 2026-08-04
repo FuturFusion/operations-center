@@ -25,7 +25,7 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //			ConnectionTestFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
 //				panic("mock out the ConnectionTest method")
 //			},
-//			DumpFunc: func(ctx context.Context, server provisioning.Server, trace bool) (api.BMCDump, error) {
+//			DumpFunc: func(ctx context.Context, server provisioning.Server, additionalEndpoints []string, trace bool) (api.BMCDump, error) {
 //				panic("mock out the Dump method")
 //			},
 //			GetDataFunc: func(ctx context.Context, server provisioning.Server) (api.BMCData, error) {
@@ -60,7 +60,7 @@ type BMCServerClientPortMock struct {
 	ConnectionTestFunc func(ctx context.Context, server provisioning.Server) (string, error)
 
 	// DumpFunc mocks the Dump method.
-	DumpFunc func(ctx context.Context, server provisioning.Server, trace bool) (api.BMCDump, error)
+	DumpFunc func(ctx context.Context, server provisioning.Server, additionalEndpoints []string, trace bool) (api.BMCDump, error)
 
 	// GetDataFunc mocks the GetData method.
 	GetDataFunc func(ctx context.Context, server provisioning.Server) (api.BMCData, error)
@@ -98,6 +98,8 @@ type BMCServerClientPortMock struct {
 			Ctx context.Context
 			// Server is the server argument value.
 			Server provisioning.Server
+			// AdditionalEndpoints is the additionalEndpoints argument value.
+			AdditionalEndpoints []string
 			// Trace is the trace argument value.
 			Trace bool
 		}
@@ -209,23 +211,25 @@ func (mock *BMCServerClientPortMock) ConnectionTestCalls() []struct {
 }
 
 // Dump calls DumpFunc.
-func (mock *BMCServerClientPortMock) Dump(ctx context.Context, server provisioning.Server, trace bool) (api.BMCDump, error) {
+func (mock *BMCServerClientPortMock) Dump(ctx context.Context, server provisioning.Server, additionalEndpoints []string, trace bool) (api.BMCDump, error) {
 	if mock.DumpFunc == nil {
 		panic("BMCServerClientPortMock.DumpFunc: method is nil but BMCServerClientPort.Dump was just called")
 	}
 	callInfo := struct {
-		Ctx    context.Context
-		Server provisioning.Server
-		Trace  bool
+		Ctx                 context.Context
+		Server              provisioning.Server
+		AdditionalEndpoints []string
+		Trace               bool
 	}{
-		Ctx:    ctx,
-		Server: server,
-		Trace:  trace,
+		Ctx:                 ctx,
+		Server:              server,
+		AdditionalEndpoints: additionalEndpoints,
+		Trace:               trace,
 	}
 	mock.lockDump.Lock()
 	mock.calls.Dump = append(mock.calls.Dump, callInfo)
 	mock.lockDump.Unlock()
-	return mock.DumpFunc(ctx, server, trace)
+	return mock.DumpFunc(ctx, server, additionalEndpoints, trace)
 }
 
 // DumpCalls gets all the calls that were made to Dump.
@@ -233,14 +237,16 @@ func (mock *BMCServerClientPortMock) Dump(ctx context.Context, server provisioni
 //
 //	len(mockedBMCServerClientPort.DumpCalls())
 func (mock *BMCServerClientPortMock) DumpCalls() []struct {
-	Ctx    context.Context
-	Server provisioning.Server
-	Trace  bool
+	Ctx                 context.Context
+	Server              provisioning.Server
+	AdditionalEndpoints []string
+	Trace               bool
 } {
 	var calls []struct {
-		Ctx    context.Context
-		Server provisioning.Server
-		Trace  bool
+		Ctx                 context.Context
+		Server              provisioning.Server
+		AdditionalEndpoints []string
+		Trace               bool
 	}
 	mock.lockDump.RLock()
 	calls = mock.calls.Dump

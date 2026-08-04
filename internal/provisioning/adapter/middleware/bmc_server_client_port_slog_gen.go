@@ -76,12 +76,13 @@ func (_d BMCServerClientPortWithSlog) ConnectionTest(ctx context.Context, server
 }
 
 // Dump implements provisioning.BMCServerClientPort.
-func (_d BMCServerClientPortWithSlog) Dump(ctx context.Context, server provisioning.Server, trace bool) (bMCDump api.BMCDump, err error) {
+func (_d BMCServerClientPortWithSlog) Dump(ctx context.Context, server provisioning.Server, additionalEndpoints []string, trace bool) (bMCDump api.BMCDump, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
+			slog.Any("additionalEndpoints", additionalEndpoints),
 			slog.Bool("trace", trace),
 		)
 	}
@@ -108,7 +109,7 @@ func (_d BMCServerClientPortWithSlog) Dump(ctx context.Context, server provision
 			log.DebugContext(ctx, "<= method Dump finished")
 		}
 	}()
-	return _d._base.Dump(ctx, server, trace)
+	return _d._base.Dump(ctx, server, additionalEndpoints, trace)
 }
 
 // GetData implements provisioning.BMCServerClientPort.
