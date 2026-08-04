@@ -1313,7 +1313,8 @@ func mapIncusEventToLifecycleEvent(ctx context.Context, event incusapi.Event) (d
 		return domain.LifecycleEvent{}, false, err
 	}
 
-	slog.DebugContext(ctx, "map incus event to lifecycle event - inputs",
+	slog.DebugContext(
+		ctx, "map incus event to lifecycle event - inputs",
 		slog.Any("event", map[string]any{
 			"type":     event.Type,
 			"project":  event.Project,
@@ -1393,7 +1394,8 @@ func mapIncusEventToLifecycleEvent(ctx context.Context, event incusapi.Event) (d
 		},
 	}
 
-	slog.DebugContext(ctx, "map incus event to lifecycle event - return",
+	slog.DebugContext(
+		ctx, "map incus event to lifecycle event - return",
 		slog.Any("lifecycle_event", ret),
 	)
 

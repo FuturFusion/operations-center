@@ -54,21 +54,24 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 			// updates as the origin, but they had different UUID.
 			name: "updates with same date but different UUID",
 			dbUpdates: provisioning.Updates{
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"01",
 					dateTime1,
 					api.UpdateStatusReady,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"02",
 					dateTime2,
 					api.UpdateStatusReady,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"03",
 					dateTime3,
 					api.UpdateStatusReady,
@@ -77,21 +80,24 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 				),
 			},
 			originUpdates: provisioning.Updates{
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"04",
 					dateTime1,
 					api.UpdateStatusUnknown,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"05",
 					dateTime2,
 					api.UpdateStatusUnknown,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"06",
 					dateTime3,
 					api.UpdateStatusUnknown,
@@ -115,14 +121,16 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 		{
 			name: "all updates from origin are newer",
 			dbUpdates: provisioning.Updates{
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"01",
 					dateTime1,
 					api.UpdateStatusReady,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"02",
 					dateTime2,
 					api.UpdateStatusReady,
@@ -131,7 +139,8 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 				),
 				// Even though update 4 is newer, we always keep the most recent
 				// update from DB.
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"03",
 					dateTime3,
 					api.UpdateStatusReady,
@@ -142,21 +151,24 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 			originUpdates: provisioning.Updates{
 				// Even though update 4 is newer than update 3, we always keep 1 update
 				// from DB and therefore update 4 is not downloaded.
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"04",
 					dateTime4,
 					api.UpdateStatusUnknown,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"05",
 					dateTime5,
 					api.UpdateStatusUnknown,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"06",
 					dateTime6,
 					api.UpdateStatusUnknown,
@@ -182,14 +194,16 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 			name: "all updates from origin are newer - one update is in use",
 			dbUpdates: provisioning.Updates{
 				// Update is in use by a server and therefore kept.
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"01",
 					dateTime1,
 					api.UpdateStatusReady,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"02",
 					dateTime2,
 					api.UpdateStatusReady,
@@ -198,7 +212,8 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 				),
 				// Even though update 4 is newer, we always keep the most recent
 				// update from DB.
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"03",
 					dateTime3,
 					api.UpdateStatusReady,
@@ -209,21 +224,24 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 			originUpdates: provisioning.Updates{
 				// Even though update 4 is newer than update 3, we always keep 1 update
 				// from DB and therefore update 4 is not downloaded.
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"04",
 					dateTime4,
 					api.UpdateStatusUnknown,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"05",
 					dateTime5,
 					api.UpdateStatusUnknown,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"06",
 					dateTime6,
 					api.UpdateStatusUnknown,
@@ -250,21 +268,24 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 		{
 			name: "all updates from origin are already present in db",
 			dbUpdates: provisioning.Updates{
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"01",
 					dateTime1,
 					api.UpdateStatusReady,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"02",
 					dateTime2,
 					api.UpdateStatusReady,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"03",
 					dateTime3,
 					api.UpdateStatusReady,
@@ -273,21 +294,24 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 				),
 			},
 			originUpdates: provisioning.Updates{
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"01",
 					dateTime1,
 					api.UpdateStatusReady,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"02",
 					dateTime2,
 					api.UpdateStatusReady,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"03",
 					dateTime3,
 					api.UpdateStatusReady,
@@ -308,14 +332,16 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 		{
 			name: "one pending update in DB for longer than grace time",
 			dbUpdates: provisioning.Updates{
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"01",
 					dateTime1,
 					api.UpdateStatusReady,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"02",
 					time.Now().Add(-25*time.Hour), // more than pending grace time
 					api.UpdateStatusPending,
@@ -337,14 +363,16 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 		{
 			name: "one pending update in DB for shorter than grace time",
 			dbUpdates: provisioning.Updates{
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"01",
 					dateTime1,
 					api.UpdateStatusReady,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"02",
 					time.Now().Add(-1*time.Hour), // less than pending grace time
 					api.UpdateStatusPending,
@@ -369,35 +397,40 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 			// For channel "prod" the oldest update (01) is deleted, since we still
 			// have 3 updates for this channel.
 			dbUpdates: provisioning.Updates{
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"01",
 					dateTime1,
 					api.UpdateStatusReady,
 					[]string{"prod"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"02",
 					dateTime2,
 					api.UpdateStatusReady,
 					[]string{"stable", "prod"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"03",
 					dateTime3,
 					api.UpdateStatusReady,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"04",
 					dateTime4,
 					api.UpdateStatusReady,
 					[]string{"stable", "prod"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"05",
 					dateTime5,
 					api.UpdateStatusReady,
@@ -406,28 +439,32 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 				),
 			},
 			originUpdates: provisioning.Updates{
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"04",
 					dateTime4,
 					api.UpdateStatusUnknown,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"05",
 					dateTime5,
 					api.UpdateStatusUnknown,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"06",
 					dateTime6,
 					api.UpdateStatusUnknown,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"07",
 					dateTime7,
 					api.UpdateStatusUnknown,
@@ -462,14 +499,16 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 			// Update 03 adds the missing component for "os", so we have enough updates
 			// for each component and therefore updates 02 and 01 are deleted.
 			dbUpdates: provisioning.Updates{
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"01",
 					dateTime1,
 					api.UpdateStatusReady,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"02",
 					dateTime2,
 					api.UpdateStatusReady,
@@ -478,14 +517,16 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 						images.UpdateFileComponentIncus,
 					},
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"03",
 					dateTime3,
 					api.UpdateStatusReady,
 					[]string{"stable"},
 					allComponents,
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"04",
 					dateTime4,
 					api.UpdateStatusReady,
@@ -494,7 +535,8 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 						images.UpdateFileComponentIncus,
 					},
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"05",
 					dateTime5,
 					api.UpdateStatusReady,
@@ -503,7 +545,8 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 				),
 			},
 			originUpdates: provisioning.Updates{
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"06",
 					dateTime6,
 					api.UpdateStatusUnknown,
@@ -512,7 +555,8 @@ func Test_updateService_determineToDeleteAndToDownloadUpdates(t *testing.T) {
 						images.UpdateFileComponentIncus,
 					},
 				),
-				makeUpdate(t,
+				makeUpdate(
+					t,
 					"07",
 					dateTime7,
 					api.UpdateStatusUnknown,
@@ -611,7 +655,8 @@ func makeUpdate(
 	}
 
 	for _, component := range components {
-		update.Files = append(update.Files,
+		update.Files = append(
+			update.Files,
 			provisioning.UpdateFile{
 				Component: component,
 				Filename:  string(component) + ".raw.gz",

@@ -1859,14 +1859,16 @@ func (s *clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNa
 			defer mu.Unlock()
 
 			log := slog.With(slog.String("cluster", cluster.Name))
-			log.InfoContext(ctx,
+			log.InfoContext(
+				ctx,
 				"Cluster rolling update control loop started",
 				slog.String("in_progress_status", string(cluster.UpdateStatus.InProgressStatus.InProgress)),
 			)
 			defer log.InfoContext(ctx, "Cluster rolling update control loop end")
 
 			if cluster.UpdateStatus.InProgressStatus.Error != "" {
-				log.ErrorContext(ctx,
+				log.ErrorContext(
+					ctx,
 					"Cluster rolling update control loop in progress status error",
 					slog.String("err", cluster.UpdateStatus.InProgressStatus.Error),
 				)
@@ -2148,7 +2150,8 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 		err = nextAction(ctx)
 		if err != nil {
 			if domain.IsRetryableError(err) {
-				s.warning.Emit(ctx,
+				s.warning.Emit(
+					ctx,
 					warning.NewWarning(
 						api.WarningTypeClusterRollingUpdateNextAction,
 						scope,
@@ -3078,7 +3081,8 @@ func (s *clusterService) startLifecycleEventHandler(ctx context.Context, cluster
 					break
 				}
 
-				s.warning.Emit(ctx,
+				s.warning.Emit(
+					ctx,
 					warning.NewWarning(
 						api.WarningTypeUnreachable,
 						scope,
@@ -3115,7 +3119,8 @@ func (s *clusterService) startLifecycleEventHandler(ctx context.Context, cluster
 
 					err := inventorySyncer.ResyncByName(ctx, clusterName, event)
 					if err != nil {
-						s.warning.Emit(ctx,
+						s.warning.Emit(
+							ctx,
 							warning.NewWarning(
 								api.WarningTypeClusterInventoryResyncFailed,
 								scope,

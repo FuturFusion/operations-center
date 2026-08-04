@@ -132,7 +132,8 @@ func TestOIDCClient_Do(t *testing.T) {
 func setupMiniOIDC(t *testing.T, accessTokenExpiration time.Duration) string {
 	t.Helper()
 
-	issuer := minioidc.RunTest(t,
+	issuer := minioidc.RunTest(
+		t,
 		[]storage.Option{
 			storage.WithAccessTokenExpiration(accessTokenExpiration),
 		},

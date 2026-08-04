@@ -19,7 +19,8 @@ type LogWarningService struct{}
 var _ WarningServicePort = LogWarningService{}
 
 func (LogWarningService) Emit(ctx context.Context, warn warning.Warning) {
-	slog.WarnContext(ctx,
+	slog.WarnContext(
+		ctx,
 		strings.Join(warn.Messages, "; "), //nolint:sloglint
 		slog.String("uuid", warn.UUID.String()),
 		slog.String("type", string(warn.Type)),
