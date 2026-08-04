@@ -55,13 +55,12 @@ export interface BMCData {
   last_updated: string;
 }
 
-// BMCLogEvent fields are marshalled without JSON tags, hence the casing.
 export interface BMCLogEvent {
-  EntryCode: string;
-  Message: string;
-  Severity: string;
-  Timestamp: string;
-  EntryType: string;
+  entry_code: string;
+  message: string;
+  severity: string;
+  timestamp: string;
+  entry_type: string;
 }
 
 export interface Server {

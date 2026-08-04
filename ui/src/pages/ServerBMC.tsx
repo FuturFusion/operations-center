@@ -128,11 +128,11 @@ const ServerBMC = () => {
   const logRows = logEntries.map((entry) => {
     return {
       cols: [
-        { content: entry.Timestamp, sortKey: entry.Timestamp },
-        { content: entry.Severity, sortKey: entry.Severity },
-        { content: entry.EntryType, sortKey: entry.EntryType },
-        { content: entry.EntryCode, sortKey: entry.EntryCode },
-        { content: entry.Message },
+        { content: formatDate(entry.timestamp), sortKey: entry.timestamp },
+        { content: entry.severity, sortKey: entry.severity },
+        { content: entry.entry_type, sortKey: entry.entry_type },
+        { content: entry.entry_code, sortKey: entry.entry_code },
+        { content: entry.message },
       ],
     };
   });
