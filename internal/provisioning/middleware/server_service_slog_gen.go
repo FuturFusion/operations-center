@@ -78,6 +78,42 @@ func (_d ServerServiceWithSlog) AddApplication(ctx context.Context, name string,
 	return _d._base.AddApplication(ctx, name, applicationName)
 }
 
+// BMCDumpByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCDumpByName(ctx context.Context, name string, trace bool) (bMCDump api.BMCDump, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Bool("trace", trace),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCDumpByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bMCDump", bMCDump),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BMCDumpByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BMCDumpByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BMCDumpByName finished")
+		}
+	}()
+	return _d._base.BMCDumpByName(ctx, name, trace)
+}
+
 // BMCLogEntriesByNameAndLogSource implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCLogEntriesByNameAndLogSource(ctx context.Context, name string, logSource string) (bMCLogEvents []api.BMCLogEvent, err error) {
 	log := slog.With()

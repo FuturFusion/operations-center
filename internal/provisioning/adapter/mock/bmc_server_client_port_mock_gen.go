@@ -25,6 +25,9 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //			ConnectionTestFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
 //				panic("mock out the ConnectionTest method")
 //			},
+//			DumpFunc: func(ctx context.Context, server provisioning.Server, trace bool) (api.BMCDump, error) {
+//				panic("mock out the Dump method")
+//			},
 //			GetDataFunc: func(ctx context.Context, server provisioning.Server) (api.BMCData, error) {
 //				panic("mock out the GetData method")
 //			},
@@ -56,6 +59,9 @@ type BMCServerClientPortMock struct {
 	// ConnectionTestFunc mocks the ConnectionTest method.
 	ConnectionTestFunc func(ctx context.Context, server provisioning.Server) (string, error)
 
+	// DumpFunc mocks the Dump method.
+	DumpFunc func(ctx context.Context, server provisioning.Server, trace bool) (api.BMCDump, error)
+
 	// GetDataFunc mocks the GetData method.
 	GetDataFunc func(ctx context.Context, server provisioning.Server) (api.BMCData, error)
 
@@ -85,6 +91,15 @@ type BMCServerClientPortMock struct {
 			Ctx context.Context
 			// Server is the server argument value.
 			Server provisioning.Server
+		}
+		// Dump holds details about calls to the Dump method.
+		Dump []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Trace is the trace argument value.
+			Trace bool
 		}
 		// GetData holds details about calls to the GetData method.
 		GetData []struct {
@@ -147,6 +162,7 @@ type BMCServerClientPortMock struct {
 		}
 	}
 	lockConnectionTest     sync.RWMutex
+	lockDump               sync.RWMutex
 	lockGetData            sync.RWMutex
 	lockLogEntriesBySource sync.RWMutex
 	lockLogSources         sync.RWMutex
@@ -189,6 +205,46 @@ func (mock *BMCServerClientPortMock) ConnectionTestCalls() []struct {
 	mock.lockConnectionTest.RLock()
 	calls = mock.calls.ConnectionTest
 	mock.lockConnectionTest.RUnlock()
+	return calls
+}
+
+// Dump calls DumpFunc.
+func (mock *BMCServerClientPortMock) Dump(ctx context.Context, server provisioning.Server, trace bool) (api.BMCDump, error) {
+	if mock.DumpFunc == nil {
+		panic("BMCServerClientPortMock.DumpFunc: method is nil but BMCServerClientPort.Dump was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Trace  bool
+	}{
+		Ctx:    ctx,
+		Server: server,
+		Trace:  trace,
+	}
+	mock.lockDump.Lock()
+	mock.calls.Dump = append(mock.calls.Dump, callInfo)
+	mock.lockDump.Unlock()
+	return mock.DumpFunc(ctx, server, trace)
+}
+
+// DumpCalls gets all the calls that were made to Dump.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.DumpCalls())
+func (mock *BMCServerClientPortMock) DumpCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+	Trace  bool
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Trace  bool
+	}
+	mock.lockDump.RLock()
+	calls = mock.calls.Dump
+	mock.lockDump.RUnlock()
 	return calls
 }
 

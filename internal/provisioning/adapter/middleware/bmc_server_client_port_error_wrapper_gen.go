@@ -36,6 +36,16 @@ func (_d BMCServerClientPortWithErrorWrapper) ConnectionTest(ctx context.Context
 	return _d._base.ConnectionTest(ctx, server)
 }
 
+// Dump implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) Dump(ctx context.Context, server provisioning.Server, trace bool) (bMCDump api.BMCDump, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.Dump(ctx, server, trace)
+}
+
 // GetData implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithErrorWrapper) GetData(ctx context.Context, server provisioning.Server) (bMCData api.BMCData, err error) {
 	defer func() {

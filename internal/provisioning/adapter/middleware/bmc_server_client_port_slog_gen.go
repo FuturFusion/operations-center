@@ -75,6 +75,42 @@ func (_d BMCServerClientPortWithSlog) ConnectionTest(ctx context.Context, server
 	return _d._base.ConnectionTest(ctx, server)
 }
 
+// Dump implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) Dump(ctx context.Context, server provisioning.Server, trace bool) (bMCDump api.BMCDump, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.Bool("trace", trace),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Dump")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bMCDump", bMCDump),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method Dump returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method Dump returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method Dump finished")
+		}
+	}()
+	return _d._base.Dump(ctx, server, trace)
+}
+
 // GetData implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) GetData(ctx context.Context, server provisioning.Server) (bMCData api.BMCData, err error) {
 	log := slog.With()
