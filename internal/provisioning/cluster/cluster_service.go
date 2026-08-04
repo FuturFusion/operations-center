@@ -2208,7 +2208,20 @@ func (s *clusterService) updateInProgressStatus(ctx context.Context, clusterName
 }
 
 func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgressStatus, servers provisioning.Servers) string {
-	const perServerSteps = 9
+	perServerUpdateSteps := len([]api.ServerUpdateState{
+		api.ServerUpdateStateUpdatePending,
+		api.ServerUpdateStateUpdating,
+	})
+
+	perServerRestartSteps := len([]api.ServerUpdateState{
+		api.ServerUpdateStateEvacuationPending,
+		api.ServerUpdateStateEvacuating,
+		api.ServerUpdateStateInMaintenanceRebootPending,
+		api.ServerUpdateStateInMaintenanceRebooting,
+		api.ServerUpdateStateInMaintenanceRestorePending,
+		api.ServerUpdateStateInMaintenanceRestoring,
+		api.ServerUpdateStateInMaintenancePostRestore,
+	})
 
 	totalSteps := 0
 	pendingSteps := 0
@@ -2228,6 +2241,12 @@ func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgres
 	switch clusterUpdateInProgressStatus.InProgress {
 	case api.ClusterUpdateInProgressApplyUpdate,
 		api.ClusterUpdateInProgressApplyUpdateWithReboot:
+		withReboot := clusterUpdateInProgressStatus.InProgress == api.ClusterUpdateInProgressApplyUpdateWithReboot
+		perServerSteps := perServerUpdateSteps
+		if withReboot {
+			perServerSteps += perServerRestartSteps
+		}
+
 		firstEvacuationPendingServer := ""
 		for _, server := range servers {
 			totalSteps += perServerSteps
@@ -2247,6 +2266,10 @@ func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgres
 
 			case api.ServerUpdateStateEvacuationPending,
 				api.ServerUpdateStateEvacuating:
+				if !withReboot {
+					continue
+				}
+
 				pendingSteps += perServerSteps - 2
 				// Don't set the currentServer here, since these servers are ready for evacuation, but we might still have
 				// servers, which are not yet done with updating.
@@ -2260,12 +2283,14 @@ func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgres
 		// If all servers are properly updated, but we have not yet updated the cluster's
 		// update in progress status, then currentServer might be empty here, so we take
 		// the first server, which is in state evacuation pending.
-		if currentServer == "" {
+		if withReboot && currentServer == "" {
 			currentServer = firstEvacuationPendingServer
 			currentStep = api.ServerUpdateStateEvacuationPending.String()
 		}
 
 	case api.ClusterUpdateInProgressRollingRestart:
+		perServerSteps := perServerUpdateSteps + perServerRestartSteps
+
 		for _, server := range servers {
 			totalSteps += perServerSteps
 
