@@ -260,6 +260,49 @@ definitions:
         title: BMCData defines the data, that have been collected from the BMC.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BMCDump:
+        additionalProperties:
+            $ref: '#/definitions/BMCDumpEntry'
+        description: |-
+            BMCDump holds the raw responses of the BMC (e.g. Redfish API), keyed by the
+            endpoint name or path they were retrieved from.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BMCDumpEntry:
+        properties:
+            error:
+                $ref: '#/definitions/BMCDumpError'
+            response:
+                description: Response contains the raw JSON response returned by the BMC.
+                x-go-name: Response
+            trace:
+                description: |-
+                    Trace contains additional dumped request and response details
+                    (e.g. HTTP headers). Opaque field for human inspection only. Populated if
+                    tracing is requested.
+                type: string
+                x-go-name: Trace
+        title: BMCDumpEntry is the result of a single request against the BMC API.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BMCDumpError:
+        properties:
+            code:
+                description: Code contains the error code, if any.
+                type: string
+                x-go-name: Code
+            message:
+                description: Message contains the human readable error message.
+                type: string
+                x-go-name: Message
+            status_code:
+                description: StatusCode contains the http status code, if applicable.
+                format: int64
+                type: integer
+                x-go-name: StatusCode
+        title: BMCDumpError describes a failed request against the BMC API.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     BMCLogEvent:
         properties:
             entry_code:
@@ -10172,6 +10215,54 @@ paths:
             summary: Sync server state
             tags:
                 - servers
+    /1.0/provisioning/servers/{name}/bmc/:dump:
+        post:
+            description: |-
+                Returns the raw responses of a curated set of BMC API (e.g. Redfish) endpoints,
+                keyed by the endpoint name or path they were retrieved from. The dump is best
+                effort: a failing endpoint is recorded with its error instead of stopping
+                the dump.
+            operationId: server_bmc_dump_post
+            parameters:
+                - description: |-
+                    Boolean indicating, if the BMC dump should include additional trace
+                    information (e.g. HTTP headers) for each endpoint.
+                    The trace information is opaque and for human inspection only.
+                    Defaults to false.
+                  in: query
+                  name: trace
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: BMC dump
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/BMCDump'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Trigger a dump of the BMC API responses
+            tags:
+                - servers_bmc_dump
     /1.0/provisioning/servers/{name}/bmc/:refresh:
         post:
             description: Triggers a refresh of the server's BMC data.
