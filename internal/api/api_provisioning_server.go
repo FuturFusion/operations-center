@@ -74,6 +74,7 @@ func registerProvisioningServerHandler(
 	router.HandleFunc("DELETE /{name}", response.With(handler.serverDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{name}", response.With(handler.serverPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/:resync", response.With(handler.serverResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/bmc/:dump", response.With(handler.serverBMCDumpPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("POST /{name}/bmc/:refresh", response.With(handler.serverBMCRefreshPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/bmc/:server-power-on", response.With(handler.serverBMCServerPowerOnPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/bmc/:server-power-off", response.With(handler.serverBMCServerPowerOffPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
@@ -1137,6 +1138,65 @@ func (s *serverHandler) serverBMCLogEntriesGet(r *http.Request) response.Respons
 	}
 
 	return response.SyncResponse(true, logEntries)
+}
+
+// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:dump servers_bmc_dump server_bmc_dump_post
+//
+//	Trigger a dump of the BMC API responses
+//
+//	Returns the raw responses of a curated set of BMC API (e.g. Redfish) endpoints,
+//	keyed by the endpoint name or path they were retrieved from. The dump is best
+//	effort: a failing endpoint is recorded with its error instead of stopping
+//	the dump.
+//
+//	---
+//	parameters:
+//	  - in: query
+//	    name: trace
+//	    description: |-
+//	      Boolean indicating, if the BMC dump should include additional trace
+//	      information (e.g. HTTP headers) for each endpoint.
+//	      The trace information is opaque and for human inspection only.
+//	      Defaults to false.
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: BMC dump
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          $ref: "#/definitions/BMCDump"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverBMCDumpPost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+	trace, _ := strconv.ParseBool(r.URL.Query().Get("trace"))
+
+	dump, err := s.service.BMCDumpByName(r.Context(), name, trace)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to get BMC dump of server %q: %w", name, err))
+	}
+
+	return response.SyncResponse(true, dump)
 }
 
 // swagger:operation GET /1.0/provisioning/servers/{name}/changelog servers server_changelog_get
