@@ -77,7 +77,8 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	rootCtx, stop := signal.NotifyContext(context.Background(),
+	rootCtx, stop := signal.NotifyContext(
+		context.Background(),
 		unix.SIGPWR,
 		unix.SIGINT,
 		unix.SIGQUIT,

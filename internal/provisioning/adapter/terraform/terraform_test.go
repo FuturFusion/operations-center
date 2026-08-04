@@ -338,7 +338,8 @@ func TestTerraform_Apply(t *testing.T) {
 			assertPostProcessedFiles: func(t *testing.T, dir, clusterName string) {
 				t.Helper()
 
-				fileContains(t, filepath.Join(dir, "cluster-configs", clusterName, "providers.tf"),
+				fileContains(
+					t, filepath.Join(dir, "cluster-configs", clusterName, "providers.tf"),
 					`"https://localhost:8443"`,
 				)
 			},

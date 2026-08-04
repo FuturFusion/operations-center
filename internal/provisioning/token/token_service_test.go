@@ -116,7 +116,8 @@ func TestTokenService_Create(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioningToken.New(repo, nil, nil, nil, nil,
+			tokenSvc := provisioningToken.New(
+				repo, nil, nil, nil, nil,
 				provisioningToken.WithRandomUUID(func() (uuid.UUID, error) { return tc.randomUUIDValue, tc.randomUUIDErr }),
 			)
 

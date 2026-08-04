@@ -514,7 +514,7 @@ func overrideTag(existingTag string) (string, bool) {
 func (p *Parser) getExprName(typeName string, pkg *types.Package) string {
 	exprName := "Expr" + typeName
 	if pkg.Path() != p.localPkg {
-		exprName = "Expr" + lex.PascalCase((p.aliases[pkg.Path()])) + typeName
+		exprName = "Expr" + lex.PascalCase(p.aliases[pkg.Path()]) + typeName
 	}
 
 	return exprName

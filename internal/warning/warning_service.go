@@ -74,7 +74,8 @@ func (w warningService) Emit(ctx context.Context, warning Warning) {
 		return
 	}
 
-	slog.WarnContext(ctx,
+	slog.WarnContext(
+		ctx,
 		strings.Join(warning.Messages, "; "), //nolint:sloglint
 		slog.String("uuid", warning.UUID.String()),
 		slog.String("type", string(warning.Type)),
@@ -164,7 +165,8 @@ func (w warningService) RemoveStale(ctx context.Context, scope api.WarningScope,
 	var err error
 	defer func() {
 		if err != nil {
-			slog.WarnContext(ctx, "Failed to remove stale warnings",
+			slog.WarnContext(
+				ctx, "Failed to remove stale warnings",
 				slog.String("scope", scope.Scope),
 				slog.String("entity_type", scope.EntityType),
 				slog.String("entity", scope.Entity),

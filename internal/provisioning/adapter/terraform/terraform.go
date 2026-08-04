@@ -168,17 +168,18 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 					meshTunnelInterfaces[server.Name] = detectClusterInterface(server.OSData.Network)
 				}
 
-				err = tmpl.ExecuteTemplate(targetFile, templateFile.Name(), map[string]any{
-					"ClusterID":            config.Cluster.ID,
-					"ClusterName":          name,
-					"ClusterAddress":       config.ClusterEndpoint.GetConnectionURL(),
-					"MeshTunnelInterfaces": meshTunnelInterfaces,
-					"IncusPreseed":         incusPreseed,
+				err = tmpl.ExecuteTemplate(
+					targetFile, templateFile.Name(), map[string]any{
+						"ClusterID":            config.Cluster.ID,
+						"ClusterName":          name,
+						"ClusterAddress":       config.ClusterEndpoint.GetConnectionURL(),
+						"MeshTunnelInterfaces": meshTunnelInterfaces,
+						"IncusPreseed":         incusPreseed,
 
-					"IncusProviderVersion":  t.incusProviderVersion,
-					"RandomProviderVersion": t.randomProviderVersion,
-					"NullProviderVersion":   t.nullProviderVersion,
-				},
+						"IncusProviderVersion":  t.incusProviderVersion,
+						"RandomProviderVersion": t.randomProviderVersion,
+						"NullProviderVersion":   t.nullProviderVersion,
+					},
 				)
 				if err != nil {
 					return fmt.Errorf("Failed to execute template %q for cluster %q: %w", templateFile.Name(), name, err)

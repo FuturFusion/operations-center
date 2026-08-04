@@ -260,7 +260,8 @@ func ensureUpdatesAreApplied(ctx context.Context, tx *sql.Tx, current int, updat
 	if current > len(updates) {
 		return fmt.Errorf(
 			"schema version '%d' is more recent than expected '%d'",
-			current, len(updates))
+			current, len(updates),
+		)
 	}
 
 	// If there are no updates, there's nothing to do.
@@ -274,7 +275,8 @@ func ensureUpdatesAreApplied(ctx context.Context, tx *sql.Tx, current int, updat
 			err := hook(ctx, current, tx)
 			if err != nil {
 				return fmt.Errorf(
-					"failed to execute hook (version %d): %v", current, err)
+					"failed to execute hook (version %d): %v", current, err,
+				)
 			}
 		}
 

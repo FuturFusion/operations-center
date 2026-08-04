@@ -54,7 +54,8 @@ func factoryResetClusterWithTokenSeed(t *testing.T, tmpDir string) {
 	t.Log("Create token seed for factory reset")
 	token := createProvisioningToken(t)
 
-	incusOSSeedFileYAML := replacePlaceholders(incusOSFactoryResetSeedFileYAMLTemplate,
+	incusOSSeedFileYAML := replacePlaceholders(
+		incusOSFactoryResetSeedFileYAMLTemplate,
 		map[string]string{
 			"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 10)),
 		},

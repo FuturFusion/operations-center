@@ -10568,7 +10568,8 @@ func TestClusterService_LaunchClusterUpdate(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, serverSvc, nil, nil, nil, nil,
+			clusterSvc := provisioningCluster.New(
+				repo, nil, nil, serverSvc, nil, nil, nil, nil,
 				provisioningCluster.WithNow(func() time.Time {
 					return fixedTime
 				}),
@@ -10638,7 +10639,8 @@ func TestClusterService_AbortClusterUpdate(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioningCluster.New(repo, nil, nil, nil, nil, nil, nil, nil,
+			clusterSvc := provisioningCluster.New(
+				repo, nil, nil, nil, nil, nil, nil, nil,
 				provisioningCluster.WithNow(func() time.Time {
 					return fixedTime
 				}),
