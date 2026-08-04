@@ -262,28 +262,34 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     BMCLogEvent:
         properties:
-            EntryCode:
+            entry_code:
                 description: EntryCode holds the entry code for the log entry if the entry type is `SEL`.
                 example: Informational
                 type: string
-            EntryType:
+                x-go-name: EntryCode
+            entry_type:
                 description: |-
                     EntryType holds the type of the entry. Possible values include (but not
                     limited to): SEL, Event, CXL, Oem.
                 example: SEL
                 type: string
-            Message:
+                x-go-name: EntryType
+            message:
                 description: Message holds the actual message of the log event.
                 example: This is a test log event
                 type: string
-            Severity:
+                x-go-name: Message
+            severity:
                 description: 'Severity of the log event. Possible values: OK, Warning, Critical'
                 example: OK
                 type: string
-            Timestamp:
+                x-go-name: Severity
+            timestamp:
                 description: Timestamp of the log event in RFC3339 format.
                 example: "2026-07-30T08:04:00Z"
+                format: date-time
                 type: string
+                x-go-name: Timestamp
         title: BMCLogEvent defines a log event from the BMC.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
