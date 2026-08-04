@@ -1857,6 +1857,12 @@ func TestRedfish_Dump(t *testing.T) {
 		  "Members": []
 		}`,
 			},
+			"/redfish/v1/Systems/1/Oem/Vendor": {
+				statusCode: http.StatusOK,
+				body: `{
+		  "@odata.id": "/redfish/v1/Systems/1/Oem/Vendor"
+		}`,
+			},
 		},
 	}
 
@@ -1873,7 +1879,7 @@ func TestRedfish_Dump(t *testing.T) {
 	}
 
 	t.Run("collections only fetch their first member", func(t *testing.T) {
-		dump, err := client.Dump(t.Context(), server, false)
+		dump, err := client.Dump(t.Context(), server, nil, false)
 		require.NoError(t, err)
 
 		require.Contains(t, dump, "/redfish/v1/Systems/1")
@@ -1881,7 +1887,7 @@ func TestRedfish_Dump(t *testing.T) {
 	})
 
 	t.Run("failing endpoints are recorded as errors without stopping the dump", func(t *testing.T) {
-		dump, err := client.Dump(t.Context(), server, false)
+		dump, err := client.Dump(t.Context(), server, nil, false)
 		require.NoError(t, err)
 
 		// Unmapped endpoint falls through to the mock's default 404 handler.
@@ -1907,7 +1913,7 @@ func TestRedfish_Dump(t *testing.T) {
 	})
 
 	t.Run("empty collections do not yield a member entry", func(t *testing.T) {
-		dump, err := client.Dump(t.Context(), server, false)
+		dump, err := client.Dump(t.Context(), server, nil, false)
 		require.NoError(t, err)
 
 		require.Contains(t, dump, "/redfish/v1/Systems/1/BootOptions")
@@ -1918,14 +1924,14 @@ func TestRedfish_Dump(t *testing.T) {
 	})
 
 	t.Run("trace is empty unless requested", func(t *testing.T) {
-		dump, err := client.Dump(t.Context(), server, false)
+		dump, err := client.Dump(t.Context(), server, nil, false)
 		require.NoError(t, err)
 
 		require.Empty(t, dump["/redfish/v1/"].Trace)
 	})
 
 	t.Run("trace contains only redacted headers", func(t *testing.T) {
-		dump, err := client.Dump(t.Context(), server, true)
+		dump, err := client.Dump(t.Context(), server, nil, true)
 		require.NoError(t, err)
 
 		trace := dump["/redfish/v1/"].Trace
@@ -1935,5 +1941,19 @@ func TestRedfish_Dump(t *testing.T) {
 		require.Contains(t, trace, "Authorization: <redacted>")
 		require.NotContains(t, trace, "RedfishVersion")
 		require.NotContains(t, trace, base64.StdEncoding.EncodeToString([]byte("admin:admin")))
+	})
+
+	t.Run("additional endpoints are dumped alongside the predefined set", func(t *testing.T) {
+		dump, err := client.Dump(t.Context(), server, []string{"/redfish/v1/Systems/1/Oem/Vendor", "/redfish/v1/Systems/1/Bios"}, false)
+		require.NoError(t, err)
+
+		vendor, ok := dump["/redfish/v1/Systems/1/Oem/Vendor"]
+		require.True(t, ok)
+		require.NotNil(t, vendor.Response)
+		require.Nil(t, vendor.Error)
+
+		// An additional endpoint that duplicates a predefined one still
+		// yields exactly one dump entry.
+		require.Contains(t, dump, "/redfish/v1/Systems/1/Bios")
 	})
 }
