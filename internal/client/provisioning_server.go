@@ -335,8 +335,13 @@ func (c OperationsCenterClient) GetServerBMCLogEntries(ctx context.Context, name
 	return logEntries, nil
 }
 
-func (c OperationsCenterClient) GetServerBMCDump(ctx context.Context, name string, trace bool) (api.BMCDump, error) {
+func (c OperationsCenterClient) GetServerBMCDump(ctx context.Context, name string, endpoints []string, trace bool) (api.BMCDump, error) {
 	query := url.Values{}
+
+	for _, endpoint := range endpoints {
+		query.Add("endpoint", endpoint)
+	}
+
 	if trace {
 		query.Add("trace", "1")
 	}
