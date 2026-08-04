@@ -51,6 +51,22 @@ const healthStatusBadge = (status: string | undefined) => {
   return <Badge bg="danger">{status}</Badge>;
 };
 
+const insertedBadge = (inserted: boolean | undefined) => {
+  return inserted ? (
+    <Badge bg="success">Inserted</Badge>
+  ) : (
+    <Badge bg="secondary">Not inserted</Badge>
+  );
+};
+
+const writeProtectedBadge = (writeProtected: boolean | undefined) => {
+  return writeProtected ? (
+    <Badge bg="warning">Write protected</Badge>
+  ) : (
+    <Badge bg="secondary">Writable</Badge>
+  );
+};
+
 const forceField: OSActionField[] = [
   { name: "force", label: "Force", type: "checkbox" },
 ];
@@ -61,6 +77,7 @@ const ServerBMC = () => {
   const queryClient = useQueryClient();
   const [logSource, setLogSource] = useState("");
   const [isDataVisible, setIsDataVisible] = useState(false);
+  const [isBiosAttributesVisible, setIsBiosAttributesVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const {
@@ -136,6 +153,24 @@ const ServerBMC = () => {
       ],
     };
   });
+
+  const virtualMediaRows = Object.values(bmcData?.virtual_media ?? {}).map(
+    (vm) => {
+      return {
+        cols: [
+          { content: vm.id, sortKey: vm.id },
+          { content: insertedBadge(vm.inserted) },
+          { content: vm.image_name || vm.image },
+          { content: vm.connected_via, sortKey: vm.connected_via },
+          { content: healthStatusBadge(vm.status), sortKey: vm.status },
+          { content: vm.media_types?.join(", ") },
+          { content: vm.transfer_method },
+          { content: vm.transfer_protocol_type },
+          { content: writeProtectedBadge(vm.write_protected) },
+        ],
+      };
+    },
+  );
 
   return (
     <div className="container">
@@ -239,6 +274,32 @@ const ServerBMC = () => {
         </div>
       </div>
       <div className="row">
+        <div className="col-2 detail-table-header">
+          BIOS attributes{" "}
+          <span
+            onClick={() => setIsBiosAttributesVisible(!isBiosAttributesVisible)}
+            className="hide-field-switch"
+          >
+            {isBiosAttributesVisible ? (
+              <>
+                <IoChevronDownOutline /> Hide
+              </>
+            ) : (
+              <>
+                <IoChevronUpOutline /> Show
+              </>
+            )}
+          </span>
+        </div>
+        <div className="col-10 detail-table-cell">
+          {isBiosAttributesVisible && (
+            <pre>
+              {JSON.stringify(bmcData?.server_bios_attributes, null, 2)}
+            </pre>
+          )}
+        </div>
+      </div>
+      <div className="row">
         <div className="col-2 detail-table-header">Last updated</div>
         <div className="col-10 detail-table-cell">
           {formatDate(bmcData?.last_updated || "")}
@@ -266,6 +327,23 @@ const ServerBMC = () => {
           {isDataVisible && <pre>{JSON.stringify(bmcData, null, 2)}</pre>}
         </div>
       </div>
+      <h5 className="mt-4">Virtual media</h5>
+      <ExtendedDataTable
+        headers={[
+          "ID",
+          "Inserted",
+          "Image",
+          "Connected via",
+          "Status",
+          "Media types",
+          "Transfer method",
+          "Transfer protocol",
+          "Write protected",
+        ]}
+        rows={virtualMediaRows}
+        isLoading={isLoading}
+        error={error}
+      />
       <h5 className="mt-4">Event logs</h5>
       {logSourcesError ? (
         <div>
