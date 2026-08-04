@@ -26,6 +26,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -210,28 +211,55 @@ func (r redfish) GetData(ctx context.Context, server provisioning.Server) (api.B
 		serverLocationIndicatorActive = *system.LocationIndicatorActive
 	}
 
+	bios, err := system.Bios()
+	if err != nil {
+		return api.BMCData{}, fmt.Errorf("Failed to get BIOS of BMC system: %w", err)
+	}
+
+	var biosAttributes map[string]any
+	if bios != nil {
+		biosAttributes = bios.Attributes
+	}
+
+	virtualMedia, err := getVirtualMedia(system, manager)
+	if err != nil {
+		return api.BMCData{}, fmt.Errorf("Failed to get virtual media of BMC: %w", err)
+	}
+
+	bmcData.VirtualMedia = virtualMedia
+
 	return api.BMCData{
-		BMCProtocol:                   "Redfish",
-		BMCProtocolVersion:            client.Service.RedfishVersion,
-		BMCVendor:                     client.Service.Vendor,
-		BMCModel:                      manager.Model,
-		BMCFirmwareVersion:            manager.FirmwareVersion,
-		BMCServiceIdentification:      manager.ServiceIdentification,
-		ServerManufacturer:            system.Manufacturer,
-		ServerModel:                   system.Model,
-		ServerSubModel:                system.SubModel,
-		ServerUUID:                    system.UUID,
-		ServerAssetTag:                system.AssetTag,
-		ServerHostName:                system.HostName,
-		ServerSKU:                     system.SKU,
-		ServerSerialNumber:            system.SerialNumber,
-		ServerBIOSVersion:             system.BiosVersion,
-		ServerProcessorArchitecture:   string(processor.ProcessorArchitecture),
-		ServerProcessorInstructionSet: string(processor.InstructionSet),
-		ServerPowerState:              string(system.PowerState),
-		ServerLocationIndicatorActive: serverLocationIndicatorActive,
-		ServerHealthStatus:            string(system.Status.Health),
-		LastUpdated:                   time.Now(),
+		BMCProtocol:                      "Redfish",
+		BMCProtocolVersion:               client.Service.RedfishVersion,
+		BMCVendor:                        client.Service.Vendor,
+		BMCModel:                         manager.Model,
+		BMCFirmwareVersion:               manager.FirmwareVersion,
+		BMCServiceIdentification:         manager.ServiceIdentification,
+		ServerManufacturer:               system.Manufacturer,
+		ServerModel:                      system.Model,
+		ServerSubModel:                   system.SubModel,
+		ServerUUID:                       system.UUID,
+		ServerAssetTag:                   system.AssetTag,
+		ServerHostName:                   system.HostName,
+		ServerSKU:                        system.SKU,
+		ServerSerialNumber:               system.SerialNumber,
+		ServerBIOSVersion:                system.BiosVersion,
+		ServerBIOSAttributes:             biosAttributes,
+		ServerProcessorArchitecture:      string(processor.ProcessorArchitecture),
+		ServerProcessorInstructionSet:    string(processor.InstructionSet),
+		ServerPowerState:                 string(system.PowerState),
+		ServerLocationIndicatorActive:    serverLocationIndicatorActive,
+		ServerHealthStatus:               string(system.Status.Health),
+		VirtualMediaInserted:             virtualMediaInserted,
+		VirtualMediaImage:                virtualMediaImage,
+		VirtualMediaImageName:            virtualMediaImageName,
+		VirtualMediaConnectedVia:         virtualMediaConnectedVia,
+		VirtualMediaStatus:               virtualMediaStatus,
+		VirtualMediaMediaTypes:           virtualMediaMediaTypes,
+		VirtualMediaTransferMethod:       virtualMediaTransferMethod,
+		VirtualMediaTransferProtocolType: virtualMediaTransferProtocolType,
+		VirtualMediaWriteProtected:       virtualMediaWriteProtected,
+		LastUpdated:                      time.Now(),
 	}, nil
 }
 
@@ -278,6 +306,63 @@ func getFirstSystem(client *gofish.APIClient) (*schemas.ComputerSystem, error) {
 	sort.Slice(systems, func(i, j int) bool { return systems[i].ID < systems[j].ID })
 
 	return systems[0], nil
+}
+
+// getVirtualMedia returns all virtual media reported by the BMC, combining
+// entries from both the system and the manager, keyed by "<service>:<redfish-id>"
+// (e.g. "system:1").
+func getVirtualMedia(system *schemas.ComputerSystem, manager *schemas.Manager) (map[string]api.BMCVirtualMedia, error) {
+	var result map[string]api.BMCVirtualMedia
+
+	if system != nil {
+		systemVirtualMedia, err := system.VirtualMedia()
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get virtual media of BMC system: %w", err)
+		}
+
+		result = convertVirtualMedia(result, "system", systemVirtualMedia)
+	}
+
+	if manager != nil {
+		managerVirtualMedia, err := manager.VirtualMedia()
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get virtual media of BMC manager: %w", err)
+		}
+
+		result = convertVirtualMedia(result, "manager", managerVirtualMedia)
+	}
+
+	return result, nil
+}
+
+func convertVirtualMedia(result map[string]api.BMCVirtualMedia, service string, virtualMedia []*schemas.VirtualMedia) map[string]api.BMCVirtualMedia {
+	for _, vm := range virtualMedia {
+		mediaTypes := make([]string, 0, len(vm.MediaTypes))
+		for _, mediaType := range vm.MediaTypes {
+			mediaTypes = append(mediaTypes, string(mediaType))
+		}
+
+		id := service + ":" + vm.ID
+
+		if result == nil {
+			result = map[string]api.BMCVirtualMedia{}
+		}
+
+		result[id] = api.BMCVirtualMedia{
+			ID:                   id,
+			Inserted:             ptr.From(vm.Inserted),
+			WriteProtected:       ptr.From(vm.WriteProtected),
+			Image:                vm.Image,
+			ImageName:            vm.ImageName,
+			ConnectedVia:         string(vm.ConnectedVia),
+			Status:               string(vm.Status.Health),
+			MediaTypes:           mediaTypes,
+			TransferMethod:       string(vm.TransferMethod),
+			TransferProtocolType: string(vm.TransferProtocolType),
+		}
+	}
+
+	return result
 }
 
 func getFirstProcessor(system *schemas.ComputerSystem) (*schemas.Processor, error) {
