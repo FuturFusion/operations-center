@@ -1,6 +1,8 @@
 package provisioning
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -68,6 +70,13 @@ func (c *cmdServerBMC) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(serverBMCLogEntriesCmd.Command())
+
+	// Dump
+	serverBMCDumpCmd := cmdServerBMCDump{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverBMCDumpCmd.Command())
 
 	return cmd
 }
@@ -365,4 +374,59 @@ func (c *cmdServerBMCLogEntries) run(cmd *cobra.Command, args []string) error {
 	}
 
 	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, logEntries)
+}
+
+// Dump the raw responses of a server's BMC API.
+type cmdServerBMCDump struct {
+	ocClient *client.OperationsCenterClient
+
+	flagTrace bool
+}
+
+func (c *cmdServerBMCDump) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "dump <name>"
+	cmd.Short = "Dump the raw responses of a server's BMC API"
+	cmd.Long = `Description:
+  Dump the raw responses of a curated set of a server's BMC API (e.g. Redfish)
+  endpoints.
+
+  The dump is best effort: a failing endpoint is included with its error
+  instead of stopping the dump.
+`
+
+	cmd.Flags().BoolVar(&c.flagTrace, "trace", false, "include additional opaque trace information (e.g. HTTP headers)")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerBMCDump) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdServerBMCDump) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	dump, err := c.ocClient.GetServerBMCDump(cmd.Context(), name, c.flagTrace)
+	if err != nil {
+		return err
+	}
+
+	dumpJSON, err := json.MarshalIndent(dump, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintln(cmd.OutOrStdout(), string(dumpJSON))
+
+	return err
 }
