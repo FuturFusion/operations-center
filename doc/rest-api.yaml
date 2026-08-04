@@ -10224,6 +10224,15 @@ paths:
                 the dump.
             operationId: server_bmc_dump_post
             parameters:
+                - collectionFormat: multi
+                  description: |-
+                    Additional BMC API endpoint names or paths to dump alongside the
+                    predefined set. May be given multiple times.
+                  in: query
+                  items:
+                    type: string
+                  name: endpoint
+                  type: array
                 - description: |-
                     Boolean indicating, if the BMC dump should include additional trace
                     information (e.g. HTTP headers) for each endpoint.
