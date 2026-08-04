@@ -543,6 +543,8 @@ func (r redfish) LogEntriesBySource(ctx context.Context, server provisioning.Ser
 		return nil, fmt.Errorf("Failed to find log type for %q", logSource)
 	}
 
+	timestampFormats := []string{time.RFC3339, time.RFC3339Nano}
+
 	bmcLogEvents := make([]api.BMCLogEvent, 0, len(entries))
 	for _, entry := range entries {
 		bmcLogEvents = append(bmcLogEvents, api.BMCLogEvent{
@@ -550,9 +552,36 @@ func (r redfish) LogEntriesBySource(ctx context.Context, server provisioning.Ser
 			EntryType: string(entry.EntryType),
 			Message:   entry.Message,
 			Severity:  string(entry.Severity),
-			Timestamp: entry.EventTimestamp,
+			Timestamp: parseTimestamp(timestampFormats, entry.Created, entry.EventTimestamp),
 		})
 	}
 
+	// Sort newest to oldest, entries whose timestamp could not be parsed are moved to the end.
+	sort.SliceStable(bmcLogEvents, func(i, j int) bool {
+		iZero := bmcLogEvents[i].Timestamp.IsZero()
+		jZero := bmcLogEvents[j].Timestamp.IsZero()
+		if iZero != jZero {
+			return jZero
+		}
+
+		return bmcLogEvents[i].Timestamp.After(bmcLogEvents[j].Timestamp)
+	})
+
 	return bmcLogEvents, nil
+}
+
+// parseTimestamp returns the first timestamp, which successfully parses for one
+// of the provided formats. If none of the timestamps could be parsed with any
+// of the formats, the zero time.Time is returned.
+func parseTimestamp(formats []string, timestamps ...string) time.Time {
+	for _, timestamp := range timestamps {
+		for _, format := range formats {
+			t, err := time.Parse(format, timestamp)
+			if err == nil {
+				return t
+			}
+		}
+	}
+
+	return time.Time{}
 }
