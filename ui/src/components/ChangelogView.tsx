@@ -7,11 +7,14 @@ import { ApplicationVersionData } from "types/server";
 type Props = {
   changelog?: Changelog;
   installedApplications?: ApplicationVersionData[];
+  osName?: string;
 };
 
-const baseApp = "IncusOS";
-
-const ChangeLogView: FC<Props> = ({ changelog, installedApplications }) => {
+const ChangeLogView: FC<Props> = ({
+  changelog,
+  installedApplications,
+  osName,
+}) => {
   const [openKeys, setOpenKeys] = useState<Record<string, boolean>>({});
 
   const toggleKey = (key: string) => {
@@ -38,7 +41,7 @@ const ChangeLogView: FC<Props> = ({ changelog, installedApplications }) => {
   // Get names of installed applications.
   const installedAppNames = installedApplications
     ? new Set([
-        baseApp.toLowerCase(),
+        (osName || "IncusOS").toLowerCase(),
         ...installedApplications.map((x) => x.name.toLowerCase()),
       ])
     : null;

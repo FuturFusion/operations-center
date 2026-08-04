@@ -100,6 +100,7 @@ const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
           <ChangelogView
             changelog={changelog ?? undefined}
             installedApplications={server.version_data.applications}
+            osName={server.version_data.os?.name}
           />
         </p>
       </ModalWindow>

@@ -11,7 +11,14 @@ export interface ApplicationVersionData {
   version: string;
 }
 
+export interface OSVersionData {
+  name: string;
+  version: string;
+  version_next: string;
+}
+
 export interface ServerVersionData {
+  os: OSVersionData;
   applications: ApplicationVersionData[];
   needs_reboot: boolean;
   needs_update: boolean;
