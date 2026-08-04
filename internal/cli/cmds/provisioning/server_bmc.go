@@ -3,6 +3,8 @@ package provisioning
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -380,7 +382,9 @@ func (c *cmdServerBMCLogEntries) run(cmd *cobra.Command, args []string) error {
 type cmdServerBMCDump struct {
 	ocClient *client.OperationsCenterClient
 
-	flagTrace bool
+	flagEndpoints    []string
+	flagEndpointFile string
+	flagTrace        bool
 }
 
 func (c *cmdServerBMCDump) Command() *cobra.Command {
@@ -395,6 +399,8 @@ func (c *cmdServerBMCDump) Command() *cobra.Command {
   instead of stopping the dump.
 `
 
+	cmd.Flags().StringSliceVar(&c.flagEndpoints, "endpoint", nil, "additional BMC endpoint(s) to dump alongside the predefined set")
+	cmd.Flags().StringVar(&c.flagEndpointFile, "endpoint-file", "", "file with additional BMC endpoints to dump, one per line")
 	cmd.Flags().BoolVar(&c.flagTrace, "trace", false, "include additional opaque trace information (e.g. HTTP headers)")
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -416,7 +422,25 @@ func (c *cmdServerBMCDump) validateArgsAndFlags(cmd *cobra.Command, args []strin
 func (c *cmdServerBMCDump) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	dump, err := c.ocClient.GetServerBMCDump(cmd.Context(), name, c.flagTrace)
+	endpoints := c.flagEndpoints
+
+	if c.flagEndpointFile != "" {
+		content, err := os.ReadFile(c.flagEndpointFile)
+		if err != nil {
+			return fmt.Errorf("Failed to read endpoint file %q: %w", c.flagEndpointFile, err)
+		}
+
+		for _, line := range strings.Split(string(content), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+
+			endpoints = append(endpoints, line)
+		}
+	}
+
+	dump, err := c.ocClient.GetServerBMCDump(cmd.Context(), name, endpoints, c.flagTrace)
 	if err != nil {
 		return err
 	}
