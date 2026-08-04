@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"path"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	localtls "github.com/lxc/incus/v7/shared/tls"
@@ -1152,6 +1153,15 @@ func (s *serverHandler) serverBMCLogEntriesGet(r *http.Request) response.Respons
 //	---
 //	parameters:
 //	  - in: query
+//	    name: endpoint
+//	    type: array
+//	    collectionFormat: multi
+//	    items:
+//	      type: string
+//	    description: |-
+//	      Additional BMC API endpoint names or paths to dump alongside the
+//	      predefined set. May be given multiple times.
+//	  - in: query
 //	    name: trace
 //	    description: |-
 //	      Boolean indicating, if the BMC dump should include additional trace
@@ -1191,7 +1201,18 @@ func (s *serverHandler) serverBMCDumpPost(r *http.Request) response.Response {
 	name := r.PathValue("name")
 	trace, _ := strconv.ParseBool(r.URL.Query().Get("trace"))
 
-	dump, err := s.service.BMCDumpByName(r.Context(), name, trace)
+	var additionalEndpoints []string
+
+	for _, endpoint := range r.URL.Query()["endpoint"] {
+		endpoint = strings.TrimSpace(endpoint)
+		if endpoint == "" {
+			continue
+		}
+
+		additionalEndpoints = append(additionalEndpoints, endpoint)
+	}
+
+	dump, err := s.service.BMCDumpByName(r.Context(), name, additionalEndpoints, trace)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to get BMC dump of server %q: %w", name, err))
 	}
