@@ -1370,8 +1370,15 @@ const (
 }`
 
 	logEntriesBody = `{
-  "Members@odata.count": 2,
+  "Members@odata.count": 4,
   "Members": [
+    {
+      "@odata.id": "/redfish/v1/LogEntries/4",
+      "Id": "4",
+      "EntryType": "Event",
+      "Message": "Fourth log message, no timestamp at all",
+      "Severity": "OK"
+    },
     {
       "@odata.id": "/redfish/v1/LogEntries/1",
       "Id": "1",
@@ -1382,12 +1389,21 @@ const (
       "EventTimestamp": "2026-07-30T08:04:00Z"
     },
     {
+      "@odata.id": "/redfish/v1/LogEntries/3",
+      "Id": "3",
+      "EntryType": "Event",
+      "Message": "Third log message, EventTimestamp missing, fallback to Created",
+      "Severity": "Warning",
+      "Created": "2026-07-30T07:00:00Z"
+    },
+    {
       "@odata.id": "/redfish/v1/LogEntries/2",
       "Id": "2",
       "EntryType": "Event",
-      "Message": "Second log message",
+      "Message": "Second log message, with both timestamps, Created is respected",
       "Severity": "Critical",
-      "EventTimestamp": "2026-07-30T09:00:00Z"
+      "Created": "2026-07-30T09:00:00Z",
+      "EventTimestamp": "2026-07-30T06:00:00Z"
     }
   ]
 }`
@@ -1396,17 +1412,29 @@ const (
 func TestRedfish_LogEntriesBySource(t *testing.T) {
 	wantLogEntries := []api.BMCLogEvent{
 		{
+			EntryType: "Event",
+			Message:   "Second log message, with both timestamps, Created is respected",
+			Severity:  "Critical",
+			Timestamp: time.Date(2026, 7, 30, 9, 0, 0, 0, time.UTC),
+		},
+		{
 			EntryCode: "Assert",
 			EntryType: "SEL",
 			Message:   "First log message",
 			Severity:  "OK",
-			Timestamp: "2026-07-30T08:04:00Z",
+			Timestamp: time.Date(2026, 7, 30, 8, 4, 0, 0, time.UTC),
 		},
 		{
 			EntryType: "Event",
-			Message:   "Second log message",
-			Severity:  "Critical",
-			Timestamp: "2026-07-30T09:00:00Z",
+			Message:   "Third log message, EventTimestamp missing, fallback to Created",
+			Severity:  "Warning",
+			Timestamp: time.Date(2026, 7, 30, 7, 0, 0, 0, time.UTC),
+		},
+		{
+			EntryType: "Event",
+			Message:   "Fourth log message, no timestamp at all",
+			Severity:  "OK",
+			Timestamp: time.Time{},
 		},
 	}
 
