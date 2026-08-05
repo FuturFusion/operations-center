@@ -66,7 +66,7 @@ var dumpEndpoints = []string{
 	"/redfish/v1/Systems/*/VirtualMedia/*",
 }
 
-func (r redfish) Dump(ctx context.Context, server provisioning.Server, additionalEndpoints []string, trace bool) (api.BMCDump, error) {
+func (r redfish) Dump(ctx context.Context, server provisioning.Server, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error) {
 	client, logout, err := r.getClient(ctx, server)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
@@ -76,7 +76,12 @@ func (r redfish) Dump(ctx context.Context, server provisioning.Server, additiona
 
 	d := &dumper{client: client, trace: trace, dump: api.BMCDump{}}
 
-	endpoints := append(append([]string{}, dumpEndpoints...), additionalEndpoints...)
+	var endpoints []string
+	if !skipPredefined {
+		endpoints = append(endpoints, dumpEndpoints...)
+	}
+
+	endpoints = append(endpoints, additionalEndpoints...)
 
 	for _, endpoint := range endpoints {
 		uri, ok := d.resolve(endpoint)
