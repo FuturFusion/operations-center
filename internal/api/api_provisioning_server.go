@@ -1162,6 +1162,12 @@ func (s *serverHandler) serverBMCLogEntriesGet(r *http.Request) response.Respons
 //	      Additional BMC API endpoint names or paths to dump alongside the
 //	      predefined set. May be given multiple times.
 //	  - in: query
+//	    name: skip-predefined
+//	    description: |-
+//	      Boolean indicating, if the predefined endpoint set should be skipped
+//	      entirely, so that only the endpoints given via "endpoint" are dumped.
+//	      Defaults to false.
+//	  - in: query
 //	    name: trace
 //	    description: |-
 //	      Boolean indicating, if the BMC dump should include additional trace
@@ -1200,6 +1206,7 @@ func (s *serverHandler) serverBMCLogEntriesGet(r *http.Request) response.Respons
 func (s *serverHandler) serverBMCDumpPost(r *http.Request) response.Response {
 	name := r.PathValue("name")
 	trace, _ := strconv.ParseBool(r.URL.Query().Get("trace"))
+	skipPredefined, _ := strconv.ParseBool(r.URL.Query().Get("skip-predefined"))
 
 	var additionalEndpoints []string
 
@@ -1212,7 +1219,7 @@ func (s *serverHandler) serverBMCDumpPost(r *http.Request) response.Response {
 		additionalEndpoints = append(additionalEndpoints, endpoint)
 	}
 
-	dump, err := s.service.BMCDumpByName(r.Context(), name, additionalEndpoints, trace)
+	dump, err := s.service.BMCDumpByName(r.Context(), name, additionalEndpoints, skipPredefined, trace)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to get BMC dump of server %q: %w", name, err))
 	}
