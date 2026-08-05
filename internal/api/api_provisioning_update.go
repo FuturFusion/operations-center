@@ -92,17 +92,17 @@ func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service 
 //	    name: channel
 //	    description: Channel to filter for.
 //	    type: string
-//	    example: stable
+//	    x-example: stable
 //	  - in: query
 //	    name: origin
 //	    description: Origin to filter for.
 //	    type: string
-//	    example: images.linuxcontainers.org
+//	    x-example: images.linuxcontainers.org
 //	  - in: query
 //	    name: status
 //	    description: Status to filter for.
 //	    type: string
-//	    example: ready
+//	    x-example: ready
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/UpdatesResponse"
@@ -254,7 +254,7 @@ func (u *updateHandler) updatesDelete(r *http.Request) response.Response {
 //	    name: wait
 //	    description: If set, refresh operation is executed synchronously and waited for the result.
 //	    type: boolean
-//	    example: true
+//	    x-example: true
 //	produces:
 //	  - application/json
 //	responses:
@@ -322,9 +322,18 @@ func (u *updateHandler) updatesRefreshPost(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the update
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/UpdateResponse"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updateGet(r *http.Request) response.Response {
@@ -371,6 +380,12 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the update
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	  - in: body
 //	    name: update
 //	    description: Update definition
@@ -384,6 +399,8 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -445,18 +462,24 @@ func (u *updateHandler) updatePut(r *http.Request) response.Response {
 //
 //	---
 //	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the update
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	  - in: query
 //	    name: architecture
 //	    description: |-
 //	      Architecture the changelog should be generated for. Defaults to "x86_64".
 //	    type: string
-//	    example: aarch64
+//	    x-example: aarch64
 //	  - in: query
 //	    name: channel
 //	    description: |-
 //	      Channel the changelog should be generated for. Defaults to "stable".
 //	    type: string
-//	    example: stable
+//	    x-example: stable
 //	  - in: query
 //	    name: upstream
 //	    type: boolean
@@ -474,6 +497,8 @@ func (u *updateHandler) updatePut(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updateChangelogGet(r *http.Request) response.Response {
@@ -518,9 +543,18 @@ func (u *updateHandler) updateChangelogGet(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the update
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/UpdateFilesResponse"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updateFilesGet(r *http.Request) response.Response {
@@ -551,7 +585,7 @@ func (u *updateHandler) updateFilesGet(r *http.Request) response.Response {
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/provisioning/updates/{uuid}/files/{filename} update update_file_get
+// swagger:operation GET /1.0/provisioning/updates/{uuid}/files/{filename} updates update_file_get
 //
 //	Get the update file
 //
@@ -560,9 +594,25 @@ func (u *updateHandler) updateFilesGet(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/octet-stream
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the update
+//	    type: string
+//	    format: uuid
+//	    required: true
+//	  - in: path
+//	    name: filename
+//	    description: Name of the file
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    description: Raw file data
+//	    schema:
+//	      type: file
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updateFileGet(r *http.Request) response.Response {

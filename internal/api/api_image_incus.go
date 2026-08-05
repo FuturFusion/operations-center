@@ -228,7 +228,7 @@ func (i *imageIncusHandler) incusImagesGet(r *http.Request) response.Response {
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/image/incus/{name} incus_image incus_image_get
+// swagger:operation GET /1.0/image/incus/{name} incus_images incus_image_get
 //
 //	Get the incus image
 //
@@ -237,11 +237,19 @@ func (i *imageIncusHandler) incusImagesGet(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the incus image
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/IncusImageResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageIncusHandler) incusImageGet(r *http.Request) response.Response {
@@ -272,7 +280,7 @@ func (i *imageIncusHandler) incusImageGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation PUT /1.0/image/incus/{name} incus_image incus_image_put
+// swagger:operation PUT /1.0/image/incus/{name} incus_images incus_image_put
 //
 //	Update the incus image
 //
@@ -284,6 +292,11 @@ func (i *imageIncusHandler) incusImageGet(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the incus image
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: incus_image
 //	    description: Incus image
@@ -297,6 +310,8 @@ func (i *imageIncusHandler) incusImageGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -346,7 +361,7 @@ func (i *imageIncusHandler) incusImagePut(r *http.Request) response.Response {
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/image/incus/"+name)
 }
 
-// swagger:operation DELETE /1.0/image/incus/{name} incus_image incus_image_delete
+// swagger:operation DELETE /1.0/image/incus/{name} incus_images incus_image_delete
 //
 //	Delete the incus image
 //
@@ -355,6 +370,12 @@ func (i *imageIncusHandler) incusImagePut(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the incus image
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -362,6 +383,8 @@ func (i *imageIncusHandler) incusImagePut(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageIncusHandler) incusImageDelete(r *http.Request) response.Response {
@@ -375,7 +398,7 @@ func (i *imageIncusHandler) incusImageDelete(r *http.Request) response.Response 
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/image/incus incus_image incus_images_post
+// swagger:operation POST /1.0/image/incus incus_images incus_images_post
 //
 //	Add an incus image version
 //
@@ -436,7 +459,7 @@ func (i *imageIncusHandler) incusImageVersionPost(r *http.Request) response.Resp
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/image/incus/"+name)
 }
 
-// swagger:operation DELETE /1.0/image/incus/{name}/{version} incus_image incus_image_version_delete
+// swagger:operation DELETE /1.0/image/incus/{name}/{version} incus_images incus_image_version_delete
 //
 //	Delete the incus image version
 //
@@ -445,6 +468,17 @@ func (i *imageIncusHandler) incusImageVersionPost(r *http.Request) response.Resp
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the incus image
+//	    type: string
+//	    required: true
+//	  - in: path
+//	    name: version
+//	    description: Version of the image
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -452,6 +486,8 @@ func (i *imageIncusHandler) incusImageVersionPost(r *http.Request) response.Resp
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageIncusHandler) incusImageVersionDelete(r *http.Request) response.Response {
@@ -466,7 +502,7 @@ func (i *imageIncusHandler) incusImageVersionDelete(r *http.Request) response.Re
 	return response.EmptySyncResponse
 }
 
-// swagger:operation GET /1.0/image/incus/{name}/{version}/{filename} incus_image incus_image_version_file_get
+// swagger:operation GET /1.0/image/incus/{name}/{version}/{filename} incus_images incus_image_version_file_get
 //
 //	Get a specific file from an incus image version
 //
@@ -475,17 +511,33 @@ func (i *imageIncusHandler) incusImageVersionDelete(r *http.Request) response.Re
 //	---
 //	produces:
 //	  - "application/octet-stream"
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the incus image
+//	    type: string
+//	    required: true
+//	  - in: path
+//	    name: version
+//	    description: Version of the image
+//	    type: string
+//	    required: true
+//	  - in: path
+//	    name: filename
+//	    description: Name of the file
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: File content.
-//	    "application/octet-stream":
-//	      schema:
-//	        type: string
-//	        format: binary
+//	    description: File content
+//	    schema:
+//	      type: file
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageIncusHandler) incusImageVersionFileGet(r *http.Request) response.Response {

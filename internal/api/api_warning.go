@@ -86,11 +86,20 @@ func (t *warningHandler) warningsGet(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the warning
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/WarningResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (t *warningHandler) warningGet(r *http.Request) response.Response {
@@ -141,6 +150,12 @@ func (t *warningHandler) warningGet(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the warning
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	  - in: body
 //	    name: warning
 //	    description: Warning definition
@@ -154,6 +169,8 @@ func (t *warningHandler) warningGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":

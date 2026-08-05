@@ -83,7 +83,7 @@ func registerProvisioningClusterHandler(router Router, authorizer *authz.Authori
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/ClustersResponse"
@@ -216,11 +216,19 @@ func (c *clusterHandler) clustersPost(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the cluster
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/ClusterResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterHandler) clusterGet(r *http.Request) response.Response {
@@ -264,6 +272,11 @@ func (c *clusterHandler) clusterGet(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the cluster
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: cluster
 //	    description: Cluster definition
@@ -277,6 +290,8 @@ func (c *clusterHandler) clusterGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -327,6 +342,11 @@ func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the cluster
+//	    type: string
+//	    required: true
 //	  - in: query
 //	    name: mode
 //	    description: |
@@ -336,17 +356,17 @@ func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 //	        - force: cluster and server records including all associated inventory information is removed from operations center, does not do any change to the cluster it self.
 //	        - factory-reset: everything from "force" and additionally a factory reset is performed on every server, that is part of the cluster.
 //	    type: string
-//	    example: normal
+//	    x-example: normal
 //	  - in: query
 //	    name: token
 //	    description: Token UUID
 //	    type: string
-//	    example: f1710b8e-cd77-4336-897a-96ff0e0ed529
+//	    x-example: f1710b8e-cd77-4336-897a-96ff0e0ed529
 //	  - in: query
 //	    name: tokenSeedName
 //	    description: Token seed name for the given token.
 //	    type: string
-//	    example: token-seed-name
+//	    x-example: token-seed-name
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -354,6 +374,8 @@ func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterHandler) clusterDelete(r *http.Request) response.Response {
@@ -412,6 +434,11 @@ func (c *clusterHandler) clusterDelete(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the cluster
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: cluster
 //	    description: Cluster definition
@@ -425,6 +452,8 @@ func (c *clusterHandler) clusterDelete(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -483,6 +512,11 @@ func (c *clusterHandler) clusterPost(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the cluster
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: cluster
 //	    description: Add servers request
@@ -496,6 +530,8 @@ func (c *clusterHandler) clusterPost(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterHandler) clusterAddServersPost(r *http.Request) response.Response {
@@ -528,6 +564,11 @@ func (c *clusterHandler) clusterAddServersPost(r *http.Request) response.Respons
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the cluster
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: cluster
 //	    description: Remove servers request
@@ -541,6 +582,8 @@ func (c *clusterHandler) clusterAddServersPost(r *http.Request) response.Respons
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterHandler) clusterRemoveServerPost(r *http.Request) response.Response {
@@ -573,6 +616,11 @@ func (c *clusterHandler) clusterRemoveServerPost(r *http.Request) response.Respo
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the cluster
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: cluster_bulk_update_post
 //	    description: Cluster bulk update request with action and arguments.
@@ -586,6 +634,8 @@ func (c *clusterHandler) clusterRemoveServerPost(r *http.Request) response.Respo
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -733,11 +783,19 @@ func (c *clusterHandler) clusterBulkUpdatePost(r *http.Request) response.Respons
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the cluster
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterHandler) clusterResyncInventoryPost(r *http.Request) response.Response {
@@ -763,6 +821,11 @@ func (c *clusterHandler) clusterResyncInventoryPost(r *http.Request) response.Re
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the cluster
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: cluster_update_post
 //	    description: Cluster update request.
@@ -774,6 +837,8 @@ func (c *clusterHandler) clusterResyncInventoryPost(r *http.Request) response.Re
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterHandler) clusterUpdatePost(r *http.Request) response.Response {
@@ -803,11 +868,19 @@ func (c *clusterHandler) clusterUpdatePost(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the cluster
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterHandler) clusterCancelUpdatePost(r *http.Request) response.Response {
@@ -833,6 +906,11 @@ func (c *clusterHandler) clusterCancelUpdatePost(r *http.Request) response.Respo
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the cluster
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: cluster_certificate_put
 //	    description: Cluster certificate definition
@@ -844,6 +922,8 @@ func (c *clusterHandler) clusterCancelUpdatePost(r *http.Request) response.Respo
 //	    $ref: "#/responses/EmptySyncResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterHandler) clusterCertificatePut(r *http.Request) response.Response {
@@ -898,11 +978,19 @@ func (c *clusterHandler) clusterCertificatePut(r *http.Request) response.Respons
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: clusterName
+//	    description: Name of the cluster
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/ClusterArtifactsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterHandler) clusterArtifactsGet(r *http.Request) response.Response {
@@ -969,20 +1057,35 @@ func (c *clusterHandler) clusterArtifactsGet(r *http.Request) response.Response 
 //
 //	---
 //	produces:
+//	  - application/json
 //	  - application/zip
 //	parameters:
+//	  - in: path
+//	    name: clusterName
+//	    description: Name of the cluster
+//	    type: string
+//	    required: true
+//	  - in: path
+//	    name: artifactName
+//	    description: Name of the artifact
+//	    type: string
+//	    required: true
 //	  - in: query
 //	    name: archive
 //	    description: |-
 //	      Format of the archive to be returned. As of now, "zip" is the only
 //	      format supported.
 //	    type: string
-//	    example: zip
+//	    enum:
+//	      - zip
+//	    x-example: zip
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/ClusterArtifactResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterHandler) clusterArtifactGet(r *http.Request) response.Response {
@@ -1052,15 +1155,31 @@ func (c *clusterHandler) clusterArtifactGet(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - "*/*"
+//	parameters:
+//	  - in: path
+//	    name: clusterName
+//	    description: Name of the cluster
+//	    type: string
+//	    required: true
+//	  - in: path
+//	    name: artifactName
+//	    description: Name of the artifact
+//	    type: string
+//	    required: true
+//	  - in: path
+//	    name: filename
+//	    description: Name of the file
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: File content.
-//	    "*/*":
-//	      schema:
-//	        type: string
-//	        format: binary
+//	    description: File content
+//	    schema:
+//	      type: file
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterHandler) clusterArtifactFileGet(r *http.Request) response.Response {

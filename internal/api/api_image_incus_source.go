@@ -156,7 +156,7 @@ func (i *imageSourceHandler) imageSourcesPost(r *http.Request) response.Response
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/image/sources/"+newImageSource.Name)
 }
 
-// swagger:operation GET /1.0/images/incus/sources/{name} image_source image_source_get
+// swagger:operation GET /1.0/images/incus/sources/{name} image_sources image_source_get
 //
 //	Get the image source
 //
@@ -165,11 +165,19 @@ func (i *imageSourceHandler) imageSourcesPost(r *http.Request) response.Response
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the source
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/ImageSourceResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageSourceHandler) imageSourceGet(r *http.Request) response.Response {
@@ -198,7 +206,7 @@ func (i *imageSourceHandler) imageSourceGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation PUT /1.0/images/incus/sources/{name} image_source image_source_put
+// swagger:operation PUT /1.0/images/incus/sources/{name} image_sources image_source_put
 //
 //	Update the image source
 //
@@ -210,6 +218,11 @@ func (i *imageSourceHandler) imageSourceGet(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the source
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: image_source
 //	    description: Image source
@@ -223,6 +236,8 @@ func (i *imageSourceHandler) imageSourceGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -272,7 +287,7 @@ func (i *imageSourceHandler) imageSourcePut(r *http.Request) response.Response {
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/image/sources/"+name)
 }
 
-// swagger:operation DELETE /1.0/images/incus/sources/{name} image_source image_source_delete
+// swagger:operation DELETE /1.0/images/incus/sources/{name} image_sources image_source_delete
 //
 //	Delete the image source
 //
@@ -281,6 +296,12 @@ func (i *imageSourceHandler) imageSourcePut(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the source
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -288,6 +309,8 @@ func (i *imageSourceHandler) imageSourcePut(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageSourceHandler) imageSourceDelete(r *http.Request) response.Response {
@@ -301,7 +324,7 @@ func (i *imageSourceHandler) imageSourceDelete(r *http.Request) response.Respons
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/images/incus/sources/{name}/:refresh image_source image_source_refresh_post
+// swagger:operation POST /1.0/images/incus/sources/{name}/:refresh image_sources image_source_refresh_post
 //
 //	Refresh the image source
 //
@@ -312,6 +335,12 @@ func (i *imageSourceHandler) imageSourceDelete(r *http.Request) response.Respons
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the source
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -319,6 +348,8 @@ func (i *imageSourceHandler) imageSourceDelete(r *http.Request) response.Respons
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageSourceHandler) imageSourceRefreshPost(r *http.Request) response.Response {

@@ -109,7 +109,7 @@ func (c *clusterConfigTemplateHandler) clusterTemplatesGet(r *http.Request) resp
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation POST /1.0/provisioning/cluster-templates cluster-templates cluster_config_templates_post
+// swagger:operation POST /1.0/provisioning/cluster-templates cluster_templates cluster_config_templates_post
 //
 //	Add a cluster config template
 //
@@ -159,7 +159,7 @@ func (c *clusterConfigTemplateHandler) clusterTemplatesPost(r *http.Request) res
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/cluster-templates/"+clusterConfigTemplate.Name)
 }
 
-// swagger:operation GET /1.0/provisioning/cluster-templates/{name} cluster-templates cluster_config_template_get
+// swagger:operation GET /1.0/provisioning/cluster-templates/{name} cluster_templates cluster_config_template_get
 //
 //	Get the cluster config template
 //
@@ -168,11 +168,19 @@ func (c *clusterConfigTemplateHandler) clusterTemplatesPost(r *http.Request) res
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the cluster template
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/ClusterTemplateResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterConfigTemplateHandler) clusterTemplateGet(r *http.Request) response.Response {
@@ -201,7 +209,7 @@ func (c *clusterConfigTemplateHandler) clusterTemplateGet(r *http.Request) respo
 	)
 }
 
-// swagger:operation PUT /1.0/provisioning/cluster-templates/{name} cluster-templates cluster_config_template_put
+// swagger:operation PUT /1.0/provisioning/cluster-templates/{name} cluster_templates cluster_config_template_put
 //
 //	Update the cluster config template
 //
@@ -213,12 +221,17 @@ func (c *clusterConfigTemplateHandler) clusterTemplateGet(r *http.Request) respo
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the cluster template
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: cluster_config_template
 //	    description: ClusterConfigTemplate definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/ClusterTemplate"
+//	      $ref: "#/definitions/ClusterTemplatePut"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -226,6 +239,8 @@ func (c *clusterConfigTemplateHandler) clusterTemplateGet(r *http.Request) respo
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -233,7 +248,7 @@ func (c *clusterConfigTemplateHandler) clusterTemplateGet(r *http.Request) respo
 func (c *clusterConfigTemplateHandler) clusterTemplatePut(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	var clusterConfigTemplate api.ClusterTemplate
+	var clusterConfigTemplate api.ClusterTemplatePut
 
 	err := json.NewDecoder(r.Body).Decode(&clusterConfigTemplate)
 	if err != nil {
@@ -277,7 +292,7 @@ func (c *clusterConfigTemplateHandler) clusterTemplatePut(r *http.Request) respo
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/cluster-templates/"+name)
 }
 
-// swagger:operation DELETE /1.0/provisioning/cluster-templates/{name} cluster-templates cluster_config_template_delete
+// swagger:operation DELETE /1.0/provisioning/cluster-templates/{name} cluster_templates cluster_config_template_delete
 //
 //	Delete the cluster config template
 //
@@ -286,6 +301,12 @@ func (c *clusterConfigTemplateHandler) clusterTemplatePut(r *http.Request) respo
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the cluster template
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -293,6 +314,8 @@ func (c *clusterConfigTemplateHandler) clusterTemplatePut(r *http.Request) respo
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterConfigTemplateHandler) clusterTemplateDelete(r *http.Request) response.Response {
@@ -306,7 +329,7 @@ func (c *clusterConfigTemplateHandler) clusterTemplateDelete(r *http.Request) re
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/provisioning/cluster-templates/{name} cluster-templates cluster_config_template_post
+// swagger:operation POST /1.0/provisioning/cluster-templates/{name} cluster_templates cluster_config_template_post
 //
 //	Rename the cluster config template
 //
@@ -318,6 +341,11 @@ func (c *clusterConfigTemplateHandler) clusterTemplateDelete(r *http.Request) re
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the cluster template
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: cluster_config_template
 //	    description: ClusterConfigTemplate definition
@@ -331,6 +359,8 @@ func (c *clusterConfigTemplateHandler) clusterTemplateDelete(r *http.Request) re
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":

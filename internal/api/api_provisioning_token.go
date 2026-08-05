@@ -178,11 +178,20 @@ func (t *tokenHandler) tokensPost(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the token
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/TokenResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (t *tokenHandler) tokenGet(r *http.Request) response.Response {
@@ -225,6 +234,12 @@ func (t *tokenHandler) tokenGet(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the token
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	  - in: body
 //	    name: token
 //	    description: Token definition
@@ -238,6 +253,8 @@ func (t *tokenHandler) tokenGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -304,6 +321,13 @@ func (t *tokenHandler) tokenPut(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the token
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -311,6 +335,8 @@ func (t *tokenHandler) tokenPut(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (t *tokenHandler) tokenDelete(r *http.Request) response.Response {
@@ -341,6 +367,12 @@ func (t *tokenHandler) tokenDelete(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the token
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	  - in: body
 //	    name: tokenImagePost
 //	    description: Seed configuration for the generated ISO or raw image.
@@ -354,6 +386,8 @@ func (t *tokenHandler) tokenDelete(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (t *tokenHandler) tokenImagePost(r *http.Request) response.Response {
@@ -397,13 +431,30 @@ func (t *tokenHandler) tokenImagePost(r *http.Request) response.Response {
 //	  - application/json
 //	  - application/octet-stream
 //	  - application/gzip
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the token
+//	    type: string
+//	    format: uuid
+//	    required: true
+//	  - in: path
+//	    name: imageUUID
+//	    description: UUID of the image
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
 //	    description: Raw file data
+//	    schema:
+//	      type: file
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (t *tokenHandler) tokenImageGet(r *http.Request) response.Response {
@@ -438,11 +489,20 @@ func (t *tokenHandler) tokenImageGet(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the token
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/TokenProviderConfigResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (t *tokenHandler) tokenProviderConfigGet(r *http.Request) response.Response {
@@ -477,6 +537,12 @@ func (t *tokenHandler) tokenProviderConfigGet(r *http.Request) response.Response
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the token
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	  - in: body
 //	    name: tokenSeedsPost
 //	    description: Token seed configuration record.
@@ -490,6 +556,8 @@ func (t *tokenHandler) tokenProviderConfigGet(r *http.Request) response.Response
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (t *tokenHandler) tokenSeedsPost(r *http.Request) response.Response {
@@ -563,11 +631,20 @@ func (t *tokenHandler) tokenSeedsPost(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the token
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/TokenSeedsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (t *tokenHandler) tokenSeedsGet(r *http.Request) response.Response {
@@ -646,21 +723,44 @@ func (t *tokenHandler) tokenSeedsGet(r *http.Request) response.Response {
 //	  - application/octet-stream
 //	  - application/gzip
 //	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the token
+//	    type: string
+//	    format: uuid
+//	    required: true
+//	  - in: path
+//	    name: name
+//	    description: Name of the seed
+//	    type: string
+//	    required: true
 //	  - in: query
 //	    name: architecture
 //	    description: |-
 //	      Architecture of the generated file, "x86_64", "aarch64".
+//	    type: string
+//	    enum:
+//	      - x86_64
+//	      - aarch64
+//	    x-example: x86_64
 //	  - in: query
 //	    name: channel
 //	    description: |-
 //	      Name of the channel, the most recent update should be taken from
 //	      for the generated image.
 //	      If omitted, the default update channel is used.
+//	    type: string
+//	    x-example: stable
 //	  - in: query
 //	    name: type
 //	    description: |-
 //	      Type of the generated file, "iso" or "raw".
 //	      If omitted, the token seed configuration is returned as JSON.
+//	    type: string
+//	    enum:
+//	      - iso
+//	      - raw
+//	    x-example: iso
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/TokenSeedResponse"
@@ -668,6 +768,8 @@ func (t *tokenHandler) tokenSeedsGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (t *tokenHandler) tokenSeedGet(r *http.Request) response.Response {
@@ -756,6 +858,17 @@ func (t *tokenHandler) tokenSeedGet(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the token
+//	    type: string
+//	    format: uuid
+//	    required: true
+//	  - in: path
+//	    name: name
+//	    description: Name of the seed
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: token
 //	    description: Token seed config definition
@@ -769,6 +882,8 @@ func (t *tokenHandler) tokenSeedGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -846,6 +961,18 @@ func (t *tokenHandler) tokenSeedPut(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the token
+//	    type: string
+//	    format: uuid
+//	    required: true
+//	  - in: path
+//	    name: name
+//	    description: Name of the seed
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -853,6 +980,8 @@ func (t *tokenHandler) tokenSeedPut(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (t *tokenHandler) tokenSeedDelete(r *http.Request) response.Response {

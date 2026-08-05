@@ -102,11 +102,11 @@ func (s *systemHandler) certificateRenewPost(r *http.Request) response.Response 
 	return response.EmptySyncResponse
 }
 
-// swagger:operation Get /1.0/system/network system system_network_get
+// swagger:operation GET /1.0/system/network system system_network_get
 //
-//	Update the system's network configuration
+//	Get the system's network configuration
 //
-//	Update the system's network configuration.
+//	Get the system's network configuration.
 //
 //	---
 //	produces:
@@ -125,11 +125,11 @@ func (s *systemHandler) networkGet(r *http.Request) response.Response {
 	return response.SyncResponse(true, networkConfig)
 }
 
-// swagger:operation PUT /1.0/system/config system system_config_put
+// swagger:operation PUT /1.0/system/network system system_network_put
 //
-//	Update the system's configuration
+//	Update the system's network configuration
 //
-//	Update the system's configuration.
+//	Update the system's network configuration.
 //
 //	---
 //	consumes:
@@ -138,8 +138,8 @@ func (s *systemHandler) networkGet(r *http.Request) response.Response {
 //	  - application/json
 //	parameters:
 //	  - in: body
-//	    name: system_configuration_put
-//	    description: System configuration definition
+//	    name: system_network_put
+//	    description: System network configuration definition
 //	    required: true
 //	    schema:
 //	      $ref: "#/definitions/NetworkPut"
@@ -168,11 +168,11 @@ func (s *systemHandler) networkPut(r *http.Request) response.Response {
 	return response.EmptySyncResponse
 }
 
-// swagger:operation Get /1.0/system/security system system_security_get
+// swagger:operation GET /1.0/system/security system system_security_get
 //
-//	Update the system's security configuration
+//	Get the system's security configuration
 //
-//	Update the system's security configuration.
+//	Get the system's security configuration.
 //
 //	---
 //	produces:
@@ -234,11 +234,11 @@ func (s *systemHandler) securityPut(r *http.Request) response.Response {
 	return response.EmptySyncResponse
 }
 
-// swagger:operation Get /1.0/system/settings system system_settings_get
+// swagger:operation GET /1.0/system/settings system system_settings_get
 //
-//	Update the system's settings configuration
+//	Get the system's settings configuration
 //
-//	Update the system's settings configuration.
+//	Get the system's settings configuration.
 //
 //	---
 //	produces:
@@ -300,11 +300,11 @@ func (s *systemHandler) settingsPut(r *http.Request) response.Response {
 	return response.EmptySyncResponse
 }
 
-// swagger:operation Get /1.0/system/updates system system_updates_get
+// swagger:operation GET /1.0/system/updates system system_updates_get
 //
-//	Update the system's updates configuration
+//	Get the system's updates configuration
 //
-//	Update the system's updates configuration.
+//	Get the system's updates configuration.
 //
 //	---
 //	produces:
