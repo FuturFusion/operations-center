@@ -103,13 +103,13 @@ type Warning struct {
 	// First time the warning occurred for the first time, that is, the timestamp
 	// when the respective warning has been seen or observed by Operations Center
 	// for the first time. RFC3339 format.
-	// Example: 2025-01-01 01:00:00
+	// Example: 2025-01-01T01:00:00Z
 	FirstOccurrence time.Time `json:"first_occurrence" yaml:"first_occurrence"`
 
 	// Most recent time the warning occurred, that is, the timestamp when the
 	// respective warning has been seen or observed by Operations Center for the
 	// last time. RFC3339 format.
-	// Example: 2025-01-01 01:00:00
+	// Example: 2025-01-01T01:00:00Z
 	LastOccurrence time.Time `json:"last_occurrence" yaml:"last_occurrence"`
 
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
@@ -117,7 +117,7 @@ type Warning struct {
 	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
 
 	// Messages associated with the warning type.
-	// Example: list of messages
+	// Example: ["message one", "message two"]
 	Messages []string `json:"messages" yaml:"messages"`
 
 	// Number of times the warning has been seen.

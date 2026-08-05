@@ -319,7 +319,7 @@ type ClusterPost struct {
 	Cluster `yaml:",inline"`
 
 	// Names of the servers beloning to the cluster.
-	// Example: [ "server1", "server2" ]
+	// Example: ["server1", "server2"]
 	ServerNames []string `json:"server_names" yaml:"server_names"`
 
 	// ServerType is the expected type of servers to be clustered.
@@ -384,7 +384,7 @@ const (
 // swagger:model
 type ClusterAddServersPost struct {
 	// Names of the servers to be added to the cluster.
-	// Example: [ "server1", "server2" ]
+	// Example: ["server1", "server2"]
 	ServerNames []string `json:"server_names" yaml:"server_names"`
 
 	// If set to true, the post join operations (namely the creation of the local storage volumes for backups,
@@ -398,7 +398,7 @@ type ClusterAddServersPost struct {
 // swagger:model
 type ClusterRemoveServersPost struct {
 	// Name of the server to be removed from the cluster.
-	// Example: "server1"
+	// Example: ["server1"]
 	ServerNames []string `json:"server_names" yaml:"server_names"`
 }
 

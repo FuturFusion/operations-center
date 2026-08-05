@@ -77,7 +77,7 @@ func (s *UpdateStatus) Scan(value any) error {
 // swagger:model
 type UpdatePut struct {
 	// Channels holds the name of the channels the update is assigned to.
-	// Example: stable
+	// Example: ["stable"]
 	Channels []string `json:"channels" yaml:"channels"`
 }
 
@@ -112,7 +112,7 @@ type Update struct {
 
 	// UpstreamChannels holds the name of the channels from upstream (source)
 	// the update is part of.
-	// Example: stable
+	// Example: ["stable"]
 	UpstreamChannels []string `json:"upstream_channels" yaml:"upstream_channels"`
 
 	// Status contains the status the update is currently in.
