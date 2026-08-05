@@ -14,6 +14,7 @@ import (
 	"github.com/openfga/go-sdk/credentials"
 
 	"github.com/FuturFusion/operations-center/internal/security/authz"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -28,6 +29,21 @@ func New(ctx context.Context, apiURL string, apiToken string, storeID string) (*
 	var err error
 	f := &FGA{}
 
+	f.client, err = newClient(apiURL, apiToken, storeID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = f.ensureAuthorizationModel(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to initialize OpenFGA authorization model, retrying in background", logger.Err(err))
+		go f.retryEnsureAuthorizationModel(ctx)
+	}
+
+	return f, nil
+}
+
+func newClient(apiURL string, apiToken string, storeID string) (*client.OpenFgaClient, error) {
 	conf := client.ClientConfiguration{
 		ApiUrl:  apiURL,
 		StoreId: storeID,
@@ -39,17 +55,58 @@ func New(ctx context.Context, apiURL string, apiToken string, storeID string) (*
 		},
 	}
 
-	f.client, err = client.NewSdkClient(&conf)
+	c, err := client.NewSdkClient(&conf)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create OpenFGA client: %w", err)
 	}
 
-	err = f.ensureAuthorizationModel(ctx)
+	return c, nil
+}
+
+// CheckConnectivity verifies OpenFGA is reachable with the given credentials
+// and store.
+func CheckConnectivity(ctx context.Context, apiURL string, apiToken string, storeID string) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	c, err := newClient(apiURL, apiToken, storeID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return f, nil
+	_, err = c.ReadLatestAuthorizationModel(ctx).Execute()
+	if err != nil {
+		return fmt.Errorf("Failed to connect to OpenFGA: %w", err)
+	}
+
+	return nil
+}
+
+// retryEnsureAuthorizationModel retries to ensure the authorization model
+// until it succeeds or ctx is cancelled, e.g. if OpenFGA was not reachable
+// when the authorizer was created.
+func (f *FGA) retryEnsureAuthorizationModel(ctx context.Context) {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+
+		case <-ticker.C:
+		}
+
+		err := f.ensureAuthorizationModel(ctx)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to initialize OpenFGA authorization model, retrying", logger.Err(err))
+			continue
+		}
+
+		slog.InfoContext(ctx, "OpenFGA authorization model initialized")
+
+		return
+	}
 }
 
 func (f FGA) ensureAuthorizationModel(ctx context.Context) error {
