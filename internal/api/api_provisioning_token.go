@@ -56,33 +56,7 @@ func registerProvisioningTokenHandler(router Router, authorizer *authz.Authorize
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API tokens
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of tokens
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/provisioning/tokens/b32d0079-c48b-4957-b1cb-bef54125c861",
-//	              "/1.0/provisioning/tokens/464d229b-3069-4a82-bc59-b215a7c6ed1b"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -99,28 +73,7 @@ func registerProvisioningTokenHandler(router Router, authorizer *authz.Authorize
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API tokens
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of tokens
-//	          items:
-//	            $ref: "#/definitions/Token"
+//	    $ref: "#/responses/TokensResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -184,7 +137,7 @@ func (t *tokenHandler) tokensGet(r *http.Request) response.Response {
 //	    description: Token configuration
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/TokenPost"
+//	      $ref: "#/definitions/TokenPut"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -227,25 +180,7 @@ func (t *tokenHandler) tokensPost(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Token
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/Token"
+//	    $ref: "#/responses/TokenResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -414,31 +349,7 @@ func (t *tokenHandler) tokenDelete(r *http.Request) response.Response {
 //	      $ref: "#/definitions/TokenImagePost"
 //	responses:
 //	  "200":
-//	    description: Image download location
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: object
-//	          description: Object containing the image dowload location
-//	          properties:
-//	            image:
-//	              type: string
-//	              description: Image download location
-//	              example: /1.0/provisioning/tokens/b32d0079-c48b-4957-b1cb-bef54125c861/image/9d73586d-2937-4e3a-8ed0-be999abe6387
+//	    $ref: "#/responses/TokenImageResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -529,25 +440,7 @@ func (t *tokenHandler) tokenImageGet(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Provider config.
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/TokenProviderConfig"
+//	    $ref: "#/responses/TokenProviderConfigResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -589,7 +482,7 @@ func (t *tokenHandler) tokenProviderConfigGet(r *http.Request) response.Response
 //	    description: Token seed configuration record.
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/TokenSeedsPost"
+//	      $ref: "#/definitions/TokenSeedPost"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -644,73 +537,35 @@ func (t *tokenHandler) tokenSeedsPost(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the token
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: API token seed configs
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of token seed configs
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/provisioning/tokens/b32d0079-c48b-4957-b1cb-bef54125c861/images/first",
-//	              "/1.0/provisioning/tokens/b32d0079-c48b-4957-b1cb-bef54125c861/images/second"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
 // swagger:operation GET /1.0/provisioning/tokens/{uuid}/seeds?recursion=1 tokens tokens_seeds_get_recursion
 //
-//	Get the tokens
+//	Get the token seed configs
 //
-//	Returns a list of token seed configs (structs).
+//	Returns a list of seed configs of a given token (structs).
 //
 //	---
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API token seed configs
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of token seed configs
-//	          items:
-//	            $ref: "#/definitions/TokenSeed"
+//	    $ref: "#/responses/TokenSeedsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -808,32 +663,7 @@ func (t *tokenHandler) tokenSeedsGet(r *http.Request) response.Response {
 //	      If omitted, the token seed configuration is returned as JSON.
 //	responses:
 //	  "200":
-//	    description: Token seed config
-//	    content:
-//	      application/json:
-//	        description: Token seed config as JSON
-//	        schema:
-//	          type: object
-//	          description: Sync response
-//	          properties:
-//	            type:
-//	              type: string
-//	              description: Response type
-//	              example: sync
-//	            status:
-//	              type: string
-//	              description: Status description
-//	              example: Success
-//	            status_code:
-//	              type: integer
-//	              description: Status code
-//	              example: 200
-//	            metadata:
-//	              $ref: "#/definitions/TokenSeed"
-//	      application/octet-stream:
-//	        description: Raw file data
-//	      application/gzip:
-//	        description: Raw file data
+//	    $ref: "#/responses/TokenSeedResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -931,7 +761,7 @@ func (t *tokenHandler) tokenSeedGet(r *http.Request) response.Response {
 //	    description: Token seed config definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/TokenSeed"
+//	      $ref: "#/definitions/TokenSeedPut"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"

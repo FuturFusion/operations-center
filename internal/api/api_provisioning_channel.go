@@ -43,33 +43,7 @@ func registerChannelsHandler(router Router, authorizer *authz.Authorizer, servic
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API channels
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of channels
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/provisioning/channels/one",
-//	              "/1.0/provisioning/channels/two"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -86,28 +60,7 @@ func registerChannelsHandler(router Router, authorizer *authz.Authorizer, servic
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API channels
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of channels
-//	          items:
-//	            $ref: "#/definitions/Channel"
+//	    $ref: "#/responses/ChannelsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -212,25 +165,7 @@ func (u *channelsHandler) channelsPost(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Channel
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/Channel"
+//	    $ref: "#/responses/ChannelResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -378,25 +313,7 @@ func (u *channelsHandler) channelDelete(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Channel
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/Channel"
+//	    $ref: "#/responses/UpdateChangelogsResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":

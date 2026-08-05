@@ -113,41 +113,20 @@ func registerProvisioningServerHandler(
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
+//	  - in: query
+//	    name: status
+//	    description: Status to filter for.
+//	    type: string
+//	    x-example: ready
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API servers
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of servers
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/provisioning/servers/one",
-//	              "/1.0/provisioning/servers/two"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -180,28 +159,7 @@ func registerProvisioningServerHandler(
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API servers
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of servers
-//	          items:
-//	            $ref: "#/definitions/Server"
+//	    $ref: "#/responses/ServersResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -309,59 +267,10 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 //	    description: Server configuration
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/Server"
+//	      $ref: "#/definitions/ServerPost"
 //	responses:
 //	  "200":
-//	    description: Register server response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: object
-//	          description: Register server response details
-//	          items:
-//	            $ref: "#/definitions/ServerRegistrationResponse"
-//	  "400":
-//	    $ref: "#/responses/BadRequest"
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
-
-// swagger:operation POST /1.0/provisioning/servers servers servers_post_pre_register
-//
-//	Add a new unregistered server
-//
-//	Creates a new unregistered server.
-//
-//	---
-//	consumes:
-//	  - application/json
-//	produces:
-//	  - application/json
-//	parameters:
-//	  - in: body
-//	    name: server
-//	    description: Server configuration
-//	    required: true
-//	    schema:
-//	      $ref: "#/definitions/Server"
-//	responses:
-//	  "200":
-//	    $ref: "#/responses/EmptySyncResponse"
+//	    $ref: "#/responses/ServerRegistrationResultResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -483,25 +392,7 @@ func (s *serverHandler) serversPostPreRegister(r *http.Request) response.Respons
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Server
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/Server"
+//	    $ref: "#/responses/ServerResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -1049,28 +940,7 @@ func (s *serverHandler) serverBMCServerRestartPost(r *http.Request) response.Res
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: BMC log sources
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of log sources
-//	          items:
-//	            type: string
+//	    $ref: "#/responses/ServerBMCLogSourcesResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -1101,28 +971,7 @@ func (s *serverHandler) serverBMCLogSourcesGet(r *http.Request) response.Respons
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: BMC log entries
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of log entries
-//	          items:
-//	            $ref: "#/definitions/BMCLogEvent"
+//	    $ref: "#/responses/ServerBMCLogEventsResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -1178,25 +1027,7 @@ func (s *serverHandler) serverBMCLogEntriesGet(r *http.Request) response.Respons
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: BMC dump
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/BMCDump"
+//	    $ref: "#/responses/ServerBMCDumpResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -1238,25 +1069,7 @@ func (s *serverHandler) serverBMCDumpPost(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Server
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/UpdateChangelog"
+//	    $ref: "#/responses/UpdateChangelogResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -1611,25 +1424,7 @@ func (s *serverHandler) serverSystemUpdatePost(r *http.Request) response.Respons
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Server network
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/ServerSystemNetworkConfig"
+//	    $ref: "#/responses/ServerSystemNetworkResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -1666,7 +1461,7 @@ func (s *serverHandler) serverSystemNetworkGet(r *http.Request) response.Respons
 //	    description: Server network configuration
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/ServerSystemNetworkConfig"
+//	      $ref: "#/definitions/IncusOsdAPISystemNetwork"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -1707,25 +1502,7 @@ func (s *serverHandler) serverSystemNetworkPut(r *http.Request) response.Respons
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Server storage
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/ServerSystemStorageConfig"
+//	    $ref: "#/responses/ServerSystemStorageResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -1762,7 +1539,7 @@ func (s *serverHandler) serverSystemStorageGet(r *http.Request) response.Respons
 //	    description: Server storage configuration
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/ServerSystemStorageConfig"
+//	      $ref: "#/definitions/SystemStorage"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -1803,25 +1580,7 @@ func (s *serverHandler) serverSystemStoragePut(r *http.Request) response.Respons
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Server update
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/ServerSystemUpdateConfig"
+//	    $ref: "#/responses/ServerSystemUpdateResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -1860,7 +1619,7 @@ func (s *serverHandler) serverSystemUpdateGet(r *http.Request) response.Response
 //	    description: Server update configuration
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/ServerSystemUpdateConfig"
+//	      $ref: "#/definitions/SystemUpdate"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"

@@ -31,7 +31,7 @@ func registerProvisioningClusterTemplateHandler(router Router, authorizer *authz
 	router.HandleFunc("POST /{name}", response.With(handler.clusterTemplatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
-// swagger:operation GET /1.0/provisioning/cluster-templates cluster-templates cluster_config_templates_get
+// swagger:operation GET /1.0/provisioning/cluster-templates cluster_templates cluster_config_templates_get
 //
 //	Get the cluster config templates
 //
@@ -42,39 +42,13 @@ func registerProvisioningClusterTemplateHandler(router Router, authorizer *authz
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API cluster config templates
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of cluster config templates
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/provisioning/cluster-templates/one",
-//	              "/1.0/provisioning/cluster-templates/two"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/provisioning/cluster-templates?recursion=1 cluster-templates cluster_config_templates_get_recursion
+// swagger:operation GET /1.0/provisioning/cluster-templates?recursion=1 cluster_templates cluster_config_templates_get_recursion
 //
 //	Get the cluster config templates
 //
@@ -85,28 +59,7 @@ func registerProvisioningClusterTemplateHandler(router Router, authorizer *authz
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API cluster config templates
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of cluster config templates
-//	          items:
-//	            $ref: "#/definitions/ClusterConfigTemplate"
+//	    $ref: "#/responses/ClusterTemplatesResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -217,25 +170,7 @@ func (c *clusterConfigTemplateHandler) clusterTemplatesPost(r *http.Request) res
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: ClusterConfigTemplate
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/ClusterConfigTemplate"
+//	    $ref: "#/responses/ClusterTemplateResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -283,7 +218,7 @@ func (c *clusterConfigTemplateHandler) clusterTemplateGet(r *http.Request) respo
 //	    description: ClusterConfigTemplate definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/ClusterConfigTemplate"
+//	      $ref: "#/definitions/ClusterTemplate"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -388,7 +323,7 @@ func (c *clusterConfigTemplateHandler) clusterTemplateDelete(r *http.Request) re
 //	    description: ClusterConfigTemplate definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/ClusterConfigTemplate"
+//	      $ref: "#/definitions/ClusterTemplate"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"

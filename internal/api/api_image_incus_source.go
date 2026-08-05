@@ -41,33 +41,7 @@ func registerImageSourceHandler(router Router, authorizer *authz.Authorizer, ser
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API image sources
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of image sources
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/images/incus/sources/linuxcontainer.org",
-//	              "/1.0/images/incus/sources/images.org"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -84,28 +58,7 @@ func registerImageSourceHandler(router Router, authorizer *authz.Authorizer, ser
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API image sources
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of image sources
-//	          items:
-//	            $ref: "#/definitions/ImageSource"
+//	    $ref: "#/responses/ImageSourcesResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -214,25 +167,7 @@ func (i *imageSourceHandler) imageSourcesPost(r *http.Request) response.Response
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Image source
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/ImageSource"
+//	    $ref: "#/responses/ImageSourceResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -280,7 +215,7 @@ func (i *imageSourceHandler) imageSourceGet(r *http.Request) response.Response {
 //	    description: Image source
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/ImageSource"
+//	      $ref: "#/definitions/ImageSourcePut"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"

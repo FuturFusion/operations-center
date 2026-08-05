@@ -31,7 +31,7 @@ func registerWarningHandler(router Router, authorizer *authz.Authorizer, service
 	router.HandleFunc("PUT /{uuid}", response.With(handler.warningPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
-// swagger:operation GET /1.0/warnings warnings warnings_get_recursion
+// swagger:operation GET /1.0/warnings warnings warnings_get
 //
 //	Get the warnings
 //
@@ -42,28 +42,7 @@ func registerWarningHandler(router Router, authorizer *authz.Authorizer, service
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API warnings
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of warnings
-//	          items:
-//	            $ref: "#/definitions/Warning"
+//	    $ref: "#/responses/WarningsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -109,25 +88,7 @@ func (t *warningHandler) warningsGet(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Warning
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/Warning"
+//	    $ref: "#/responses/WarningResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

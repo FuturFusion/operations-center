@@ -59,28 +59,7 @@ func registerInventoryQueryHandler(router Router, authorizer *authz.Authorizer, 
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API query
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of aggregated resources from the inventory
-//	          items:
-//	            $ref: "#/definitions/inventory_aggregate"
+//	    $ref: "#/responses/InventoryAggregatesResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

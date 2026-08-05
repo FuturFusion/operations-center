@@ -60,36 +60,10 @@ func registerProvisioningClusterHandler(router Router, authorizer *authz.Authori
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API clusters
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of clusters
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/provisioning/clusters/one",
-//	              "/1.0/provisioning/clusters/two"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -112,28 +86,7 @@ func registerProvisioningClusterHandler(router Router, authorizer *authz.Authori
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API clusters
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of clusters
-//	          items:
-//	            $ref: "#/definitions/Cluster"
+//	    $ref: "#/responses/ClustersResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -265,25 +218,7 @@ func (c *clusterHandler) clustersPost(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Cluster
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/Cluster"
+//	    $ref: "#/responses/ClusterResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -334,7 +269,7 @@ func (c *clusterHandler) clusterGet(r *http.Request) response.Response {
 //	    description: Cluster definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/Cluster"
+//	      $ref: "#/definitions/ClusterPut"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -646,23 +581,7 @@ func (c *clusterHandler) clusterRemoveServerPost(r *http.Request) response.Respo
 //	      $ref: "#/definitions/ClusterBulkUpdatePost"
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -816,23 +735,7 @@ func (c *clusterHandler) clusterBulkUpdatePost(r *http.Request) response.Respons
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -868,23 +771,7 @@ func (c *clusterHandler) clusterResyncInventoryPost(r *http.Request) response.Re
 //	      $ref: "#/definitions/ClusterUpdatePost"
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -918,23 +805,7 @@ func (c *clusterHandler) clusterUpdatePost(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -970,23 +841,7 @@ func (c *clusterHandler) clusterCancelUpdatePost(r *http.Request) response.Respo
 //	      $ref: "#/definitions/ClusterCertificatePut"
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: Cluster certificate update response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -1011,44 +866,26 @@ func (c *clusterHandler) clusterCertificatePut(r *http.Request) response.Respons
 
 // swagger:operation GET /1.0/provisioning/clusters/{clusterName}/artifacts clusters cluster_artifacts_get
 //
-//	Get a cluster's artifacts
+//	Get the cluster's artifacts
 //
 //	Returns a list of a cluster's artifacts (URLs).
 //
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: clusterName
+//	    description: Name of the cluster
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: API cluster artifacts
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of cluster artifacts
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/provisioning/clusters/one/artifacts/one",
-//	              "/1.0/provisioning/clusters/one/artifacts/two"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
@@ -1063,28 +900,7 @@ func (c *clusterHandler) clusterCertificatePut(r *http.Request) response.Respons
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API cluster artifacts
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of cluster's artifacts
-//	          items:
-//	            $ref: "#/definitions/ClusterArtifact"
+//	    $ref: "#/responses/ClusterArtifactsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -1147,42 +963,9 @@ func (c *clusterHandler) clusterArtifactsGet(r *http.Request) response.Response 
 //
 //	Gets a specific cluster's artifact.
 //
-//	---
-//	produces:
-//	  - application/json
-//	responses:
-//	  "200":
-//	    description: Cluster Artifact
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/ClusterArtifact"
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
-
-// swagger:operation GET /1.0/provisioning/clusters/{clusterName}/artifacts/{artifactName}?archive=zip clusters cluster_artifact_get_archive
-//
-//	Get a cluster's artifact as archive
-//
-//	Gets a specific cluster's artifact as archive. The "archive" query parameter
-//	takes the archive format, which should be returned. As of now, "zip" is
-//	the only value supported.
+//	With the "archive" query parameter set, the files of the artifact are
+//	returned as an archive of that format instead, and the response body is the
+//	archive rather than the JSON document described below.
 //
 //	---
 //	produces:
@@ -1197,11 +980,7 @@ func (c *clusterHandler) clusterArtifactsGet(r *http.Request) response.Response 
 //	    example: zip
 //	responses:
 //	  "200":
-//	    description: Zip Archive of all the files of the artifact.
-//	    "application/zip":
-//	      schema:
-//	        type: string
-//	        format: binary
+//	    $ref: "#/responses/ClusterArtifactResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

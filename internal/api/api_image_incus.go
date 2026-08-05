@@ -159,33 +159,7 @@ func (i *imageIncusHandler) simplestreamsPublicImagesGet(r *http.Request) respon
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API incus images
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of incus images
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/image/incus/almalinux:10:amd64:default",
-//	              "/1.0/image/incus/almalinux:10:amd64:cloud"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -202,28 +176,7 @@ func (i *imageIncusHandler) simplestreamsPublicImagesGet(r *http.Request) respon
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API incus images
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of incus
-//	          items:
-//	            $ref: "#/definitions/IncusImage"
+//	    $ref: "#/responses/IncusImagesResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -286,25 +239,7 @@ func (i *imageIncusHandler) incusImagesGet(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Incus image
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/IncusImage"
+//	    $ref: "#/responses/IncusImageResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -354,7 +289,7 @@ func (i *imageIncusHandler) incusImageGet(r *http.Request) response.Response {
 //	    description: Incus image
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/IncusImage"
+//	      $ref: "#/definitions/IncusImagePut"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -452,33 +387,23 @@ func (i *imageIncusHandler) incusImageDelete(r *http.Request) response.Response 
 //	  - multipart/form-data
 //	produces:
 //	  - application/json
-//	requestBody:
-//	  content:
-//	    multipart/form-data:
-//	      description: >
-//	        In order to allow stream processing of the request, the order of the
-//	        fields in the request is important. The "json_request" field is
-//	        expected to be sent as the first field. If the "json_request" field
-//	        is omitted, then the first file is required to be the incus.tar.xz.
-//	        Sending the "json_request" and a file called incus.tar.xz is an
-//	        error.
-//	      schema:
-//	        type: object
-//	        properties:
-//	          json_request:
-//	            description: >
-//	              json_request contains the fields of the request as JSON object.
-//	            type: object
-//	            schema:
-//	              $ref: "#/definitions/IncusImagePost"
-//	          fileNN:
-//	            type: string
-//	            format: binary
-//	            description: >
-//	              As single request might contain multiple files. In this case,
-//	              the form field names should be prefixed with "file", followed
-//	              by an incrementing number, e.g. file00, file01.
-//	              The "filename" parameter should be used to pass the filename.
+//	parameters:
+//	  - in: formData
+//	    name: json_request
+//	    description: >
+//	      The fields of the request, as a JSON object of the IncusImagePost
+//	      definition. In order to allow stream processing of the request, the
+//	      order of the fields matters: json_request has to be sent first. If it
+//	      is omitted, the first file is required to be incus.tar.xz. Sending
+//	      json_request together with a file called incus.tar.xz is an error.
+//	    type: string
+//	  - in: formData
+//	    name: fileNN
+//	    description: >
+//	      A single request may carry multiple files. The form field names are
+//	      prefixed with "file", followed by an incrementing number, e.g. file00,
+//	      file01. The "filename" parameter carries the file name.
+//	    type: file
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"

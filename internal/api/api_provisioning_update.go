@@ -49,7 +49,8 @@ func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service 
 //
 //	Get the updates
 //
-//	Returns a list of updates (URLs).
+//	Returns a list of updates (URLs) sorted by version.
+//	Versions are date strings of the form yyyymmddHHMM, most recent date first.
 //
 //	---
 //	produces:
@@ -59,36 +60,20 @@ func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service 
 //	    name: channel
 //	    description: Channel to filter for.
 //	    type: string
-//	    example: stable
+//	    x-example: stable
+//	  - in: query
+//	    name: origin
+//	    description: Origin to filter for.
+//	    type: string
+//	    x-example: images.linuxcontainers.org
+//	  - in: query
+//	    name: status
+//	    description: Status to filter for.
+//	    type: string
+//	    x-example: ready
 //	responses:
 //	  "200":
-//	    description: API updates
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of updates
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/provisioning/updates/b32d0079-c48b-4957-b1cb-bef54125c861",
-//	              "/1.0/provisioning/updates/464d229b-3069-4a82-bc59-b215a7c6ed1b"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
@@ -120,28 +105,7 @@ func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service 
 //	    example: ready
 //	responses:
 //	  "200":
-//	    description: API updates
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of updates
-//	          items:
-//	            $ref: "#/definitions/Update"
+//	    $ref: "#/responses/UpdatesResponse"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updatesGet(r *http.Request) response.Response {
@@ -360,25 +324,7 @@ func (u *updateHandler) updatesRefreshPost(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Update
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/Update"
+//	    $ref: "#/responses/UpdateResponse"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updateGet(r *http.Request) response.Response {
@@ -523,25 +469,7 @@ func (u *updateHandler) updatePut(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Changelog
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/UpdateChangelog"
+//	    $ref: "#/responses/UpdateChangelogResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -592,28 +520,7 @@ func (u *updateHandler) updateChangelogGet(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API update files
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of update files
-//	          items:
-//	            $ref: "#/definitions/UpdateFile"
+//	    $ref: "#/responses/UpdateFilesResponse"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updateFilesGet(r *http.Request) response.Response {
