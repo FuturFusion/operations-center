@@ -382,9 +382,10 @@ func (c *cmdServerBMCLogEntries) run(cmd *cobra.Command, args []string) error {
 type cmdServerBMCDump struct {
 	ocClient *client.OperationsCenterClient
 
-	flagEndpoints    []string
-	flagEndpointFile string
-	flagTrace        bool
+	flagEndpoints      []string
+	flagEndpointFile   string
+	flagSkipPredefined bool
+	flagTrace          bool
 }
 
 func (c *cmdServerBMCDump) Command() *cobra.Command {
@@ -395,12 +396,17 @@ func (c *cmdServerBMCDump) Command() *cobra.Command {
   Dump the raw responses of a curated set of a server's BMC API (e.g. Redfish)
   endpoints.
 
+  Additional endpoints can be dumped alongside the predefined set via
+  --endpoint/--endpoint-file, or --skip-predefined can be used to skip the
+  predefined set entirely and dump only the additional endpoints.
+
   The dump is best effort: a failing endpoint is included with its error
   instead of stopping the dump.
 `
 
 	cmd.Flags().StringSliceVar(&c.flagEndpoints, "endpoint", nil, "additional BMC endpoint(s) to dump alongside the predefined set")
 	cmd.Flags().StringVar(&c.flagEndpointFile, "endpoint-file", "", "file with additional BMC endpoints to dump, one per line")
+	cmd.Flags().BoolVar(&c.flagSkipPredefined, "skip-predefined", false, "skip the predefined endpoint set and dump only the additional endpoint(s)")
 	cmd.Flags().BoolVar(&c.flagTrace, "trace", false, "include additional opaque trace information (e.g. HTTP headers)")
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -414,6 +420,10 @@ func (c *cmdServerBMCDump) validateArgsAndFlags(cmd *cobra.Command, args []strin
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
+	}
+
+	if c.flagSkipPredefined && len(c.flagEndpoints) == 0 && c.flagEndpointFile == "" {
+		return fmt.Errorf("At least one --endpoint or --endpoint-file must be given when --skip-predefined is set")
 	}
 
 	return nil
@@ -440,7 +450,7 @@ func (c *cmdServerBMCDump) run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	dump, err := c.ocClient.GetServerBMCDump(cmd.Context(), name, endpoints, c.flagTrace)
+	dump, err := c.ocClient.GetServerBMCDump(cmd.Context(), name, endpoints, c.flagSkipPredefined, c.flagTrace)
 	if err != nil {
 		return err
 	}
