@@ -30,9 +30,9 @@ func registerInventory{{ .Name | pascalcase }}Handler(router Router, authorizer 
 
 // swagger:operation GET /1.0/inventory/{{ .PluralName }} {{ .PluralName }} {{ .PluralName }}_get
 //
-//	Get the {{ .PluralName }}
+//	Get the {{ .PluralName | words }}
 //
-//	Returns a list of {{ .PluralName | words }} (list of relative URLs).
+//	Returns a list of {{ .PluralName | words }} (URLs).
 //
 //	---
 //	produces:
@@ -42,55 +42,29 @@ func registerInventory{{ .Name | pascalcase }}Handler(router Router, authorizer 
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
 {{- if .ServerIDByLocation }}
 //	  - in: query
 //	    name: server
 //	    description: Server name
 //	    type: string
-//	    example: localhost
+//	    x-example: localhost
 {{- end }}
 {{- if .HasProject }}
 //	  - in: query
 //	    name: project
 //	    description: Project name
 //	    type: string
-//	    example: default
+//	    x-example: default
 {{- end }}
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API {{ .PluralName | words }}
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of {{ .PluralName | words }}
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/inventory/{{ .PluralName }}/1",
-//	              "/1.0/inventory/{{ .PluralName }}/2"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -110,50 +84,29 @@ func registerInventory{{ .Name | pascalcase }}Handler(router Router, authorizer 
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
 {{- if .ServerIDByLocation }}
 //	  - in: query
 //	    name: server
 //	    description: Server name
 //	    type: string
-//	    example: localhost
+//	    x-example: localhost
 {{- end }}
 {{- if .HasProject }}
 //	  - in: query
 //	    name: project
 //	    description: Project name
 //	    type: string
-//	    example: default
+//	    x-example: default
 {{- end }}
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API {{ .PluralName | words }}
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of {{ .PluralName | words }}
-//	          items:
-//	            $ref: "#/definitions/{{ .Name | camelcase }}"
+//	    $ref: "#/responses/{{ .PluralName | pascalcase }}Response"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -246,29 +199,20 @@ func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *htt
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the {{ .Name | words }}
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: {{ .Name | words }}
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/{{ .Name | pascalcase }}"
+//	    $ref: "#/responses/{{ .Name | pascalcase }}Response"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}Get(r *http.Request) response.Response {
@@ -319,27 +263,20 @@ func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}Get(r *http.Requ
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the {{ .Name | words }}
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}ResyncPost(r *http.Request) response.Response {
@@ -354,4 +291,42 @@ func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}ResyncPost(r *ht
 	}
 
 	return response.EmptySyncResponse
+}
+
+// The {{ .Name | words }}
+//
+// swagger:response {{ .Name | pascalcase }}Response
+type swagger{{ .Name | pascalcase }}Response struct {
+	// in: body
+	Body struct {
+		// Example: sync
+		Type string `json:"type"`
+
+		// Example: Success
+		Status string `json:"status"`
+
+		// Example: 200
+		StatusCode int `json:"status_code"`
+
+		Metadata api.{{ .Name | pascalcase }} `json:"metadata"`
+	}
+}
+
+// The {{ .PluralName | words }}
+//
+// swagger:response {{ .PluralName | pascalcase }}Response
+type swagger{{ .PluralName | pascalcase }}Response struct {
+	// in: body
+	Body struct {
+		// Example: sync
+		Type string `json:"type"`
+
+		// Example: Success
+		Status string `json:"status"`
+
+		// Example: 200
+		StatusCode int `json:"status_code"`
+
+		Metadata []api.{{ .Name | pascalcase }} `json:"metadata"`
+	}
 }
