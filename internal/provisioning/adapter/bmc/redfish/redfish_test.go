@@ -3,10 +3,12 @@ package redfish_test
 import (
 	"context"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -1773,4 +1775,197 @@ func TestRedfish_LogSources(t *testing.T) {
 			require.Equal(t, tc.want, logSources)
 		})
 	}
+}
+
+func TestRedfish_Dump(t *testing.T) {
+	responses := mockRedfishServer{
+		serviceRootStatusCode: http.StatusOK,
+
+		systemsStatusCode: http.StatusOK,
+		systemsBody: `{
+  "Members@odata.count": 2,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" },
+    { "@odata.id": "/redfish/v1/Systems/2" }
+  ]
+}`,
+		systemStatusCode: http.StatusOK,
+		systemBody: `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1"
+}`,
+
+		managersStatusCode: http.StatusOK,
+		managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+		managerStatusCode: http.StatusOK,
+		managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1"
+}`,
+
+		chassisStatusCode: http.StatusOK,
+		chassisBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Chassis/1" }
+  ]
+}`,
+		chassisMemberStatusCode: http.StatusOK,
+		chassisMemberBody: `{
+  "@odata.id": "/redfish/v1/Chassis/1",
+  "Id": "1"
+}`,
+
+		processorsStatusCode: http.StatusOK,
+		processorsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1/Processors/1" }
+  ]
+}`,
+		processorStatusCode: http.StatusOK,
+		processorBody: `{
+  "@odata.id": "/redfish/v1/Systems/1/Processors/1",
+  "Id": "1"
+}`,
+
+		logServicesStatusCode: http.StatusOK,
+		logServicesBody: `{
+  "Members@odata.count": 0,
+  "Members": []
+}`,
+
+		extraRoutes: map[string]mockRedfishRoute{
+			"/redfish/v1/Systems/1/Bios": {
+				statusCode: http.StatusNotFound,
+				body: `{
+		  "error": {
+		    "code": "Base.1.0.GeneralError",
+		    "message": "Resource not found"
+		  }
+		}`,
+			},
+			"/redfish/v1/Systems/1/BootOptions": {
+				statusCode: http.StatusOK,
+				body: `{
+		  "Members@odata.count": 0,
+		  "Members": []
+		}`,
+			},
+			"/redfish/v1/Systems/1/Oem/Vendor": {
+				statusCode: http.StatusOK,
+				body: `{
+		  "@odata.id": "/redfish/v1/Systems/1/Oem/Vendor"
+		}`,
+			},
+		},
+	}
+
+	svr := newMockRedfishServer(t, responses, nil)
+
+	client := redfish.New()
+
+	server := provisioning.Server{
+		BMCConfig: api.BMCConfig{
+			Endpoint: svr.URL,
+			Username: "admin",
+			Password: "admin",
+		},
+	}
+
+	t.Run("collections only fetch their first member", func(t *testing.T) {
+		dump, err := client.Dump(t.Context(), server, nil, false, false)
+		require.NoError(t, err)
+
+		require.Contains(t, dump, "/redfish/v1/Systems/1")
+		require.NotContains(t, dump, "/redfish/v1/Systems/2")
+	})
+
+	t.Run("failing endpoints are recorded as errors without stopping the dump", func(t *testing.T) {
+		dump, err := client.Dump(t.Context(), server, nil, false, false)
+		require.NoError(t, err)
+
+		// Unmapped endpoint falls through to the mock's default 404 handler.
+		odata, ok := dump["/redfish/v1/odata"]
+		require.True(t, ok)
+		require.Nil(t, odata.Response)
+		require.NotNil(t, odata.Error)
+		require.Equal(t, http.StatusNotFound, odata.Error.StatusCode)
+
+		// Explicit Redfish error body.
+		bios, ok := dump["/redfish/v1/Systems/1/Bios"]
+		require.True(t, ok)
+		require.Nil(t, bios.Response)
+		require.NotNil(t, bios.Error)
+		require.Equal(t, http.StatusNotFound, bios.Error.StatusCode)
+		require.Equal(t, "Base.1.0.GeneralError", bios.Error.Code)
+
+		// Sibling endpoints still succeed.
+		serviceRoot, ok := dump["/redfish/v1/"]
+		require.True(t, ok)
+		require.NotNil(t, serviceRoot.Response)
+		require.Nil(t, serviceRoot.Error)
+	})
+
+	t.Run("empty collections do not yield a member entry", func(t *testing.T) {
+		dump, err := client.Dump(t.Context(), server, nil, false, false)
+		require.NoError(t, err)
+
+		require.Contains(t, dump, "/redfish/v1/Systems/1/BootOptions")
+
+		for uri := range dump {
+			require.False(t, strings.HasPrefix(uri, "/redfish/v1/Systems/1/BootOptions/"), "unexpected member fetched for empty collection: %s", uri)
+		}
+	})
+
+	t.Run("trace is empty unless requested", func(t *testing.T) {
+		dump, err := client.Dump(t.Context(), server, nil, false, false)
+		require.NoError(t, err)
+
+		require.Empty(t, dump["/redfish/v1/"].Trace)
+	})
+
+	t.Run("trace contains only redacted headers", func(t *testing.T) {
+		dump, err := client.Dump(t.Context(), server, nil, false, true)
+		require.NoError(t, err)
+
+		trace := dump["/redfish/v1/"].Trace
+		require.NotEmpty(t, trace)
+		require.Contains(t, trace, "GET /redfish/v1/ HTTP/1.1")
+		require.Contains(t, trace, "HTTP/1.1 200 OK")
+		require.Contains(t, trace, "Authorization: <redacted>")
+		require.NotContains(t, trace, "RedfishVersion")
+		require.NotContains(t, trace, base64.StdEncoding.EncodeToString([]byte("admin:admin")))
+	})
+
+	t.Run("additional endpoints are dumped alongside the predefined set", func(t *testing.T) {
+		dump, err := client.Dump(t.Context(), server, []string{"/redfish/v1/Systems/1/Oem/Vendor", "/redfish/v1/Systems/1/Bios"}, false, false)
+		require.NoError(t, err)
+
+		vendor, ok := dump["/redfish/v1/Systems/1/Oem/Vendor"]
+		require.True(t, ok)
+		require.NotNil(t, vendor.Response)
+		require.Nil(t, vendor.Error)
+
+		// An additional endpoint that duplicates a predefined one still
+		// yields exactly one dump entry.
+		require.Contains(t, dump, "/redfish/v1/Systems/1/Bios")
+	})
+
+	t.Run("skip predefined dumps only additional endpoints", func(t *testing.T) {
+		dump, err := client.Dump(t.Context(), server, []string{"/redfish/v1/Systems/1/Oem/Vendor"}, true, false)
+		require.NoError(t, err)
+
+		require.Len(t, dump, 1)
+
+		vendor, ok := dump["/redfish/v1/Systems/1/Oem/Vendor"]
+		require.True(t, ok)
+		require.NotNil(t, vendor.Response)
+		require.Nil(t, vendor.Error)
+	})
 }

@@ -334,3 +334,32 @@ func (c OperationsCenterClient) GetServerBMCLogEntries(ctx context.Context, name
 
 	return logEntries, nil
 }
+
+func (c OperationsCenterClient) GetServerBMCDump(ctx context.Context, name string, endpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error) {
+	query := url.Values{}
+
+	for _, endpoint := range endpoints {
+		query.Add("endpoint", endpoint)
+	}
+
+	if skipPredefined {
+		query.Add("skip-predefined", "1")
+	}
+
+	if trace {
+		query.Add("trace", "1")
+	}
+
+	response, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "bmc/:dump"), query, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	dump := api.BMCDump{}
+	err = json.Unmarshal(response.Metadata, &dump)
+	if err != nil {
+		return nil, err
+	}
+
+	return dump, nil
+}

@@ -1,6 +1,10 @@
 package provisioning
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -68,6 +72,13 @@ func (c *cmdServerBMC) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(serverBMCLogEntriesCmd.Command())
+
+	// Dump
+	serverBMCDumpCmd := cmdServerBMCDump{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverBMCDumpCmd.Command())
 
 	return cmd
 }
@@ -365,4 +376,91 @@ func (c *cmdServerBMCLogEntries) run(cmd *cobra.Command, args []string) error {
 	}
 
 	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, logEntries)
+}
+
+// Dump the raw responses of a server's BMC API.
+type cmdServerBMCDump struct {
+	ocClient *client.OperationsCenterClient
+
+	flagEndpoints      []string
+	flagEndpointFile   string
+	flagSkipPredefined bool
+	flagTrace          bool
+}
+
+func (c *cmdServerBMCDump) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "dump <name>"
+	cmd.Short = "Dump the raw responses of a server's BMC API"
+	cmd.Long = `Description:
+  Dump the raw responses of a curated set of a server's BMC API (e.g. Redfish)
+  endpoints.
+
+  Additional endpoints can be dumped alongside the predefined set via
+  --endpoint/--endpoint-file, or --skip-predefined can be used to skip the
+  predefined set entirely and dump only the additional endpoints.
+
+  The dump is best effort: a failing endpoint is included with its error
+  instead of stopping the dump.
+`
+
+	cmd.Flags().StringSliceVar(&c.flagEndpoints, "endpoint", nil, "additional BMC endpoint(s) to dump alongside the predefined set")
+	cmd.Flags().StringVar(&c.flagEndpointFile, "endpoint-file", "", "file with additional BMC endpoints to dump, one per line")
+	cmd.Flags().BoolVar(&c.flagSkipPredefined, "skip-predefined", false, "skip the predefined endpoint set and dump only the additional endpoint(s)")
+	cmd.Flags().BoolVar(&c.flagTrace, "trace", false, "include additional opaque trace information (e.g. HTTP headers)")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerBMCDump) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	if c.flagSkipPredefined && len(c.flagEndpoints) == 0 && c.flagEndpointFile == "" {
+		return fmt.Errorf("At least one --endpoint or --endpoint-file must be given when --skip-predefined is set")
+	}
+
+	return nil
+}
+
+func (c *cmdServerBMCDump) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	endpoints := c.flagEndpoints
+
+	if c.flagEndpointFile != "" {
+		content, err := os.ReadFile(c.flagEndpointFile)
+		if err != nil {
+			return fmt.Errorf("Failed to read endpoint file %q: %w", c.flagEndpointFile, err)
+		}
+
+		for _, line := range strings.Split(string(content), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+
+			endpoints = append(endpoints, line)
+		}
+	}
+
+	dump, err := c.ocClient.GetServerBMCDump(cmd.Context(), name, endpoints, c.flagSkipPredefined, c.flagTrace)
+	if err != nil {
+		return err
+	}
+
+	dumpJSON, err := json.MarshalIndent(dump, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintln(cmd.OutOrStdout(), string(dumpJSON))
+
+	return err
 }
