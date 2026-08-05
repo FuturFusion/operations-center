@@ -3,9 +3,11 @@ package oidc
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,11 +17,13 @@ import (
 	httphelper "github.com/zitadel/oidc/v3/pkg/http"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"github.com/zitadel/oidc/v3/pkg/op"
+
+	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
 // Verifier holds all information needed to verify an access token offline.
 type Verifier struct {
-	accessTokenVerifier *op.AccessTokenVerifier
+	state *verifierState
 
 	clientID  string
 	issuer    string
@@ -27,6 +31,12 @@ type Verifier struct {
 	audience  string
 	claim     string
 	cookieKey []byte
+}
+
+// verifierState is held through a pointer, so copies of Verifier share it.
+type verifierState struct {
+	mu                  sync.Mutex
+	accessTokenVerifier *op.AccessTokenVerifier
 }
 
 // AuthError represents an authentication error.
@@ -68,15 +78,6 @@ func (o *Verifier) Auth(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		}
 
 		token = cookie.Value
-	}
-
-	if o.accessTokenVerifier == nil {
-		var err error
-
-		o.accessTokenVerifier, err = getAccessTokenVerifier(ctx, o.issuer)
-		if err != nil {
-			return "", &AuthError{err}
-		}
 	}
 
 	claims, err := o.VerifyAccessToken(ctx, token)
@@ -278,16 +279,12 @@ func (o *Verifier) Callback(w http.ResponseWriter, r *http.Request) {
 
 // VerifyAccessToken is a wrapper around op.VerifyAccessToken which avoids having to deal with Go generics elsewhere. It validates the access token (issuer, signature and expiration).
 func (o *Verifier) VerifyAccessToken(ctx context.Context, token string) (*oidc.AccessTokenClaims, error) {
-	var err error
-
-	if o.accessTokenVerifier == nil {
-		o.accessTokenVerifier, err = getAccessTokenVerifier(ctx, o.issuer)
-		if err != nil {
-			return nil, err
-		}
+	accessTokenVerifier, err := o.getAccessTokenVerifierCached(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	claims, err := op.VerifyAccessToken[*oidc.AccessTokenClaims](ctx, token, o.accessTokenVerifier)
+	claims, err := op.VerifyAccessToken[*oidc.AccessTokenClaims](ctx, token, accessTokenVerifier)
 	if err != nil {
 		return nil, err
 	}
@@ -340,6 +337,80 @@ func (o *Verifier) getProvider(r *http.Request) (rp.RelyingParty, error) {
 	return provider, nil
 }
 
+// getAccessTokenVerifierCached returns the cached access token verifier,
+// creating it first if not yet available.
+func (o *Verifier) getAccessTokenVerifierCached(ctx context.Context) (*op.AccessTokenVerifier, error) {
+	if o.state == nil {
+		// Zero value Verifier without shared state, no caching possible.
+		return getAccessTokenVerifier(ctx, o.issuer)
+	}
+
+	o.state.mu.Lock()
+	defer o.state.mu.Unlock()
+
+	if o.state.accessTokenVerifier == nil {
+		accessTokenVerifier, err := getAccessTokenVerifier(ctx, o.issuer)
+		if err != nil {
+			return nil, err
+		}
+
+		o.state.accessTokenVerifier = accessTokenVerifier
+	}
+
+	return o.state.accessTokenVerifier, nil
+}
+
+// retryGetAccessTokenVerifier retries to initialize the access token verifier
+// until it succeeds or ctx is cancelled, e.g. if the OIDC issuer was not
+// reachable when the verifier was created.
+func (o *Verifier) retryGetAccessTokenVerifier(ctx context.Context) {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+
+		case <-ticker.C:
+		}
+
+		o.state.mu.Lock()
+		initialized := o.state.accessTokenVerifier != nil
+		o.state.mu.Unlock()
+
+		if initialized {
+			// Already initialized through a request in the meantime.
+			return
+		}
+
+		accessTokenVerifier, err := getAccessTokenVerifier(ctx, o.issuer)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to initialize OIDC verifier, retrying", slog.String("issuer", o.issuer), logger.Err(err))
+			continue
+		}
+
+		o.state.mu.Lock()
+		o.state.accessTokenVerifier = accessTokenVerifier
+		o.state.mu.Unlock()
+
+		slog.InfoContext(ctx, "OIDC verifier initialized", slog.String("issuer", o.issuer))
+
+		return
+	}
+}
+
+// CheckConnectivity verifies the OIDC issuer is reachable by calling its
+// discovery endpoint.
+func CheckConnectivity(ctx context.Context, issuer string) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	_, err := getAccessTokenVerifier(ctx, issuer)
+
+	return err
+}
+
 // getAccessTokenVerifier calls the OIDC discovery endpoint in order to get the issuer's remote keys which are needed to create an access token verifier.
 func getAccessTokenVerifier(ctx context.Context, issuer string) (*op.AccessTokenVerifier, error) {
 	discoveryConfig, err := client.Discover(ctx, issuer, http.DefaultClient)
@@ -365,10 +436,11 @@ func NewVerifier(ctx context.Context, issuer string, clientid string, scope stri
 		scopes = defaultOidcScopes
 	}
 
-	verifier := &Verifier{issuer: issuer, clientID: clientid, scopes: scopes, audience: audience, cookieKey: cookieKey, claim: claim}
-	verifier.accessTokenVerifier, err = getAccessTokenVerifier(ctx, issuer)
+	verifier := &Verifier{issuer: issuer, clientID: clientid, scopes: scopes, audience: audience, cookieKey: cookieKey, claim: claim, state: &verifierState{}}
+	verifier.state.accessTokenVerifier, err = getAccessTokenVerifier(ctx, issuer)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to initialize OIDC verifier: %w", err)
+		slog.WarnContext(ctx, "Failed to initialize OIDC verifier, retrying in background", slog.String("issuer", issuer), logger.Err(err))
+		go verifier.retryGetAccessTokenVerifier(ctx)
 	}
 
 	return verifier, nil
