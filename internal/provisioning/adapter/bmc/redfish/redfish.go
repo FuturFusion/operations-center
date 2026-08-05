@@ -191,76 +191,83 @@ func (r redfish) GetData(ctx context.Context, server provisioning.Server) (api.B
 
 	defer logout()
 
+	log := slog.With(slog.String("endpoint", server.BMCConfig.Endpoint))
+
+	// The following data is collected from the BMC on a best effort basis.
+	// Errors are logged as warnings and the affected data is left at its zero value.
 	system, err := getFirstSystem(client)
 	if err != nil {
-		return api.BMCData{}, fmt.Errorf("Failed to get BMC system: %w", err)
+		log.WarnContext(ctx, "Failed to get BMC system", logger.Err(err))
 	}
 
 	manager, err := getFirstManager(client)
 	if err != nil {
-		return api.BMCData{}, fmt.Errorf("Failed to get BMC manager: %w", err)
+		log.WarnContext(ctx, "Failed to get BMC manager", logger.Err(err))
 	}
 
-	processor, err := getFirstProcessor(system)
-	if err != nil {
-		return api.BMCData{}, fmt.Errorf("Failed to get first processor of BMC system: %w", err)
+	bmcData := api.BMCData{
+		BMCProtocol:        "Redfish",
+		BMCProtocolVersion: client.Service.RedfishVersion,
+		BMCVendor:          client.Service.Vendor,
+		LastUpdated:        time.Now(),
 	}
 
-	serverLocationIndicatorActive := system.IndicatorLED == schemas.BlinkingIndicatorLED || system.IndicatorLED == schemas.LitIndicatorLED // nolint: staticcheck // ignore deprecated property warning.
-	if system.LocationIndicatorActive != nil {
-		serverLocationIndicatorActive = *system.LocationIndicatorActive
+	if system != nil {
+		bmcData.ServerManufacturer = system.Manufacturer
+		bmcData.ServerModel = system.Model
+		bmcData.ServerSubModel = system.SubModel
+		bmcData.ServerUUID = system.UUID
+		bmcData.ServerAssetTag = system.AssetTag
+		bmcData.ServerHostName = system.HostName
+		bmcData.ServerSKU = system.SKU
+		bmcData.ServerSerialNumber = system.SerialNumber
+		bmcData.ServerBIOSVersion = system.BiosVersion
+		bmcData.ServerPowerState = string(system.PowerState)
+		bmcData.ServerHealthStatus = string(system.Status.Health)
+
+		bmcData.ServerLocationIndicatorActive = system.IndicatorLED == schemas.BlinkingIndicatorLED || system.IndicatorLED == schemas.LitIndicatorLED // nolint: staticcheck // ignore deprecated property warning.
+		if system.LocationIndicatorActive != nil {
+			bmcData.ServerLocationIndicatorActive = *system.LocationIndicatorActive
+		}
 	}
 
-	bios, err := system.Bios()
-	if err != nil {
-		return api.BMCData{}, fmt.Errorf("Failed to get BIOS of BMC system: %w", err)
+	if manager != nil {
+		bmcData.BMCModel = manager.Model
+		bmcData.BMCFirmwareVersion = manager.FirmwareVersion
+		bmcData.BMCServiceIdentification = manager.ServiceIdentification
 	}
 
-	var biosAttributes map[string]any
-	if bios != nil {
-		biosAttributes = bios.Attributes
+	if system != nil {
+		processor, err := getFirstProcessor(system)
+		if err != nil {
+			log.WarnContext(ctx, "Failed to get first processor of BMC system", logger.Err(err))
+		}
+
+		if processor != nil {
+			bmcData.ServerProcessorArchitecture = string(processor.ProcessorArchitecture)
+			bmcData.ServerProcessorInstructionSet = string(processor.InstructionSet)
+		}
+	}
+
+	if system != nil {
+		bios, err := system.Bios()
+		if err != nil {
+			log.WarnContext(ctx, "Failed to get BIOS of BMC system", logger.Err(err))
+		}
+
+		if bios != nil {
+			bmcData.ServerBIOSAttributes = bios.Attributes
+		}
 	}
 
 	virtualMedia, err := getVirtualMedia(system, manager)
 	if err != nil {
-		return api.BMCData{}, fmt.Errorf("Failed to get virtual media of BMC: %w", err)
+		log.WarnContext(ctx, "Failed to get virtual media of BMC", logger.Err(err))
 	}
 
 	bmcData.VirtualMedia = virtualMedia
 
-	return api.BMCData{
-		BMCProtocol:                      "Redfish",
-		BMCProtocolVersion:               client.Service.RedfishVersion,
-		BMCVendor:                        client.Service.Vendor,
-		BMCModel:                         manager.Model,
-		BMCFirmwareVersion:               manager.FirmwareVersion,
-		BMCServiceIdentification:         manager.ServiceIdentification,
-		ServerManufacturer:               system.Manufacturer,
-		ServerModel:                      system.Model,
-		ServerSubModel:                   system.SubModel,
-		ServerUUID:                       system.UUID,
-		ServerAssetTag:                   system.AssetTag,
-		ServerHostName:                   system.HostName,
-		ServerSKU:                        system.SKU,
-		ServerSerialNumber:               system.SerialNumber,
-		ServerBIOSVersion:                system.BiosVersion,
-		ServerBIOSAttributes:             biosAttributes,
-		ServerProcessorArchitecture:      string(processor.ProcessorArchitecture),
-		ServerProcessorInstructionSet:    string(processor.InstructionSet),
-		ServerPowerState:                 string(system.PowerState),
-		ServerLocationIndicatorActive:    serverLocationIndicatorActive,
-		ServerHealthStatus:               string(system.Status.Health),
-		VirtualMediaInserted:             virtualMediaInserted,
-		VirtualMediaImage:                virtualMediaImage,
-		VirtualMediaImageName:            virtualMediaImageName,
-		VirtualMediaConnectedVia:         virtualMediaConnectedVia,
-		VirtualMediaStatus:               virtualMediaStatus,
-		VirtualMediaMediaTypes:           virtualMediaMediaTypes,
-		VirtualMediaTransferMethod:       virtualMediaTransferMethod,
-		VirtualMediaTransferProtocolType: virtualMediaTransferProtocolType,
-		VirtualMediaWriteProtected:       virtualMediaWriteProtected,
-		LastUpdated:                      time.Now(),
-	}, nil
+	return bmcData, nil
 }
 
 func getFirstChassis(client *gofish.APIClient) (*schemas.Chassis, error) {

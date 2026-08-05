@@ -534,7 +534,7 @@ func TestRedfish_GetData(t *testing.T) {
 			},
 		},
 		{
-			name: "error - failed to get BIOS of BMC system",
+			name: "success - BIOS fetch fails, rest of data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -579,10 +579,15 @@ func TestRedfish_GetData(t *testing.T) {
 				biosStatusCode: http.StatusInternalServerError,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
 		},
 		{
-			name: "error - failed to get virtual media of BMC system",
+			name: "success - virtual media of BMC system fetch fails, rest of data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -627,10 +632,15 @@ func TestRedfish_GetData(t *testing.T) {
 				systemVirtualMediaStatusCode: http.StatusInternalServerError,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
 		},
 		{
-			name: "error - failed to get virtual media of BMC manager",
+			name: "success - virtual media of BMC manager fetch fails, rest of data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -675,7 +685,12 @@ func TestRedfish_GetData(t *testing.T) {
 				managerVirtualMediaStatusCode: http.StatusInternalServerError,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
 		},
 		{
 			name: "error - failed to connect to BMC",
@@ -687,17 +702,40 @@ func TestRedfish_GetData(t *testing.T) {
 			assertErr: require.Error,
 		},
 		{
-			name: "error - failed to get BMC systems",
+			name: "success - BMC systems fetch fails, manager data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
 				systemsStatusCode:     http.StatusInternalServerError,
+				managersStatusCode:    http.StatusOK,
+				managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+				managerStatusCode: http.StatusOK,
+				managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1",
+  "Model": "iDRAC9",
+  "FirmwareVersion": "1.30.20.10",
+  "ServiceIdentification": "ServiceID1"
+}`,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:              "Redfish",
+				BMCProtocolVersion:       "1.16.0",
+				BMCVendor:                "Dell",
+				BMCModel:                 "iDRAC9",
+				BMCFirmwareVersion:       "1.30.20.10",
+				BMCServiceIdentification: "ServiceID1",
+			},
 		},
 		{
-			name: "error - no BMC systems found",
+			name: "success - no BMC systems found, manager data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -706,12 +744,35 @@ func TestRedfish_GetData(t *testing.T) {
   "Members@odata.count": 0,
   "Members": []
 }`,
+				managersStatusCode: http.StatusOK,
+				managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+				managerStatusCode: http.StatusOK,
+				managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1",
+  "Model": "iDRAC9",
+  "FirmwareVersion": "1.30.20.10",
+  "ServiceIdentification": "ServiceID1"
+}`,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:              "Redfish",
+				BMCProtocolVersion:       "1.16.0",
+				BMCVendor:                "Dell",
+				BMCModel:                 "iDRAC9",
+				BMCFirmwareVersion:       "1.30.20.10",
+				BMCServiceIdentification: "ServiceID1",
+			},
 		},
 		{
-			name: "error - failed to get individual BMC system",
+			name: "success - individual BMC system fetch fails, manager data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -722,13 +783,36 @@ func TestRedfish_GetData(t *testing.T) {
     { "@odata.id": "/redfish/v1/Systems/1" }
   ]
 }`,
-				systemStatusCode: http.StatusInternalServerError,
+				systemStatusCode:   http.StatusInternalServerError,
+				managersStatusCode: http.StatusOK,
+				managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+				managerStatusCode: http.StatusOK,
+				managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1",
+  "Model": "iDRAC9",
+  "FirmwareVersion": "1.30.20.10",
+  "ServiceIdentification": "ServiceID1"
+}`,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:              "Redfish",
+				BMCProtocolVersion:       "1.16.0",
+				BMCVendor:                "Dell",
+				BMCModel:                 "iDRAC9",
+				BMCFirmwareVersion:       "1.30.20.10",
+				BMCServiceIdentification: "ServiceID1",
+			},
 		},
 		{
-			name: "error - failed to get BMC managers",
+			name: "success - BMC managers fetch fails, system data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -747,10 +831,15 @@ func TestRedfish_GetData(t *testing.T) {
 				managersStatusCode: http.StatusInternalServerError,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
 		},
 		{
-			name: "error - no BMC managers found",
+			name: "success - no BMC managers found, system data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -773,10 +862,15 @@ func TestRedfish_GetData(t *testing.T) {
 }`,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
 		},
 		{
-			name: "error - failed to get individual BMC manager",
+			name: "success - individual BMC manager fetch fails, system data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -802,10 +896,15 @@ func TestRedfish_GetData(t *testing.T) {
 				managerStatusCode: http.StatusInternalServerError,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
 		},
 		{
-			name: "error - failed to get processors of BMC system",
+			name: "success - processors of BMC system fetch fails, rest of data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -837,10 +936,15 @@ func TestRedfish_GetData(t *testing.T) {
 				processorsStatusCode: http.StatusInternalServerError,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
 		},
 		{
-			name: "error - no processors found for the BMC system",
+			name: "success - no processors found for the BMC system, rest of data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -876,10 +980,15 @@ func TestRedfish_GetData(t *testing.T) {
 }`,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
 		},
 		{
-			name: "error - failed to get individual processor of BMC system",
+			name: "success - individual processor of BMC system fetch fails, rest of data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -918,7 +1027,12 @@ func TestRedfish_GetData(t *testing.T) {
 				processorStatusCode: http.StatusInternalServerError,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
 		},
 	}
 
