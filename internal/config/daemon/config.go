@@ -466,6 +466,9 @@ func validate(ctx context.Context, cfg config) error {
 		return err
 	}
 
+	isOIDCChanged := globalConfigInstance.Security.OIDC != cfg.Security.OIDC
+	isOpenFGAChanged := globalConfigInstance.Security.OpenFGA != cfg.Security.OpenFGA
+
 	{
 		// This is not ideal, but we can not have a direct dependency from the config
 		// because we get a dependency cycles otherwise.
@@ -482,6 +485,15 @@ func validate(ctx context.Context, cfg config) error {
 		err = lifecycle.SettingsValidateSignal.TryEmit(ctx, cfg.Settings)
 		if err != nil {
 			return err
+		}
+
+		// Only emitted on change, since the connectivity probes performed
+		// during validation should not get in the way of unrelated updates.
+		if isOIDCChanged || isOpenFGAChanged {
+			err = lifecycle.SecurityValidateSignal.TryEmit(ctx, cfg.Security)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
