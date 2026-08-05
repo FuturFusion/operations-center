@@ -120,6 +120,10 @@ type Daemon struct {
 	oidcVerifier  *authnoidc.Verifier
 	authorizer    *authz.Authorizer
 
+	// securityRetryCancel stops the background connection retries of the
+	// security infrastructure from the previous configuration.
+	securityRetryCancel context.CancelFunc
+
 	server   *http.Server
 	listener *listener.FancyTLSListener
 
@@ -187,6 +191,28 @@ func (d *Daemon) Start(ctx context.Context) error {
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to load security config", logger.Err(err))
 	}
+
+	// On update of the OIDC or OpenFGA configuration, verify the configured
+	// services are reachable, so a broken configuration update is rejected
+	// right away. Connection failures after a successful update are handled
+	// by background retries.
+	lifecycle.SecurityValidateSignal.AddListenerWithErr(func(ctx context.Context, cfg apisystem.Security) error {
+		if cfg.OIDC.Issuer != "" && cfg.OIDC.ClientID != "" {
+			err := authnoidc.CheckConnectivity(ctx, cfg.OIDC.Issuer)
+			if err != nil {
+				return fmt.Errorf("Failed to reach OIDC issuer %q: %w", cfg.OIDC.Issuer, err)
+			}
+		}
+
+		if cfg.OpenFGA.APIURL != "" && cfg.OpenFGA.APIToken != "" && cfg.OpenFGA.StoreID != "" {
+			err := authzopenfga.CheckConnectivity(ctx, cfg.OpenFGA.APIURL, cfg.OpenFGA.APIToken, cfg.OpenFGA.StoreID)
+			if err != nil {
+				return fmt.Errorf("Failed to reach OpenFGA at %q: %w", cfg.OpenFGA.APIURL, err)
+			}
+		}
+
+		return nil
+	})
 
 	// On update of the security configuration, perform reload of the security
 	// related infrastructure.
@@ -467,6 +493,16 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 	d.configReloadMu.Lock()
 	defer d.configReloadMu.Unlock()
 
+	// Cancel background connection retries from the previous configuration.
+	if d.securityRetryCancel != nil {
+		d.securityRetryCancel()
+	}
+
+	// Detached context for background connection retries, which needs to
+	// outlive ctx, e.g. if the reload is triggered by an API request.
+	retryCtx, retryCancel := context.WithCancel(logger.DetachedContext(ctx))
+	d.securityRetryCancel = retryCancel
+
 	var errs []error
 
 	// UnixSocket authenticator is always available.
@@ -477,7 +513,7 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 	// Setup OIDC authentication.
 	if cfg.OIDC.Issuer != "" && cfg.OIDC.ClientID != "" {
 		var err error
-		newOIDCVerifier, err := authnoidc.NewVerifier(context.TODO(), cfg.OIDC.Issuer, cfg.OIDC.ClientID, cfg.OIDC.Scope, cfg.OIDC.Audience, cfg.OIDC.Claim)
+		newOIDCVerifier, err := authnoidc.NewVerifier(retryCtx, cfg.OIDC.Issuer, cfg.OIDC.ClientID, cfg.OIDC.Scope, cfg.OIDC.Audience, cfg.OIDC.Claim)
 		if err != nil {
 			errs = append(errs, err)
 		} else {
@@ -509,7 +545,7 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 	}
 
 	if cfg.OpenFGA.APIURL != "" && cfg.OpenFGA.APIToken != "" && cfg.OpenFGA.StoreID != "" {
-		openfgaAuthorizer, err := authzopenfga.New(ctx, cfg.OpenFGA.APIURL, cfg.OpenFGA.APIToken, cfg.OpenFGA.StoreID)
+		openfgaAuthorizer, err := authzopenfga.New(retryCtx, cfg.OpenFGA.APIURL, cfg.OpenFGA.APIToken, cfg.OpenFGA.StoreID)
 		if err != nil {
 			errs = append(errs, err)
 		} else {
@@ -1717,6 +1753,13 @@ func (d *Daemon) incusOSSelfPoll(ctx context.Context, serverSvc provisioning.Ser
 }
 
 func (d *Daemon) Stop(ctx context.Context) error {
+	d.configReloadMu.Lock()
+	if d.securityRetryCancel != nil {
+		d.securityRetryCancel()
+	}
+
+	d.configReloadMu.Unlock()
+
 	errs := make([]error, 0, len(d.shutdownFuncs)+1)
 
 	for _, shutdown := range d.shutdownFuncs {
@@ -1732,6 +1775,7 @@ func (d *Daemon) Stop(ctx context.Context) error {
 	// Remove all signal listeners.
 	lifecycle.ServerCertificateUpdateSignal.Reset()
 	lifecycle.NetworkUpdateSignal.Reset()
+	lifecycle.SecurityValidateSignal.Reset()
 	lifecycle.SecurityUpdateSignal.Reset()
 	lifecycle.SecurityTrustedHTTPSProxiesUpdateSignal.Reset()
 	lifecycle.SecurityACMEUpdateSignal.Reset()
