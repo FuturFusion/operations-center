@@ -335,11 +335,15 @@ func (c OperationsCenterClient) GetServerBMCLogEntries(ctx context.Context, name
 	return logEntries, nil
 }
 
-func (c OperationsCenterClient) GetServerBMCDump(ctx context.Context, name string, endpoints []string, trace bool) (api.BMCDump, error) {
+func (c OperationsCenterClient) GetServerBMCDump(ctx context.Context, name string, endpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error) {
 	query := url.Values{}
 
 	for _, endpoint := range endpoints {
 		query.Add("endpoint", endpoint)
+	}
+
+	if skipPredefined {
+		query.Add("skip-predefined", "1")
 	}
 
 	if trace {
