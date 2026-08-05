@@ -9456,6 +9456,7 @@ func TestServerService_BMCDumpByName(t *testing.T) {
 		name                   string
 		nameArg                string
 		additionalEndpointsArg []string
+		skipPredefinedArg      bool
 		traceArg               bool
 		repoGetByNameServer    *provisioning.Server
 		repoGetByNameErr       error
@@ -9468,6 +9469,7 @@ func TestServerService_BMCDumpByName(t *testing.T) {
 			name:                   "success",
 			nameArg:                "one",
 			additionalEndpointsArg: []string{"/redfish/v1/Systems/1/Oem/Vendor"},
+			skipPredefinedArg:      true,
 			repoGetByNameServer: &provisioning.Server{
 				Name: "one",
 				BMCConfig: api.BMCConfig{
@@ -9528,7 +9530,7 @@ func TestServerService_BMCDumpByName(t *testing.T) {
 			}
 
 			bmcClient := &adapterMock.BMCServerClientPortMock{
-				DumpFunc: func(ctx context.Context, server provisioning.Server, additionalEndpoints []string, trace bool) (api.BMCDump, error) {
+				DumpFunc: func(ctx context.Context, server provisioning.Server, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error) {
 					return dump, tc.bmcClientDumpErr
 				},
 			}
@@ -9539,7 +9541,7 @@ func TestServerService_BMCDumpByName(t *testing.T) {
 			)
 
 			// Run test
-			gotDump, err := serverSvc.BMCDumpByName(t.Context(), tc.nameArg, tc.additionalEndpointsArg, tc.traceArg)
+			gotDump, err := serverSvc.BMCDumpByName(t.Context(), tc.nameArg, tc.additionalEndpointsArg, tc.skipPredefinedArg, tc.traceArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -9548,6 +9550,7 @@ func TestServerService_BMCDumpByName(t *testing.T) {
 			if tc.repoGetByNameServer != nil && tc.repoGetByNameServer.BMCConfig.APIType == api.BMCAPITypeRedfishV1Generic {
 				require.Len(t, bmcClient.DumpCalls(), 1)
 				require.Equal(t, tc.additionalEndpointsArg, bmcClient.DumpCalls()[0].AdditionalEndpoints)
+				require.Equal(t, tc.skipPredefinedArg, bmcClient.DumpCalls()[0].SkipPredefined)
 			}
 		})
 	}

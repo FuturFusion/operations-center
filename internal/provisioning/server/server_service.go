@@ -2583,7 +2583,7 @@ func (s *serverService) BMCLogEntriesByNameAndLogSource(ctx context.Context, nam
 	return logEntries, nil
 }
 
-func (s *serverService) BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, trace bool) (api.BMCDump, error) {
+func (s *serverService) BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error) {
 	if name == "" {
 		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -2598,7 +2598,7 @@ func (s *serverService) BMCDumpByName(ctx context.Context, name string, addition
 		return nil, fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCConfig.APIType, err)
 	}
 
-	dump, err := client.Dump(ctx, *server, additionalEndpoints, trace)
+	dump, err := client.Dump(ctx, *server, additionalEndpoints, skipPredefined, trace)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get BMC dump of server %q: %w", server.Name, err)
 	}
