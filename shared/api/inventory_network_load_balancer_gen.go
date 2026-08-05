@@ -10,6 +10,14 @@ import (
 	incusapi "github.com/lxc/incus/v7/shared/api"
 )
 
+// NetworkLoadBalancer defines a network load balancer in the inventory.
+//
+// The model name is set explicitly, because the type name collides with
+// NetworkLoadBalancer from github.com/lxc/incus/v7/shared/api, which is embedded as
+// Object below. Without it, go-swagger derives both names from the package
+// paths, which makes them change whenever an unrelated colliding type is added.
+//
+// swagger:model InventoryNetworkLoadBalancer
 type NetworkLoadBalancer struct {
 	UUID        uuid.UUID                    `json:"uuid" yaml:"uuid"`
 	Cluster     string                       `json:"cluster" yaml:"cluster"`

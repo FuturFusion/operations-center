@@ -10,6 +10,14 @@ import (
 	incusapi "github.com/lxc/incus/v7/shared/api"
 )
 
+// NetworkForward defines a network forward in the inventory.
+//
+// The model name is set explicitly, because the type name collides with
+// NetworkForward from github.com/lxc/incus/v7/shared/api, which is embedded as
+// Object below. Without it, go-swagger derives both names from the package
+// paths, which makes them change whenever an unrelated colliding type is added.
+//
+// swagger:model InventoryNetworkForward
 type NetworkForward struct {
 	UUID        uuid.UUID               `json:"uuid" yaml:"uuid"`
 	Cluster     string                  `json:"cluster" yaml:"cluster"`

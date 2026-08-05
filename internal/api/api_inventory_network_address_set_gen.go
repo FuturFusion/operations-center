@@ -32,9 +32,9 @@ func registerInventoryNetworkAddressSetHandler(router Router, authorizer *authz.
 
 // swagger:operation GET /1.0/inventory/network_address_sets network_address_sets network_address_sets_get
 //
-//	Get the network_address_sets
+//	Get the network address sets
 //
-//	Returns a list of network address sets (list of relative URLs).
+//	Returns a list of network address sets (URLs).
 //
 //	---
 //	produces:
@@ -44,46 +44,20 @@ func registerInventoryNetworkAddressSetHandler(router Router, authorizer *authz.
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
 //	  - in: query
 //	    name: project
 //	    description: Project name
 //	    type: string
-//	    example: default
+//	    x-example: default
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network address sets
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of network address sets
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/inventory/network_address_sets/1",
-//	              "/1.0/inventory/network_address_sets/2"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -103,41 +77,20 @@ func registerInventoryNetworkAddressSetHandler(router Router, authorizer *authz.
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
 //	  - in: query
 //	    name: project
 //	    description: Project name
 //	    type: string
-//	    example: default
+//	    x-example: default
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network address sets
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of network address sets
-//	          items:
-//	            $ref: "#/definitions/networkAddressSet"
+//	    $ref: "#/responses/NetworkAddressSetsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -207,29 +160,20 @@ func (i *networkAddressSetHandler) networkAddressSetsGet(r *http.Request) respon
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the network address set
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: network address set
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/NetworkAddressSet"
+//	    $ref: "#/responses/NetworkAddressSetResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkAddressSetHandler) networkAddressSetGet(r *http.Request) response.Response {
@@ -265,27 +209,20 @@ func (i *networkAddressSetHandler) networkAddressSetGet(r *http.Request) respons
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the network address set
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkAddressSetHandler) networkAddressSetResyncPost(r *http.Request) response.Response {
@@ -300,4 +237,42 @@ func (i *networkAddressSetHandler) networkAddressSetResyncPost(r *http.Request) 
 	}
 
 	return response.EmptySyncResponse
+}
+
+// The network address set
+//
+// swagger:response NetworkAddressSetResponse
+type swaggerNetworkAddressSetResponse struct {
+	// in: body
+	Body struct {
+		// Example: sync
+		Type string `json:"type"`
+
+		// Example: Success
+		Status string `json:"status"`
+
+		// Example: 200
+		StatusCode int `json:"status_code"`
+
+		Metadata api.NetworkAddressSet `json:"metadata"`
+	}
+}
+
+// The network address sets
+//
+// swagger:response NetworkAddressSetsResponse
+type swaggerNetworkAddressSetsResponse struct {
+	// in: body
+	Body struct {
+		// Example: sync
+		Type string `json:"type"`
+
+		// Example: Success
+		Status string `json:"status"`
+
+		// Example: 200
+		StatusCode int `json:"status_code"`
+
+		Metadata []api.NetworkAddressSet `json:"metadata"`
+	}
 }

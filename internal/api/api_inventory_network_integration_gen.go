@@ -32,9 +32,9 @@ func registerInventoryNetworkIntegrationHandler(router Router, authorizer *authz
 
 // swagger:operation GET /1.0/inventory/network_integrations network_integrations network_integrations_get
 //
-//	Get the network_integrations
+//	Get the network integrations
 //
-//	Returns a list of network integrations (list of relative URLs).
+//	Returns a list of network integrations (URLs).
 //
 //	---
 //	produces:
@@ -44,41 +44,15 @@ func registerInventoryNetworkIntegrationHandler(router Router, authorizer *authz
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network integrations
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of network integrations
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/inventory/network_integrations/1",
-//	              "/1.0/inventory/network_integrations/2"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -98,36 +72,15 @@ func registerInventoryNetworkIntegrationHandler(router Router, authorizer *authz
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network integrations
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of network integrations
-//	          items:
-//	            $ref: "#/definitions/networkIntegration"
+//	    $ref: "#/responses/NetworkIntegrationsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -192,29 +145,20 @@ func (i *networkIntegrationHandler) networkIntegrationsGet(r *http.Request) resp
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the network integration
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: network integration
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/NetworkIntegration"
+//	    $ref: "#/responses/NetworkIntegrationResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkIntegrationHandler) networkIntegrationGet(r *http.Request) response.Response {
@@ -249,27 +193,20 @@ func (i *networkIntegrationHandler) networkIntegrationGet(r *http.Request) respo
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the network integration
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkIntegrationHandler) networkIntegrationResyncPost(r *http.Request) response.Response {
@@ -284,4 +221,42 @@ func (i *networkIntegrationHandler) networkIntegrationResyncPost(r *http.Request
 	}
 
 	return response.EmptySyncResponse
+}
+
+// The network integration
+//
+// swagger:response NetworkIntegrationResponse
+type swaggerNetworkIntegrationResponse struct {
+	// in: body
+	Body struct {
+		// Example: sync
+		Type string `json:"type"`
+
+		// Example: Success
+		Status string `json:"status"`
+
+		// Example: 200
+		StatusCode int `json:"status_code"`
+
+		Metadata api.NetworkIntegration `json:"metadata"`
+	}
+}
+
+// The network integrations
+//
+// swagger:response NetworkIntegrationsResponse
+type swaggerNetworkIntegrationsResponse struct {
+	// in: body
+	Body struct {
+		// Example: sync
+		Type string `json:"type"`
+
+		// Example: Success
+		Status string `json:"status"`
+
+		// Example: 200
+		StatusCode int `json:"status_code"`
+
+		Metadata []api.NetworkIntegration `json:"metadata"`
+	}
 }
