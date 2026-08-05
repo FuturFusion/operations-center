@@ -28,7 +28,7 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			AddApplicationFunc: func(ctx context.Context, name string, applicationName string) error {
 //				panic("mock out the AddApplication method")
 //			},
-//			BMCDumpByNameFunc: func(ctx context.Context, name string, additionalEndpoints []string, trace bool) (api.BMCDump, error) {
+//			BMCDumpByNameFunc: func(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error) {
 //				panic("mock out the BMCDumpByName method")
 //			},
 //			BMCLogEntriesByNameAndLogSourceFunc: func(ctx context.Context, name string, logSource string) ([]api.BMCLogEvent, error) {
@@ -171,7 +171,7 @@ type ServerServiceMock struct {
 	AddApplicationFunc func(ctx context.Context, name string, applicationName string) error
 
 	// BMCDumpByNameFunc mocks the BMCDumpByName method.
-	BMCDumpByNameFunc func(ctx context.Context, name string, additionalEndpoints []string, trace bool) (api.BMCDump, error)
+	BMCDumpByNameFunc func(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error)
 
 	// BMCLogEntriesByNameAndLogSourceFunc mocks the BMCLogEntriesByNameAndLogSource method.
 	BMCLogEntriesByNameAndLogSourceFunc func(ctx context.Context, name string, logSource string) ([]api.BMCLogEvent, error)
@@ -321,6 +321,8 @@ type ServerServiceMock struct {
 			Name string
 			// AdditionalEndpoints is the additionalEndpoints argument value.
 			AdditionalEndpoints []string
+			// SkipPredefined is the skipPredefined argument value.
+			SkipPredefined bool
 			// Trace is the trace argument value.
 			Trace bool
 		}
@@ -764,7 +766,7 @@ func (mock *ServerServiceMock) AddApplicationCalls() []struct {
 }
 
 // BMCDumpByName calls BMCDumpByNameFunc.
-func (mock *ServerServiceMock) BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, trace bool) (api.BMCDump, error) {
+func (mock *ServerServiceMock) BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error) {
 	if mock.BMCDumpByNameFunc == nil {
 		panic("ServerServiceMock.BMCDumpByNameFunc: method is nil but ServerService.BMCDumpByName was just called")
 	}
@@ -772,17 +774,19 @@ func (mock *ServerServiceMock) BMCDumpByName(ctx context.Context, name string, a
 		Ctx                 context.Context
 		Name                string
 		AdditionalEndpoints []string
+		SkipPredefined      bool
 		Trace               bool
 	}{
 		Ctx:                 ctx,
 		Name:                name,
 		AdditionalEndpoints: additionalEndpoints,
+		SkipPredefined:      skipPredefined,
 		Trace:               trace,
 	}
 	mock.lockBMCDumpByName.Lock()
 	mock.calls.BMCDumpByName = append(mock.calls.BMCDumpByName, callInfo)
 	mock.lockBMCDumpByName.Unlock()
-	return mock.BMCDumpByNameFunc(ctx, name, additionalEndpoints, trace)
+	return mock.BMCDumpByNameFunc(ctx, name, additionalEndpoints, skipPredefined, trace)
 }
 
 // BMCDumpByNameCalls gets all the calls that were made to BMCDumpByName.
@@ -793,12 +797,14 @@ func (mock *ServerServiceMock) BMCDumpByNameCalls() []struct {
 	Ctx                 context.Context
 	Name                string
 	AdditionalEndpoints []string
+	SkipPredefined      bool
 	Trace               bool
 } {
 	var calls []struct {
 		Ctx                 context.Context
 		Name                string
 		AdditionalEndpoints []string
+		SkipPredefined      bool
 		Trace               bool
 	}
 	mock.lockBMCDumpByName.RLock()

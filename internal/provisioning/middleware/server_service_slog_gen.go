@@ -79,13 +79,14 @@ func (_d ServerServiceWithSlog) AddApplication(ctx context.Context, name string,
 }
 
 // BMCDumpByName implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, trace bool) (bMCDump api.BMCDump, err error) {
+func (_d ServerServiceWithSlog) BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (bMCDump api.BMCDump, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
 			slog.Any("additionalEndpoints", additionalEndpoints),
+			slog.Bool("skipPredefined", skipPredefined),
 			slog.Bool("trace", trace),
 		)
 	}
@@ -112,7 +113,7 @@ func (_d ServerServiceWithSlog) BMCDumpByName(ctx context.Context, name string, 
 			log.DebugContext(ctx, "<= method BMCDumpByName finished")
 		}
 	}()
-	return _d._base.BMCDumpByName(ctx, name, additionalEndpoints, trace)
+	return _d._base.BMCDumpByName(ctx, name, additionalEndpoints, skipPredefined, trace)
 }
 
 // BMCLogEntriesByNameAndLogSource implements provisioning.ServerService.
