@@ -10234,6 +10234,12 @@ paths:
                   name: endpoint
                   type: array
                 - description: |-
+                    Boolean indicating, if the predefined endpoint set should be skipped
+                    entirely, so that only the endpoints given via "endpoint" are dumped.
+                    Defaults to false.
+                  in: query
+                  name: skip-predefined
+                - description: |-
                     Boolean indicating, if the BMC dump should include additional trace
                     information (e.g. HTTP headers) for each endpoint.
                     The trace information is opaque and for human inspection only.
