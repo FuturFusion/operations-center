@@ -170,3 +170,50 @@ type BIOSAttribute struct {
 	// Example: ["UserMode", "SetupMode"]
 	AcceptableValues []string `json:"acceptable_values" yaml:"acceptable_values"`
 }
+
+// ServerBMCAttachMedia defines the request to attach installation media to a
+// server via its BMC.
+//
+// swagger:model
+type ServerBMCAttachMedia struct {
+	// TokenUUID holds the UUID of the provisioning token that owns the seed.
+	// Example: 8f6c3d1a-2b4e-4c9a-9f7d-1a2b3c4d5e6f
+	TokenUUID string `json:"token_uuid" yaml:"token_uuid"`
+
+	// Seed holds the name of the token seed used to generate the installation
+	// media. The referenced token seed must be public.
+	// Example: default
+	Seed string `json:"seed" yaml:"seed"`
+
+	// Type holds the type of image to generate. Possible values: iso, raw.
+	// Example: iso
+	Type string `json:"type" yaml:"type"`
+
+	// Architecture holds the CPU architecture of the image to generate. Possible
+	// values: x86_64, aarch64.
+	// Example: x86_64
+	Architecture string `json:"architecture" yaml:"architecture"`
+
+	// Channel holds the channel the most recent update should be taken from to
+	// generate the image. Optional, defaults to the configured default channel.
+	// Example: stable
+	Channel string `json:"channel" yaml:"channel"`
+
+	// VirtualMediaID identifies the virtual media device the media is attached
+	// to, using the "<service>:<bmc-id>" notation (e.g. "system:1" or
+	// "manager:2") as reported in the BMC virtual media data.
+	// Example: system:1
+	VirtualMediaID string `json:"virtual_media_id" yaml:"virtual_media_id"`
+}
+
+// ServerBMCDetachMedia defines the request to detach installation media from a
+// server via its BMC.
+//
+// swagger:model
+type ServerBMCDetachMedia struct {
+	// VirtualMediaID identifies the virtual media device the media is detached
+	// from, using the "<service>:<bmc-id>" notation (e.g. "system:1" or
+	// "manager:2") as reported in the BMC virtual media data.
+	// Example: system:1
+	VirtualMediaID string `json:"virtual_media_id" yaml:"virtual_media_id"`
+}
