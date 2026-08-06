@@ -1090,8 +1090,6 @@ func (s *clusterService) RemoveServer(ctx context.Context, name string, removedS
 				return fmt.Errorf("Server removal failed, server %q still has instances: %w", removedServerName, domain.ErrOperationNotPermitted)
 			}
 
-			// TODO: check for images, which are only available on the server, which is being removed. Currently, this is not possible, since the necessary information is missing in the inventory.
-
 			localStorageVolumes := []string{}
 			for _, storageVolume := range localResources[0].StorageVolumes {
 				storageVolumeName, ok := strings.CutPrefix(storageVolume.Name, "custom/")
@@ -1115,6 +1113,42 @@ func (s *clusterService) RemoveServer(ctx context.Context, name string, removedS
 	incusClient, err := s.client.IncusClient(ctx, endpoint)
 	if err != nil {
 		return fmt.Errorf("Failed to get incus client for server %q: %w", endpoint.GetName(), err)
+	}
+
+	// Images are tracked cluster-wide via their Locations. Removing a server that
+	// holds the only copy of an image would lose that image from the cluster, so
+	// reject the removal if any image is present exclusively on servers that are
+	// being removed.
+	if incusClient.HasExtension("image_locations") {
+		clusterResources, err := s.inventorySvc.GetAllWithFilter(ctx, inventory.InventoryAggregateFilter{
+			Clusters:           []string{name},
+			ProjectIncludeNull: true,
+			ParentIncludeNull:  true,
+		})
+		if err != nil {
+			return fmt.Errorf("Failed to get resources from inventory for cluster %q: %w", name, err)
+		}
+
+		lostImages := []string{}
+		for _, clusterResource := range clusterResources {
+			for _, image := range clusterResource.Images {
+				remaining := 0
+				for _, location := range image.Object.Locations {
+					if !slices.Contains(removedServerNames, location) {
+						remaining++
+					}
+				}
+
+				if remaining == 0 {
+					lostImages = append(lostImages, image.ProjectName+"/"+image.Name)
+				}
+			}
+		}
+
+		if len(lostImages) > 0 {
+			slices.Sort(lostImages)
+			return fmt.Errorf("Server removal failed, the following images are only present on the server(s) being removed (%v): %w", lostImages, domain.ErrOperationNotPermitted)
+		}
 	}
 
 	var errs []error

@@ -7623,8 +7623,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 		serverSvcGetAllWithFilter              provisioning.Servers
 		serverSvcGetAllWithFilterErr           error
 		inventorySyncerErr                     error
-		inventorySvcGetAllWithFilter           inventory.InventoryAggregates
-		inventorySvcGetAllWithFilterErr        error
+		inventorySvcGetAllWithFilter           []queue.Item[inventory.InventoryAggregates]
 		clientIncusClientErr                   error
 		serverSvcUpdateErr                     queue.Errs
 		incusClientGetClusterMemberErr         error
@@ -7652,17 +7651,21 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name: "serverTwo",
 				},
 			},
-			inventorySvcGetAllWithFilter: inventory.InventoryAggregates{
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
 				{
-					StorageVolumes: inventory.StorageVolumes{
+					Value: inventory.InventoryAggregates{
 						{
-							Name: "custom/backups",
-						},
-						{
-							Name: "custom/images",
-						},
-						{
-							Name: "custom/logs",
+							StorageVolumes: inventory.StorageVolumes{
+								{
+									Name: "custom/backups",
+								},
+								{
+									Name: "custom/images",
+								},
+								{
+									Name: "custom/logs",
+								},
+							},
 						},
 					},
 				},
@@ -7763,7 +7766,11 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name: "serverTwo",
 				},
 			},
-			inventorySvcGetAllWithFilterErr: boom.Error,
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
 			assertLog: log.Empty,
@@ -7782,11 +7789,15 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name: "serverTwo",
 				},
 			},
-			inventorySvcGetAllWithFilter: inventory.InventoryAggregates{
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
 				{
-					Instances: inventory.Instances{
+					Value: inventory.InventoryAggregates{
 						{
-							Name: "instance",
+							Instances: inventory.Instances{
+								{
+									Name: "instance",
+								},
+							},
 						},
 					},
 				},
@@ -7812,14 +7823,18 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name: "serverTwo",
 				},
 			},
-			inventorySvcGetAllWithFilter: inventory.InventoryAggregates{
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
 				{
-					StorageVolumes: inventory.StorageVolumes{
+					Value: inventory.InventoryAggregates{
 						{
-							Name: "custom/some_volume",
-						},
-						{
-							Name: "image/some_image",
+							StorageVolumes: inventory.StorageVolumes{
+								{
+									Name: "custom/some_volume",
+								},
+								{
+									Name: "image/some_image",
+								},
+							},
 						},
 					},
 				},
@@ -7829,6 +7844,137 @@ func TestClusterService_RemoveServer(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, `Server removal failed, server "serverOne" still has custom volumes`)
 			},
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - local resources - image only present on removed server",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
+				{
+					Value: inventory.InventoryAggregates{},
+				},
+				{
+					Err: boom.Error,
+				},
+			},
+			incusClientHasExtension: true,
+
+			assertErr: boom.ErrorIs,
+			assertLog: log.Empty,
+		},
+		{
+			name: "error - local resources - image only present on removed server",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
+				{
+					Value: inventory.InventoryAggregates{
+						{
+							Images: inventory.Images{
+								{
+									Cluster:     "one",
+									ProjectName: "default",
+									Name:        "img-fingerprint",
+									Object: inventory.IncusImageWrapper{
+										Image: incusapi.Image{
+											Locations: []string{"serverOne"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `the following images are only present on the server(s) being removed`)
+			},
+			assertLog: log.Empty,
+		},
+		{
+			name: "success - image also present on surviving server",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
+				{
+					Value: inventory.InventoryAggregates{
+						{
+							Images: inventory.Images{
+								{
+									Cluster:     "one",
+									ProjectName: "default",
+									Name:        "img-fingerprint",
+									Object: inventory.IncusImageWrapper{
+										Image: incusapi.Image{
+											Locations: []string{"serverOne", "serverTwo"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			incusClientHasExtension: true,
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+		},
+		{
+			name: "success - image_locations extension not supported, check skipped",
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					Name:   "serverOne",
+					Status: api.ServerStatusReady,
+					VersionData: api.ServerVersionData{
+						InMaintenance: ptr.To(api.InMaintenanceEvacuated),
+					},
+				},
+				{
+					Name: "serverTwo",
+				},
+			},
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
+				{
+					Value: inventory.InventoryAggregates{},
+				},
+			},
+			incusClientHasExtension: false,
+
+			assertErr: require.NoError,
 			assertLog: log.Empty,
 		},
 		{
@@ -7844,6 +7990,9 @@ func TestClusterService_RemoveServer(t *testing.T) {
 				{
 					Name: "serverTwo",
 				},
+			},
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
+				{},
 			},
 			clientIncusClientErr: boom.Error,
 
@@ -7864,6 +8013,9 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name: "serverTwo",
 				},
 			},
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
+				{},
+			},
 			incusClientGetClusterMemberErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -7882,6 +8034,9 @@ func TestClusterService_RemoveServer(t *testing.T) {
 				{
 					Name: "serverTwo",
 				},
+			},
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
+				{},
 			},
 			incusClientUpdateClusterMemberErr: boom.Error,
 
@@ -7902,6 +8057,9 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name: "serverTwo",
 				},
 			},
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
+				{},
+			},
 			incusClientGetServerErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -7921,6 +8079,9 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name: "serverTwo",
 				},
 			},
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
+				{},
+			},
 			incusClientUpdateServerErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -7939,6 +8100,9 @@ func TestClusterService_RemoveServer(t *testing.T) {
 				{
 					Name: "serverTwo",
 				},
+			},
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
+				{},
 			},
 			incusClientDeleteStoragePoolVolumeErrs: queue.Errs{
 				incusapi.StatusErrorf(404, "Storage pool not found"),
@@ -7962,6 +8126,9 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					Name: "serverTwo",
 				},
 			},
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
+				{},
+			},
 			serverSvcFactoryResetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -7980,6 +8147,9 @@ func TestClusterService_RemoveServer(t *testing.T) {
 				{
 					Name: "serverTwo",
 				},
+			},
+			inventorySvcGetAllWithFilter: []queue.Item[inventory.InventoryAggregates]{
+				{},
 			},
 			incusClientDeleteClusterMemberErr: boom.Error,
 
@@ -8052,7 +8222,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 
 			inventorySvc := &inventoryServiceMock.InventoryAggregateServiceMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.InventoryAggregateFilter) (inventory.InventoryAggregates, error) {
-					return tc.inventorySvcGetAllWithFilter, tc.inventorySvcGetAllWithFilterErr
+					return queue.PopRetainLast(t, &tc.inventorySvcGetAllWithFilter)
 				},
 			}
 
