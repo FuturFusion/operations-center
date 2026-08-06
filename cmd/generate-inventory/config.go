@@ -18,6 +18,7 @@ type Entity struct {
 	ProjectSource          ProjectSource      `yaml:"project-source"`            // Source of the project for this entity, one of "direct", "parent" or "none". direct: the entity directly has the project property, parent: take the project from the parent, none: omit project relation for this entity.
 	UsesEmbeddedPostType   bool               `yaml:"uses-embedded-post-type"`   // if uses-embedded-post-type is provided, the name property is part of an embedded Post type
 	ServerIDByLocation     bool               `yaml:"server-id-by-location"`     // if a resource has a location, it can be used to bind it to a server
+	ServerIDByTarget       bool               `yaml:"server-id-by-target"`       // if a resource does not expose a location but is stored per cluster member, the server is derived by querying each member (target) individually
 	IsServerIDOptional     bool               `yaml:"is-server-id-optional"`     // if a resource only optionally has a location
 	IsServerIDNotDefining  bool               `yaml:"is-server-id-not-defining"` // if a resource has a server_id, but it should not be considered part of the defining unique key
 	IncusGetAllMethod      string             `yaml:"incus-get-all-method"`      // method of the Incus client to get all the entities, e.g. GetStoragePoolBucketsAllProjects

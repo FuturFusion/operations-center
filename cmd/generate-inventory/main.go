@@ -188,6 +188,8 @@ type entityArgs struct {
 	HasProjectFromParent   bool
 	UsesEmbeddedPostType   bool
 	ServerIDByLocation     bool
+	ServerIDByTarget       bool
+	HasServer              bool
 	IsServerIDOptional     bool
 	IsServerIDDefining     bool
 	IncusGetAllMethod      string
@@ -285,6 +287,8 @@ func main() {
 			HasProjectFromParent:   entity.ProjectSource == ProjectSourceParent,
 			UsesEmbeddedPostType:   entity.UsesEmbeddedPostType,
 			ServerIDByLocation:     entity.ServerIDByLocation,
+			ServerIDByTarget:       entity.ServerIDByTarget,
+			HasServer:              entity.ServerIDByLocation || entity.ServerIDByTarget,
 			IsServerIDOptional:     entity.IsServerIDOptional,
 			IsServerIDDefining:     !entity.IsServerIDNotDefining,
 			IncusGetAllMethod:      entity.IncusGetAllMethod,
