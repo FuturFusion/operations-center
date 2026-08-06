@@ -207,7 +207,7 @@ func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(instanceUUIDs))
 	for _, id := range instanceUUIDs {
-		result = append(result, fmt.Sprintf("/%s/inventory/instance/%s", api.APIVersion, id.String()))
+		result = append(result, fmt.Sprintf("/%s/inventory/instances/%s", api.APIVersion, id.String()))
 	}
 
 	return response.SyncResponse(true, result)
