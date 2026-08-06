@@ -19,6 +19,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 		for _, image := range inventoryAggregate.Images {
 			resultItem.Images = append(resultItem.Images, api.Image{
 				Cluster:     image.Cluster,
+				Server:      image.Server,
 				ProjectName: image.ProjectName,
 				Name:        image.Name,
 				Object:      image.Object.Image,
