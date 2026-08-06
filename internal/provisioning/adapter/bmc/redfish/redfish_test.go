@@ -2542,3 +2542,411 @@ func TestRedfish_Dump(t *testing.T) {
 		require.Nil(t, vendor.Error)
 	})
 }
+
+const (
+	mediaAttachURL = "http://example.com/install.iso"
+
+	mediaSystemsBody = `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`
+
+	mediaSystemBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia" }
+}`
+
+	mediaManagersBody = `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`
+
+	mediaManagerBody = `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1",
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Managers/1/VirtualMedia" }
+}`
+
+	mediaSystemVMCollectionBody = `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1" }
+  ]
+}`
+
+	mediaManagerVMCollectionBody = `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1" }
+  ]
+}`
+
+	mediaSystemVMFreeBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaSystemVMInsertedBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": true,
+  "Image": "http://example.com/existing.iso",
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaManagerVMFreeBody = `{
+  "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaManagerVMInsertedBody = `{
+  "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": true,
+  "Image": "http://example.com/existing.iso",
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+)
+
+func TestRedfish_AttachMedia(t *testing.T) {
+	tests := []struct {
+		name           string
+		virtualMediaID string
+
+		serviceRootStatusCode int
+
+		systemsBody         string
+		systemBody          string
+		systemVMBody        string
+		systemVMMemberBody  string
+		managersBody        string
+		managerBody         string
+		managerVMBody       string
+		managerVMMemberBody string
+
+		insertMediaStatusCode int
+		insertMediaLocation   string
+
+		wantBody        string
+		wantTaskMonitor *provisioning.BMCTaskMonitor
+		assertErr       require.ErrorAssertionFunc
+	}{
+		{
+			name:           "success - system slot",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMediaStatusCode: http.StatusNoContent,
+
+			wantBody:  `{"Image":"http://example.com/install.iso","Inserted":true,"TransferMethod":"Stream"}`,
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - manager slot (abstraction)",
+			virtualMediaID: "manager:1",
+
+			managersBody:        mediaManagersBody,
+			managerBody:         mediaManagerBody,
+			managerVMBody:       mediaManagerVMCollectionBody,
+			managerVMMemberBody: mediaManagerVMFreeBody,
+
+			insertMediaStatusCode: http.StatusNoContent,
+
+			wantBody:  `{"Image":"http://example.com/install.iso","Inserted":true,"TransferMethod":"Stream"}`,
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - task monitor returned",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMediaStatusCode: http.StatusAccepted,
+			insertMediaLocation:   "/redfish/v1/TaskMonitor/1",
+
+			wantBody: `{"Image":"http://example.com/install.iso","Inserted":true,"TransferMethod":"Stream"}`,
+			wantTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - invalid virtual media ID format",
+			virtualMediaID: "system-1",
+
+			assertErr: errassert.Contains("Invalid virtual media ID"),
+		},
+		{
+			name:           "error - unknown virtual media service",
+			virtualMediaID: "chassis:1",
+
+			assertErr: errassert.Contains("Unknown virtual media service"),
+		},
+		{
+			name:           "error - virtual media not found",
+			virtualMediaID: "system:9",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			assertErr: errassert.Contains("not found"),
+		},
+		{
+			name:           "error - media already attached",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			assertErr: errassert.Contains("already has media attached"),
+		},
+		{
+			name:           "error - insert action failed",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMediaStatusCode: http.StatusInternalServerError,
+
+			assertErr: errassert.Contains("Failed to attach media"),
+		},
+		{
+			name:           "error - failed to connect to BMC",
+			virtualMediaID: "system:1",
+
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotBody []byte
+
+			serviceRootStatusCode := tc.serviceRootStatusCode
+			if serviceRootStatusCode == 0 {
+				serviceRootStatusCode = http.StatusOK
+			}
+
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode:               serviceRootStatusCode,
+				systemsStatusCode:                   http.StatusOK,
+				systemsBody:                         tc.systemsBody,
+				systemStatusCode:                    http.StatusOK,
+				systemBody:                          tc.systemBody,
+				systemVirtualMediaStatusCode:        http.StatusOK,
+				systemVirtualMediaBody:              tc.systemVMBody,
+				systemVirtualMediaMemberStatusCode:  http.StatusOK,
+				systemVirtualMediaMemberBody:        tc.systemVMMemberBody,
+				managersStatusCode:                  http.StatusOK,
+				managersBody:                        tc.managersBody,
+				managerStatusCode:                   http.StatusOK,
+				managerBody:                         tc.managerBody,
+				managerVirtualMediaStatusCode:       http.StatusOK,
+				managerVirtualMediaBody:             tc.managerVMBody,
+				managerVirtualMediaMemberStatusCode: http.StatusOK,
+				managerVirtualMediaMemberBody:       tc.managerVMMemberBody,
+				insertMediaStatusCode:               tc.insertMediaStatusCode,
+				insertMediaLocation:                 tc.insertMediaLocation,
+			}, &gotBody)
+
+			client := redfish.New()
+			taskMonitor, err := client.AttachMedia(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.virtualMediaID, mediaAttachURL)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantTaskMonitor, taskMonitor)
+
+			if tc.wantBody != "" {
+				require.JSONEq(t, tc.wantBody, string(gotBody))
+			}
+		})
+	}
+}
+
+func TestRedfish_DetachMedia(t *testing.T) {
+	tests := []struct {
+		name           string
+		virtualMediaID string
+
+		serviceRootStatusCode int
+
+		systemsBody         string
+		systemBody          string
+		systemVMBody        string
+		systemVMMemberBody  string
+		managersBody        string
+		managerBody         string
+		managerVMBody       string
+		managerVMMemberBody string
+
+		ejectMediaStatusCode int
+		ejectMediaLocation   string
+
+		wantTaskMonitor *provisioning.BMCTaskMonitor
+		assertErr       require.ErrorAssertionFunc
+	}{
+		{
+			name:           "success - system slot",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			ejectMediaStatusCode: http.StatusNoContent,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - manager slot (abstraction)",
+			virtualMediaID: "manager:1",
+
+			managersBody:        mediaManagersBody,
+			managerBody:         mediaManagerBody,
+			managerVMBody:       mediaManagerVMCollectionBody,
+			managerVMMemberBody: mediaManagerVMInsertedBody,
+
+			ejectMediaStatusCode: http.StatusNoContent,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - task monitor returned",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			ejectMediaStatusCode: http.StatusAccepted,
+			ejectMediaLocation:   "/redfish/v1/TaskMonitor/1",
+
+			wantTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "no-op - nothing attached",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - virtual media not found",
+			virtualMediaID: "system:9",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			assertErr: errassert.Contains("not found"),
+		},
+		{
+			name:           "error - eject action failed",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			ejectMediaStatusCode: http.StatusInternalServerError,
+
+			assertErr: errassert.Contains("Failed to detach media"),
+		},
+		{
+			name:           "error - failed to connect to BMC",
+			virtualMediaID: "system:1",
+
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			serviceRootStatusCode := tc.serviceRootStatusCode
+			if serviceRootStatusCode == 0 {
+				serviceRootStatusCode = http.StatusOK
+			}
+
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode:               serviceRootStatusCode,
+				systemsStatusCode:                   http.StatusOK,
+				systemsBody:                         tc.systemsBody,
+				systemStatusCode:                    http.StatusOK,
+				systemBody:                          tc.systemBody,
+				systemVirtualMediaStatusCode:        http.StatusOK,
+				systemVirtualMediaBody:              tc.systemVMBody,
+				systemVirtualMediaMemberStatusCode:  http.StatusOK,
+				systemVirtualMediaMemberBody:        tc.systemVMMemberBody,
+				managersStatusCode:                  http.StatusOK,
+				managersBody:                        tc.managersBody,
+				managerStatusCode:                   http.StatusOK,
+				managerBody:                         tc.managerBody,
+				managerVirtualMediaStatusCode:       http.StatusOK,
+				managerVirtualMediaBody:             tc.managerVMBody,
+				managerVirtualMediaMemberStatusCode: http.StatusOK,
+				managerVirtualMediaMemberBody:       tc.managerVMMemberBody,
+				ejectMediaStatusCode:                tc.ejectMediaStatusCode,
+				ejectMediaLocation:                  tc.ejectMediaLocation,
+			}, nil)
+
+			client := redfish.New()
+			taskMonitor, err := client.DetachMedia(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.virtualMediaID)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantTaskMonitor, taskMonitor)
+		})
+	}
+}
