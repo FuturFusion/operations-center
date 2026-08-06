@@ -1,7 +1,9 @@
 package inventory_test
 
 import (
+{{- if not .ServerIDByTarget }}
 	"bytes"
+{{- end }}
 	"context"
 	"testing"
 	"time"
@@ -16,11 +18,15 @@ import (
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
 	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+{{- if not .ServerIDByTarget }}
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+{{- end }}
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+{{- if not .ServerIDByTarget }}
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
+{{- end }}
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -266,6 +272,7 @@ func Test{{ .Name | pascalcase }}Service_GetByUUID(t *testing.T) {
 	}
 }
 
+{{ if not .ServerIDByTarget }}
 func Test{{ .Name | pascalcase }}Service_ResyncByUUID(t *testing.T) {
 	tests := []struct {
 		name                     string
@@ -2503,3 +2510,143 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 		})
 	}
 }
+{{- end }}
+{{- if .ServerIDByTarget }}
+
+func Test{{ .Name | pascalcase }}Service_SyncCluster(t *testing.T) {
+	fixedTime := time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+
+	endpoint := provisioning.ClusterEndpoint{
+		{
+			ConnectionURL:      "https://server-one/",
+			Certificate:        "cert",
+			ClusterCertificate: ptr.To("cluster-cert"),
+		},
+	}
+
+	tests := []struct {
+		name                     string
+		clusterSvcGetEndpoint    provisioning.Endpoint
+		clusterSvcGetEndpointErr error
+		{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}    map[string][]incusapi.{{ .ObjectType | pascalcase }}
+		{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}Err error
+		repoGetAllWithFilter     inventory.{{ .PluralName | pascalcase }}
+		repoGetAllWithFilterErr  error
+		repoDeleteWithFilterErr  error
+		repoCreateErr            error
+
+		assertErr require.ErrorAssertionFunc
+		wantCreatedRecordCount int
+	}{
+		{
+			name:                  "success - per member",
+			clusterSvcGetEndpoint: endpoint,
+			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}: map[string][]incusapi.{{ .ObjectType | pascalcase }}{
+				"one": {
+					{
+						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .HasProjectDirect }}
+						Project: "project one",
+{{- end }}
+					},
+				},
+				"two": {
+					{
+						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .HasProjectDirect }}
+						Project: "project one",
+{{- end }}
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantCreatedRecordCount: 2,
+		},
+		{
+			name:                    "success - tolerate not found on delete",
+			clusterSvcGetEndpoint:    endpoint,
+			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}: map[string][]incusapi.{{ .ObjectType | pascalcase }}{},
+			repoDeleteWithFilterErr: domain.ErrNotFound,
+
+			assertErr:               require.NoError,
+		},
+		{
+			name:                     "error - get endpoint",
+			clusterSvcGetEndpointErr: boom.Error,
+
+			assertErr:                boom.ErrorIs,
+		},
+		{
+			name:                  "error - client.Get{{ .PluralName | pascalcase }}",
+			clusterSvcGetEndpoint: endpoint,
+			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}Err: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                  "error - repo.Create",
+			clusterSvcGetEndpoint: endpoint,
+			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}: map[string][]incusapi.{{ .ObjectType | pascalcase }}{
+				"one": {
+					{
+						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .HasProjectDirect }}
+						Project: "project one",
+{{- end }}
+					},
+				},
+			},
+			repoCreateErr: boom.Error,
+
+			assertErr:              boom.ErrorIs,
+			wantCreatedRecordCount: 1,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			createdServers := map[string]struct{}{}
+
+			repo := &repoMock.{{ .Name | pascalcase }}RepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) (inventory.{{ .PluralName | pascalcase }}, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) error {
+					return tc.repoDeleteWithFilterErr
+				},
+				CreateFunc: func(ctx context.Context, {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
+					createdServers[{{ .Name | camelcase }}.Server] = struct{}{}
+					return inventory.{{ .Name | pascalcase }}{}, tc.repoCreateErr
+				},
+			}
+
+			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
+				},
+			}
+
+			{{ .Name | camelcase }}Client := &serverMock.{{ .Name | pascalcase }}ServerClientMock{
+				Get{{ .PluralName | pascalcase }}Func: func(ctx context.Context, endpoint provisioning.Endpoint) (map[string][]incusapi.{{ .ObjectType | pascalcase }}, error) {
+					return tc.{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}, tc.{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}Err
+				},
+			}
+
+			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, clusterSvc, {{ .Name | camelcase }}Client,
+				inventory.{{ .Name | pascalcase }}WithNow(func() time.Time {
+					return fixedTime
+				}),
+			)
+
+			// Run test
+			err := {{ .Name | camelcase }}Svc.SyncCluster(context.Background(), "one")
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, createdServers, tc.wantCreatedRecordCount)
+		})
+	}
+}
+{{- end }}

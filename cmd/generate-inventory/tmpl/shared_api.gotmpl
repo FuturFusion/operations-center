@@ -19,7 +19,7 @@ import (
 type {{ .Name | pascalcase }} struct {
 	UUID        uuid.UUID             `json:"uuid" yaml:"uuid"`
 	Cluster     string                `json:"cluster" yaml:"cluster"`
-{{- if .ServerIDByLocation }}
+{{- if .HasServer }}
 	Server      string                `json:"server" yaml:"server"`
 {{- end }}
 {{- if .HasProject }}

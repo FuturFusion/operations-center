@@ -10,6 +10,39 @@ import (
   "github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
+{{- if .ServerIDByTarget }}
+func (s serverClient) Get{{ .PluralName | pascalcase }}(ctx context.Context, endpoint provisioning.Endpoint) (map[string][]incusapi.{{ .ObjectType | pascalcase }}, error) {
+	client, err := s.getClient(ctx, endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	members, err := client.GetClusterMembers()
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return nil, domain.ErrNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	{{ .PluralName | camelcase }}ByServer := make(map[string][]incusapi.{{ .ObjectType | pascalcase }}, len(members))
+	for _, member := range members {
+		server{{ .PluralName | pascalcase }}, err := client.UseTarget(member.ServerName).{{ .IncusGetAllMethod }}()
+		if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+			return nil, domain.ErrNotFound
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		{{ .PluralName | camelcase }}ByServer[member.ServerName] = server{{ .PluralName | pascalcase }}
+	}
+
+	return {{ .PluralName | camelcase }}ByServer, nil
+}
+{{- else }}
 func (s serverClient) Get{{ .PluralName | pascalcase }}(ctx context.Context, endpoint provisioning.Endpoint {{- if .HasProjectFromParent }}, projectName string {{- end }}{{- if .HasParent }}, {{ .ParentName | camelcase }}Name string {{- end -}} ) ([]incusapi.{{ .ObjectType | pascalcase }}, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
@@ -31,6 +64,7 @@ func (s serverClient) Get{{ .PluralName | pascalcase }}(ctx context.Context, end
 
 	return server{{ .PluralName | pascalcase }}, nil
 }
+{{- end }}
 
 func (s serverClient) Get{{ .Name | pascalcase }}ByName(ctx context.Context, endpoint provisioning.Endpoint, {{- if .HasProject }}projectName string, {{ end -}}{{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }}{{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error) {
 	client, err := s.getClient(ctx, endpoint)

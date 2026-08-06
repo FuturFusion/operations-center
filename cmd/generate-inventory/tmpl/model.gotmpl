@@ -47,7 +47,7 @@ type {{ .Name | pascalcase }} struct {
 	ID          int `json:"-"`
 	UUID        uuid.UUID `json:"uuid"          db:"primary=yes"`
 	Cluster     string `json:"cluster"       db:"join=clusters.name"`
-{{- if .ServerIDByLocation }}
+{{- if .HasServer }}
 	Server      {{ if .IsServerIDOptional }}*{{ end }}string `json:"server"        db:"{{ if .IsServerIDOptional }}left{{ end }}join=servers.name"`
 {{- end }}
 {{- if .HasProject }}
@@ -67,7 +67,7 @@ type {{ .Name | pascalcase }} struct {
 func (m *{{ .Name | pascalcase }}) DeriveUUID() *{{ .Name | pascalcase }} {
 	identifier := strings.Join([]string{
 		m.Cluster,
-{{- if and .ServerIDByLocation .IsServerIDDefining }}
+{{- if and .HasServer .IsServerIDDefining }}
 	{{- if .IsServerIDOptional }}
 		ptr.From(m.Server),
 	{{- else }}
@@ -95,7 +95,7 @@ func (m {{ .Name | pascalcase }}) Validate() error {
 	if m.Cluster == "" {
 		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, cluster can not be empty")
 	}
-{{- if and .ServerIDByLocation ( not .IsServerIDOptional ) }}
+{{- if and .HasServer ( not .IsServerIDOptional ) }}
 
 	if m.Server == "" {
 		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, server can not be empty")
@@ -132,7 +132,7 @@ type {{ .PluralName | pascalcase }} []{{ .Name | pascalcase }}
 type {{ .Name | pascalcase }}Filter struct{
 	UUID        *uuid.UUID
 	Cluster     *string
-{{- if .ServerIDByLocation }}
+{{- if .HasServer }}
 	Server      *string
 {{- end }}
 {{- if .HasProject }}
@@ -153,7 +153,7 @@ func (f {{ .Name | pascalcase }}Filter) AppendToURLValues(query url.Values) url.
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
 	}
-{{- if .ServerIDByLocation }}
+{{- if .HasServer }}
 
 	if f.Server != nil {
 		query.Add("server", *f.Server)

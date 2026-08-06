@@ -18,7 +18,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 		for _, {{ .Name | camelcase }} := range inventoryAggregate.{{ .PluralName | pascalcase }} {
 			resultItem.{{ .PluralName | pascalcase }} = append(resultItem.{{ .PluralName | pascalcase }}, api.{{ .Name | pascalcase }}{
 				Cluster:     {{ .Name | camelcase }}.Cluster,
-{{- if .ServerIDByLocation }}
+{{- if .HasServer }}
   {{- if .IsServerIDOptional }}
 				Server:      ptr.From({{ .Name | camelcase }}.Server),
 	{{- else }}

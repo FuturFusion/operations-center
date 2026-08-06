@@ -43,7 +43,7 @@ func registerInventory{{ .Name | pascalcase }}Handler(router Router, authorizer 
 //	    description: Cluster name
 //	    type: string
 //	    x-example: cluster
-{{- if .ServerIDByLocation }}
+{{- if .HasServer }}
 //	  - in: query
 //	    name: server
 //	    description: Server name
@@ -85,7 +85,7 @@ func registerInventory{{ .Name | pascalcase }}Handler(router Router, authorizer 
 //	    description: Cluster name
 //	    type: string
 //	    x-example: cluster
-{{- if .ServerIDByLocation }}
+{{- if .HasServer }}
 //	  - in: query
 //	    name: server
 //	    description: Server name
@@ -124,7 +124,7 @@ func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *htt
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
 	}
 
-{{ if .ServerIDByLocation }}
+{{ if .HasServer }}
 	if r.URL.Query().Get("server") != "" {
 		filter.Server = ptr.To(r.URL.Query().Get("server"))
 	}
@@ -152,7 +152,7 @@ func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *htt
 			result = append(result, api.{{ .Name | pascalcase }}{
 					UUID:        {{ .Name | camelcase }}.UUID,
 					Cluster:     {{ .Name | camelcase }}.Cluster,
-		{{- if .ServerIDByLocation }}
+		{{- if .HasServer }}
 			{{- if .IsServerIDOptional }}
 					Server:      ptr.From({{ .Name | camelcase }}.Server),
 			{{- else }}
@@ -231,7 +231,7 @@ func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}Get(r *http.Requ
 		api.{{ .Name | pascalcase }}{
 			UUID:        {{ .Name | camelcase }}.UUID,
 			Cluster:     {{ .Name | camelcase }}.Cluster,
-{{- if .ServerIDByLocation }}
+{{- if .HasServer }}
 	{{- if .IsServerIDOptional }}
 			Server:      ptr.From({{ .Name | camelcase }}.Server),
 	{{- else }}
