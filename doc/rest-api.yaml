@@ -5463,6 +5463,67 @@ definitions:
                 x-go-name: Attributes
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ServerBMCAttachMedia:
+        description: |-
+            ServerBMCAttachMedia defines the request to attach installation media to a
+            server via its BMC.
+        properties:
+            architecture:
+                description: |-
+                    Architecture holds the CPU architecture of the image to generate. Possible
+                    values: x86_64, aarch64.
+                example: x86_64
+                type: string
+                x-go-name: Architecture
+            channel:
+                description: |-
+                    Channel holds the channel the most recent update should be taken from to
+                    generate the image. Optional, defaults to the configured default channel.
+                example: stable
+                type: string
+                x-go-name: Channel
+            seed:
+                description: |-
+                    Seed holds the name of the token seed used to generate the installation
+                    media. The referenced token seed must be public.
+                example: default
+                type: string
+                x-go-name: Seed
+            token_uuid:
+                description: TokenUUID holds the UUID of the provisioning token that owns the seed.
+                example: 8f6c3d1a-2b4e-4c9a-9f7d-1a2b3c4d5e6f
+                type: string
+                x-go-name: TokenUUID
+            type:
+                description: 'Type holds the type of image to generate. Possible values: iso, raw.'
+                example: iso
+                type: string
+                x-go-name: Type
+            virtual_media_id:
+                description: |-
+                    VirtualMediaID identifies the virtual media device the media is attached
+                    to, using the "<service>:<bmc-id>" notation (e.g. "system:1" or
+                    "manager:2") as reported in the BMC virtual media data.
+                example: system:1
+                type: string
+                x-go-name: VirtualMediaID
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ServerBMCDetachMedia:
+        description: |-
+            ServerBMCDetachMedia defines the request to detach installation media from a
+            server via its BMC.
+        properties:
+            virtual_media_id:
+                description: |-
+                    VirtualMediaID identifies the virtual media device the media is detached
+                    from, using the "<service>:<bmc-id>" notation (e.g. "system:1" or
+                    "manager:2") as reported in the BMC virtual media data.
+                example: system:1
+                type: string
+                x-go-name: VirtualMediaID
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerBMCLocatePost:
         description: |-
             ServerBMCLocatePost represents a request to change the state of
@@ -11480,6 +11541,79 @@ paths:
             summary: Apply BIOS attributes via BMC
             tags:
                 - servers_bmc
+    /1.0/provisioning/servers/{name}/bmc/:attach-media:
+        post:
+            consumes:
+                - application/json
+            description: |-
+                Attaches installation media, generated from a public token seed, to a virtual
+                media device of the server. The BMC streams the generated image directly from
+                Operations Center, so the referenced token seed must be public.
+            operationId: server_bmc_attach_media_post
+            parameters:
+                - description: Name of the server
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+                - description: Installation media to attach
+                  in: body
+                  name: media
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ServerBMCAttachMedia'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Attach installation media to a server via BMC
+            tags:
+                - servers_bmc
+    /1.0/provisioning/servers/{name}/bmc/:detach-media:
+        post:
+            consumes:
+                - application/json
+            description: |-
+                Detaches (ejects) the installation media currently attached to the given
+                virtual media device of the server.
+            operationId: server_bmc_detach_media_post
+            parameters:
+                - description: Name of the server
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+                - description: Installation media to detach
+                  in: body
+                  name: media
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ServerBMCDetachMedia'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Detach installation media from a server via BMC
+            tags:
+                - servers_bmc
     /1.0/provisioning/servers/{name}/bmc/:dump:
         post:
             description: |-
@@ -12720,6 +12854,62 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Update the token seed config
+            tags:
+                - tokens
+    /1.0/provisioning/tokens/{uuid}/seeds/{name}/{params}:
+        get:
+            description: |-
+                Get the generated pre-seeded IncusOS ISO or raw image file for a token
+                seed, with all parameters and the terminal filename encoded as path
+                segments instead of a query string, so that the resulting URL ends with a
+                recognized file extension (e.g. ".iso" or ".raw"). This is required to
+                work around BMC/Redfish implementations that reject virtual media image
+                URLs which don't end in a known media extension.
+
+                The path after the seed name is a flat sequence of "<key>/<value>" pairs
+                followed by a final, free-form filename segment that is not inspected by
+                the server, e.g.:
+
+                1.0/provisioning/tokens/{uuid}/seeds/{name}/architecture/x86_64/channel/stable/type/iso/file.iso
+
+                Recognized keys are "architecture" (required), "type" (required) and
+                "channel" (optional, defaults to the configured default update channel).
+            operationId: token_seed_image_get
+            parameters:
+                - description: UUID of the token
+                  format: uuid
+                  in: path
+                  name: uuid
+                  required: true
+                  type: string
+                - description: Name of the seed
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+                - description: |-
+                    Flat sequence of "<key>/<value>" pairs (architecture, type,
+                    optionally channel) followed by a free-form filename segment, e.g.
+                    "architecture/x86_64/type/iso/file.iso".
+                  in: path
+                  name: params
+                  required: true
+                  type: string
+            produces:
+                - application/octet-stream
+                - application/gzip
+            responses:
+                "200":
+                    $ref: '#/responses/TokenSeedResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get pre-seeded IncusOS image
             tags:
                 - tokens
     /1.0/provisioning/tokens/{uuid}/seeds?recursion=1:
