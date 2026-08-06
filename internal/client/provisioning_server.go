@@ -305,6 +305,24 @@ func (c OperationsCenterClient) BMCServerRestart(ctx context.Context, name strin
 	return nil
 }
 
+func (c OperationsCenterClient) BMCAttachMedia(ctx context.Context, name string, media api.ServerBMCAttachMedia) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "bmc/:attach-media"), nil, media)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c OperationsCenterClient) BMCDetachMedia(ctx context.Context, name string, media api.ServerBMCDetachMedia) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "bmc/:detach-media"), nil, media)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) GetServerBMCLogSources(ctx context.Context, name string) ([]string, error) {
 	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name, "bmc/logs"), nil, nil)
 	if err != nil {
