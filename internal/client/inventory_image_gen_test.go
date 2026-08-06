@@ -53,10 +53,17 @@ func Test_GetWithFilterImages(t *testing.T) {
 				})
 				require.NoError(t, err)
 
+				_, err = provisioningEntities.CreateServer(t.Context(), db, provisioning.Server{
+					Name:    "serverOne",
+					Channel: "stable",
+				})
+				require.NoError(t, err)
+
 				_, err = entities.CreateImage(t.Context(), db, inventory.Image{
 					UUID:    uuidgen.FromPattern(t, "1"),
 					Name:    "one",
 					Cluster: "clusterOne",
+					Server:  "serverOne",
 				})
 				require.NoError(t, err)
 			},
@@ -120,10 +127,17 @@ func Test_GetImage(t *testing.T) {
 				})
 				require.NoError(t, err)
 
+				_, err = provisioningEntities.CreateServer(t.Context(), db, provisioning.Server{
+					Name:    "serverOne",
+					Channel: "stable",
+				})
+				require.NoError(t, err)
+
 				_, err = entities.CreateImage(t.Context(), db, inventory.Image{
 					UUID:    uuidgen.FromPattern(t, "1"),
 					Name:    "foo",
 					Cluster: "clusterOne",
+					Server:  "serverOne",
 				})
 				require.NoError(t, err)
 			},
