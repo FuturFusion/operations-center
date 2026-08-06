@@ -6,13 +6,16 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
+	"path"
 	"slices"
 	"sort"
 	"strconv"
@@ -372,6 +375,184 @@ func convertVirtualMedia(result map[string]api.BMCVirtualMedia, service string, 
 	return result
 }
 
+// getBIOSSettingsApplyTimes fetches the BIOS resource and returns the apply
+// times the BMC actually declared support for.
+// TODO: replace when https://github.com/stmcginnis/gofish/issues/551 is resolved.
+func getBIOSSettingsApplyTimes(client *gofish.APIClient, biosODataID string) ([]schemas.SettingsApplyTime, error) {
+	resp, err := client.Get(biosODataID)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var raw struct {
+		Settings schemas.Settings `json:"@Redfish.Settings"`
+	}
+
+	err = json.Unmarshal(body, &raw)
+	if err != nil {
+		return nil, err
+	}
+
+	return raw.Settings.SupportedApplyTimes, nil
+}
+
+// getBIOSAttributeRegistry resolves and fetches the BIOS attribute registry
+// identified by registryName (schemas.Bios.AttributeRegistry), which lists
+// the acceptable values for each BIOS attribute. Returns nil, nil if no
+// matching registry is published by the BMC.
+func getBIOSAttributeRegistry(client *gofish.APIClient, registryName string) (*schemas.AttributeRegistry, error) {
+	if registryName == "" {
+		return nil, nil
+	}
+
+	files, err := client.Service.Registries()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range files {
+		if file.Registry != registryName && file.ID != registryName {
+			continue
+		}
+
+		for _, location := range file.Location {
+			if location.URI == "" {
+				continue
+			}
+
+			return schemas.GetAttributeRegistry(client, location.URI)
+		}
+	}
+
+	return nil, nil
+}
+
+// findBIOSAttribute looks up the attribute with the given name in the BIOS
+// attribute registry.
+func findBIOSAttribute(registry *schemas.AttributeRegistry, attributeName string) (schemas.Attributes, bool) {
+	if registry == nil {
+		return schemas.Attributes{}, false
+	}
+
+	for _, attribute := range registry.RegistryEntries.Attributes {
+		if attribute.AttributeName == attributeName {
+			return attribute, true
+		}
+	}
+
+	return schemas.Attributes{}, false
+}
+
+// attributeValueNames returns the enumeration values names declared as
+// acceptable for the given attribute. Empty if the attribute is not an
+// enumeration.
+func attributeValueNames(attribute schemas.Attributes) []string {
+	values := make([]string, 0, len(attribute.Value))
+	for _, value := range attribute.Value {
+		values = append(values, value.ValueName)
+	}
+
+	return values
+}
+
+// biosAttributeAcceptableValues returns the enumeration values the BIOS
+// attribute registry declares as acceptable for the given attribute name, or
+// nil if the attribute is not an enumeration or not found in the registry.
+func biosAttributeAcceptableValues(registry *schemas.AttributeRegistry, attributeName string) []string {
+	attribute, ok := findBIOSAttribute(registry, attributeName)
+	if !ok {
+		return nil
+	}
+
+	return attributeValueNames(attribute)
+}
+
+// newBIOSAttribute returns the API representation of the BIOS attribute with
+// the given name and current value, enriched with the metadata from the BIOS
+// attribute registry if the registry describes the attribute.
+func newBIOSAttribute(registry *schemas.AttributeRegistry, name string, value any) api.BIOSAttribute {
+	attribute, ok := findBIOSAttribute(registry, name)
+	if !ok {
+		return api.BIOSAttribute{
+			Name:         name,
+			CurrentValue: value,
+		}
+	}
+
+	return api.BIOSAttribute{
+		Name:             name,
+		Type:             string(attribute.Type),
+		CurrentValue:     value,
+		LowerBound:       ptr.ToInt64(attribute.LowerBound),
+		UpperBound:       ptr.ToInt64(attribute.UpperBound),
+		MinLength:        ptr.ToInt64(attribute.MinLength),
+		MaxLength:        ptr.ToInt64(attribute.MaxLength),
+		AcceptableValues: attributeValueNames(attribute),
+	}
+}
+
+// describeBIOSAttributesError turns a Redfish client-error (4xx) returned
+// while applying BIOS attributes into a domain.ErrValidation with a human
+// readable message, enriched with the acceptable values from the BIOS
+// attribute registry where possible. If err does not carry structured
+// Redfish error information, or is not a client error, it is returned
+// unchanged.
+func describeBIOSAttributesError(ctx context.Context, client *gofish.APIClient, biosAttributeRegistry string, err error) error {
+	var redfishErr *schemas.Error
+
+	if !errors.As(err, &redfishErr) || len(redfishErr.ExtendedInfos) == 0 {
+		return err
+	}
+
+	if redfishErr.HTTPReturnedStatusCode < 400 || redfishErr.HTTPReturnedStatusCode >= 500 {
+		return err
+	}
+
+	registry, registryErr := getBIOSAttributeRegistry(client, biosAttributeRegistry)
+	if registryErr != nil {
+		slog.WarnContext(ctx, "Failed to get BIOS attribute registry to enrich error message", logger.Err(registryErr))
+	}
+
+	messages := make([]string, 0, len(redfishErr.ExtendedInfos))
+	for _, info := range redfishErr.ExtendedInfos {
+		// Message is optional, fall back to the message registry identifier.
+		message := info.Message
+		if message == "" {
+			message = info.MessageID
+		}
+
+		if message == "" {
+			continue
+		}
+
+		for _, property := range info.RelatedProperties {
+			values := biosAttributeAcceptableValues(registry, path.Base(property))
+			if len(values) == 0 {
+				continue
+			}
+
+			message = fmt.Sprintf("%s Acceptable values: %s.", message, strings.Join(values, ", "))
+		}
+
+		messages = append(messages, message)
+	}
+
+	// Without any human readable message, the original error carries more
+	// information than an empty validation error would.
+	if len(messages) == 0 {
+		return err
+	}
+
+	return domain.NewValidationErrf("%s", strings.Join(messages, " "))
+}
+
 func getFirstProcessor(system *schemas.ComputerSystem) (*schemas.Processor, error) {
 	processors, err := system.Processors()
 	if err != nil {
@@ -470,6 +651,118 @@ func (r redfish) WaitForTask(ctx context.Context, server provisioning.Server, ta
 			return ctx.Err()
 		}
 	}
+}
+
+func (r redfish) ApplyBIOSAttributes(ctx context.Context, server provisioning.Server, attributes map[string]any) (*provisioning.BMCTaskMonitor, error) {
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	system, err := getFirstSystem(client)
+	if err != nil {
+		return nil, fmt.Errorf("Failed get BMC system: %w", err)
+	}
+
+	bios, err := system.Bios()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get bios information: %w", err)
+	}
+
+	supportedApplyTimes, err := getBIOSSettingsApplyTimes(client, bios.ODataID)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get bios settings apply time capabilities: %w", err)
+	}
+
+	if !slices.Contains(supportedApplyTimes, schemas.OnResetSettingsApplyTime) {
+		err = bios.UpdateBiosAttributes(schemas.SettingsAttributes(attributes))
+		if err != nil {
+			return nil, fmt.Errorf("Failed to apply bios attributes: %w", describeBIOSAttributesError(ctx, client, bios.AttributeRegistry, err))
+		}
+
+		return nil, nil
+	}
+
+	tm, err := bios.UpdateBiosAttributesApplyAtWithTask(schemas.SettingsAttributes(attributes), schemas.OnResetSettingsApplyTime)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to apply bios attributes: %w", describeBIOSAttributesError(ctx, client, bios.AttributeRegistry, err))
+	}
+
+	if tm != nil {
+		return &provisioning.BMCTaskMonitor{
+			URI: tm.TaskMonitor,
+		}, nil
+	}
+
+	return nil, nil
+}
+
+func (r redfish) BIOSAttributes(ctx context.Context, server provisioning.Server) ([]api.BIOSAttribute, error) {
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	system, err := getFirstSystem(client)
+	if err != nil {
+		return nil, fmt.Errorf("Failed get BMC system: %w", err)
+	}
+
+	bios, err := system.Bios()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get bios information: %w", err)
+	}
+
+	registry, err := getBIOSAttributeRegistry(client, bios.AttributeRegistry)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to get BIOS attribute registry, returning BIOS attributes without registry metadata", logger.Err(err))
+	}
+
+	// The attributes reported by the BIOS are the source of truth, the registry
+	// only adds metadata for those attributes it describes.
+	attributes := make([]api.BIOSAttribute, 0, len(bios.Attributes))
+	for name, value := range bios.Attributes {
+		attributes = append(attributes, newBIOSAttribute(registry, name, value))
+	}
+
+	sort.Slice(attributes, func(i, j int) bool { return attributes[i].Name < attributes[j].Name })
+
+	return attributes, nil
+}
+
+func (r redfish) BIOSAttribute(ctx context.Context, server provisioning.Server, attributeName string) (api.BIOSAttribute, error) {
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return api.BIOSAttribute{}, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	system, err := getFirstSystem(client)
+	if err != nil {
+		return api.BIOSAttribute{}, fmt.Errorf("Failed get BMC system: %w", err)
+	}
+
+	bios, err := system.Bios()
+	if err != nil {
+		return api.BIOSAttribute{}, fmt.Errorf("Failed to get bios information: %w", err)
+	}
+
+	value, ok := bios.Attributes[attributeName]
+	if !ok {
+		return api.BIOSAttribute{}, fmt.Errorf("BIOS attribute %q not found: %w", attributeName, domain.ErrNotFound)
+	}
+
+	registry, err := getBIOSAttributeRegistry(client, bios.AttributeRegistry)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to get BIOS attribute registry, returning BIOS attribute without registry metadata", logger.Err(err))
+	}
+
+	return newBIOSAttribute(registry, attributeName, value), nil
 }
 
 func (r redfish) performReset(ctx context.Context, server provisioning.Server, resetType schemas.ResetType) (*provisioning.BMCTaskMonitor, error) {

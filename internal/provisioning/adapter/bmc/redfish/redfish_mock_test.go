@@ -30,9 +30,6 @@ type mockRedfishServer struct {
 	resetStatusCode           int
 	resetLocation             string
 
-	biosStatusCode int
-	biosBody       string
-
 	systemVirtualMediaStatusCode        int
 	systemVirtualMediaBody              string
 	systemVirtualMediaMemberStatusCode  int
@@ -58,6 +55,14 @@ type mockRedfishServer struct {
 
 	taskMonitorStatusCodes []int
 	taskMonitorRetryAfter  string
+
+	biosStatusCode               int
+	biosBody                     string
+	biosPatchStatusCode          int
+	biosPatchBody                string
+	biosPatchTaskMonitorLocation string
+
+	gotBiosPatchBody *[]byte
 
 	// extraRoutes allows tests to serve additional canned responses for paths
 	// not covered by the dedicated fields above, keyed by the exact request
@@ -85,6 +90,7 @@ func newMockRedfishServer(t *testing.T, cfg mockRedfishServer, gotBody *[]byte) 
 	t.Helper()
 
 	svr := httptest.NewServer(newMockRedfishHandler(cfg, gotBody))
+
 	t.Cleanup(svr.Close)
 
 	return svr
@@ -120,7 +126,8 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
   "Vendor": "Dell",
   "Systems": { "@odata.id": "/redfish/v1/Systems" },
   "Managers": { "@odata.id": "/redfish/v1/Managers" },
-  "Chassis": { "@odata.id": "/redfish/v1/Chassis" }
+  "Chassis": { "@odata.id": "/redfish/v1/Chassis" },
+  "Registries": { "@odata.id": "/redfish/v1/Registries" }
 }`))
 			}
 
@@ -157,10 +164,6 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
 		case "/redfish/v1/Managers/1":
 			w.WriteHeader(cfg.managerStatusCode)
 			_, _ = w.Write([]byte(cfg.managerBody))
-
-		case "/redfish/v1/Systems/1/Bios":
-			w.WriteHeader(cfg.biosStatusCode)
-			_, _ = w.Write([]byte(cfg.biosBody))
 
 		case "/redfish/v1/Systems/1/VirtualMedia":
 			w.WriteHeader(cfg.systemVirtualMediaStatusCode)
@@ -222,6 +225,9 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
 
 			w.WriteHeader(statusCode)
 
+		case "/redfish/v1/Systems/1/Bios":
+			handleBios(w, r, cfg)
+
 		default:
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		}
@@ -250,4 +256,32 @@ func newTLSServerWithoutSAN(t *testing.T, responses mockRedfishServer) (svr *htt
 	require.Empty(t, svr.Certificate().IPAddresses)
 
 	return svr, string(certPEMByte)
+}
+
+func handleBios(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer) {
+	switch r.Method {
+	case http.MethodGet:
+		w.WriteHeader(cfg.biosStatusCode)
+		_, _ = w.Write([]byte(cfg.biosBody))
+
+	case http.MethodPatch:
+		body, _ := io.ReadAll(r.Body)
+
+		if cfg.gotBiosPatchBody != nil {
+			*cfg.gotBiosPatchBody = body
+		}
+
+		if cfg.biosPatchTaskMonitorLocation != "" {
+			w.Header().Set("Location", cfg.biosPatchTaskMonitorLocation)
+		}
+
+		w.WriteHeader(cfg.biosPatchStatusCode)
+
+		if cfg.biosPatchBody != "" {
+			_, _ = w.Write([]byte(cfg.biosPatchBody))
+		}
+
+	default:
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	}
 }
