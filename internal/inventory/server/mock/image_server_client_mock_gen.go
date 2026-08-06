@@ -27,7 +27,7 @@ var _ inventory.ImageServerClient = &ImageServerClientMock{}
 //			GetImageByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (api.Image, error) {
 //				panic("mock out the GetImageByName method")
 //			},
-//			GetImagesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.Image, error) {
+//			GetImagesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (map[string][]api.Image, error) {
 //				panic("mock out the GetImages method")
 //			},
 //		}
@@ -41,7 +41,7 @@ type ImageServerClientMock struct {
 	GetImageByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (api.Image, error)
 
 	// GetImagesFunc mocks the GetImages method.
-	GetImagesFunc func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.Image, error)
+	GetImagesFunc func(ctx context.Context, endpoint provisioning.Endpoint) (map[string][]api.Image, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -113,7 +113,7 @@ func (mock *ImageServerClientMock) GetImageByNameCalls() []struct {
 }
 
 // GetImages calls GetImagesFunc.
-func (mock *ImageServerClientMock) GetImages(ctx context.Context, endpoint provisioning.Endpoint) ([]api.Image, error) {
+func (mock *ImageServerClientMock) GetImages(ctx context.Context, endpoint provisioning.Endpoint) (map[string][]api.Image, error) {
 	if mock.GetImagesFunc == nil {
 		panic("ImageServerClientMock.GetImagesFunc: method is nil but ImageServerClient.GetImages was just called")
 	}

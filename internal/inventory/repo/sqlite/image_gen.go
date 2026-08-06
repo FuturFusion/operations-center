@@ -31,11 +31,15 @@ func NewImage(db sqlite.DBTX) *image {
 func (r image) Create(ctx context.Context, in inventory.Image) (inventory.Image, error) {
 	const sqlStmt = `
 WITH _lookup AS (
-  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
+  SELECT id AS cluster_id , (
+    SELECT servers.id FROM clusters
+      LEFT JOIN servers ON servers.cluster_id = clusters.id
+    WHERE clusters.name = :cluster_name AND servers.name = :server_name
+  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
 )
-INSERT INTO images (uuid, cluster_id, project_name, name, object, last_updated)
-VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :name, :object, :last_updated)
-RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
+INSERT INTO images (uuid, cluster_id, server_id, project_name, name, object, last_updated)
+VALUES (:uuid, (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), :project_name, :name, :object, :last_updated)
+RETURNING id, :uuid, :cluster_name, :server_name, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object.Image)
@@ -46,6 +50,7 @@ RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
+		sql.Named("server_name", in.Server),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -61,12 +66,13 @@ RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
 func (r image) GetAllWithFilter(ctx context.Context, filter inventory.ImageFilter) (inventory.Images, error) {
 	const sqlStmt = `
 SELECT
-  images.id, images.uuid, clusters.name, images.project_name, images.name, images.object, images.last_updated
+  images.id, images.uuid, clusters.name, servers.name, images.project_name, images.name, images.object, images.last_updated
 FROM images
   INNER JOIN clusters ON images.cluster_id = clusters.id
+  INNER JOIN servers ON images.server_id = servers.id
 WHERE true
 %s
-ORDER BY clusters.name, images.name
+ORDER BY clusters.name, servers.name, images.name
 `
 
 	var whereClause []string
@@ -75,6 +81,11 @@ ORDER BY clusters.name, images.name
 	if filter.Cluster != nil {
 		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
 		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	if filter.Server != nil {
+		whereClause = append(whereClause, ` AND servers.name = :server_name`)
+		args = append(args, sql.Named("server_name", filter.Server))
 	}
 
 	if filter.ProjectName != nil {
@@ -119,6 +130,7 @@ func (r image) selectStmtGetAllUUIDWithFilter(filter inventory.ImageFilter) (que
 SELECT images.uuid
 FROM images
   INNER JOIN clusters ON images.cluster_id = clusters.id
+  INNER JOIN servers ON images.server_id = servers.id
 WHERE true
 %s
 ORDER BY images.id
@@ -129,6 +141,11 @@ ORDER BY images.id
 	if filter.Cluster != nil {
 		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
 		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	if filter.Server != nil {
+		whereClause = append(whereClause, ` AND servers.name = :server_name`)
+		args = append(args, sql.Named("server_name", filter.Server))
 	}
 
 	if filter.ProjectName != nil {
@@ -175,10 +192,11 @@ func (r image) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.Image
 func (r image) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.Image, error) {
 	const sqlStmt = `
 SELECT
-  images.id, images.uuid, clusters.name, images.project_name, images.name, images.object, images.last_updated
+  images.id, images.uuid, clusters.name, servers.name, images.project_name, images.name, images.object, images.last_updated
 FROM
   images
   INNER JOIN clusters ON images.cluster_id = clusters.id
+  INNER JOIN servers ON images.server_id = servers.id
 WHERE images.uuid=:uuid;
 `
 
@@ -239,11 +257,15 @@ DELETE FROM images WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
 func (r image) UpdateByUUID(ctx context.Context, in inventory.Image) (inventory.Image, error) {
 	const sqlStmt = `
 WITH _lookup AS (
-  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
+  SELECT id AS cluster_id , (
+    SELECT servers.id FROM clusters
+      LEFT JOIN servers ON servers.cluster_id = clusters.id
+    WHERE clusters.name = :cluster_name AND servers.name = :server_name
+  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
 )
-UPDATE images SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
+UPDATE images SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
 WHERE uuid=:uuid
-RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
+RETURNING id, :uuid, :cluster_name, :server_name, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object.Image)
@@ -254,6 +276,7 @@ RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
+		sql.Named("server_name", in.Server),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -274,6 +297,7 @@ func scanImage(row interface{ Scan(dest ...any) error }) (inventory.Image, error
 		&image.ID,
 		&image.UUID,
 		&image.Cluster,
+		&image.Server,
 		&image.ProjectName,
 		&image.Name,
 		&object,

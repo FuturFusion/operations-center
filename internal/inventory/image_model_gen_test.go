@@ -101,6 +101,7 @@ func TestImage_Validate(t *testing.T) {
 			image: (&inventory.Image{
 				ID:          1,
 				Cluster:     "one",
+				Server:      "one",
 				ProjectName: "project one",
 				Name:        "one",
 			}).DeriveUUID(),
@@ -112,6 +113,7 @@ func TestImage_Validate(t *testing.T) {
 			image: (&inventory.Image{
 				ID:          1,
 				Cluster:     "", // invalid
+				Server:      "one",
 				ProjectName: "project one",
 				Name:        "one",
 			}).DeriveUUID(),
@@ -126,6 +128,22 @@ func TestImage_Validate(t *testing.T) {
 			image: (&inventory.Image{
 				ID:          1,
 				Cluster:     "one",
+				Server:      "", // invalid
+				ProjectName: "project one",
+				Name:        "one",
+			}).DeriveUUID(),
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - invalid project name",
+			image: (&inventory.Image{
+				ID:          1,
+				Cluster:     "one",
+				Server:      "one",
 				ProjectName: "", // invalid
 				Name:        "one",
 			}).DeriveUUID(),
@@ -140,6 +158,7 @@ func TestImage_Validate(t *testing.T) {
 			image: (&inventory.Image{
 				ID:          1,
 				Cluster:     "one",
+				Server:      "one",
 				ProjectName: "project one",
 				Name:        "", // invalid
 			}).DeriveUUID(),
@@ -154,6 +173,7 @@ func TestImage_Validate(t *testing.T) {
 			image: &inventory.Image{
 				ID:          1,
 				Cluster:     "one",
+				Server:      "one",
 				ProjectName: "project one",
 				Name:        "one",
 			}, // UUID not derived
@@ -192,12 +212,13 @@ func TestImage_Filter(t *testing.T) {
 			filter: inventory.ImageFilter{
 				UUID:        ptr.To(uuidgen.FromPattern(t, "1")),
 				Cluster:     ptr.To("cluster"),
+				Server:      ptr.To("server"),
 				ProjectName: ptr.To("project"),
 				Name:        ptr.To("name"),
 				Expression:  ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true&name=name&project=project&uuid=11111111-1111-1111-1111-111111111111`,
+			want: `cluster=cluster&filter=true&name=name&project=project&server=server&uuid=11111111-1111-1111-1111-111111111111`,
 		},
 	}
 

@@ -46,6 +46,7 @@ type Image struct {
 	ID          int               `json:"-"`
 	UUID        uuid.UUID         `json:"uuid"          db:"primary=yes"`
 	Cluster     string            `json:"cluster"       db:"join=clusters.name"`
+	Server      string            `json:"server"        db:"join=servers.name"`
 	ProjectName string            `json:"project"`
 	Name        string            `json:"name"`
 	Object      IncusImageWrapper `json:"object"`
@@ -55,6 +56,7 @@ type Image struct {
 func (m *Image) DeriveUUID() *Image {
 	identifier := strings.Join([]string{
 		m.Cluster,
+		m.Server,
 		m.ProjectName,
 		m.Name,
 	}, ":")
@@ -67,6 +69,10 @@ func (m *Image) DeriveUUID() *Image {
 func (m Image) Validate() error {
 	if m.Cluster == "" {
 		return domain.NewValidationErrf("Invalid Image, cluster can not be empty")
+	}
+
+	if m.Server == "" {
+		return domain.NewValidationErrf("Invalid Image, server can not be empty")
 	}
 
 	if m.Name == "" {
@@ -91,6 +97,7 @@ type Images []Image
 type ImageFilter struct {
 	UUID        *uuid.UUID
 	Cluster     *string
+	Server      *string
 	ProjectName *string
 	Name        *string
 	Expression  *string `db:"ignore"`
@@ -103,6 +110,10 @@ func (f ImageFilter) AppendToURLValues(query url.Values) url.Values {
 
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
+	}
+
+	if f.Server != nil {
+		query.Add("server", *f.Server)
 	}
 
 	if f.ProjectName != nil {

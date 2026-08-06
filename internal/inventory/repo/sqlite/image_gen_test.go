@@ -82,6 +82,7 @@ server-two
 
 	imageA := inventory.Image{
 		Cluster:     "one",
+		Server:      "one",
 		ProjectName: "one",
 		Name:        "one",
 		Object:      inventory.IncusImageWrapper{},
@@ -92,6 +93,7 @@ server-two
 
 	imageB := inventory.Image{
 		Cluster:     "two",
+		Server:      "two",
 		ProjectName: "two",
 		Name:        "two",
 		Object:      inventory.IncusImageWrapper{},
@@ -154,6 +156,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server, project and name.
 	imageUUIDs, err = image.GetAllUUIDsWithFilter(ctx, inventory.ImageFilter{
 		Cluster:     ptr.To("one"),
+		Server:      ptr.To("one"),
 		ProjectName: ptr.To("one"),
 		Name:        ptr.To("one"),
 	})
@@ -164,6 +167,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server, project and name.
 	dbImage, err = image.GetAllWithFilter(ctx, inventory.ImageFilter{
 		Cluster:     ptr.To("one"),
+		Server:      ptr.To("one"),
 		ProjectName: ptr.To("one"),
 		Name:        ptr.To("one"),
 	})

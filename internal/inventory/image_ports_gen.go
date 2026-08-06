@@ -32,6 +32,6 @@ type ImageRepo interface {
 }
 
 type ImageServerClient interface {
-	GetImages(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.Image, error)
+	GetImages(ctx context.Context, endpoint provisioning.Endpoint) (map[string][]incusapi.Image, error)
 	GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (incusapi.Image, error)
 }

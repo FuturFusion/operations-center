@@ -39,7 +39,7 @@ func (_d ServerClientWithErrorWrapper) GetImageByName(ctx context.Context, endpo
 }
 
 // GetImages implements inventory.ServerClient.
-func (_d ServerClientWithErrorWrapper) GetImages(ctx context.Context, endpoint provisioning.Endpoint) (images []api.Image, err error) {
+func (_d ServerClientWithErrorWrapper) GetImages(ctx context.Context, endpoint provisioning.Endpoint) (stringToImages map[string][]api.Image, err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)

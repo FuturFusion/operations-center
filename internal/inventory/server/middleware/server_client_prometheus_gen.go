@@ -55,7 +55,7 @@ func (_d ServerClientWithPrometheus) GetImageByName(ctx context.Context, endpoin
 }
 
 // GetImages implements inventory.ServerClient.
-func (_d ServerClientWithPrometheus) GetImages(ctx context.Context, endpoint provisioning.Endpoint) (images []api.Image, err error) {
+func (_d ServerClientWithPrometheus) GetImages(ctx context.Context, endpoint provisioning.Endpoint) (stringToImages map[string][]api.Image, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
