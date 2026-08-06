@@ -88,6 +88,20 @@ func (c *cmdServerBMC) Command() *cobra.Command {
 
 	cmd.AddCommand(serverBMCDumpCmd.Command())
 
+	// Attach media
+	serverBMCAttachMediaCmd := cmdServerBMCAttachMedia{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverBMCAttachMediaCmd.Command())
+
+	// Detach media
+	serverBMCDetachMediaCmd := cmdServerBMCDetachMedia{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverBMCDetachMediaCmd.Command())
+
 	return cmd
 }
 
