@@ -145,7 +145,7 @@ func (i *networkACLHandler) networkACLsGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(networkACLUUIDs))
 	for _, id := range networkACLUUIDs {
-		result = append(result, fmt.Sprintf("/%s/inventory/network_acl/%s", api.APIVersion, id.String()))
+		result = append(result, fmt.Sprintf("/%s/inventory/network_acls/%s", api.APIVersion, id.String()))
 	}
 
 	return response.SyncResponse(true, result)
