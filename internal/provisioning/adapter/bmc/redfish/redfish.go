@@ -875,6 +875,127 @@ func (r redfish) performReset(ctx context.Context, server provisioning.Server, r
 	}, nil
 }
 
+func getVirtualMediaByID(client *gofish.APIClient, id string) (*schemas.VirtualMedia, error) {
+	service, redfishID, ok := strings.Cut(id, ":")
+	if !ok || service == "" || redfishID == "" {
+		return nil, fmt.Errorf("Invalid virtual media ID %q, expected format %q (e.g. %q): %w", id, "<service>:<id>", "system:1", domain.ErrOperationNotPermitted)
+	}
+
+	var virtualMedias []*schemas.VirtualMedia
+
+	var virtualMediaReturner interface {
+		VirtualMedia() ([]*schemas.VirtualMedia, error)
+	}
+	var err error
+
+	switch service {
+	case "system":
+		virtualMediaReturner, err = getFirstSystem(client)
+
+	case "manager":
+		virtualMediaReturner, err = getFirstManager(client)
+
+	default:
+		return nil, fmt.Errorf("Unknown virtual media service %q in ID %q, expected %q or %q: %w", service, id, "system", "manager", domain.ErrOperationNotPermitted)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get BMC system: %w", err)
+	}
+
+	virtualMedias, err = virtualMediaReturner.VirtualMedia()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get virtual media from BMC system: %w", err)
+	}
+
+	for _, vm := range virtualMedias {
+		if vm.ID == redfishID {
+			return vm, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Virtual media %q not found on BMC: %w", id, domain.ErrNotFound)
+}
+
+func virtualMediaHasMedia(vm *schemas.VirtualMedia) bool {
+	if vm.Inserted != nil {
+		return *vm.Inserted
+	}
+
+	return vm.Image != ""
+}
+
+func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (*provisioning.BMCTaskMonitor, error) {
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	virtualMedia, err := getVirtualMediaByID(client, virtualMediaID)
+	if err != nil {
+		return nil, err
+	}
+
+	if virtualMediaHasMedia(virtualMedia) {
+		return nil, fmt.Errorf("Virtual media %q already has media attached, detach the media first: %w", virtualMediaID, domain.ErrOperationNotPermitted)
+	}
+
+	params := &schemas.VirtualMediaInsertMediaParameters{
+		Image:          mediaURL,
+		Inserted:       ptr.To(true),
+		TransferMethod: ptr.To(schemas.StreamTransferMethod),
+	}
+
+	taskMonitor, err := virtualMedia.InsertMedia(params)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to attach media to BMC: %w", err)
+	}
+
+	// If taskMonitor is nil, the BMC completed synchronously.
+	if taskMonitor == nil {
+		return nil, nil
+	}
+
+	return &provisioning.BMCTaskMonitor{
+		URI: taskMonitor.TaskMonitor,
+	}, nil
+}
+
+func (r redfish) DetachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string) (*provisioning.BMCTaskMonitor, error) {
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	virtualMedia, err := getVirtualMediaByID(client, virtualMediaID)
+	if err != nil {
+		return nil, err
+	}
+
+	// No media attached, nothing to detach.
+	if !virtualMediaHasMedia(virtualMedia) {
+		return nil, nil
+	}
+
+	taskMonitor, err := virtualMedia.EjectMedia()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to detach media from BMC: %w", err)
+	}
+
+	// If taskMonitor is nil, the BMC completed synchronously.
+	if taskMonitor == nil {
+		return nil, nil
+	}
+
+	return &provisioning.BMCTaskMonitor{
+		URI: taskMonitor.TaskMonitor,
+	}, nil
+}
+
 func (r redfish) LogSources(ctx context.Context, server provisioning.Server) ([]string, error) {
 	client, logout, err := r.getClient(ctx, server)
 	if err != nil {

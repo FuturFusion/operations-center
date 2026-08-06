@@ -44,6 +44,11 @@ type mockRedfishServer struct {
 	managerVirtualMediaMember2StatusCode int
 	managerVirtualMediaMember2Body       string
 
+	insertMediaStatusCode int
+	insertMediaLocation   string
+	ejectMediaStatusCode  int
+	ejectMediaLocation    string
+
 	chassisStatusCode       int
 	chassisBody             string
 	chassisMemberStatusCode int
@@ -191,6 +196,34 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
 		case "/redfish/v1/Managers/1/VirtualMedia/2":
 			w.WriteHeader(cfg.managerVirtualMediaMember2StatusCode)
 			_, _ = w.Write([]byte(cfg.managerVirtualMediaMember2Body))
+
+		case "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+			"/redfish/v1/Systems/1/VirtualMedia/2/Actions/VirtualMedia.InsertMedia",
+			"/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+			"/redfish/v1/Managers/1/VirtualMedia/2/Actions/VirtualMedia.InsertMedia":
+			if gotBody != nil {
+				*gotBody, _ = io.ReadAll(r.Body)
+			}
+
+			if cfg.insertMediaLocation != "" {
+				w.Header().Set("Location", cfg.insertMediaLocation)
+			}
+
+			w.WriteHeader(cfg.insertMediaStatusCode)
+
+		case "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia",
+			"/redfish/v1/Systems/1/VirtualMedia/2/Actions/VirtualMedia.EjectMedia",
+			"/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia",
+			"/redfish/v1/Managers/1/VirtualMedia/2/Actions/VirtualMedia.EjectMedia":
+			if gotBody != nil {
+				*gotBody, _ = io.ReadAll(r.Body)
+			}
+
+			if cfg.ejectMediaLocation != "" {
+				w.Header().Set("Location", cfg.ejectMediaLocation)
+			}
+
+			w.WriteHeader(cfg.ejectMediaStatusCode)
 
 		case "/redfish/v1/Systems/1/Processors":
 			w.WriteHeader(cfg.processorsStatusCode)
