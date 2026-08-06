@@ -4,6 +4,7 @@ image:
   project-source: direct
   object-name-property-name: fingerprint
   object-display-name: Fingerprint
+  server-id-by-target: true
   incus-get-all-method: GetImagesAllProjects
   incus-get-method: GetImage
   display-attributes:
