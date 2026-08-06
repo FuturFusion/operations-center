@@ -53,6 +53,20 @@ func (_d BMCServerClientPortWithPrometheus) ApplyBIOSAttributes(ctx context.Cont
 	return _d.base.ApplyBIOSAttributes(ctx, server, attributes)
 }
 
+// AttachMedia implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "AttachMedia", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.AttachMedia(ctx, server, virtualMediaID, mediaURL)
+}
+
 // BIOSAttribute implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithPrometheus) BIOSAttribute(ctx context.Context, server provisioning.Server, attributeName string) (bIOSAttribute api.BIOSAttribute, err error) {
 	_since := time.Now()
@@ -93,6 +107,20 @@ func (_d BMCServerClientPortWithPrometheus) ConnectionTest(ctx context.Context, 
 		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "ConnectionTest", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.ConnectionTest(ctx, server)
+}
+
+// DetachMedia implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) DetachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "DetachMedia", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DetachMedia(ctx, server, virtualMediaID)
 }
 
 // Dump implements provisioning.BMCServerClientPort.

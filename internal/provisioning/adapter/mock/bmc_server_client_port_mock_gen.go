@@ -25,6 +25,9 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //			ApplyBIOSAttributesFunc: func(ctx context.Context, server provisioning.Server, attributes map[string]any) (*provisioning.BMCTaskMonitor, error) {
 //				panic("mock out the ApplyBIOSAttributes method")
 //			},
+//			AttachMediaFunc: func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (*provisioning.BMCTaskMonitor, error) {
+//				panic("mock out the AttachMedia method")
+//			},
 //			BIOSAttributeFunc: func(ctx context.Context, server provisioning.Server, attributeName string) (api.BIOSAttribute, error) {
 //				panic("mock out the BIOSAttribute method")
 //			},
@@ -33,6 +36,9 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //			},
 //			ConnectionTestFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
 //				panic("mock out the ConnectionTest method")
+//			},
+//			DetachMediaFunc: func(ctx context.Context, server provisioning.Server, virtualMediaID string) (*provisioning.BMCTaskMonitor, error) {
+//				panic("mock out the DetachMedia method")
 //			},
 //			DumpFunc: func(ctx context.Context, server provisioning.Server, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error) {
 //				panic("mock out the Dump method")
@@ -71,6 +77,9 @@ type BMCServerClientPortMock struct {
 	// ApplyBIOSAttributesFunc mocks the ApplyBIOSAttributes method.
 	ApplyBIOSAttributesFunc func(ctx context.Context, server provisioning.Server, attributes map[string]any) (*provisioning.BMCTaskMonitor, error)
 
+	// AttachMediaFunc mocks the AttachMedia method.
+	AttachMediaFunc func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (*provisioning.BMCTaskMonitor, error)
+
 	// BIOSAttributeFunc mocks the BIOSAttribute method.
 	BIOSAttributeFunc func(ctx context.Context, server provisioning.Server, attributeName string) (api.BIOSAttribute, error)
 
@@ -79,6 +88,9 @@ type BMCServerClientPortMock struct {
 
 	// ConnectionTestFunc mocks the ConnectionTest method.
 	ConnectionTestFunc func(ctx context.Context, server provisioning.Server) (string, error)
+
+	// DetachMediaFunc mocks the DetachMedia method.
+	DetachMediaFunc func(ctx context.Context, server provisioning.Server, virtualMediaID string) (*provisioning.BMCTaskMonitor, error)
 
 	// DumpFunc mocks the Dump method.
 	DumpFunc func(ctx context.Context, server provisioning.Server, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error)
@@ -118,6 +130,17 @@ type BMCServerClientPortMock struct {
 			// Attributes is the attributes argument value.
 			Attributes map[string]any
 		}
+		// AttachMedia holds details about calls to the AttachMedia method.
+		AttachMedia []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// VirtualMediaID is the virtualMediaID argument value.
+			VirtualMediaID string
+			// MediaURL is the mediaURL argument value.
+			MediaURL string
+		}
 		// BIOSAttribute holds details about calls to the BIOSAttribute method.
 		BIOSAttribute []struct {
 			// Ctx is the ctx argument value.
@@ -140,6 +163,15 @@ type BMCServerClientPortMock struct {
 			Ctx context.Context
 			// Server is the server argument value.
 			Server provisioning.Server
+		}
+		// DetachMedia holds details about calls to the DetachMedia method.
+		DetachMedia []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// VirtualMediaID is the virtualMediaID argument value.
+			VirtualMediaID string
 		}
 		// Dump holds details about calls to the Dump method.
 		Dump []struct {
@@ -224,9 +256,11 @@ type BMCServerClientPortMock struct {
 		}
 	}
 	lockApplyBIOSAttributes        sync.RWMutex
+	lockAttachMedia                sync.RWMutex
 	lockBIOSAttribute              sync.RWMutex
 	lockBIOSAttributes             sync.RWMutex
 	lockConnectionTest             sync.RWMutex
+	lockDetachMedia                sync.RWMutex
 	lockDump                       sync.RWMutex
 	lockGetData                    sync.RWMutex
 	lockLogEntriesBySource         sync.RWMutex
@@ -275,6 +309,50 @@ func (mock *BMCServerClientPortMock) ApplyBIOSAttributesCalls() []struct {
 	mock.lockApplyBIOSAttributes.RLock()
 	calls = mock.calls.ApplyBIOSAttributes
 	mock.lockApplyBIOSAttributes.RUnlock()
+	return calls
+}
+
+// AttachMedia calls AttachMediaFunc.
+func (mock *BMCServerClientPortMock) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (*provisioning.BMCTaskMonitor, error) {
+	if mock.AttachMediaFunc == nil {
+		panic("BMCServerClientPortMock.AttachMediaFunc: method is nil but BMCServerClientPort.AttachMedia was just called")
+	}
+	callInfo := struct {
+		Ctx            context.Context
+		Server         provisioning.Server
+		VirtualMediaID string
+		MediaURL       string
+	}{
+		Ctx:            ctx,
+		Server:         server,
+		VirtualMediaID: virtualMediaID,
+		MediaURL:       mediaURL,
+	}
+	mock.lockAttachMedia.Lock()
+	mock.calls.AttachMedia = append(mock.calls.AttachMedia, callInfo)
+	mock.lockAttachMedia.Unlock()
+	return mock.AttachMediaFunc(ctx, server, virtualMediaID, mediaURL)
+}
+
+// AttachMediaCalls gets all the calls that were made to AttachMedia.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.AttachMediaCalls())
+func (mock *BMCServerClientPortMock) AttachMediaCalls() []struct {
+	Ctx            context.Context
+	Server         provisioning.Server
+	VirtualMediaID string
+	MediaURL       string
+} {
+	var calls []struct {
+		Ctx            context.Context
+		Server         provisioning.Server
+		VirtualMediaID string
+		MediaURL       string
+	}
+	mock.lockAttachMedia.RLock()
+	calls = mock.calls.AttachMedia
+	mock.lockAttachMedia.RUnlock()
 	return calls
 }
 
@@ -387,6 +465,46 @@ func (mock *BMCServerClientPortMock) ConnectionTestCalls() []struct {
 	mock.lockConnectionTest.RLock()
 	calls = mock.calls.ConnectionTest
 	mock.lockConnectionTest.RUnlock()
+	return calls
+}
+
+// DetachMedia calls DetachMediaFunc.
+func (mock *BMCServerClientPortMock) DetachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string) (*provisioning.BMCTaskMonitor, error) {
+	if mock.DetachMediaFunc == nil {
+		panic("BMCServerClientPortMock.DetachMediaFunc: method is nil but BMCServerClientPort.DetachMedia was just called")
+	}
+	callInfo := struct {
+		Ctx            context.Context
+		Server         provisioning.Server
+		VirtualMediaID string
+	}{
+		Ctx:            ctx,
+		Server:         server,
+		VirtualMediaID: virtualMediaID,
+	}
+	mock.lockDetachMedia.Lock()
+	mock.calls.DetachMedia = append(mock.calls.DetachMedia, callInfo)
+	mock.lockDetachMedia.Unlock()
+	return mock.DetachMediaFunc(ctx, server, virtualMediaID)
+}
+
+// DetachMediaCalls gets all the calls that were made to DetachMedia.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.DetachMediaCalls())
+func (mock *BMCServerClientPortMock) DetachMediaCalls() []struct {
+	Ctx            context.Context
+	Server         provisioning.Server
+	VirtualMediaID string
+} {
+	var calls []struct {
+		Ctx            context.Context
+		Server         provisioning.Server
+		VirtualMediaID string
+	}
+	mock.lockDetachMedia.RLock()
+	calls = mock.calls.DetachMedia
+	mock.lockDetachMedia.RUnlock()
 	return calls
 }
 
