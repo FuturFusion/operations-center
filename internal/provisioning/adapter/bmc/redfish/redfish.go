@@ -6,9 +6,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -29,12 +31,31 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-type redfish struct{}
+type redfish struct {
+	secureBootCertificates map[string][]schemas.Certificate
+}
 
 var _ provisioning.BMCServerClientPort = redfish{}
 
-func New() redfish {
-	return redfish{}
+type Option func(*redfish)
+
+// WithSecureBootCertificates defines the certificates, which are written to the
+// respective secure boot databases (e.g. "KEK", "DB") during setup of the
+// secure boot certificates.
+func WithSecureBootCertificates(certificates map[string][]schemas.Certificate) Option {
+	return func(r *redfish) {
+		r.secureBootCertificates = certificates
+	}
+}
+
+func New(opts ...Option) redfish {
+	r := redfish{}
+
+	for _, opt := range opts {
+		opt(&r)
+	}
+
+	return r
 }
 
 func (r redfish) getClient(ctx context.Context, server provisioning.Server) (_ *gofish.APIClient, logout func(), _ error) {
@@ -276,6 +297,34 @@ func getFirstSystem(client *gofish.APIClient) (*schemas.ComputerSystem, error) {
 	return systems[0], nil
 }
 
+// getBIOSSettingsApplyTimes fetches the BIOS resource and returns the apply
+// times the BMC actually declared support for.
+// TODO: replace when https://github.com/stmcginnis/gofish/issues/551 is resolved.
+func getBIOSSettingsApplyTimes(client *gofish.APIClient, biosODataID string) ([]schemas.SettingsApplyTime, error) {
+	resp, err := client.Get(biosODataID)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var raw struct {
+		Settings schemas.Settings `json:"@Redfish.Settings"`
+	}
+
+	err = json.Unmarshal(body, &raw)
+	if err != nil {
+		return nil, err
+	}
+
+	return raw.Settings.SupportedApplyTimes, nil
+}
+
 func getFirstProcessor(system *schemas.ComputerSystem) (*schemas.Processor, error) {
 	processors, err := system.Processors()
 	if err != nil {
@@ -374,6 +423,120 @@ func (r redfish) WaitForTask(ctx context.Context, server provisioning.Server, ta
 			return ctx.Err()
 		}
 	}
+}
+
+func (r redfish) ApplyBIOSAttributes(ctx context.Context, server provisioning.Server, attributes map[string]any) (*provisioning.BMCTaskMonitor, error) {
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	system, err := getFirstSystem(client)
+	if err != nil {
+		return nil, fmt.Errorf("Failed get BMC system: %w", err)
+	}
+
+	bios, err := system.Bios()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get bios information: %w", err)
+	}
+
+	supportedApplyTimes, err := getBIOSSettingsApplyTimes(client, bios.ODataID)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get bios settings apply time capabilities: %w", err)
+	}
+
+	if !slices.Contains(supportedApplyTimes, schemas.OnResetSettingsApplyTime) {
+		err = bios.UpdateBiosAttributes(schemas.SettingsAttributes(attributes))
+		if err != nil {
+			return nil, fmt.Errorf("Failed to apply bios attributes: %w", err)
+		}
+
+		return nil, nil
+	}
+
+	tm, err := bios.UpdateBiosAttributesApplyAtWithTask(schemas.SettingsAttributes(attributes), schemas.OnResetSettingsApplyTime)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to apply bios attributes: %w", err)
+	}
+
+	if tm != nil {
+		return &provisioning.BMCTaskMonitor{
+			URI: tm.TaskMonitor,
+		}, nil
+	}
+
+	return nil, nil
+}
+
+func (r redfish) SetupSecureBootCertificates(ctx context.Context, server provisioning.Server) error {
+	if len(r.secureBootCertificates) == 0 {
+		return fmt.Errorf("Setup of secure boot certificates is not supported, no certificates are configured: %w", domain.ErrOperationNotPermitted)
+	}
+
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	system, err := getFirstSystem(client)
+	if err != nil {
+		return fmt.Errorf("Failed get BMC system: %w", err)
+	}
+
+	secureBoot, err := system.SecureBoot()
+	if err != nil {
+		return fmt.Errorf("Failed to get secure boot information: %w", err)
+	}
+
+	secureBootDatabases, err := secureBoot.SecureBootDatabases()
+	if err != nil {
+		return fmt.Errorf("Failed to get secure boot databases: %w", err)
+	}
+
+	// Wipe certificates from secure boot databases and reinitialize the
+	// secure boot databases with the Incus certificates.
+	toBeCleanedSecureBootDatabases := []string{"KEK", "DB", "DBX"}
+	for _, secureBootDB := range secureBootDatabases {
+		dbName := strings.ToUpper(secureBootDB.Name)
+		if !slices.Contains(toBeCleanedSecureBootDatabases, dbName) {
+			continue
+		}
+
+		certs, err := secureBootDB.Certificates()
+		if err != nil {
+			return fmt.Errorf("Failed to get secure boot database certificates: %w", err)
+		}
+
+		for _, cert := range certs {
+			resp, err := client.Delete(cert.ODataID)
+			if err != nil {
+				slog.WarnContext(ctx, "Failed to delete secure boot certificate", slog.String("odata_id", cert.ODataID), logger.Err(err))
+				continue
+			}
+
+			_ = resp.Body.Close()
+		}
+
+		for _, cert := range r.secureBootCertificates[dbName] {
+			resp, err := client.Post(secureBootDB.ODataID, cert)
+			if err != nil {
+				return fmt.Errorf("Failed to add certificate to secure boot DB %q: %w", secureBootDB.ODataID, err)
+			}
+
+			_ = resp.Body.Close()
+
+			if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+				return fmt.Errorf("Unexpected status %d when adding certificate to secure boot DB %q", resp.StatusCode, secureBootDB.ODataID)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (r redfish) performReset(ctx context.Context, server provisioning.Server, resetType schemas.ResetType) (*provisioning.BMCTaskMonitor, error) {

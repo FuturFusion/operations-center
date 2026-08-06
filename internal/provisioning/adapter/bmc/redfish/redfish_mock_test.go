@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	incustls "github.com/lxc/incus/v7/shared/tls"
@@ -42,6 +43,21 @@ type mockRedfishServer struct {
 	taskMonitorStatusCodes []int
 	taskMonitorRetryAfter  string
 
+	biosStatusCode               int
+	biosBody                     string
+	biosPatchStatusCode          int
+	biosPatchTaskMonitorLocation string
+
+	secureBootStatusCode          int
+	secureBootBody                string
+	secureBootDatabasesStatusCode int
+	secureBootDatabasesBody       string
+	secureBootDatabases           map[string]mockSecureBootDatabase
+
+	gotDeletedCertPaths *[]string
+	gotPostedCerts      *map[string][]string
+	gotBiosPatchBody    *[]byte
+
 	// extraRoutes allows tests to serve additional canned responses for paths
 	// not covered by the dedicated fields above, keyed by the exact request
 	// path.
@@ -52,6 +68,26 @@ type mockRedfishRoute struct {
 	statusCode int
 	body       string
 }
+
+type mockSecureBootDatabase struct {
+	statusCode int
+	body       string
+
+	postStatusCode int
+
+	certificatesStatusCode int
+	certificatesBody       string
+
+	certificates map[string]mockCertificate
+}
+
+type mockCertificate struct {
+	statusCode       int
+	body             string
+	deleteStatusCode int
+}
+
+const secureBootDatabasesPathPrefix = "/redfish/v1/Systems/1/SecureBoot/SecureBootDatabases/"
 
 const defaultResetActionInfoBody = `{
   "@odata.id": "/redfish/v1/Systems/1/ResetActionInfo",
@@ -68,6 +104,7 @@ func newMockRedfishServer(t *testing.T, cfg mockRedfishServer, gotBody *[]byte) 
 	t.Helper()
 
 	svr := httptest.NewServer(newMockRedfishHandler(cfg, gotBody))
+
 	t.Cleanup(svr.Close)
 
 	return svr
@@ -91,8 +128,8 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
 			return
 		}
 
-		switch r.URL.Path {
-		case "/redfish/v1/":
+		switch {
+		case r.URL.Path == "/redfish/v1/":
 			w.WriteHeader(cfg.serviceRootStatusCode)
 
 			if cfg.serviceRootStatusCode == http.StatusOK {
@@ -107,22 +144,22 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
 }`))
 			}
 
-		case "/redfish/v1/Systems":
+		case r.URL.Path == "/redfish/v1/Systems":
 			w.WriteHeader(cfg.systemsStatusCode)
 			_, _ = w.Write([]byte(cfg.systemsBody))
 
-		case "/redfish/v1/Systems/1":
+		case r.URL.Path == "/redfish/v1/Systems/1":
 			w.WriteHeader(cfg.systemStatusCode)
 			_, _ = w.Write([]byte(cfg.systemBody))
 
-		case "/redfish/v1/Systems/1/ResetActionInfo":
+		case r.URL.Path == "/redfish/v1/Systems/1/ResetActionInfo":
 			statusCode := cfg.resetActionInfoStatusCode
 			body := cfg.resetActionInfoBody
 
 			w.WriteHeader(statusCode)
 			_, _ = w.Write([]byte(body))
 
-		case "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset":
+		case r.URL.Path == "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset":
 			if gotBody != nil {
 				*gotBody, _ = io.ReadAll(r.Body)
 			}
@@ -133,41 +170,41 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
 
 			w.WriteHeader(cfg.resetStatusCode)
 
-		case "/redfish/v1/Managers":
+		case r.URL.Path == "/redfish/v1/Managers":
 			w.WriteHeader(cfg.managersStatusCode)
 			_, _ = w.Write([]byte(cfg.managersBody))
 
-		case "/redfish/v1/Managers/1":
+		case r.URL.Path == "/redfish/v1/Managers/1":
 			w.WriteHeader(cfg.managerStatusCode)
 			_, _ = w.Write([]byte(cfg.managerBody))
 
-		case "/redfish/v1/Systems/1/Processors":
+		case r.URL.Path == "/redfish/v1/Systems/1/Processors":
 			w.WriteHeader(cfg.processorsStatusCode)
 			_, _ = w.Write([]byte(cfg.processorsBody))
 
-		case "/redfish/v1/Systems/1/Processors/1":
+		case r.URL.Path == "/redfish/v1/Systems/1/Processors/1":
 			w.WriteHeader(cfg.processorStatusCode)
 			_, _ = w.Write([]byte(cfg.processorBody))
 
-		case "/redfish/v1/Chassis":
+		case r.URL.Path == "/redfish/v1/Chassis":
 			w.WriteHeader(cfg.chassisStatusCode)
 			_, _ = w.Write([]byte(cfg.chassisBody))
 
-		case "/redfish/v1/Chassis/1":
+		case r.URL.Path == "/redfish/v1/Chassis/1":
 			w.WriteHeader(cfg.chassisMemberStatusCode)
 			_, _ = w.Write([]byte(cfg.chassisMemberBody))
 
-		case "/redfish/v1/Chassis/1/LogServices",
-			"/redfish/v1/Systems/1/LogServices",
-			"/redfish/v1/Managers/1/LogServices":
+		case r.URL.Path == "/redfish/v1/Chassis/1/LogServices" ||
+			r.URL.Path == "/redfish/v1/Systems/1/LogServices" ||
+			r.URL.Path == "/redfish/v1/Managers/1/LogServices":
 			w.WriteHeader(cfg.logServicesStatusCode)
 			_, _ = w.Write([]byte(cfg.logServicesBody))
 
-		case "/redfish/v1/LogEntries":
+		case r.URL.Path == "/redfish/v1/LogEntries":
 			w.WriteHeader(cfg.logEntriesStatusCode)
 			_, _ = w.Write([]byte(cfg.logEntriesBody))
 
-		case "/redfish/v1/TaskMonitor/1":
+		case r.URL.Path == "/redfish/v1/TaskMonitor/1":
 			statusCode := cfg.taskMonitorStatusCodes[min(taskMonitorCallCount, len(cfg.taskMonitorStatusCodes)-1)]
 			taskMonitorCallCount++
 
@@ -176,6 +213,20 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
 			}
 
 			w.WriteHeader(statusCode)
+
+		case r.URL.Path == "/redfish/v1/Systems/1/Bios":
+			handleBios(w, r, cfg)
+
+		case r.URL.Path == "/redfish/v1/Systems/1/SecureBoot":
+			w.WriteHeader(cfg.secureBootStatusCode)
+			_, _ = w.Write([]byte(cfg.secureBootBody))
+
+		case r.URL.Path == "/redfish/v1/Systems/1/SecureBoot/SecureBootDatabases":
+			w.WriteHeader(cfg.secureBootDatabasesStatusCode)
+			_, _ = w.Write([]byte(cfg.secureBootDatabasesBody))
+
+		case strings.HasPrefix(r.URL.Path, secureBootDatabasesPathPrefix):
+			handleSecureBootDatabasePath(w, r, cfg)
 
 		default:
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
@@ -205,4 +256,97 @@ func newTLSServerWithoutSAN(t *testing.T, responses mockRedfishServer) (svr *htt
 	require.Empty(t, svr.Certificate().IPAddresses)
 
 	return svr, string(certPEMByte)
+}
+
+func handleBios(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer) {
+	switch r.Method {
+	case http.MethodGet:
+		w.WriteHeader(cfg.biosStatusCode)
+		_, _ = w.Write([]byte(cfg.biosBody))
+
+	case http.MethodPatch:
+		body, _ := io.ReadAll(r.Body)
+
+		if cfg.gotBiosPatchBody != nil {
+			*cfg.gotBiosPatchBody = body
+		}
+
+		if cfg.biosPatchTaskMonitorLocation != "" {
+			w.Header().Set("Location", cfg.biosPatchTaskMonitorLocation)
+		}
+
+		w.WriteHeader(cfg.biosPatchStatusCode)
+
+	default:
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	}
+}
+
+func handleSecureBootDatabasePath(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer) {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, secureBootDatabasesPathPrefix), "/")
+
+	db, ok := cfg.secureBootDatabases[parts[0]]
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	switch len(parts) {
+	case 1:
+		handleSecureBootDatabase(w, r, cfg, parts[0], db)
+
+	case 2:
+		w.WriteHeader(db.certificatesStatusCode)
+		_, _ = w.Write([]byte(db.certificatesBody))
+
+	case 3:
+		handleSecureBootCertificate(w, r, cfg, db, parts[2])
+
+	default:
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+	}
+}
+
+func handleSecureBootDatabase(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer, dbID string, db mockSecureBootDatabase) {
+	switch r.Method {
+	case http.MethodGet:
+		w.WriteHeader(db.statusCode)
+		_, _ = w.Write([]byte(db.body))
+
+	case http.MethodPost:
+		body, _ := io.ReadAll(r.Body)
+
+		if cfg.gotPostedCerts != nil {
+			(*cfg.gotPostedCerts)[dbID] = append((*cfg.gotPostedCerts)[dbID], string(body))
+		}
+
+		w.WriteHeader(db.postStatusCode)
+
+	default:
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	}
+}
+
+func handleSecureBootCertificate(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer, db mockSecureBootDatabase, certID string) {
+	cert, ok := db.certificates[certID]
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		w.WriteHeader(cert.statusCode)
+		_, _ = w.Write([]byte(cert.body))
+
+	case http.MethodDelete:
+		if cfg.gotDeletedCertPaths != nil {
+			*cfg.gotDeletedCertPaths = append(*cfg.gotDeletedCertPaths, r.URL.Path)
+		}
+
+		w.WriteHeader(cert.deleteStatusCode)
+
+	default:
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	}
 }
