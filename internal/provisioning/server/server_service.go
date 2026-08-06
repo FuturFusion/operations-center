@@ -2605,3 +2605,150 @@ func (s *serverService) BMCDumpByName(ctx context.Context, name string, addition
 
 	return dump, nil
 }
+
+func (s *serverService) BMCAttachMediaByName(ctx context.Context, name string, media api.ServerBMCAttachMedia) error {
+	if name == "" {
+		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	tokenUUID, err := uuid.Parse(media.TokenUUID)
+	if err != nil {
+		return fmt.Errorf("Invalid token UUID %q: %w", media.TokenUUID, domain.ErrOperationNotPermitted)
+	}
+
+	if media.Seed == "" {
+		return fmt.Errorf("Token seed cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	if media.VirtualMediaID == "" {
+		return fmt.Errorf("Virtual media ID cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	imageType := api.ImageType(media.Type)
+	if !imageType.IsValid() {
+		return fmt.Errorf("Invalid image type %q: %w", media.Type, domain.ErrOperationNotPermitted)
+	}
+
+	// The undefined architecture is part of images.UpdateFileArchitectures, but
+	// no image can be generated for it, so it is rejected explicitly.
+	architecture := images.UpdateFileArchitecture(media.Architecture)
+	_, ok := images.UpdateFileArchitectures[architecture]
+	if !ok || architecture == images.UpdateFileArchitectureUndefined {
+		return fmt.Errorf("Invalid architecture %q: %w", media.Architecture, domain.ErrOperationNotPermitted)
+	}
+
+	// Verify the requested channel exists, if provided. An empty channel lets
+	// the image endpoint fall back to the configured default channel.
+	if media.Channel != "" {
+		_, err = s.channelSvc.GetByName(ctx, media.Channel)
+		if err != nil {
+			return fmt.Errorf("Failed to get channel %q: %w", media.Channel, err)
+		}
+	}
+
+	// The token seed must be public, so the BMC can retrieve the generated image
+	// without authentication.
+	seed, err := s.tokenSvc.GetTokenSeedByName(ctx, tokenUUID, media.Seed)
+	if err != nil {
+		return fmt.Errorf("Failed to get token seed %q: %w", media.Seed, err)
+	}
+
+	if !seed.Public {
+		return fmt.Errorf("Token seed %q must be public to attach it as installation media via the BMC: %w", media.Seed, domain.ErrOperationNotPermitted)
+	}
+
+	// Build the image URL the BMC streams the installation media from. It points
+	// at the public token seed image endpoint of Operations Center.
+	base := config.GetNetwork().OperationsCenterAddress
+	if base == "" {
+		return fmt.Errorf("Operations Center address is not configured, cannot build installation media URL: %w", domain.ErrOperationNotPermitted)
+	}
+
+	// OperationsCenterAddress is validated on config save.
+	baseURL, _ := url.Parse(base)
+
+	imageURL := baseURL.JoinPath("1.0", "provisioning", "tokens", tokenUUID.String(), "seeds", media.Seed)
+
+	query := imageURL.Query()
+	query.Set("type", imageType.String())
+	query.Set("architecture", architecture.String())
+	if media.Channel != "" {
+		query.Set("channel", media.Channel)
+	}
+
+	imageURL.RawQuery = query.Encode()
+
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
+	if !ok {
+		return fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCConfig.APIType, err)
+	}
+
+	taskMonitor, err := client.AttachMedia(ctx, *server, media.VirtualMediaID, imageURL.String())
+	if err != nil {
+		return fmt.Errorf("Failed to attach media to server %q via BMC: %w", server.Name, err)
+	}
+
+	go func() {
+		// Use a detached context in order to make sure, no existing DB transaction is inherited.
+		ctx := context.Background()
+
+		err = client.WaitForTask(ctx, *server, taskMonitor)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after attach media operation", logger.Err(err))
+		}
+
+		err = s.resyncBMCData(ctx, *server)
+		if err != nil {
+			slog.WarnContext(ctx, "Resync of BMC data after attach media failed", logger.Err(err), slog.String("name", server.Name))
+		}
+	}()
+
+	return nil
+}
+
+func (s *serverService) BMCDetachMediaByName(ctx context.Context, name string, virtualMediaID string) error {
+	if name == "" {
+		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	if virtualMediaID == "" {
+		return fmt.Errorf("Virtual media ID cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
+	if !ok {
+		return fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCConfig.APIType, err)
+	}
+
+	taskMonitor, err := client.DetachMedia(ctx, *server, virtualMediaID)
+	if err != nil {
+		return fmt.Errorf("Failed to detach media from server %q via BMC: %w", server.Name, err)
+	}
+
+	go func() {
+		// Use a detached context in order to make sure, no existing DB transaction is inherited.
+		ctx := context.Background()
+
+		err = client.WaitForTask(ctx, *server, taskMonitor)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after detach media operation", logger.Err(err))
+		}
+
+		err = s.resyncBMCData(ctx, *server)
+		if err != nil {
+			slog.WarnContext(ctx, "Resync of BMC data after detach media failed", logger.Err(err), slog.String("name", server.Name))
+		}
+	}()
+
+	return nil
+}
