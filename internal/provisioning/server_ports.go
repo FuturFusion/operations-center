@@ -63,6 +63,8 @@ type ServerService interface {
 	ApplyBIOSAttributesByName(ctx context.Context, name string, attributes map[string]any) error
 	BMCBIOSAttributesByName(ctx context.Context, name string) ([]api.BIOSAttribute, error)
 	BMCBIOSAttributeByName(ctx context.Context, name string, attributeName string) (api.BIOSAttribute, error)
+	BMCAttachMediaByName(ctx context.Context, name string, media api.ServerBMCAttachMedia) error
+	BMCDetachMediaByName(ctx context.Context, name string, virtualMediaID string) error
 }
 
 type ServerRepo interface {
@@ -127,4 +129,6 @@ type BMCServerClientPort interface {
 	ApplyBIOSAttributes(ctx context.Context, server Server, attributes map[string]any) (*BMCTaskMonitor, error)
 	BIOSAttributes(ctx context.Context, server Server) ([]api.BIOSAttribute, error)
 	BIOSAttribute(ctx context.Context, server Server, attributeName string) (api.BIOSAttribute, error)
+	AttachMedia(ctx context.Context, server Server, virtualMediaID string, mediaURL string) (*BMCTaskMonitor, error)
+	DetachMedia(ctx context.Context, server Server, virtualMediaID string) (*BMCTaskMonitor, error)
 }
