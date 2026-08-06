@@ -201,6 +201,10 @@ func (c *cmdRemoteAdd) checkRemoteConnectivity(ctx context.Context, name string,
 	opts := []client.Option{}
 	opts = append(opts, client.WithClientCertificate(clientCertInfo))
 
+	if remote.ServerCert.Certificate != nil {
+		opts = append(opts, client.WithTrustedServerCertificate(remote.ServerCert.Certificate))
+	}
+
 	if remote.AuthType == config.AuthTypeOIDC {
 		configDir, err := c.env.UserConfigDir()
 		if err != nil {
@@ -235,6 +239,12 @@ func (c *cmdRemoteAdd) checkRemoteConnectivity(ctx context.Context, name string,
 		}
 
 		remote.ServerCert = serverCert
+
+		// Recreate the client, with the just accepted server certificate.
+		remoteOCClient, err = client.New(remote.Addr, append(opts, client.WithTrustedServerCertificate(remote.ServerCert.Certificate))...)
+		if err != nil {
+			return fmt.Errorf(`Failed to create client for new remote: %v`, err)
+		}
 	}
 
 	// Verify the users credentials (TLS client cert or OIDC).
