@@ -2,6 +2,9 @@
 
 package api
 
+// InventoryAggregate holds the inventory resources of a single cluster.
+//
+// swagger:model
 type InventoryAggregate struct {
 	Cluster              string                `json:"cluster" yaml:"cluster"`
 	Servers              []string              `json:"servers" yaml:"servers"`

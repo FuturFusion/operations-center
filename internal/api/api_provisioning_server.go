@@ -113,41 +113,20 @@ func registerProvisioningServerHandler(
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
+//	  - in: query
+//	    name: status
+//	    description: Status to filter for.
+//	    type: string
+//	    x-example: ready
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API servers
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of servers
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/provisioning/servers/one",
-//	              "/1.0/provisioning/servers/two"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -167,41 +146,20 @@ func registerProvisioningServerHandler(
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
 //	  - in: query
 //	    name: status
 //	    description: Status to filter for.
 //	    type: string
-//	    example: ready
+//	    x-example: ready
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API servers
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of servers
-//	          items:
-//	            $ref: "#/definitions/Server"
+//	    $ref: "#/responses/ServersResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -287,14 +245,20 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation POST /1.0/provisioning/servers?token=token servers servers_post
+// swagger:operation POST /1.0/provisioning/servers servers servers_post
 //
-//	Register a server using token
+//	Add a server
 //
-//	Registers a server in Operations Center. If an existing server record
-//	identified by the registration token and in state "unregistered" is found,
-//	this server record is updated. Otherwise a new server is created as
-//	registered.
+//	Adds a server to Operations Center.
+//
+//	With a registration token, the token authenticates the request and the
+//	server is registered: if an existing server record identified by the system
+//	UUID or the machine ID and it is in state "unregistered", that record is
+//	updated, otherwise a new server is created as registered. The response
+//	metadata then holds the client certificate of Operations Center.
+//
+//	Without a registration token the request requires regular authentication
+//	and the server is created as unregistered. The response is then empty.
 //
 //	---
 //	consumes:
@@ -304,64 +268,18 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 //	parameters:
 //	  - in: query
 //	    name: token
+//	    description: Registration token, authenticates the request when set
+//	    type: string
+//	    format: uuid
 //	  - in: body
 //	    name: server
 //	    description: Server configuration
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/Server"
+//	      $ref: "#/definitions/ServerPost"
 //	responses:
 //	  "200":
-//	    description: Register server response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: object
-//	          description: Register server response details
-//	          items:
-//	            $ref: "#/definitions/ServerRegistrationResponse"
-//	  "400":
-//	    $ref: "#/responses/BadRequest"
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
-
-// swagger:operation POST /1.0/provisioning/servers servers servers_post_pre_register
-//
-//	Add a new unregistered server
-//
-//	Creates a new unregistered server.
-//
-//	---
-//	consumes:
-//	  - application/json
-//	produces:
-//	  - application/json
-//	parameters:
-//	  - in: body
-//	    name: server
-//	    description: Server configuration
-//	    required: true
-//	    schema:
-//	      $ref: "#/definitions/Server"
-//	responses:
-//	  "200":
-//	    $ref: "#/responses/EmptySyncResponse"
+//	    $ref: "#/responses/ServerRegistrationResultResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -481,29 +399,19 @@ func (s *serverHandler) serversPostPreRegister(r *http.Request) response.Respons
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: Server
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/Server"
+//	    $ref: "#/responses/ServerResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverGet(r *http.Request) response.Response {
@@ -560,6 +468,11 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: server
 //	    description: Server definition
@@ -573,6 +486,8 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -761,6 +676,12 @@ func (s *serverHandler) serverPostSelfRegister(r *http.Request) response.Respons
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -768,6 +689,8 @@ func (s *serverHandler) serverPostSelfRegister(r *http.Request) response.Respons
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverDelete(r *http.Request) response.Response {
@@ -793,6 +716,11 @@ func (s *serverHandler) serverDelete(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: server
 //	    description: Server definition
@@ -806,6 +734,8 @@ func (s *serverHandler) serverDelete(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -861,6 +791,12 @@ func (s *serverHandler) serverPost(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -868,6 +804,8 @@ func (s *serverHandler) serverPost(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -889,7 +827,7 @@ func (s *serverHandler) serverResyncPost(r *http.Request) response.Response {
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:refresh servers_bmc_refresh server_bmc_refresh_post
+// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:refresh servers_bmc server_bmc_refresh_post
 //
 //	Refresh the BMC data
 //
@@ -897,6 +835,11 @@ func (s *serverHandler) serverResyncPost(r *http.Request) response.Response {
 //
 //	---
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	produces:
 //	  - application/json
 //	responses:
@@ -906,6 +849,8 @@ func (s *serverHandler) serverResyncPost(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -921,7 +866,7 @@ func (s *serverHandler) serverBMCRefreshPost(r *http.Request) response.Response 
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:server-power-on servers_bmc_server_power_on server_bmc_server_power_on_post
+// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:server-power-on servers_bmc server_bmc_server_power_on_post
 //
 //	Power on server via BMC
 //
@@ -929,12 +874,19 @@ func (s *serverHandler) serverBMCRefreshPost(r *http.Request) response.Response 
 //
 //	---
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	  - in: query
 //	    name: force
 //	    description: |-
 //	      Boolean indicating, if the operations should be applied forcefully or
 //	      not.
 //	      Defaults to false.
+//	    type: boolean
+//	    x-example: true
 //	produces:
 //	  - application/json
 //	responses:
@@ -944,6 +896,8 @@ func (s *serverHandler) serverBMCRefreshPost(r *http.Request) response.Response 
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -960,7 +914,7 @@ func (s *serverHandler) serverBMCServerPowerOnPost(r *http.Request) response.Res
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:server-power-off servers_bmc_server_power_off server_bmc_server_power_off_post
+// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:server-power-off servers_bmc server_bmc_server_power_off_post
 //
 //	Power off server via BMC
 //
@@ -968,12 +922,19 @@ func (s *serverHandler) serverBMCServerPowerOnPost(r *http.Request) response.Res
 //
 //	---
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	  - in: query
 //	    name: force
 //	    description: |-
 //	      Boolean indicating, if the operations should be applied forcefully or
 //	      not.
 //	      Defaults to false.
+//	    type: boolean
+//	    x-example: true
 //	produces:
 //	  - application/json
 //	responses:
@@ -983,6 +944,8 @@ func (s *serverHandler) serverBMCServerPowerOnPost(r *http.Request) response.Res
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -999,7 +962,7 @@ func (s *serverHandler) serverBMCServerPowerOffPost(r *http.Request) response.Re
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:server-restart servers_bmc_server_restart server_bmc_server_restart_post
+// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:server-restart servers_bmc server_bmc_server_restart_post
 //
 //	Restart server via BMC
 //
@@ -1007,12 +970,19 @@ func (s *serverHandler) serverBMCServerPowerOffPost(r *http.Request) response.Re
 //
 //	---
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	  - in: query
 //	    name: force
 //	    description: |-
 //	      Boolean indicating, if the operations should be applied forcefully or
 //	      not.
 //	      Defaults to false.
+//	    type: boolean
+//	    x-example: true
 //	produces:
 //	  - application/json
 //	responses:
@@ -1022,6 +992,8 @@ func (s *serverHandler) serverBMCServerPowerOffPost(r *http.Request) response.Re
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -1038,7 +1010,7 @@ func (s *serverHandler) serverBMCServerRestartPost(r *http.Request) response.Res
 	return response.EmptySyncResponse
 }
 
-// swagger:operation GET /1.0/provisioning/servers/{name}/bmc/logs servers_bmc_logs server_bmc_logs_get
+// swagger:operation GET /1.0/provisioning/servers/{name}/bmc/logs servers_bmc server_bmc_logs_get
 //
 //	Get the available BMC log sources
 //
@@ -1047,34 +1019,21 @@ func (s *serverHandler) serverBMCServerRestartPost(r *http.Request) response.Res
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: BMC log sources
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of log sources
-//	          items:
-//	            type: string
+//	    $ref: "#/responses/ServerBMCLogSourcesResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverBMCLogSourcesGet(r *http.Request) response.Response {
@@ -1088,7 +1047,7 @@ func (s *serverHandler) serverBMCLogSourcesGet(r *http.Request) response.Respons
 	return response.SyncResponse(true, logSources)
 }
 
-// swagger:operation GET /1.0/provisioning/servers/{name}/bmc/logs/{logSource} servers_bmc_logs server_bmc_log_entries_get
+// swagger:operation GET /1.0/provisioning/servers/{name}/bmc/logs/{logSource} servers_bmc server_bmc_log_entries_get
 //
 //	Get the BMC log entries of a log source
 //
@@ -1099,34 +1058,26 @@ func (s *serverHandler) serverBMCLogSourcesGet(r *http.Request) response.Respons
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
+//	  - in: path
+//	    name: logSource
+//	    description: Name of the BMC log source
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: BMC log entries
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of log entries
-//	          items:
-//	            $ref: "#/definitions/BMCLogEvent"
+//	    $ref: "#/responses/ServerBMCLogEventsResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverBMCLogEntriesGet(r *http.Request) response.Response {
@@ -1141,7 +1092,7 @@ func (s *serverHandler) serverBMCLogEntriesGet(r *http.Request) response.Respons
 	return response.SyncResponse(true, logEntries)
 }
 
-// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:dump servers_bmc_dump server_bmc_dump_post
+// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:dump servers_bmc server_bmc_dump_post
 //
 //	Trigger a dump of the BMC API responses
 //
@@ -1152,6 +1103,11 @@ func (s *serverHandler) serverBMCLogEntriesGet(r *http.Request) response.Respons
 //
 //	---
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	  - in: query
 //	    name: endpoint
 //	    type: array
@@ -1167,6 +1123,8 @@ func (s *serverHandler) serverBMCLogEntriesGet(r *http.Request) response.Respons
 //	      Boolean indicating, if the predefined endpoint set should be skipped
 //	      entirely, so that only the endpoints given via "endpoint" are dumped.
 //	      Defaults to false.
+//	    type: boolean
+//	    x-example: true
 //	  - in: query
 //	    name: trace
 //	    description: |-
@@ -1174,33 +1132,19 @@ func (s *serverHandler) serverBMCLogEntriesGet(r *http.Request) response.Respons
 //	      information (e.g. HTTP headers) for each endpoint.
 //	      The trace information is opaque and for human inspection only.
 //	      Defaults to false.
+//	    type: boolean
+//	    x-example: true
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: BMC dump
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/BMCDump"
+//	    $ref: "#/responses/ServerBMCDumpResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverBMCDumpPost(r *http.Request) response.Response {
@@ -1236,31 +1180,21 @@ func (s *serverHandler) serverBMCDumpPost(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: Server
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/UpdateChangelog"
+//	    $ref: "#/responses/UpdateChangelogResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverChangelogGet(r *http.Request) response.Response {
@@ -1329,7 +1263,7 @@ func (s *serverHandler) serverOSProxy(r *http.Request) response.Response {
 	})
 }
 
-// swagger:operation POST /1.0/provisioning/servers/{name}/system/:evacuate servers_system_evacuate server_system_evacuate_post
+// swagger:operation POST /1.0/provisioning/servers/{name}/system/:evacuate servers_system server_system_evacuate_post
 //
 //	Evacuate server
 //
@@ -1337,6 +1271,11 @@ func (s *serverHandler) serverOSProxy(r *http.Request) response.Response {
 //
 //	---
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	  - in: query
 //	    name: force
 //	    description: |-
@@ -1345,6 +1284,8 @@ func (s *serverHandler) serverOSProxy(r *http.Request) response.Response {
 //	      operation is applied forcefully, otherwise the regular safety checks
 //	      are applied.
 //	      Defaults to false.
+//	    type: boolean
+//	    x-example: true
 //	produces:
 //	  - application/json
 //	responses:
@@ -1354,6 +1295,8 @@ func (s *serverHandler) serverOSProxy(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -1370,7 +1313,7 @@ func (s *serverHandler) serverSystemEvacuatePost(r *http.Request) response.Respo
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/provisioning/servers/{name}/system/:factory-reset servers_system_factory_reset server_system_factory_reset_post
+// swagger:operation POST /1.0/provisioning/servers/{name}/system/:factory-reset servers_system server_system_factory_reset_post
 //
 //	Factory reset server
 //
@@ -1378,16 +1321,21 @@ func (s *serverHandler) serverSystemEvacuatePost(r *http.Request) response.Respo
 //
 //	---
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	  - in: query
 //	    name: token
 //	    description: Token UUID
 //	    type: string
-//	    example: f1710b8e-cd77-4336-897a-96ff0e0ed529
+//	    x-example: f1710b8e-cd77-4336-897a-96ff0e0ed529
 //	  - in: query
 //	    name: tokenSeedName
 //	    description: Token seed name for the given token.
 //	    type: string
-//	    example: token-seed-name
+//	    x-example: token-seed-name
 //	produces:
 //	  - application/json
 //	responses:
@@ -1397,6 +1345,8 @@ func (s *serverHandler) serverSystemEvacuatePost(r *http.Request) response.Respo
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -1429,7 +1379,7 @@ func (s *serverHandler) serverSystemFactoryResetPost(r *http.Request) response.R
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/provisioning/servers/{name}/system/:poweroff servers_system_poweroff server_system_poweroff_post
+// swagger:operation POST /1.0/provisioning/servers/{name}/system/:poweroff servers_system server_system_poweroff_post
 //
 //	Poweroff server
 //
@@ -1437,6 +1387,11 @@ func (s *serverHandler) serverSystemFactoryResetPost(r *http.Request) response.R
 //
 //	---
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	  - in: query
 //	    name: force
 //	    description: |-
@@ -1445,6 +1400,8 @@ func (s *serverHandler) serverSystemFactoryResetPost(r *http.Request) response.R
 //	      operation is applied forcefully, otherwise the regular safety checks
 //	      are applied.
 //	      Defaults to false.
+//	    type: boolean
+//	    x-example: true
 //	produces:
 //	  - application/json
 //	responses:
@@ -1454,6 +1411,8 @@ func (s *serverHandler) serverSystemFactoryResetPost(r *http.Request) response.R
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -1470,7 +1429,7 @@ func (s *serverHandler) serverSystemPoweroffPost(r *http.Request) response.Respo
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/provisioning/servers/{name}/system/:reboot servers_system_reboot server_system_reboot_post
+// swagger:operation POST /1.0/provisioning/servers/{name}/system/:reboot servers_system server_system_reboot_post
 //
 //	Reboot server
 //
@@ -1478,6 +1437,11 @@ func (s *serverHandler) serverSystemPoweroffPost(r *http.Request) response.Respo
 //
 //	---
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	  - in: query
 //	    name: force
 //	    description: |-
@@ -1486,6 +1450,8 @@ func (s *serverHandler) serverSystemPoweroffPost(r *http.Request) response.Respo
 //	      operation is applied forcefully, otherwise the regular safety checks
 //	      are applied.
 //	      Defaults to false.
+//	    type: boolean
+//	    x-example: true
 //	produces:
 //	  - application/json
 //	responses:
@@ -1495,6 +1461,8 @@ func (s *serverHandler) serverSystemPoweroffPost(r *http.Request) response.Respo
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -1511,7 +1479,7 @@ func (s *serverHandler) serverSystemRebootPost(r *http.Request) response.Respons
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/provisioning/servers/{name}/system/:restore servers_system_restore server_system_restore_post
+// swagger:operation POST /1.0/provisioning/servers/{name}/system/:restore servers_system server_system_restore_post
 //
 //	Restore server
 //
@@ -1519,6 +1487,11 @@ func (s *serverHandler) serverSystemRebootPost(r *http.Request) response.Respons
 //
 //	---
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	  - in: query
 //	    name: force
 //	    description: |-
@@ -1527,6 +1500,8 @@ func (s *serverHandler) serverSystemRebootPost(r *http.Request) response.Respons
 //	      operation is applied forcefully, otherwise the regular safety checks
 //	      are applied.
 //	      Defaults to false.
+//	    type: boolean
+//	    x-example: true
 //	produces:
 //	  - application/json
 //	responses:
@@ -1536,6 +1511,8 @@ func (s *serverHandler) serverSystemRebootPost(r *http.Request) response.Respons
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -1552,14 +1529,27 @@ func (s *serverHandler) serverSystemRestorePost(r *http.Request) response.Respon
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/provisioning/servers/{name}/system/:update servers_system_update server_system_update_post
+// swagger:operation POST /1.0/provisioning/servers/{name}/system/:update servers_system server_system_update_post
 //
 //	Update server
 //
 //	Triggers an update operation on the server.
 //
 //	---
+//	consumes:
+//	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
+//	  - in: body
+//	    name: server_update_post
+//	    description: Update request
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/ServerUpdatePost"
 //	  - in: query
 //	    name: force
 //	    description: |-
@@ -1568,6 +1558,8 @@ func (s *serverHandler) serverSystemRestorePost(r *http.Request) response.Respon
 //	      operation is applied forcefully, otherwise the regular safety checks
 //	      are applied.
 //	      Defaults to false.
+//	    type: boolean
+//	    x-example: true
 //	produces:
 //	  - application/json
 //	responses:
@@ -1577,6 +1569,8 @@ func (s *serverHandler) serverSystemRestorePost(r *http.Request) response.Respon
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -1600,7 +1594,7 @@ func (s *serverHandler) serverSystemUpdatePost(r *http.Request) response.Respons
 	return response.EmptySyncResponse
 }
 
-// swagger:operation GET /1.0/provisioning/servers/{name}/system/network servers_system_network server_system_network_get
+// swagger:operation GET /1.0/provisioning/servers/{name}/system/network servers_system server_system_network_get
 //
 //	Get server network configuration
 //
@@ -1609,29 +1603,19 @@ func (s *serverHandler) serverSystemUpdatePost(r *http.Request) response.Respons
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: Server network
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/ServerSystemNetworkConfig"
+//	    $ref: "#/responses/ServerSystemNetworkResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverSystemNetworkGet(r *http.Request) response.Response {
@@ -1649,7 +1633,7 @@ func (s *serverHandler) serverSystemNetworkGet(r *http.Request) response.Respons
 	)
 }
 
-// swagger:operation PUT /1.0/provisioning/servers/{name}/system/network servers_system_network server_system_network_put
+// swagger:operation PUT /1.0/provisioning/servers/{name}/system/network servers_system server_system_network_put
 //
 //	Update server network configuration
 //
@@ -1661,12 +1645,17 @@ func (s *serverHandler) serverSystemNetworkGet(r *http.Request) response.Respons
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: server network configuration
 //	    description: Server network configuration
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/ServerSystemNetworkConfig"
+//	      $ref: "#/definitions/IncusOsdAPISystemNetwork"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -1674,6 +1663,8 @@ func (s *serverHandler) serverSystemNetworkGet(r *http.Request) response.Respons
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -1696,7 +1687,7 @@ func (s *serverHandler) serverSystemNetworkPut(r *http.Request) response.Respons
 	return response.EmptySyncResponse
 }
 
-// swagger:operation GET /1.0/provisioning/servers/{name}/system/storage servers_system_storage server_system_storage_get
+// swagger:operation GET /1.0/provisioning/servers/{name}/system/storage servers_system server_system_storage_get
 //
 //	Get server storage configuration
 //
@@ -1705,29 +1696,19 @@ func (s *serverHandler) serverSystemNetworkPut(r *http.Request) response.Respons
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: Server storage
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/ServerSystemStorageConfig"
+//	    $ref: "#/responses/ServerSystemStorageResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverSystemStorageGet(r *http.Request) response.Response {
@@ -1745,7 +1726,7 @@ func (s *serverHandler) serverSystemStorageGet(r *http.Request) response.Respons
 	)
 }
 
-// swagger:operation PUT /1.0/provisioning/servers/{name}/system/storage servers_system_storage server_system_storage_put
+// swagger:operation PUT /1.0/provisioning/servers/{name}/system/storage servers_system server_system_storage_put
 //
 //	Update server storage configuration
 //
@@ -1757,12 +1738,17 @@ func (s *serverHandler) serverSystemStorageGet(r *http.Request) response.Respons
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: server storage configuration
 //	    description: Server storage configuration
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/ServerSystemStorageConfig"
+//	      $ref: "#/definitions/SystemStorage"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -1770,6 +1756,8 @@ func (s *serverHandler) serverSystemStorageGet(r *http.Request) response.Respons
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -1792,7 +1780,7 @@ func (s *serverHandler) serverSystemStoragePut(r *http.Request) response.Respons
 	return response.EmptySyncResponse
 }
 
-// swagger:operation GET /1.0/provisioning/servers/{name}/system/update servers_system_update server_system_update_get
+// swagger:operation GET /1.0/provisioning/servers/{name}/system/update servers_system server_system_update_get
 //
 //	Get server update configuration
 //
@@ -1801,29 +1789,19 @@ func (s *serverHandler) serverSystemStoragePut(r *http.Request) response.Respons
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: Server update
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/ServerSystemUpdateConfig"
+//	    $ref: "#/responses/ServerSystemUpdateResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverSystemUpdateGet(r *http.Request) response.Response {
@@ -1843,7 +1821,7 @@ func (s *serverHandler) serverSystemUpdateGet(r *http.Request) response.Response
 	)
 }
 
-// swagger:operation PUT /1.0/provisioning/servers/{name}/system/update servers_system_update server_system_update_put
+// swagger:operation PUT /1.0/provisioning/servers/{name}/system/update servers_system server_system_update_put
 //
 //	Update server update configuration
 //
@@ -1855,12 +1833,17 @@ func (s *serverHandler) serverSystemUpdateGet(r *http.Request) response.Response
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: server update configuration
 //	    description: Server update configuration
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/ServerSystemUpdateConfig"
+//	      $ref: "#/definitions/SystemUpdate"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -1868,6 +1851,8 @@ func (s *serverHandler) serverSystemUpdateGet(r *http.Request) response.Response
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":

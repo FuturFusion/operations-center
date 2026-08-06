@@ -43,33 +43,7 @@ func registerChannelsHandler(router Router, authorizer *authz.Authorizer, servic
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API channels
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of channels
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/provisioning/channels/one",
-//	              "/1.0/provisioning/channels/two"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -86,28 +60,7 @@ func registerChannelsHandler(router Router, authorizer *authz.Authorizer, servic
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API channels
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of channels
-//	          items:
-//	            $ref: "#/definitions/Channel"
+//	    $ref: "#/responses/ChannelsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -210,29 +163,19 @@ func (u *channelsHandler) channelsPost(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the channel
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: Channel
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/Channel"
+//	    $ref: "#/responses/ChannelResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *channelsHandler) channelGet(r *http.Request) response.Response {
@@ -270,6 +213,11 @@ func (u *channelsHandler) channelGet(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the channel
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: channel
 //	    description: Channel definition
@@ -283,6 +231,8 @@ func (u *channelsHandler) channelGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -340,6 +290,12 @@ func (u *channelsHandler) channelPut(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the channel
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -347,6 +303,8 @@ func (u *channelsHandler) channelPut(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *channelsHandler) channelDelete(r *http.Request) response.Response {
@@ -368,39 +326,28 @@ func (u *channelsHandler) channelDelete(r *http.Request) response.Response {
 //
 //	---
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the channel
+//	    type: string
+//	    required: true
 //	  - in: query
 //	    name: architecture
 //	    description: |-
 //	      Architecture the changelog should be generated for. Defaults to "x86_64".
 //	    type: string
-//	    example: aarch64
+//	    x-example: aarch64
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Channel
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/Channel"
+//	    $ref: "#/responses/UpdateChangelogsResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *channelsHandler) channelChangelogGet(r *http.Request) response.Response {

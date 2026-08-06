@@ -41,33 +41,7 @@ func registerImageSourceHandler(router Router, authorizer *authz.Authorizer, ser
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API image sources
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of image sources
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/images/incus/sources/linuxcontainer.org",
-//	              "/1.0/images/incus/sources/images.org"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -84,28 +58,7 @@ func registerImageSourceHandler(router Router, authorizer *authz.Authorizer, ser
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API image sources
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of image sources
-//	          items:
-//	            $ref: "#/definitions/ImageSource"
+//	    $ref: "#/responses/ImageSourcesResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -203,7 +156,7 @@ func (i *imageSourceHandler) imageSourcesPost(r *http.Request) response.Response
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/image/sources/"+newImageSource.Name)
 }
 
-// swagger:operation GET /1.0/images/incus/sources/{name} image_source image_source_get
+// swagger:operation GET /1.0/images/incus/sources/{name} image_sources image_source_get
 //
 //	Get the image source
 //
@@ -212,29 +165,19 @@ func (i *imageSourceHandler) imageSourcesPost(r *http.Request) response.Response
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the source
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: Image source
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/ImageSource"
+//	    $ref: "#/responses/ImageSourceResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageSourceHandler) imageSourceGet(r *http.Request) response.Response {
@@ -263,7 +206,7 @@ func (i *imageSourceHandler) imageSourceGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation PUT /1.0/images/incus/sources/{name} image_source image_source_put
+// swagger:operation PUT /1.0/images/incus/sources/{name} image_sources image_source_put
 //
 //	Update the image source
 //
@@ -275,12 +218,17 @@ func (i *imageSourceHandler) imageSourceGet(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the source
+//	    type: string
+//	    required: true
 //	  - in: body
 //	    name: image_source
 //	    description: Image source
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/ImageSource"
+//	      $ref: "#/definitions/ImageSourcePut"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -288,6 +236,8 @@ func (i *imageSourceHandler) imageSourceGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
@@ -337,7 +287,7 @@ func (i *imageSourceHandler) imageSourcePut(r *http.Request) response.Response {
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/image/sources/"+name)
 }
 
-// swagger:operation DELETE /1.0/images/incus/sources/{name} image_source image_source_delete
+// swagger:operation DELETE /1.0/images/incus/sources/{name} image_sources image_source_delete
 //
 //	Delete the image source
 //
@@ -346,6 +296,12 @@ func (i *imageSourceHandler) imageSourcePut(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the source
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -353,6 +309,8 @@ func (i *imageSourceHandler) imageSourcePut(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageSourceHandler) imageSourceDelete(r *http.Request) response.Response {
@@ -366,7 +324,7 @@ func (i *imageSourceHandler) imageSourceDelete(r *http.Request) response.Respons
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/images/incus/sources/{name}/:refresh image_source image_source_refresh_post
+// swagger:operation POST /1.0/images/incus/sources/{name}/:refresh image_sources image_source_refresh_post
 //
 //	Refresh the image source
 //
@@ -377,6 +335,12 @@ func (i *imageSourceHandler) imageSourceDelete(r *http.Request) response.Respons
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the source
+//	    type: string
+//	    required: true
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -384,6 +348,8 @@ func (i *imageSourceHandler) imageSourceDelete(r *http.Request) response.Respons
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageSourceHandler) imageSourceRefreshPost(r *http.Request) response.Response {

@@ -26,7 +26,12 @@ type ImageSourcePost struct {
 
 // ImageSource defines an image source like images.linuxcontainers.org.
 //
-// swagger:model
+// The model name is set explicitly, because the type name collides with
+// ImageSource from github.com/lxc/incus/v7/shared/api. Without it, go-swagger
+// derives both names from the package paths, which makes them change whenever
+// an unrelated colliding type is added.
+//
+// swagger:model IncusImageSource
 type ImageSource struct {
 	ImageSourcePost `yaml:",inline"`
 

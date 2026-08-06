@@ -25,25 +25,7 @@ func registerAPI10Handler(router Router) {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Server environment and configuration
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/ServerUntrusted"
+//	    $ref: "#/responses/ServerUntrustedResponse"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func api10Get(r *http.Request) response.Response {

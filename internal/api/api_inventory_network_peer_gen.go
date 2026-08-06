@@ -32,9 +32,9 @@ func registerInventoryNetworkPeerHandler(router Router, authorizer *authz.Author
 
 // swagger:operation GET /1.0/inventory/network_peers network_peers network_peers_get
 //
-//	Get the network_peers
+//	Get the network peers
 //
-//	Returns a list of network peers (list of relative URLs).
+//	Returns a list of network peers (URLs).
 //
 //	---
 //	produces:
@@ -44,46 +44,20 @@ func registerInventoryNetworkPeerHandler(router Router, authorizer *authz.Author
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
 //	  - in: query
 //	    name: project
 //	    description: Project name
 //	    type: string
-//	    example: default
+//	    x-example: default
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network peers
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of network peers
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/inventory/network_peers/1",
-//	              "/1.0/inventory/network_peers/2"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -103,41 +77,20 @@ func registerInventoryNetworkPeerHandler(router Router, authorizer *authz.Author
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
 //	  - in: query
 //	    name: project
 //	    description: Project name
 //	    type: string
-//	    example: default
+//	    x-example: default
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network peers
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of network peers
-//	          items:
-//	            $ref: "#/definitions/networkPeer"
+//	    $ref: "#/responses/NetworkPeersResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -208,29 +161,20 @@ func (i *networkPeerHandler) networkPeersGet(r *http.Request) response.Response 
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the network peer
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: network peer
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/NetworkPeer"
+//	    $ref: "#/responses/NetworkPeerResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkPeerHandler) networkPeerGet(r *http.Request) response.Response {
@@ -267,27 +211,20 @@ func (i *networkPeerHandler) networkPeerGet(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the network peer
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkPeerHandler) networkPeerResyncPost(r *http.Request) response.Response {
@@ -302,4 +239,42 @@ func (i *networkPeerHandler) networkPeerResyncPost(r *http.Request) response.Res
 	}
 
 	return response.EmptySyncResponse
+}
+
+// The network peer
+//
+// swagger:response NetworkPeerResponse
+type swaggerNetworkPeerResponse struct {
+	// in: body
+	Body struct {
+		// Example: sync
+		Type string `json:"type"`
+
+		// Example: Success
+		Status string `json:"status"`
+
+		// Example: 200
+		StatusCode int `json:"status_code"`
+
+		Metadata api.NetworkPeer `json:"metadata"`
+	}
+}
+
+// The network peers
+//
+// swagger:response NetworkPeersResponse
+type swaggerNetworkPeersResponse struct {
+	// in: body
+	Body struct {
+		// Example: sync
+		Type string `json:"type"`
+
+		// Example: Success
+		Status string `json:"status"`
+
+		// Example: 200
+		StatusCode int `json:"status_code"`
+
+		Metadata []api.NetworkPeer `json:"metadata"`
+	}
 }

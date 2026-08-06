@@ -31,7 +31,7 @@ func registerWarningHandler(router Router, authorizer *authz.Authorizer, service
 	router.HandleFunc("PUT /{uuid}", response.With(handler.warningPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
-// swagger:operation GET /1.0/warnings warnings warnings_get_recursion
+// swagger:operation GET /1.0/warnings warnings warnings_get
 //
 //	Get the warnings
 //
@@ -42,28 +42,7 @@ func registerWarningHandler(router Router, authorizer *authz.Authorizer, service
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API warnings
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of warnings
-//	          items:
-//	            $ref: "#/definitions/Warning"
+//	    $ref: "#/responses/WarningsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -107,29 +86,20 @@ func (t *warningHandler) warningsGet(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the warning
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: Warning
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/Warning"
+//	    $ref: "#/responses/WarningResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (t *warningHandler) warningGet(r *http.Request) response.Response {
@@ -180,6 +150,12 @@ func (t *warningHandler) warningGet(r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the warning
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	  - in: body
 //	    name: warning
 //	    description: Warning definition
@@ -193,6 +169,8 @@ func (t *warningHandler) warningGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "412":
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":

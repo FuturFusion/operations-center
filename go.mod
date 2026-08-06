@@ -58,6 +58,7 @@ require (
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
+	github.com/go-swagger/go-swagger v0.36.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
@@ -120,6 +121,7 @@ require (
 	github.com/opencontainers/runtime-spec v1.3.0 // indirect
 	github.com/opencontainers/umoci v0.6.1-0.20251213054154-70fc5ee1f4df // indirect
 	github.com/openfga/api/proto v0.0.0-20260723150800-6981fff8d33b // indirect
+	github.com/openfga/cli v0.7.19 // indirect
 	github.com/openfga/language/pkg/go v0.3.1 // indirect
 	github.com/openfga/openfga v1.18.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
@@ -152,6 +154,7 @@ require (
 	github.com/tklauser/numcpus v0.12.0 // indirect
 	github.com/urfave/cli v1.22.17 // indirect
 	github.com/vbatts/go-mtree v0.7.0 // indirect
+	github.com/vektra/mockery/v3 v3.7.2 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
@@ -208,7 +211,6 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.49
 	github.com/oauth2-proxy/mockoidc v0.0.0-20240214162133-caebfff84d25
 	github.com/olekukonko/tablewriter v1.1.4
-	github.com/openfga/cli v0.7.19
 	github.com/openfga/go-sdk v0.8.2
 	github.com/pires/go-proxyproto v0.15.0
 	github.com/pkg/sftp v1.13.11
@@ -221,7 +223,6 @@ require (
 	github.com/testcontainers/testcontainers-go v0.43.0
 	github.com/testcontainers/testcontainers-go/modules/openfga v0.43.0
 	github.com/tidwall/gjson v1.19.0
-	github.com/vektra/mockery/v3 v3.7.2
 	github.com/zclconf/go-cty v1.19.0
 	github.com/zitadel/oidc/v3 v3.48.1
 	go.starlark.net v0.0.0-20260708150628-5395d018f003
@@ -230,4 +231,12 @@ require (
 	golang.org/x/sync v0.22.0
 	golang.org/x/text v0.40.0
 	golang.org/x/tools v0.48.0
+)
+
+tool (
+	github.com/go-swagger/go-swagger
+	github.com/lxc/incus/v7/cmd/generate-database
+	github.com/openfga/cli/cmd/fga
+	github.com/vektra/mockery/v3
+	golang.org/x/tools/cmd/goimports
 )

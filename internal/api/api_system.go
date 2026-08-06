@@ -49,26 +49,10 @@ func registerSystemHandler(router Router, authorizer *authz.Authorizer, service 
 //	    description: System certificate definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/SystemCertificatePost"
+//	      $ref: "#/definitions/CertificatePost"
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: System certificate update response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -102,23 +86,7 @@ func (s *systemHandler) certificatePost(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: System certificate renew response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -134,39 +102,18 @@ func (s *systemHandler) certificateRenewPost(r *http.Request) response.Response 
 	return response.EmptySyncResponse
 }
 
-// swagger:operation Get /1.0/system/network system system_network_get
+// swagger:operation GET /1.0/system/network system system_network_get
 //
-//	Update the system's network configuration
+//	Get the system's network configuration
 //
-//	Update the system's network configuration.
+//	Get the system's network configuration.
 //
 //	---
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API system network configuration
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: object
-//	          description: Configuration object
-//	          items:
-//	            $ref: "#/definitions/SystemNetwork"
+//	    $ref: "#/responses/SystemNetworkResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -178,11 +125,11 @@ func (s *systemHandler) networkGet(r *http.Request) response.Response {
 	return response.SyncResponse(true, networkConfig)
 }
 
-// swagger:operation PUT /1.0/system/config system system_config_put
+// swagger:operation PUT /1.0/system/network system system_network_put
 //
-//	Update the system's configuration
+//	Update the system's network configuration
 //
-//	Update the system's configuration.
+//	Update the system's network configuration.
 //
 //	---
 //	consumes:
@@ -191,30 +138,14 @@ func (s *systemHandler) networkGet(r *http.Request) response.Response {
 //	  - application/json
 //	parameters:
 //	  - in: body
-//	    name: system_configuration_put
-//	    description: System configuration definition
+//	    name: system_network_put
+//	    description: System network configuration definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/SystemConfigurationPut"
+//	      $ref: "#/definitions/NetworkPut"
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: System configuration update response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -237,39 +168,18 @@ func (s *systemHandler) networkPut(r *http.Request) response.Response {
 	return response.EmptySyncResponse
 }
 
-// swagger:operation Get /1.0/system/security system system_security_get
+// swagger:operation GET /1.0/system/security system system_security_get
 //
-//	Update the system's security configuration
+//	Get the system's security configuration
 //
-//	Update the system's security configuration.
+//	Get the system's security configuration.
 //
 //	---
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API security configuration
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: object
-//	          description: Security configuration object
-//	          items:
-//	            $ref: "#/definitions/SystemSecurityConfig"
+//	    $ref: "#/responses/SystemSecurityResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -298,26 +208,10 @@ func (s *systemHandler) securityGet(r *http.Request) response.Response {
 //	    description: System security configuration definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/SystemSecurityConfigPut"
+//	      $ref: "#/definitions/SecurityPut"
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: System security configuration update response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -340,39 +234,18 @@ func (s *systemHandler) securityPut(r *http.Request) response.Response {
 	return response.EmptySyncResponse
 }
 
-// swagger:operation Get /1.0/system/settings system system_settings_get
+// swagger:operation GET /1.0/system/settings system system_settings_get
 //
-//	Update the system's settings configuration
+//	Get the system's settings configuration
 //
-//	Update the system's settings configuration.
+//	Get the system's settings configuration.
 //
 //	---
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API settings configuration
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: object
-//	          description: Settings configuration object
-//	          items:
-//	            $ref: "#/definitions/SystemSettingsConfig"
+//	    $ref: "#/responses/SystemSettingsResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -401,26 +274,10 @@ func (s *systemHandler) settingsGet(r *http.Request) response.Response {
 //	    description: System settings configuration definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/SystemSettingsConfigPut"
+//	      $ref: "#/definitions/SettingsPut"
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: System settings configuration update response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -443,39 +300,18 @@ func (s *systemHandler) settingsPut(r *http.Request) response.Response {
 	return response.EmptySyncResponse
 }
 
-// swagger:operation Get /1.0/system/updates system system_updates_get
+// swagger:operation GET /1.0/system/updates system system_updates_get
 //
-//	Update the system's updates configuration
+//	Get the system's updates configuration
 //
-//	Update the system's updates configuration.
+//	Get the system's updates configuration.
 //
 //	---
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: API updates configuration
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: object
-//	          description: Updates configuration object
-//	          items:
-//	            $ref: "#/definitions/SystemUpdatesConfig"
+//	    $ref: "#/responses/SystemUpdatesResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -504,26 +340,10 @@ func (s *systemHandler) updatesGet(r *http.Request) response.Response {
 //	    description: System security configuration definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/SystemUpdatesConfigPut"
+//	      $ref: "#/definitions/UpdatesPut"
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: System updates configuration update response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":

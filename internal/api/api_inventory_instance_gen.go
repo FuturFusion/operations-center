@@ -34,7 +34,7 @@ func registerInventoryInstanceHandler(router Router, authorizer *authz.Authorize
 //
 //	Get the instances
 //
-//	Returns a list of instances (list of relative URLs).
+//	Returns a list of instances (URLs).
 //
 //	---
 //	produces:
@@ -44,51 +44,25 @@ func registerInventoryInstanceHandler(router Router, authorizer *authz.Authorize
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
 //	  - in: query
 //	    name: server
 //	    description: Server name
 //	    type: string
-//	    example: localhost
+//	    x-example: localhost
 //	  - in: query
 //	    name: project
 //	    description: Project name
 //	    type: string
-//	    example: default
+//	    x-example: default
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API instances
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of instances
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/inventory/instances/1",
-//	              "/1.0/inventory/instances/2"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -108,46 +82,25 @@ func registerInventoryInstanceHandler(router Router, authorizer *authz.Authorize
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
 //	  - in: query
 //	    name: server
 //	    description: Server name
 //	    type: string
-//	    example: localhost
+//	    x-example: localhost
 //	  - in: query
 //	    name: project
 //	    description: Project name
 //	    type: string
-//	    example: default
+//	    x-example: default
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API instances
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of instances
-//	          items:
-//	            $ref: "#/definitions/instance"
+//	    $ref: "#/responses/InstancesResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -222,29 +175,20 @@ func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the instance
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: instance
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/Instance"
+//	    $ref: "#/responses/InstanceResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *instanceHandler) instanceGet(r *http.Request) response.Response {
@@ -281,27 +225,20 @@ func (i *instanceHandler) instanceGet(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the instance
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *instanceHandler) instanceResyncPost(r *http.Request) response.Response {
@@ -316,4 +253,42 @@ func (i *instanceHandler) instanceResyncPost(r *http.Request) response.Response 
 	}
 
 	return response.EmptySyncResponse
+}
+
+// The instance
+//
+// swagger:response InstanceResponse
+type swaggerInstanceResponse struct {
+	// in: body
+	Body struct {
+		// Example: sync
+		Type string `json:"type"`
+
+		// Example: Success
+		Status string `json:"status"`
+
+		// Example: 200
+		StatusCode int `json:"status_code"`
+
+		Metadata api.Instance `json:"metadata"`
+	}
+}
+
+// The instances
+//
+// swagger:response InstancesResponse
+type swaggerInstancesResponse struct {
+	// in: body
+	Body struct {
+		// Example: sync
+		Type string `json:"type"`
+
+		// Example: Success
+		Status string `json:"status"`
+
+		// Example: 200
+		StatusCode int `json:"status_code"`
+
+		Metadata []api.Instance `json:"metadata"`
+	}
 }

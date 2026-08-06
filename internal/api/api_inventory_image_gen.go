@@ -34,7 +34,7 @@ func registerInventoryImageHandler(router Router, authorizer *authz.Authorizer, 
 //
 //	Get the images
 //
-//	Returns a list of images (list of relative URLs).
+//	Returns a list of images (URLs).
 //
 //	---
 //	produces:
@@ -44,46 +44,20 @@ func registerInventoryImageHandler(router Router, authorizer *authz.Authorizer, 
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
 //	  - in: query
 //	    name: project
 //	    description: Project name
 //	    type: string
-//	    example: default
+//	    x-example: default
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API images
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of images
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/inventory/images/1",
-//	              "/1.0/inventory/images/2"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -103,41 +77,20 @@ func registerInventoryImageHandler(router Router, authorizer *authz.Authorizer, 
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
 //	  - in: query
 //	    name: project
 //	    description: Project name
 //	    type: string
-//	    example: default
+//	    x-example: default
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API images
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of images
-//	          items:
-//	            $ref: "#/definitions/image"
+//	    $ref: "#/responses/ImagesResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -207,29 +160,20 @@ func (i *imageHandler) imagesGet(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the image
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: image
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/Image"
+//	    $ref: "#/responses/ImageResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageHandler) imageGet(r *http.Request) response.Response {
@@ -265,27 +209,20 @@ func (i *imageHandler) imageGet(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the image
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageHandler) imageResyncPost(r *http.Request) response.Response {
@@ -300,4 +237,42 @@ func (i *imageHandler) imageResyncPost(r *http.Request) response.Response {
 	}
 
 	return response.EmptySyncResponse
+}
+
+// The image
+//
+// swagger:response ImageResponse
+type swaggerImageResponse struct {
+	// in: body
+	Body struct {
+		// Example: sync
+		Type string `json:"type"`
+
+		// Example: Success
+		Status string `json:"status"`
+
+		// Example: 200
+		StatusCode int `json:"status_code"`
+
+		Metadata api.Image `json:"metadata"`
+	}
+}
+
+// The images
+//
+// swagger:response ImagesResponse
+type swaggerImagesResponse struct {
+	// in: body
+	Body struct {
+		// Example: sync
+		Type string `json:"type"`
+
+		// Example: Success
+		Status string `json:"status"`
+
+		// Example: 200
+		StatusCode int `json:"status_code"`
+
+		Metadata []api.Image `json:"metadata"`
+	}
 }

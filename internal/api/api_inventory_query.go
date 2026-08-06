@@ -22,7 +22,7 @@ func registerInventoryQueryHandler(router Router, authorizer *authz.Authorizer, 
 	router.HandleFunc("GET /{$}", response.With(handler.querysGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 }
 
-// swagger:operation GET /1.0/inventory/query query query_get
+// swagger:operation GET /1.0/inventory/query inventory query_get
 //
 //	Query resources from inventory
 //
@@ -36,51 +36,33 @@ func registerInventoryQueryHandler(router Router, authorizer *authz.Authorizer, 
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
 //	  - in: query
 //	    name: project
 //	    description: Project name
 //	    type: string
-//	    example: default
+//	    x-example: default
 //	  - in: query
 //	    name: server
 //	    description: Server name
 //	    type: string
-//	    example: server
+//	    x-example: server
 //	  - in: query
 //	    name: kind
 //	    description: Kind of resources to be queried
 //	    type: array
-//	    example: [ "project", "profile" ]
+//	    items:
+//	      type: string
+//	    collectionFormat: multi
+//	    x-example: project
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API query
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of aggregated resources from the inventory
-//	          items:
-//	            $ref: "#/definitions/inventory_aggregate"
+//	    $ref: "#/responses/InventoryAggregatesResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

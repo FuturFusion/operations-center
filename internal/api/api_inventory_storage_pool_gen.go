@@ -32,9 +32,9 @@ func registerInventoryStoragePoolHandler(router Router, authorizer *authz.Author
 
 // swagger:operation GET /1.0/inventory/storage_pools storage_pools storage_pools_get
 //
-//	Get the storage_pools
+//	Get the storage pools
 //
-//	Returns a list of storage pools (list of relative URLs).
+//	Returns a list of storage pools (URLs).
 //
 //	---
 //	produces:
@@ -44,41 +44,15 @@ func registerInventoryStoragePoolHandler(router Router, authorizer *authz.Author
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API storage pools
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of storage pools
-//	          items:
-//	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/inventory/storage_pools/1",
-//	              "/1.0/inventory/storage_pools/2"
-//	            ]
+//	    $ref: "#/responses/URLsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -98,36 +72,15 @@ func registerInventoryStoragePoolHandler(router Router, authorizer *authz.Author
 //	    name: cluster
 //	    description: Cluster name
 //	    type: string
-//	    example: cluster
+//	    x-example: cluster
 //	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
-//	    example: name == "value"
+//	    x-example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API storage pools
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of storage pools
-//	          items:
-//	            $ref: "#/definitions/storagePool"
+//	    $ref: "#/responses/StoragePoolsResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -192,29 +145,20 @@ func (i *storagePoolHandler) storagePoolsGet(r *http.Request) response.Response 
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the storage pool
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: storage pool
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/StoragePool"
+//	    $ref: "#/responses/StoragePoolResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *storagePoolHandler) storagePoolGet(r *http.Request) response.Response {
@@ -249,27 +193,20 @@ func (i *storagePoolHandler) storagePoolGet(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the storage pool
+//	    type: string
+//	    format: uuid
+//	    required: true
 //	responses:
 //	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
+//	    $ref: "#/responses/EmptySyncResponse"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *storagePoolHandler) storagePoolResyncPost(r *http.Request) response.Response {
@@ -284,4 +221,42 @@ func (i *storagePoolHandler) storagePoolResyncPost(r *http.Request) response.Res
 	}
 
 	return response.EmptySyncResponse
+}
+
+// The storage pool
+//
+// swagger:response StoragePoolResponse
+type swaggerStoragePoolResponse struct {
+	// in: body
+	Body struct {
+		// Example: sync
+		Type string `json:"type"`
+
+		// Example: Success
+		Status string `json:"status"`
+
+		// Example: 200
+		StatusCode int `json:"status_code"`
+
+		Metadata api.StoragePool `json:"metadata"`
+	}
+}
+
+// The storage pools
+//
+// swagger:response StoragePoolsResponse
+type swaggerStoragePoolsResponse struct {
+	// in: body
+	Body struct {
+		// Example: sync
+		Type string `json:"type"`
+
+		// Example: Success
+		Status string `json:"status"`
+
+		// Example: 200
+		StatusCode int `json:"status_code"`
+
+		Metadata []api.StoragePool `json:"metadata"`
+	}
 }

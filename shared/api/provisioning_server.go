@@ -1020,6 +1020,8 @@ type ServerSelfUpdate struct {
 }
 
 // ServerRegistrationResponse defines the response to a successful server registration.
+//
+// swagger:model
 type ServerRegistrationResponse struct {
 	// ClientCertificate is the certificate in PEM format used by Operations Center
 	// when connecting to servers or clusters.
