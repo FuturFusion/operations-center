@@ -499,20 +499,7 @@ func (c *cmdTokenSeedGetImage) validateArgsAndFlags(cmd *cobra.Command, args []s
 		return err
 	}
 
-	imageType := cmd.Flag("type").Value.String()
-	switch imageType {
-	case api.ImageTypeISO.String(), api.ImageTypeRaw.String():
-	default:
-		return fmt.Errorf(`Invalid value for flag "--type": %q`, imageType)
-	}
-
-	architecture := cmd.Flag("architecture").Value.String()
-	_, ok := images.UpdateFileArchitectures[images.UpdateFileArchitecture(architecture)]
-	if !ok {
-		return fmt.Errorf(`Invalid value for flag "--architecture": %q`, architecture)
-	}
-
-	return nil
+	return validateImageTypeAndArchitecture(cmd.Flag("type").Value.String(), cmd.Flag("architecture").Value.String())
 }
 
 func (c *cmdTokenSeedGetImage) run(cmd *cobra.Command, args []string) (err error) {
