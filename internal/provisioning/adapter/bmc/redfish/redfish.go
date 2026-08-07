@@ -26,6 +26,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -98,6 +99,10 @@ func (r redfish) getClient(ctx context.Context, server provisioning.Server) (_ *
 
 		httpClient.Transport = &http.Transport{
 			TLSClientConfig: tlsConfig,
+
+			ExpectContinueTimeout: 30 * time.Second,
+			ResponseHeaderTimeout: 3600 * time.Second,
+			TLSHandshakeTimeout:   5 * time.Second,
 		}
 	}
 
@@ -186,49 +191,83 @@ func (r redfish) GetData(ctx context.Context, server provisioning.Server) (api.B
 
 	defer logout()
 
+	log := slog.With(slog.String("endpoint", server.BMCConfig.Endpoint))
+
+	// The following data is collected from the BMC on a best effort basis.
+	// Errors are logged as warnings and the affected data is left at its zero value.
 	system, err := getFirstSystem(client)
 	if err != nil {
-		return api.BMCData{}, fmt.Errorf("Failed to get BMC system: %w", err)
+		log.WarnContext(ctx, "Failed to get BMC system", logger.Err(err))
 	}
 
 	manager, err := getFirstManager(client)
 	if err != nil {
-		return api.BMCData{}, fmt.Errorf("Failed to get BMC manager: %w", err)
+		log.WarnContext(ctx, "Failed to get BMC manager", logger.Err(err))
 	}
 
-	processor, err := getFirstProcessor(system)
+	bmcData := api.BMCData{
+		BMCProtocol:        "Redfish",
+		BMCProtocolVersion: client.Service.RedfishVersion,
+		BMCVendor:          client.Service.Vendor,
+		LastUpdated:        time.Now(),
+	}
+
+	if system != nil {
+		bmcData.ServerManufacturer = system.Manufacturer
+		bmcData.ServerModel = system.Model
+		bmcData.ServerSubModel = system.SubModel
+		bmcData.ServerUUID = system.UUID
+		bmcData.ServerAssetTag = system.AssetTag
+		bmcData.ServerHostName = system.HostName
+		bmcData.ServerSKU = system.SKU
+		bmcData.ServerSerialNumber = system.SerialNumber
+		bmcData.ServerBIOSVersion = system.BiosVersion
+		bmcData.ServerPowerState = string(system.PowerState)
+		bmcData.ServerHealthStatus = string(system.Status.Health)
+
+		bmcData.ServerLocationIndicatorActive = system.IndicatorLED == schemas.BlinkingIndicatorLED || system.IndicatorLED == schemas.LitIndicatorLED // nolint: staticcheck // ignore deprecated property warning.
+		if system.LocationIndicatorActive != nil {
+			bmcData.ServerLocationIndicatorActive = *system.LocationIndicatorActive
+		}
+	}
+
+	if manager != nil {
+		bmcData.BMCModel = manager.Model
+		bmcData.BMCFirmwareVersion = manager.FirmwareVersion
+		bmcData.BMCServiceIdentification = manager.ServiceIdentification
+	}
+
+	if system != nil {
+		processor, err := getFirstProcessor(system)
+		if err != nil {
+			log.WarnContext(ctx, "Failed to get first processor of BMC system", logger.Err(err))
+		}
+
+		if processor != nil {
+			bmcData.ServerProcessorArchitecture = string(processor.ProcessorArchitecture)
+			bmcData.ServerProcessorInstructionSet = string(processor.InstructionSet)
+		}
+	}
+
+	if system != nil {
+		bios, err := system.Bios()
+		if err != nil {
+			log.WarnContext(ctx, "Failed to get BIOS of BMC system", logger.Err(err))
+		}
+
+		if bios != nil {
+			bmcData.ServerBIOSAttributes = bios.Attributes
+		}
+	}
+
+	virtualMedia, err := getVirtualMedia(system, manager)
 	if err != nil {
-		return api.BMCData{}, fmt.Errorf("Failed to get first processor of BMC system: %w", err)
+		log.WarnContext(ctx, "Failed to get virtual media of BMC", logger.Err(err))
 	}
 
-	serverLocationIndicatorActive := system.IndicatorLED == schemas.BlinkingIndicatorLED || system.IndicatorLED == schemas.LitIndicatorLED // nolint: staticcheck // ignore deprecated property warning.
-	if system.LocationIndicatorActive != nil {
-		serverLocationIndicatorActive = *system.LocationIndicatorActive
-	}
+	bmcData.VirtualMedia = virtualMedia
 
-	return api.BMCData{
-		BMCProtocol:                   "Redfish",
-		BMCProtocolVersion:            client.Service.RedfishVersion,
-		BMCVendor:                     client.Service.Vendor,
-		BMCModel:                      manager.Model,
-		BMCFirmwareVersion:            manager.FirmwareVersion,
-		BMCServiceIdentification:      manager.ServiceIdentification,
-		ServerManufacturer:            system.Manufacturer,
-		ServerModel:                   system.Model,
-		ServerSubModel:                system.SubModel,
-		ServerUUID:                    system.UUID,
-		ServerAssetTag:                system.AssetTag,
-		ServerHostName:                system.HostName,
-		ServerSKU:                     system.SKU,
-		ServerSerialNumber:            system.SerialNumber,
-		ServerBIOSVersion:             system.BiosVersion,
-		ServerProcessorArchitecture:   string(processor.ProcessorArchitecture),
-		ServerProcessorInstructionSet: string(processor.InstructionSet),
-		ServerPowerState:              string(system.PowerState),
-		ServerLocationIndicatorActive: serverLocationIndicatorActive,
-		ServerHealthStatus:            string(system.Status.Health),
-		LastUpdated:                   time.Now(),
-	}, nil
+	return bmcData, nil
 }
 
 func getFirstChassis(client *gofish.APIClient) (*schemas.Chassis, error) {
@@ -274,6 +313,60 @@ func getFirstSystem(client *gofish.APIClient) (*schemas.ComputerSystem, error) {
 	sort.Slice(systems, func(i, j int) bool { return systems[i].ID < systems[j].ID })
 
 	return systems[0], nil
+}
+
+// getVirtualMedia returns all virtual media reported by the BMC, combining
+// entries from both the system and the manager. Each entry's ID is derived
+// as "<service>:<redfish-id>" (e.g. "system:1").
+func getVirtualMedia(system *schemas.ComputerSystem, manager *schemas.Manager) ([]api.BMCVirtualMedia, error) {
+	var result []api.BMCVirtualMedia
+
+	if system != nil {
+		systemVirtualMedia, err := system.VirtualMedia()
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get virtual media of BMC system: %w", err)
+		}
+
+		result = append(result, convertVirtualMedia("system", systemVirtualMedia)...)
+	}
+
+	if manager != nil {
+		managerVirtualMedia, err := manager.VirtualMedia()
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get virtual media of BMC manager: %w", err)
+		}
+
+		result = append(result, convertVirtualMedia("manager", managerVirtualMedia)...)
+	}
+
+	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+
+	return result, nil
+}
+
+func convertVirtualMedia(service string, virtualMedia []*schemas.VirtualMedia) []api.BMCVirtualMedia {
+	result := make([]api.BMCVirtualMedia, 0, len(virtualMedia))
+	for _, vm := range virtualMedia {
+		mediaTypes := make([]string, 0, len(vm.MediaTypes))
+		for _, mediaType := range vm.MediaTypes {
+			mediaTypes = append(mediaTypes, string(mediaType))
+		}
+
+		result = append(result, api.BMCVirtualMedia{
+			ID:                   service + ":" + vm.ID,
+			Inserted:             ptr.From(vm.Inserted),
+			WriteProtected:       ptr.From(vm.WriteProtected),
+			Image:                vm.Image,
+			ImageName:            vm.ImageName,
+			ConnectedVia:         string(vm.ConnectedVia),
+			Status:               string(vm.Status.Health),
+			MediaTypes:           mediaTypes,
+			TransferMethod:       string(vm.TransferMethod),
+			TransferProtocolType: string(vm.TransferProtocolType),
+		})
+	}
+
+	return result
 }
 
 func getFirstProcessor(system *schemas.ComputerSystem) (*schemas.Processor, error) {
@@ -406,6 +499,127 @@ func (r redfish) performReset(ctx context.Context, server provisioning.Server, r
 	taskMonitor, err := system.Reset(resetType)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to perform BMC reset operation: %w", err)
+	}
+
+	// If taskMonitor is nil, the BMC completed synchronously.
+	if taskMonitor == nil {
+		return nil, nil
+	}
+
+	return &provisioning.BMCTaskMonitor{
+		URI: taskMonitor.TaskMonitor,
+	}, nil
+}
+
+func getVirtualMediaByID(client *gofish.APIClient, id string) (*schemas.VirtualMedia, error) {
+	service, redfishID, ok := strings.Cut(id, ":")
+	if !ok || service == "" || redfishID == "" {
+		return nil, fmt.Errorf("Invalid virtual media ID %q, expected format %q (e.g. %q): %w", id, "<service>:<id>", "system:1", domain.ErrOperationNotPermitted)
+	}
+
+	var virtualMedias []*schemas.VirtualMedia
+
+	var virtualMediaReturner interface {
+		VirtualMedia() ([]*schemas.VirtualMedia, error)
+	}
+	var err error
+
+	switch service {
+	case "system":
+		virtualMediaReturner, err = getFirstSystem(client)
+
+	case "manager":
+		virtualMediaReturner, err = getFirstManager(client)
+
+	default:
+		return nil, fmt.Errorf("Unknown virtual media service %q in ID %q, expected %q or %q: %w", service, id, "system", "manager", domain.ErrOperationNotPermitted)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get BMC system: %w", err)
+	}
+
+	virtualMedias, err = virtualMediaReturner.VirtualMedia()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get virtual media from BMC system: %w", err)
+	}
+
+	for _, vm := range virtualMedias {
+		if vm.ID == redfishID {
+			return vm, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Virtual media %q not found on BMC: %w", id, domain.ErrNotFound)
+}
+
+func virtualMediaHasMedia(vm *schemas.VirtualMedia) bool {
+	if vm.Inserted != nil {
+		return *vm.Inserted
+	}
+
+	return vm.Image != ""
+}
+
+func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (*provisioning.BMCTaskMonitor, error) {
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	virtualMedia, err := getVirtualMediaByID(client, virtualMediaID)
+	if err != nil {
+		return nil, err
+	}
+
+	if virtualMediaHasMedia(virtualMedia) {
+		return nil, fmt.Errorf("Virtual media %q already has media attached, detach the media first: %w", virtualMediaID, domain.ErrOperationNotPermitted)
+	}
+
+	params := &schemas.VirtualMediaInsertMediaParameters{
+		Image:          mediaURL,
+		Inserted:       ptr.To(true),
+		TransferMethod: ptr.To(schemas.StreamTransferMethod),
+	}
+
+	taskMonitor, err := virtualMedia.InsertMedia(params)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to attach media to BMC: %w", err)
+	}
+
+	// If taskMonitor is nil, the BMC completed synchronously.
+	if taskMonitor == nil {
+		return nil, nil
+	}
+
+	return &provisioning.BMCTaskMonitor{
+		URI: taskMonitor.TaskMonitor,
+	}, nil
+}
+
+func (r redfish) DetachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string) (*provisioning.BMCTaskMonitor, error) {
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	virtualMedia, err := getVirtualMediaByID(client, virtualMediaID)
+	if err != nil {
+		return nil, err
+	}
+
+	// No media attached, nothing to detach.
+	if !virtualMediaHasMedia(virtualMedia) {
+		return nil, nil
+	}
+
+	taskMonitor, err := virtualMedia.EjectMedia()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to detach media from BMC: %w", err)
 	}
 
 	// If taskMonitor is nil, the BMC completed synchronously.

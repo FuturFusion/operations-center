@@ -161,7 +161,9 @@ func TestRedfish_GetData(t *testing.T) {
   "PowerState": "On",
   "LocationIndicatorActive": true,
   "Status": { "Health": "OK" },
-  "Processors": { "@odata.id": "/redfish/v1/Systems/1/Processors" }
+  "Processors": { "@odata.id": "/redfish/v1/Systems/1/Processors" },
+  "Bios": { "@odata.id": "/redfish/v1/Systems/1/Bios" },
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia" }
 }`,
 				managersStatusCode: http.StatusOK,
 				managersBody: `{
@@ -192,30 +194,502 @@ func TestRedfish_GetData(t *testing.T) {
   "ProcessorArchitecture": "x86",
   "InstructionSet": "x86-64"
 }`,
+				biosStatusCode: http.StatusOK,
+				biosBody: `{
+  "@odata.id": "/redfish/v1/Systems/1/Bios",
+  "Id": "Bios",
+  "Attributes": {
+    "BootMode": "Uefi",
+    "NumLock": true
+  }
+}`,
+				systemVirtualMediaStatusCode: http.StatusOK,
+				systemVirtualMediaBody: `{
+  "Members@odata.count": 2,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1" },
+    { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/2" }
+  ]
+}`,
+				systemVirtualMediaMemberStatusCode: http.StatusOK,
+				systemVirtualMediaMemberBody: `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": true,
+  "Image": "http://example.com/image.iso",
+  "ImageName": "image.iso",
+  "ConnectedVia": "URI",
+  "Status": { "Health": "OK" },
+  "MediaTypes": ["CD", "DVD"],
+  "TransferMethod": "Stream",
+  "TransferProtocolType": "HTTPS",
+  "WriteProtected": true
+}`,
+				systemVirtualMediaMember2StatusCode: http.StatusOK,
+				systemVirtualMediaMember2Body: `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/2",
+  "Id": "2",
+  "Inserted": false,
+  "ConnectedVia": "NotConnected",
+  "Status": { "Health": "OK" },
+  "MediaTypes": ["USBStick"]
+}`,
 			},
 
 			assertErr: require.NoError,
 			want: api.BMCData{
-				BMCProtocol:                   "Redfish",
-				BMCProtocolVersion:            "1.16.0",
-				BMCVendor:                     "Dell",
-				BMCModel:                      "iDRAC9",
-				BMCFirmwareVersion:            "1.30.20.10",
-				BMCServiceIdentification:      "ServiceID1",
-				ServerManufacturer:            "Dell Inc.",
-				ServerModel:                   "PowerEdge R770",
-				ServerSubModel:                "SubModel",
-				ServerUUID:                    "e9de436e-b94e-4aef-8563-883aec84096e",
-				ServerAssetTag:                "AssetTag1",
-				ServerHostName:                "host1",
-				ServerSKU:                     "SKU123",
-				ServerSerialNumber:            "Serial123",
-				ServerBIOSVersion:             "1.7.5",
+				BMCProtocol:              "Redfish",
+				BMCProtocolVersion:       "1.16.0",
+				BMCVendor:                "Dell",
+				BMCModel:                 "iDRAC9",
+				BMCFirmwareVersion:       "1.30.20.10",
+				BMCServiceIdentification: "ServiceID1",
+				ServerManufacturer:       "Dell Inc.",
+				ServerModel:              "PowerEdge R770",
+				ServerSubModel:           "SubModel",
+				ServerUUID:               "e9de436e-b94e-4aef-8563-883aec84096e",
+				ServerAssetTag:           "AssetTag1",
+				ServerHostName:           "host1",
+				ServerSKU:                "SKU123",
+				ServerSerialNumber:       "Serial123",
+				ServerBIOSVersion:        "1.7.5",
+				ServerBIOSAttributes: map[string]any{
+					"BootMode": "Uefi",
+					"NumLock":  true,
+				},
 				ServerProcessorArchitecture:   "x86",
 				ServerProcessorInstructionSet: "x86-64",
 				ServerPowerState:              "On",
 				ServerLocationIndicatorActive: true,
 				ServerHealthStatus:            "OK",
+				VirtualMedia: []api.BMCVirtualMedia{
+					{
+						ID:                   "system:1",
+						Inserted:             true,
+						Image:                "http://example.com/image.iso",
+						ImageName:            "image.iso",
+						ConnectedVia:         "URI",
+						Status:               "OK",
+						MediaTypes:           []string{"CD", "DVD"},
+						TransferMethod:       "Stream",
+						TransferProtocolType: "HTTPS",
+						WriteProtected:       true,
+					},
+					{
+						ID:           "system:2",
+						Inserted:     false,
+						ConnectedVia: "NotConnected",
+						Status:       "OK",
+						MediaTypes:   []string{"USBStick"},
+					},
+				},
+			},
+		},
+		{
+			name: "success - virtual media only on manager",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				systemsStatusCode:     http.StatusOK,
+				systemsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`,
+				systemStatusCode: http.StatusOK,
+				systemBody: `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Processors": { "@odata.id": "/redfish/v1/Systems/1/Processors" }
+}`,
+				managersStatusCode: http.StatusOK,
+				managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+				managerStatusCode: http.StatusOK,
+				managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1",
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Managers/1/VirtualMedia" }
+}`,
+				processorsStatusCode: http.StatusOK,
+				processorsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1/Processors/1" }
+  ]
+}`,
+				processorStatusCode: http.StatusOK,
+				processorBody: `{
+  "@odata.id": "/redfish/v1/Systems/1/Processors/1",
+  "Id": "1"
+}`,
+				managerVirtualMediaStatusCode: http.StatusOK,
+				managerVirtualMediaBody: `{
+  "Members@odata.count": 2,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1" },
+    { "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/2" }
+  ]
+}`,
+				managerVirtualMediaMemberStatusCode: http.StatusOK,
+				managerVirtualMediaMemberBody: `{
+  "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "ConnectedVia": "NotConnected",
+  "Status": { "Health": "OK" }
+}`,
+				managerVirtualMediaMember2StatusCode: http.StatusOK,
+				managerVirtualMediaMember2Body: `{
+  "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/2",
+  "Id": "2",
+  "Inserted": true,
+  "Image": "http://example.com/image2.iso",
+  "ImageName": "image2.iso",
+  "ConnectedVia": "URI",
+  "Status": { "Health": "OK" },
+  "MediaTypes": ["CD"]
+}`,
+			},
+
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+				VirtualMedia: []api.BMCVirtualMedia{
+					{
+						ID:           "manager:1",
+						Inserted:     false,
+						ConnectedVia: "NotConnected",
+						Status:       "OK",
+						MediaTypes:   []string{},
+					},
+					{
+						ID:           "manager:2",
+						Inserted:     true,
+						Image:        "http://example.com/image2.iso",
+						ImageName:    "image2.iso",
+						ConnectedVia: "URI",
+						Status:       "OK",
+						MediaTypes:   []string{"CD"},
+					},
+				},
+			},
+		},
+		{
+			name: "success - virtual media on both system and manager returns a combined collection",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				systemsStatusCode:     http.StatusOK,
+				systemsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`,
+				systemStatusCode: http.StatusOK,
+				systemBody: `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Processors": { "@odata.id": "/redfish/v1/Systems/1/Processors" },
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia" }
+}`,
+				managersStatusCode: http.StatusOK,
+				managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+				managerStatusCode: http.StatusOK,
+				managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1",
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Managers/1/VirtualMedia" }
+}`,
+				processorsStatusCode: http.StatusOK,
+				processorsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1/Processors/1" }
+  ]
+}`,
+				processorStatusCode: http.StatusOK,
+				processorBody: `{
+  "@odata.id": "/redfish/v1/Systems/1/Processors/1",
+  "Id": "1"
+}`,
+				systemVirtualMediaStatusCode: http.StatusOK,
+				systemVirtualMediaBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1" }
+  ]
+}`,
+				systemVirtualMediaMemberStatusCode: http.StatusOK,
+				systemVirtualMediaMemberBody: `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": true,
+  "ConnectedVia": "URI",
+  "Status": { "Health": "OK" },
+  "MediaTypes": ["CD"]
+}`,
+				managerVirtualMediaStatusCode: http.StatusOK,
+				managerVirtualMediaBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1" }
+  ]
+}`,
+				managerVirtualMediaMemberStatusCode: http.StatusOK,
+				managerVirtualMediaMemberBody: `{
+  "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "ConnectedVia": "NotConnected",
+  "Status": { "Health": "OK" }
+}`,
+			},
+
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+				VirtualMedia: []api.BMCVirtualMedia{
+					{
+						ID:           "manager:1",
+						Inserted:     false,
+						ConnectedVia: "NotConnected",
+						Status:       "OK",
+						MediaTypes:   []string{},
+					},
+					{
+						ID:           "system:1",
+						Inserted:     true,
+						ConnectedVia: "URI",
+						Status:       "OK",
+						MediaTypes:   []string{"CD"},
+					},
+				},
+			},
+		},
+		{
+			name: "success - no BIOS or virtual media links present",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				systemsStatusCode:     http.StatusOK,
+				systemsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`,
+				systemStatusCode: http.StatusOK,
+				systemBody: `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Processors": { "@odata.id": "/redfish/v1/Systems/1/Processors" }
+}`,
+				managersStatusCode: http.StatusOK,
+				managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+				managerStatusCode: http.StatusOK,
+				managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1"
+}`,
+				processorsStatusCode: http.StatusOK,
+				processorsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1/Processors/1" }
+  ]
+}`,
+				processorStatusCode: http.StatusOK,
+				processorBody: `{
+  "@odata.id": "/redfish/v1/Systems/1/Processors/1",
+  "Id": "1"
+}`,
+			},
+
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
+		},
+		{
+			name: "success - BIOS fetch fails, rest of data still collected",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				systemsStatusCode:     http.StatusOK,
+				systemsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`,
+				systemStatusCode: http.StatusOK,
+				systemBody: `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Processors": { "@odata.id": "/redfish/v1/Systems/1/Processors" },
+  "Bios": { "@odata.id": "/redfish/v1/Systems/1/Bios" }
+}`,
+				managersStatusCode: http.StatusOK,
+				managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+				managerStatusCode: http.StatusOK,
+				managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1"
+}`,
+				processorsStatusCode: http.StatusOK,
+				processorsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1/Processors/1" }
+  ]
+}`,
+				processorStatusCode: http.StatusOK,
+				processorBody: `{
+  "@odata.id": "/redfish/v1/Systems/1/Processors/1",
+  "Id": "1"
+}`,
+				biosStatusCode: http.StatusInternalServerError,
+			},
+
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
+		},
+		{
+			name: "success - virtual media of BMC system fetch fails, rest of data still collected",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				systemsStatusCode:     http.StatusOK,
+				systemsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`,
+				systemStatusCode: http.StatusOK,
+				systemBody: `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Processors": { "@odata.id": "/redfish/v1/Systems/1/Processors" },
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia" }
+}`,
+				managersStatusCode: http.StatusOK,
+				managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+				managerStatusCode: http.StatusOK,
+				managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1"
+}`,
+				processorsStatusCode: http.StatusOK,
+				processorsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1/Processors/1" }
+  ]
+}`,
+				processorStatusCode: http.StatusOK,
+				processorBody: `{
+  "@odata.id": "/redfish/v1/Systems/1/Processors/1",
+  "Id": "1"
+}`,
+				systemVirtualMediaStatusCode: http.StatusInternalServerError,
+			},
+
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
+		},
+		{
+			name: "success - virtual media of BMC manager fetch fails, rest of data still collected",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				systemsStatusCode:     http.StatusOK,
+				systemsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`,
+				systemStatusCode: http.StatusOK,
+				systemBody: `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Processors": { "@odata.id": "/redfish/v1/Systems/1/Processors" }
+}`,
+				managersStatusCode: http.StatusOK,
+				managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+				managerStatusCode: http.StatusOK,
+				managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1",
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Managers/1/VirtualMedia" }
+}`,
+				processorsStatusCode: http.StatusOK,
+				processorsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1/Processors/1" }
+  ]
+}`,
+				processorStatusCode: http.StatusOK,
+				processorBody: `{
+  "@odata.id": "/redfish/v1/Systems/1/Processors/1",
+  "Id": "1"
+}`,
+				managerVirtualMediaStatusCode: http.StatusInternalServerError,
+			},
+
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
 			},
 		},
 		{
@@ -228,17 +702,40 @@ func TestRedfish_GetData(t *testing.T) {
 			assertErr: require.Error,
 		},
 		{
-			name: "error - failed to get BMC systems",
+			name: "success - BMC systems fetch fails, manager data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
 				systemsStatusCode:     http.StatusInternalServerError,
+				managersStatusCode:    http.StatusOK,
+				managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+				managerStatusCode: http.StatusOK,
+				managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1",
+  "Model": "iDRAC9",
+  "FirmwareVersion": "1.30.20.10",
+  "ServiceIdentification": "ServiceID1"
+}`,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:              "Redfish",
+				BMCProtocolVersion:       "1.16.0",
+				BMCVendor:                "Dell",
+				BMCModel:                 "iDRAC9",
+				BMCFirmwareVersion:       "1.30.20.10",
+				BMCServiceIdentification: "ServiceID1",
+			},
 		},
 		{
-			name: "error - no BMC systems found",
+			name: "success - no BMC systems found, manager data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -247,12 +744,35 @@ func TestRedfish_GetData(t *testing.T) {
   "Members@odata.count": 0,
   "Members": []
 }`,
+				managersStatusCode: http.StatusOK,
+				managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+				managerStatusCode: http.StatusOK,
+				managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1",
+  "Model": "iDRAC9",
+  "FirmwareVersion": "1.30.20.10",
+  "ServiceIdentification": "ServiceID1"
+}`,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:              "Redfish",
+				BMCProtocolVersion:       "1.16.0",
+				BMCVendor:                "Dell",
+				BMCModel:                 "iDRAC9",
+				BMCFirmwareVersion:       "1.30.20.10",
+				BMCServiceIdentification: "ServiceID1",
+			},
 		},
 		{
-			name: "error - failed to get individual BMC system",
+			name: "success - individual BMC system fetch fails, manager data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -263,13 +783,36 @@ func TestRedfish_GetData(t *testing.T) {
     { "@odata.id": "/redfish/v1/Systems/1" }
   ]
 }`,
-				systemStatusCode: http.StatusInternalServerError,
+				systemStatusCode:   http.StatusInternalServerError,
+				managersStatusCode: http.StatusOK,
+				managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+				managerStatusCode: http.StatusOK,
+				managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1",
+  "Model": "iDRAC9",
+  "FirmwareVersion": "1.30.20.10",
+  "ServiceIdentification": "ServiceID1"
+}`,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:              "Redfish",
+				BMCProtocolVersion:       "1.16.0",
+				BMCVendor:                "Dell",
+				BMCModel:                 "iDRAC9",
+				BMCFirmwareVersion:       "1.30.20.10",
+				BMCServiceIdentification: "ServiceID1",
+			},
 		},
 		{
-			name: "error - failed to get BMC managers",
+			name: "success - BMC managers fetch fails, system data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -288,10 +831,15 @@ func TestRedfish_GetData(t *testing.T) {
 				managersStatusCode: http.StatusInternalServerError,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
 		},
 		{
-			name: "error - no BMC managers found",
+			name: "success - no BMC managers found, system data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -314,10 +862,15 @@ func TestRedfish_GetData(t *testing.T) {
 }`,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
 		},
 		{
-			name: "error - failed to get individual BMC manager",
+			name: "success - individual BMC manager fetch fails, system data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -343,10 +896,15 @@ func TestRedfish_GetData(t *testing.T) {
 				managerStatusCode: http.StatusInternalServerError,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
 		},
 		{
-			name: "error - failed to get processors of BMC system",
+			name: "success - processors of BMC system fetch fails, rest of data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -378,10 +936,15 @@ func TestRedfish_GetData(t *testing.T) {
 				processorsStatusCode: http.StatusInternalServerError,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
 		},
 		{
-			name: "error - no processors found for the BMC system",
+			name: "success - no processors found for the BMC system, rest of data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -417,10 +980,15 @@ func TestRedfish_GetData(t *testing.T) {
 }`,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
 		},
 		{
-			name: "error - failed to get individual processor of BMC system",
+			name: "success - individual processor of BMC system fetch fails, rest of data still collected",
 
 			responses: mockRedfishServer{
 				serviceRootStatusCode: http.StatusOK,
@@ -459,7 +1027,12 @@ func TestRedfish_GetData(t *testing.T) {
 				processorStatusCode: http.StatusInternalServerError,
 			},
 
-			assertErr: require.Error,
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+			},
 		},
 	}
 
@@ -1968,4 +2541,412 @@ func TestRedfish_Dump(t *testing.T) {
 		require.NotNil(t, vendor.Response)
 		require.Nil(t, vendor.Error)
 	})
+}
+
+const (
+	mediaAttachURL = "http://example.com/install.iso"
+
+	mediaSystemsBody = `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`
+
+	mediaSystemBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia" }
+}`
+
+	mediaManagersBody = `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`
+
+	mediaManagerBody = `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1",
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Managers/1/VirtualMedia" }
+}`
+
+	mediaSystemVMCollectionBody = `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1" }
+  ]
+}`
+
+	mediaManagerVMCollectionBody = `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1" }
+  ]
+}`
+
+	mediaSystemVMFreeBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaSystemVMInsertedBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": true,
+  "Image": "http://example.com/existing.iso",
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaManagerVMFreeBody = `{
+  "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaManagerVMInsertedBody = `{
+  "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": true,
+  "Image": "http://example.com/existing.iso",
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+)
+
+func TestRedfish_AttachMedia(t *testing.T) {
+	tests := []struct {
+		name           string
+		virtualMediaID string
+
+		serviceRootStatusCode int
+
+		systemsBody         string
+		systemBody          string
+		systemVMBody        string
+		systemVMMemberBody  string
+		managersBody        string
+		managerBody         string
+		managerVMBody       string
+		managerVMMemberBody string
+
+		insertMediaStatusCode int
+		insertMediaLocation   string
+
+		wantBody        string
+		wantTaskMonitor *provisioning.BMCTaskMonitor
+		assertErr       require.ErrorAssertionFunc
+	}{
+		{
+			name:           "success - system slot",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMediaStatusCode: http.StatusNoContent,
+
+			wantBody:  `{"Image":"http://example.com/install.iso","Inserted":true,"TransferMethod":"Stream"}`,
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - manager slot (abstraction)",
+			virtualMediaID: "manager:1",
+
+			managersBody:        mediaManagersBody,
+			managerBody:         mediaManagerBody,
+			managerVMBody:       mediaManagerVMCollectionBody,
+			managerVMMemberBody: mediaManagerVMFreeBody,
+
+			insertMediaStatusCode: http.StatusNoContent,
+
+			wantBody:  `{"Image":"http://example.com/install.iso","Inserted":true,"TransferMethod":"Stream"}`,
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - task monitor returned",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMediaStatusCode: http.StatusAccepted,
+			insertMediaLocation:   "/redfish/v1/TaskMonitor/1",
+
+			wantBody: `{"Image":"http://example.com/install.iso","Inserted":true,"TransferMethod":"Stream"}`,
+			wantTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - invalid virtual media ID format",
+			virtualMediaID: "system-1",
+
+			assertErr: errassert.Contains("Invalid virtual media ID"),
+		},
+		{
+			name:           "error - unknown virtual media service",
+			virtualMediaID: "chassis:1",
+
+			assertErr: errassert.Contains("Unknown virtual media service"),
+		},
+		{
+			name:           "error - virtual media not found",
+			virtualMediaID: "system:9",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			assertErr: errassert.Contains("not found"),
+		},
+		{
+			name:           "error - media already attached",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			assertErr: errassert.Contains("already has media attached"),
+		},
+		{
+			name:           "error - insert action failed",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMediaStatusCode: http.StatusInternalServerError,
+
+			assertErr: errassert.Contains("Failed to attach media"),
+		},
+		{
+			name:           "error - failed to connect to BMC",
+			virtualMediaID: "system:1",
+
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotBody []byte
+
+			serviceRootStatusCode := tc.serviceRootStatusCode
+			if serviceRootStatusCode == 0 {
+				serviceRootStatusCode = http.StatusOK
+			}
+
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode:               serviceRootStatusCode,
+				systemsStatusCode:                   http.StatusOK,
+				systemsBody:                         tc.systemsBody,
+				systemStatusCode:                    http.StatusOK,
+				systemBody:                          tc.systemBody,
+				systemVirtualMediaStatusCode:        http.StatusOK,
+				systemVirtualMediaBody:              tc.systemVMBody,
+				systemVirtualMediaMemberStatusCode:  http.StatusOK,
+				systemVirtualMediaMemberBody:        tc.systemVMMemberBody,
+				managersStatusCode:                  http.StatusOK,
+				managersBody:                        tc.managersBody,
+				managerStatusCode:                   http.StatusOK,
+				managerBody:                         tc.managerBody,
+				managerVirtualMediaStatusCode:       http.StatusOK,
+				managerVirtualMediaBody:             tc.managerVMBody,
+				managerVirtualMediaMemberStatusCode: http.StatusOK,
+				managerVirtualMediaMemberBody:       tc.managerVMMemberBody,
+				insertMediaStatusCode:               tc.insertMediaStatusCode,
+				insertMediaLocation:                 tc.insertMediaLocation,
+			}, &gotBody)
+
+			client := redfish.New()
+			taskMonitor, err := client.AttachMedia(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.virtualMediaID, mediaAttachURL)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantTaskMonitor, taskMonitor)
+
+			if tc.wantBody != "" {
+				require.JSONEq(t, tc.wantBody, string(gotBody))
+			}
+		})
+	}
+}
+
+func TestRedfish_DetachMedia(t *testing.T) {
+	tests := []struct {
+		name           string
+		virtualMediaID string
+
+		serviceRootStatusCode int
+
+		systemsBody         string
+		systemBody          string
+		systemVMBody        string
+		systemVMMemberBody  string
+		managersBody        string
+		managerBody         string
+		managerVMBody       string
+		managerVMMemberBody string
+
+		ejectMediaStatusCode int
+		ejectMediaLocation   string
+
+		wantTaskMonitor *provisioning.BMCTaskMonitor
+		assertErr       require.ErrorAssertionFunc
+	}{
+		{
+			name:           "success - system slot",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			ejectMediaStatusCode: http.StatusNoContent,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - manager slot (abstraction)",
+			virtualMediaID: "manager:1",
+
+			managersBody:        mediaManagersBody,
+			managerBody:         mediaManagerBody,
+			managerVMBody:       mediaManagerVMCollectionBody,
+			managerVMMemberBody: mediaManagerVMInsertedBody,
+
+			ejectMediaStatusCode: http.StatusNoContent,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - task monitor returned",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			ejectMediaStatusCode: http.StatusAccepted,
+			ejectMediaLocation:   "/redfish/v1/TaskMonitor/1",
+
+			wantTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "no-op - nothing attached",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - virtual media not found",
+			virtualMediaID: "system:9",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			assertErr: errassert.Contains("not found"),
+		},
+		{
+			name:           "error - eject action failed",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			ejectMediaStatusCode: http.StatusInternalServerError,
+
+			assertErr: errassert.Contains("Failed to detach media"),
+		},
+		{
+			name:           "error - failed to connect to BMC",
+			virtualMediaID: "system:1",
+
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			serviceRootStatusCode := tc.serviceRootStatusCode
+			if serviceRootStatusCode == 0 {
+				serviceRootStatusCode = http.StatusOK
+			}
+
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode:               serviceRootStatusCode,
+				systemsStatusCode:                   http.StatusOK,
+				systemsBody:                         tc.systemsBody,
+				systemStatusCode:                    http.StatusOK,
+				systemBody:                          tc.systemBody,
+				systemVirtualMediaStatusCode:        http.StatusOK,
+				systemVirtualMediaBody:              tc.systemVMBody,
+				systemVirtualMediaMemberStatusCode:  http.StatusOK,
+				systemVirtualMediaMemberBody:        tc.systemVMMemberBody,
+				managersStatusCode:                  http.StatusOK,
+				managersBody:                        tc.managersBody,
+				managerStatusCode:                   http.StatusOK,
+				managerBody:                         tc.managerBody,
+				managerVirtualMediaStatusCode:       http.StatusOK,
+				managerVirtualMediaBody:             tc.managerVMBody,
+				managerVirtualMediaMemberStatusCode: http.StatusOK,
+				managerVirtualMediaMemberBody:       tc.managerVMMemberBody,
+				ejectMediaStatusCode:                tc.ejectMediaStatusCode,
+				ejectMediaLocation:                  tc.ejectMediaLocation,
+			}, nil)
+
+			client := redfish.New()
+			taskMonitor, err := client.DetachMedia(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.virtualMediaID)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantTaskMonitor, taskMonitor)
+		})
+	}
 }

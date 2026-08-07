@@ -55,6 +55,34 @@ func (_d ServerServiceWithPrometheus) AddApplication(ctx context.Context, name s
 	return _d.base.AddApplication(ctx, name, applicationName)
 }
 
+// BMCAttachMediaByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BMCAttachMediaByName(ctx context.Context, name string, media api.ServerBMCAttachMedia) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCAttachMediaByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BMCAttachMediaByName(ctx, name, media)
+}
+
+// BMCDetachMediaByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BMCDetachMediaByName(ctx context.Context, name string, virtualMediaID string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCDetachMediaByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BMCDetachMediaByName(ctx, name, virtualMediaID)
+}
+
 // BMCDumpByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (bMCDump api.BMCDump, err error) {
 	_since := time.Now()

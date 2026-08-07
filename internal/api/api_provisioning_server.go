@@ -82,6 +82,8 @@ func registerProvisioningServerHandler(
 	router.HandleFunc("POST /{name}/bmc/:server-restart", response.With(handler.serverBMCServerRestartPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}/bmc/logs", response.With(handler.serverBMCLogSourcesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}/bmc/logs/{logSource...}", response.With(handler.serverBMCLogEntriesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{name}/bmc/:attach-media", response.With(handler.serverBMCAttachMediaPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/bmc/:detach-media", response.With(handler.serverBMCDetachMediaPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}/changelog", response.With(handler.serverChangelogGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("/{name}/os", response.With(handler.serverOSProxy, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("/{name}/os/", response.With(handler.serverOSProxy, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
@@ -1169,6 +1171,113 @@ func (s *serverHandler) serverBMCDumpPost(r *http.Request) response.Response {
 	}
 
 	return response.SyncResponse(true, dump)
+}
+
+// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:attach-media servers_bmc_attach_media server_bmc_attach_media_post
+//
+//	Attach installation media to a server via BMC
+//
+//	Attaches installation media, generated from a public token seed, to a virtual
+//	media device of the server. The BMC streams the generated image directly from
+//	Operations Center, so the referenced token seed must be public.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
+//	  - in: body
+//	    name: media
+//	    description: Installation media to attach
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/ServerBMCAttachMedia"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverBMCAttachMediaPost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	var media api.ServerBMCAttachMedia
+
+	err := json.NewDecoder(r.Body).Decode(&media)
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Request decoding: %v", err))
+	}
+
+	err = s.service.BMCAttachMediaByName(r.Context(), name, media)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to attach media to server %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:detach-media servers_bmc_detach_media server_bmc_detach_media_post
+//
+//	Detach installation media from a server via BMC
+//
+//	Detaches (ejects) the installation media currently attached to the given
+//	virtual media device of the server.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
+//	  - in: body
+//	    name: media
+//	    description: Installation media to detach
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/ServerBMCDetachMedia"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverBMCDetachMediaPost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	var media api.ServerBMCDetachMedia
+
+	err := json.NewDecoder(r.Body).Decode(&media)
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Request decoding: %v", err))
+	}
+
+	err = s.service.BMCDetachMediaByName(r.Context(), name, media.VirtualMediaID)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to detach media from server %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
 }
 
 // swagger:operation GET /1.0/provisioning/servers/{name}/changelog servers server_changelog_get

@@ -54,14 +54,30 @@ export interface BMCData {
   server_sku: string;
   server_serial_number: string;
   server_bios_version: string;
+  server_bios_attributes: Record<string, unknown>;
   server_processor_architecture: string;
   server_processor_instruction_set: string;
   server_power_state: string;
   server_location_indicator_active: boolean;
   server_health_status: string;
+  virtual_media: BMCVirtualMedia[];
   last_updated: string;
 }
 
+export interface BMCVirtualMedia {
+  id: string;
+  inserted: boolean;
+  image: string;
+  image_name: string;
+  connected_via: string;
+  status: string;
+  media_types: string[];
+  transfer_method: string;
+  transfer_protocol_type: string;
+  write_protected: boolean;
+}
+
+// BMCLogEvent fields are marshalled without JSON tags, hence the casing.
 export interface BMCLogEvent {
   entry_code: string;
   message: string;

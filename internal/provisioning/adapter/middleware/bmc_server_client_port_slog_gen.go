@@ -40,6 +40,43 @@ func NewBMCServerClientPortWithSlog(base provisioning.BMCServerClientPort, opts 
 	return this
 }
 
+// AttachMedia implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.String("virtualMediaID", virtualMediaID),
+			slog.String("mediaURL", mediaURL),
+		)
+	}
+	log.DebugContext(ctx, "=> calling AttachMedia")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bMCTaskMonitor", bMCTaskMonitor),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method AttachMedia returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method AttachMedia returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method AttachMedia finished")
+		}
+	}()
+	return _d._base.AttachMedia(ctx, server, virtualMediaID, mediaURL)
+}
+
 // ConnectionTest implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) ConnectionTest(ctx context.Context, server provisioning.Server) (certificate string, err error) {
 	log := slog.With()
@@ -73,6 +110,42 @@ func (_d BMCServerClientPortWithSlog) ConnectionTest(ctx context.Context, server
 		}
 	}()
 	return _d._base.ConnectionTest(ctx, server)
+}
+
+// DetachMedia implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) DetachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.String("virtualMediaID", virtualMediaID),
+		)
+	}
+	log.DebugContext(ctx, "=> calling DetachMedia")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bMCTaskMonitor", bMCTaskMonitor),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method DetachMedia returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method DetachMedia returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method DetachMedia finished")
+		}
+	}()
+	return _d._base.DetachMedia(ctx, server, virtualMediaID)
 }
 
 // Dump implements provisioning.BMCServerClientPort.

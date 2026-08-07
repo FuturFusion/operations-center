@@ -26,6 +26,16 @@ func NewBMCServerClientPortWithErrorWrapper(base provisioning.BMCServerClientPor
 	return this
 }
 
+// AttachMedia implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.AttachMedia(ctx, server, virtualMediaID, mediaURL)
+}
+
 // ConnectionTest implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithErrorWrapper) ConnectionTest(ctx context.Context, server provisioning.Server) (certificate string, err error) {
 	defer func() {
@@ -34,6 +44,16 @@ func (_d BMCServerClientPortWithErrorWrapper) ConnectionTest(ctx context.Context
 		}
 	}()
 	return _d._base.ConnectionTest(ctx, server)
+}
+
+// DetachMedia implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) DetachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.DetachMedia(ctx, server, virtualMediaID)
 }
 
 // Dump implements provisioning.BMCServerClientPort.

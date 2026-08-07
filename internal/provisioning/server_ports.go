@@ -59,6 +59,8 @@ type ServerService interface {
 	BMCLogSourcesByName(ctx context.Context, name string) ([]string, error)
 	BMCLogEntriesByNameAndLogSource(ctx context.Context, name string, logSource string) ([]api.BMCLogEvent, error)
 	BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error)
+	BMCAttachMediaByName(ctx context.Context, name string, media api.ServerBMCAttachMedia) error
+	BMCDetachMediaByName(ctx context.Context, name string, virtualMediaID string) error
 }
 
 type ServerRepo interface {
@@ -119,4 +121,6 @@ type BMCServerClientPort interface {
 	LogSources(ctx context.Context, server Server) ([]string, error)
 	LogEntriesBySource(ctx context.Context, server Server, logSource string) ([]api.BMCLogEvent, error)
 	Dump(ctx context.Context, server Server, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error)
+	AttachMedia(ctx context.Context, server Server, virtualMediaID string, mediaURL string) (*BMCTaskMonitor, error)
+	DetachMedia(ctx context.Context, server Server, virtualMediaID string) (*BMCTaskMonitor, error)
 }

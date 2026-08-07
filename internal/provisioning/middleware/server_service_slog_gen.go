@@ -78,6 +78,76 @@ func (_d ServerServiceWithSlog) AddApplication(ctx context.Context, name string,
 	return _d._base.AddApplication(ctx, name, applicationName)
 }
 
+// BMCAttachMediaByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCAttachMediaByName(ctx context.Context, name string, media api.ServerBMCAttachMedia) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Any("media", media),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCAttachMediaByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BMCAttachMediaByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BMCAttachMediaByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BMCAttachMediaByName finished")
+		}
+	}()
+	return _d._base.BMCAttachMediaByName(ctx, name, media)
+}
+
+// BMCDetachMediaByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCDetachMediaByName(ctx context.Context, name string, virtualMediaID string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.String("virtualMediaID", virtualMediaID),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCDetachMediaByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BMCDetachMediaByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BMCDetachMediaByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BMCDetachMediaByName finished")
+		}
+	}()
+	return _d._base.BMCDetachMediaByName(ctx, name, virtualMediaID)
+}
+
 // BMCDumpByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (bMCDump api.BMCDump, err error) {
 	log := slog.With()
