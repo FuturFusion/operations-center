@@ -54,7 +54,7 @@ func Test_GetWithFilter{{ .PluralName | pascalcase }}(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-{{ if .ServerIDByLocation }}
+{{ if .HasServer }}
 				_, err = provisioningEntities.CreateServer(t.Context(), db, provisioning.Server{
 					Name:    "serverOne",
 					Channel: "stable",
@@ -66,7 +66,7 @@ func Test_GetWithFilter{{ .PluralName | pascalcase }}(t *testing.T) {
 					UUID:    uuidgen.FromPattern(t, "1"),
 					Name:    "one",
 					Cluster: "clusterOne",
-{{- if .ServerIDByLocation }}
+{{- if .HasServer }}
 	{{- if .IsServerIDOptional }}
 					Server:  ptr.To("serverOne"),
 	{{- else }}
@@ -136,7 +136,7 @@ func Test_Get{{ .Name | pascalcase }}(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-{{ if .ServerIDByLocation }}
+{{ if .HasServer }}
 				_, err = provisioningEntities.CreateServer(t.Context(), db, provisioning.Server{
 					Name:    "serverOne",
 					Channel: "stable",
@@ -148,7 +148,7 @@ func Test_Get{{ .Name | pascalcase }}(t *testing.T) {
 					UUID:    uuidgen.FromPattern(t, "1"),
 					Name:    "foo",
 					Cluster: "clusterOne",
-{{- if .ServerIDByLocation }}
+{{- if .HasServer }}
 	{{- if .IsServerIDOptional }}
 					Server:  ptr.To("serverOne"),
 	{{- else }}

@@ -21,6 +21,7 @@ import (
 type Image struct {
 	UUID        uuid.UUID      `json:"uuid" yaml:"uuid"`
 	Cluster     string         `json:"cluster" yaml:"cluster"`
+	Server      string         `json:"server" yaml:"server"`
 	ProjectName string         `json:"project_name" yaml:"project_name"`
 	Name        string         `json:"name" yaml:"name"`
 	Object      incusapi.Image `json:"object" yaml:"object"`

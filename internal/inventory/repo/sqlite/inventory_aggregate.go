@@ -208,6 +208,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			image := inventory.Image{
 				Cluster:     inventoryResource.ClusterName,
 				ProjectName: ptr.From(inventoryResource.ProjectName),
+				Server:      ptr.From(inventoryResource.ServerName),
 				Name:        inventoryResource.Name,
 				Object: inventory.IncusImageWrapper{
 					Image: object,

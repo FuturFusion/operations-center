@@ -3,7 +3,7 @@ import { JSONValue } from "types/common";
 export interface {{ .Name | pascalcase }} {
   uuid: string;
   cluster: string;
-{{- if .ServerIDByLocation }}
+{{- if .HasServer }}
   server: string;
 {{- end }}
 {{- if .HasProject }}

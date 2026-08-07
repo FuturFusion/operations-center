@@ -3,7 +3,6 @@
 package inventory_test
 
 import (
-	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -18,11 +17,8 @@ import (
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
 	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
-	"github.com/FuturFusion/operations-center/internal/util/testing/log"
-	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 )
 
@@ -263,1153 +259,95 @@ func TestImageService_GetByUUID(t *testing.T) {
 	}
 }
 
-func TestImageService_ResyncByUUID(t *testing.T) {
-	tests := []struct {
-		name                         string
-		clusterSvcGetEndpoint        provisioning.Endpoint
-		clusterSvcGetEndpointErr     error
-		imageClientGetImageByName    incusapi.Image
-		imageClientGetImageByNameErr error
-		repoGetByUUIDImage           []queue.Item[inventory.Image]
-		repoUpdateByUUIDErr          error
-		repoDeleteByUUIDErr          error
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name: "success",
-			repoGetByUUIDImage: []queue.Item[inventory.Image]{
-				{
-					Value: inventory.Image{
-						UUID:        uuidgen.FromPattern(t, "1"),
-						Cluster:     "one",
-						Name:        "one",
-						ProjectName: "project one",
-					},
-				},
-				{
-					Value: inventory.Image{
-						UUID:        uuidgen.FromPattern(t, "1"),
-						Cluster:     "one",
-						Name:        "one",
-						ProjectName: "project one",
-					},
-				},
-			},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImageByName: incusapi.Image{
-				Fingerprint: "image one",
-				Project:     "project one",
-			},
-
-			assertErr: require.NoError,
-		},
-		{
-			name: "success - image get by name - not found",
-			repoGetByUUIDImage: []queue.Item[inventory.Image]{
-				{
-					Value: inventory.Image{
-						UUID:        uuidgen.FromPattern(t, "1"),
-						Cluster:     "one",
-						Name:        "one",
-						ProjectName: "project one",
-					},
-				},
-			},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImageByNameErr: domain.ErrNotFound,
-
-			assertErr: require.NoError,
-		},
-		// NOTE: This test covers the additional log intended to find resources,
-		// where project is not properly populated by Incus.
-		// Remove once all the affected resources have been identified.
-		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
-		{
-			name: "success - missing project",
-			repoGetByUUIDImage: []queue.Item[inventory.Image]{
-				{
-					Value: inventory.Image{
-						UUID:    uuidgen.FromPattern(t, "1"),
-						Cluster: "one",
-						Name:    "one",
-					},
-				},
-				{
-					Value: inventory.Image{
-						UUID:    uuidgen.FromPattern(t, "1"),
-						Cluster: "one",
-						Name:    "one",
-					},
-				},
-			},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImageByName: incusapi.Image{
-				Fingerprint: "image one",
-			},
-
-			assertErr: require.NoError,
-		},
-		{
-			name: "error - image get by UUID - 1st",
-			repoGetByUUIDImage: []queue.Item[inventory.Image]{
-				{
-					Err: boom.Error,
-				},
-			},
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - cluster get by ID",
-			repoGetByUUIDImage: []queue.Item[inventory.Image]{
-				{
-					Value: inventory.Image{
-						UUID:        uuidgen.FromPattern(t, "1"),
-						Cluster:     "one",
-						Name:        "one",
-						ProjectName: "project one",
-					},
-				},
-			},
-			clusterSvcGetEndpointErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - image get by name",
-			repoGetByUUIDImage: []queue.Item[inventory.Image]{
-				{
-					Value: inventory.Image{
-						UUID:        uuidgen.FromPattern(t, "1"),
-						Cluster:     "one",
-						Name:        "one",
-						ProjectName: "project one",
-					},
-				},
-			},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImageByNameErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - image get by name - not found - delete by uuid",
-			repoGetByUUIDImage: []queue.Item[inventory.Image]{
-				{
-					Value: inventory.Image{
-						UUID:        uuidgen.FromPattern(t, "1"),
-						Cluster:     "one",
-						Name:        "one",
-						ProjectName: "project one",
-					},
-				},
-			},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImageByNameErr: domain.ErrNotFound,
-			repoDeleteByUUIDErr:          boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - image get by UUID - 2nd",
-			repoGetByUUIDImage: []queue.Item[inventory.Image]{
-				{
-					Value: inventory.Image{
-						UUID:        uuidgen.FromPattern(t, "1"),
-						Cluster:     "one",
-						Name:        "one",
-						ProjectName: "project one",
-					},
-				},
-				{
-					Err: boom.Error,
-				},
-			},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
-				},
-			},
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - validate",
-			repoGetByUUIDImage: []queue.Item[inventory.Image]{
-				{
-					Value: inventory.Image{
-						UUID:        uuidgen.FromPattern(t, "1"),
-						Cluster:     "one",
-						Name:        "", // invalid
-						ProjectName: "project one",
-					},
-				},
-				{
-					Value: inventory.Image{
-						UUID:        uuidgen.FromPattern(t, "1"),
-						Cluster:     "one",
-						Name:        "", // invalid
-						ProjectName: "project one",
-					},
-				},
-			},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImageByName: incusapi.Image{
-				Fingerprint: "image one",
-				Project:     "project one",
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
-		},
-		{
-			name: "error - update by UUID",
-			repoGetByUUIDImage: []queue.Item[inventory.Image]{
-				{
-					Value: inventory.Image{
-						UUID:        uuidgen.FromPattern(t, "1"),
-						Cluster:     "one",
-						Name:        "one",
-						ProjectName: "project one",
-					},
-				},
-				{
-					Value: inventory.Image{
-						UUID:        uuidgen.FromPattern(t, "1"),
-						Cluster:     "one",
-						Name:        "one",
-						ProjectName: "project one",
-					},
-				},
-			},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImageByName: incusapi.Image{
-				Fingerprint: "image one",
-				Project:     "project one",
-			},
-			repoUpdateByUUIDErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			repo := &repoMock.ImageRepoMock{
-				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.Image, error) {
-					return queue.Pop(t, &tc.repoGetByUUIDImage)
-				},
-				UpdateByUUIDFunc: func(ctx context.Context, image inventory.Image) (inventory.Image, error) {
-					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), image.LastUpdated)
-					return inventory.Image{}, tc.repoUpdateByUUIDErr
-				},
-				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
-					return tc.repoDeleteByUUIDErr
-				},
-			}
-
-			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
-					require.Equal(t, "one", name)
-					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
-				},
-			}
-
-			imageClient := &serverMock.ImageServerClientMock{
-				GetImageByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (incusapi.Image, error) {
-					return tc.imageClientGetImageByName, tc.imageClientGetImageByNameErr
-				},
-			}
-
-			imageSvc := inventory.NewImageService(repo, clusterSvc, imageClient, inventory.ImageWithNow(func() time.Time {
-				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
-			}))
-
-			// Run test
-			err := imageSvc.ResyncByUUID(context.Background(), uuidgen.FromPattern(t, "1"))
-
-			// Assert
-			tc.assertErr(t, err)
-
-			require.Empty(t, tc.repoGetByUUIDImage)
-		})
-	}
-}
-
-func TestImageService_ResyncByName(t *testing.T) {
-	tests := []struct {
-		name                           string
-		argClusterName                 string
-		argLifecycleEvent              domain.LifecycleEvent
-		repoGetAllUUIDsWithFilterUUIDs []uuid.UUID
-		repoGetAllUUIDsWithFilterErr   error
-		clusterSvcGetEndpoint          provisioning.Endpoint
-		clusterSvcGetEndpointErr       error
-		imageClientGetImageByName      incusapi.Image
-		imageClientGetImageByNameErr   error
-		serviceOptions                 []inventory.ImageServiceOption
-		repoCreateErr                  error
-		repoGetByUUIDImage             inventory.Image
-		repoGetByUUIDErr               error
-		repoDeleteByUUIDErr            error
-
-		assertErr   require.ErrorAssertionFunc
-		wantProject string
-	}{
-		{
-			name:           "success - not responsible",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "invalid",
-			},
-
-			assertErr: require.NoError,
-		},
-		{
-			name:           "success - create",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperationCreate,
-				Source: domain.LifecycleSource{
-					ProjectName: "project",
-					Name:        "image",
-				},
-			},
-			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImageByName: incusapi.Image{
-				Fingerprint: "image",
-				Project:     "project",
-			},
-
-			assertErr:   require.NoError,
-			wantProject: "project",
-		},
-		{
-			name:           "success - delete existing",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperationDelete,
-				Source: domain.LifecycleSource{
-					ProjectName: "project",
-					Name:        "image",
-				},
-			},
-			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
-				uuidgen.FromPattern(t, "1"),
-			},
-
-			assertErr: require.NoError,
-		},
-		{
-			name:           "success - rename",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperationRename,
-				Source: domain.LifecycleSource{
-					ProjectName: "project",
-					Name:        "image-new",
-					OldName:     "image",
-				},
-			},
-			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
-				uuidgen.FromPattern(t, "1"),
-			},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImageByName: incusapi.Image{
-				Fingerprint: "image-new",
-				Project:     "project",
-			},
-
-			assertErr:   require.NoError,
-			wantProject: "project",
-		},
-		{
-			name:           "success - update of non existing element",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperationUpdate,
-				Source: domain.LifecycleSource{
-					ProjectName: "project",
-					Name:        "image",
-				},
-			},
-			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImageByName: incusapi.Image{
-				Fingerprint: "image filtered", // matches filter
-				Project:     "project",
-			},
-			serviceOptions: []inventory.ImageServiceOption{
-				inventory.ImageWithSyncFilter(func(image inventory.Image) bool {
-					return image.Name == "image filtered"
-				}),
-			},
-
-			assertErr:   require.NoError,
-			wantProject: "project",
-		},
-		{
-			name:           "success - update existing",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperationUpdate,
-				Source: domain.LifecycleSource{
-					ProjectName: "project",
-					Name:        "image",
-				},
-			},
-			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
-				uuidgen.FromPattern(t, "1"),
-			},
-			repoGetByUUIDImage: inventory.Image{
-				UUID:        uuidgen.FromPattern(t, "1"),
-				Cluster:     "cluster",
-				Name:        "image",
-				ProjectName: "project",
-			},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImageByName: incusapi.Image{
-				Fingerprint: "image",
-				Project:     "project",
-			},
-
-			assertErr:   require.NoError,
-			wantProject: "project",
-		},
-		{
-			name:           "success - missing project",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperationCreate,
-				Source: domain.LifecycleSource{
-					Name: "image",
-				},
-			},
-			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImageByName: incusapi.Image{
-				Fingerprint: "image",
-			},
-
-			assertErr:   require.NoError,
-			wantProject: "default",
-		},
-		{
-			name:           "error - invalid lifecycle operation",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperation("invalid"), // invalid
-			},
-
-			assertErr: func(tt require.TestingT, err error, i ...interface{}) {
-				require.ErrorContains(tt, err, "Invalid lifecycle operation")
-			},
-		},
-		{
-			name:           "error - create - clusterSvc.GetEndpoint",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperationCreate,
-				Source: domain.LifecycleSource{
-					ProjectName: "project",
-					Name:        "image",
-				},
-			},
-			clusterSvcGetEndpointErr: boom.Error,
-
-			assertErr:   boom.ErrorIs,
-			wantProject: "project",
-		},
-		{
-			name:           "error - create - client.GetImageByName",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperationCreate,
-				Source: domain.LifecycleSource{
-					ProjectName: "project",
-					Name:        "image",
-				},
-			},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImageByNameErr: boom.Error,
-
-			assertErr:   boom.ErrorIs,
-			wantProject: "project",
-		},
-		{
-			name:           "error - create - validate",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperationCreate,
-				Source: domain.LifecycleSource{
-					ProjectName: "project",
-					Name:        "image",
-				},
-			},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImageByName: incusapi.Image{
-				Fingerprint: "", // invalid
-				Project:     "project",
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
-			wantProject: "project",
-		},
-		{
-			name:           "error - create - repo.Create",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperationCreate,
-				Source: domain.LifecycleSource{
-					ProjectName: "project",
-					Name:        "image",
-				},
-			},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImageByName: incusapi.Image{
-				Fingerprint: "image",
-				Project:     "project",
-			},
-			repoCreateErr: boom.Error,
-
-			assertErr:   boom.ErrorIs,
-			wantProject: "project",
-		},
-		{
-			name:           "error - delete - repo.GetAllUUIDsWithFilter",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperationDelete,
-				Source: domain.LifecycleSource{
-					ProjectName: "project",
-					Name:        "image",
-				},
-			},
-			repoGetAllUUIDsWithFilterErr: boom.Error,
-
-			assertErr:   boom.ErrorIs,
-			wantProject: "project",
-		},
-		{
-			name:           "error - delete - repo.GetAllUUIDsWithFilter - not found",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperationDelete,
-				Source: domain.LifecycleSource{
-					ProjectName: "project",
-					Name:        "image",
-				},
-			},
-			repoGetAllUUIDsWithFilterErr: domain.ErrNotFound,
-
-			assertErr:   require.NoError,
-			wantProject: "project",
-		},
-		{
-			name:           "error - delete - DeleteByUUID",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperationDelete,
-				Source: domain.LifecycleSource{
-					ProjectName: "project",
-					Name:        "image",
-				},
-			},
-			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
-				uuidgen.FromPattern(t, "1"),
-			},
-			repoDeleteByUUIDErr: boom.Error,
-
-			assertErr:   boom.ErrorIs,
-			wantProject: "project",
-		},
-		{
-			name:           "error - rename - delete",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperationRename,
-				Source: domain.LifecycleSource{
-					ProjectName: "project",
-					Name:        "image-new",
-					OldName:     "image",
-				},
-			},
-			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
-				uuidgen.FromPattern(t, "1"),
-			},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImageByName: incusapi.Image{
-				Fingerprint: "image-new",
-				Project:     "project",
-			},
-			repoDeleteByUUIDErr: boom.Error,
-
-			assertErr:   boom.ErrorIs,
-			wantProject: "project",
-		},
-		{
-			name:           "error - rename - create",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperationRename,
-				Source: domain.LifecycleSource{
-					ProjectName: "project",
-					Name:        "image-new",
-					OldName:     "image",
-				},
-			},
-			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
-				uuidgen.FromPattern(t, "1"),
-			},
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
-					Cluster:              ptr.To("cluster"),
-					ClusterConnectionURL: ptr.To("https://cluster/"),
-					ClusterCertificate:   ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImageByName: incusapi.Image{
-				Fingerprint: "image-new",
-				Project:     "project",
-			},
-			repoCreateErr: boom.Error,
-
-			assertErr:   boom.ErrorIs,
-			wantProject: "project",
-		},
-		{
-			name:           "error - update - repo.GetAllUUIDsWithFilter",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperationUpdate,
-				Source: domain.LifecycleSource{
-					ProjectName: "project",
-					Name:        "image",
-				},
-			},
-			repoGetAllUUIDsWithFilterErr: boom.Error,
-
-			assertErr: require.Error,
-		},
-		{
-			name:           "error - update - ResyncByUUID",
-			argClusterName: "cluster",
-			argLifecycleEvent: domain.LifecycleEvent{
-				ResourceType: "image",
-				Operation:    domain.LifecycleOperationUpdate,
-				Source: domain.LifecycleSource{
-					ProjectName: "project",
-					Name:        "image",
-				},
-			},
-			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
-				uuidgen.FromPattern(t, "1"),
-			},
-			repoGetByUUIDErr: boom.Error,
-
-			assertErr:   boom.ErrorIs,
-			wantProject: "project",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			repo := &repoMock.ImageRepoMock{
-				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.ImageFilter) ([]uuid.UUID, error) {
-					require.Equal(t, tc.argClusterName, *filter.Cluster)
-					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.ProjectName)
-					require.Contains(t, tc.argLifecycleEvent.Source.Name, *filter.Name)
-					return tc.repoGetAllUUIDsWithFilterUUIDs, tc.repoGetAllUUIDsWithFilterErr
-				},
-				CreateFunc: func(ctx context.Context, image inventory.Image) (inventory.Image, error) {
-					require.Equal(t, tc.argClusterName, image.Cluster)
-					require.Equal(t, tc.wantProject, image.ProjectName)
-					require.Equal(t, tc.argLifecycleEvent.Source.Name, image.Name)
-					return inventory.Image{}, tc.repoCreateErr
-				},
-				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.Image, error) {
-					return tc.repoGetByUUIDImage, tc.repoGetByUUIDErr
-				},
-				UpdateByUUIDFunc: func(ctx context.Context, image inventory.Image) (inventory.Image, error) {
-					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), image.LastUpdated)
-					return inventory.Image{}, nil
-				},
-				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
-					return tc.repoDeleteByUUIDErr
-				},
-			}
-
-			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
-					require.Equal(t, tc.argClusterName, name)
-					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
-				},
-			}
-
-			imageClient := &serverMock.ImageServerClientMock{
-				GetImageByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (incusapi.Image, error) {
-					clusterName, err := endpoint.GetServerName()
-					require.NoError(t, err)
-					require.Equal(t, tc.argClusterName, clusterName)
-					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, projectName)
-					require.Equal(t, tc.argLifecycleEvent.Source.Name, imageName)
-					return tc.imageClientGetImageByName, tc.imageClientGetImageByNameErr
-				},
-			}
-
-			imageSvc := inventory.NewImageService(repo, clusterSvc, imageClient,
-				append(tc.serviceOptions,
-					inventory.ImageWithNow(func() time.Time {
-						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
-					}),
-				)...,
-			)
-
-			// Run test
-			err := imageSvc.ResyncByName(context.Background(), tc.argClusterName, tc.argLifecycleEvent)
-
-			// Assert
-			tc.assertErr(t, err)
-		})
-	}
-}
-
-func TestImageService_SyncAll(t *testing.T) {
+func TestImageService_SyncCluster(t *testing.T) {
 	fixedTime := time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 
-	// Includes also SyncCluster
+	endpoint := provisioning.ClusterEndpoint{
+		{
+			ConnectionURL:      "https://server-one/",
+			Certificate:        "cert",
+			ClusterCertificate: ptr.To("cluster-cert"),
+		},
+	}
+
 	tests := []struct {
 		name                     string
 		clusterSvcGetEndpoint    provisioning.Endpoint
 		clusterSvcGetEndpointErr error
-		imageClientGetImages     []incusapi.Image
+		imageClientGetImages     map[string][]incusapi.Image
 		imageClientGetImagesErr  error
 		repoGetAllWithFilter     inventory.Images
 		repoGetAllWithFilterErr  error
 		repoDeleteWithFilterErr  error
 		repoCreateErr            error
-		serviceOptions           []inventory.ImageServiceOption
 
-		assertErr require.ErrorAssertionFunc
-		assertLog log.MatcherFunc
+		assertErr              require.ErrorAssertionFunc
+		wantCreatedRecordCount int
 	}{
 		{
-			name: "success",
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
+			name:                  "success - per member",
+			clusterSvcGetEndpoint: endpoint,
+			imageClientGetImages: map[string][]incusapi.Image{
+				"one": {
+					{
+						Fingerprint: "image one",
+						Project:     "project one",
+					},
 				},
-			},
-			imageClientGetImages: []incusapi.Image{
-				{
-					Fingerprint: "image one",
-					Project:     "project one",
-				},
-			},
-			repoGetAllWithFilter: inventory.Images{
-				{
-					Cluster:     "one",
-					Name:        "image one",
-					ProjectName: "project one",
-					LastUpdated: fixedTime,
-					Object: inventory.IncusImageWrapper{
-						Image: incusapi.Image{
-							Fingerprint: "image one",
-							Project:     "project one",
-						},
+				"two": {
+					{
+						Fingerprint: "image one",
+						Project:     "project one",
 					},
 				},
 			},
 
-			assertErr: require.NoError,
-			assertLog: log.Empty,
+			assertErr:              require.NoError,
+			wantCreatedRecordCount: 2,
 		},
 		{
-			name: "success - with sync filter",
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImages: []incusapi.Image{
-				{
-					Fingerprint: "image one",
-					Project:     "project one",
-				},
-				{
-					Fingerprint: "image filtered",
-					Project:     "project one",
-				},
-			},
-			repoGetAllWithFilter: inventory.Images{
-				{
-					Cluster:     "one",
-					Name:        "image one",
-					ProjectName: "project one",
-					LastUpdated: fixedTime,
-					Object: inventory.IncusImageWrapper{
-						Image: incusapi.Image{
-							Fingerprint: "image one",
-							Project:     "project one",
-						},
-					},
-				},
-			},
-			serviceOptions: []inventory.ImageServiceOption{
-				inventory.ImageWithSyncFilter(func(image inventory.Image) bool {
-					return image.Name == "image filtered"
-				}),
-			},
+			name:                    "success - tolerate not found on delete",
+			clusterSvcGetEndpoint:   endpoint,
+			imageClientGetImages:    map[string][]incusapi.Image{},
+			repoDeleteWithFilterErr: domain.ErrNotFound,
 
 			assertErr: require.NoError,
-			assertLog: log.Empty,
 		},
 		{
-			name: "success - missing",
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImages: []incusapi.Image{
-				{
-					Fingerprint: "image one",
-					Project:     "project one",
-				},
-			},
-			repoGetAllWithFilter: inventory.Images{
-				// item missing
-			},
-
-			assertErr: require.NoError,
-			assertLog: log.Contains("sync cluster detected missing item in inventory"),
-		},
-		{
-			name: "success - supernumerary",
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImages: []incusapi.Image{
-				{
-					Fingerprint: "image one",
-					Project:     "project one",
-				},
-			},
-			repoGetAllWithFilter: inventory.Images{
-				{
-					Cluster:     "one",
-					Name:        "image one",
-					ProjectName: "project one",
-					LastUpdated: fixedTime,
-					Object: inventory.IncusImageWrapper{
-						Image: incusapi.Image{
-							Fingerprint: "image one",
-							Project:     "project one",
-						},
-					},
-				},
-				// supernumerary item
-				{
-					Cluster:     "one",
-					Name:        "supernumerary",
-					ProjectName: "project one",
-					LastUpdated: fixedTime,
-					Object: inventory.IncusImageWrapper{
-						Image: incusapi.Image{
-							Fingerprint: "supernumerary",
-							Project:     "project one",
-						},
-					},
-				},
-			},
-
-			assertErr: require.NoError,
-			assertLog: log.Contains("sync cluster detected supernumerary item in inventory"),
-		},
-		{
-			name:                     "error - cluster service get by name",
+			name:                     "error - get endpoint",
 			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
 		},
 		{
-			name: "error - image client get Images",
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
-				},
-			},
+			name:                    "error - client.GetImages",
+			clusterSvcGetEndpoint:   endpoint,
 			imageClientGetImagesErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
 		},
 		{
-			name: "error - images repo.GetAllWithFilter",
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImages: []incusapi.Image{
-				{
-					Fingerprint: "image one",
-					Project:     "project one",
-				},
-			},
-			repoGetAllWithFilterErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
-		},
-		{
-			name: "error - images repo.DeleteWithFilter",
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImages: []incusapi.Image{
-				{
-					Fingerprint: "image one",
-					Project:     "project one",
-				},
-			},
-			repoDeleteWithFilterErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
-		},
-		{
-			name: "error - validate",
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImages: []incusapi.Image{
-				{
-					Fingerprint: "", // invalid
-					Project:     "project one",
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
-			assertLog: log.Empty,
-		},
-		{
-			name: "error - image create",
-			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
-				{
-					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster-cert"),
-				},
-			},
-			imageClientGetImages: []incusapi.Image{
-				{
-					Fingerprint: "image one",
-					Project:     "project one",
-				},
-			},
-			repoGetAllWithFilter: inventory.Images{
-				{
-					Cluster:     "one",
-					Name:        "image one",
-					ProjectName: "project one",
-					LastUpdated: fixedTime,
-					Object: inventory.IncusImageWrapper{
-						Image: incusapi.Image{
-							Fingerprint: "image one",
-							Project:     "project one",
-						},
+			name:                  "error - repo.Create",
+			clusterSvcGetEndpoint: endpoint,
+			imageClientGetImages: map[string][]incusapi.Image{
+				"one": {
+					{
+						Fingerprint: "image one",
+						Project:     "project one",
 					},
 				},
 			},
 			repoCreateErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
-			assertLog: log.Empty,
+			assertErr:              boom.ErrorIs,
+			wantCreatedRecordCount: 1,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			logBuf := &bytes.Buffer{}
-			err := logger.InitLogger(logBuf, "", false, false, false)
-			require.NoError(t, err)
-
-			for i, item := range tc.repoGetAllWithFilter {
-				item.DeriveUUID()
-				tc.repoGetAllWithFilter[i] = item
-			}
+			createdServers := map[string]struct{}{}
 
 			repo := &repoMock.ImageRepoMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.ImageFilter) (inventory.Images, error) {
@@ -1419,6 +357,7 @@ func TestImageService_SyncAll(t *testing.T) {
 					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, image inventory.Image) (inventory.Image, error) {
+					createdServers[image.Server] = struct{}{}
 					return inventory.Image{}, tc.repoCreateErr
 				},
 			}
@@ -1430,26 +369,23 @@ func TestImageService_SyncAll(t *testing.T) {
 			}
 
 			imageClient := &serverMock.ImageServerClientMock{
-				GetImagesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.Image, error) {
+				GetImagesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (map[string][]incusapi.Image, error) {
 					return tc.imageClientGetImages, tc.imageClientGetImagesErr
 				},
 			}
 
 			imageSvc := inventory.NewImageService(repo, clusterSvc, imageClient,
-				append(
-					tc.serviceOptions,
-					inventory.ImageWithNow(func() time.Time {
-						return fixedTime
-					}),
-				)...,
+				inventory.ImageWithNow(func() time.Time {
+					return fixedTime
+				}),
 			)
 
 			// Run test
-			err = imageSvc.SyncCluster(context.Background(), "one")
+			err := imageSvc.SyncCluster(context.Background(), "one")
 
 			// Assert
 			tc.assertErr(t, err)
-			tc.assertLog(t, logBuf)
+			require.Len(t, createdServers, tc.wantCreatedRecordCount)
 		})
 	}
 }

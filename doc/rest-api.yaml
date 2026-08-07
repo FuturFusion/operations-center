@@ -2584,6 +2584,9 @@ definitions:
             project_name:
                 type: string
                 x-go-name: ProjectName
+            server:
+                type: string
+                x-go-name: Server
             uuid:
                 format: uuid
                 type: string
@@ -8401,6 +8404,11 @@ paths:
                   name: cluster
                   type: string
                   x-example: cluster
+                - description: Server name
+                  in: query
+                  name: server
+                  type: string
+                  x-example: localhost
                 - description: Project name
                   in: query
                   name: project
@@ -8483,6 +8491,11 @@ paths:
                   name: cluster
                   type: string
                   x-example: cluster
+                - description: Server name
+                  in: query
+                  name: server
+                  type: string
+                  x-example: localhost
                 - description: Project name
                   in: query
                   name: project

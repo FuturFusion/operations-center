@@ -12,13 +12,13 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetImages(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.Image, error) {
+func (s serverClient) GetImages(ctx context.Context, endpoint provisioning.Endpoint) (map[string][]incusapi.Image, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	serverImages, err := client.GetImagesAllProjects()
+	members, err := client.GetClusterMembers()
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
 		return nil, domain.ErrNotFound
 	}
@@ -27,7 +27,21 @@ func (s serverClient) GetImages(ctx context.Context, endpoint provisioning.Endpo
 		return nil, err
 	}
 
-	return serverImages, nil
+	imagesByServer := make(map[string][]incusapi.Image, len(members))
+	for _, member := range members {
+		serverImages, err := client.UseTarget(member.ServerName).GetImagesAllProjects()
+		if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+			return nil, domain.ErrNotFound
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		imagesByServer[member.ServerName] = serverImages
+	}
+
+	return imagesByServer, nil
 }
 
 func (s serverClient) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (incusapi.Image, error) {

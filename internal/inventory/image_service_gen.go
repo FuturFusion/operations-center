@@ -153,60 +153,9 @@ func (s imageService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 		return err
 	}
 
-	endpoint, err := s.clusterSvc.GetEndpoint(ctx, image.Cluster)
-	if err != nil {
-		return err
-	}
-
-	retrievedImage, err := s.imageClient.GetImageByName(ctx, endpoint, image.ProjectName, image.Name)
-	if errors.Is(err, domain.ErrNotFound) {
-		err = s.repo.DeleteByUUID(ctx, image.UUID)
-		if err != nil {
-			return fmt.Errorf(`Failed to delete image %q from cluster %q: %w`, image.UUID.String(), image.Cluster, err)
-		}
-
-		return nil
-	}
-
-	if err != nil {
-		return err
-	}
-
-	err = transaction.Do(ctx, func(ctx context.Context) error {
-		image, err := s.repo.GetByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		// NOTE: This log intends to find resources, where project is not properly populated by Incus.
-		// Remove once all the affected resources have been identified.
-		// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
-		if firstNonEmpty(retrievedImage.Project, image.ProjectName, "not found") == "not found" {
-			slog.WarnContext(ctx, "expected project missing in ResyncByUUID", slog.String("resource-type", "image"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
-		}
-
-		image.ProjectName = firstNonEmpty(retrievedImage.Project, image.ProjectName, "default")
-		image.Object = IncusImageWrapper{retrievedImage}
-		image.LastUpdated = s.now()
-		image.DeriveUUID()
-
-		err = image.Validate()
-		if err != nil {
-			return err
-		}
-
-		_, err = s.repo.UpdateByUUID(ctx, image)
-		if err != nil {
-			return fmt.Errorf(`Failed to update image %q for cluster %q: %w`, image.UUID.String(), image.Cluster, err)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	// Images are tracked per cluster member and a single record cannot be
+	// resynced in isolation.
+	return s.SyncCluster(ctx, image.Cluster)
 }
 
 func (s imageService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
@@ -214,161 +163,11 @@ func (s imageService) ResyncByName(ctx context.Context, clusterName string, even
 		return nil
 	}
 
-	var err error
-	switch event.Operation {
-	case domain.LifecycleOperationCreate:
-		err = s.handleCreateEvent(ctx, clusterName, event)
-
-	case domain.LifecycleOperationDelete:
-		err = s.handleDeleteEvent(ctx, clusterName, event)
-
-	case domain.LifecycleOperationRename:
-		err = s.handleRenameEvent(ctx, clusterName, event)
-
-	case domain.LifecycleOperationUpdate:
-		err = s.handleUpdateEvent(ctx, clusterName, event)
-
-	default:
-		err = fmt.Errorf("Invalid lifecycle operation %q", event.Operation)
-	}
-
+	// Images are tracked per cluster member and the lifecycle event does not
+	// carry per-member placement, so reconcile the whole cluster.
+	err := s.SyncCluster(ctx, clusterName)
 	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			// Ignore "not found" errors.
-			return nil
-		}
-
 		return fmt.Errorf("Failed to handle lifecycle event: %w", err)
-	}
-
-	return nil
-}
-
-func (s imageService) handleCreateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	endpoint, err := s.clusterSvc.GetEndpoint(ctx, clusterName)
-	if err != nil {
-		return err
-	}
-
-	retrievedImage, err := s.imageClient.GetImageByName(ctx, endpoint, event.Source.ProjectName, event.Source.Name)
-	if err != nil {
-		return err
-	}
-
-	// NOTE: This log intends to find resources, where project is not properly populated by Incus.
-	// Remove once all the affected resources have been identified.
-	// See: https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461
-	if firstNonEmpty(retrievedImage.Project, event.Source.ProjectName, "not found") == "not found" {
-		slog.WarnContext(ctx, "expected project missing in handleCreateEvent", slog.String("resource-type", "image"), slog.String("issue", "https://github.com/FuturFusion/operations-center/pull/527/changes#r2664538461"))
-	}
-
-	image := Image{
-		Cluster:     clusterName,
-		ProjectName: firstNonEmpty(retrievedImage.Project, event.Source.ProjectName, "default"),
-		Name:        retrievedImage.Fingerprint,
-		Object:      IncusImageWrapper{retrievedImage},
-		LastUpdated: s.now(),
-	}
-
-	image.DeriveUUID()
-
-	if s.clusterSyncFilterFunc(image) {
-		return nil
-	}
-
-	err = image.Validate()
-	if err != nil {
-		return err
-	}
-
-	_, err = s.repo.Create(ctx, image)
-	if err != nil {
-		return fmt.Errorf(`Failed to create image %q for cluster %q: %w`, image.UUID.String(), image.Cluster, err)
-	}
-
-	return nil
-}
-
-func (s imageService) handleDeleteEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, ImageFilter{
-		Cluster:     &clusterName,
-		ProjectName: &event.Source.ProjectName,
-		Name:        &event.Source.Name,
-	})
-	if err != nil {
-		return err
-	}
-
-	var errs []error
-	for _, UUID := range UUIDs {
-		err = s.repo.DeleteByUUID(ctx, UUID)
-		if err != nil {
-			err = fmt.Errorf(`Failed to delete image %q from cluster %q: %w`, UUID.String(), clusterName, err)
-			errs = append(errs, err)
-		}
-	}
-
-	err = errors.Join(errs...)
-	if err != nil {
-		return fmt.Errorf("Failed to remove image by name: %w", errors.Join(errs...))
-	}
-
-	return nil
-}
-
-func (s imageService) handleRenameEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	deleteEvent := event
-	deleteEvent.Source.Name = deleteEvent.Source.OldName
-
-	var errs []error
-	err := s.handleDeleteEvent(ctx, clusterName, deleteEvent)
-	if err != nil {
-		errs = append(errs,
-			fmt.Errorf(`Failed to delete image %q from cluster %q: %w`, deleteEvent.Source.Name, clusterName, err),
-		)
-	}
-
-	err = s.handleCreateEvent(ctx, clusterName, event)
-	if err != nil {
-		errs = append(errs,
-			fmt.Errorf(`Failed to create image %q for cluster %q: %w`, event.Source.Name, clusterName, err),
-		)
-	}
-
-	err = errors.Join(errs...)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s imageService) handleUpdateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
-	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, ImageFilter{
-		Cluster:     &clusterName,
-		ProjectName: &event.Source.ProjectName,
-		Name:        &event.Source.Name,
-	})
-	if err != nil {
-		return err
-	}
-
-	if len(UUIDs) == 0 {
-		return s.handleCreateEvent(ctx, clusterName, event)
-	}
-
-	var errs []error
-	for _, UUID := range UUIDs {
-		err := s.ResyncByUUID(ctx, UUID)
-		if err != nil {
-			err = fmt.Errorf(`Failed to resync image %q for cluster %q: %w`, UUID.String(), clusterName, err)
-			errs = append(errs, err)
-		}
-	}
-
-	err = errors.Join(errs...)
-	if err != nil {
-		return fmt.Errorf("Failed to resync image by name: %w", errors.Join(errs...))
 	}
 
 	return nil
@@ -406,35 +205,38 @@ func (s imageService) SyncCluster(ctx context.Context, name string) error {
 			return fmt.Errorf(`Failed to delete "images" for cluster %q: %w`, name, err)
 		}
 
-		for _, retrievedImage := range retrievedImages {
-			image := Image{
-				Cluster:     name,
-				ProjectName: retrievedImage.Project,
-				Name:        retrievedImage.Fingerprint,
-				Object:      IncusImageWrapper{retrievedImage},
-				LastUpdated: s.now(),
-			}
+		for imageServer, retrievedImagesForServer := range retrievedImages {
+			for _, retrievedImage := range retrievedImagesForServer {
+				image := Image{
+					Cluster:     name,
+					Server:      imageServer,
+					ProjectName: retrievedImage.Project,
+					Name:        retrievedImage.Fingerprint,
+					Object:      IncusImageWrapper{retrievedImage},
+					LastUpdated: s.now(),
+				}
 
-			image.DeriveUUID()
+				image.DeriveUUID()
 
-			if s.clusterSyncFilterFunc(image) {
-				continue
-			}
+				if s.clusterSyncFilterFunc(image) {
+					continue
+				}
 
-			err = image.Validate()
-			if err != nil {
-				return err
-			}
+				err = image.Validate()
+				if err != nil {
+					return err
+				}
 
-			if existingUUIDs[image.UUID] {
-				delete(existingUUIDs, image.UUID)
-			} else {
-				slog.WarnContext(ctx, "sync cluster detected missing item in inventory", slog.String("object_type", "image"), slog.Any("uuid", image.UUID))
-			}
+				if existingUUIDs[image.UUID] {
+					delete(existingUUIDs, image.UUID)
+				} else {
+					slog.WarnContext(ctx, "sync cluster detected missing item in inventory", slog.String("object_type", "image"), slog.Any("uuid", image.UUID))
+				}
 
-			_, err := s.repo.Create(ctx, image)
-			if err != nil {
-				return fmt.Errorf(`Failed to create image %q for cluster %q: %w`, image.UUID.String(), name, err)
+				_, err := s.repo.Create(ctx, image)
+				if err != nil {
+					return fmt.Errorf(`Failed to create image %q for cluster %q: %w`, image.UUID.String(), name, err)
+				}
 			}
 		}
 

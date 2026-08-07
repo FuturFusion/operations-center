@@ -31,6 +31,18 @@ func imageClientTestCases(t *testing.T) []methodTestSet {
 							Value: response{
 								statusCode: http.StatusOK,
 								responseBody: mustJSONMarshal(t, api.ResponseRaw{
+									Metadata: []incusapi.ClusterMember{
+										{
+											ServerName: "one",
+										},
+									},
+								}),
+							},
+						},
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: mustJSONMarshal(t, api.ResponseRaw{
 									Metadata: []incusapi.Image{
 										{
 											Fingerprint: "image one",
@@ -47,10 +59,10 @@ func imageClientTestCases(t *testing.T) []methodTestSet {
 						t.Helper()
 						require.Len(t, res, 1)
 					},
-					wantPaths: []string{"GET /1.0/images?all-projects=true"},
+					wantPaths: []string{"GET /1.0/cluster/members", "GET /1.0/images?"},
 				},
 				{
-					name: "error - not found",
+					name: "error - cluster members not found",
 					response: []queue.Item[response]{
 						{
 							Value: response{
@@ -58,18 +70,17 @@ func imageClientTestCases(t *testing.T) []methodTestSet {
 								responseBody: mustJSONMarshal(t, api.ResponseRaw{
 									Type:       api.ErrorResponse,
 									StatusCode: http.StatusNotFound,
-								},
-								),
+								}),
 							},
 						},
 					},
 
 					assertErr:    require.Error,
 					assertResult: noResult,
-					wantPaths:    []string{"GET /1.0/images?all-projects=true"},
+					wantPaths:    []string{"GET /1.0/cluster/members"},
 				},
 				{
-					name: "error - unexpected http status code",
+					name: "error - cluster members - unexpected http status code",
 					response: []queue.Item[response]{
 						{
 							Value: response{
@@ -80,7 +91,63 @@ func imageClientTestCases(t *testing.T) []methodTestSet {
 
 					assertErr:    require.Error,
 					assertResult: noResult,
-					wantPaths:    []string{"GET /1.0/images?all-projects=true"},
+					wantPaths:    []string{"GET /1.0/cluster/members"},
+				},
+				{
+					name: "error - get images for member - not found",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: mustJSONMarshal(t, api.ResponseRaw{
+									Metadata: []incusapi.ClusterMember{
+										{
+											ServerName: "one",
+										},
+									},
+								}),
+							},
+						},
+						{
+							Value: response{
+								statusCode: http.StatusNotFound,
+								responseBody: mustJSONMarshal(t, api.ResponseRaw{
+									Type:       api.ErrorResponse,
+									StatusCode: http.StatusNotFound,
+								}),
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/cluster/members", "GET /1.0/images?"},
+				},
+				{
+					name: "error - get images for member - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: mustJSONMarshal(t, api.ResponseRaw{
+									Metadata: []incusapi.ClusterMember{
+										{
+											ServerName: "one",
+										},
+									},
+								}),
+							},
+						},
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/cluster/members", "GET /1.0/images?"},
 				},
 			},
 		},

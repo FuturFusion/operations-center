@@ -50,6 +50,7 @@ type ExprImage struct {
 	ID          int                   `json:"-" expr:"-"`
 	UUID        uuid.UUID             `json:"uuid"          db:"primary=yes" expr:"uuid"`
 	Cluster     string                `json:"cluster"       db:"join=clusters.name" expr:"cluster"`
+	Server      string                `json:"server"        db:"join=servers.name" expr:"server"`
 	ProjectName string                `json:"project" expr:"project"`
 	Name        string                `json:"name" expr:"name"`
 	Object      ExprIncusImageWrapper `json:"object" expr:"object"`
@@ -110,6 +111,7 @@ func ToExprImage(i Image) ExprImage {
 		ID:          i.ID,
 		UUID:        i.UUID,
 		Cluster:     i.Cluster,
+		Server:      i.Server,
 		ProjectName: i.ProjectName,
 		Name:        i.Name,
 		Object:      ToExprIncusImageWrapper(i.Object),

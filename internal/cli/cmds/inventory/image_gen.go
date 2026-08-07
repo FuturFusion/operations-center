@@ -60,6 +60,7 @@ type cmdImageList struct {
 	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
+	flagFilterServer     string
 	flagFilterProject    string
 	flagFilterExpression string
 
@@ -67,7 +68,7 @@ type cmdImageList struct {
 	flagFormat  string
 }
 
-const imageDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .Object.Properties.description }},{{ .Object.Type }},{{ .ProjectName }},{{ .Cluster }},{{ .LastUpdated }}`
+const imageDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .Object.Properties.description }},{{ .Object.Type }},{{ .ProjectName }},{{ .Cluster }},{{ .Server }},{{ .LastUpdated }}`
 
 var imageColumnSorters = map[string]sort.ColumnSorter{
 	"Name": {
@@ -77,6 +78,9 @@ var imageColumnSorters = map[string]sort.ColumnSorter{
 		Less: sort.NaturalLess,
 	},
 	"Cluster": {
+		Less: sort.NaturalLess,
+	},
+	"Server": {
 		Less: sort.NaturalLess,
 	},
 }
@@ -107,6 +111,7 @@ func (c *cmdImageList) Command() *cobra.Command {
 `
 
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
+	cmd.Flags().StringVar(&c.flagFilterServer, "server", "", "server name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
@@ -134,6 +139,10 @@ func (c *cmdImageList) run(cmd *cobra.Command, args []string) error {
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = ptr.To(c.flagFilterCluster)
+	}
+
+	if c.flagFilterServer != "" {
+		filter.Server = ptr.To(c.flagFilterServer)
 	}
 
 	if c.flagFilterProject != "" {

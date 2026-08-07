@@ -80,7 +80,7 @@ func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, endpoint
 }
 
 // GetImages implements inventory.ImageServerClient.
-func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, endpoint provisioning.Endpoint) (images []api.Image, err error) {
+func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, endpoint provisioning.Endpoint) (stringToImages map[string][]api.Image, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -93,7 +93,7 @@ func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, endpoint prov
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("images", images),
+				slog.Any("stringToImages", stringToImages),
 				slog.Any("err", err),
 			)
 		} else {

@@ -181,6 +181,12 @@ func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uui
 	if err != nil {
 		return err
 	}
+{{- if .ServerIDByTarget }}
+
+	// {{ .PluralName | pascalcase }} are tracked per cluster member and a single record cannot be
+	// resynced in isolation.
+	return s.SyncCluster(ctx, {{ .Name | camelcase }}.Cluster)
+{{- else }}
 
 	endpoint, err := s.clusterSvc.GetEndpoint(ctx, {{ .Name | camelcase }}.Cluster)
 	if err != nil {
@@ -250,12 +256,24 @@ func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uui
 	}
 
 	return nil
+{{- end }}
 }
 
 func (s {{ .Name | camelcase }}Service) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	if event.ResourceType != domain.ResourceType{{ .Name | pascalcase }} {
 		return nil
 	}
+{{- if .ServerIDByTarget }}
+
+	// {{ .PluralName | pascalcase }} are tracked per cluster member and the lifecycle event does not
+	// carry per-member placement, so reconcile the whole cluster.
+	err := s.SyncCluster(ctx, clusterName)
+	if err != nil {
+		return fmt.Errorf("Failed to handle lifecycle event: %w", err)
+	}
+
+	return nil
+{{- else }}
 
 	var err error
 	switch event.Operation {
@@ -285,7 +303,9 @@ func (s {{ .Name | camelcase }}Service) ResyncByName(ctx context.Context, cluste
 	}
 
 	return nil
+{{- end }}
 }
+{{- if not .ServerIDByTarget }}
 
 func (s {{ .Name | camelcase }}Service) handleCreateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	endpoint, err := s.clusterSvc.GetEndpoint(ctx, clusterName)
@@ -443,6 +463,7 @@ func (s {{ .Name | camelcase }}Service) handleUpdateEvent(ctx context.Context, c
 
 	return nil
 }
+{{- end }}
 
 func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name string) error {
 	endpoint, err := s.clusterSvc.GetEndpoint(ctx, name)
@@ -514,10 +535,17 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 			return fmt.Errorf(`Failed to delete "{{ .PluralName }}" for cluster %q{{ if .HasProjectFromParent }}, project %q{{ end }}{{ if .HasParent }}, {{ .ParentName }} %q{{ end }}: %w`, name, {{ if .HasProjectFromParent }}{{ .ParentName | camelcase }}.Project, {{ end }}{{ if .HasParent }}{{ .ParentName | camelcase }}.Name, {{ end }}err)
 		}
 
+{{ if .ServerIDByTarget }}
+		for {{ .Name | camelcase }}Server, retrieved{{ .PluralName | pascalcase }}ForServer := range retrieved{{ .PluralName | pascalcase }} {
+		for _, retrieved{{ .Name | pascalcase }} := range retrieved{{ .PluralName | pascalcase }}ForServer {
+{{- else }}
 		for _, retrieved{{ .Name | pascalcase }} := range retrieved{{ .PluralName | pascalcase }} {
+{{- end }}
 			{{ .Name | camelcase }} := {{ .Name | pascalcase }}{
 				Cluster:   name,
-{{- if .ServerIDByLocation }}
+{{- if .ServerIDByTarget }}
+				Server:      {{ .Name | camelcase }}Server,
+{{- else if .ServerIDByLocation }}
 	{{- if .IsServerIDOptional }}
 				Server:      ptr.To(retrieved{{ .Name | pascalcase }}.Location),
 	{{- else }}
@@ -560,6 +588,9 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 				return fmt.Errorf(`Failed to create {{ .Name }} %q for cluster %q{{ if .HasParent }}, {{ .ParentName }} %q{{ end }}: %w`, {{ .Name | camelcase }}.UUID.String(), name, {{ if .HasParent }}{{ .ParentName | camelcase }}.Name, {{ end }}err)
 			}
 		}
+{{- if .ServerIDByTarget }}
+		}
+{{- end }}
 
 		return nil
 	})

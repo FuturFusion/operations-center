@@ -16,16 +16,18 @@ import (
 )
 
 var imageObjects = RegisterStmt(`
-SELECT images.id, images.uuid, clusters.name AS cluster, images.project_name, images.name, images.object, images.last_updated
+SELECT images.id, images.uuid, clusters.name AS cluster, servers.name AS server, images.project_name, images.name, images.object, images.last_updated
   FROM images
   JOIN clusters ON images.cluster_id = clusters.id
+  JOIN servers ON images.server_id = servers.id
   ORDER BY images.uuid
 `)
 
 var imageObjectsByUUID = RegisterStmt(`
-SELECT images.id, images.uuid, clusters.name AS cluster, images.project_name, images.name, images.object, images.last_updated
+SELECT images.id, images.uuid, clusters.name AS cluster, servers.name AS server, images.project_name, images.name, images.object, images.last_updated
   FROM images
   JOIN clusters ON images.cluster_id = clusters.id
+  JOIN servers ON images.server_id = servers.id
   WHERE ( images.uuid = ? )
   ORDER BY images.uuid
 `)
@@ -42,13 +44,13 @@ SELECT images.id FROM images
 `)
 
 var imageCreate = RegisterStmt(`
-INSERT INTO images (uuid, cluster_id, project_name, name, object, last_updated)
-  VALUES (?, (SELECT clusters.id FROM clusters WHERE clusters.name = ?), ?, ?, ?, ?)
+INSERT INTO images (uuid, cluster_id, server_id, project_name, name, object, last_updated)
+  VALUES (?, (SELECT clusters.id FROM clusters WHERE clusters.name = ?), (SELECT servers.id FROM servers WHERE servers.name = ?), ?, ?, ?, ?)
 `)
 
 var imageUpdate = RegisterStmt(`
 UPDATE images
-  SET uuid = ?, cluster_id = (SELECT clusters.id FROM clusters WHERE clusters.name = ?), project_name = ?, name = ?, object = ?, last_updated = ?
+  SET uuid = ?, cluster_id = (SELECT clusters.id FROM clusters WHERE clusters.name = ?), server_id = (SELECT servers.id FROM servers WHERE servers.name = ?), project_name = ?, name = ?, object = ?, last_updated = ?
  WHERE id = ?
 `)
 
@@ -140,7 +142,7 @@ func GetImage(ctx context.Context, db dbtx, uuid uuid.UUID) (_ *inventory.Image,
 // imageColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the Image entity.
 func imageColumns() string {
-	return "images.id, images.uuid, clusters.name AS cluster, images.project_name, images.name, images.object, images.last_updated"
+	return "images.id, images.uuid, clusters.name AS cluster, servers.name AS server, images.project_name, images.name, images.object, images.last_updated"
 }
 
 // getImages can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -149,7 +151,7 @@ func getImages(ctx context.Context, stmt *sql.Stmt, args ...any) ([]inventory.Im
 
 	dest := func(scan func(dest ...any) error) error {
 		i := inventory.Image{}
-		err := scan(&i.ID, &i.UUID, &i.Cluster, &i.ProjectName, &i.Name, &i.Object, &i.LastUpdated)
+		err := scan(&i.ID, &i.UUID, &i.Cluster, &i.Server, &i.ProjectName, &i.Name, &i.Object, &i.LastUpdated)
 		if err != nil {
 			return err
 		}
@@ -173,7 +175,7 @@ func getImagesRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]inve
 
 	dest := func(scan func(dest ...any) error) error {
 		i := inventory.Image{}
-		err := scan(&i.ID, &i.UUID, &i.Cluster, &i.ProjectName, &i.Name, &i.Object, &i.LastUpdated)
+		err := scan(&i.ID, &i.UUID, &i.Cluster, &i.Server, &i.ProjectName, &i.Name, &i.Object, &i.LastUpdated)
 		if err != nil {
 			return err
 		}
@@ -216,7 +218,7 @@ func GetImages(ctx context.Context, db dbtx, filters ...inventory.ImageFilter) (
 	}
 
 	for i, filter := range filters {
-		if filter.UUID != nil && filter.Cluster == nil && filter.ProjectName == nil && filter.Name == nil {
+		if filter.UUID != nil && filter.Cluster == nil && filter.Server == nil && filter.ProjectName == nil && filter.Name == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, imageObjectsByUUID)
@@ -240,7 +242,7 @@ func GetImages(ctx context.Context, db dbtx, filters ...inventory.ImageFilter) (
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.UUID == nil && filter.Cluster == nil && filter.ProjectName == nil && filter.Name == nil {
+		} else if filter.UUID == nil && filter.Cluster == nil && filter.Server == nil && filter.ProjectName == nil && filter.Name == nil {
 			return nil, fmt.Errorf("Cannot filter on empty ImageFilter")
 		} else {
 			return nil, errors.New("No statement exists for the given Filter")
@@ -287,7 +289,7 @@ func GetImageNames(ctx context.Context, db dbtx, filters ...inventory.ImageFilte
 	}
 
 	for _, filter := range filters {
-		if filter.UUID == nil && filter.Cluster == nil && filter.ProjectName == nil && filter.Name == nil {
+		if filter.UUID == nil && filter.Cluster == nil && filter.Server == nil && filter.ProjectName == nil && filter.Name == nil {
 			return nil, fmt.Errorf("Cannot filter on empty ImageFilter")
 		} else {
 			return nil, errors.New("No statement exists for the given Filter")
@@ -333,15 +335,16 @@ func CreateImage(ctx context.Context, db dbtx, object inventory.Image) (_ int64,
 		_err = mapErr(_err, "Image")
 	}()
 
-	args := make([]any, 6)
+	args := make([]any, 7)
 
 	// Populate the statement arguments.
 	args[0] = object.UUID
 	args[1] = object.Cluster
-	args[2] = object.ProjectName
-	args[3] = object.Name
-	args[4] = object.Object
-	args[5] = time.Now().UTC().Format(time.RFC3339)
+	args[2] = object.Server
+	args[3] = object.ProjectName
+	args[4] = object.Name
+	args[5] = object.Object
+	args[6] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, imageCreate)
@@ -384,7 +387,7 @@ func UpdateImage(ctx context.Context, db tx, uuid uuid.UUID, object inventory.Im
 		return fmt.Errorf("Failed to get \"imageUpdate\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(object.UUID, object.Cluster, object.ProjectName, object.Name, object.Object, time.Now().UTC().Format(time.RFC3339), id)
+	result, err := stmt.Exec(object.UUID, object.Cluster, object.Server, object.ProjectName, object.Name, object.Object, time.Now().UTC().Format(time.RFC3339), id)
 	if err != nil {
 		return fmt.Errorf("Update \"images\" entry failed: %w", err)
 	}

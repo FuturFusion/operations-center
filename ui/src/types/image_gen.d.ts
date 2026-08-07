@@ -5,6 +5,7 @@ import { JSONValue } from "types/common";
 export interface Image {
   uuid: string;
   cluster: string;
+  server: string;
   project_name: string;
   name: string;
   object: JSONValue;

@@ -46,6 +46,11 @@ func registerInventoryImageHandler(router Router, authorizer *authz.Authorizer, 
 //	    type: string
 //	    x-example: cluster
 //	  - in: query
+//	    name: server
+//	    description: Server name
+//	    type: string
+//	    x-example: localhost
+//	  - in: query
 //	    name: project
 //	    description: Project name
 //	    type: string
@@ -79,6 +84,11 @@ func registerInventoryImageHandler(router Router, authorizer *authz.Authorizer, 
 //	    type: string
 //	    x-example: cluster
 //	  - in: query
+//	    name: server
+//	    description: Server name
+//	    type: string
+//	    x-example: localhost
+//	  - in: query
 //	    name: project
 //	    description: Project name
 //	    type: string
@@ -108,6 +118,10 @@ func (i *imageHandler) imagesGet(r *http.Request) response.Response {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
 	}
 
+	if r.URL.Query().Get("server") != "" {
+		filter.Server = ptr.To(r.URL.Query().Get("server"))
+	}
+
 	if r.URL.Query().Get("project") != "" {
 		filter.ProjectName = ptr.To(r.URL.Query().Get("project"))
 	}
@@ -128,6 +142,7 @@ func (i *imageHandler) imagesGet(r *http.Request) response.Response {
 			result = append(result, api.Image{
 				UUID:        image.UUID,
 				Cluster:     image.Cluster,
+				Server:      image.Server,
 				ProjectName: image.ProjectName,
 				Name:        image.Name,
 				Object:      image.Object.Image,
@@ -192,6 +207,7 @@ func (i *imageHandler) imageGet(r *http.Request) response.Response {
 		api.Image{
 			UUID:        image.UUID,
 			Cluster:     image.Cluster,
+			Server:      image.Server,
 			ProjectName: image.ProjectName,
 			Name:        image.Name,
 			Object:      image.Object.Image,

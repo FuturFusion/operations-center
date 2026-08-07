@@ -80,7 +80,7 @@ server-two
 
 	{{ .Name | camelcase }}A := inventory.{{ .Name | pascalcase }}{
 		Cluster:     "one",
-{{- if .ServerIDByLocation }}
+{{- if .HasServer }}
 	{{- if .IsServerIDOptional }}
 		Server:      ptr.To("one"),
 	{{- else }}
@@ -105,7 +105,7 @@ server-two
 
 	{{ .Name | camelcase }}B := inventory.{{ .Name | pascalcase }}{
 		Cluster:     "two",
-{{- if .ServerIDByLocation }}
+{{- if .HasServer }}
 	{{- if .IsServerIDOptional }}
 		Server:      ptr.To("two"),
 	{{- else }}
@@ -182,7 +182,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server{{ if .HasProject }}, project{{ end }}{{ if .HasParent }}, {{ .ParentName }}{{ end }} and name.
 	{{ .Name | camelcase }}UUIDs, err = {{ .Name | camelcase }}.GetAllUUIDsWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{
 		Cluster: ptr.To("one"),
-{{- if .ServerIDByLocation }}
+{{- if .HasServer }}
 		Server:  ptr.To("one"),
 {{- end }}
 {{- if .HasProject }}
@@ -200,7 +200,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server{{ if .HasProject }}, project{{ end }}{{ if .HasParent }}, {{ .ParentName }}{{ end }} and name.
 	db{{ .Name | pascalcase }}, err = {{ .Name | camelcase }}.GetAllWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{
 		Cluster:     ptr.To("one"),
-{{- if .ServerIDByLocation }}
+{{- if .HasServer }}
 		Server:      ptr.To("one"),
 {{- end }}
 {{- if .HasProject }}
@@ -237,7 +237,7 @@ server-two
 	// Can't add a duplicate {{ .PluralName }}.
 	_, err = {{ .Name | camelcase }}.Create(ctx, {{ .Name | camelcase }}B)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
-{{- if and .ServerIDByLocation .IsServerIDOptional }}
+{{- if and .HasServer .IsServerIDOptional }}
 
 	// Create {{ .Name }} without location / server
 	{{ .Name | camelcase }}C := inventory.{{ .Name | pascalcase }}{

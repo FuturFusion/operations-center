@@ -113,13 +113,15 @@ CREATE TABLE images (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
+  server_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
-  UNIQUE (cluster_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
+  UNIQUE (cluster_id, server_id, project_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE,
+  FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
 CREATE TABLE instances (
@@ -397,9 +399,10 @@ CREATE TABLE incus_images (
 );
 
 CREATE VIEW resources AS
-    SELECT 'image' AS kind, images.id, clusters.name AS cluster_name, NULL AS server_name, images.project_name, NULL AS parent_name, images.name, images.object, images.last_updated
+    SELECT 'image' AS kind, images.id, clusters.name AS cluster_name, servers.name AS server_name, images.project_name, NULL AS parent_name, images.name, images.object, images.last_updated
     FROM images
     INNER JOIN clusters ON images.cluster_id = clusters.id
+    LEFT JOIN servers ON images.server_id = servers.id
   UNION
     SELECT 'instance' AS kind, instances.id, clusters.name AS cluster_name, servers.name AS server_name, instances.project_name, NULL AS parent_name, instances.name, instances.object, instances.last_updated
     FROM instances
@@ -460,4 +463,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (39, strftime("%s"));
+INSERT INTO schema (version, updated_at) VALUES (40, strftime("%s"));

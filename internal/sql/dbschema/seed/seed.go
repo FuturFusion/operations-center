@@ -201,6 +201,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 			projectName := faker.RandomString(projects)
 			image := inventory.Image{
 				Cluster:     clusterName,
+				Server:      faker.RandomString(servers),
 				Name:        imageName,
 				ProjectName: projectName,
 				Object: inventory.IncusImageWrapper{

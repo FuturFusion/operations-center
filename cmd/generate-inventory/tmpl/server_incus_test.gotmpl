@@ -16,6 +16,143 @@ import (
 
 func {{ .Name | camelcase }}ClientTestCases(t *testing.T) []methodTestSet {
 	return []methodTestSet{
+{{- if .ServerIDByTarget }}
+		{
+			name: "Get{{ .PluralName | pascalcase }}",
+			clientCall: func(ctx context.Context, client inventory.ServerClient, endpoint provisioning.Endpoint) (any, error) {
+				return client.Get{{ .PluralName | pascalcase }}(ctx, endpoint)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: mustJSONMarshal(t, api.ResponseRaw{
+									Metadata: []incusapi.ClusterMember{
+										{
+											ServerName: "one",
+										},
+									},
+								}),
+							},
+						},
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: mustJSONMarshal(t, api.ResponseRaw{
+									Metadata: []incusapi.{{ .ObjectType | pascalcase }}{
+										{
+											{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .HasProjectDirect }}
+											Project: "project one",
+{{- end }}
+										},
+									},
+								}),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+						require.Len(t, res, 1)
+					},
+					wantPaths: []string{"GET /1.0/cluster/members", "GET /1.0/{{ .PluralName | kebabcase }}?"},
+				},
+				{
+					name: "error - cluster members not found",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusNotFound,
+								responseBody: mustJSONMarshal(t, api.ResponseRaw{
+									Type:       api.ErrorResponse,
+									StatusCode: http.StatusNotFound,
+								}),
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/cluster/members"},
+				},
+				{
+					name: "error - cluster members - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/cluster/members"},
+				},
+				{
+					name: "error - get {{ .PluralName }} for member - not found",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: mustJSONMarshal(t, api.ResponseRaw{
+									Metadata: []incusapi.ClusterMember{
+										{
+											ServerName: "one",
+										},
+									},
+								}),
+							},
+						},
+						{
+							Value: response{
+								statusCode: http.StatusNotFound,
+								responseBody: mustJSONMarshal(t, api.ResponseRaw{
+									Type:       api.ErrorResponse,
+									StatusCode: http.StatusNotFound,
+								}),
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/cluster/members", "GET /1.0/{{ .PluralName | kebabcase }}?"},
+				},
+				{
+					name: "error - get {{ .PluralName }} for member - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: mustJSONMarshal(t, api.ResponseRaw{
+									Metadata: []incusapi.ClusterMember{
+										{
+											ServerName: "one",
+										},
+									},
+								}),
+							},
+						},
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/cluster/members", "GET /1.0/{{ .PluralName | kebabcase }}?"},
+				},
+			},
+		},
+{{- else }}
 		{
 			name: "Get{{ .PluralName | pascalcase }}",
 			clientCall: func(ctx context.Context, client inventory.ServerClient, endpoint provisioning.Endpoint) (any, error) {
@@ -99,6 +236,7 @@ func {{ .Name | camelcase }}ClientTestCases(t *testing.T) []methodTestSet {
 				},
 			},
 		},
+{{- end }}
 
 		{
 			name: "Get{{ .Name | pascalcase }}ByName",
