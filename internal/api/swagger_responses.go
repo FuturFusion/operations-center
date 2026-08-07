@@ -253,6 +253,28 @@ type swaggerServerBMCLogEventsResponse struct {
 	}
 }
 
+// The BIOS attributes known to the BMC
+//
+// swagger:response ServerBMCBIOSAttributesResponse
+type swaggerServerBMCBIOSAttributesResponse struct {
+	// in: body
+	Body struct {
+		swaggerSyncResponseBody
+		Metadata []api.BIOSAttribute `json:"metadata"`
+	}
+}
+
+// The acceptable values of a BIOS attribute
+//
+// swagger:response ServerBMCBIOSAttributeResponse
+type swaggerServerBMCBIOSAttributeValuesResponse struct {
+	// in: body
+	Body struct {
+		swaggerSyncResponseBody
+		Metadata api.BIOSAttribute `json:"metadata"`
+	}
+}
+
 // The BMC dump
 //
 // swagger:response ServerBMCDumpResponse

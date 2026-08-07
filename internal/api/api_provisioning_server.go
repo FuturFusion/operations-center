@@ -80,6 +80,9 @@ func registerProvisioningServerHandler(
 	router.HandleFunc("POST /{name}/bmc/:server-power-on", response.With(handler.serverBMCServerPowerOnPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/bmc/:server-power-off", response.With(handler.serverBMCServerPowerOffPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/bmc/:server-restart", response.With(handler.serverBMCServerRestartPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/bmc/:apply-bios-attributes", response.With(handler.serverBMCApplyBIOSAttributesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{name}/bmc/bios-attributes", response.With(handler.serverBMCBIOSAttributesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{name}/bmc/bios-attributes/{attributeName...}", response.With(handler.serverBMCBIOSAttributeGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}/bmc/logs", response.With(handler.serverBMCLogSourcesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}/bmc/logs/{logSource...}", response.With(handler.serverBMCLogEntriesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}/changelog", response.With(handler.serverChangelogGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -1008,6 +1011,143 @@ func (s *serverHandler) serverBMCServerRestartPost(r *http.Request) response.Res
 	}
 
 	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:apply-bios-attributes servers_bmc server_bmc_apply_bios_attributes_post
+//
+//	Apply BIOS attributes via BMC
+//
+//	Applies the given BIOS attributes to the server via BMC. The settings are
+//	applied on the next reset of the server.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
+//	  - in: body
+//	    name: attributes
+//	    description: BIOS attributes to apply
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/ServerBMCApplyBIOSAttributesPost"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverBMCApplyBIOSAttributesPost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	var req api.ServerBMCApplyBIOSAttributesPost
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Request decoding: %v", err))
+	}
+
+	err = s.service.ApplyBIOSAttributesByName(r.Context(), name, req.Attributes)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to apply BIOS attributes for server %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation GET /1.0/provisioning/servers/{name}/bmc/bios-attributes servers_bmc server_bmc_bios_attributes_get
+//
+//	Get the BIOS attributes known to the BMC
+//
+//	Returns the BIOS attributes declared by the server's BMC, along with their
+//	type and current value.
+//
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/ServerBMCBIOSAttributesResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverBMCBIOSAttributesGet(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	attributes, err := s.service.BMCBIOSAttributesByName(r.Context(), name)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to get BIOS attributes of server %q: %w", name, err))
+	}
+
+	return response.SyncResponse(true, attributes)
+}
+
+// swagger:operation GET /1.0/provisioning/servers/{name}/bmc/bios-attributes/{attributeName} servers_bmc server_bmc_bios_attribute_get
+//
+//	Get a BIOS attribute
+//
+//	Returns the current value of the given BIOS attribute together with its
+//	type.
+//
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
+//	  - in: path
+//	    name: attributeName
+//	    description: Name of the BIOS attribute
+//	    type: string
+//	    required: true
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/ServerBMCBIOSAttributeResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverBMCBIOSAttributeGet(r *http.Request) response.Response {
+	name := r.PathValue("name")
+	attributeName := r.PathValue("attributeName")
+
+	values, err := s.service.BMCBIOSAttributeByName(r.Context(), name, attributeName)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to get BIOS attribute %q of server %q: %w", attributeName, name, err))
+	}
+
+	return response.SyncResponse(true, values)
 }
 
 // swagger:operation GET /1.0/provisioning/servers/{name}/bmc/logs servers_bmc server_bmc_logs_get
