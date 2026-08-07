@@ -104,3 +104,58 @@ type BMCVirtualMedia struct {
 	// WriteProtected reports, if the remote device media prevents writing to that media.
 	WriteProtected bool `json:"write_protected" yaml:"write_protected"`
 }
+
+// ServerBMCApplyBIOSAttributesPost represents a request to apply a set of
+// BIOS attributes to a server via its BMC.
+//
+// swagger:model
+type ServerBMCApplyBIOSAttributesPost struct {
+	// Attributes contains the BIOS attribute names and values to apply to the
+	// server via BMC. The available attribute names and accepted value types
+	// are BMC/BIOS vendor specific.
+	Attributes map[string]any `json:"attributes" yaml:"attributes"`
+}
+
+// BIOSAttribute describes a single BIOS attribute known to the BMC.
+//
+// swagger:model
+type BIOSAttribute struct {
+	// Name holds the name of the BIOS attribute.
+	// Example: NumaNodesPerSocket
+	Name string `json:"name" yaml:"name"`
+
+	// CurrentValue holds the current value of the BIOS attribute on the
+	// server.
+	// Example: 4
+	CurrentValue any `json:"current_value" yaml:"current_value"`
+
+	// Type holds the type of the BIOS attribute, e.g. Enumeration, String,
+	// Integer, Boolean or Password.
+	// Example: Enumeration
+	Type string `json:"type" yaml:"type"`
+
+	// LowerBound holds the lower limit for an Integer attribute, if declared
+	// by the BMC.
+	// Example: 0
+	LowerBound *int64 `json:"lower_bound,omitempty" yaml:"lower_bound,omitempty"`
+
+	// UpperBound holds the upper limit for an Integer attribute, if declared
+	// by the BMC.
+	// Example: 20
+	UpperBound *int64 `json:"upper_bound,omitempty" yaml:"upper_bound,omitempty"`
+
+	// MinLength holds the minimum character length for a String attribute,
+	// if declared by the BMC.
+	// Example: 4
+	MinLength *int64 `json:"min_length,omitempty" yaml:"min_length,omitempty"`
+
+	// MaxLength holds the maximum character length for a String attribute,
+	// if declared by the BMC.
+	// Example: 20
+	MaxLength *int64 `json:"max_length,omitempty" yaml:"max_length,omitempty"`
+
+	// AcceptableValues holds the values the BMC declares as acceptable for
+	// the BIOS attribute. Empty if the attribute is not an enumeration.
+	// Example: ["UserMode", "SetupMode"]
+	AcceptableValues []string `json:"acceptable_values" yaml:"acceptable_values"`
+}
