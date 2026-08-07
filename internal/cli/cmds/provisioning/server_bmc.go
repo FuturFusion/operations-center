@@ -3,11 +3,13 @@ package provisioning
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
@@ -58,6 +60,20 @@ func (c *cmdServerBMC) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(serverBMCServerRestartCmd.Command())
+
+	// Apply BIOS attributes
+	serverBMCApplyBIOSAttributesCmd := cmdServerBMCApplyBIOSAttributes{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverBMCApplyBIOSAttributesCmd.Command())
+
+	// Setup secure boot certificates
+	serverBMCSetupSecureBootCertificatesCmd := cmdServerBMCSetupSecureBootCertificates{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverBMCSetupSecureBootCertificatesCmd.Command())
 
 	// Logs
 	serverBMCLogsCmd := cmdServerBMCLogs{
@@ -254,6 +270,125 @@ func (c *cmdServerBMCServerRestart) run(cmd *cobra.Command, args []string) error
 	name := args[0]
 
 	err := c.ocClient.BMCServerRestart(cmd.Context(), name, c.flagForce)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Apply BIOS attributes to a server via BMC.
+type cmdServerBMCApplyBIOSAttributes struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdServerBMCApplyBIOSAttributes) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "apply-bios-attributes <name> [attributes.yaml]"
+	cmd.Short = "Apply BIOS attributes to a server via BMC"
+	cmd.Long = `Description:
+  Apply BIOS attributes to a server via BMC
+
+  Applies the given BIOS attributes to the server via BMC. The settings are
+  applied on the next reset of the server.
+
+  The attributes are provided as a YAML document with attribute names and
+  values at the root level, either from the given file or, if no file is
+  given, from stdin.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerBMCApplyBIOSAttributes) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 2)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdServerBMCApplyBIOSAttributes) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	var attributesReader io.Reader = os.Stdin
+
+	if len(args) > 1 {
+		attributesFile := args[1]
+
+		f, err := os.Open(attributesFile)
+		if err != nil {
+			return fmt.Errorf("Failed to read file %q: %w", attributesFile, err)
+		}
+
+		defer func() {
+			_ = f.Close()
+		}()
+
+		attributesReader = f
+	}
+
+	body, err := io.ReadAll(attributesReader)
+	if err != nil {
+		return fmt.Errorf("Failed to read BIOS attributes: %w", err)
+	}
+
+	attributes := map[string]any{}
+
+	err = yaml.Unmarshal(body, &attributes)
+	if err != nil {
+		return fmt.Errorf("Failed to parse BIOS attributes YAML: %w", err)
+	}
+
+	err = c.ocClient.ApplyBIOSAttributes(cmd.Context(), name, attributes)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Setup the secure boot certificates of a server via BMC.
+type cmdServerBMCSetupSecureBootCertificates struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdServerBMCSetupSecureBootCertificates) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "setup-secure-boot-certificates <name>"
+	cmd.Short = "Setup the secure boot certificates of a server via BMC"
+	cmd.Long = `Description:
+  Setup the secure boot certificates of a server via BMC
+
+  Wipes the KEK, DB and DBX secure boot databases of the server and
+  reinitializes them with the configured certificates.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerBMCSetupSecureBootCertificates) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdServerBMCSetupSecureBootCertificates) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.BMCSetupSecureBootCertificates(cmd.Context(), name)
 	if err != nil {
 		return err
 	}

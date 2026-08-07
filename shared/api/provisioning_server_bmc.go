@@ -66,3 +66,14 @@ type BMCDumpError struct {
 	// StatusCode contains the http status code, if applicable.
 	StatusCode int `json:"status_code,omitempty" yaml:"status_code,omitempty"`
 }
+
+// ServerBMCApplyBIOSAttributesPost represents a request to apply a set of
+// BIOS attributes to a server via its BMC.
+//
+// swagger:model
+type ServerBMCApplyBIOSAttributesPost struct {
+	// Attributes contains the BIOS attribute names and values to apply to the
+	// server via BMC. The available attribute names and accepted value types
+	// are BMC/BIOS vendor specific.
+	Attributes map[string]any `json:"attributes" yaml:"attributes"`
+}

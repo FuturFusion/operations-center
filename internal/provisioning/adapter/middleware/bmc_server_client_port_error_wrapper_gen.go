@@ -26,6 +26,16 @@ func NewBMCServerClientPortWithErrorWrapper(base provisioning.BMCServerClientPor
 	return this
 }
 
+// ApplyBIOSAttributes implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) ApplyBIOSAttributes(ctx context.Context, server provisioning.Server, attributes map[string]any) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.ApplyBIOSAttributes(ctx, server, attributes)
+}
+
 // ConnectionTest implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithErrorWrapper) ConnectionTest(ctx context.Context, server provisioning.Server) (certificate string, err error) {
 	defer func() {
@@ -104,6 +114,16 @@ func (_d BMCServerClientPortWithErrorWrapper) ServerRestart(ctx context.Context,
 		}
 	}()
 	return _d._base.ServerRestart(ctx, server, force)
+}
+
+// SetupSecureBootCertificates implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) SetupSecureBootCertificates(ctx context.Context, server provisioning.Server) (err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.SetupSecureBootCertificates(ctx, server)
 }
 
 // WaitForTask implements provisioning.BMCServerClientPort.

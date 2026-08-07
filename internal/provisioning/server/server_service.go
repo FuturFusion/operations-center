@@ -2532,6 +2532,64 @@ func (s *serverService) BMCServerRestartByName(ctx context.Context, name string,
 	return nil
 }
 
+func (s *serverService) ApplyBIOSAttributesByName(ctx context.Context, name string, attributes map[string]any) error {
+	if name == "" {
+		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
+	if !ok {
+		return fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCConfig.APIType, err)
+	}
+
+	taskMonitor, err := client.ApplyBIOSAttributes(ctx, *server, attributes)
+	if err != nil {
+		return fmt.Errorf("Failed to trigger BIOS attribute application of server %q via BMC: %w", server.Name, err)
+	}
+
+	// The BIOS settings are applied on the next reset of the server, so the task
+	// is not awaited synchronously.
+	go func() {
+		// Use a detached context in order to make sure, no existing DB transaction is inherited.
+		ctx := context.Background()
+
+		err := client.WaitForTask(ctx, *server, taskMonitor)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after BIOS attribute application", logger.Err(err), slog.String("name", server.Name))
+		}
+	}()
+
+	return nil
+}
+
+func (s *serverService) BMCSetupSecureBootCertificatesByName(ctx context.Context, name string) error {
+	if name == "" {
+		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
+	if !ok {
+		return fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCConfig.APIType, err)
+	}
+
+	err = client.SetupSecureBootCertificates(ctx, *server)
+	if err != nil {
+		return fmt.Errorf("Failed to setup secure boot certificates of server %q via BMC: %w", server.Name, err)
+	}
+
+	return nil
+}
+
 func (s *serverService) BMCLogSourcesByName(ctx context.Context, name string) ([]string, error) {
 	if name == "" {
 		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
