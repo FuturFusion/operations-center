@@ -106,7 +106,9 @@ func (i ImageType) UpdateFileType() images.UpdateFileType {
 //
 // Operations Center just passes through the provided configuration for
 // applications.yaml, install.yaml and network.yaml as is without any validation
-// of the provided configuration besides of ensuring it to be valid yaml.
+// of the provided configuration besides of ensuring it to be valid yaml and to
+// only contain fields, which are part of the respective seed definition.
+// Unknown fields are rejected instead of being silently ignored.
 //
 // swagger:model
 type TokenImagePost struct {
@@ -161,7 +163,9 @@ type TokenSeedConfigs struct {
 //
 // Operations Center just passes through the provided configuration for
 // application.yaml, install.yaml and network.yaml as is without any validation
-// of the provided configuration besides of ensuring it to be valid yaml.
+// of the provided configuration besides of ensuring it to be valid yaml and to
+// only contain fields, which are part of the respective seed definition.
+// Unknown fields are rejected instead of being silently ignored.
 //
 // swagger:model
 type TokenSeedPost struct {
@@ -177,7 +181,9 @@ type TokenSeedPost struct {
 //
 // Operations Center just passes through the provided configuration for
 // application.yaml, install.yaml and network.yaml as is without any validation
-// of the provided configuration besides of ensuring it to be valid yaml.
+// of the provided configuration besides of ensuring it to be valid yaml and to
+// only contain fields, which are part of the respective seed definition.
+// Unknown fields are rejected instead of being silently ignored.
 //
 // swagger:model
 type TokenSeedPut struct {
@@ -202,7 +208,9 @@ type TokenSeedPut struct {
 //
 // Operations Center just passes through the provided configuration for
 // application.yaml, install.yaml and network.yaml as is without any validation
-// of the provided configuration besides of ensuring it to be valid yaml.
+// of the provided configuration besides of ensuring it to be valid yaml and to
+// only contain fields, which are part of the respective seed definition.
+// Unknown fields are rejected instead of being silently ignored.
 //
 // swagger:model
 type TokenSeed struct {
