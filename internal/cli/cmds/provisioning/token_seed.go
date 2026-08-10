@@ -20,6 +20,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/environment"
+	"github.com/FuturFusion/operations-center/internal/util/decodestrict"
 	"github.com/FuturFusion/operations-center/internal/util/editor"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/render"
@@ -144,7 +145,7 @@ func (c *cmdTokenSeedAdd) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = yaml.Unmarshal(body, &tokenSeedPost.Seeds)
+	err = decodestrict.YAML(body, &tokenSeedPost.Seeds)
 	if err != nil {
 		return err
 	}
@@ -277,7 +278,7 @@ func (c *cmdTokenSeedEdit) run(cmd *cobra.Command, args []string) error {
 		}
 
 		newdata := api.TokenSeedPut{}
-		err = yaml.Unmarshal(contents, &newdata)
+		err = decodestrict.YAML(contents, &newdata)
 		if err != nil {
 			return err
 		}
@@ -311,7 +312,7 @@ func (c *cmdTokenSeedEdit) run(cmd *cobra.Command, args []string) error {
 
 	for {
 		newdata := api.TokenSeedPut{}
-		err = yaml.Unmarshal(content, &newdata)
+		err = decodestrict.YAML(content, &newdata)
 		if err == nil {
 			err = c.ocClient.UpdateTokenSeed(cmd.Context(), id, name, newdata)
 		}
