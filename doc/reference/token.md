@@ -21,6 +21,46 @@ themselves.
 The details about the installation seed is documented in
 [IncusOS Installation Seed](https://linuxcontainers.org/incus-os/docs/main/reference/seed/).
 
+The seed configuration is only accepted, if it exclusively contains fields,
+which are part of the respective seed definition. Unknown fields are rejected.
+
+### Seed Configuration (`pre-seed.yaml`)
+
+The seed configuration has the following structure:
+
+```yaml
+applications:
+  version: "1"
+  applications:
+    - name: incus
+    - name: debug
+incus:
+  version: "1"
+  preseed:
+    certificates:
+      - name: admin
+        type: client
+# ...
+# install:
+# ...
+# migration_manager:
+# ...
+network:
+  interfaces:
+    - name: enp5s0
+      hwaddr: enp5s0
+      required_for_online: both
+      addresses:
+      - dhcp4
+      - dhcp6
+      - slaac
+# ...
+# operations_center:
+# ...
+# update:
+# ...
+```
+
 ### Public Token Seed
 
 A token seed configuration can be made **public**, which allows fetching of
