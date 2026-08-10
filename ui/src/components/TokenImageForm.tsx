@@ -140,6 +140,20 @@ const TokenImageForm: FC<Props> = ({ formik }) => {
             onBlur={formik.handleBlur}
             className="editor"
           />
+          <Form.Text muted>
+            Provide the network configuration in the flat format of the network
+            seed. Do not nest it in a config block, which is only used for the
+            network configuration of an already installed server. See{" "}
+            <a
+              href="https://linuxcontainers.org/incus-os/docs/main/reference/seed/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="data-table-link"
+            >
+              IncusOS Installation Seed
+            </a>
+            .
+          </Form.Text>
         </Form.Group>
         <BootSecuritySelect
           value={formik.values.seeds.install.boot_security}

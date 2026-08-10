@@ -11,7 +11,9 @@ const TokenSeedConfiguration = () => {
   const navigate = useNavigate();
 
   const onSubmit = (tokenSeed: TokenSeed) => {
-    updateTokenSeed(uuid, name, JSON.stringify(tokenSeed, null, 2))
+    const { name: _name, ...tokenSeedPut } = tokenSeed;
+
+    updateTokenSeed(uuid, name, JSON.stringify(tokenSeedPut, null, 2))
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`Token seed ${name} updated`);

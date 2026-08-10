@@ -113,10 +113,11 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
         ];
       }
 
-      const tokenSeed = {
-        ...values,
+      const tokenSeed: TokenSeed = {
+        name: values.name,
+        description: values.description,
+        public: values.public,
         seeds: {
-          ...values.seeds,
           applications: {
             version: "1",
             applications: applications,
@@ -276,6 +277,20 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
               onBlur={formik.handleBlur}
               className="editor"
             />
+            <Form.Text muted>
+              Provide the network configuration in the flat format of the
+              network seed. Do not nest it in a config block, which is only used
+              for the network configuration of an already installed server. See{" "}
+              <a
+                href="https://linuxcontainers.org/incus-os/docs/main/reference/seed/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="data-table-link"
+              >
+                IncusOS Installation Seed
+              </a>
+              .
+            </Form.Text>
           </Form.Group>
         </Form>
       </div>
