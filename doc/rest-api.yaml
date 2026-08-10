@@ -197,6 +197,72 @@ definitions:
         title: Applications represents the applications seed file.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api/seed
+    BIOSAttribute:
+        properties:
+            acceptable_values:
+                description: |-
+                    AcceptableValues holds the values the BMC declares as acceptable for
+                    the BIOS attribute. Empty if the attribute is not an enumeration.
+                example:
+                    - UserMode
+                    - SetupMode
+                items:
+                    type: string
+                type: array
+                x-go-name: AcceptableValues
+            current_value:
+                description: |-
+                    CurrentValue holds the current value of the BIOS attribute on the
+                    server.
+                example: "4"
+                x-go-name: CurrentValue
+            lower_bound:
+                description: |-
+                    LowerBound holds the lower limit for an Integer attribute, if declared
+                    by the BMC.
+                example: 0
+                format: int64
+                type: integer
+                x-go-name: LowerBound
+            max_length:
+                description: |-
+                    MaxLength holds the maximum character length for a String attribute,
+                    if declared by the BMC.
+                example: 20
+                format: int64
+                type: integer
+                x-go-name: MaxLength
+            min_length:
+                description: |-
+                    MinLength holds the minimum character length for a String attribute,
+                    if declared by the BMC.
+                example: 4
+                format: int64
+                type: integer
+                x-go-name: MinLength
+            name:
+                description: Name holds the name of the BIOS attribute.
+                example: NumaNodesPerSocket
+                type: string
+                x-go-name: Name
+            type:
+                description: |-
+                    Type holds the type of the BIOS attribute, e.g. Enumeration, String,
+                    Integer, Boolean or Password.
+                example: Enumeration
+                type: string
+                x-go-name: Type
+            upper_bound:
+                description: |-
+                    UpperBound holds the upper limit for an Integer attribute, if declared
+                    by the BMC.
+                example: 20
+                format: int64
+                type: integer
+                x-go-name: UpperBound
+        title: BIOSAttribute describes a single BIOS attribute known to the BMC.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     BMCAPIType:
         type: string
         x-go-package: github.com/FuturFusion/operations-center/shared/api
@@ -5380,6 +5446,21 @@ definitions:
             version_data:
                 $ref: '#/definitions/ServerVersionData'
         title: Server defines a server running Hypervisor OS.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ServerBMCApplyBIOSAttributesPost:
+        description: |-
+            ServerBMCApplyBIOSAttributesPost represents a request to apply a set of
+            BIOS attributes to a server via its BMC.
+        properties:
+            attributes:
+                additionalProperties: {}
+                description: |-
+                    Attributes contains the BIOS attribute names and values to apply to the
+                    server via BMC. The available attribute names and accepted value types
+                    are BMC/BIOS vendor specific.
+                type: object
+                x-go-name: Attributes
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerPost:
@@ -11347,6 +11428,44 @@ paths:
             summary: Sync server state
             tags:
                 - servers
+    /1.0/provisioning/servers/{name}/bmc/:apply-bios-attributes:
+        post:
+            consumes:
+                - application/json
+            description: |-
+                Applies the given BIOS attributes to the server via BMC. The settings are
+                applied on the next reset of the server.
+            operationId: server_bmc_apply_bios_attributes_post
+            parameters:
+                - description: Name of the server
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+                - description: BIOS attributes to apply
+                  in: body
+                  name: attributes
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ServerBMCApplyBIOSAttributesPost'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Apply BIOS attributes via BMC
+            tags:
+                - servers_bmc
     /1.0/provisioning/servers/{name}/bmc/:dump:
         post:
             description: |-
@@ -11537,6 +11656,67 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Restart server via BMC
+            tags:
+                - servers_bmc
+    /1.0/provisioning/servers/{name}/bmc/bios-attributes:
+        get:
+            description: |-
+                Returns the BIOS attributes declared by the server's BMC, along with their
+                type and current value.
+            operationId: server_bmc_bios_attributes_get
+            parameters:
+                - description: Name of the server
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/ServerBMCBIOSAttributesResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the BIOS attributes known to the BMC
+            tags:
+                - servers_bmc
+    /1.0/provisioning/servers/{name}/bmc/bios-attributes/{attributeName}:
+        get:
+            description: |-
+                Returns the current value of the given BIOS attribute together with its
+                type.
+            operationId: server_bmc_bios_attribute_get
+            parameters:
+                - description: Name of the server
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+                - description: Name of the BIOS attribute
+                  in: path
+                  name: attributeName
+                  required: true
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/ServerBMCBIOSAttributeResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get a BIOS attribute
             tags:
                 - servers_bmc
     /1.0/provisioning/servers/{name}/bmc/logs:
@@ -14064,6 +14244,49 @@ responses:
                 metadata:
                     items:
                         $ref: '#/definitions/InventoryProject'
+                    type: array
+                    x-go-name: Metadata
+                status:
+                    example: Success
+                    type: string
+                    x-go-name: Status
+                status_code:
+                    example: 200
+                    format: int64
+                    type: integer
+                    x-go-name: StatusCode
+                type:
+                    example: sync
+                    type: string
+                    x-go-name: Type
+            type: object
+    ServerBMCBIOSAttributeResponse:
+        description: The acceptable values of a BIOS attribute
+        schema:
+            properties:
+                metadata:
+                    $ref: '#/definitions/BIOSAttribute'
+                status:
+                    example: Success
+                    type: string
+                    x-go-name: Status
+                status_code:
+                    example: 200
+                    format: int64
+                    type: integer
+                    x-go-name: StatusCode
+                type:
+                    example: sync
+                    type: string
+                    x-go-name: Type
+            type: object
+    ServerBMCBIOSAttributesResponse:
+        description: The BIOS attributes known to the BMC
+        schema:
+            properties:
+                metadata:
+                    items:
+                        $ref: '#/definitions/BIOSAttribute'
                     type: array
                     x-go-name: Metadata
                 status:
