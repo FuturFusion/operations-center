@@ -7633,12 +7633,14 @@ func TestClusterService_RemoveServer(t *testing.T) {
 		incusClientDeleteStoragePoolVolumeErrs queue.Errs
 		serverSvcFactoryResetByNameErr         error
 		incusClientDeleteClusterMemberErr      error
+		incusClientHasExtension                bool
 
 		assertErr require.ErrorAssertionFunc
 		assertLog log.MatcherFunc
 	}{
 		{
-			name: "success",
+			name:                    "success",
+			incusClientHasExtension: true,
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					Name:   "serverOne",
@@ -7907,6 +7909,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 					},
 				},
 			},
+			incusClientHasExtension: true,
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
@@ -8181,6 +8184,9 @@ func TestClusterService_RemoveServer(t *testing.T) {
 
 			var incusClient *adapterMock.InstanceServerMock
 			incusClient = &adapterMock.InstanceServerMock{
+				HasExtensionFunc: func(extension string) bool {
+					return tc.incusClientHasExtension
+				},
 				GetClusterMemberFunc: func(name string) (*incusapi.ClusterMember, string, error) {
 					return &incusapi.ClusterMember{}, "", tc.incusClientGetClusterMemberErr
 				},
