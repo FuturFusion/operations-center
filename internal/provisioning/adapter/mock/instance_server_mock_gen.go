@@ -970,6 +970,9 @@ var _ provisioning.InstanceServer = &InstanceServerMock{}
 //			UpdateInstanceMetadataFunc: func(name string, metadata api.ImageMetadata, ETag string) error {
 //				panic("mock out the UpdateInstanceMetadata method")
 //			},
+//			UpdateInstanceNVRAMFunc: func(name string, vars map[string]map[string]*api.InstanceNVRAMVariablePut) error {
+//				panic("mock out the UpdateInstanceNVRAM method")
+//			},
 //			UpdateInstanceNVRAMGUIDVarFunc: func(name string, guid string, varName string, data api.InstanceNVRAMVariablePut, ETag string) error {
 //				panic("mock out the UpdateInstanceNVRAMGUIDVar method")
 //			},
@@ -1993,6 +1996,9 @@ type InstanceServerMock struct {
 
 	// UpdateInstanceMetadataFunc mocks the UpdateInstanceMetadata method.
 	UpdateInstanceMetadataFunc func(name string, metadata api.ImageMetadata, ETag string) error
+
+	// UpdateInstanceNVRAMFunc mocks the UpdateInstanceNVRAM method.
+	UpdateInstanceNVRAMFunc func(name string, vars map[string]map[string]*api.InstanceNVRAMVariablePut) error
 
 	// UpdateInstanceNVRAMGUIDVarFunc mocks the UpdateInstanceNVRAMGUIDVar method.
 	UpdateInstanceNVRAMGUIDVarFunc func(name string, guid string, varName string, data api.InstanceNVRAMVariablePut, ETag string) error
@@ -4033,6 +4039,13 @@ type InstanceServerMock struct {
 			// ETag is the ETag argument value.
 			ETag string
 		}
+		// UpdateInstanceNVRAM holds details about calls to the UpdateInstanceNVRAM method.
+		UpdateInstanceNVRAM []struct {
+			// Name is the name argument value.
+			Name string
+			// Vars is the vars argument value.
+			Vars map[string]map[string]*api.InstanceNVRAMVariablePut
+		}
 		// UpdateInstanceNVRAMGUIDVar holds details about calls to the UpdateInstanceNVRAMGUIDVar method.
 		UpdateInstanceNVRAMGUIDVar []struct {
 			// Name is the name argument value.
@@ -4597,6 +4610,7 @@ type InstanceServerMock struct {
 	lockUpdateImageAlias                               sync.RWMutex
 	lockUpdateInstance                                 sync.RWMutex
 	lockUpdateInstanceMetadata                         sync.RWMutex
+	lockUpdateInstanceNVRAM                            sync.RWMutex
 	lockUpdateInstanceNVRAMGUIDVar                     sync.RWMutex
 	lockUpdateInstanceSnapshot                         sync.RWMutex
 	lockUpdateInstanceState                            sync.RWMutex
@@ -15403,6 +15417,42 @@ func (mock *InstanceServerMock) UpdateInstanceMetadataCalls() []struct {
 	mock.lockUpdateInstanceMetadata.RLock()
 	calls = mock.calls.UpdateInstanceMetadata
 	mock.lockUpdateInstanceMetadata.RUnlock()
+	return calls
+}
+
+// UpdateInstanceNVRAM calls UpdateInstanceNVRAMFunc.
+func (mock *InstanceServerMock) UpdateInstanceNVRAM(name string, vars map[string]map[string]*api.InstanceNVRAMVariablePut) error {
+	if mock.UpdateInstanceNVRAMFunc == nil {
+		panic("InstanceServerMock.UpdateInstanceNVRAMFunc: method is nil but InstanceServer.UpdateInstanceNVRAM was just called")
+	}
+	callInfo := struct {
+		Name string
+		Vars map[string]map[string]*api.InstanceNVRAMVariablePut
+	}{
+		Name: name,
+		Vars: vars,
+	}
+	mock.lockUpdateInstanceNVRAM.Lock()
+	mock.calls.UpdateInstanceNVRAM = append(mock.calls.UpdateInstanceNVRAM, callInfo)
+	mock.lockUpdateInstanceNVRAM.Unlock()
+	return mock.UpdateInstanceNVRAMFunc(name, vars)
+}
+
+// UpdateInstanceNVRAMCalls gets all the calls that were made to UpdateInstanceNVRAM.
+// Check the length with:
+//
+//	len(mockedInstanceServer.UpdateInstanceNVRAMCalls())
+func (mock *InstanceServerMock) UpdateInstanceNVRAMCalls() []struct {
+	Name string
+	Vars map[string]map[string]*api.InstanceNVRAMVariablePut
+} {
+	var calls []struct {
+		Name string
+		Vars map[string]map[string]*api.InstanceNVRAMVariablePut
+	}
+	mock.lockUpdateInstanceNVRAM.RLock()
+	calls = mock.calls.UpdateInstanceNVRAM
+	mock.lockUpdateInstanceNVRAM.RUnlock()
 	return calls
 }
 
