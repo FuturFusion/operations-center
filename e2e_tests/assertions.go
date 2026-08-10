@@ -320,6 +320,9 @@ func assertOperationsCenterCliProvisioningTokenSeed(t *testing.T, tmpDir string)
 	err := os.WriteFile(filepath.Join(tmpDir, "incusos_seed.yaml"), incusOSSeedFileYAMLTemplate, 0o600)
 	require.NoError(t, err)
 
+	err = os.WriteFile(filepath.Join(tmpDir, "token_seed_put.yaml"), tokenSeedPutYAMLTemplate, 0o600)
+	require.NoError(t, err)
+
 	// Create seed.
 	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed add %s test %s/incusos_seed.yaml`, cpuArch, token, tmpDir)
 
@@ -330,7 +333,7 @@ func assertOperationsCenterCliProvisioningTokenSeed(t *testing.T, tmpDir string)
 	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed show %s test`, cpuArch, token)
 
 	// Edit seed.
-	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed edit %s test < %s/incusos_seed.yaml`, cpuArch, token, tmpDir)
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed edit %s test < %s/token_seed_put.yaml`, cpuArch, token, tmpDir)
 
 	// Remove seed
 	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed remove %s test`, cpuArch, token)
