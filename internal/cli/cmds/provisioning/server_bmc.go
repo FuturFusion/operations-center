@@ -51,6 +51,13 @@ func (c *cmdServerBMC) Command() *cobra.Command {
 
 	cmd.AddCommand(serverBMCServerRestartCmd.Command())
 
+	// BIOS attributes
+	serverBMCBIOSAttributesCmd := cmdServerBMCBIOSAttributes{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverBMCBIOSAttributesCmd.Command())
+
 	// Logs
 	serverBMCLogsCmd := cmdServerBMCLogs{
 		ocClient: c.ocClient,
