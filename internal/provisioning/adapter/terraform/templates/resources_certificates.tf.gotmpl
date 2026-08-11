@@ -15,10 +15,40 @@ EOT
 }
 
 {{ end -}}
-{{- if .IncusPreseed.Certificates -}}
+{{- if .KnownTrustedCertificates -}}
+# The cluster does already trust the following client certificates, e.g. because
+# they have been applied with the seed config of the servers. They are therefore
+# imported into the Terraform state instead of being added to the cluster.
+{{ range .KnownTrustedCertificates }}
+resource "incus_certificate" "{{ .Name }}" {
+  name        = "{{ .Name }}"
+  description = "{{ .Description }}"
+  restricted  = {{ .Restricted }}
+  type        = "{{ .Type }}"
+
+  projects = {{ trimPrefix "  " (indent 2 (toPrettyJson .Projects) ) }}
+
+  certificate = <<EOT
+{{ .Certificate }}
+EOT
+
+  depends_on = []
+}
+
+import {
+  to = incus_certificate.{{ .Name }}
+  id = "{{ .Fingerprint }}"
+}
+
+{{ end -}}
+{{- end -}}
+{{- if or .IncusPreseed.Certificates .KnownTrustedCertificates -}}
 resource "null_resource" "post_certificates" {
   depends_on = [
 {{- range .IncusPreseed.Certificates }}
+    incus_certificate.{{ .Name }},
+{{- end }}
+{{- range .KnownTrustedCertificates }}
     incus_certificate.{{ .Name }},
 {{- end }}
   ]
