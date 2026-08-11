@@ -37,6 +37,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/testing/flaky"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
+	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
@@ -8160,6 +8161,7 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 		tokenSvcGetTokenProviderConfig    *api.TokenProviderConfig
 		tokenSvcGetTokenProviderConfigErr error
 		repoDeleteByNameErr               error
+		trustedClientCertificates         []string
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -8195,6 +8197,25 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			},
 			tokenSvcGetTokenSeedByName:     &provisioning.TokenSeed{},
 			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "success - with trusted client certificates",
+			argName: "one",
+			repoGetByName: provisioning.Server{
+				Name: "server01",
+				Type: api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name: "incus-lts-7.0",
+						},
+					},
+				},
+			},
+			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{},
+			trustedClientCertificates:      []string{testcert.ClientCertificate},
 
 			assertErr: require.NoError,
 		},
@@ -8312,6 +8333,19 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			config.InitTest(t, &envMock.EnvironmentMock{
+				IsIncusOSFunc: func() bool { return false },
+			}, nil)
+
+			err := config.UpdateSecurity(t.Context(), system.SecurityPut{
+				TrustedTLSClientCertificates: tc.trustedClientCertificates,
+			})
+			require.NoError(t, err)
+
+			t.Cleanup(func() {
+				config.InitTest(t, &envMock.EnvironmentMock{}, nil)
+			})
+
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return &tc.repoGetByName, tc.repoGetByNameErr
@@ -8326,6 +8360,15 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 					return tc.clientPingErr
 				},
 				SystemFactoryResetFunc: func(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error {
+					// The server is deployed again, so it trusts the same clients as
+					// any other system deployed by Operations Center.
+					require.Equal(t, tc.trustedClientCertificates, seeds.OperationsCenter.TrustedClientCertificates)
+					require.Equal(t, tc.trustedClientCertificates, seeds.MigrationManager.TrustedClientCertificates)
+
+					for i, certificate := range tc.trustedClientCertificates {
+						require.Equal(t, certificate, seeds.Incus.Preseed.Certificates[i].Certificate)
+					}
+
 					return tc.clientSystemFactoryResetErr
 				},
 			}
@@ -8345,7 +8388,7 @@ func TestServerService_FactoryResetByName(t *testing.T) {
 			serverSvc := provisioningServer.New(repo, client, nil, tokenSvc, nil, nil, nil, tls.Certificate{})
 
 			// Run test
-			err := serverSvc.FactoryResetByName(t.Context(), tc.argName, tc.argTokenID, tc.argTokenSeedName, false)
+			err = serverSvc.FactoryResetByName(t.Context(), tc.argName, tc.argTokenID, tc.argTokenSeedName, false)
 
 			// Assert
 			tc.assertErr(t, err)
