@@ -4918,6 +4918,18 @@ definitions:
                     type: string
                 type: array
                 x-go-name: TrustedTLSClientCertFingerprints
+            trusted_tls_client_certificates:
+                description: |-
+                    An array of X509 PEM encoded certificates that belong to trusted TLS clients.
+                    The SHA256 fingerprint of each certificate is derived when the configuration
+                    is loaded and trusted in addition to TrustedTLSClientCertFingerprints.
+                    In contrast to bare fingerprints, these certificates are
+                    also passed on to the servers and clusters deployed by Operations Center, if
+                    the user did not provide their own set.
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedTLSClientCertificates
         title: Security represents the system's security configuration.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
@@ -5032,6 +5044,18 @@ definitions:
                     type: string
                 type: array
                 x-go-name: TrustedTLSClientCertFingerprints
+            trusted_tls_client_certificates:
+                description: |-
+                    An array of X509 PEM encoded certificates that belong to trusted TLS clients.
+                    The SHA256 fingerprint of each certificate is derived when the configuration
+                    is loaded and trusted in addition to TrustedTLSClientCertFingerprints.
+                    In contrast to bare fingerprints, these certificates are
+                    also passed on to the servers and clusters deployed by Operations Center, if
+                    the user did not provide their own set.
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedTLSClientCertificates
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     SeedNetwork:
