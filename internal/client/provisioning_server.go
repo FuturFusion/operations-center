@@ -358,6 +358,15 @@ func (c OperationsCenterClient) GetServerBMCBIOSAttributeAcceptableValues(ctx co
 	return values, nil
 }
 
+func (c OperationsCenterClient) BMCApplySecureBootCertificates(ctx context.Context, name string) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "bmc/:apply-secure-boot-certificates"), nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) GetServerBMCLogSources(ctx context.Context, name string) ([]string, error) {
 	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name, "bmc/logs"), nil, nil)
 	if err != nil {
