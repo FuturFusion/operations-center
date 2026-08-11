@@ -390,6 +390,12 @@ type ClusterAddServersPost struct {
 	// If set to true, the post join operations (namely the creation of the local storage volumes for backups,
 	// images and logs) are skipped.
 	SkipPostJoinOperations bool `json:"skip_post_join_operations" yaml:"skip_post_join_operations"`
+
+	// If set to true, the IncusOS services configuration (lvm, iscsi, multipath, nvme, ceph, linstor, ovn) is
+	// copied from an existing member of the cluster to the servers to be added, before they join the cluster.
+	// Member dependent addresses, such as the linstor listen address and the ovn tunnel address, are adapted
+	// for each added server.
+	CopyServicesConfig bool `json:"copy_services_config" yaml:"copy_services_config"`
 }
 
 // ClusterRemoveServersPost represents a remove server from a cluster request
