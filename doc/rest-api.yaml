@@ -91,6 +91,19 @@ definitions:
         title: Application represents a single application with the applications seed.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api/seed
+    ApplicationAction:
+        properties:
+            action:
+                type: string
+                x-go-name: Action
+            config:
+                additionalProperties:
+                    type: string
+                type: object
+                x-go-name: Config
+        title: ApplicationAction defines a generic struct that can be used when triggering an application-specific action.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
     ApplicationVersionData:
         properties:
             available_version:
@@ -1163,6 +1176,41 @@ definitions:
                 x-go-name: NeedsUpdate
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    DebugKernel:
+        properties:
+            architecture:
+                type: string
+                x-go-name: Architecture
+            cpu_baseline:
+                type: string
+                x-go-name: CPUBaseline
+            modules:
+                items:
+                    $ref: '#/definitions/DebugKernelModule'
+                type: array
+                x-go-name: Modules
+            version:
+                type: string
+                x-go-name: Version
+        title: DebugKernel represents kernel debug information for the system.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    DebugKernelModule:
+        properties:
+            dependencies:
+                items:
+                    type: string
+                type: array
+                x-go-name: Dependencies
+            in_use:
+                type: boolean
+                x-go-name: InUse
+            name:
+                type: string
+                x-go-name: Name
+        title: DebugKernelModule represents a loaded kernel module.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
     DevicesMap:
         description: |-
             DevicesMap type is used to hold incus devices configurations. In contrast to
@@ -5903,6 +5951,240 @@ definitions:
                 x-go-name: Key
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    SystemFallbackListener:
+        description: |-
+            SystemFallbackListener defines a struct to configure the fallback HTTPS listener that will
+            activate if the primary application fails to start, ensuring that basic API connectivity
+            to the system isn't lost.
+        properties:
+            config:
+                $ref: '#/definitions/SystemFallbackListenerConfig'
+            state:
+                $ref: '#/definitions/SystemFallbackListenerState'
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemFallbackListenerConfig:
+        properties:
+            listen_address:
+                type: string
+                x-go-name: ListenAddress
+            trusted_client_certificates:
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedClientCertificates
+        title: SystemFallbackListenerConfig holds fallback listener configuration settings.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemFallbackListenerState:
+        properties:
+            active:
+                type: boolean
+                x-go-name: Active
+        title: SystemFallbackListenerState holds information about the current fallback listener state.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemKernel:
+        properties:
+            config:
+                $ref: '#/definitions/SystemKernelConfig'
+            state:
+                $ref: '#/definitions/SystemKernelState'
+        title: SystemKernel defines a struct to hold information about the system's kernel-level configuration.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemKernelConfig:
+        properties:
+            blacklist_modules:
+                items:
+                    type: string
+                type: array
+                x-go-name: BlacklistModules
+            console:
+                items:
+                    $ref: '#/definitions/SystemKernelConfigConsole'
+                type: array
+                x-go-name: Console
+            cpu:
+                $ref: '#/definitions/SystemKernelConfigCPU'
+            memory:
+                $ref: '#/definitions/SystemKernelConfigMemory'
+            network:
+                $ref: '#/definitions/SystemKernelConfigNetwork'
+            pci:
+                $ref: '#/definitions/SystemKernelConfigPCI'
+        title: SystemKernelConfig holds the kernel-level configuration data.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemKernelConfigCPU:
+        properties:
+            scaling_governor:
+                type: string
+                x-go-name: ScalingGovernor
+        title: SystemKernelConfigCPU holds CPU-specific kernel configuration.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemKernelConfigConsole:
+        properties:
+            baud_rate:
+                format: int64
+                type: integer
+                x-go-name: BaudRate
+            device:
+                type: string
+                x-go-name: Device
+        title: SystemKernelConfigConsole holds console-specific kernel configuration.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemKernelConfigMemory:
+        properties:
+            persistent_hugepages:
+                format: int64
+                type: integer
+                x-go-name: PersistentHugepages
+            zram_swap_size:
+                type: string
+                x-go-name: ZramSwapSize
+        title: SystemKernelConfigMemory holds memory-specific kernel configuration.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemKernelConfigNetwork:
+        properties:
+            buffer_size:
+                format: int64
+                type: integer
+                x-go-name: BufferSize
+            netdev_max_backlog:
+                format: int64
+                type: integer
+                x-go-name: NetdevMaxBacklog
+            queuing_discipline:
+                type: string
+                x-go-name: QueuingDiscipline
+            tcp_congestion_algorithm:
+                type: string
+                x-go-name: TCPCongestionAlgorithm
+            tcp_mtu_probing:
+                type: boolean
+                x-go-name: TCPMTUProbing
+        title: SystemKernelConfigNetwork holds network-specific kernel configuration.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemKernelConfigPCI:
+        properties:
+            passthrough:
+                items:
+                    $ref: '#/definitions/SystemKernelConfigPCIPassthrough'
+                type: array
+                x-go-name: Passthrough
+            sriov:
+                items:
+                    $ref: '#/definitions/SystemKernelConfigPCISRIOV'
+                type: array
+                x-go-name: SRIOV
+        title: SystemKernelConfigPCI holds PCI-specific kernel configuration.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemKernelConfigPCIPassthrough:
+        properties:
+            pci_address:
+                type: string
+                x-go-name: PCIAddress
+            product_id:
+                type: string
+                x-go-name: ProductID
+            vendor_id:
+                type: string
+                x-go-name: VendorID
+        title: SystemKernelConfigPCIPassthrough defines a specific PCI device that should be made available for passthrough to a VM.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemKernelConfigPCISRIOV:
+        properties:
+            pci_address:
+                type: string
+                x-go-name: PCIAddress
+            vf_count:
+                format: int64
+                type: integer
+                x-go-name: VFCount
+        title: SystemKernelConfigPCISRIOV defines the number of SR-IOV virtual functions to create on a PCI device.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemKernelState:
+        properties:
+            memory:
+                $ref: '#/definitions/SystemKernelStateMemory'
+        title: SystemKernelState represents state for the system's kernel-level configuration.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemKernelStateMemory:
+        properties:
+            zram_swap:
+                $ref: '#/definitions/SystemKernelStateMemoryZramSwap'
+        title: SystemKernelStateMemory represents state for the system's kernel-level memory configuration.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemKernelStateMemoryZramSwap:
+        description: Reported sizes are in bytes.
+        properties:
+            compressed_size:
+                format: int64
+                type: integer
+                x-go-name: CompressedSize
+            compression_ratio:
+                format: double
+                type: number
+                x-go-name: CompressionRatio
+            disk_size:
+                format: int64
+                type: integer
+                x-go-name: Disksize
+            incompressed_size:
+                format: int64
+                type: integer
+                x-go-name: UncompressedSize
+            total_memory_use:
+                format: int64
+                type: integer
+                x-go-name: TotalMemoryUse
+        title: SystemKernelStateMemoryZramSwap reports statistics about the configured zram-backed swap device, if present.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemLogging:
+        properties:
+            config:
+                $ref: '#/definitions/SystemLoggingConfig'
+            state:
+                $ref: '#/definitions/SystemLoggingState'
+        title: SystemLogging defines a struct to hold information about the system's logging configuration.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemLoggingConfig:
+        properties:
+            syslog:
+                $ref: '#/definitions/SystemLoggingSyslog'
+        title: SystemLoggingConfig holds the modifiable part of the logging data.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemLoggingState:
+        title: SystemLoggingState represents state for the system's logging configuration.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemLoggingSyslog:
+        properties:
+            address:
+                type: string
+                x-go-name: Address
+            log_format:
+                type: string
+                x-go-name: LogFormat
+            protocol:
+                type: string
+                x-go-name: Protocol
+        title: SystemLoggingSyslog contains the configuration options for a remote syslog server.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemNetwork:
         properties:
             address:
@@ -6475,6 +6757,15 @@ definitions:
         title: SystemNetworkWireguardState holds state information about a specific wireguard interface.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemProvider:
+        properties:
+            config:
+                $ref: '#/definitions/SystemProviderConfig'
+            state:
+                $ref: '#/definitions/SystemProviderState'
+        title: SystemProvider defines a struct to hold information about the system's update and configuration provider.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemProviderConfig:
         properties:
             config:
@@ -6486,6 +6777,14 @@ definitions:
                 type: string
                 x-go-name: Name
         title: SystemProviderConfig holds the modifiable part of the provider data.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemProviderState:
+        properties:
+            registered:
+                type: boolean
+                x-go-name: Registered
+        title: SystemProviderState holds information about the current provider state.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemSecurityACME:
@@ -6778,6 +7077,28 @@ definitions:
         title: SystemStorageDriveSMART defines a struct to return basic SMART information about a specific device.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemStorageEncrypt:
+        properties:
+            id:
+                type: string
+                x-go-name: ID
+            secure_wipe:
+                type: boolean
+                x-go-name: SecureWipe
+        title: SystemStorageEncrypt defines a struct with information about what drive to encrypt.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemStorageImportEncryptedDrive:
+        properties:
+            id:
+                type: string
+                x-go-name: ID
+            key:
+                type: string
+                x-go-name: Key
+        title: SystemStorageImportEncryptedDrive defines a struct with information about what drive to decrypt.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemStoragePool:
         properties:
             allow_mixed_dev_sizes:
@@ -6820,6 +7141,10 @@ definitions:
                     type: string
                 type: array
                 x-go-name: LogDegraded
+            managed:
+                description: Read-only fields returned from the server with additional pool information.
+                type: boolean
+                x-go-name: Managed
             name:
                 description: Name and Type cannot be changed after pool creation.
                 type: string
@@ -6840,7 +7165,6 @@ definitions:
                 type: array
                 x-go-name: SpecialDegraded
             state:
-                description: Read-only fields returned from the server with additional pool information.
                 type: string
                 x-go-name: State
             type:
@@ -6857,6 +7181,21 @@ definitions:
                 type: array
                 x-go-name: Volumes
         title: SystemStoragePool defines a struct that is used to create or update a storage pool and return its current state.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemStoragePoolKey:
+        description: Currently the only supported type is "zfs".
+        properties:
+            encryption_key:
+                type: string
+                x-go-name: EncryptionKey
+            name:
+                type: string
+                x-go-name: Name
+            type:
+                type: string
+                x-go-name: Type
+        title: SystemStoragePoolKey defines a struct used to provide an encryption key when importing an existing pool.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemStoragePoolScrubState:
@@ -6924,6 +7263,19 @@ definitions:
         title: SystemStoragePoolVolume represents a single IncusOS-managed volume in a pool.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemStorageRootPartition:
+        properties:
+            available_in_bytes:
+                format: int64
+                type: integer
+                x-go-name: AvailableInBytes
+            size_in_bytes:
+                format: int64
+                type: integer
+                x-go-name: SizeInBytes
+        title: SystemStorageRootPartition defines a struct that holds usage information about the root ("/") partition.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemStorageState:
         properties:
             drives:
@@ -6936,7 +7288,20 @@ definitions:
                     $ref: '#/definitions/SystemStoragePool'
                 type: array
                 x-go-name: Pools
+            root_partition:
+                $ref: '#/definitions/SystemStorageRootPartition'
         title: SystemStorageState represents additional state for the system's local storage.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemStorageWipe:
+        properties:
+            id:
+                type: string
+                x-go-name: ID
+            secure_wipe:
+                type: boolean
+                x-go-name: SecureWipe
+        title: SystemStorageWipe defines a struct with information about what drive to wipe.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemUpdate:
@@ -11095,6 +11460,40 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Apply BIOS attributes via BMC
+            tags:
+                - servers_bmc
+    /1.0/provisioning/servers/{name}/bmc/:apply-secure-boot-certificates:
+        post:
+            description: |-
+                Wipes the KEK, DB and DBX secure boot databases of the server and
+                reinitializes them with the secure boot certificates provided by IncusOS.
+
+                The server has to be powered off and its BIOS has to allow the secure boot
+                databases to be modified. The enrolled certificates only take effect once
+                the server is powered on again.
+            operationId: server_bmc_apply_secure_boot_certificates_post
+            parameters:
+                - description: Name of the server
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Apply the secure boot certificates via BMC
             tags:
                 - servers_bmc
     /1.0/provisioning/servers/{name}/bmc/:attach-media:
