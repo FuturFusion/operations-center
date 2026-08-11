@@ -392,6 +392,11 @@ func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageT
 	seeds.Security.Version = "1"
 	seeds.Security.CustomCACerts = securityConfig.Config.CustomCACerts
 
+	err = seeds.ApplyTrustedClientCertificates(config.GetSecurity().TrustedTLSClientCertificates)
+	if err != nil {
+		return nil, err
+	}
+
 	seeds.Update.Version = "1"
 	seeds.Update.AutoReboot = false
 	seeds.Update.CheckFrequency = "never"
