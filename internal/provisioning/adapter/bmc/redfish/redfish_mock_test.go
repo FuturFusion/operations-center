@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	incustls "github.com/lxc/incus/v7/shared/tls"
@@ -68,6 +69,15 @@ type mockRedfishServer struct {
 
 	gotSystemPatchBody *[]byte
 
+	secureBootStatusCode          int
+	secureBootBody                string
+	secureBootDatabasesStatusCode int
+	secureBootDatabasesBody       string
+	secureBootDatabases           map[string]mockSecureBootDatabase
+
+	gotDeletedCertPaths *[]string
+	gotPostedCerts      *map[string][]string
+
 	// extraRoutes allows tests to serve additional canned responses for paths
 	// not covered by the dedicated fields above, keyed by the exact request
 	// path.
@@ -78,6 +88,26 @@ type mockRedfishRoute struct {
 	statusCode int
 	body       string
 }
+
+type mockSecureBootDatabase struct {
+	statusCode int
+	body       string
+
+	postStatusCode int
+
+	certificatesStatusCode int
+	certificatesBody       string
+
+	certificates map[string]mockCertificate
+}
+
+type mockCertificate struct {
+	statusCode       int
+	body             string
+	deleteStatusCode int
+}
+
+const secureBootDatabasesPathPrefix = "/redfish/v1/Systems/1/SecureBoot/SecureBootDatabases/"
 
 const defaultResetActionInfoBody = `{
   "@odata.id": "/redfish/v1/Systems/1/ResetActionInfo",
@@ -231,7 +261,20 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
 		case "/redfish/v1/Systems/1/Bios":
 			handleBios(w, r, cfg)
 
+		case "/redfish/v1/Systems/1/SecureBoot":
+			w.WriteHeader(cfg.secureBootStatusCode)
+			_, _ = w.Write([]byte(cfg.secureBootBody))
+
+		case "/redfish/v1/Systems/1/SecureBoot/SecureBootDatabases":
+			w.WriteHeader(cfg.secureBootDatabasesStatusCode)
+			_, _ = w.Write([]byte(cfg.secureBootDatabasesBody))
+
 		default:
+			if strings.HasPrefix(r.URL.Path, secureBootDatabasesPathPrefix) {
+				handleSecureBootDatabasePath(w, r, cfg)
+				return
+			}
+
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		}
 	}
@@ -303,6 +346,75 @@ func handleBios(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer) {
 		if cfg.biosPatchBody != "" {
 			_, _ = w.Write([]byte(cfg.biosPatchBody))
 		}
+
+	default:
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	}
+}
+
+func handleSecureBootDatabasePath(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer) {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, secureBootDatabasesPathPrefix), "/")
+
+	db, ok := cfg.secureBootDatabases[parts[0]]
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	switch len(parts) {
+	case 1:
+		handleSecureBootDatabase(w, r, cfg, parts[0], db)
+
+	case 2:
+		w.WriteHeader(db.certificatesStatusCode)
+		_, _ = w.Write([]byte(db.certificatesBody))
+
+	case 3:
+		handleSecureBootCertificate(w, r, cfg, db, parts[2])
+
+	default:
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+	}
+}
+
+func handleSecureBootDatabase(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer, dbID string, db mockSecureBootDatabase) {
+	switch r.Method {
+	case http.MethodGet:
+		w.WriteHeader(db.statusCode)
+		_, _ = w.Write([]byte(db.body))
+
+	case http.MethodPost:
+		body, _ := io.ReadAll(r.Body)
+
+		if cfg.gotPostedCerts != nil {
+			(*cfg.gotPostedCerts)[dbID] = append((*cfg.gotPostedCerts)[dbID], string(body))
+		}
+
+		w.WriteHeader(db.postStatusCode)
+
+	default:
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	}
+}
+
+func handleSecureBootCertificate(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer, db mockSecureBootDatabase, certID string) {
+	cert, ok := db.certificates[certID]
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		w.WriteHeader(cert.statusCode)
+		_, _ = w.Write([]byte(cert.body))
+
+	case http.MethodDelete:
+		if cfg.gotDeletedCertPaths != nil {
+			*cfg.gotDeletedCertPaths = append(*cfg.gotDeletedCertPaths, r.URL.Path)
+		}
+
+		w.WriteHeader(cert.deleteStatusCode)
 
 	default:
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)

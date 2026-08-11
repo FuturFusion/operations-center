@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"net"
@@ -13,12 +14,14 @@ import (
 	"testing"
 	"time"
 
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/bmc/redfish"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -3843,4 +3846,365 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 			}
 		})
 	}
+}
+
+const secureBootSystemBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "SecureBoot": { "@odata.id": "/redfish/v1/Systems/1/SecureBoot" }
+}`
+
+const secureBootBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/SecureBoot",
+  "Id": "SecureBoot",
+  "SecureBootDatabases": { "@odata.id": "/redfish/v1/Systems/1/SecureBoot/SecureBootDatabases" }
+}`
+
+func TestRedfish_SetupSecureBootCertificates(t *testing.T) {
+	tests := []struct {
+		name string
+
+		serviceRootStatusCode         int
+		systemsStatusCode             int
+		systemsBody                   string
+		systemStatusCode              int
+		systemBody                    string
+		secureBootStatusCode          int
+		secureBootBody                string
+		secureBootDatabasesStatusCode int
+		secureBootDatabasesBody       string
+		secureBootDatabases           map[string]mockSecureBootDatabase
+		secureBootCertificatesErr     error
+
+		wantDeletedCertPaths []string
+		wantPostedCerts      map[string][]postedCertificate
+		assertErr            require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+
+			serviceRootStatusCode:         http.StatusOK,
+			systemsStatusCode:             http.StatusOK,
+			systemsBody:                   resetSystemsBody,
+			systemStatusCode:              http.StatusOK,
+			systemBody:                    secureBootSystemBody,
+			secureBootStatusCode:          http.StatusOK,
+			secureBootBody:                secureBootBody,
+			secureBootDatabasesStatusCode: http.StatusOK,
+			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("PK", "KEK", "DB", "DBX"),
+			secureBootDatabases: map[string]mockSecureBootDatabase{
+				"PK":  newSecureBootDatabaseFixture("PK", http.StatusOK, http.StatusCreated, "1"), // PK is not touched
+				"KEK": newSecureBootDatabaseFixture("KEK", http.StatusOK, http.StatusCreated, "1"),
+				"DB":  newSecureBootDatabaseFixture("DB", http.StatusOK, http.StatusCreated, "1", "2"),
+				"DBX": newSecureBootDatabaseFixture("DBX", http.StatusOK, http.StatusCreated, "1"),
+			},
+
+			wantDeletedCertPaths: []string{
+				secureBootDatabasesPathPrefix + "KEK/Certificates/1",
+				secureBootDatabasesPathPrefix + "DB/Certificates/1",
+				secureBootDatabasesPathPrefix + "DB/Certificates/2",
+				secureBootDatabasesPathPrefix + "DBX/Certificates/1",
+			},
+			wantPostedCerts: map[string][]postedCertificate{
+				"KEK": {{CertificateString: "kekCertPEM", CertificateType: "PEM"}},
+				"DB": {
+					{CertificateString: "dbCertPEM1", CertificateType: "PEM"},
+					{CertificateString: "dbCertPEM2", CertificateType: "PEM"},
+				},
+				"DBX": {{CertificateString: "dbxCertPEM", CertificateType: "PEM"}},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - certificate deletion failure is ignored",
+
+			serviceRootStatusCode:         http.StatusOK,
+			systemsStatusCode:             http.StatusOK,
+			systemsBody:                   resetSystemsBody,
+			systemStatusCode:              http.StatusOK,
+			systemBody:                    secureBootSystemBody,
+			secureBootStatusCode:          http.StatusOK,
+			secureBootBody:                secureBootBody,
+			secureBootDatabasesStatusCode: http.StatusOK,
+			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("KEK"),
+			secureBootDatabases: map[string]mockSecureBootDatabase{
+				"KEK": newSecureBootDatabaseFixture("KEK", http.StatusInternalServerError, http.StatusCreated, "1"),
+			},
+
+			wantDeletedCertPaths: []string{
+				secureBootDatabasesPathPrefix + "KEK/Certificates/1",
+			},
+			wantPostedCerts: map[string][]postedCertificate{
+				"KEK": {{CertificateString: "kekCertPEM", CertificateType: "PEM"}},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - failed to get secure boot certificates from IncusOS",
+
+			serviceRootStatusCode:         http.StatusOK,
+			systemsStatusCode:             http.StatusOK,
+			systemsBody:                   resetSystemsBody,
+			systemStatusCode:              http.StatusOK,
+			systemBody:                    secureBootSystemBody,
+			secureBootStatusCode:          http.StatusOK,
+			secureBootBody:                secureBootBody,
+			secureBootDatabasesStatusCode: http.StatusOK,
+			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("KEK"),
+			secureBootDatabases: map[string]mockSecureBootDatabase{
+				"KEK": newSecureBootDatabaseFixture("KEK", http.StatusOK, http.StatusCreated, "1"),
+			},
+			secureBootCertificatesErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - failed to connect to BMC",
+
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - no BMC systems found",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetEmptySystemsBody,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to get secure boot information",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            secureBootSystemBody,
+			secureBootStatusCode:  http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to get secure boot databases",
+
+			serviceRootStatusCode:         http.StatusOK,
+			systemsStatusCode:             http.StatusOK,
+			systemsBody:                   resetSystemsBody,
+			systemStatusCode:              http.StatusOK,
+			systemBody:                    secureBootSystemBody,
+			secureBootStatusCode:          http.StatusOK,
+			secureBootBody:                secureBootBody,
+			secureBootDatabasesStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to get secure boot database certificates",
+
+			serviceRootStatusCode:         http.StatusOK,
+			systemsStatusCode:             http.StatusOK,
+			systemsBody:                   resetSystemsBody,
+			systemStatusCode:              http.StatusOK,
+			systemBody:                    secureBootSystemBody,
+			secureBootStatusCode:          http.StatusOK,
+			secureBootBody:                secureBootBody,
+			secureBootDatabasesStatusCode: http.StatusOK,
+			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("KEK"),
+			secureBootDatabases: map[string]mockSecureBootDatabase{
+				"KEK": {
+					statusCode:             http.StatusOK,
+					body:                   secureBootDatabaseBody("KEK", true),
+					certificatesStatusCode: http.StatusInternalServerError,
+				},
+			},
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - unexpected status when adding certificate to secure boot DB",
+
+			serviceRootStatusCode:         http.StatusOK,
+			systemsStatusCode:             http.StatusOK,
+			systemsBody:                   resetSystemsBody,
+			systemStatusCode:              http.StatusOK,
+			systemBody:                    secureBootSystemBody,
+			secureBootStatusCode:          http.StatusOK,
+			secureBootBody:                secureBootBody,
+			secureBootDatabasesStatusCode: http.StatusOK,
+			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("KEK"),
+			secureBootDatabases: map[string]mockSecureBootDatabase{
+				"KEK": newSecureBootDatabaseFixture("KEK", http.StatusOK, http.StatusBadRequest),
+			},
+
+			wantPostedCerts: map[string][]postedCertificate{
+				"KEK": {{CertificateString: "kekCertPEM", CertificateType: "PEM"}},
+			},
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotDeletedCertPaths []string
+
+			gotPostedCerts := map[string][]string{}
+
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode:         tc.serviceRootStatusCode,
+				systemsStatusCode:             tc.systemsStatusCode,
+				systemsBody:                   tc.systemsBody,
+				systemStatusCode:              tc.systemStatusCode,
+				systemBody:                    tc.systemBody,
+				secureBootStatusCode:          tc.secureBootStatusCode,
+				secureBootBody:                tc.secureBootBody,
+				secureBootDatabasesStatusCode: tc.secureBootDatabasesStatusCode,
+				secureBootDatabasesBody:       tc.secureBootDatabasesBody,
+				secureBootDatabases:           tc.secureBootDatabases,
+				gotDeletedCertPaths:           &gotDeletedCertPaths,
+				gotPostedCerts:                &gotPostedCerts,
+			}, nil)
+
+			client := redfish.New(redfish.WithSecureBootCertificates(secureBootCertificatesEnvStub{
+				certificates: testSecureBootCertificates(),
+				err:          tc.secureBootCertificatesErr,
+			}))
+			err := client.SetupSecureBootCertificates(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}})
+
+			tc.assertErr(t, err)
+			require.ElementsMatch(t, tc.wantDeletedCertPaths, gotDeletedCertPaths)
+
+			require.Len(t, gotPostedCerts, len(tc.wantPostedCerts))
+
+			for dbID, want := range tc.wantPostedCerts {
+				require.Equal(t, want, parsePostedCertificates(t, gotPostedCerts[dbID]))
+			}
+		})
+	}
+}
+
+func TestRedfish_SetupSecureBootCertificates_noCertificatesConfigured(t *testing.T) {
+	var gotDeletedCertPaths []string
+
+	gotPostedCerts := map[string][]string{}
+
+	svr := newMockRedfishServer(t, mockRedfishServer{
+		serviceRootStatusCode:         http.StatusOK,
+		systemsStatusCode:             http.StatusOK,
+		systemsBody:                   resetSystemsBody,
+		systemStatusCode:              http.StatusOK,
+		systemBody:                    secureBootSystemBody,
+		secureBootStatusCode:          http.StatusOK,
+		secureBootBody:                secureBootBody,
+		secureBootDatabasesStatusCode: http.StatusOK,
+		secureBootDatabasesBody:       secureBootDatabasesCollectionBody("KEK", "DB", "DBX"),
+		secureBootDatabases: map[string]mockSecureBootDatabase{
+			"KEK": newSecureBootDatabaseFixture("KEK", http.StatusOK, http.StatusCreated, "1"),
+			"DB":  newSecureBootDatabaseFixture("DB", http.StatusOK, http.StatusCreated, "1"),
+			"DBX": newSecureBootDatabaseFixture("DBX", http.StatusOK, http.StatusCreated, "1"),
+		},
+		gotDeletedCertPaths: &gotDeletedCertPaths,
+		gotPostedCerts:      &gotPostedCerts,
+	}, nil)
+
+	client := redfish.New()
+	err := client.SetupSecureBootCertificates(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}})
+
+	errassert.OperationNotPermittedError(t, err)
+
+	// The secure boot databases must be left untouched.
+	require.Empty(t, gotDeletedCertPaths)
+	require.Empty(t, gotPostedCerts)
+}
+
+// secureBootCertificatesEnvStub provides the secure boot certificates, which
+// are otherwise fetched from the internal API of IncusOS.
+type secureBootCertificatesEnvStub struct {
+	certificates incusosapi.InternalSecureBootCertificates
+	err          error
+}
+
+func (s secureBootCertificatesEnvStub) GetSecureBootCertificates(_ context.Context) (incusosapi.InternalSecureBootCertificates, error) {
+	return s.certificates, s.err
+}
+
+func testSecureBootCertificates() incusosapi.InternalSecureBootCertificates {
+	return incusosapi.InternalSecureBootCertificates{
+		PK:  "pkCertPEM",
+		KEK: []string{"kekCertPEM"},
+		DB:  []string{"dbCertPEM1", "dbCertPEM2"},
+		DBX: []string{"dbxCertPEM"},
+	}
+}
+
+func secureBootDatabasesCollectionBody(dbIDs ...string) string {
+	members := make([]string, 0, len(dbIDs))
+	for _, dbID := range dbIDs {
+		members = append(members, fmt.Sprintf(`{"@odata.id": %q}`, secureBootDatabasesPathPrefix+dbID))
+	}
+
+	return fmt.Sprintf(`{"Members@odata.count": %d, "Members": [%s]}`, len(members), strings.Join(members, ","))
+}
+
+func secureBootDatabaseBody(dbID string, withCertificatesLink bool) string {
+	if !withCertificatesLink {
+		return fmt.Sprintf(`{"@odata.id": %q, "Id": %q, "Name": %q}`, secureBootDatabasesPathPrefix+dbID, dbID, dbID)
+	}
+
+	return fmt.Sprintf(`{"@odata.id": %q, "Id": %q, "Name": %q, "Certificates": {"@odata.id": %q}}`,
+		secureBootDatabasesPathPrefix+dbID, dbID, dbID, secureBootDatabasesPathPrefix+dbID+"/Certificates")
+}
+
+func secureBootCertificatesCollectionBody(dbID string, certIDs ...string) string {
+	members := make([]string, 0, len(certIDs))
+	for _, certID := range certIDs {
+		members = append(members, fmt.Sprintf(`{"@odata.id": %q}`, secureBootDatabasesPathPrefix+dbID+"/Certificates/"+certID))
+	}
+
+	return fmt.Sprintf(`{"Members@odata.count": %d, "Members": [%s]}`, len(members), strings.Join(members, ","))
+}
+
+func secureBootCertificateBody(dbID string, certID string) string {
+	return fmt.Sprintf(`{"@odata.id": %q, "Id": %q}`, secureBootDatabasesPathPrefix+dbID+"/Certificates/"+certID, certID)
+}
+
+func newSecureBootDatabaseFixture(dbID string, certDeleteStatusCode, postStatusCode int, certIDs ...string) mockSecureBootDatabase {
+	certificates := make(map[string]mockCertificate, len(certIDs))
+	for _, certID := range certIDs {
+		certificates[certID] = mockCertificate{
+			statusCode:       http.StatusOK,
+			body:             secureBootCertificateBody(dbID, certID),
+			deleteStatusCode: certDeleteStatusCode,
+		}
+	}
+
+	return mockSecureBootDatabase{
+		statusCode:             http.StatusOK,
+		body:                   secureBootDatabaseBody(dbID, true),
+		postStatusCode:         postStatusCode,
+		certificatesStatusCode: http.StatusOK,
+		certificatesBody:       secureBootCertificatesCollectionBody(dbID, certIDs...),
+		certificates:           certificates,
+	}
+}
+
+type postedCertificate struct {
+	CertificateString string
+	CertificateType   string
+}
+
+func parsePostedCertificates(t *testing.T, raw []string) []postedCertificate {
+	t.Helper()
+
+	certs := make([]postedCertificate, 0, len(raw))
+	for _, body := range raw {
+		var cert postedCertificate
+
+		require.NoError(t, json.Unmarshal([]byte(body), &cert))
+
+		certs = append(certs, cert)
+	}
+
+	return certs
 }
