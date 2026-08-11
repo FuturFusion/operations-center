@@ -20,6 +20,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 )
 
@@ -116,7 +117,7 @@ func New(
 }
 
 func (t terraform) Init(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) (string, func() error, error) {
-	incusPreseed, err := incusPreseedWithDefaults(config.Cluster.ApplicationSeedConfig)
+	incusPreseed, knownTrustedCertificates, err := incusPreseedWithDefaults(config.Cluster.ApplicationSeedConfig, config.TrustedClientCertificates, config.KnownTrustedClientCertificates)
 	if err != nil {
 		return "", nil, fmt.Errorf("Application seed config is not valid: %w", err)
 	}
@@ -175,6 +176,8 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 						"ClusterAddress":       config.ClusterEndpoint.GetConnectionURL(),
 						"MeshTunnelInterfaces": meshTunnelInterfaces,
 						"IncusPreseed":         incusPreseed,
+
+						"KnownTrustedCertificates": knownTrustedCertificates,
 
 						"IncusProviderVersion":  t.incusProviderVersion,
 						"RandomProviderVersion": t.randomProviderVersion,
@@ -250,10 +253,13 @@ func cleanup(path string) func() error {
 	}
 }
 
-func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed, error) {
+// incusPreseedWithDefaults returns the Incus preseed for the cluster, which is
+// provisioned by Operations Center, together with the Incus certificate
+// definitions for the client certificates, the cluster does already trust.
+func incusPreseedWithDefaults(config map[string]any, trustedClientCertificates []string, knownTrustedClientCertificates []string) (_ incusapi.InitLocalPreseed, knownCertificates []incusapi.CertificatesPost, _ error) {
 	body, err := json.Marshal(config)
 	if err != nil {
-		return incusapi.InitLocalPreseed{}, err
+		return incusapi.InitLocalPreseed{}, nil, err
 	}
 
 	preseed := incusapi.InitLocalPreseed{
@@ -264,7 +270,7 @@ func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed,
 
 	err = json.Unmarshal(body, &preseed)
 	if err != nil {
-		return incusapi.InitLocalPreseed{}, err
+		return incusapi.InitLocalPreseed{}, nil, err
 	}
 
 	// Default values for server configuration.
@@ -561,7 +567,21 @@ func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed,
 		})
 	}
 
-	return preseed, nil
+	// Add the client certificates trusted by Operations Center, if the user did
+	// not provide their own set of certificates in the preseed.
+	if len(preseed.Certificates) == 0 {
+		preseed.Certificates, err = securitytls.TrustedClientCertificates(trustedClientCertificates)
+		if err != nil {
+			return incusapi.InitLocalPreseed{}, nil, fmt.Errorf("Failed to derive Incus certificates from the trusted client certificates: %w", err)
+		}
+
+		knownCertificates, err = securitytls.TrustedClientCertificates(knownTrustedClientCertificates)
+		if err != nil {
+			return incusapi.InitLocalPreseed{}, nil, fmt.Errorf("Failed to derive Incus certificates from the already trusted client certificates: %w", err)
+		}
+	}
+
+	return preseed, knownCertificates, nil
 }
 
 func (t terraform) Apply(ctx context.Context, cluster provisioning.Cluster) error {

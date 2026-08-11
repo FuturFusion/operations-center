@@ -5,6 +5,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
@@ -14,6 +15,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -60,7 +62,7 @@ func TestTerraform_Init(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			const applicationConfig = `---
+			applicationConfig := `---
 config:
   user.ui.sso_only: "true"
   storage.images_volume: shared
@@ -83,18 +85,7 @@ certificates:
       - project1
       - project2
     certificate: |-
-      -----BEGIN CERTIFICATE-----
-      MIIB1jCCAVygAwIBAgIQaKBbJqVWID8NqSoMxF/nHzAKBggqhkjOPQQDAzAzMRkw
-      FwYDVQQKExBMaW51eCBDb250YWluZXJzMRYwFAYDVQQDDA1sdWJyQHN1cnZpc3Rh
-      MB4XDTI1MDIxMjE0MTEzMVoXDTM1MDIxMDE0MTEzMVowMzEZMBcGA1UEChMQTGlu
-      dXggQ29udGFpbmVyczEWMBQGA1UEAwwNbHVickBzdXJ2aXN0YTB2MBAGByqGSM49
-      AgEGBSuBBAAiA2IABDXH+i9i6WilQA56Qe4wvTGZL1NGDeGZFCCskJduZietB0bX
-      K30ug6JdxUHGfhg3CL92lTnmtMwJC+Ev+IQFhLGv/Yk/OLP4BB1zdqBgmyA7Mmwq
-      jcrp8B8FTBZ9AQmCe6M1MDMwDgYDVR0PAQH/BAQDAgWgMBMGA1UdJQQMMAoGCCsG
-      AQUFBwMCMAwGA1UdEwEB/wQCMAAwCgYIKoZIzj0EAwMDaAAwZQIxAPmS67jexjgT
-      6PrxAo/fQpK71BwgpsHOCZHM2b3t4lZlDirjN40xNGPeNH+KG95R3wIwexlentZZ
-      0x2N/SJBYGltBnBjH8mm8OTWa1N/MpOAl2K7jRVuSeuWGBDf0/n+M6br
-      -----END CERTIFICATE-----
+` + yamlBlock(6, testcert.ClientCertificate) + `
 cluster_groups:
   - name: cluster_group1
     description: cluster group 1
@@ -236,6 +227,11 @@ cluster_groups:
 						"source.wipe": true,
 					},
 				},
+
+				// The application seed config above provides its own set of
+				// certificates, therefore the certificates trusted by Operations
+				// Center are expected to be ignored.
+				TrustedClientCertificates: []string{testcert.ClientCertificate},
 			})
 
 			// Assert
@@ -268,6 +264,117 @@ cluster_groups:
 	}
 }
 
+func TestTerraform_Init_trustedClientCertificates(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	tf, err := terraform.New(
+		tmpDir,
+		"",
+		"",
+		terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
+			return nil
+		}),
+	)
+	require.NoError(t, err)
+
+	temporaryPath, cleanup, err := tf.Init(t.Context(), "foobar", provisioning.ClusterProvisioningConfig{
+		ClusterEndpoint: provisioning.ClusterEndpoint{
+			provisioning.Server{
+				ConnectionURL:      "https://127.0.0.1:8443",
+				Cluster:            new("cluster"),
+				ClusterCertificate: new("cluster certificate"),
+			},
+		},
+
+		// No application seed config, therefore no user provided certificates.
+		Cluster: provisioning.Cluster{
+			ID: 1,
+		},
+
+		TrustedClientCertificates: []string{testcert.ClientCertificate},
+	})
+	require.NoError(t, err)
+
+	defer func() {
+		err := cleanup()
+		require.NoError(t, err)
+	}()
+
+	fileMatchGolden(t, filepath.Join(temporaryPath, "resources_certificates.tf"), filepath.Join("./testdata", "resources_certificates_trusted_clients.tf"))
+}
+
+func TestTerraform_Init_knownTrustedClientCertificates(t *testing.T) {
+	tests := []struct {
+		name                           string
+		trustedClientCertificates      []string
+		knownTrustedClientCertificates []string
+
+		wantGoldenFile string
+	}{
+		{
+			name:                           "only known trusted client certificates",
+			knownTrustedClientCertificates: []string{testcert.ClientCertificate},
+
+			wantGoldenFile: "resources_certificates_known_trusted_clients.tf",
+		},
+		{
+			name:                           "trusted and known trusted client certificates",
+			trustedClientCertificates:      []string{testcert.ClientCertificate},
+			knownTrustedClientCertificates: []string{testcert.SecondClientCertificate},
+
+			wantGoldenFile: "resources_certificates_mixed_trusted_clients.tf",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+
+			tf, err := terraform.New(
+				tmpDir,
+				"",
+				"",
+				terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
+					return nil
+				}),
+			)
+			require.NoError(t, err)
+
+			temporaryPath, cleanup, err := tf.Init(t.Context(), "foobar", provisioning.ClusterProvisioningConfig{
+				ClusterEndpoint: provisioning.ClusterEndpoint{
+					provisioning.Server{
+						ConnectionURL:      "https://127.0.0.1:8443",
+						Cluster:            new("cluster"),
+						ClusterCertificate: new("cluster certificate"),
+					},
+				},
+
+				// No application seed config, therefore no user provided certificates.
+				Cluster: provisioning.Cluster{
+					ID: 1,
+				},
+
+				TrustedClientCertificates:      tc.trustedClientCertificates,
+				KnownTrustedClientCertificates: tc.knownTrustedClientCertificates,
+			})
+			require.NoError(t, err)
+
+			defer func() {
+				err := cleanup()
+				require.NoError(t, err)
+			}()
+
+			fileMatchGolden(t, filepath.Join(temporaryPath, "resources_certificates.tf"), filepath.Join("./testdata", tc.wantGoldenFile))
+		})
+	}
+}
+
+func yamlBlock(indent int, s string) string {
+	prefix := strings.Repeat(" ", indent)
+
+	return prefix + strings.ReplaceAll(s, "\n", "\n"+prefix)
+}
+
 func fileContains(t *testing.T, filename string, contains ...string) {
 	t.Helper()
 
@@ -283,14 +390,17 @@ func fileContains(t *testing.T, filename string, contains ...string) {
 func fileMatch(t *testing.T, path string, name string) {
 	t.Helper()
 
-	filename := filepath.Join(path, name)
+	fileMatchGolden(t, filepath.Join(path, name), filepath.Join("./testdata", name))
+}
+
+func fileMatchGolden(t *testing.T, filename string, goldenFilename string) {
+	t.Helper()
 
 	require.FileExists(t, filename)
 
 	body, err := os.ReadFile(filename)
 	require.NoError(t, err)
 
-	goldenFilename := filepath.Join("./testdata", name)
 	if *updateGoldenfiles {
 		err := os.WriteFile(goldenFilename, body, 0o600)
 		require.NoError(t, err)
