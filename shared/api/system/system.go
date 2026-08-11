@@ -59,6 +59,14 @@ type SecurityPut struct {
 	// An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
 	TrustedTLSClientCertFingerprints []string `json:"trusted_tls_client_cert_fingerprints" yaml:"trusted_tls_client_cert_fingerprints"`
 
+	// An array of X509 PEM encoded certificates that belong to trusted TLS clients.
+	// The SHA256 fingerprint of each certificate is derived when the configuration
+	// is loaded and trusted in addition to TrustedTLSClientCertFingerprints.
+	// In contrast to bare fingerprints, these certificates are
+	// also passed on to the servers and clusters deployed by Operations Center, if
+	// the user did not provide their own set.
+	TrustedTLSClientCertificates []string `json:"trusted_tls_client_certificates" yaml:"trusted_tls_client_certificates"`
+
 	// An array of trusted HTTPS proxy addresses.
 	TrustedHTTPSProxies []string `json:"trusted_https_proxies" yaml:"trusted_https_proxies"`
 }
