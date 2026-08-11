@@ -16,6 +16,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/internal/util/decodestrict"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/render"
 	"github.com/FuturFusion/operations-center/internal/util/sort"
@@ -436,7 +437,7 @@ func (c *cmdTokenGetImage) run(cmd *cobra.Command, args []string) (err error) {
 			return err
 		}
 
-		err = yaml.Unmarshal(body, &preseed.Seeds)
+		err = decodestrict.YAML(body, &preseed.Seeds)
 		if err != nil {
 			return err
 		}

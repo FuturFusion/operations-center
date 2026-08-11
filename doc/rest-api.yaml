@@ -7442,7 +7442,9 @@ definitions:
         description: |-
             Operations Center just passes through the provided configuration for
             applications.yaml, install.yaml and network.yaml as is without any validation
-            of the provided configuration besides of ensuring it to be valid yaml.
+            of the provided configuration besides of ensuring it to be valid yaml and to
+            only contain fields, which are part of the respective seed definition.
+            Unknown fields are rejected instead of being silently ignored.
         properties:
             architecture:
                 $ref: '#/definitions/UpdateFileArchitecture'
@@ -7510,7 +7512,9 @@ definitions:
         description: |-
             Operations Center just passes through the provided configuration for
             application.yaml, install.yaml and network.yaml as is without any validation
-            of the provided configuration besides of ensuring it to be valid yaml.
+            of the provided configuration besides of ensuring it to be valid yaml and to
+            only contain fields, which are part of the respective seed definition.
+            Unknown fields are rejected instead of being silently ignored.
         properties:
             description:
                 description: Description contains the description of the token seed configuration.
@@ -7572,7 +7576,9 @@ definitions:
         description: |-
             Operations Center just passes through the provided configuration for
             application.yaml, install.yaml and network.yaml as is without any validation
-            of the provided configuration besides of ensuring it to be valid yaml.
+            of the provided configuration besides of ensuring it to be valid yaml and to
+            only contain fields, which are part of the respective seed definition.
+            Unknown fields are rejected instead of being silently ignored.
         properties:
             description:
                 description: Description contains the description of the token seed configuration.
@@ -7604,7 +7610,9 @@ definitions:
         description: |-
             Operations Center just passes through the provided configuration for
             application.yaml, install.yaml and network.yaml as is without any validation
-            of the provided configuration besides of ensuring it to be valid yaml.
+            of the provided configuration besides of ensuring it to be valid yaml and to
+            only contain fields, which are part of the respective seed definition.
+            Unknown fields are rejected instead of being silently ignored.
         properties:
             description:
                 description: Description contains the description of the token seed configuration.

@@ -63,6 +63,29 @@ incus:
   version: "1"
 `)
 
+	tokenSeedPutYAMLTemplate = []byte(`---
+description: E2E test token seed
+public: false
+seeds:
+  applications:
+    version: "1"
+    applications:
+      - name: incus
+      - name: debug
+  network:
+    version: "1"
+    interfaces:
+      - name: enp5s0
+        hwaddr: enp5s0
+        required_for_online: both
+        addresses:
+        - dhcp4
+        - dhcp6
+        - slaac
+  incus:
+    version: "1"
+`)
+
 	incusOSFactoryResetSeedFileYAMLTemplate = []byte(`---
 applications:
   version: "1"

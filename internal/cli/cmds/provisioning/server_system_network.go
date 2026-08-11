@@ -89,13 +89,13 @@ func (c *cmdServerSystemNetworkEdit) helpTemplate() string {
 ###     - local
 ###   nameservers:
 ###     - 1.1.1.1
-### ntp:
-###   timeservers:
+### time:
+###   ntp_servers:
 ###     - 0.pool.ntp.org
 ### interfaces:
 ###   - name: eth0
-###     MTU: 1500
-###     Addresses:
+###     mtu: 1500
+###     addresses:
 ###       - 192.168.1.2`
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/decodestrict"
 	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -153,7 +154,7 @@ func (t *tokenHandler) tokensPost(r *http.Request) response.Response {
 	// Decode into the new token.
 	err := json.NewDecoder(r.Body).Decode(&token)
 	if err != nil {
-		return response.BadRequest(err)
+		return response.BadRequest(fmt.Errorf("Failed to decode token: %w", err))
 	}
 
 	newToken, err := t.service.Create(r.Context(), provisioning.Token{
@@ -271,7 +272,7 @@ func (t *tokenHandler) tokenPut(r *http.Request) response.Response {
 
 	err = json.NewDecoder(r.Body).Decode(&token)
 	if err != nil {
-		return response.BadRequest(err)
+		return response.BadRequest(fmt.Errorf("Failed to decode token: %w", err))
 	}
 
 	ctx, trans := transaction.Begin(r.Context())
@@ -399,9 +400,9 @@ func (t *tokenHandler) tokenImagePost(r *http.Request) response.Response {
 	}
 
 	var tokenImagePost api.TokenImagePost
-	err = json.NewDecoder(r.Body).Decode(&tokenImagePost)
+	err = decodestrict.JSON(r.Body, &tokenImagePost)
 	if err != nil {
-		return response.BadRequest(err)
+		return response.BadRequest(fmt.Errorf("Failed to decode image request: %w", err))
 	}
 
 	imageUUID, err := t.service.PreparePreSeededImage(r.Context(), UUID, tokenImagePost.Type, tokenImagePost.Architecture, provisioning.TokenImageSeedConfigs{
@@ -569,9 +570,9 @@ func (t *tokenHandler) tokenSeedsPost(r *http.Request) response.Response {
 	}
 
 	var tokenSeedsPost api.TokenSeedPost
-	err = json.NewDecoder(r.Body).Decode(&tokenSeedsPost)
+	err = decodestrict.JSON(r.Body, &tokenSeedsPost)
 	if err != nil {
-		return response.BadRequest(err)
+		return response.BadRequest(fmt.Errorf("Failed to decode token seed: %w", err))
 	}
 
 	seedConfig, err := t.service.CreateTokenSeed(r.Context(), provisioning.TokenSeed{
@@ -900,9 +901,9 @@ func (t *tokenHandler) tokenSeedPut(r *http.Request) response.Response {
 
 	var tokenSeed api.TokenSeedPut
 
-	err = json.NewDecoder(r.Body).Decode(&tokenSeed)
+	err = decodestrict.JSON(r.Body, &tokenSeed)
 	if err != nil {
-		return response.BadRequest(err)
+		return response.BadRequest(fmt.Errorf("Failed to decode token seed: %w", err))
 	}
 
 	ctx, trans := transaction.Begin(r.Context())
