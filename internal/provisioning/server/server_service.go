@@ -2656,6 +2656,20 @@ func (s *serverService) BMCBIOSAttributeByName(ctx context.Context, name string,
 	return values, nil
 }
 
+func (s *serverService) BMCApplySecureBootCertificatesByName(ctx context.Context, name string) error {
+	server, client, err := s.getServerAndBMCClientByName(ctx, name)
+	if err != nil {
+		return err
+	}
+
+	err = client.ApplySecureBootCertificates(ctx, *server)
+	if err != nil {
+		return fmt.Errorf("Failed to apply secure boot certificates of server %q via BMC: %w", server.Name, err)
+	}
+
+	return nil
+}
+
 func (s *serverService) BMCLogSourcesByName(ctx context.Context, name string) ([]string, error) {
 	server, client, err := s.getServerAndBMCClientByName(ctx, name)
 	if err != nil {
