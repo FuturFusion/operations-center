@@ -544,7 +544,7 @@ func (c *clusterHandler) clusterAddServersPost(r *http.Request) response.Respons
 		return response.BadRequest(err)
 	}
 
-	err = c.service.AddServers(r.Context(), name, addServersRequest.ServerNames, addServersRequest.SkipPostJoinOperations)
+	err = c.service.AddServers(r.Context(), name, addServersRequest.ServerNames, addServersRequest.SkipPostJoinOperations, addServersRequest.CopyServicesConfig)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed adding servers %v to cluster %q: %w", addServersRequest.ServerNames, name, err))
 	}
