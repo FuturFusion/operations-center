@@ -13,6 +13,8 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
   const formikInitialValues: SystemSecurity = {
     trusted_tls_client_cert_fingerprints:
       security?.trusted_tls_client_cert_fingerprints ?? [],
+    trusted_tls_client_certificates:
+      security?.trusted_tls_client_certificates ?? [],
     trusted_https_proxies: security?.trusted_https_proxies ?? [],
     oidc: {
       issuer: security?.oidc.issuer ?? "",
@@ -53,6 +55,9 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
           values.trusted_tls_client_cert_fingerprints.filter(
             (s) => s.trim() !== "",
           ),
+        trusted_tls_client_certificates: values.trusted_tls_client_certificates
+          .map((s) => s.trim())
+          .filter((s) => s !== ""),
         acme: {
           ...values.acme,
           provider_environment: values.acme.provider_environment.filter(
@@ -86,6 +91,32 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
                   formik.setFieldValue(
                     "trusted_tls_client_cert_fingerprints",
                     lines,
+                  );
+                }}
+                onBlur={formik.handleBlur}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="trusted_tls_certs">
+              <Form.Label>Trusted TLS client certificates</Form.Label>
+              <Form.Text className="d-block mb-2">
+                X509 PEM encoded certificates, separated by an empty line. The
+                fingerprint of each certificate is added to the list above
+                dynamically and the certificates are passed on to the servers
+                and clusters deployed by Operations Center.
+              </Form.Text>
+              <Form.Control
+                type="text"
+                as="textarea"
+                rows={10}
+                name="trusted_tls_client_certificates"
+                value={formik.values.trusted_tls_client_certificates.join(
+                  "\n\n",
+                )}
+                onChange={(e) => {
+                  const certificates = e.target.value.split(/\n\s*\n/);
+                  formik.setFieldValue(
+                    "trusted_tls_client_certificates",
+                    certificates,
                   );
                 }}
                 onBlur={formik.handleBlur}
