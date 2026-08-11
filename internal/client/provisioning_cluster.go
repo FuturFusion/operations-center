@@ -129,10 +129,11 @@ func (c OperationsCenterClient) RenameCluster(ctx context.Context, name string, 
 	return nil
 }
 
-func (c OperationsCenterClient) AddServersToCluster(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool) error {
+func (c OperationsCenterClient) AddServersToCluster(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool, copyServicesConfig bool) error {
 	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, ":add-servers"), nil, api.ClusterAddServersPost{
 		ServerNames:            serverNames,
 		SkipPostJoinOperations: skipPostJoinOperations,
+		CopyServicesConfig:     copyServicesConfig,
 	})
 	if err != nil {
 		return err
