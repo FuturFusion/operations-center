@@ -3423,16 +3423,55 @@ func TestClusterService_Create(t *testing.T) {
 	}
 }
 
+type osServiceConfig struct {
+	serverName string
+	name       string
+	config     any
+}
+
+func readyServerForClustering(id int64, name string) *provisioning.Server {
+	return &provisioning.Server{
+		ID:      id,
+		Name:    name,
+		Status:  api.ServerStatusReady,
+		Channel: "stable",
+		VersionData: api.ServerVersionData{
+			NeedsUpdate:   ptr.To(false),
+			NeedsReboot:   ptr.To(false),
+			InMaintenance: ptr.To(api.NotInMaintenance),
+			OS: api.OSVersionData{
+				Name:    "os",
+				Version: "1",
+			},
+			Applications: []api.ApplicationVersionData{
+				{
+					Name:    "incus",
+					Version: "1",
+				},
+			},
+		},
+	}
+}
+
 func TestClusterService_AddServers(t *testing.T) {
 	tests := []struct {
 		name                                  string
 		argServerNames                        []string
 		argSkipPostJoinOperations             bool
+		argCopyServicesConfig                 bool
 		repoGetByName                         *provisioning.Cluster
 		repoGetByNameErr                      error
 		serverSvcGetByName                    []queue.Item[*provisioning.Server]
 		serverSvcGetAllWithFilter             provisioning.Servers
 		serverSvcGetAllWithFilterErr          error
+		clientGetOSServiceLVM                 []queue.Item[incusosapi.ServiceLVM]
+		clientGetOSServiceISCSI               []queue.Item[incusosapi.ServiceISCSI]
+		clientGetOSServiceMultipath           []queue.Item[incusosapi.ServiceMultipath]
+		clientGetOSServiceNVME                []queue.Item[incusosapi.ServiceNVME]
+		clientGetOSServiceCeph                []queue.Item[incusosapi.ServiceCeph]
+		clientGetOSServiceLinstor             []queue.Item[incusosapi.ServiceLinstor]
+		clientGetOSServiceOVN                 []queue.Item[incusosapi.ServiceOVN]
+		clientUpdateOSServiceErrs             queue.Errs
 		clientGetNetworkConfigErr             error
 		clientIncusClientErr                  queue.Errs
 		incusClientGetCluster                 *incusapi.Cluster
@@ -3449,7 +3488,8 @@ func TestClusterService_AddServers(t *testing.T) {
 		clientSetServerConfigErr              error
 		serverSvcUpdateErr                    error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr           require.ErrorAssertionFunc
+		wantOSServiceConfig []osServiceConfig
 	}{
 		{
 			name:           "success",
@@ -3651,6 +3691,443 @@ func TestClusterService_AddServers(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, "Empty list of servers provided to join the cluster")
+			},
+		},
+		{
+			name:                  "success - copyServicesConfig",
+			argServerNames:        []string{"new-1", "new-2"},
+			argCopyServicesConfig: true,
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{Value: readyServerForClustering(11, "new-1")},
+				{Value: readyServerForClustering(12, "new-2")},
+				// Before update.
+				{Value: readyServerForClustering(11, "new-1")},
+				{Value: readyServerForClustering(12, "new-2")},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					ID:      1,
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// Copy source: "one".
+				{
+					Value: incusosapi.ServiceLVM{
+						State:  incusosapi.ServiceLVMState{VGs: []incusosapi.ServiceLVMVG{{VGName: "vg0"}}},
+						Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 1},
+					},
+				},
+				// Copy targets, current config: "new-1", "new-2".
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: incusosapi.ServiceLVM{}},
+				// Consistency check: "one" (reference), "new-1", "new-2".
+				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 1}}},
+				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 11}}},
+				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 12}}},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				// Copy source: "one".
+				{
+					Value: incusosapi.ServiceISCSI{
+						State: incusosapi.ServiceISCSIState{InitiatorName: "iqn.one"},
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{{Target: "iqn.target", Address: "10.0.0.1", Port: 3260}},
+						},
+					},
+				},
+				// Copy targets, current config: "new-1", "new-2".
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+				// Consistency check: "one" (reference), "new-1", "new-2".
+				{Value: incusosapi.ServiceISCSI{Config: incusosapi.ServiceISCSIConfig{Enabled: true, Targets: []incusosapi.ServiceISCSITarget{{Target: "iqn.target", Address: "10.0.0.1", Port: 3260}}}}},
+				{Value: incusosapi.ServiceISCSI{Config: incusosapi.ServiceISCSIConfig{Enabled: true, Targets: []incusosapi.ServiceISCSITarget{{Target: "iqn.target", Address: "10.0.0.1", Port: 3260}}}}},
+				{Value: incusosapi.ServiceISCSI{Config: incusosapi.ServiceISCSIConfig{Enabled: true, Targets: []incusosapi.ServiceISCSITarget{{Target: "iqn.target", Address: "10.0.0.1", Port: 3260}}}}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// Copy source: "one".
+				{
+					Value: incusosapi.ServiceMultipath{
+						State:  incusosapi.ServiceMultipathState{Devices: map[string]incusosapi.ServiceMultipathDevice{"dev": {Vendor: "vendor"}}},
+						Config: incusosapi.ServiceMultipathConfig{Enabled: true, WWNs: []string{"wwn-1"}},
+					},
+				},
+				// Copy targets, current config: "new-1", "new-2".
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: incusosapi.ServiceMultipath{}},
+				// Consistency check: "one" (reference), "new-1", "new-2".
+				{Value: incusosapi.ServiceMultipath{Config: incusosapi.ServiceMultipathConfig{Enabled: true, WWNs: []string{"wwn-1"}}}},
+				{Value: incusosapi.ServiceMultipath{Config: incusosapi.ServiceMultipathConfig{Enabled: true, WWNs: []string{"wwn-1"}}}},
+				{Value: incusosapi.ServiceMultipath{Config: incusosapi.ServiceMultipathConfig{Enabled: true, WWNs: []string{"wwn-1"}}}},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// Copy source: "one".
+				{
+					Value: incusosapi.ServiceNVME{
+						State:  incusosapi.ServiceNVMEState{HostID: "host-id-one"},
+						Config: incusosapi.ServiceNVMEConfig{Enabled: true},
+					},
+				},
+				// Copy targets, current config: "new-1", "new-2".
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: incusosapi.ServiceNVME{}},
+				// Consistency check: "one" (reference), "new-1", "new-2".
+				{Value: incusosapi.ServiceNVME{Config: incusosapi.ServiceNVMEConfig{Enabled: true}}},
+				{Value: incusosapi.ServiceNVME{Config: incusosapi.ServiceNVMEConfig{Enabled: true}}},
+				{Value: incusosapi.ServiceNVME{Config: incusosapi.ServiceNVMEConfig{Enabled: true}}},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				// Copy source: "one".
+				{
+					Value: incusosapi.ServiceCeph{
+						State: incusosapi.ServiceCephState{FSID: "fsid-one"},
+						Config: incusosapi.ServiceCephConfig{
+							Enabled:  true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{"ceph": {FSID: "fsid", Monitors: []string{"10.0.0.1"}}},
+						},
+					},
+				},
+				// Copy targets, current config: "new-1", "new-2".
+				{Value: incusosapi.ServiceCeph{}},
+				{Value: incusosapi.ServiceCeph{}},
+				// Consistency check: "one" (reference), "new-1", "new-2".
+				{Value: incusosapi.ServiceCeph{Config: incusosapi.ServiceCephConfig{Enabled: true, Clusters: map[string]incusosapi.ServiceCephCluster{"ceph": {FSID: "fsid", Monitors: []string{"10.0.0.1"}}}}}},
+				{Value: incusosapi.ServiceCeph{Config: incusosapi.ServiceCephConfig{Enabled: true, Clusters: map[string]incusosapi.ServiceCephCluster{"ceph": {FSID: "fsid", Monitors: []string{"10.0.0.1"}}}}}},
+				{Value: incusosapi.ServiceCeph{Config: incusosapi.ServiceCephConfig{Enabled: true, Clusters: map[string]incusosapi.ServiceCephCluster{"ceph": {FSID: "fsid", Monitors: []string{"10.0.0.1"}}}}}},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				// Copy source: "one".
+				{
+					Value: incusosapi.ServiceLinstor{
+						Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366"},
+					},
+				},
+				// Copy targets, current config: "new-1", "new-2".
+				{Value: incusosapi.ServiceLinstor{}},
+				{Value: incusosapi.ServiceLinstor{}},
+				// Consistency check: "one" (reference), "new-1", "new-2".
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366"}}},
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366"}}},
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366"}}},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				// Copy source: "one".
+				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, Database: "ssl:[fd00::1]:6641", TunnelProtocol: "geneve"}}},
+				// Copy targets, current config: "new-1", "new-2".
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: incusosapi.ServiceOVN{}},
+				// Consistency check: "one" (reference), "new-1", "new-2".
+				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, Database: "ssl:[fd00::1]:6641", TunnelProtocol: "geneve"}}},
+				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, Database: "ssl:[fd00::1]:6641", TunnelProtocol: "geneve"}}},
+				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, Database: "ssl:[fd00::1]:6641", TunnelProtocol: "geneve"}}},
+			},
+			incusClientGetCluster: &incusapi.Cluster{},
+
+			assertErr: require.NoError,
+			// The state of the source server is never copied and the LVM system_id is
+			// derived from the ID of the respective target server.
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new-1", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 11}}},
+				{serverName: "new-1", name: "iscsi", config: incusosapi.ServiceISCSI{Config: incusosapi.ServiceISCSIConfig{
+					Enabled: true,
+					Targets: []incusosapi.ServiceISCSITarget{{Target: "iqn.target", Address: "10.0.0.1", Port: 3260}},
+				}}},
+				{serverName: "new-1", name: "multipath", config: incusosapi.ServiceMultipath{Config: incusosapi.ServiceMultipathConfig{Enabled: true, WWNs: []string{"wwn-1"}}}},
+				{serverName: "new-1", name: "nvme", config: incusosapi.ServiceNVME{Config: incusosapi.ServiceNVMEConfig{Enabled: true}}},
+				{serverName: "new-1", name: "ceph", config: incusosapi.ServiceCeph{Config: incusosapi.ServiceCephConfig{
+					Enabled:  true,
+					Clusters: map[string]incusosapi.ServiceCephCluster{"ceph": {FSID: "fsid", Monitors: []string{"10.0.0.1"}}},
+				}}},
+				{serverName: "new-1", name: "linstor", config: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366"}}},
+				{serverName: "new-1", name: "ovn", config: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, Database: "ssl:[fd00::1]:6641", TunnelProtocol: "geneve"}}},
+				{serverName: "new-2", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 12}}},
+				{serverName: "new-2", name: "iscsi", config: incusosapi.ServiceISCSI{Config: incusosapi.ServiceISCSIConfig{
+					Enabled: true,
+					Targets: []incusosapi.ServiceISCSITarget{{Target: "iqn.target", Address: "10.0.0.1", Port: 3260}},
+				}}},
+				{serverName: "new-2", name: "multipath", config: incusosapi.ServiceMultipath{Config: incusosapi.ServiceMultipathConfig{Enabled: true, WWNs: []string{"wwn-1"}}}},
+				{serverName: "new-2", name: "nvme", config: incusosapi.ServiceNVME{Config: incusosapi.ServiceNVMEConfig{Enabled: true}}},
+				{serverName: "new-2", name: "ceph", config: incusosapi.ServiceCeph{Config: incusosapi.ServiceCephConfig{
+					Enabled:  true,
+					Clusters: map[string]incusosapi.ServiceCephCluster{"ceph": {FSID: "fsid", Monitors: []string{"10.0.0.1"}}},
+				}}},
+				{serverName: "new-2", name: "linstor", config: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366"}}},
+				{serverName: "new-2", name: "ovn", config: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, Database: "ssl:[fd00::1]:6641", TunnelProtocol: "geneve"}}},
+			},
+		},
+		{
+			name:                  "success - copyServicesConfig - lvm disabled on source",
+			argServerNames:        []string{"new"},
+			argCopyServicesConfig: true,
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{Value: readyServerForClustering(11, "new")},
+				// Before update.
+				{Value: readyServerForClustering(11, "new")},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					ID:      1,
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// Copy source: "one". A disabled LVM service does not get a system_id
+				// assigned, the system_id of the source server is never copied over.
+				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: false, SystemID: 1}}},
+				// Copy target, current config: "new".
+				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: false, SystemID: 91}}},
+				// Consistency check: "one" (reference), "new".
+				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: false}}},
+				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: false}}},
+			},
+			incusClientGetCluster: &incusapi.Cluster{},
+
+			assertErr: require.NoError,
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: false, SystemID: 91}}},
+				{serverName: "new", name: "iscsi", config: incusosapi.ServiceISCSI{}},
+				{serverName: "new", name: "multipath", config: incusosapi.ServiceMultipath{}},
+				{serverName: "new", name: "nvme", config: incusosapi.ServiceNVME{}},
+				{serverName: "new", name: "ceph", config: incusosapi.ServiceCeph{}},
+				{serverName: "new", name: "linstor", config: incusosapi.ServiceLinstor{}},
+				{serverName: "new", name: "ovn", config: incusosapi.ServiceOVN{}},
+			},
+		},
+		{
+			name:                  "error - copyServicesConfig - undone if the consistency check fails",
+			argServerNames:        []string{"new"},
+			argCopyServicesConfig: true,
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{Value: readyServerForClustering(11, "new")},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					ID:      1,
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Name:    "os",
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// Copy source: "one".
+				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 1}}},
+				// Copy target, current config: "new".
+				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{SystemID: 91}}},
+				// Consistency check: "one" (reference), "new" with a conflicting system_id.
+				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 1}}},
+				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 1}}},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				// Copy source: "one".
+				{Value: incusosapi.ServiceISCSI{}},
+				// Copy target, current config: "new".
+				{Value: incusosapi.ServiceISCSI{Config: incusosapi.ServiceISCSIConfig{Targets: []incusosapi.ServiceISCSITarget{{Target: "iqn.current"}}}}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// Copy source: "one".
+				{Value: incusosapi.ServiceMultipath{}},
+				// Copy target, current config: "new".
+				{Value: incusosapi.ServiceMultipath{Config: incusosapi.ServiceMultipathConfig{WWNs: []string{"wwn-current"}}}},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// Copy source: "one".
+				{Value: incusosapi.ServiceNVME{}},
+				// Copy target, current config: "new".
+				{Value: incusosapi.ServiceNVME{}},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				// Copy source: "one".
+				{Value: incusosapi.ServiceCeph{}},
+				// Copy target, current config: "new".
+				{Value: incusosapi.ServiceCeph{Config: incusosapi.ServiceCephConfig{Clusters: map[string]incusosapi.ServiceCephCluster{"current": {FSID: "fsid-current"}}}}},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				// Copy source: "one".
+				{Value: incusosapi.ServiceLinstor{}},
+				// Copy target, current config: "new".
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{ListenAddress: "[::]:3366"}}},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				// Copy source: "one".
+				{Value: incusosapi.ServiceOVN{}},
+				// Copy target, current config: "new".
+				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Database: "ssl:[fd00::1]:6641"}}},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "configuration inconsistencies")
+			},
+			// The server does not join the cluster, so the copied services config is
+			// restored in reverse order to not leave the server attached to the
+			// storage of the cluster.
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 11}}},
+				{serverName: "new", name: "iscsi", config: incusosapi.ServiceISCSI{}},
+				{serverName: "new", name: "multipath", config: incusosapi.ServiceMultipath{}},
+				{serverName: "new", name: "nvme", config: incusosapi.ServiceNVME{}},
+				{serverName: "new", name: "ceph", config: incusosapi.ServiceCeph{}},
+				{serverName: "new", name: "linstor", config: incusosapi.ServiceLinstor{}},
+				{serverName: "new", name: "ovn", config: incusosapi.ServiceOVN{}},
+				{serverName: "new", name: "ovn", config: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Database: "ssl:[fd00::1]:6641"}}},
+				{serverName: "new", name: "linstor", config: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{ListenAddress: "[::]:3366"}}},
+				{serverName: "new", name: "ceph", config: incusosapi.ServiceCeph{Config: incusosapi.ServiceCephConfig{Clusters: map[string]incusosapi.ServiceCephCluster{"current": {FSID: "fsid-current"}}}}},
+				{serverName: "new", name: "nvme", config: incusosapi.ServiceNVME{}},
+				{serverName: "new", name: "multipath", config: incusosapi.ServiceMultipath{Config: incusosapi.ServiceMultipathConfig{WWNs: []string{"wwn-current"}}}},
+				{serverName: "new", name: "iscsi", config: incusosapi.ServiceISCSI{Config: incusosapi.ServiceISCSIConfig{Targets: []incusosapi.ServiceISCSITarget{{Target: "iqn.current"}}}}},
+				{serverName: "new", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{SystemID: 91}}},
+			},
+		},
+		{
+			name:                  "error - copyServicesConfig - lvm enabled with server ID > 2000",
+			argServerNames:        []string{"new"},
+			argCopyServicesConfig: true,
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{Value: readyServerForClustering(2001, "new")},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					ID:      1,
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// Copy source: "one".
+				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 1}}},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "can not enable LVM on servers with internal ID > 2000")
+			},
+		},
+		{
+			name:                  "error - copyServicesConfig - client.GetOSServiceLVM",
+			argServerNames:        []string{"new"},
+			argCopyServicesConfig: true,
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{Value: readyServerForClustering(11, "new")},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					ID:      1,
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// Copy source: "one".
+				{Err: boom.Error},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                  "error - copyServicesConfig - client.UpdateOSService",
+			argServerNames:        []string{"new"},
+			argCopyServicesConfig: true,
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{Value: readyServerForClustering(11, "new")},
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{
+					ID:      1,
+					Name:    "one",
+					Cluster: ptr.To("cluster"),
+				},
+			},
+			clientUpdateOSServiceErrs: queue.Errs{boom.Error},
+
+			assertErr: boom.ErrorIs,
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new", name: "lvm", config: incusosapi.ServiceLVM{}},
+			},
+		},
+		{
+			name:           "error - cluster without any servers",
+			argServerNames: []string{"new"},
+			repoGetByName: &provisioning.Cluster{
+				Name:    "cluster",
+				Channel: "stable",
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				// Pre check validation.
+				{Value: readyServerForClustering(11, "new")},
+			},
+			serverSvcGetAllWithFilter: nil,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Cluster "cluster" does not have any servers`)
 			},
 		},
 		{
@@ -4902,6 +5379,8 @@ func TestClusterService_AddServers(t *testing.T) {
 				},
 			}
 
+			var gotOSServiceConfig []osServiceConfig
+
 			var incusClient *adapterMock.InstanceServerMock
 
 			incusClient = &adapterMock.InstanceServerMock{
@@ -4932,13 +5411,62 @@ func TestClusterService_AddServers(t *testing.T) {
 					return provisioning.ServerSystemStorage{}, nil
 				},
 				GetOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceLVM, error) {
-					return incusosapi.ServiceLVM{}, nil
+					if len(tc.clientGetOSServiceLVM) == 0 {
+						return incusosapi.ServiceLVM{}, nil
+					}
+
+					return queue.Pop(t, &tc.clientGetOSServiceLVM)
+				},
+				GetOSServiceISCSIFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceISCSI, error) {
+					if len(tc.clientGetOSServiceISCSI) == 0 {
+						return incusosapi.ServiceISCSI{}, nil
+					}
+
+					return queue.Pop(t, &tc.clientGetOSServiceISCSI)
 				},
 				GetOSServiceMultipathFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceMultipath, error) {
-					return incusosapi.ServiceMultipath{}, nil
+					if len(tc.clientGetOSServiceMultipath) == 0 {
+						return incusosapi.ServiceMultipath{}, nil
+					}
+
+					return queue.Pop(t, &tc.clientGetOSServiceMultipath)
 				},
 				GetOSServiceNVMEFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceNVME, error) {
-					return incusosapi.ServiceNVME{}, nil
+					if len(tc.clientGetOSServiceNVME) == 0 {
+						return incusosapi.ServiceNVME{}, nil
+					}
+
+					return queue.Pop(t, &tc.clientGetOSServiceNVME)
+				},
+				GetOSServiceCephFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceCeph, error) {
+					if len(tc.clientGetOSServiceCeph) == 0 {
+						return incusosapi.ServiceCeph{}, nil
+					}
+
+					return queue.Pop(t, &tc.clientGetOSServiceCeph)
+				},
+				GetOSServiceLinstorFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceLinstor, error) {
+					if len(tc.clientGetOSServiceLinstor) == 0 {
+						return incusosapi.ServiceLinstor{}, nil
+					}
+
+					return queue.Pop(t, &tc.clientGetOSServiceLinstor)
+				},
+				GetOSServiceOVNFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceOVN, error) {
+					if len(tc.clientGetOSServiceOVN) == 0 {
+						return incusosapi.ServiceOVN{}, nil
+					}
+
+					return queue.Pop(t, &tc.clientGetOSServiceOVN)
+				},
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					gotOSServiceConfig = append(gotOSServiceConfig, osServiceConfig{
+						serverName: server.Name,
+						name:       name,
+						config:     config,
+					})
+
+					return tc.clientUpdateOSServiceErrs.PopOrNil(t)
 				},
 				IncusClientFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (incusclient.InstanceServer, error) {
 					return incusClient, tc.clientIncusClientErr.PopOrNil(t)
@@ -4981,13 +5509,1118 @@ func TestClusterService_AddServers(t *testing.T) {
 			)
 
 			// Run test
-			err := clusterSvc.AddServers(t.Context(), "cluster", tc.argServerNames, tc.argSkipPostJoinOperations)
+			err := clusterSvc.AddServers(t.Context(), "cluster", tc.argServerNames, tc.argSkipPostJoinOperations, tc.argCopyServicesConfig)
 
 			// Assert
 			tc.assertErr(t, err)
 
+			require.Equal(t, tc.wantOSServiceConfig, gotOSServiceConfig)
+
 			require.Empty(t, tc.serverSvcGetByName)
 			require.Empty(t, tc.clientIncusClientErr)
+			require.Empty(t, tc.clientGetOSServiceLVM)
+			require.Empty(t, tc.clientGetOSServiceISCSI)
+			require.Empty(t, tc.clientGetOSServiceMultipath)
+			require.Empty(t, tc.clientGetOSServiceNVME)
+			require.Empty(t, tc.clientGetOSServiceCeph)
+			require.Empty(t, tc.clientGetOSServiceLinstor)
+			require.Empty(t, tc.clientGetOSServiceOVN)
+			require.Empty(t, tc.clientUpdateOSServiceErrs)
+		})
+	}
+}
+
+func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
+	sourceServer := provisioning.Server{
+		ID:   1,
+		Name: "one",
+		OSData: api.OSData{
+			Network: incusosapi.SystemNetwork{
+				State: incusosapi.SystemNetworkState{
+					Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+						"eth0": {
+							Addresses: []string{"10.0.0.1"},
+							Roles:     []string{"cluster"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Services config, which is already present on the target servers before the
+	// copy. It is restored, if the copy needs to be undone.
+	currentLVM := func(systemID int) incusosapi.ServiceLVM {
+		return incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{SystemID: systemID}}
+	}
+
+	currentISCSI := func(serverName string) incusosapi.ServiceISCSI {
+		return incusosapi.ServiceISCSI{Config: incusosapi.ServiceISCSIConfig{Targets: []incusosapi.ServiceISCSITarget{{Target: "iqn.current." + serverName}}}}
+	}
+
+	currentMultipath := func(serverName string) incusosapi.ServiceMultipath {
+		return incusosapi.ServiceMultipath{Config: incusosapi.ServiceMultipathConfig{WWNs: []string{"wwn-current-" + serverName}}}
+	}
+
+	currentNVME := incusosapi.ServiceNVME{}
+
+	currentCeph := func(serverName string) incusosapi.ServiceCeph {
+		return incusosapi.ServiceCeph{Config: incusosapi.ServiceCephConfig{Clusters: map[string]incusosapi.ServiceCephCluster{"current": {FSID: "fsid-current-" + serverName}}}}
+	}
+
+	currentLinstor := incusosapi.ServiceLinstor{}
+
+	currentOVN := incusosapi.ServiceOVN{}
+
+	serverWithClusterRoleAddress := func(id int64, name string, address string) provisioning.Server {
+		return provisioning.Server{
+			ID:   id,
+			Name: name,
+			OSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{address},
+								Roles:     []string{"cluster"},
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name                        string
+		targetServers               []provisioning.Server
+		clientGetOSServiceLVM       []queue.Item[incusosapi.ServiceLVM]
+		clientGetOSServiceISCSI     []queue.Item[incusosapi.ServiceISCSI]
+		clientGetOSServiceMultipath []queue.Item[incusosapi.ServiceMultipath]
+		clientGetOSServiceNVME      []queue.Item[incusosapi.ServiceNVME]
+		clientGetOSServiceCeph      []queue.Item[incusosapi.ServiceCeph]
+		clientGetOSServiceLinstor   []queue.Item[incusosapi.ServiceLinstor]
+		clientGetOSServiceOVN       []queue.Item[incusosapi.ServiceOVN]
+		clientUpdateOSServiceErrs   queue.Errs
+
+		assertErr           require.ErrorAssertionFunc
+		wantOSServiceConfig []osServiceConfig
+	}{
+		{
+			name: "success",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new-1"},
+				{ID: 12, Name: "new-2"},
+			},
+			// The services config is read from the source server exactly once,
+			// independent of the number of target servers. The current config of the
+			// target servers is read to be able to undo the copy.
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{
+					Value: incusosapi.ServiceLVM{
+						State:  incusosapi.ServiceLVMState{VGs: []incusosapi.ServiceLVMVG{{VGName: "vg0"}}},
+						Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 1},
+					},
+				},
+				{Value: currentLVM(91)},
+				{Value: currentLVM(92)},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{
+					Value: incusosapi.ServiceISCSI{
+						State: incusosapi.ServiceISCSIState{InitiatorName: "iqn.one"},
+						Config: incusosapi.ServiceISCSIConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceISCSITarget{{Target: "iqn.target", Address: "10.0.0.1", Port: 3260}},
+						},
+					},
+				},
+				{Value: currentISCSI("new-1")},
+				{Value: currentISCSI("new-2")},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{
+					Value: incusosapi.ServiceMultipath{
+						State:  incusosapi.ServiceMultipathState{Devices: map[string]incusosapi.ServiceMultipathDevice{"dev": {Vendor: "vendor"}}},
+						Config: incusosapi.ServiceMultipathConfig{Enabled: true, WWNs: []string{"wwn-1"}},
+					},
+				},
+				{Value: currentMultipath("new-1")},
+				{Value: currentMultipath("new-2")},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{
+					Value: incusosapi.ServiceNVME{
+						State:  incusosapi.ServiceNVMEState{HostID: "host-id-one"},
+						Config: incusosapi.ServiceNVMEConfig{Enabled: true},
+					},
+				},
+				{Value: currentNVME},
+				{Value: currentNVME},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{
+					Value: incusosapi.ServiceCeph{
+						State: incusosapi.ServiceCephState{FSID: "fsid-one"},
+						Config: incusosapi.ServiceCephConfig{
+							Enabled:  true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{"ceph": {FSID: "fsid", Monitors: []string{"10.0.0.1"}}},
+						},
+					},
+				},
+				{Value: currentCeph("new-1")},
+				{Value: currentCeph("new-2")},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{
+					Value: incusosapi.ServiceLinstor{
+						State:  incusosapi.ServiceLinstorState{},
+						Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366"},
+					},
+				},
+				{Value: currentLinstor},
+				{Value: currentLinstor},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: currentOVN},
+				{Value: currentOVN},
+			},
+
+			assertErr: require.NoError,
+			// The state of the source server is never copied and the LVM system_id is
+			// derived from the ID of the respective target server.
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new-1", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 11}}},
+				{serverName: "new-1", name: "iscsi", config: incusosapi.ServiceISCSI{Config: incusosapi.ServiceISCSIConfig{
+					Enabled: true,
+					Targets: []incusosapi.ServiceISCSITarget{{Target: "iqn.target", Address: "10.0.0.1", Port: 3260}},
+				}}},
+				{serverName: "new-1", name: "multipath", config: incusosapi.ServiceMultipath{Config: incusosapi.ServiceMultipathConfig{Enabled: true, WWNs: []string{"wwn-1"}}}},
+				{serverName: "new-1", name: "nvme", config: incusosapi.ServiceNVME{Config: incusosapi.ServiceNVMEConfig{Enabled: true}}},
+				{serverName: "new-1", name: "ceph", config: incusosapi.ServiceCeph{Config: incusosapi.ServiceCephConfig{
+					Enabled:  true,
+					Clusters: map[string]incusosapi.ServiceCephCluster{"ceph": {FSID: "fsid", Monitors: []string{"10.0.0.1"}}},
+				}}},
+				{serverName: "new-1", name: "linstor", config: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366"}}},
+				{serverName: "new-1", name: "ovn", config: incusosapi.ServiceOVN{}},
+				{serverName: "new-2", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 12}}},
+				{serverName: "new-2", name: "iscsi", config: incusosapi.ServiceISCSI{Config: incusosapi.ServiceISCSIConfig{
+					Enabled: true,
+					Targets: []incusosapi.ServiceISCSITarget{{Target: "iqn.target", Address: "10.0.0.1", Port: 3260}},
+				}}},
+				{serverName: "new-2", name: "multipath", config: incusosapi.ServiceMultipath{Config: incusosapi.ServiceMultipathConfig{Enabled: true, WWNs: []string{"wwn-1"}}}},
+				{serverName: "new-2", name: "nvme", config: incusosapi.ServiceNVME{Config: incusosapi.ServiceNVMEConfig{Enabled: true}}},
+				{serverName: "new-2", name: "ceph", config: incusosapi.ServiceCeph{Config: incusosapi.ServiceCephConfig{
+					Enabled:  true,
+					Clusters: map[string]incusosapi.ServiceCephCluster{"ceph": {FSID: "fsid", Monitors: []string{"10.0.0.1"}}},
+				}}},
+				{serverName: "new-2", name: "linstor", config: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366"}}},
+				{serverName: "new-2", name: "ovn", config: incusosapi.ServiceOVN{}},
+			},
+		},
+		{
+			name:          "success - without target servers",
+			targetServers: nil,
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Value: incusosapi.ServiceLinstor{}},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - lvm disabled on source server",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// A disabled LVM service does not get a system_id assigned, the
+				// system_id of the source server is never copied over.
+				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: false, SystemID: 1}}},
+				{Value: currentLVM(91)},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: currentISCSI("new")},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: currentMultipath("new")},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: currentNVME},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+				{Value: currentCeph("new")},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Value: incusosapi.ServiceLinstor{}},
+				{Value: currentLinstor},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: currentOVN},
+			},
+
+			assertErr: require.NoError,
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: false, SystemID: 91}}},
+				{serverName: "new", name: "iscsi", config: incusosapi.ServiceISCSI{}},
+				{serverName: "new", name: "multipath", config: incusosapi.ServiceMultipath{}},
+				{serverName: "new", name: "nvme", config: incusosapi.ServiceNVME{}},
+				{serverName: "new", name: "ceph", config: incusosapi.ServiceCeph{}},
+				{serverName: "new", name: "linstor", config: incusosapi.ServiceLinstor{}},
+				{serverName: "new", name: "ovn", config: incusosapi.ServiceOVN{}},
+			},
+		},
+		{
+			name: "success - lvm already enabled on target server",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 1}}},
+				// LVM does not need to be enabled, so the system_id already assigned
+				// to the target server is kept.
+				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 42}}},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: currentISCSI("new")},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: currentMultipath("new")},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: currentNVME},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+				{Value: currentCeph("new")},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Value: incusosapi.ServiceLinstor{}},
+				{Value: currentLinstor},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: currentOVN},
+			},
+
+			assertErr: require.NoError,
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 42}}},
+				{serverName: "new", name: "iscsi", config: incusosapi.ServiceISCSI{}},
+				{serverName: "new", name: "multipath", config: incusosapi.ServiceMultipath{}},
+				{serverName: "new", name: "nvme", config: incusosapi.ServiceNVME{}},
+				{serverName: "new", name: "ceph", config: incusosapi.ServiceCeph{}},
+				{serverName: "new", name: "linstor", config: incusosapi.ServiceLinstor{}},
+				{serverName: "new", name: "ovn", config: incusosapi.ServiceOVN{}},
+			},
+		},
+		{
+			name: "error - client.GetOSServiceLVM - source server",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Err: boom.Error},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.GetOSServiceISCSI - source server",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Err: boom.Error},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.GetOSServiceMultipath - source server",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Err: boom.Error},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.GetOSServiceNVME - source server",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Err: boom.Error},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.GetOSServiceCeph - source server",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Err: boom.Error},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.GetOSServiceLinstor - source server",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Err: boom.Error},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.GetOSServiceLVM - target server",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Err: boom.Error},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Value: incusosapi.ServiceLinstor{}},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+			},
+
+			assertErr: boom.ErrorIs,
+			// The current config of all target servers is read before the first
+			// server is updated, so no config is copied at all.
+			wantOSServiceConfig: nil,
+		},
+		{
+			name: "error - client.GetOSServiceNVME - second target server",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new-1"},
+				{ID: 12, Name: "new-2"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: currentLVM(91)},
+				{Value: currentLVM(92)},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: currentISCSI("new-1")},
+				{Value: currentISCSI("new-2")},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: currentMultipath("new-1")},
+				{Value: currentMultipath("new-2")},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: currentNVME},
+				{Err: boom.Error},
+			},
+			// The current config of the second target server is not read anymore
+			// after the failure.
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+				{Value: currentCeph("new-1")},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Value: incusosapi.ServiceLinstor{}},
+				{Value: currentLinstor},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: currentOVN},
+			},
+
+			assertErr:           boom.ErrorIs,
+			wantOSServiceConfig: nil,
+		},
+		{
+			name: "error - lvm enabled with server ID > 2000",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new-1"},
+				{ID: 2001, Name: "new-2"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 1}}},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Value: incusosapi.ServiceLinstor{}},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, "can not enable LVM on servers with internal ID > 2000")
+			},
+			// The precondition is verified for all target servers before the first
+			// server is updated, so no config is copied at all.
+			wantOSServiceConfig: nil,
+		},
+		{
+			name: "success - member dependent linstor listen address and ovn tunnel address",
+			targetServers: []provisioning.Server{
+				serverWithClusterRoleAddress(11, "new-1", "10.0.0.11"),
+				serverWithClusterRoleAddress(12, "new-2", "10.0.0.12"),
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: currentLVM(91)},
+				{Value: currentLVM(92)},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: currentISCSI("new-1")},
+				{Value: currentISCSI("new-2")},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: currentMultipath("new-1")},
+				{Value: currentMultipath("new-2")},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: currentNVME},
+				{Value: currentNVME},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+				{Value: currentCeph("new-1")},
+				{Value: currentCeph("new-2")},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "10.0.0.1:3366"}}},
+				{Value: currentLinstor},
+				{Value: currentLinstor},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, TunnelAddress: "10.0.0.1"}}},
+				{Value: currentOVN},
+				{Value: currentOVN},
+			},
+
+			assertErr: require.NoError,
+			// The linstor listen address and the ovn tunnel address of the source
+			// server are replaced by the respective address of the target server.
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new-1", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{SystemID: 91}}},
+				{serverName: "new-1", name: "iscsi", config: incusosapi.ServiceISCSI{}},
+				{serverName: "new-1", name: "multipath", config: incusosapi.ServiceMultipath{}},
+				{serverName: "new-1", name: "nvme", config: incusosapi.ServiceNVME{}},
+				{serverName: "new-1", name: "ceph", config: incusosapi.ServiceCeph{}},
+				{serverName: "new-1", name: "linstor", config: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "10.0.0.11:3366"}}},
+				{serverName: "new-1", name: "ovn", config: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, TunnelAddress: "10.0.0.11"}}},
+				{serverName: "new-2", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{SystemID: 92}}},
+				{serverName: "new-2", name: "iscsi", config: incusosapi.ServiceISCSI{}},
+				{serverName: "new-2", name: "multipath", config: incusosapi.ServiceMultipath{}},
+				{serverName: "new-2", name: "nvme", config: incusosapi.ServiceNVME{}},
+				{serverName: "new-2", name: "ceph", config: incusosapi.ServiceCeph{}},
+				{serverName: "new-2", name: "linstor", config: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "10.0.0.12:3366"}}},
+				{serverName: "new-2", name: "ovn", config: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, TunnelAddress: "10.0.0.12"}}},
+			},
+		},
+		{
+			name: "error - target server without an address for the linstor listen address",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: currentLVM(91)},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: currentISCSI("new")},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: currentMultipath("new")},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: currentNVME},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+				{Value: currentCeph("new")},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "10.0.0.1:3366"}}},
+				{Value: currentLinstor},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: currentOVN},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr)
+				require.ErrorContains(tt, err, `Failed to derive the linstor listen address for server "new"`)
+			},
+		},
+		{
+			name: "error - client.UpdateOSService - lvm",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: currentLVM(91)},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: currentISCSI("new")},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: currentMultipath("new")},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: currentNVME},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+				{Value: currentCeph("new")},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Value: incusosapi.ServiceLinstor{}},
+				{Value: currentLinstor},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: currentOVN},
+			},
+			clientUpdateOSServiceErrs: queue.Errs{boom.Error},
+
+			assertErr: boom.ErrorIs,
+			// Nothing has been updated successfully, so there is nothing to undo.
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{SystemID: 91}}},
+			},
+		},
+		{
+			name: "error - client.UpdateOSService - iscsi",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: currentLVM(91)},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: currentISCSI("new")},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: currentMultipath("new")},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: currentNVME},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+				{Value: currentCeph("new")},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Value: incusosapi.ServiceLinstor{}},
+				{Value: currentLinstor},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: currentOVN},
+			},
+			clientUpdateOSServiceErrs: queue.Errs{nil, boom.Error},
+
+			assertErr: boom.ErrorIs,
+			// The previously copied lvm config is restored.
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{SystemID: 91}}},
+				{serverName: "new", name: "iscsi", config: incusosapi.ServiceISCSI{}},
+				{serverName: "new", name: "lvm", config: currentLVM(91)},
+			},
+		},
+		{
+			name: "error - client.UpdateOSService - multipath",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: currentLVM(91)},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: currentISCSI("new")},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: currentMultipath("new")},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: currentNVME},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+				{Value: currentCeph("new")},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Value: incusosapi.ServiceLinstor{}},
+				{Value: currentLinstor},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: currentOVN},
+			},
+			clientUpdateOSServiceErrs: queue.Errs{nil, nil, boom.Error},
+
+			assertErr: boom.ErrorIs,
+			// The previously copied configs are restored in reverse order.
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{SystemID: 91}}},
+				{serverName: "new", name: "iscsi", config: incusosapi.ServiceISCSI{}},
+				{serverName: "new", name: "multipath", config: incusosapi.ServiceMultipath{}},
+				{serverName: "new", name: "iscsi", config: currentISCSI("new")},
+				{serverName: "new", name: "lvm", config: currentLVM(91)},
+			},
+		},
+		{
+			name: "error - client.UpdateOSService - nvme",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: currentLVM(91)},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: currentISCSI("new")},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: currentMultipath("new")},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: currentNVME},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+				{Value: currentCeph("new")},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Value: incusosapi.ServiceLinstor{}},
+				{Value: currentLinstor},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: currentOVN},
+			},
+			clientUpdateOSServiceErrs: queue.Errs{nil, nil, nil, boom.Error},
+
+			assertErr: boom.ErrorIs,
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{SystemID: 91}}},
+				{serverName: "new", name: "iscsi", config: incusosapi.ServiceISCSI{}},
+				{serverName: "new", name: "multipath", config: incusosapi.ServiceMultipath{}},
+				{serverName: "new", name: "nvme", config: incusosapi.ServiceNVME{}},
+				{serverName: "new", name: "multipath", config: currentMultipath("new")},
+				{serverName: "new", name: "iscsi", config: currentISCSI("new")},
+				{serverName: "new", name: "lvm", config: currentLVM(91)},
+			},
+		},
+		{
+			name: "error - client.UpdateOSService - ceph",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: currentLVM(91)},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: currentISCSI("new")},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: currentMultipath("new")},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: currentNVME},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+				{Value: currentCeph("new")},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Value: incusosapi.ServiceLinstor{}},
+				{Value: currentLinstor},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: currentOVN},
+			},
+			clientUpdateOSServiceErrs: queue.Errs{nil, nil, nil, nil, boom.Error},
+
+			assertErr: boom.ErrorIs,
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{SystemID: 91}}},
+				{serverName: "new", name: "iscsi", config: incusosapi.ServiceISCSI{}},
+				{serverName: "new", name: "multipath", config: incusosapi.ServiceMultipath{}},
+				{serverName: "new", name: "nvme", config: incusosapi.ServiceNVME{}},
+				{serverName: "new", name: "ceph", config: incusosapi.ServiceCeph{}},
+				{serverName: "new", name: "nvme", config: currentNVME},
+				{serverName: "new", name: "multipath", config: currentMultipath("new")},
+				{serverName: "new", name: "iscsi", config: currentISCSI("new")},
+				{serverName: "new", name: "lvm", config: currentLVM(91)},
+			},
+		},
+		{
+			name: "error - client.UpdateOSService - linstor",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: currentLVM(91)},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: currentISCSI("new")},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: currentMultipath("new")},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: currentNVME},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+				{Value: currentCeph("new")},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Value: incusosapi.ServiceLinstor{}},
+				{Value: currentLinstor},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: currentOVN},
+			},
+			clientUpdateOSServiceErrs: queue.Errs{nil, nil, nil, nil, nil, boom.Error},
+
+			assertErr: boom.ErrorIs,
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{SystemID: 91}}},
+				{serverName: "new", name: "iscsi", config: incusosapi.ServiceISCSI{}},
+				{serverName: "new", name: "multipath", config: incusosapi.ServiceMultipath{}},
+				{serverName: "new", name: "nvme", config: incusosapi.ServiceNVME{}},
+				{serverName: "new", name: "ceph", config: incusosapi.ServiceCeph{}},
+				{serverName: "new", name: "linstor", config: incusosapi.ServiceLinstor{}},
+				{serverName: "new", name: "ceph", config: currentCeph("new")},
+				{serverName: "new", name: "nvme", config: currentNVME},
+				{serverName: "new", name: "multipath", config: currentMultipath("new")},
+				{serverName: "new", name: "iscsi", config: currentISCSI("new")},
+				{serverName: "new", name: "lvm", config: currentLVM(91)},
+			},
+		},
+		{
+			name: "error - client.UpdateOSService - ovn",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: currentLVM(91)},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: currentISCSI("new")},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: currentMultipath("new")},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: currentNVME},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+				{Value: currentCeph("new")},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Value: incusosapi.ServiceLinstor{}},
+				{Value: currentLinstor},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: currentOVN},
+			},
+			clientUpdateOSServiceErrs: queue.Errs{nil, nil, nil, nil, nil, nil, boom.Error},
+
+			assertErr: boom.ErrorIs,
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{SystemID: 91}}},
+				{serverName: "new", name: "iscsi", config: incusosapi.ServiceISCSI{}},
+				{serverName: "new", name: "multipath", config: incusosapi.ServiceMultipath{}},
+				{serverName: "new", name: "nvme", config: incusosapi.ServiceNVME{}},
+				{serverName: "new", name: "ceph", config: incusosapi.ServiceCeph{}},
+				{serverName: "new", name: "linstor", config: incusosapi.ServiceLinstor{}},
+				{serverName: "new", name: "ovn", config: incusosapi.ServiceOVN{}},
+				{serverName: "new", name: "linstor", config: currentLinstor},
+				{serverName: "new", name: "ceph", config: currentCeph("new")},
+				{serverName: "new", name: "nvme", config: currentNVME},
+				{serverName: "new", name: "multipath", config: currentMultipath("new")},
+				{serverName: "new", name: "iscsi", config: currentISCSI("new")},
+				{serverName: "new", name: "lvm", config: currentLVM(91)},
+			},
+		},
+		{
+			name: "error - client.UpdateOSService - second target server",
+			targetServers: []provisioning.Server{
+				{ID: 11, Name: "new-1"},
+				{ID: 12, Name: "new-2"},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: currentLVM(91)},
+				{Value: currentLVM(92)},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: currentISCSI("new-1")},
+				{Value: currentISCSI("new-2")},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: currentMultipath("new-1")},
+				{Value: currentMultipath("new-2")},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: currentNVME},
+				{Value: currentNVME},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+				{Value: currentCeph("new-1")},
+				{Value: currentCeph("new-2")},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Value: incusosapi.ServiceLinstor{}},
+				{Value: currentLinstor},
+				{Value: currentLinstor},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: currentOVN},
+				{Value: currentOVN},
+			},
+			clientUpdateOSServiceErrs: queue.Errs{nil, nil, nil, nil, nil, nil, nil, boom.Error},
+
+			assertErr: boom.ErrorIs,
+			// The config copied to the first target server is restored as well.
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new-1", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{SystemID: 91}}},
+				{serverName: "new-1", name: "iscsi", config: incusosapi.ServiceISCSI{}},
+				{serverName: "new-1", name: "multipath", config: incusosapi.ServiceMultipath{}},
+				{serverName: "new-1", name: "nvme", config: incusosapi.ServiceNVME{}},
+				{serverName: "new-1", name: "ceph", config: incusosapi.ServiceCeph{}},
+				{serverName: "new-1", name: "linstor", config: incusosapi.ServiceLinstor{}},
+				{serverName: "new-1", name: "ovn", config: incusosapi.ServiceOVN{}},
+				{serverName: "new-2", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{SystemID: 92}}},
+				{serverName: "new-1", name: "ovn", config: currentOVN},
+				{serverName: "new-1", name: "linstor", config: currentLinstor},
+				{serverName: "new-1", name: "ceph", config: currentCeph("new-1")},
+				{serverName: "new-1", name: "nvme", config: currentNVME},
+				{serverName: "new-1", name: "multipath", config: currentMultipath("new-1")},
+				{serverName: "new-1", name: "iscsi", config: currentISCSI("new-1")},
+				{serverName: "new-1", name: "lvm", config: currentLVM(91)},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			var gotOSServiceConfig []osServiceConfig
+
+			client := &adapterMock.ClusterClientPortMock{
+				GetOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceLVM, error) {
+					return queue.Pop(t, &tc.clientGetOSServiceLVM)
+				},
+				GetOSServiceISCSIFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceISCSI, error) {
+					return queue.Pop(t, &tc.clientGetOSServiceISCSI)
+				},
+				GetOSServiceMultipathFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceMultipath, error) {
+					return queue.Pop(t, &tc.clientGetOSServiceMultipath)
+				},
+				GetOSServiceNVMEFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceNVME, error) {
+					return queue.Pop(t, &tc.clientGetOSServiceNVME)
+				},
+				GetOSServiceCephFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceCeph, error) {
+					return queue.Pop(t, &tc.clientGetOSServiceCeph)
+				},
+				GetOSServiceLinstorFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceLinstor, error) {
+					return queue.Pop(t, &tc.clientGetOSServiceLinstor)
+				},
+				GetOSServiceOVNFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceOVN, error) {
+					return queue.Pop(t, &tc.clientGetOSServiceOVN)
+				},
+				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
+					gotOSServiceConfig = append(gotOSServiceConfig, osServiceConfig{
+						serverName: server.Name,
+						name:       name,
+						config:     config,
+					})
+
+					return tc.clientUpdateOSServiceErrs.PopOrNil(t)
+				},
+			}
+
+			clusterSvc := provisioningCluster.New(
+				nil,
+				nil,
+				client,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+
+			// Run test
+			err := clusterSvc.CopyServicesConfigFromClusterMember(t.Context(), sourceServer, tc.targetServers)
+
+			// Assert
+			tc.assertErr(t, err)
+
+			require.Equal(t, tc.wantOSServiceConfig, gotOSServiceConfig)
+
+			require.Empty(t, tc.clientGetOSServiceLVM)
+			require.Empty(t, tc.clientGetOSServiceISCSI)
+			require.Empty(t, tc.clientGetOSServiceMultipath)
+			require.Empty(t, tc.clientGetOSServiceNVME)
+			require.Empty(t, tc.clientGetOSServiceCeph)
+			require.Empty(t, tc.clientGetOSServiceLinstor)
+			require.Empty(t, tc.clientGetOSServiceOVN)
+			require.Empty(t, tc.clientUpdateOSServiceErrs)
 		})
 	}
 }
@@ -4999,8 +6632,12 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 		clientGetNetworkConfig      []queue.Item[provisioning.ServerSystemNetwork]
 		clientGetStorageConfig      []queue.Item[provisioning.ServerSystemStorage]
 		clientGetOSServiceLVM       []queue.Item[incusosapi.ServiceLVM]
+		clientGetOSServiceISCSI     []queue.Item[incusosapi.ServiceISCSI]
 		clientGetOSServiceMultipath []queue.Item[incusosapi.ServiceMultipath]
 		clientGetOSServiceNVME      []queue.Item[incusosapi.ServiceNVME]
+		clientGetOSServiceCeph      []queue.Item[incusosapi.ServiceCeph]
+		clientGetOSServiceLinstor   []queue.Item[incusosapi.ServiceLinstor]
+		clientGetOSServiceOVN       []queue.Item[incusosapi.ServiceOVN]
 		clientUpdateOSServiceErrs   queue.Errs
 
 		assertErr               require.ErrorAssertionFunc
@@ -5135,6 +6772,10 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 					},
 				},
 			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
 			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
 				// one (reference)
 				{
@@ -5186,6 +6827,60 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						},
 					},
 				},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLinstor{
+						Config: incusosapi.ServiceLinstorConfig{
+							Enabled:       true,
+							ListenAddress: "[::]:3366",
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLinstor{
+						Config: incusosapi.ServiceLinstorConfig{
+							Enabled:       true,
+							ListenAddress: "[::]:3366",
+						},
+					},
+				},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: incusosapi.ServiceOVN{}},
 			},
 
 			assertErr:      require.NoError,
@@ -5310,6 +7005,10 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 					},
 				},
 			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
 			clientUpdateOSServiceErrs: queue.Errs{
 				nil,
 			},
@@ -5364,6 +7063,60 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						},
 					},
 				},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLinstor{
+						Config: incusosapi.ServiceLinstorConfig{
+							Enabled:       true,
+							ListenAddress: "[::]:3366",
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLinstor{
+						Config: incusosapi.ServiceLinstorConfig{
+							Enabled:       true,
+							ListenAddress: "[::]:3366",
+						},
+					},
+				},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: incusosapi.ServiceOVN{}},
 			},
 
 			assertErr:      require.NoError,
@@ -6832,6 +8585,10 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 					},
 				},
 			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
 			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
 				// one (reference)
 				{
@@ -6950,6 +8707,10 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						},
 					},
 				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
 			},
 			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
 				// one (reference)
@@ -7078,6 +8839,10 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						},
 					},
 				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
 			},
 			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
 				// one (reference)
@@ -7212,6 +8977,10 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						},
 					},
 				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
 			},
 			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
 				// one (reference)
@@ -7351,6 +9120,10 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						},
 					},
 				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
 			},
 			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
 				// one (reference)
@@ -7506,6 +9279,10 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 					},
 				},
 			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
 			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
 				// one (reference)
 				{
@@ -7562,6 +9339,2883 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 			assertErr:               require.NoError,
 			wantInconsistencyReason: "NVME configuration mismatch",
 		},
+		{
+			name: "error - client.GetOSServiceCeph - reference",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				// one (reference)
+				{Err: boom.Error},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.GetOSServiceCeph",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{Err: boom.Error},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - service Ceph not equal",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "other-fsid", // fsid mismatch
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: "Ceph configuration mismatch",
+		},
+		{
+			name: "error - client.GetOSServiceLinstor - reference",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				// one (reference)
+				{Err: boom.Error},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.GetOSServiceLinstor",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLinstor{
+						Config: incusosapi.ServiceLinstorConfig{
+							Enabled:       true,
+							ListenAddress: "[::]:3366",
+						},
+					},
+				},
+				// two
+				{Err: boom.Error},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - Linstor listen address not equal for a wildcard reference",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLinstor{
+						Config: incusosapi.ServiceLinstorConfig{
+							Enabled:       true,
+							ListenAddress: "[::]:3366",
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLinstor{
+						Config: incusosapi.ServiceLinstorConfig{
+							Enabled:       true,
+							ListenAddress: "10.0.0.2:3366", // listen address mismatch
+						},
+					},
+				},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: `Linstor listen address mismatch, found "[::]:3366" (one) and "10.0.0.2:3366" (two), expected "[::]:3366" for two`,
+		},
+		{
+			name: "success - member dependent Linstor listen address",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					OSData: api.OSData{
+						Network: incusosapi.SystemNetwork{
+							State: incusosapi.SystemNetworkState{
+								Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+									"eth0": {
+										Addresses: []string{"10.0.0.1"},
+										Roles:     []string{"cluster"},
+									},
+								},
+							},
+						},
+					},
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					OSData: api.OSData{
+						Network: incusosapi.SystemNetwork{
+							State: incusosapi.SystemNetworkState{
+								Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+									"eth0": {
+										Addresses: []string{"10.0.0.2"},
+										Roles:     []string{"cluster"},
+									},
+								},
+							},
+						},
+					},
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				// one (reference)
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "10.0.0.1:3366"}}},
+				// two
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "10.0.0.2:3366"}}},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				// one (reference)
+				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, Database: "ssl:[fd00::1]:6641"}}},
+				// two
+				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, Database: "ssl:[fd00::1]:6641"}}},
+			},
+
+			assertErr:      require.NoError,
+			wantConsistent: true,
+		},
+		{
+			name: "error - Linstor listen address of another member",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					OSData: api.OSData{
+						Network: incusosapi.SystemNetwork{
+							State: incusosapi.SystemNetworkState{
+								Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+									"eth0": {
+										Addresses: []string{"10.0.0.1"},
+										Roles:     []string{"cluster"},
+									},
+								},
+							},
+						},
+					},
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					OSData: api.OSData{
+						Network: incusosapi.SystemNetwork{
+							State: incusosapi.SystemNetworkState{
+								Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+									"eth0": {
+										Addresses: []string{"10.0.0.2"},
+										Roles:     []string{"cluster"},
+									},
+								},
+							},
+						},
+					},
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				// one (reference)
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "10.0.0.1:3366"}}},
+				// two
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "10.0.0.3:3366"}}}, // not the address of "two"
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: `Linstor listen address mismatch, found "10.0.0.1:3366" (one) and "10.0.0.3:3366" (two), expected "10.0.0.2:3366" for two`,
+		},
+		{
+			name: "error - Linstor listen address without network state",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				// one (reference)
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "10.0.0.1:3366"}}},
+				// two
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "10.0.0.2:3366"}}},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: "Linstor listen address mismatch, failed to derive the listen address for two",
+		},
+		{
+			name: "error - service Linstor not equal",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				// one (reference)
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366", TLSServerKey: "key-one"}}},
+				// two
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366", TLSServerKey: "key-two"}}}, // key mismatch
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: "Linstor configuration mismatch",
+		},
+		{
+			name: "success - member dependent OVN tunnel address",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					OSData: api.OSData{
+						Network: incusosapi.SystemNetwork{
+							State: incusosapi.SystemNetworkState{
+								Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+									"eth0": {
+										Addresses: []string{"10.0.0.1"},
+										Roles:     []string{"cluster"},
+									},
+								},
+							},
+						},
+					},
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					OSData: api.OSData{
+						Network: incusosapi.SystemNetwork{
+							State: incusosapi.SystemNetworkState{
+								Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+									"eth0": {
+										Addresses: []string{"10.0.0.2"},
+										Roles:     []string{"cluster"},
+									},
+								},
+							},
+						},
+					},
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				// one (reference)
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366"}}},
+				// two
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366"}}},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				// one (reference)
+				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, TunnelAddress: "10.0.0.1"}}},
+				// two
+				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, TunnelAddress: "10.0.0.2"}}},
+			},
+
+			assertErr:      require.NoError,
+			wantConsistent: true,
+		},
+		{
+			name: "error - OVN tunnel address of another member",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					OSData: api.OSData{
+						Network: incusosapi.SystemNetwork{
+							State: incusosapi.SystemNetworkState{
+								Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+									"eth0": {
+										Addresses: []string{"10.0.0.1"},
+										Roles:     []string{"cluster"},
+									},
+								},
+							},
+						},
+					},
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					OSData: api.OSData{
+						Network: incusosapi.SystemNetwork{
+							State: incusosapi.SystemNetworkState{
+								Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+									"eth0": {
+										Addresses: []string{"10.0.0.2"},
+										Roles:     []string{"cluster"},
+									},
+								},
+							},
+						},
+					},
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				// one (reference)
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366"}}},
+				// two
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366"}}},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				// one (reference)
+				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, TunnelAddress: "10.0.0.1"}}},
+				// two
+				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, TunnelAddress: "10.0.0.3"}}},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: `OVN tunnel address mismatch, found "10.0.0.1" (one) and "10.0.0.3" (two), expected "10.0.0.2" for two`,
+		},
+		{
+			name: "error - service OVN not equal",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceMultipath{
+						Config: incusosapi.ServiceMultipathConfig{
+							Enabled: true,
+							WWNs:    []string{"foo"},
+						},
+					},
+				},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceNVME{
+						Config: incusosapi.ServiceNVMEConfig{
+							Enabled: true,
+							Targets: []incusosapi.ServiceNVMETarget{
+								{
+									Transport: "tcp",
+									Address:   "localhost",
+									Port:      1234,
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceCeph{
+						Config: incusosapi.ServiceCephConfig{
+							Enabled: true,
+							Clusters: map[string]incusosapi.ServiceCephCluster{
+								"ceph": {
+									FSID:     "fsid",
+									Monitors: []string{"10.0.0.1"},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				// one (reference)
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366"}}},
+				// two
+				{Value: incusosapi.ServiceLinstor{Config: incusosapi.ServiceLinstorConfig{Enabled: true, ListenAddress: "[::]:3366"}}},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				// one (reference)
+				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, Database: "ssl:[fd00::1]:6641"}}},
+				// two
+				{Value: incusosapi.ServiceOVN{Config: incusosapi.ServiceOVNConfig{Enabled: true, Database: "ssl:[fd00::2]:6641"}}},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: "OVN configuration mismatch",
+		},
+		{
+			name: "error - service iSCSI not equal",
+			servers: []provisioning.Server{
+				{
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemNetwork{
+						Config: &incusosapi.SystemNetworkConfig{
+							Interfaces: []incusosapi.SystemNetworkInterface{
+								{
+									VLANTags: []int{
+										1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "custom",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				// one (reference)
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 1,
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.ServiceLVM{
+						Config: incusosapi.ServiceLVMConfig{
+							Enabled:  true,
+							SystemID: 2,
+						},
+					},
+				},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				// one (reference)
+				{Value: incusosapi.ServiceISCSI{Config: incusosapi.ServiceISCSIConfig{Enabled: true, Targets: []incusosapi.ServiceISCSITarget{{Target: "iqn.one"}}}}},
+				// two
+				{Value: incusosapi.ServiceISCSI{Config: incusosapi.ServiceISCSIConfig{Enabled: true, Targets: []incusosapi.ServiceISCSITarget{{Target: "iqn.two"}}}}},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: "iSCSI configuration mismatch",
+		},
 	}
 
 	for _, tc := range tests {
@@ -7577,11 +12231,23 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 				GetOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceLVM, error) {
 					return queue.Pop(t, &tc.clientGetOSServiceLVM)
 				},
+				GetOSServiceISCSIFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceISCSI, error) {
+					return queue.Pop(t, &tc.clientGetOSServiceISCSI)
+				},
 				GetOSServiceMultipathFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceMultipath, error) {
 					return queue.Pop(t, &tc.clientGetOSServiceMultipath)
 				},
 				GetOSServiceNVMEFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceNVME, error) {
 					return queue.Pop(t, &tc.clientGetOSServiceNVME)
+				},
+				GetOSServiceCephFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceCeph, error) {
+					return queue.Pop(t, &tc.clientGetOSServiceCeph)
+				},
+				GetOSServiceLinstorFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceLinstor, error) {
+					return queue.Pop(t, &tc.clientGetOSServiceLinstor)
+				},
+				GetOSServiceOVNFunc: func(ctx context.Context, server provisioning.Server) (incusosapi.ServiceOVN, error) {
+					return queue.Pop(t, &tc.clientGetOSServiceOVN)
 				},
 				UpdateOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config any) error {
 					return tc.clientUpdateOSServiceErrs.Pop(t)
@@ -7610,8 +12276,12 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 			require.Empty(t, tc.clientGetNetworkConfig)
 			require.Empty(t, tc.clientGetStorageConfig)
 			require.Empty(t, tc.clientGetOSServiceLVM)
+			require.Empty(t, tc.clientGetOSServiceISCSI)
 			require.Empty(t, tc.clientGetOSServiceMultipath)
 			require.Empty(t, tc.clientGetOSServiceNVME)
+			require.Empty(t, tc.clientGetOSServiceCeph)
+			require.Empty(t, tc.clientGetOSServiceLinstor)
+			require.Empty(t, tc.clientGetOSServiceOVN)
 			require.Empty(t, tc.clientUpdateOSServiceErrs)
 		})
 	}

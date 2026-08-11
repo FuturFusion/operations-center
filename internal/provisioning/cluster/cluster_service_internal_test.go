@@ -190,6 +190,232 @@ func Test_determineClusterAddress(t *testing.T) {
 	}
 }
 
+func Test_memberDependentAddress(t *testing.T) {
+	serverWithInterfaces := func(name string, interfaces map[string]incusosapi.SystemNetworkInterfaceState) provisioning.Server {
+		return provisioning.Server{
+			Name: name,
+			OSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: interfaces,
+					},
+				},
+			},
+		}
+	}
+
+	referenceServer := serverWithInterfaces("one", map[string]incusosapi.SystemNetworkInterfaceState{
+		"eth0": {
+			Addresses: []string{"10.0.0.1", "fd00::1"},
+			Roles:     []string{"cluster"},
+		},
+		"eth1": {
+			Addresses: []string{"10.1.0.1"},
+			Roles:     []string{"storage"},
+		},
+	})
+
+	targetServer := serverWithInterfaces("two", map[string]incusosapi.SystemNetworkInterfaceState{
+		"eth0": {
+			Addresses: []string{"10.0.0.2", "fd00::2"},
+			Roles:     []string{"cluster"},
+		},
+		"eth1": {
+			Addresses: []string{"10.1.0.2"},
+			Roles:     []string{"storage"},
+		},
+	})
+
+	tests := []struct {
+		name                string
+		referenceServerArg  provisioning.Server
+		referenceAddressArg string
+		targetServerArg     provisioning.Server
+
+		want      string
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:                "empty address is not member dependent",
+			referenceServerArg:  referenceServer,
+			referenceAddressArg: "",
+			targetServerArg:     targetServer,
+
+			want:      "",
+			assertErr: require.NoError,
+		},
+		{
+			name:                "IPv4 wildcard address is not member dependent",
+			referenceServerArg:  referenceServer,
+			referenceAddressArg: "0.0.0.0",
+			targetServerArg:     targetServer,
+
+			want:      "0.0.0.0",
+			assertErr: require.NoError,
+		},
+		{
+			name:                "IPv6 wildcard address is not member dependent",
+			referenceServerArg:  referenceServer,
+			referenceAddressArg: "::",
+			targetServerArg:     targetServer,
+
+			want:      "::",
+			assertErr: require.NoError,
+		},
+		{
+			name:                "hostname is not member dependent",
+			referenceServerArg:  referenceServer,
+			referenceAddressArg: "linstor.local",
+			targetServerArg:     targetServer,
+
+			want:      "linstor.local",
+			assertErr: require.NoError,
+		},
+		{
+			name:                "IPv4 address of the cluster role",
+			referenceServerArg:  referenceServer,
+			referenceAddressArg: "10.0.0.1",
+			targetServerArg:     targetServer,
+
+			want:      "10.0.0.2",
+			assertErr: require.NoError,
+		},
+		{
+			name:                "IPv6 address of the cluster role",
+			referenceServerArg:  referenceServer,
+			referenceAddressArg: "fd00::1",
+			targetServerArg:     targetServer,
+
+			want:      "fd00::2",
+			assertErr: require.NoError,
+		},
+		{
+			name:                "address of the storage role",
+			referenceServerArg:  referenceServer,
+			referenceAddressArg: "10.1.0.1",
+			targetServerArg:     targetServer,
+
+			want:      "10.1.0.2",
+			assertErr: require.NoError,
+		},
+		{
+			name:                "error - address not assigned to the reference server",
+			referenceServerArg:  referenceServer,
+			referenceAddressArg: "10.2.0.1",
+			targetServerArg:     targetServer,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Failed to determine the role of the network interface of server "one" () with the address "10.2.0.1" assigned`)
+			},
+		},
+		{
+			name:                "error - target server without an address of the same IP family",
+			referenceServerArg:  referenceServer,
+			referenceAddressArg: "fd00::1",
+			targetServerArg: serverWithInterfaces("two", map[string]incusosapi.SystemNetworkInterfaceState{
+				"eth0": {
+					Addresses: []string{"10.0.0.2"},
+					Roles:     []string{"cluster"},
+				},
+			}),
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Server "two" () does not have an address of the same IP family as "fd00::1" on a network interface with any of the roles [cluster]`)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := memberDependentAddress(tc.referenceServerArg, tc.referenceAddressArg, tc.targetServerArg)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func Test_memberDependentListenAddress(t *testing.T) {
+	referenceServer := provisioning.Server{
+		Name: "one",
+		OSData: api.OSData{
+			Network: incusosapi.SystemNetwork{
+				State: incusosapi.SystemNetworkState{
+					Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+						"eth0": {
+							Addresses: []string{"10.0.0.1"},
+							Roles:     []string{"cluster"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	targetServer := provisioning.Server{
+		Name: "two",
+		OSData: api.OSData{
+			Network: incusosapi.SystemNetwork{
+				State: incusosapi.SystemNetworkState{
+					Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+						"eth0": {
+							Addresses: []string{"10.0.0.2"},
+							Roles:     []string{"cluster"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name                      string
+		referenceListenAddressArg string
+
+		want      string
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:                      "empty listen address is not member dependent",
+			referenceListenAddressArg: "",
+
+			want:      "",
+			assertErr: require.NoError,
+		},
+		{
+			name:                      "wildcard listen address is not member dependent",
+			referenceListenAddressArg: "[::]:3366",
+
+			want:      "[::]:3366",
+			assertErr: require.NoError,
+		},
+		{
+			name:                      "member dependent listen address keeps the port",
+			referenceListenAddressArg: "10.0.0.1:3366",
+
+			want:      "10.0.0.2:3366",
+			assertErr: require.NoError,
+		},
+		{
+			name:                      "error - listen address without port",
+			referenceListenAddressArg: "10.0.0.1",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid listen address "10.0.0.1" of server "one"`)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := memberDependentListenAddress(referenceServer, tc.referenceListenAddressArg, targetServer)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func Test_clusterUpdateState(t *testing.T) {
 	tests := []struct {
 		name                          string

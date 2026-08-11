@@ -622,7 +622,98 @@ func determineClusterRoleAddress(server provisioning.Server) (string, error) {
 	return net.JoinHostPort(ip.String(), "8443"), nil
 }
 
-func (s *clusterService) AddServers(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool) error {
+// memberDependentAddress returns the address of targetServer, which corresponds to
+// referenceAddress of referenceServer.
+//
+// An empty address, a hostname and a wildcard address are not member dependent and are
+// therefore returned unmodified. For a concrete IP address, the network interface of
+// referenceServer, which has this address assigned, is looked up and the equivalent
+// address of targetServer is taken from the network interface with the same role and of
+// the same IP family.
+func memberDependentAddress(referenceServer provisioning.Server, referenceAddress string, targetServer provisioning.Server) (string, error) {
+	referenceIP := net.ParseIP(referenceAddress)
+	if referenceIP == nil || referenceIP.IsUnspecified() {
+		return referenceAddress, nil
+	}
+
+	roles := interfaceRolesForAddress(referenceServer, referenceIP)
+	if len(roles) == 0 {
+		return "", domain.NewValidationErrf("Failed to determine the role of the network interface of server %q (%s) with the address %q assigned", referenceServer.Name, referenceServer.GetConnectionURL(), referenceAddress)
+	}
+
+	isIPv4 := referenceIP.To4() != nil
+
+	for _, role := range roles {
+		ip := interfaceAddressByRoleAndFamily(targetServer, role, isIPv4)
+		if ip != nil {
+			return ip.String(), nil
+		}
+	}
+
+	return "", domain.NewValidationErrf("Server %q (%s) does not have an address of the same IP family as %q on a network interface with any of the roles %v", targetServer.Name, targetServer.GetConnectionURL(), referenceAddress, roles)
+}
+
+// memberDependentListenAddress returns the "host:port" listen address of targetServer,
+// which corresponds to referenceListenAddress of referenceServer. Only the host part is
+// member dependent, see memberDependentAddress, the port is kept as is.
+func memberDependentListenAddress(referenceServer provisioning.Server, referenceListenAddress string, targetServer provisioning.Server) (string, error) {
+	if referenceListenAddress == "" {
+		return "", nil
+	}
+
+	host, port, err := net.SplitHostPort(referenceListenAddress)
+	if err != nil {
+		return "", domain.NewValidationErrf("Invalid listen address %q of server %q (%s): %v", referenceListenAddress, referenceServer.Name, referenceServer.GetConnectionURL(), err)
+	}
+
+	memberHost, err := memberDependentAddress(referenceServer, host, targetServer)
+	if err != nil {
+		return "", err
+	}
+
+	return net.JoinHostPort(memberHost, port), nil
+}
+
+// interfaceRolesForAddress returns the roles of the network interface of server, which has
+// the given IP address assigned.
+func interfaceRolesForAddress(server provisioning.Server, ip net.IP) []string {
+	for _, name := range slices.Sorted(maps.Keys(server.OSData.Network.State.Interfaces)) {
+		iface := server.OSData.Network.State.Interfaces[name]
+		for _, address := range iface.Addresses {
+			if ip.Equal(net.ParseIP(address)) {
+				return iface.Roles
+			}
+		}
+	}
+
+	return nil
+}
+
+// interfaceAddressByRoleAndFamily returns the address of the given IP family from a network
+// interface of server with the given role. In contrast to
+// incusosapi.SystemNetworkState.GetInterfaceAddressByRole, the IP family is not negotiable,
+// since it is defined by the address of the respective reference server.
+func interfaceAddressByRoleAndFamily(server provisioning.Server, role string, isIPv4 bool) net.IP {
+	interfaceNames := server.OSData.Network.State.GetInterfaceNamesByRole(role)
+	slices.Sort(interfaceNames)
+
+	for _, name := range interfaceNames {
+		for _, address := range server.OSData.Network.State.Interfaces[name].Addresses {
+			ip := net.ParseIP(address)
+			if ip == nil {
+				continue
+			}
+
+			if (ip.To4() != nil) == isIPv4 {
+				return ip
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *clusterService) AddServers(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool, copyServicesConfig bool) error {
 	// Pre checks
 	cluster, err := s.repo.GetByName(ctx, name)
 	if err != nil {
@@ -680,6 +771,20 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 		return fmt.Errorf("Failed to get current servers of cluster %q: %w", name, err)
 	}
 
+	if len(currentClusterServers) == 0 {
+		return fmt.Errorf("Cluster %q does not have any servers, which could be used as source for the join: %w", name, domain.ErrOperationNotPermitted)
+	}
+
+	servicesConfigReverter := revert.New()
+	defer servicesConfigReverter.Fail()
+
+	if copyServicesConfig {
+		err = s.copyServicesConfigFromClusterMember(ctx, currentClusterServers[0], additionalServers, servicesConfigReverter)
+		if err != nil {
+			return err
+		}
+	}
+
 	// Check configuration consistency.
 	isConsistent, reason, err := s.checkClusteringServerConsistency(ctx, append(currentClusterServers, additionalServers...))
 	if err != nil {
@@ -733,6 +838,11 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 
 		joinTokens = append(joinTokens, joinToken)
 	}
+
+	// From here on the servers start to join the cluster. Undoing the copied
+	// services config would break the servers, which already joined, so it is kept
+	// in place, even if one of the following steps fails.
+	servicesConfigReverter.Success()
 
 	// Send the join tokens to the remaining servers to join the cluster.
 	for i, server := range additionalServers {
@@ -829,6 +939,173 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 		})
 		if err != nil {
 			return fmt.Errorf("Failed to set config on server %q: %w", server.Name, err)
+		}
+	}
+
+	return nil
+}
+
+func (s *clusterService) copyServicesConfigFromClusterMember(ctx context.Context, sourceServer provisioning.Server, targetServers []provisioning.Server, reverter *revert.Reverter) error {
+	lvmConfig, err := s.client.GetOSServiceLVM(ctx, sourceServer)
+	if err != nil {
+		return fmt.Errorf("Failed to get lvm service config from cluster member %q (%s): %w", sourceServer.Name, sourceServer.GetConnectionURL(), err)
+	}
+
+	iscsiConfig, err := s.client.GetOSServiceISCSI(ctx, sourceServer)
+	if err != nil {
+		return fmt.Errorf("Failed to get iscsi service config from cluster member %q (%s): %w", sourceServer.Name, sourceServer.GetConnectionURL(), err)
+	}
+
+	multipathConfig, err := s.client.GetOSServiceMultipath(ctx, sourceServer)
+	if err != nil {
+		return fmt.Errorf("Failed to get multipath service config from cluster member %q (%s): %w", sourceServer.Name, sourceServer.GetConnectionURL(), err)
+	}
+
+	nvmeConfig, err := s.client.GetOSServiceNVME(ctx, sourceServer)
+	if err != nil {
+		return fmt.Errorf("Failed to get nvme service config from cluster member %q (%s): %w", sourceServer.Name, sourceServer.GetConnectionURL(), err)
+	}
+
+	cephConfig, err := s.client.GetOSServiceCeph(ctx, sourceServer)
+	if err != nil {
+		return fmt.Errorf("Failed to get ceph service config from cluster member %q (%s): %w", sourceServer.Name, sourceServer.GetConnectionURL(), err)
+	}
+
+	linstorConfig, err := s.client.GetOSServiceLinstor(ctx, sourceServer)
+	if err != nil {
+		return fmt.Errorf("Failed to get linstor service config from cluster member %q (%s): %w", sourceServer.Name, sourceServer.GetConnectionURL(), err)
+	}
+
+	ovnConfig, err := s.client.GetOSServiceOVN(ctx, sourceServer)
+	if err != nil {
+		return fmt.Errorf("Failed to get ovn service config from cluster member %q (%s): %w", sourceServer.Name, sourceServer.GetConnectionURL(), err)
+	}
+
+	// The LVM system_id is controlled by Operations Center and not the user.
+	// system_id is required to be between 1 and 2000. Just using the server.ID
+	// will fail, when we hit values > 2000.
+	if lvmConfig.Config.Enabled {
+		for _, server := range targetServers {
+			if server.ID > 2000 {
+				return fmt.Errorf(`Failed to enable OS service "lvm" on %q: can not enable LVM on servers with internal ID > 2000: %w`, server.Name, domain.ErrOperationNotPermitted)
+			}
+		}
+	}
+
+	type servicesConfig struct {
+		lvm       incusosapi.ServiceLVMConfig
+		iscsi     incusosapi.ServiceISCSIConfig
+		multipath incusosapi.ServiceMultipathConfig
+		nvme      incusosapi.ServiceNVMEConfig
+		ceph      incusosapi.ServiceCephConfig
+		linstor   incusosapi.ServiceLinstorConfig
+		ovn       incusosapi.ServiceOVNConfig
+	}
+
+	currentServicesConfigs := make(map[string]servicesConfig, len(targetServers))
+	for _, server := range targetServers {
+		currentLVMConfig, err := s.client.GetOSServiceLVM(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get lvm service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		currentISCSIConfig, err := s.client.GetOSServiceISCSI(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get iscsi service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		currentMultipathConfig, err := s.client.GetOSServiceMultipath(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get multipath service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		currentNVMEConfig, err := s.client.GetOSServiceNVME(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get nvme service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		currentCephConfig, err := s.client.GetOSServiceCeph(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get ceph service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		currentLinstorConfig, err := s.client.GetOSServiceLinstor(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get linstor service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		currentOVNConfig, err := s.client.GetOSServiceOVN(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get ovn service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		}
+
+		currentServicesConfigs[server.Name] = servicesConfig{
+			lvm:       currentLVMConfig.Config,
+			iscsi:     currentISCSIConfig.Config,
+			multipath: currentMultipathConfig.Config,
+			nvme:      currentNVMEConfig.Config,
+			ceph:      currentCephConfig.Config,
+			linstor:   currentLinstorConfig.Config,
+			ovn:       currentOVNConfig.Config,
+		}
+	}
+
+	revertCtx := context.WithoutCancel(ctx)
+
+	for _, server := range targetServers {
+		currentServicesConfig := currentServicesConfigs[server.Name]
+
+		serverLVMConfig := lvmConfig.Config
+		if serverLVMConfig.Enabled && !currentServicesConfig.lvm.Enabled {
+			serverLVMConfig.SystemID = int(server.ID)
+		} else {
+			// The system_id is either already assigned to the target server or not
+			// needed, since LVM stays disabled. Keep the one of the target server.
+			serverLVMConfig.SystemID = currentServicesConfig.lvm.SystemID
+		}
+
+		// The linstor listen address and the ovn tunnel address are member dependent,
+		// unless they are empty or a wildcard address.
+		serverLinstorConfig := linstorConfig.Config
+
+		serverLinstorConfig.ListenAddress, err = memberDependentListenAddress(sourceServer, linstorConfig.Config.ListenAddress, server)
+		if err != nil {
+			return fmt.Errorf("Failed to derive the linstor listen address for server %q (%s) from cluster member %q: %w", server.Name, server.GetConnectionURL(), sourceServer.Name, err)
+		}
+
+		serverOVNConfig := ovnConfig.Config
+
+		serverOVNConfig.TunnelAddress, err = memberDependentAddress(sourceServer, ovnConfig.Config.TunnelAddress, server)
+		if err != nil {
+			return fmt.Errorf("Failed to derive the ovn tunnel address for server %q (%s) from cluster member %q: %w", server.Name, server.GetConnectionURL(), sourceServer.Name, err)
+		}
+
+		copiedServicesConfigs := []struct {
+			name          string
+			config        any
+			currentConfig any
+		}{
+			{name: "lvm", config: incusosapi.ServiceLVM{Config: serverLVMConfig}, currentConfig: incusosapi.ServiceLVM{Config: currentServicesConfig.lvm}},
+			{name: "iscsi", config: incusosapi.ServiceISCSI{Config: iscsiConfig.Config}, currentConfig: incusosapi.ServiceISCSI{Config: currentServicesConfig.iscsi}},
+			{name: "multipath", config: incusosapi.ServiceMultipath{Config: multipathConfig.Config}, currentConfig: incusosapi.ServiceMultipath{Config: currentServicesConfig.multipath}},
+			{name: "nvme", config: incusosapi.ServiceNVME{Config: nvmeConfig.Config}, currentConfig: incusosapi.ServiceNVME{Config: currentServicesConfig.nvme}},
+			{name: "ceph", config: incusosapi.ServiceCeph{Config: cephConfig.Config}, currentConfig: incusosapi.ServiceCeph{Config: currentServicesConfig.ceph}},
+			{name: "linstor", config: incusosapi.ServiceLinstor{Config: serverLinstorConfig}, currentConfig: incusosapi.ServiceLinstor{Config: currentServicesConfig.linstor}},
+			{name: "ovn", config: incusosapi.ServiceOVN{Config: serverOVNConfig}, currentConfig: incusosapi.ServiceOVN{Config: currentServicesConfig.ovn}},
+		}
+
+		for _, serviceConfig := range copiedServicesConfigs {
+			err = s.client.UpdateOSService(ctx, server, serviceConfig.name, serviceConfig.config)
+			if err != nil {
+				return fmt.Errorf("Failed to copy %s service config from cluster member %q to server %q (%s): %w", serviceConfig.name, sourceServer.Name, server.Name, server.GetConnectionURL(), err)
+			}
+
+			reverter.Add(func() {
+				revertErr := s.client.UpdateOSService(revertCtx, server, serviceConfig.name, serviceConfig.currentConfig)
+				if revertErr != nil {
+					slog.ErrorContext(revertCtx, "Failed to revert previously copied service config", logger.Err(revertErr), slog.String("service", serviceConfig.name), slog.String("server", server.Name), slog.String("connection_url", server.GetConnectionURL()), slog.Any("service_config", serviceConfig.currentConfig))
+				}
+			})
 		}
 	}
 
@@ -982,6 +1259,23 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 		seenSystemIDs = append(seenSystemIDs, lvmConfig.Config.SystemID)
 	}
 
+	// Compare iSCSI service configuration.
+	referenceISCSIConfig, err := s.client.GetOSServiceISCSI(ctx, servers[0])
+	if err != nil {
+		return false, "", fmt.Errorf("Failed to get iSCSI service configuration for server %q: %w", servers[0].Name, err)
+	}
+
+	for _, server := range servers[1:] {
+		iscsiConfig, err := s.client.GetOSServiceISCSI(ctx, server)
+		if err != nil {
+			return false, "", fmt.Errorf("Failed to get iSCSI service configuration for server %q: %w", server.Name, err)
+		}
+
+		if !reflect.DeepEqual(referenceISCSIConfig.Config, iscsiConfig.Config) {
+			return false, fmt.Sprintf("iSCSI configuration mismatch, found %v (%s) and %v (%s)", referenceISCSIConfig.Config, servers[0].Name, iscsiConfig.Config, server.Name), nil
+		}
+	}
+
 	// Compare multipath service configuration.
 	referenceMultipathConfig, err := s.client.GetOSServiceMultipath(ctx, servers[0])
 	if err != nil {
@@ -1013,6 +1307,87 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 
 		if !reflect.DeepEqual(referenceNVMEConfig.Config, nvmeConfig.Config) {
 			return false, fmt.Sprintf("NVME configuration mismatch, found %v (%s) and %v (%s)", referenceNVMEConfig.Config, servers[0].Name, nvmeConfig.Config, server.Name), nil
+		}
+	}
+
+	// Compare Ceph service configuration.
+	referenceCephConfig, err := s.client.GetOSServiceCeph(ctx, servers[0])
+	if err != nil {
+		return false, "", fmt.Errorf("Failed to get Ceph service configuration for server %q: %w", servers[0].Name, err)
+	}
+
+	for _, server := range servers[1:] {
+		cephConfig, err := s.client.GetOSServiceCeph(ctx, server)
+		if err != nil {
+			return false, "", fmt.Errorf("Failed to get Ceph service configuration for server %q: %w", server.Name, err)
+		}
+
+		if !reflect.DeepEqual(referenceCephConfig.Config, cephConfig.Config) {
+			return false, fmt.Sprintf("Ceph configuration mismatch, found %v (%s) and %v (%s)", referenceCephConfig.Config, servers[0].Name, cephConfig.Config, server.Name), nil
+		}
+	}
+
+	// Compare Linstor service configuration. The listen address is member dependent,
+	// unless it is empty or a wildcard address, so it is compared separately.
+	referenceLinstorConfig, err := s.client.GetOSServiceLinstor(ctx, servers[0])
+	if err != nil {
+		return false, "", fmt.Errorf("Failed to get Linstor service configuration for server %q: %w", servers[0].Name, err)
+	}
+
+	for _, server := range servers[1:] {
+		linstorConfig, err := s.client.GetOSServiceLinstor(ctx, server)
+		if err != nil {
+			return false, "", fmt.Errorf("Failed to get Linstor service configuration for server %q: %w", server.Name, err)
+		}
+
+		expectedListenAddress, err := memberDependentListenAddress(servers[0], referenceLinstorConfig.Config.ListenAddress, server)
+		if err != nil {
+			return false, fmt.Sprintf("Linstor listen address mismatch, failed to derive the listen address for %s: %v", server.Name, err), nil
+		}
+
+		if expectedListenAddress != linstorConfig.Config.ListenAddress {
+			return false, fmt.Sprintf("Linstor listen address mismatch, found %q (%s) and %q (%s), expected %q for %s", referenceLinstorConfig.Config.ListenAddress, servers[0].Name, linstorConfig.Config.ListenAddress, server.Name, expectedListenAddress, server.Name), nil
+		}
+
+		referenceConfig := referenceLinstorConfig.Config
+		referenceConfig.ListenAddress = ""
+		serverConfig := linstorConfig.Config
+		serverConfig.ListenAddress = ""
+
+		if !reflect.DeepEqual(referenceConfig, serverConfig) {
+			return false, fmt.Sprintf("Linstor configuration mismatch, found %v (%s) and %v (%s)", referenceLinstorConfig.Config, servers[0].Name, linstorConfig.Config, server.Name), nil
+		}
+	}
+
+	// Compare OVN service configuration. The tunnel address is member dependent, unless
+	// it is empty, so it is compared separately.
+	referenceOVNConfig, err := s.client.GetOSServiceOVN(ctx, servers[0])
+	if err != nil {
+		return false, "", fmt.Errorf("Failed to get OVN service configuration for server %q: %w", servers[0].Name, err)
+	}
+
+	for _, server := range servers[1:] {
+		ovnConfig, err := s.client.GetOSServiceOVN(ctx, server)
+		if err != nil {
+			return false, "", fmt.Errorf("Failed to get OVN service configuration for server %q: %w", server.Name, err)
+		}
+
+		expectedTunnelAddress, err := memberDependentAddress(servers[0], referenceOVNConfig.Config.TunnelAddress, server)
+		if err != nil {
+			return false, fmt.Sprintf("OVN tunnel address mismatch, failed to derive the tunnel address for %s: %v", server.Name, err), nil
+		}
+
+		if expectedTunnelAddress != ovnConfig.Config.TunnelAddress {
+			return false, fmt.Sprintf("OVN tunnel address mismatch, found %q (%s) and %q (%s), expected %q for %s", referenceOVNConfig.Config.TunnelAddress, servers[0].Name, ovnConfig.Config.TunnelAddress, server.Name, expectedTunnelAddress, server.Name), nil
+		}
+
+		referenceConfig := referenceOVNConfig.Config
+		referenceConfig.TunnelAddress = ""
+		serverConfig := ovnConfig.Config
+		serverConfig.TunnelAddress = ""
+
+		if !reflect.DeepEqual(referenceConfig, serverConfig) {
+			return false, fmt.Sprintf("OVN configuration mismatch, found %v (%s) and %v (%s)", referenceOVNConfig.Config, servers[0].Name, ovnConfig.Config, server.Name), nil
 		}
 	}
 

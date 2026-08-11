@@ -15,7 +15,7 @@ import (
 
 type ClusterService interface {
 	Create(ctx context.Context, cluster Cluster) (Cluster, error)
-	AddServers(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool) error
+	AddServers(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool, copyServicesConfig bool) error
 	RemoveServer(ctx context.Context, name string, removedServerNames []string) error
 	GetAll(ctx context.Context) (Clusters, error)
 	GetAllWithFilter(ctx context.Context, filter ClusterFilter) (Clusters, error)
@@ -87,6 +87,9 @@ type ClusterClientPort interface {
 	GetOSServiceISCSI(ctx context.Context, server Server) (incusosapi.ServiceISCSI, error)
 	GetOSServiceMultipath(ctx context.Context, server Server) (incusosapi.ServiceMultipath, error)
 	GetOSServiceNVME(ctx context.Context, server Server) (incusosapi.ServiceNVME, error)
+	GetOSServiceCeph(ctx context.Context, server Server) (incusosapi.ServiceCeph, error)
+	GetOSServiceLinstor(ctx context.Context, server Server) (incusosapi.ServiceLinstor, error)
+	GetOSServiceOVN(ctx context.Context, server Server) (incusosapi.ServiceOVN, error)
 	UpdateOSService(ctx context.Context, server Server, name string, config any) error
 	UpdateNetworkConfig(ctx context.Context, server Server) error
 	SetServerConfig(ctx context.Context, endpoint Endpoint, config map[string]string) error
