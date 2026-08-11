@@ -113,6 +113,40 @@ func (_d ServerServiceWithSlog) ApplyBIOSAttributesByName(ctx context.Context, n
 	return _d._base.ApplyBIOSAttributesByName(ctx, name, attributes)
 }
 
+// BMCApplySecureBootCertificatesByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCApplySecureBootCertificatesByName(ctx context.Context, name string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCApplySecureBootCertificatesByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BMCApplySecureBootCertificatesByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BMCApplySecureBootCertificatesByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BMCApplySecureBootCertificatesByName finished")
+		}
+	}()
+	return _d._base.BMCApplySecureBootCertificatesByName(ctx, name)
+}
+
 // BMCAttachMediaByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCAttachMediaByName(ctx context.Context, name string, media api.ServerBMCAttachMedia) (err error) {
 	log := slog.With()

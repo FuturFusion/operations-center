@@ -69,6 +69,20 @@ func (_d ServerServiceWithPrometheus) ApplyBIOSAttributesByName(ctx context.Cont
 	return _d.base.ApplyBIOSAttributesByName(ctx, name, attributes)
 }
 
+// BMCApplySecureBootCertificatesByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BMCApplySecureBootCertificatesByName(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCApplySecureBootCertificatesByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BMCApplySecureBootCertificatesByName(ctx, name)
+}
+
 // BMCAttachMediaByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) BMCAttachMediaByName(ctx context.Context, name string, media api.ServerBMCAttachMedia) (err error) {
 	_since := time.Now()

@@ -53,6 +53,20 @@ func (_d BMCServerClientPortWithPrometheus) ApplyBIOSAttributes(ctx context.Cont
 	return _d.base.ApplyBIOSAttributes(ctx, server, attributes)
 }
 
+// ApplySecureBootCertificates implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) ApplySecureBootCertificates(ctx context.Context, server provisioning.Server) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "ApplySecureBootCertificates", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ApplySecureBootCertificates(ctx, server)
+}
+
 // AttachMedia implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithPrometheus) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
 	_since := time.Now()
