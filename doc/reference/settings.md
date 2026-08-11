@@ -14,9 +14,28 @@ Several global settings are available to be configured in Operations Center:
 | Configuration                          | Description                                                              | Value(s)          | Default |
 | :---                                   | :---                                                                     | :---              | :---    |
 | `trusted_tls_client_cert_fingerprints` | List of SHA256 certificate fingerprints belonging to trusted TLS clients | list of strings   |         |
+| `trusted_tls_client_certificates`      | List of X509 PEM encoded certificates belonging to trusted TLS clients   | list of strings   |         |
 | `oidc`                                 | OIDC configuration                                                       |                   |         |
 | `openfga`                              | OpenFGA configuration                                                    |                   |         |
 | `acme`                                 | ACME certificate renewal configuration                                   |                   |         |
+
+The SHA256 fingerprint of every certificate in `trusted_tls_client_certificates`
+is derived when the configuration is loaded and added to the trusted fingerprints
+in memory, therefore both settings grant the respective client access to
+Operations Center. The derived fingerprints are never written to the
+configuration, so removing a certificate is all it takes to revoke the access it
+grants.
+
+In contrast to bare fingerprints, the certificates are additionally passed on to
+the servers and clusters deployed by Operations Center, so whoever has access to
+Operations Center also has access to what Operations Center deploys. See
+[application configuration](cluster.md#application-configuration) for how to opt
+out of this for a specific cluster.
+
+A certificate is passed on at the time a system is deployed. Removing it from
+`trusted_tls_client_certificates` therefore only revokes the access to Operations
+Center itself, the already deployed systems keep trusting the certificate until
+it is removed from their trust store as well.
 
 ### OIDC
 
