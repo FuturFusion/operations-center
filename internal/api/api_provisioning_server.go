@@ -84,6 +84,7 @@ func registerProvisioningServerHandler(
 	router.HandleFunc("POST /{name}/bmc/:apply-bios-attributes", response.With(handler.serverBMCApplyBIOSAttributesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}/bmc/bios-attributes", response.With(handler.serverBMCBIOSAttributesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}/bmc/bios-attributes/{attributeName...}", response.With(handler.serverBMCBIOSAttributeGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{name}/bmc/:setup-secure-boot-certificates", response.With(handler.serverBMCSetupSecureBootCertificatesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}/bmc/logs", response.With(handler.serverBMCLogSourcesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}/bmc/logs/{logSource...}", response.With(handler.serverBMCLogEntriesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}/changelog", response.With(handler.serverChangelogGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -1203,6 +1204,46 @@ func (s *serverHandler) serverBMCBIOSAttributeGet(r *http.Request) response.Resp
 	}
 
 	return response.SyncResponse(true, values)
+}
+
+// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:setup-secure-boot-certificates servers_bmc server_bmc_setup_secure_boot_certificates_post
+//
+//	Setup the secure boot certificates via BMC
+//
+//	Wipes the KEK, DB and DBX secure boot databases of the server and
+//	reinitializes them with the secure boot certificates provided by IncusOS.
+//
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverBMCSetupSecureBootCertificatesPost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	err := s.service.BMCSetupSecureBootCertificatesByName(r.Context(), name)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to setup secure boot certificates for server %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
 }
 
 // swagger:operation GET /1.0/provisioning/servers/{name}/bmc/logs servers_bmc server_bmc_logs_get
