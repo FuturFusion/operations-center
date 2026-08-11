@@ -34,8 +34,10 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
+	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 func TestClusterService_Create(t *testing.T) {
@@ -62,6 +64,9 @@ func TestClusterService_Create(t *testing.T) {
 		clientGetOSDataErr                                error
 		clientGetNodeSpecificConfigKeysErr                error
 		clientGetRemoteCertificateErr                     error
+		clientIncusClientErr                              error
+		incusClientGetCertificateFingerprints             []string
+		incusClientGetCertificateFingerprintsErr          error
 		serverSvcGetByName                                []queue.Item[*provisioning.Server]
 		serverSvcUpdateErr                                error
 		serverSvcUpdateSystemUpdateErr                    error
@@ -72,12 +77,18 @@ func TestClusterService_Create(t *testing.T) {
 		provisionerInitErr                                error
 		provisionerSeedCertificateErr                     error
 		inventorySyncerSyncClusterErr                     error
+		trustedClientCertificates                         []string
+		wantProvisionedClientCertificates                 []string
+		wantKnownClientCertificates                       []string
 
 		assertErr     require.ErrorAssertionFunc
 		signalHandler func(t *testing.T, called *bool) func(ctx context.Context, cum lifecycle.ClusterUpdateMessage)
 	}{
 		{
-			name: "success",
+			name:                              "success",
+			trustedClientCertificates:         []string{testcert.ClientCertificate},
+			wantProvisionedClientCertificates: []string{testcert.ClientCertificate},
+			wantKnownClientCertificates:       []string{},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerNames: []string{"server1", "server2"},
@@ -200,7 +211,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireCallSignalHandler,
 		},
 		{
-			name: "error - validation",
+			name:                      "error - validation",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "", // invalid
 				ServerType:  api.ServerTypeIncus,
@@ -214,7 +226,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - repo.ExistsByName cluster already exists",
+			name:                      "error - repo.ExistsByName cluster already exists",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -229,7 +242,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - repo.ExistsByName",
+			name:                      "error - repo.ExistsByName",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -241,7 +255,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - serverSvc.GetByName",
+			name:                      "error - serverSvc.GetByName",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -257,7 +272,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - server already part of cluster",
+			name:                      "error - server already part of cluster",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -282,7 +298,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - server not in ready state",
+			name:                      "error - server not in ready state",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -314,7 +331,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - server not in same update channel",
+			name:                      "error - server not in same update channel",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -346,7 +364,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - server requires update",
+			name:                      "error - server requires update",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -379,7 +398,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - server does not have incus application",
+			name:                      "error - server does not have incus application",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -411,7 +431,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - incus application version mismatch",
+			name:                      "error - incus application version mismatch",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -459,7 +480,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - incus application name mismatch",
+			name:                      "error - incus application name mismatch",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -507,7 +529,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - repo.Create",
+			name:                      "error - repo.Create",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -554,7 +577,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - server has wrong type",
+			name:                      "error - server has wrong type",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -602,7 +626,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - client.Ping",
+			name:                      "error - client.Ping",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -648,7 +673,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - invalid os service config",
+			name:                      "error - invalid os service config",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -699,7 +725,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - lvm enabled not bool",
+			name:                      "error - lvm enabled not bool",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -751,7 +778,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - invalid os service config",
+			name:                      "error - invalid os service config",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -804,7 +832,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - client.UpdateOSService",
+			name:                      "error - client.UpdateOSService",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -855,7 +884,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - server without ip address on cluster interface",
+			name:                      "error - server without ip address on cluster interface",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -930,7 +960,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - client.SetServerConfig",
+			name:                      "error - client.SetServerConfig",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -1013,7 +1044,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - server without ip address on management interface",
+			name:                      "error - server without ip address on management interface",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -1109,7 +1141,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - client.EnableCluster",
+			name:                      "error - client.EnableCluster",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -1191,7 +1224,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - client.GetClusterNodeNames",
+			name:                      "error - client.GetClusterNodeNames",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -1274,7 +1308,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - client.GetClusterJoinToken",
+			name:                      "error - client.GetClusterJoinToken",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -1357,7 +1392,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - client.JoinCluster",
+			name:                      "error - client.JoinCluster",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -1440,7 +1476,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - serverSvc.GetByName - 2nd transaction",
+			name:                      "error - serverSvc.GetByName - 2nd transaction",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -1524,7 +1561,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - server already part of cluster - 2nd transaction",
+			name:                      "error - server already part of cluster - 2nd transaction",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -1624,7 +1662,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - repo.Update",
+			name:                      "error - repo.Update",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -1739,7 +1778,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - serverSvc.Update",
+			name:                      "error - serverSvc.Update",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -1854,7 +1894,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - client.GetOSData",
+			name:                      "error - client.GetOSData",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -1969,7 +2010,8 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - client.GetNodeSpecificConfigKeys",
+			name:                      "error - client.GetNodeSpecificConfigKeys",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -2084,7 +2126,124 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - provisioner.Init",
+			name:                      "error - incusClient.GetCertificateFingerprints",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"eth0": {
+											Addresses: []string{
+												"192.168.0.100",
+											},
+											Roles: []string{
+												"management",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server1",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "server2",
+						Type:    api.ServerTypeIncus,
+						Status:  api.ServerStatusReady,
+						Channel: "stable",
+						VersionData: api.ServerVersionData{
+							Applications: []api.ApplicationVersionData{
+								{
+									Name:    "incus",
+									Version: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate:           "certificate",
+			incusClientGetCertificateFingerprintsErr: boom.Error,
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name:                      "error - provisioner.Init",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -2195,11 +2354,21 @@ func TestClusterService_Create(t *testing.T) {
 			clientEnableClusterCertificate: "certificate",
 			provisionerInitErr:             boom.Error,
 
+			// The cluster does already trust the certificate, since it has been
+			// applied with the seed config of the servers, so it is not provisioned
+			// a second time.
+			incusClientGetCertificateFingerprints: []string{testcert.ClientCertificateFingerprint},
+			wantProvisionedClientCertificates:     []string{},
+			wantKnownClientCertificates:           []string{testcert.ClientCertificate},
+
 			assertErr:     boom.ErrorIs,
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - provisioner.Apply",
+			name:                              "error - provisioner.Apply",
+			trustedClientCertificates:         []string{testcert.ClientCertificate},
+			wantProvisionedClientCertificates: []string{testcert.ClientCertificate},
+			wantKnownClientCertificates:       []string{},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -2318,7 +2487,10 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - provisioner.Apply - retry three times",
+			name:                              "error - provisioner.Apply - retry three times",
+			trustedClientCertificates:         []string{testcert.ClientCertificate},
+			wantProvisionedClientCertificates: []string{testcert.ClientCertificate},
+			wantKnownClientCertificates:       []string{},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -2446,7 +2618,10 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - provisioner.Apply - retry - serverSvc.PollServer",
+			name:                              "error - provisioner.Apply - retry - serverSvc.PollServer",
+			trustedClientCertificates:         []string{testcert.ClientCertificate},
+			wantProvisionedClientCertificates: []string{testcert.ClientCertificate},
+			wantKnownClientCertificates:       []string{},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -2566,7 +2741,10 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - provisioner.Apply - retry - serverSvc.GetAllWithFilter",
+			name:                              "error - provisioner.Apply - retry - serverSvc.GetAllWithFilter",
+			trustedClientCertificates:         []string{testcert.ClientCertificate},
+			wantProvisionedClientCertificates: []string{testcert.ClientCertificate},
+			wantKnownClientCertificates:       []string{},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -2686,7 +2864,10 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - provisioner.Apply - retry - serverSvc.GetAllWithFilter - none nill certificate",
+			name:                              "error - provisioner.Apply - retry - serverSvc.GetAllWithFilter - none nill certificate",
+			trustedClientCertificates:         []string{testcert.ClientCertificate},
+			wantProvisionedClientCertificates: []string{testcert.ClientCertificate},
+			wantKnownClientCertificates:       []string{},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -2812,7 +2993,10 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - provisioner.Apply - retry - client.GetRemoteCertificate",
+			name:                              "error - provisioner.Apply - retry - client.GetRemoteCertificate",
+			trustedClientCertificates:         []string{testcert.ClientCertificate},
+			wantProvisionedClientCertificates: []string{testcert.ClientCertificate},
+			wantKnownClientCertificates:       []string{},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -2935,7 +3119,10 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - provisioner.Apply - retry - serverSvc.SeedCertificate",
+			name:                              "error - provisioner.Apply - retry - serverSvc.SeedCertificate",
+			trustedClientCertificates:         []string{testcert.ClientCertificate},
+			wantProvisionedClientCertificates: []string{testcert.ClientCertificate},
+			wantKnownClientCertificates:       []string{},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -3058,7 +3245,10 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - localArtifactRepo.CreateClusterArtifactFromPath",
+			name:                              "error - localArtifactRepo.CreateClusterArtifactFromPath",
+			trustedClientCertificates:         []string{testcert.ClientCertificate},
+			wantProvisionedClientCertificates: []string{testcert.ClientCertificate},
+			wantKnownClientCertificates:       []string{},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -3176,7 +3366,10 @@ func TestClusterService_Create(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name: "error - inventory syncer error",
+			name:                              "error - inventory syncer error",
+			trustedClientCertificates:         []string{testcert.ClientCertificate},
+			wantProvisionedClientCertificates: []string{testcert.ClientCertificate},
+			wantKnownClientCertificates:       []string{},
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerType:  api.ServerTypeIncus,
@@ -3298,6 +3491,19 @@ func TestClusterService_Create(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			config.InitTest(t, &envMock.EnvironmentMock{
+				IsIncusOSFunc: func() bool { return false },
+			}, nil)
+
+			err := config.UpdateSecurity(t.Context(), system.SecurityPut{
+				TrustedTLSClientCertificates: tc.trustedClientCertificates,
+			})
+			require.NoError(t, err)
+
+			t.Cleanup(func() {
+				config.InitTest(t, &envMock.EnvironmentMock{}, nil)
+			})
+
 			repo := &mock.ClusterRepoMock{
 				ExistsByNameFunc: func(ctx context.Context, name string) (bool, error) {
 					return tc.repoExistsByName, tc.repoExistsByNameErr
@@ -3348,6 +3554,13 @@ func TestClusterService_Create(t *testing.T) {
 				GetRemoteCertificateFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (*x509.Certificate, error) {
 					return &x509.Certificate{}, tc.clientGetRemoteCertificateErr
 				},
+				IncusClientFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (incusclient.InstanceServer, error) {
+					return &adapterMock.InstanceServerMock{
+						GetCertificateFingerprintsFunc: func() ([]string, error) {
+							return tc.incusClientGetCertificateFingerprints, tc.incusClientGetCertificateFingerprintsErr
+						},
+					}, tc.clientIncusClientErr
+				},
 			}
 
 			serverSvc := &serviceMock.ServerServiceMock{
@@ -3370,7 +3583,10 @@ func TestClusterService_Create(t *testing.T) {
 			}
 
 			provisioner := &adapterMock.ClusterProvisioningPortMock{
-				InitFunc: func(ctx context.Context, clusterName string, config provisioning.ClusterProvisioningConfig) (string, func() error, error) {
+				InitFunc: func(ctx context.Context, clusterName string, provisioningConfig provisioning.ClusterProvisioningConfig) (string, func() error, error) {
+					require.Equal(t, tc.wantProvisionedClientCertificates, provisioningConfig.TrustedClientCertificates)
+					require.Equal(t, tc.wantKnownClientCertificates, provisioningConfig.KnownTrustedClientCertificates)
+
 					return "", func() error { return nil }, tc.provisionerInitErr
 				},
 				ApplyFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
@@ -3411,7 +3627,7 @@ func TestClusterService_Create(t *testing.T) {
 			lifecycle.ClusterUpdateSignal.AddListener(tc.signalHandler(t, &signalHandlerCalled))
 
 			// Run test
-			_, err := clusterSvc.Create(context.Background(), tc.cluster)
+			_, err = clusterSvc.Create(context.Background(), tc.cluster)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -15508,13 +15724,15 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 		tokenSvcGetTokenProviderConfig    *api.TokenProviderConfig
 		tokenSvcGetTokenProviderConfigErr error
 		repoDeleteByNameErr               error
+		trustedClientCertificates         []string
 
 		assertErr     require.ErrorAssertionFunc
 		signalHandler func(t *testing.T, called *bool) func(ctx context.Context, cum lifecycle.ClusterUpdateMessage)
 	}{
 		{
-			name:    "success",
-			nameArg: "one",
+			name:                      "success",
+			nameArg:                   "one",
+			trustedClientCertificates: []string{testcert.ClientCertificate},
 
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
@@ -15743,6 +15961,19 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			config.InitTest(t, &envMock.EnvironmentMock{
+				IsIncusOSFunc: func() bool { return false },
+			}, nil)
+
+			err := config.UpdateSecurity(t.Context(), system.SecurityPut{
+				TrustedTLSClientCertificates: tc.trustedClientCertificates,
+			})
+			require.NoError(t, err)
+
+			t.Cleanup(func() {
+				config.InitTest(t, &envMock.EnvironmentMock{}, nil)
+			})
+
 			repo := &mock.ClusterRepoMock{
 				DeleteByNameFunc: func(ctx context.Context, name string) error {
 					return tc.repoDeleteByNameErr
@@ -15772,6 +16003,15 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 					return tc.clientPingErr
 				},
 				SystemFactoryResetFunc: func(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error {
+					// The servers are deployed again, so they trust the same clients as
+					// any other system deployed by Operations Center.
+					require.Equal(t, tc.trustedClientCertificates, seeds.OperationsCenter.TrustedClientCertificates)
+					require.Equal(t, tc.trustedClientCertificates, seeds.MigrationManager.TrustedClientCertificates)
+
+					for i, certificate := range tc.trustedClientCertificates {
+						require.Equal(t, certificate, seeds.Incus.Preseed.Certificates[i].Certificate)
+					}
+
 					return tc.clientSystemFactoryResetErr
 				},
 			}
@@ -15788,7 +16028,7 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 			lifecycle.ClusterUpdateSignal.AddListener(tc.signalHandler(t, &signalHandlerCalled))
 
 			// Run test
-			err := clusterSvc.DeleteAndFactoryResetByName(context.Background(), tc.nameArg, tc.tokenArg, tc.tokenSeedNameArg)
+			err = clusterSvc.DeleteAndFactoryResetByName(context.Background(), tc.nameArg, tc.tokenArg, tc.tokenSeedNameArg)
 
 			// Assert
 			tc.assertErr(t, err)
