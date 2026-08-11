@@ -467,6 +467,40 @@ func (_d ServerServiceWithSlog) BMCServerSetLocationIndicatorByName(ctx context.
 	return _d._base.BMCServerSetLocationIndicatorByName(ctx, name, active)
 }
 
+// BMCSetupSecureBootCertificatesByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BMCSetupSecureBootCertificatesByName(ctx context.Context, name string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BMCSetupSecureBootCertificatesByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BMCSetupSecureBootCertificatesByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BMCSetupSecureBootCertificatesByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BMCSetupSecureBootCertificatesByName finished")
+		}
+	}()
+	return _d._base.BMCSetupSecureBootCertificatesByName(ctx, name)
+}
+
 // DeleteByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
 	log := slog.With()

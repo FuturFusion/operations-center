@@ -209,6 +209,20 @@ func (_d ServerServiceWithPrometheus) BMCServerSetLocationIndicatorByName(ctx co
 	return _d.base.BMCServerSetLocationIndicatorByName(ctx, name, active)
 }
 
+// BMCSetupSecureBootCertificatesByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BMCSetupSecureBootCertificatesByName(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCSetupSecureBootCertificatesByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BMCSetupSecureBootCertificatesByName(ctx, name)
+}
+
 // DeleteByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) DeleteByName(ctx context.Context, name string) (err error) {
 	_since := time.Now()
