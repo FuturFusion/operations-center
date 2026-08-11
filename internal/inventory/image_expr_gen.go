@@ -23,6 +23,7 @@ type ExprApiImage struct {
 	LastUsedAt      time.Time           `json:"last_used_at" yaml:"last_used_at" expr:"last_used_at"`
 	UploadedAt      time.Time           `json:"uploaded_at" yaml:"uploaded_at" expr:"uploaded_at"`
 	Project         string              `json:"project" yaml:"project" expr:"project"`
+	Locations       []string            `json:"locations" yaml:"locations" expr:"locations"`
 }
 
 type ExprApiImageAlias struct {
@@ -75,6 +76,7 @@ func ToExprApiImage(i api.Image) ExprApiImage {
 		LastUsedAt:      i.LastUsedAt,
 		UploadedAt:      i.UploadedAt,
 		Project:         i.Project,
+		Locations:       i.Locations,
 	}
 }
 
