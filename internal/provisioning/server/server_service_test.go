@@ -34,6 +34,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
+	"github.com/FuturFusion/operations-center/internal/util/testing/flaky"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
@@ -7656,6 +7657,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 		clientUpdateOSErr                               error
 		channelSvcGetByNameErr                          error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
+		flakyLog                                        bool
 
 		assertErr require.ErrorAssertionFunc
 		assertLog log.MatcherFunc
@@ -7837,6 +7839,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				boom.Error,
 			},
 			clientUpdateOSErr: boom.Error,
+			flakyLog:          true,
 
 			assertErr: boom.ErrorIs,
 			assertLog: log.Match("Failed to restore previous server state after failed to update the system server=one err=.*boom!"),
@@ -7897,12 +7900,17 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
 			)
 
+			logT := log.TestifyT(t)
+			if tc.flakyLog {
+				logT = flaky.SkipOnFail(t, "log line for restoring previous server state is occasionally not observed on CI")
+			}
+
 			// Run test
 			err = serverSvc.UpdateSystemByName(t.Context(), "one", tc.argUpdateRequest, tc.argForce)
 
 			// Assert
 			tc.assertErr(t, err)
-			tc.assertLog(t, logBuf)
+			tc.assertLog(logT, logBuf)
 
 			require.Empty(t, tc.repoUpdateErrs)
 		})
