@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/stmcginnis/gofish"
 	"github.com/stmcginnis/gofish/schemas"
 
@@ -35,8 +36,14 @@ import (
 
 const defaultConnectionTestTimeout = 5 * time.Second
 
+// environment provides access to the internal API of IncusOS.
+type environment interface {
+	GetSecureBootCertificates(ctx context.Context) (incusosapi.InternalSecureBootCertificates, error)
+}
+
 type redfish struct {
 	connectionTestTimeout time.Duration
+	env                   environment
 }
 
 var _ provisioning.BMCServerClientPort = redfish{}
@@ -46,6 +53,15 @@ type Option func(r *redfish)
 func WithConnectionTestTimeout(timeout time.Duration) Option {
 	return func(r *redfish) {
 		r.connectionTestTimeout = timeout
+	}
+}
+
+// WithSecureBootCertificates defines the source for the certificates, which are
+// written to the respective secure boot databases (e.g. "KEK", "DB") when
+// applying the secure boot certificates.
+func WithSecureBootCertificates(env environment) Option {
+	return func(r *redfish) {
+		r.env = env
 	}
 }
 
