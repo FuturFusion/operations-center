@@ -63,6 +63,7 @@ type ServerService interface {
 	ApplyBIOSAttributesByName(ctx context.Context, name string, attributes map[string]any) error
 	BMCBIOSAttributesByName(ctx context.Context, name string) ([]api.BIOSAttribute, error)
 	BMCBIOSAttributeByName(ctx context.Context, name string, attributeName string) (api.BIOSAttribute, error)
+	BMCSetupSecureBootCertificatesByName(ctx context.Context, name string) error
 }
 
 type ServerRepo interface {
@@ -127,4 +128,5 @@ type BMCServerClientPort interface {
 	ApplyBIOSAttributes(ctx context.Context, server Server, attributes map[string]any) (*BMCTaskMonitor, error)
 	BIOSAttributes(ctx context.Context, server Server) ([]api.BIOSAttribute, error)
 	BIOSAttribute(ctx context.Context, server Server, attributeName string) (api.BIOSAttribute, error)
+	SetupSecureBootCertificates(ctx context.Context, server Server) error
 }
