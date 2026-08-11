@@ -150,7 +150,7 @@ func (_d ClusterServiceWithSlog) AddServerSystemNetworkVLANTags(ctx context.Cont
 }
 
 // AddServers implements provisioning.ClusterService.
-func (_d ClusterServiceWithSlog) AddServers(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool) (err error) {
+func (_d ClusterServiceWithSlog) AddServers(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool, copyServicesConfig bool) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -158,6 +158,7 @@ func (_d ClusterServiceWithSlog) AddServers(ctx context.Context, name string, se
 			slog.String("name", name),
 			slog.Any("serverNames", serverNames),
 			slog.Bool("skipPostJoinOperations", skipPostJoinOperations),
+			slog.Bool("copyServicesConfig", copyServicesConfig),
 		)
 	}
 	log.DebugContext(ctx, "=> calling AddServers")
@@ -182,7 +183,7 @@ func (_d ClusterServiceWithSlog) AddServers(ctx context.Context, name string, se
 			log.DebugContext(ctx, "<= method AddServers finished")
 		}
 	}()
-	return _d._base.AddServers(ctx, name, serverNames, skipPostJoinOperations)
+	return _d._base.AddServers(ctx, name, serverNames, skipPostJoinOperations, copyServicesConfig)
 }
 
 // AddStorageTargetISCSI implements provisioning.ClusterService.

@@ -44,17 +44,26 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 //				panic("mock out the GetOSData method")
 //			},
+//			GetOSServiceCephFunc: func(ctx context.Context, server provisioning.Server) (api0.ServiceCeph, error) {
+//				panic("mock out the GetOSServiceCeph method")
+//			},
 //			GetOSServiceISCSIFunc: func(ctx context.Context, server provisioning.Server) (api0.ServiceISCSI, error) {
 //				panic("mock out the GetOSServiceISCSI method")
 //			},
 //			GetOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) (api0.ServiceLVM, error) {
 //				panic("mock out the GetOSServiceLVM method")
 //			},
+//			GetOSServiceLinstorFunc: func(ctx context.Context, server provisioning.Server) (api0.ServiceLinstor, error) {
+//				panic("mock out the GetOSServiceLinstor method")
+//			},
 //			GetOSServiceMultipathFunc: func(ctx context.Context, server provisioning.Server) (api0.ServiceMultipath, error) {
 //				panic("mock out the GetOSServiceMultipath method")
 //			},
 //			GetOSServiceNVMEFunc: func(ctx context.Context, server provisioning.Server) (api0.ServiceNVME, error) {
 //				panic("mock out the GetOSServiceNVME method")
+//			},
+//			GetOSServiceOVNFunc: func(ctx context.Context, server provisioning.Server) (api0.ServiceOVN, error) {
+//				panic("mock out the GetOSServiceOVN method")
 //			},
 //			GetRemoteCertificateFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (*x509.Certificate, error) {
 //				panic("mock out the GetRemoteCertificate method")
@@ -117,17 +126,26 @@ type ClusterClientPortMock struct {
 	// GetOSDataFunc mocks the GetOSData method.
 	GetOSDataFunc func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error)
 
+	// GetOSServiceCephFunc mocks the GetOSServiceCeph method.
+	GetOSServiceCephFunc func(ctx context.Context, server provisioning.Server) (api0.ServiceCeph, error)
+
 	// GetOSServiceISCSIFunc mocks the GetOSServiceISCSI method.
 	GetOSServiceISCSIFunc func(ctx context.Context, server provisioning.Server) (api0.ServiceISCSI, error)
 
 	// GetOSServiceLVMFunc mocks the GetOSServiceLVM method.
 	GetOSServiceLVMFunc func(ctx context.Context, server provisioning.Server) (api0.ServiceLVM, error)
 
+	// GetOSServiceLinstorFunc mocks the GetOSServiceLinstor method.
+	GetOSServiceLinstorFunc func(ctx context.Context, server provisioning.Server) (api0.ServiceLinstor, error)
+
 	// GetOSServiceMultipathFunc mocks the GetOSServiceMultipath method.
 	GetOSServiceMultipathFunc func(ctx context.Context, server provisioning.Server) (api0.ServiceMultipath, error)
 
 	// GetOSServiceNVMEFunc mocks the GetOSServiceNVME method.
 	GetOSServiceNVMEFunc func(ctx context.Context, server provisioning.Server) (api0.ServiceNVME, error)
+
+	// GetOSServiceOVNFunc mocks the GetOSServiceOVN method.
+	GetOSServiceOVNFunc func(ctx context.Context, server provisioning.Server) (api0.ServiceOVN, error)
 
 	// GetRemoteCertificateFunc mocks the GetRemoteCertificate method.
 	GetRemoteCertificateFunc func(ctx context.Context, endpoint provisioning.Endpoint) (*x509.Certificate, error)
@@ -211,6 +229,13 @@ type ClusterClientPortMock struct {
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
 		}
+		// GetOSServiceCeph holds details about calls to the GetOSServiceCeph method.
+		GetOSServiceCeph []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// GetOSServiceISCSI holds details about calls to the GetOSServiceISCSI method.
 		GetOSServiceISCSI []struct {
 			// Ctx is the ctx argument value.
@@ -225,6 +250,13 @@ type ClusterClientPortMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
+		// GetOSServiceLinstor holds details about calls to the GetOSServiceLinstor method.
+		GetOSServiceLinstor []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// GetOSServiceMultipath holds details about calls to the GetOSServiceMultipath method.
 		GetOSServiceMultipath []struct {
 			// Ctx is the ctx argument value.
@@ -234,6 +266,13 @@ type ClusterClientPortMock struct {
 		}
 		// GetOSServiceNVME holds details about calls to the GetOSServiceNVME method.
 		GetOSServiceNVME []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
+		// GetOSServiceOVN holds details about calls to the GetOSServiceOVN method.
+		GetOSServiceOVN []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Server is the server argument value.
@@ -356,10 +395,13 @@ type ClusterClientPortMock struct {
 	lockGetNetworkConfig          sync.RWMutex
 	lockGetNodeSpecificConfigKeys sync.RWMutex
 	lockGetOSData                 sync.RWMutex
+	lockGetOSServiceCeph          sync.RWMutex
 	lockGetOSServiceISCSI         sync.RWMutex
 	lockGetOSServiceLVM           sync.RWMutex
+	lockGetOSServiceLinstor       sync.RWMutex
 	lockGetOSServiceMultipath     sync.RWMutex
 	lockGetOSServiceNVME          sync.RWMutex
+	lockGetOSServiceOVN           sync.RWMutex
 	lockGetRemoteCertificate      sync.RWMutex
 	lockGetStorageConfig          sync.RWMutex
 	lockIncusClient               sync.RWMutex
@@ -594,6 +636,42 @@ func (mock *ClusterClientPortMock) GetOSDataCalls() []struct {
 	return calls
 }
 
+// GetOSServiceCeph calls GetOSServiceCephFunc.
+func (mock *ClusterClientPortMock) GetOSServiceCeph(ctx context.Context, server provisioning.Server) (api0.ServiceCeph, error) {
+	if mock.GetOSServiceCephFunc == nil {
+		panic("ClusterClientPortMock.GetOSServiceCephFunc: method is nil but ClusterClientPort.GetOSServiceCeph was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockGetOSServiceCeph.Lock()
+	mock.calls.GetOSServiceCeph = append(mock.calls.GetOSServiceCeph, callInfo)
+	mock.lockGetOSServiceCeph.Unlock()
+	return mock.GetOSServiceCephFunc(ctx, server)
+}
+
+// GetOSServiceCephCalls gets all the calls that were made to GetOSServiceCeph.
+// Check the length with:
+//
+//	len(mockedClusterClientPort.GetOSServiceCephCalls())
+func (mock *ClusterClientPortMock) GetOSServiceCephCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockGetOSServiceCeph.RLock()
+	calls = mock.calls.GetOSServiceCeph
+	mock.lockGetOSServiceCeph.RUnlock()
+	return calls
+}
+
 // GetOSServiceISCSI calls GetOSServiceISCSIFunc.
 func (mock *ClusterClientPortMock) GetOSServiceISCSI(ctx context.Context, server provisioning.Server) (api0.ServiceISCSI, error) {
 	if mock.GetOSServiceISCSIFunc == nil {
@@ -666,6 +744,42 @@ func (mock *ClusterClientPortMock) GetOSServiceLVMCalls() []struct {
 	return calls
 }
 
+// GetOSServiceLinstor calls GetOSServiceLinstorFunc.
+func (mock *ClusterClientPortMock) GetOSServiceLinstor(ctx context.Context, server provisioning.Server) (api0.ServiceLinstor, error) {
+	if mock.GetOSServiceLinstorFunc == nil {
+		panic("ClusterClientPortMock.GetOSServiceLinstorFunc: method is nil but ClusterClientPort.GetOSServiceLinstor was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockGetOSServiceLinstor.Lock()
+	mock.calls.GetOSServiceLinstor = append(mock.calls.GetOSServiceLinstor, callInfo)
+	mock.lockGetOSServiceLinstor.Unlock()
+	return mock.GetOSServiceLinstorFunc(ctx, server)
+}
+
+// GetOSServiceLinstorCalls gets all the calls that were made to GetOSServiceLinstor.
+// Check the length with:
+//
+//	len(mockedClusterClientPort.GetOSServiceLinstorCalls())
+func (mock *ClusterClientPortMock) GetOSServiceLinstorCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockGetOSServiceLinstor.RLock()
+	calls = mock.calls.GetOSServiceLinstor
+	mock.lockGetOSServiceLinstor.RUnlock()
+	return calls
+}
+
 // GetOSServiceMultipath calls GetOSServiceMultipathFunc.
 func (mock *ClusterClientPortMock) GetOSServiceMultipath(ctx context.Context, server provisioning.Server) (api0.ServiceMultipath, error) {
 	if mock.GetOSServiceMultipathFunc == nil {
@@ -735,6 +849,42 @@ func (mock *ClusterClientPortMock) GetOSServiceNVMECalls() []struct {
 	mock.lockGetOSServiceNVME.RLock()
 	calls = mock.calls.GetOSServiceNVME
 	mock.lockGetOSServiceNVME.RUnlock()
+	return calls
+}
+
+// GetOSServiceOVN calls GetOSServiceOVNFunc.
+func (mock *ClusterClientPortMock) GetOSServiceOVN(ctx context.Context, server provisioning.Server) (api0.ServiceOVN, error) {
+	if mock.GetOSServiceOVNFunc == nil {
+		panic("ClusterClientPortMock.GetOSServiceOVNFunc: method is nil but ClusterClientPort.GetOSServiceOVN was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockGetOSServiceOVN.Lock()
+	mock.calls.GetOSServiceOVN = append(mock.calls.GetOSServiceOVN, callInfo)
+	mock.lockGetOSServiceOVN.Unlock()
+	return mock.GetOSServiceOVNFunc(ctx, server)
+}
+
+// GetOSServiceOVNCalls gets all the calls that were made to GetOSServiceOVN.
+// Check the length with:
+//
+//	len(mockedClusterClientPort.GetOSServiceOVNCalls())
+func (mock *ClusterClientPortMock) GetOSServiceOVNCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockGetOSServiceOVN.RLock()
+	calls = mock.calls.GetOSServiceOVN
+	mock.lockGetOSServiceOVN.RUnlock()
 	return calls
 }
 

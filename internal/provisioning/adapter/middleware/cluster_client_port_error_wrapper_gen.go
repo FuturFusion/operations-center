@@ -90,6 +90,16 @@ func (_d ClusterClientPortWithErrorWrapper) GetOSData(ctx context.Context, endpo
 	return _d._base.GetOSData(ctx, endpoint)
 }
 
+// GetOSServiceCeph implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithErrorWrapper) GetOSServiceCeph(ctx context.Context, server provisioning.Server) (serviceCeph api0.ServiceCeph, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.GetOSServiceCeph(ctx, server)
+}
+
 // GetOSServiceISCSI implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithErrorWrapper) GetOSServiceISCSI(ctx context.Context, server provisioning.Server) (serviceISCSI api0.ServiceISCSI, err error) {
 	defer func() {
@@ -110,6 +120,16 @@ func (_d ClusterClientPortWithErrorWrapper) GetOSServiceLVM(ctx context.Context,
 	return _d._base.GetOSServiceLVM(ctx, server)
 }
 
+// GetOSServiceLinstor implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithErrorWrapper) GetOSServiceLinstor(ctx context.Context, server provisioning.Server) (serviceLinstor api0.ServiceLinstor, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.GetOSServiceLinstor(ctx, server)
+}
+
 // GetOSServiceMultipath implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithErrorWrapper) GetOSServiceMultipath(ctx context.Context, server provisioning.Server) (serviceMultipath api0.ServiceMultipath, err error) {
 	defer func() {
@@ -128,6 +148,16 @@ func (_d ClusterClientPortWithErrorWrapper) GetOSServiceNVME(ctx context.Context
 		}
 	}()
 	return _d._base.GetOSServiceNVME(ctx, server)
+}
+
+// GetOSServiceOVN implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithErrorWrapper) GetOSServiceOVN(ctx context.Context, server provisioning.Server) (serviceOVN api0.ServiceOVN, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.GetOSServiceOVN(ctx, server)
 }
 
 // GetRemoteCertificate implements provisioning.ClusterClientPort.
