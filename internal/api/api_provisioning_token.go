@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
@@ -30,6 +31,7 @@ func registerProvisioningTokenHandler(router Router, authorizer *authz.Authorize
 
 	// Authentication and authorization are only required, if the respective token image seed is not public.
 	router.HandleFunc("GET /{uuid}/seeds/{name}", response.With(handler.tokenSeedGet))
+	router.HandleFunc("GET /{uuid}/seeds/{name}/{params...}", response.With(handler.tokenSeedImageGet))
 
 	// Normal authentication and authorization rules apply.
 	router.HandleFunc("GET /{$}", response.With(handler.tokensGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -787,18 +789,9 @@ func (t *tokenHandler) tokenSeedGet(r *http.Request) response.Response {
 	architectureArg := r.URL.Query().Get("architecture")
 	channelArg := r.URL.Query().Get("channel")
 
-	seedConfig, err := t.service.GetTokenSeedByName(r.Context(), UUID, name)
-	if err != nil {
-		return response.SmartError(err)
-	}
-
-	if !seedConfig.Public {
-		// If the requested token seed config is not public, perform regular
-		// authorization logic.
-		resp := checkPermission(t.authorizer, r, authz.ObjectTypeServer, authz.EntitlementCanView)
-		if resp != nil {
-			return resp
-		}
+	seedConfig, resp := t.getPublicCheckedTokenSeed(r, UUID, name)
+	if resp != nil {
+		return resp
 	}
 
 	if typeArg == "" {
@@ -839,12 +832,174 @@ func (t *tokenHandler) tokenSeedGet(r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("architecture %q is not valid", architectureArg))
 	}
 
-	rc, err := t.service.GetTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture, channelArg)
+	return t.tokenSeedImageResponse(r, UUID, name, imageType, architecture, channelArg)
+}
+
+// getPublicCheckedTokenSeed fetches the token seed config identified by
+// UUID/name and, if it is not public, performs the regular authorization
+// check for viewing it.
+func (t *tokenHandler) getPublicCheckedTokenSeed(r *http.Request, UUID uuid.UUID, name string) (*provisioning.TokenSeed, response.Response) {
+	seedConfig, err := t.service.GetTokenSeedByName(r.Context(), UUID, name)
+	if err != nil {
+		return nil, response.SmartError(err)
+	}
+
+	if !seedConfig.Public {
+		resp := checkPermission(t.authorizer, r, authz.ObjectTypeServer, authz.EntitlementCanView)
+		if resp != nil {
+			return nil, resp
+		}
+	}
+
+	return seedConfig, nil
+}
+
+// tokenSeedImageResponse streams the generated pre-seed image for the given
+// type/architecture/channel combination.
+func (t *tokenHandler) tokenSeedImageResponse(r *http.Request, UUID uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) response.Response {
+	rc, err := t.service.GetTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture, channel)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
 	return response.ReadCloserResponse(r, rc, true, fmt.Sprintf("pre-seed-%s%s", name, imageType.FileExt()), -1, nil)
+}
+
+// swagger:operation GET /1.0/provisioning/tokens/{uuid}/seeds/{name}/{params} tokens token_seed_image_get
+//
+//	Get pre-seeded IncusOS image
+//
+//	Get the generated pre-seeded IncusOS ISO or raw image file for a token
+//	seed, with all parameters and the terminal filename encoded as path
+//	segments instead of a query string, so that the resulting URL ends with a
+//	recognized file extension (e.g. ".iso" or ".raw"). This is required to
+//	work around BMC/Redfish implementations that reject virtual media image
+//	URLs which don't end in a known media extension.
+//
+//	The path after the seed name is a flat sequence of "<key>/<value>" pairs
+//	followed by a final, free-form filename segment that is not inspected by
+//	the server, e.g.:
+//
+//	  /1.0/provisioning/tokens/{uuid}/seeds/{name}/architecture/x86_64/channel/stable/type/iso/file.iso
+//
+//	Recognized keys are "architecture" (required), "type" (required) and
+//	"channel" (optional, defaults to the configured default update channel).
+//
+//	---
+//	produces:
+//	  - application/octet-stream
+//	  - application/gzip
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: UUID of the token
+//	    type: string
+//	    format: uuid
+//	    required: true
+//	  - in: path
+//	    name: name
+//	    description: Name of the seed
+//	    type: string
+//	    required: true
+//	  - in: path
+//	    name: params
+//	    description: |-
+//	      Flat sequence of "<key>/<value>" pairs (architecture, type,
+//	      optionally channel) followed by a free-form filename segment, e.g.
+//	      "architecture/x86_64/type/iso/file.iso".
+//	    type: string
+//	    required: true
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/TokenSeedResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (t *tokenHandler) tokenSeedImageGet(r *http.Request) response.Response {
+	UUIDString := r.PathValue("uuid")
+
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	name := r.PathValue("name")
+
+	imageType, architecture, channel, err := parseSeedImageParams(r.PathValue("params"))
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	_, resp := t.getPublicCheckedTokenSeed(r, UUID, name)
+	if resp != nil {
+		return resp
+	}
+
+	return t.tokenSeedImageResponse(r, UUID, name, imageType, architecture, channel)
+}
+
+// parseSeedImageParams parses the "/{params...}" tail of the token seed
+// image route. params is a flat sequence of "<key>/<value>" pairs followed
+// by a final, free-form filename segment that is discarded.
+func parseSeedImageParams(params string) (imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, err error) {
+	segments := strings.Split(strings.Trim(params, "/"), "/")
+	if len(segments) < 2 {
+		return "", "", "", fmt.Errorf("missing parameters in seed image path %q", params)
+	}
+
+	// Drop the trailing, free-form filename segment.
+	segments = segments[:len(segments)-1]
+
+	if len(segments)%2 != 0 {
+		return "", "", "", fmt.Errorf("seed image path %q has an odd number of key/value segments", params)
+	}
+
+	values := map[string]string{}
+	for i := 0; i < len(segments); i += 2 {
+		key := segments[i]
+
+		_, exists := values[key]
+		if exists {
+			return "", "", "", fmt.Errorf("duplicate parameter %q in seed image path", key)
+		}
+
+		switch key {
+		case "architecture", "channel", "type":
+			values[key] = segments[i+1]
+
+		default:
+			return "", "", "", fmt.Errorf("unknown parameter %q in seed image path", key)
+		}
+	}
+
+	typeArg, ok := values["type"]
+	if !ok {
+		return "", "", "", fmt.Errorf("missing required parameter %q in seed image path", "type")
+	}
+
+	imageType = api.ImageType(typeArg)
+	if !imageType.IsValid() {
+		return "", "", "", fmt.Errorf("image type %q is not valid", typeArg)
+	}
+
+	architectureArg, ok := values["architecture"]
+	if !ok {
+		return "", "", "", fmt.Errorf("missing required parameter %q in seed image path", "architecture")
+	}
+
+	architecture = images.UpdateFileArchitecture(architectureArg)
+
+	_, ok = images.UpdateFileArchitectures[architecture]
+	if !ok {
+		return "", "", "", fmt.Errorf("architecture %q is not valid", architectureArg)
+	}
+
+	return imageType, architecture, values["channel"], nil
 }
 
 // swagger:operation PUT /1.0/provisioning/tokens/{uuid}/seeds/{name} tokens token_seed_put
