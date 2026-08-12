@@ -905,6 +905,48 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "success - OperationsCenterAddress change - unregistered server skipped",
+			networkConfig: systemapi.Network{
+				NetworkPut: systemapi.NetworkPut{
+					OperationsCenterAddress: "https://new:8443/",
+					RestServerAddress:       "192.168.1.200:8443",
+				},
+			},
+			serverGetAll: provisioning.Servers{
+				{
+					Name: "one",
+					Type: api.ServerTypeIncus,
+				},
+				{
+					Name:   "two",
+					Type:   api.ServerTypeIncus,
+					Status: api.ServerStatusUnregistered,
+				},
+			},
+			serverGetSystemProvider: []queue.Item[incusosapi.SystemProvider]{
+				{
+					Value: incusosapi.SystemProvider{
+						Config: incusosapi.SystemProviderConfig{
+							Config: map[string]string{
+								"server_url": "https://one:8443/",
+							},
+						},
+					},
+				},
+			},
+			serverUpdateSystemProvider: []queue.Item[struct{}]{
+				{},
+			},
+
+			assertErr: require.NoError,
+			wantNetworkConfig: systemapi.Network{
+				NetworkPut: systemapi.NetworkPut{
+					OperationsCenterAddress: "https://new:8443/",
+					RestServerAddress:       "192.168.1.200:8443",
+				},
+			},
+		},
+		{
 			name: "error - NetworkSetDefaults",
 			networkConfig: systemapi.Network{
 				NetworkPut: systemapi.NetworkPut{

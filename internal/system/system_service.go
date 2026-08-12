@@ -230,6 +230,11 @@ func (s *systemService) updateProviderConfigAll(ctx context.Context, cfg map[str
 			continue
 		}
 
+		// Don't update the system provider config for unregistered servers.
+		if server.Status == api.ServerStatusUnregistered {
+			continue
+		}
+
 		oldProviderConfig, err := s.serverSvc.GetSystemProvider(ctx, server.Name)
 		if err != nil {
 			return fmt.Errorf("Failed to get system provider for %q: %w", server.Name, err)
