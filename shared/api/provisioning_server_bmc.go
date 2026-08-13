@@ -60,6 +60,9 @@ type BMCDumpError struct {
 	// Message contains the human readable error message.
 	Message string `json:"message" yaml:"message"`
 
+	// Error as reported by the API.
+	Error string `json:"error" yaml:"error"`
+
 	// Code contains the error code, if any.
 	Code string `json:"code,omitempty" yaml:"code,omitempty"`
 
