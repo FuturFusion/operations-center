@@ -316,6 +316,12 @@ func ReadCloserResponse(r *http.Request, rc io.ReadCloser, compress bool, filena
 	}
 }
 
+// AcceptsGzip reports whether the client offered to take the response gzip
+// compressed.
+func AcceptsGzip(r *http.Request) bool {
+	return strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
+}
+
 func (r readCloserResponse) Render(w http.ResponseWriter) error {
 	defer func() {
 		_ = r.rc.Close()
@@ -327,7 +333,7 @@ func (r readCloserResponse) Render(w http.ResponseWriter) error {
 		}
 	}
 
-	acceptCompress := strings.Contains(r.req.Header.Get("Accept-Encoding"), "gzip")
+	acceptCompress := AcceptsGzip(r.req)
 
 	fileName := r.filename
 	contentType := "application/octet-stream"
@@ -354,6 +360,12 @@ func (r readCloserResponse) Render(w http.ResponseWriter) error {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fileName))
 	if r.fileSize >= 0 {
 		w.Header().Set("Content-Length", strconv.Itoa(r.fileSize))
+	}
+
+	// A HEAD request asks for the metadata of the file only. Producing the body
+	// is wasted effort, the server discards it.
+	if r.req.Method == http.MethodHead {
+		return nil
 	}
 
 	_, err := file.SafeCopy(writer, r.rc)
