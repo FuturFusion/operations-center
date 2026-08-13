@@ -44,10 +44,9 @@ type mockRedfishServer struct {
 	managerVirtualMediaMember2StatusCode int
 	managerVirtualMediaMember2Body       string
 
-	insertMediaStatusCode int
-	insertMediaLocation   string
-	ejectMediaStatusCode  int
-	ejectMediaLocation    string
+	insertMedia       mockResponses
+	ejectMedia        mockResponses
+	virtualMediaPatch mockResponses
 
 	chassisStatusCode       int
 	chassisBody             string
@@ -85,6 +84,43 @@ type mockRedfishRoute struct {
 	header     map[string]string
 }
 
+// mockResponses serves a sequence of canned responses, one per call, repeating
+// the last configured one once the sequence is exhausted. This allows tests to
+// let a BMC reject a request first and accept the retry.
+type mockResponses struct {
+	statusCodes []int
+	bodies      []string
+	location    string
+
+	calls int
+}
+
+func (m *mockResponses) serve(w http.ResponseWriter) {
+	index := m.calls
+	m.calls++
+
+	if m.location != "" {
+		w.Header().Set("Location", m.location)
+	}
+
+	statusCode := http.StatusInternalServerError
+	if len(m.statusCodes) > 0 {
+		statusCode = m.statusCodes[min(index, len(m.statusCodes)-1)]
+	}
+
+	w.WriteHeader(statusCode)
+
+	if index < len(m.bodies) {
+		_, _ = w.Write([]byte(m.bodies[index]))
+	}
+}
+
+type mockRequest struct {
+	method string
+	path   string
+	body   string
+}
+
 const defaultResetActionInfoBody = `{
   "@odata.id": "/redfish/v1/Systems/1/ResetActionInfo",
   "Parameters": [
@@ -96,17 +132,16 @@ const defaultResetActionInfoBody = `{
   ]
 }`
 
-func newMockRedfishServer(t *testing.T, cfg mockRedfishServer, gotBody *[]byte) *httptest.Server {
+func newMockRedfishServer(t *testing.T, cfg mockRedfishServer, gotRequests *[]mockRequest) *httptest.Server {
 	t.Helper()
 
-	svr := httptest.NewServer(newMockRedfishHandler(cfg, gotBody))
-
+	svr := httptest.NewServer(newMockRedfishHandler(cfg, gotRequests))
 	t.Cleanup(svr.Close)
 
 	return svr
 }
 
-func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerFunc {
+func newMockRedfishHandler(cfg mockRedfishServer, gotRequests *[]mockRequest) http.HandlerFunc {
 	// Apply some defaults, if not explicitly set.
 	if cfg.resetActionInfoStatusCode == 0 {
 		cfg.resetActionInfoStatusCode = http.StatusOK
@@ -116,6 +151,18 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
 	taskMonitorCallCount := 0
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Record every request modifying the BMC, so tests can assert on the
+		// exact sequence of requests and bodies sent.
+		if gotRequests != nil && r.Method != http.MethodGet {
+			body, _ := io.ReadAll(r.Body)
+
+			*gotRequests = append(*gotRequests, mockRequest{
+				method: r.Method,
+				path:   r.URL.Path,
+				body:   string(body),
+			})
+		}
+
 		route, ok := cfg.extraRoutes[r.URL.Path]
 		if ok {
 			for name, value := range route.header {
@@ -160,10 +207,6 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
 			_, _ = w.Write([]byte(body))
 
 		case "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset":
-			if gotBody != nil {
-				*gotBody, _ = io.ReadAll(r.Body)
-			}
-
 			if cfg.resetLocation != "" {
 				w.Header().Set("Location", cfg.resetLocation)
 			}
@@ -183,6 +226,12 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
 			_, _ = w.Write([]byte(cfg.systemVirtualMediaBody))
 
 		case "/redfish/v1/Systems/1/VirtualMedia/1":
+			if r.Method == http.MethodPatch {
+				cfg.virtualMediaPatch.serve(w)
+
+				return
+			}
+
 			w.WriteHeader(cfg.systemVirtualMediaMemberStatusCode)
 			_, _ = w.Write([]byte(cfg.systemVirtualMediaMemberBody))
 
@@ -195,6 +244,12 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
 			_, _ = w.Write([]byte(cfg.managerVirtualMediaBody))
 
 		case "/redfish/v1/Managers/1/VirtualMedia/1":
+			if r.Method == http.MethodPatch {
+				cfg.virtualMediaPatch.serve(w)
+
+				return
+			}
+
 			w.WriteHeader(cfg.managerVirtualMediaMemberStatusCode)
 			_, _ = w.Write([]byte(cfg.managerVirtualMediaMemberBody))
 
@@ -206,29 +261,13 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
 			"/redfish/v1/Systems/1/VirtualMedia/2/Actions/VirtualMedia.InsertMedia",
 			"/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
 			"/redfish/v1/Managers/1/VirtualMedia/2/Actions/VirtualMedia.InsertMedia":
-			if gotBody != nil {
-				*gotBody, _ = io.ReadAll(r.Body)
-			}
-
-			if cfg.insertMediaLocation != "" {
-				w.Header().Set("Location", cfg.insertMediaLocation)
-			}
-
-			w.WriteHeader(cfg.insertMediaStatusCode)
+			cfg.insertMedia.serve(w)
 
 		case "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia",
 			"/redfish/v1/Systems/1/VirtualMedia/2/Actions/VirtualMedia.EjectMedia",
 			"/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia",
 			"/redfish/v1/Managers/1/VirtualMedia/2/Actions/VirtualMedia.EjectMedia":
-			if gotBody != nil {
-				*gotBody, _ = io.ReadAll(r.Body)
-			}
-
-			if cfg.ejectMediaLocation != "" {
-				w.Header().Set("Location", cfg.ejectMediaLocation)
-			}
-
-			w.WriteHeader(cfg.ejectMediaStatusCode)
+			cfg.ejectMedia.serve(w)
 
 		case "/redfish/v1/Systems/1/Processors":
 			w.WriteHeader(cfg.processorsStatusCode)

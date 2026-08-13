@@ -885,14 +885,6 @@ func getVirtualMediaByID(client *gofish.APIClient, id string) (*schemas.VirtualM
 	return nil, fmt.Errorf("Virtual media %q not found on BMC: %w", id, domain.ErrNotFound)
 }
 
-func virtualMediaHasMedia(vm *schemas.VirtualMedia) bool {
-	if vm.Inserted != nil {
-		return *vm.Inserted
-	}
-
-	return vm.Image != ""
-}
-
 func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (*provisioning.BMCTaskMonitor, error) {
 	client, logout, err := r.getClient(ctx, server)
 	if err != nil {
@@ -910,16 +902,15 @@ func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, vi
 		return nil, fmt.Errorf("Virtual media %q already has media attached, detach the media first: %w", virtualMediaID, domain.ErrOperationNotPermitted)
 	}
 
-	params := &schemas.VirtualMediaInsertMediaParameters{
-		Image:          mediaURL,
-		Inserted:       ptr.To(true),
-		TransferMethod: ptr.To(schemas.StreamTransferMethod),
+	err = checkMediaTypeSupported(virtualMedia, virtualMediaID, mediaURL)
+	if err != nil {
+		return nil, err
 	}
 
 	trace, stopTrace := traceRequests(client)
 	defer stopTrace()
 
-	taskMonitor, err := virtualMedia.InsertMedia(params)
+	taskMonitor, err := insertMedia(virtualMedia, mediaURL)
 	if err != nil {
 		slog.DebugContext(
 			ctx, "Attaching virtual media to BMC failed",
@@ -962,7 +953,7 @@ func (r redfish) DetachMedia(ctx context.Context, server provisioning.Server, vi
 	trace, stopTrace := traceRequests(client)
 	defer stopTrace()
 
-	taskMonitor, err := virtualMedia.EjectMedia()
+	taskMonitor, err := ejectMedia(virtualMedia)
 	if err != nil {
 		slog.DebugContext(
 			ctx, "Detaching virtual media from BMC failed",
