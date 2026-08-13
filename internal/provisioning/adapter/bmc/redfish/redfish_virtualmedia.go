@@ -1,7 +1,10 @@
 package redfish
 
 import (
+	"encoding/json"
 	"fmt"
+	"maps"
+	"net/http"
 	"net/url"
 	"path"
 	"slices"
@@ -20,18 +23,36 @@ const maxInsertMediaAttempts = 3
 
 // insertMedia attaches mediaURL to a virtual media slot.
 //
+// Three ways of doing so exist, in descending order of preference: the standard
+// VirtualMedia.InsertMedia action, a vendor specific action for BMCs not
+// offering the standard one, and modifying the resource directly for BMCs
+// offering no action at all.
+func insertMedia(virtualMedia virtualMediaSlot, mediaURL string) (*schemas.TaskMonitorInfo, error) {
+	if virtualMedia.SupportsMediaInsert {
+		return insertMediaAction(virtualMedia, mediaURL)
+	}
+
+	target := oemActionTarget(virtualMedia, "InsertVirtualMedia")
+	if target != "" {
+		// Vendor specific actions predate the properties the standard action
+		// takes besides the image, so the image is all which is sent.
+		return postVirtualMediaAction(virtualMedia, target, map[string]any{"Image": mediaURL})
+	}
+
+	return nil, patchVirtualMedia(virtualMedia, ptr.To(mediaURL))
+}
+
+// insertMediaAction attaches mediaURL using the standard
+// VirtualMedia.InsertMedia action.
+//
 // The Redfish specification declares Image as the only required parameter of
-// VirtualMedia.InsertMedia and has the service default Inserted and
-// WriteProtected to true. Sending more might break interoperability.
+// the action and has the service default Inserted and WriteProtected to true.
+// Sending more might break interoperability.
 //
 // Start from the minimal request the specification asks for, add the parameters
 // the BMC declares in the action info of InsertMedia, and add whatever it
 // reports as missing after a rejected attempt.
-func insertMedia(virtualMedia *schemas.VirtualMedia, mediaURL string) (*schemas.TaskMonitorInfo, error) {
-	if !virtualMedia.SupportsMediaInsert {
-		return nil, patchVirtualMedia(virtualMedia, ptr.To(mediaURL))
-	}
-
+func insertMediaAction(virtualMedia virtualMediaSlot, mediaURL string) (*schemas.TaskMonitorInfo, error) {
 	params := &schemas.VirtualMediaInsertMediaParameters{
 		Image: mediaURL,
 	}
@@ -59,7 +80,7 @@ func insertMedia(virtualMedia *schemas.VirtualMedia, mediaURL string) (*schemas.
 		}
 	}
 
-	return nil, err
+	return nil, redfishRequestError(err, virtualMedia.registry, http.MethodPost, standardActionTarget(virtualMedia, "VirtualMedia.InsertMedia"), params)
 }
 
 // applyInsertMediaActionInfo adds the parameters the BMC declares for
@@ -114,40 +135,191 @@ func addMissingInsertMediaParameter(params *schemas.VirtualMediaInsertMediaParam
 	return false
 }
 
-// ejectMedia detaches the image from a virtual media slot.
-func ejectMedia(virtualMedia *schemas.VirtualMedia) (*schemas.TaskMonitorInfo, error) {
-	if !virtualMedia.SupportsMediaEject {
-		return nil, patchVirtualMedia(virtualMedia, nil)
+// ejectMedia detaches the image from a virtual media slot, using the same three
+// ways of doing so as insertMedia.
+func ejectMedia(virtualMedia virtualMediaSlot) (*schemas.TaskMonitorInfo, error) {
+	if virtualMedia.SupportsMediaEject {
+		return virtualMedia.EjectMedia()
 	}
 
-	return virtualMedia.EjectMedia()
+	target := oemActionTarget(virtualMedia, "EjectVirtualMedia")
+	if target != "" {
+		return postVirtualMediaAction(virtualMedia, target, map[string]any{})
+	}
+
+	return nil, patchVirtualMedia(virtualMedia, nil)
 }
 
-// patchVirtualMedia modifies the virtual media resource directly, for BMCs not
-// exposing the InsertMedia and EjectMedia actions. Passing a nil image ejects.
-func patchVirtualMedia(virtualMedia *schemas.VirtualMedia, image *string) error {
+// standardActionTarget returns the target URI of the standard action with the
+// given name, e.g. "VirtualMedia.InsertMedia".
+func standardActionTarget(virtualMedia virtualMediaSlot, action string) string {
+	var resource struct {
+		Actions map[string]struct {
+			Target string `json:"target"`
+		} `json:"Actions"`
+	}
+
+	err := json.Unmarshal(virtualMedia.RawData, &resource)
+	if err != nil {
+		return ""
+	}
+
+	return resource.Actions["#"+action].Target
+}
+
+// maxOEMActionDepth bounds how deeply oemActionTarget descends into the "Oem"
+// object of a resource.
+const maxOEMActionDepth = 3
+
+// oemActionTarget returns the target URI of the vendor specific action with the
+// given name offered by the virtual media resource, or an empty string if the
+// BMC offers none.
+func oemActionTarget(virtualMedia virtualMediaSlot, action string) string {
+	var resource struct {
+		Actions struct {
+			OEM map[string]any `json:"Oem"`
+		} `json:"Actions"`
+	}
+
+	err := json.Unmarshal(virtualMedia.RawData, &resource)
+	if err != nil {
+		return ""
+	}
+
+	return findOEMActionTarget(resource.Actions.OEM, action, maxOEMActionDepth)
+}
+
+// findOEMActionTarget searches an "Oem" object for the action with the given
+// name, descending into the vendor groupings the action may be nested in.
+func findOEMActionTarget(oem map[string]any, action string, depth int) string {
+	if depth <= 0 {
+		return ""
+	}
+
+	for _, name := range slices.Sorted(maps.Keys(oem)) {
+		member, ok := oem[name].(map[string]any)
+		if !ok {
+			continue
+		}
+
+		// Actions are named "#<Type>.<Action>", anything else is a grouping.
+		if !strings.HasPrefix(name, "#") {
+			target := findOEMActionTarget(member, action, depth-1)
+			if target != "" {
+				return target
+			}
+
+			continue
+		}
+
+		_, actionName, found := lastCut(name, ".")
+		if !found || actionName != action {
+			continue
+		}
+
+		target, ok := member["target"].(string)
+		if ok && target != "" {
+			return target
+		}
+	}
+
+	return ""
+}
+
+// postVirtualMediaAction invokes an action of the virtual media resource.
+func postVirtualMediaAction(virtualMedia virtualMediaSlot, target string, payload any) (*schemas.TaskMonitorInfo, error) {
+	resp, taskMonitor, err := schemas.PostWithTask(virtualMedia.GetClient(), target, payload, virtualMedia.Headers(), false) //nolint:bodyclose // Closed by DeferredCleanupHTTPResponse.
+	defer schemas.DeferredCleanupHTTPResponse(resp)
+
+	if err != nil {
+		return nil, redfishRequestError(err, virtualMedia.registry, http.MethodPost, target, payload)
+	}
+
+	return taskMonitor, nil
+}
+
+// maxPatchVirtualMediaAttempts bounds the number of times patchVirtualMedia
+// repeats the request after dropping a property the BMC rejected. One attempt
+// per property it is allowed to drop, plus the initial one.
+const maxPatchVirtualMediaAttempts = 3
+
+// patchVirtualMedia modifies the virtual media resource directly, for BMCs
+// exposing neither a standard nor a vendor specific action. Passing a nil image
+// ejects.
+func patchVirtualMedia(virtualMedia virtualMediaSlot, image *string) error {
 	payload := map[string]any{
 		"Image":    image,
 		"Inserted": image != nil,
 	}
 
-	err := virtualMedia.Patch(virtualMedia.ODataID, payload)
-	if err == nil {
-		return nil
+	// Only meaningful while media is attached.
+	if image != nil {
+		payload["WriteProtected"] = true
 	}
 
-	if !isPropertyRejected(err, "Inserted") {
+	var err error
+
+	for range maxPatchVirtualMediaAttempts {
+		err = patchVirtualMediaResource(virtualMedia, payload)
+		if err == nil {
+			return nil
+		}
+
+		if !dropRejectedProperty(payload, err) {
+			break
+		}
+	}
+
+	return err
+}
+
+// dropRejectedProperty removes the property the BMC reported as unknown or not
+// writable from the payload and reports whether the request is worth repeating.
+//
+// Image is never dropped, sending it is the whole point of the request.
+func dropRejectedProperty(payload map[string]any, err error) bool {
+	for _, property := range []string{"Inserted", "WriteProtected"} {
+		_, present := payload[property]
+		if present && isPropertyRejected(err, property) {
+			delete(payload, property)
+
+			return true
+		}
+	}
+
+	return false
+}
+
+// patchVirtualMediaResource sends the payload to the virtual media resource.
+func patchVirtualMediaResource(virtualMedia virtualMediaSlot, payload any) error {
+	headers := virtualMedia.Headers()
+
+	_, conditional := headers["If-Match"]
+
+	err := patchWithHeaders(virtualMedia, payload, headers)
+	if err == nil || !conditional || !isPreconditionRejected(err) {
 		return err
 	}
 
-	delete(payload, "Inserted")
+	delete(headers, "If-Match")
 
-	return virtualMedia.Patch(virtualMedia.ODataID, payload)
+	return patchWithHeaders(virtualMedia, payload, headers)
+}
+
+func patchWithHeaders(virtualMedia virtualMediaSlot, payload any, headers map[string]string) error {
+	// gofish consumes and closes the response of a request it reports an error
+	// for, so there is only something left to clean up on success.
+	resp, err := virtualMedia.GetClient().PatchWithHeaders(virtualMedia.ODataID, payload, headers) //nolint:bodyclose // Closed by CleanupHTTPResponse.
+	if err == nil {
+		err = schemas.CleanupHTTPResponse(resp)
+	}
+
+	return redfishRequestError(err, virtualMedia.registry, http.MethodPatch, virtualMedia.ODataID, payload)
 }
 
 // virtualMediaHasMedia reports whether the virtual media slot currently holds
 // an image.
-func virtualMediaHasMedia(vm *schemas.VirtualMedia) bool {
+func virtualMediaHasMedia(vm virtualMediaSlot) bool {
 	hasImage := vm.Image != "" || vm.ImageName != ""
 
 	if vm.Inserted == nil {
@@ -159,7 +331,7 @@ func virtualMediaHasMedia(vm *schemas.VirtualMedia) bool {
 
 // checkMediaTypeSupported verifies the virtual media slot accepts the kind of
 // image about to be attached.
-func checkMediaTypeSupported(virtualMedia *schemas.VirtualMedia, virtualMediaID string, mediaURL string) error {
+func checkMediaTypeSupported(virtualMedia virtualMediaSlot, virtualMediaID string, mediaURL string) error {
 	mediaTypes := mediaTypesForURL(mediaURL)
 	if len(mediaTypes) == 0 || len(virtualMedia.MediaTypes) == 0 {
 		return nil

@@ -875,10 +875,18 @@ func (r redfish) performReset(ctx context.Context, server provisioning.Server, r
 	}, nil
 }
 
-func getVirtualMediaByID(client *gofish.APIClient, id string) (*schemas.VirtualMedia, error) {
+// virtualMediaSlot is a virtual media resource of a BMC, together with the
+// message registry needed to make sense of what the BMC answers about it.
+type virtualMediaSlot struct {
+	*schemas.VirtualMedia
+
+	registry *messageRegistry
+}
+
+func getVirtualMediaByID(client *gofish.APIClient, id string) (virtualMediaSlot, error) {
 	service, redfishID, ok := strings.Cut(id, ":")
 	if !ok || service == "" || redfishID == "" {
-		return nil, fmt.Errorf("Invalid virtual media ID %q, expected format %q (e.g. %q): %w", id, "<service>:<id>", "system:1", domain.ErrOperationNotPermitted)
+		return virtualMediaSlot{}, fmt.Errorf("Invalid virtual media ID %q, expected format %q (e.g. %q): %w", id, "<service>:<id>", "system:1", domain.ErrOperationNotPermitted)
 	}
 
 	var virtualMedias []*schemas.VirtualMedia
@@ -896,25 +904,25 @@ func getVirtualMediaByID(client *gofish.APIClient, id string) (*schemas.VirtualM
 		virtualMediaReturner, err = getFirstManager(client)
 
 	default:
-		return nil, fmt.Errorf("Unknown virtual media service %q in ID %q, expected %q or %q: %w", service, id, "system", "manager", domain.ErrOperationNotPermitted)
+		return virtualMediaSlot{}, fmt.Errorf("Unknown virtual media service %q in ID %q, expected %q or %q: %w", service, id, "system", "manager", domain.ErrOperationNotPermitted)
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get BMC system: %w", wrapRedfishError(err))
+		return virtualMediaSlot{}, fmt.Errorf("Failed to get BMC system: %w", wrapRedfishError(err))
 	}
 
 	virtualMedias, err = virtualMediaReturner.VirtualMedia()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get virtual media from BMC system: %w", wrapRedfishError(err))
+		return virtualMediaSlot{}, fmt.Errorf("Failed to get virtual media from BMC system: %w", wrapRedfishError(err))
 	}
 
 	for _, vm := range virtualMedias {
 		if vm.ID == redfishID {
-			return vm, nil
+			return virtualMediaSlot{VirtualMedia: vm, registry: newMessageRegistry(client)}, nil
 		}
 	}
 
-	return nil, fmt.Errorf("Virtual media %q not found on BMC: %w", id, domain.ErrNotFound)
+	return virtualMediaSlot{}, fmt.Errorf("Virtual media %q not found on BMC: %w", id, domain.ErrNotFound)
 }
 
 func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (*provisioning.BMCTaskMonitor, error) {

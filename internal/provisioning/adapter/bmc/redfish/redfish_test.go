@@ -4000,6 +4000,62 @@ const (
   "MediaTypes": ["CD", "DVD"]
 }`
 
+	// A BMC without actions, tagging the resource so that modifying it becomes a conditional request.
+	mediaSystemVMFreeWithoutActionsWithETagBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "@odata.etag": "W/\"1234567890\"",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["CD", "DVD"]
+}`
+
+	// HPE iLO 5 offers vendor specific actions instead of the standard ones,
+	// grouped by vendor below "Oem".
+	mediaSystemVMFreeWithOEMActionsBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "Oem": {
+      "Hpe": {
+        "#HpeiLOVirtualMedia.InsertVirtualMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hpe/HpeiLOVirtualMedia.InsertVirtualMedia" },
+        "#HpeiLOVirtualMedia.EjectVirtualMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hpe/HpeiLOVirtualMedia.EjectVirtualMedia" }
+      }
+    }
+  }
+}`
+
+	// HPE iLO 4 offers them directly below "Oem".
+	mediaSystemVMFreeWithFlatOEMActionsBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "Oem": {
+      "#HpiLOVirtualMedia.InsertVirtualMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hp/HpiLOVirtualMedia.InsertVirtualMedia" },
+      "#HpiLOVirtualMedia.EjectVirtualMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hp/HpiLOVirtualMedia.EjectVirtualMedia" }
+    }
+  }
+}`
+
+	mediaSystemVMInsertedWithOEMActionsBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": true,
+  "Image": "http://example.com/existing.iso",
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "Oem": {
+      "Hpe": {
+        "#HpeiLOVirtualMedia.InsertVirtualMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hpe/HpeiLOVirtualMedia.InsertVirtualMedia" },
+        "#HpeiLOVirtualMedia.EjectVirtualMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hpe/HpeiLOVirtualMedia.EjectVirtualMedia" }
+      }
+    }
+  }
+}`
+
 	// A slot only taking floppy and USB stick images.
 	mediaSystemVMFreeFloppyBody = `{
   "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
@@ -4091,6 +4147,35 @@ const (
   }
 }`
 
+	// Error response of an AMI MegaRAC BMC turning down the image URI.
+	mediaImageFormatErrorBody = `{
+  "error": {
+    "code": "Base.1.5.PropertyValueFormatError",
+    "message": "The value for the property Image is of a different format than the property can accept.",
+    "@Message.ExtendedInfo": [
+      {
+        "MessageId": "Base.1.5.PropertyValueFormatError",
+        "MessageArgs": ["http://example.com/install.iso", "Image"],
+        "RelatedProperties": ["#/Image"]
+      }
+    ]
+  }
+}`
+
+	// Error response of a BMC turning down a conditional request.
+	mediaPreconditionFailedBody = `{
+  "error": {
+    "code": "Base.1.5.PreconditionFailed",
+    "message": "The ETag supplied did not match the ETag required to change this resource.",
+    "@Message.ExtendedInfo": [
+      {
+        "MessageId": "Base.1.5.PreconditionFailed",
+        "Resolution": "Try the operation again using the appropriate ETag."
+      }
+    ]
+  }
+}`
+
 	// Error response of an HPE iLO rejecting the Inserted property of a PATCH.
 	mediaInsertedUnknownBody = `{
   "error": {
@@ -4105,6 +4190,55 @@ const (
   }
 }`
 )
+
+// baseRegistryRoutes serves the Base message registry the way a BMC publishes
+// it, so that messages reported by their registry ID alone can be expanded.
+var baseRegistryRoutes = map[string]mockRedfishRoute{
+	"/redfish/v1/Registries": {
+		statusCode: http.StatusOK,
+		body: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Registries/Base" }
+  ]
+}`,
+	},
+	"/redfish/v1/Registries/Base": {
+		statusCode: http.StatusOK,
+		body: `{
+  "@odata.id": "/redfish/v1/Registries/Base",
+  "Id": "Base",
+  "Registry": "Base.1.0.0",
+  "Languages": ["en"],
+  "Location": [
+    {
+      "Language": "en",
+      "Uri": "/redfish/v1/registrystore/registries/en/base.json",
+      "PublicationUri": "https://redfish.dmtf.org/registries/Base.1.0.0.json"
+    }
+  ]
+}`,
+	},
+	"/redfish/v1/registrystore/registries/en/base.json": {
+		statusCode: http.StatusOK,
+		body: `{
+  "@odata.id": "/redfish/v1/registrystore/registries/en/base.json",
+  "Id": "Base.1.0.0",
+  "RegistryPrefix": "Base",
+  "RegistryVersion": "1.0.0",
+  "Language": "en",
+  "Messages": {
+    "PropertyUnknown": {
+      "Description": "Indicates that an unknown property was included in the request body.",
+      "Message": "The property %1 is not in the list of valid properties for the resource.",
+      "NumberOfArgs": 1,
+      "Resolution": "Remove the unknown property from the request body and resubmit the request.",
+      "Severity": "Warning"
+    }
+  }
+}`,
+	},
+}
 
 // insertMediaActionInfoRoute serves an action info for InsertMedia declaring
 // TransferProtocolType with the given allowable values.
@@ -4271,10 +4405,127 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				{
 					method: http.MethodPatch,
 					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
-					body:   `{"Image":"http://example.com/install.iso","Inserted":true}`,
+					body:   `{"Image":"http://example.com/install.iso","Inserted":true,"WriteProtected":true}`,
 				},
 			},
 			assertErr: require.NoError,
+		},
+		{
+			name:           "success - vendor specific action grouped by vendor",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeWithOEMActionsBody,
+			extraRoutes: map[string]mockRedfishRoute{
+				"/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hpe/HpeiLOVirtualMedia.InsertVirtualMedia": {statusCode: http.StatusOK},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hpe/HpeiLOVirtualMedia.InsertVirtualMedia",
+					body:   `{"Image":"http://example.com/install.iso"}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - vendor specific action directly below oem",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeWithFlatOEMActionsBody,
+			extraRoutes: map[string]mockRedfishRoute{
+				"/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hp/HpiLOVirtualMedia.InsertVirtualMedia": {statusCode: http.StatusOK},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hp/HpiLOVirtualMedia.InsertVirtualMedia",
+					body:   `{"Image":"http://example.com/install.iso"}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - patch repeated unconditionally after the precondition was rejected",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeWithoutActionsWithETagBody,
+
+			virtualMediaPatch: mockResponses{
+				statusCodes: []int{http.StatusPreconditionFailed, http.StatusNoContent},
+				bodies:      []string{mediaPreconditionFailedBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method:  http.MethodPatch,
+					path:    "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:    `{"Image":"http://example.com/install.iso","Inserted":true,"WriteProtected":true}`,
+					ifMatch: `W/"1234567890"`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:   `{"Image":"http://example.com/install.iso","Inserted":true,"WriteProtected":true}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - names the request and expands the message from the registry",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeWithoutActionsBody,
+			extraRoutes:        baseRegistryRoutes,
+
+			virtualMediaPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest},
+				bodies:      []string{mediaInsertedUnknownBody, mediaInsertedUnknownBody},
+			},
+
+			assertErr: func(t require.TestingT, err error, _ ...any) {
+				require.EqualError(t, err,
+					`Failed to attach media to BMC: PATCH /redfish/v1/Systems/1/VirtualMedia/1 {"Image":"http://example.com/install.iso","WriteProtected":true}: `+
+						`BMC returned HTTP 400: Base.0.10.PropertyUnknown: The property Inserted is not in the list of valid properties for the resource. `+
+						`Resolution: Remove the unknown property from the request body and resubmit the request.`)
+			},
+		},
+		{
+			name:           "error - patch is not repeated for a rejected payload",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeWithoutActionsWithETagBody,
+
+			virtualMediaPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest},
+				bodies:      []string{mediaImageFormatErrorBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method:  http.MethodPatch,
+					path:    "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:    `{"Image":"http://example.com/install.iso","Inserted":true,"WriteProtected":true}`,
+					ifMatch: `W/"1234567890"`,
+				},
+			},
+			assertErr: require.Error,
 		},
 		{
 			name:           "success - patch fallback drops the rejected inserted property",
@@ -4294,12 +4545,12 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				{
 					method: http.MethodPatch,
 					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
-					body:   `{"Image":"http://example.com/install.iso","Inserted":true}`,
+					body:   `{"Image":"http://example.com/install.iso","Inserted":true,"WriteProtected":true}`,
 				},
 				{
 					method: http.MethodPatch,
 					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
-					body:   `{"Image":"http://example.com/install.iso"}`,
+					body:   `{"Image":"http://example.com/install.iso","WriteProtected":true}`,
 				},
 			},
 			assertErr: require.NoError,
@@ -4499,6 +4750,8 @@ func TestRedfish_DetachMedia(t *testing.T) {
 		managerVMBody       string
 		managerVMMemberBody string
 
+		extraRoutes map[string]mockRedfishRoute
+
 		ejectMedia        mockResponses
 		virtualMediaPatch mockResponses
 
@@ -4607,6 +4860,27 @@ func TestRedfish_DetachMedia(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name:           "success - vendor specific action",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedWithOEMActionsBody,
+			extraRoutes: map[string]mockRedfishRoute{
+				"/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hpe/HpeiLOVirtualMedia.EjectVirtualMedia": {statusCode: http.StatusOK},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hpe/HpeiLOVirtualMedia.EjectVirtualMedia",
+					body:   `{}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
 			name:           "no-op - nothing attached",
 			virtualMediaID: "system:1",
 
@@ -4681,6 +4955,7 @@ func TestRedfish_DetachMedia(t *testing.T) {
 				managerVirtualMediaMemberBody:       tc.managerVMMemberBody,
 				ejectMedia:                          tc.ejectMedia,
 				virtualMediaPatch:                   tc.virtualMediaPatch,
+				extraRoutes:                         tc.extraRoutes,
 			}, &gotRequests)
 
 			client := redfish.New()
@@ -4705,5 +4980,6 @@ func requireRequestsEqual(t *testing.T, want []mockRequest, got []mockRequest) {
 		require.Equal(t, wantRequest.method, got[i].method, "request %d", i)
 		require.Equal(t, wantRequest.path, got[i].path, "request %d", i)
 		require.JSONEq(t, wantRequest.body, got[i].body, "request %d", i)
+		require.Equal(t, wantRequest.ifMatch, got[i].ifMatch, "request %d", i)
 	}
 }

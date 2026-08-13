@@ -3,11 +3,14 @@ package redfish
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/stmcginnis/gofish/schemas"
 	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestWrapRedfishError(t *testing.T) {
@@ -25,7 +28,7 @@ func TestWrapRedfishError(t *testing.T) {
 			statusCode: 400,
 			body:       `{"error":{"@Message.ExtendedInfo":[{"@odata.type":"#Message.v1_0_7.Message","Message":"The value https://example.com/file.iso(string) for the property Image is of a different format than the property can accept.","MessageArgs":["https://example.com/file.iso(string)","Image"],"MessageId":"Base.1.5.PropertyValueFormatError","RelatedProperties":["#/Image"],"Resolution":"Correct the value for the property in the request body and resubmit the request if the operation failed.","Severity":"Warning"}],"code":"Base.1.5.PropertyValueFormatError","message":"The value https://example.com/file.iso(string) for the property Image is of a different format than the property can accept."}}`,
 
-			want: "BMC returned HTTP 400: Base.1.5.PropertyValueFormatError: The value https://example.com/file.iso(string) for the property Image is of a different format than the property can accept. (related properties: #/Image) Resolution: Correct the value for the property in the request body and resubmit the request if the operation failed.",
+			want: "BMC returned HTTP 400: Base.1.5.PropertyValueFormatError: The value https://example.com/file.iso(string) for the property Image is of a different format than the property can accept. (severity: Warning) (related properties: #/Image) Resolution: Correct the value for the property in the request body and resubmit the request if the operation failed.",
 		},
 		{
 			// Response of an HPE iLO rejecting the "Inserted" property of a
@@ -95,6 +98,74 @@ func TestWrapRedfishError_wrapped(t *testing.T) {
 	err := wrapRedfishError(fmt.Errorf("Failed to attach media: %w", schemas.ConstructError(400, []byte(`{"error":{"@Message.ExtendedInfo":[{"MessageId":"Base.0.10.PropertyUnknown","MessageArgs":["Inserted"]}]}}`))))
 
 	require.EqualError(t, err, "BMC returned HTTP 400: Base.0.10.PropertyUnknown [Inserted]")
+}
+
+func TestWrapRedfishError_status(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+
+		wantStatus int
+		wantMatch  bool
+	}{
+		{
+			// The BMC turned the request down, repeating it unchanged will not
+			// help, which the API reports as a bad request.
+			name:       "client error",
+			statusCode: 400,
+
+			wantStatus: 400,
+			wantMatch:  true,
+		},
+		{
+			// The status of the BMC is not the status of the API: the caller of
+			// the API is authorized, the credentials for the BMC are not.
+			name:       "unauthorized",
+			statusCode: 401,
+
+			wantStatus: 400,
+			wantMatch:  true,
+		},
+		{
+			// Nothing the caller can do about, so the API keeps reporting an
+			// internal error.
+			name:       "server error",
+			statusCode: 500,
+
+			wantMatch: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := wrapRedfishError(schemas.ConstructError(tc.statusCode, []byte(`{"error":{"code":"Base.1.0.GeneralError","message":"boom"}}`)))
+
+			statusCode, found := api.StatusErrorMatch(err)
+
+			require.Equal(t, tc.wantMatch, found)
+
+			if tc.wantMatch {
+				require.Equal(t, tc.wantStatus, statusCode)
+			}
+		})
+	}
+}
+
+func TestRedfishRequestError(t *testing.T) {
+	err := redfishRequestError(
+		schemas.ConstructError(400, []byte(`{"error":{"@Message.ExtendedInfo":[{"MessageID":"Base.0.10.PropertyUnknown","MessageArgs":["Inserted"]}]}}`)),
+		nil,
+		http.MethodPatch,
+		"/redfish/v1/Systems/1/VirtualMedia/1",
+		map[string]any{"Image": "http://example.com/install.iso", "Inserted": true},
+	)
+
+	require.EqualError(t, err, `PATCH /redfish/v1/Systems/1/VirtualMedia/1 {"Image":"http://example.com/install.iso","Inserted":true}: BMC returned HTTP 400: Base.0.10.PropertyUnknown [Inserted]`)
+
+	// Rendering the error again keeps the request it names.
+	require.Equal(t, err, wrapRedfishError(err))
+
+	require.NoError(t, redfishRequestError(nil, nil, http.MethodPatch, "/redfish/v1/Systems/1/VirtualMedia/1", nil))
 }
 
 func TestRedactAuthorization(t *testing.T) {
