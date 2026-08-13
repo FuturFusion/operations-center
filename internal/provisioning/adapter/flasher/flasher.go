@@ -73,10 +73,10 @@ func (f *Flasher) GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (*ap
 	return seedProvider, nil
 }
 
-func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, file io.ReadCloser) (_ io.ReadCloser, _ error) {
+func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, file io.ReadCloser) (_ io.ReadCloser, size int, _ error) {
 	providerConfig, err := f.GetProviderConfig(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, -1, err
 	}
 
 	seedProvider := &seed.Provider{
@@ -89,15 +89,62 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedCon
 		seedProvider,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create seed tarball: %w", err)
+		return nil, -1, fmt.Errorf("Failed to create seed tarball: %w", err)
+	}
+
+	size, err = uncompressedSize(file, seedTarballStartPosition+len(tarball))
+	if err != nil {
+		return nil, -1, fmt.Errorf("Failed to determine size of the image: %w", err)
 	}
 
 	gzipReader, err := gzip.NewReader(file)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to initialize gzip reader: %w", err)
+		return nil, -1, fmt.Errorf("Failed to initialize gzip reader: %w", err)
 	}
 
-	return newInjectReader(newParentCloser(gzipReader, file), seedTarballStartPosition, tarball), nil
+	return newInjectReader(newParentCloser(gzipReader, file), seedTarballStartPosition, tarball), size, nil
+}
+
+// uncompressedSize returns the size of the content of the gzip stream in
+// bytes, taken from the ISIZE field in its footer, and leaves the reader at
+// the position it was called with.
+//
+// It reports -1 if the size cannot be determined.
+func uncompressedSize(r io.Reader, minSize int) (int, error) {
+	seeker, ok := r.(io.Seeker)
+	if !ok {
+		return -1, nil
+	}
+
+	position, err := seeker.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return -1, err
+	}
+
+	_, err = seeker.Seek(-4, io.SeekEnd)
+	if err != nil {
+		return -1, err
+	}
+
+	var footer [4]byte
+
+	_, readErr := io.ReadFull(r, footer[:])
+
+	_, err = seeker.Seek(position, io.SeekStart)
+	if err != nil {
+		return -1, err
+	}
+
+	if readErr != nil {
+		return -1, readErr
+	}
+
+	size := int64(binary.LittleEndian.Uint32(footer[:]))
+	if size < int64(minSize) {
+		return -1, nil
+	}
+
+	return newInjectReader(newParentCloser(gzipReader, file), offset, tarball), nil
 }
 
 func createSeedTarball(seedConfig provisioning.TokenImageSeedConfigs, providerSeed *seed.Provider) (_ []byte, err error) {
