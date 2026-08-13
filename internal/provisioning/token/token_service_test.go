@@ -1189,10 +1189,10 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 			}
 
 			flasherAdapter := &adapterMock.FlasherPortMock{
-				GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
+				GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, int, error) {
 					require.Equal(t, tc.wantApplicationsSeed, seedConfig.Applications)
 					require.Equal(t, tc.wantIncusSeed, seedConfig.Incus)
-					return rc, tc.flasherAdapterGenerateSeededImageErr
+					return rc, -1, tc.flasherAdapterGenerateSeededImageErr
 				},
 			}
 
@@ -1987,8 +1987,8 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			}
 
 			flasherAdapter := &adapterMock.FlasherPortMock{
-				GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
-					return rc, tc.flasherAdapterGenerateSeededImageErr
+				GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, int, error) {
+					return rc, -1, tc.flasherAdapterGenerateSeededImageErr
 				},
 			}
 
@@ -2001,7 +2001,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			tokenSvc := provisioningToken.New(repo, updateSvc, channelSvc, flasherAdapter, client)
 
 			// Run test
-			rc, err := tokenSvc.GetTokenImageFromTokenSeed(context.Background(), uuidgen.FromPattern(t, "1"), "config", tc.imageTypeArg, tc.architectureArg, tc.channelArg)
+			rc, _, err := tokenSvc.GetTokenImageFromTokenSeed(context.Background(), uuidgen.FromPattern(t, "1"), "config", tc.imageTypeArg, tc.architectureArg, tc.channelArg)
 
 			// Assert
 			tc.assertErr(t, err)
