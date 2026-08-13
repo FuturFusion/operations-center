@@ -894,7 +894,8 @@ func (s Server) UpdateState() ServerUpdateState {
 		return ServerUpdateStateInMaintenanceRestoring
 	}
 
-	if s.StatusDetail == ServerStatusDetailReadyRestoring {
+	if s.StatusDetail == ServerStatusDetailReadyRestoring &&
+		ptr.From(s.VersionData.InMaintenance) == NotInMaintenance {
 		return ServerUpdateStateInMaintenancePostRestore
 	}
 
