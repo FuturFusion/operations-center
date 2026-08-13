@@ -846,8 +846,9 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 			triggerBackgroundPolling = true
 
 		case api.ServerSelfUpdateCauseOSUpdateApplied:
-			server.StatusDetail = api.ServerStatusDetailNone
-			server.LastStatusUpdated = s.now()
+			// Intentionally keep the status detail as is to prevent state from
+			// falling back. Update polling triggered below will update the state
+			// correctly.
 			triggerBackgroundPolling = true
 
 		case api.ServerSelfUpdateCauseApplicationUpdateApplied:
@@ -2149,7 +2150,22 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 		// If an update has been triggered, check if an update is still needed.
 		// If not, updating is done.
 		if server.StatusDetail == api.ServerStatusDetailReadyUpdatingOS {
-			if !ptr.From(server.VersionData.NeedsUpdate) {
+			needsUpdate := ptr.From(server.VersionData.NeedsUpdate)
+
+			if updateServerConfiguration {
+				freshServer := *server
+				freshServer.VersionData = versionData
+				freshServer.VersionData.Applications = slices.Clone(versionData.Applications)
+
+				err := s.enrichServerWithVersionDetails(ctx, &freshServer)
+				if err != nil {
+					return fmt.Errorf("Failed to enrich version data of server %q: %w", server.Name, err)
+				}
+
+				needsUpdate = ptr.From(freshServer.VersionData.NeedsUpdate)
+			}
+
+			if !needsUpdate {
 				server.StatusDetail = api.ServerStatusDetailNone
 				server.LastStatusUpdated = s.now()
 			}

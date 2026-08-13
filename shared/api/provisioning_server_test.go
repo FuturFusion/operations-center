@@ -188,6 +188,17 @@ func TestServerVersionData_UpdateState(t *testing.T) {
 		},
 		{
 			status:        api.ServerStatusReady,
+			statusDetail:  api.ServerStatusDetailReadyRestoring,
+			cluster:       "one",
+			needsUpdate:   false,
+			needsReboot:   false,
+			inMaintenance: api.InMaintenanceEvacuated,
+			isTypeIncus:   true,
+
+			wantServerUpdateState: api.ServerUpdateStateInMaintenanceRestoring,
+		},
+		{
+			status:        api.ServerStatusReady,
 			statusDetail:  api.ServerStatusDetailNone,
 			cluster:       "",
 			needsUpdate:   false,

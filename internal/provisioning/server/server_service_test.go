@@ -3007,7 +3007,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			wantServerStatusDetail: api.ServerStatusDetailNone,
 		},
 		{
-			name: "success - cause OS update applied",
+			name: "success - cause OS update applied keeps updating state",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
 				ConnectionURL:             "http://one-new/",
 				Cause:                     api.ServerSelfUpdateCauseOSUpdateApplied,
@@ -3026,7 +3026,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			assertErr:              require.NoError,
 			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus:       api.ServerStatusReady,
-			wantServerStatusDetail: api.ServerStatusDetailNone,
+			wantServerStatusDetail: api.ServerStatusDetailReadyUpdatingOS,
 		},
 		{
 			name: "success - cause application update applied",
@@ -4529,8 +4529,9 @@ func TestServerService_PollServer(t *testing.T) {
 		updateSvcGetAllWithFilter      provisioning.Updates
 		updateSvcGetAllWithFilterErr   error
 
-		assertErr require.ErrorAssertionFunc
-		assertLog log.MatcherFunc
+		assertErr              require.ErrorAssertionFunc
+		assertLog              log.MatcherFunc
+		wantServerStatusDetail *api.ServerStatusDetail
 	}{
 		{
 			name: "success",
@@ -4625,6 +4626,110 @@ func TestServerService_PollServer(t *testing.T) {
 
 			assertErr: require.NoError,
 			assertLog: log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+		},
+		{
+			name: "success - updating, update has been applied",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailReadyUpdatingOS,
+				Channel:      "stable",
+				VersionData:  pollServerVersionData("1"),
+			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetVersionData: pollServerVersionData("2"),
+			updateSvcGetAllWithFilter: provisioning.Updates{
+				{
+					ID:      2,
+					UUID:    uuidgen.FromPattern(t, "2"),
+					Version: "2",
+					Files: provisioning.UpdateFiles{
+						{
+							Filename: "x86_64/IncusOS_20260610.img.gz",
+						},
+						{
+							Filename: "x86_64/incus.raw.gz",
+						},
+					},
+				},
+			},
+
+			assertErr:              require.NoError,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerStatusDetail: ptr.To(api.ServerStatusDetailNone),
+		},
+		{
+			name: "success - updating, update is still pending",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailReadyUpdatingOS,
+				Channel:      "stable",
+				VersionData:  pollServerVersionData("1"),
+			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetVersionData: pollServerVersionData("1"),
+			updateSvcGetAllWithFilter: provisioning.Updates{
+				{
+					ID:      2,
+					UUID:    uuidgen.FromPattern(t, "2"),
+					Version: "2",
+					Files: provisioning.UpdateFiles{
+						{
+							Filename: "x86_64/IncusOS_20260610.img.gz",
+						},
+						{
+							Filename: "x86_64/incus.raw.gz",
+						},
+					},
+				},
+			},
+
+			assertErr:              require.NoError,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerStatusDetail: ptr.To(api.ServerStatusDetailReadyUpdatingOS),
 		},
 		{
 			name: "success - pending registration",
@@ -5134,6 +5239,10 @@ func TestServerService_PollServer(t *testing.T) {
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
 					require.Equal(t, api.ServerStatusReady, server.Status)
 					require.Equal(t, fixedDate, server.LastSeen)
+					if tc.wantServerStatusDetail != nil {
+						require.Equal(t, *tc.wantServerStatusDetail, server.StatusDetail)
+					}
+
 					return tc.repoUpdateErr
 				},
 			}
@@ -10041,5 +10150,22 @@ func TestServerService_BMCRefreshByName(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 		})
+	}
+}
+
+func pollServerVersionData(incusVersion string) api.ServerVersionData {
+	return api.ServerVersionData{
+		OS: api.OSVersionData{
+			Name:        "IncusOS",
+			Version:     "1",
+			VersionNext: incusVersion,
+		},
+		Applications: []api.ApplicationVersionData{
+			{
+				Name:    "incus",
+				Version: incusVersion,
+			},
+		},
+		UpdateChannel: "stable",
 	}
 }

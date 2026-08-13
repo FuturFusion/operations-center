@@ -14,8 +14,6 @@ import (
 	"net/http"
 	"reflect"
 	"slices"
-	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -71,6 +69,8 @@ type clusterService struct {
 
 	clusterUpdateControlLoopMu        sync.Mutex
 	clusterUpdateControlLoopClusterMu map[string]*sync.Mutex
+
+	clusterUpdateProgress *clusterUpdateProgressLatch
 }
 
 var _ provisioning.ClusterService = &clusterService{}
@@ -158,6 +158,7 @@ func New(
 		removeServerDeleteClusterMemberRetryDelay: 5 * time.Second,
 
 		clusterUpdateControlLoopClusterMu: map[string]*sync.Mutex{},
+		clusterUpdateProgress:             newClusterUpdateProgressLatch(),
 	}
 
 	for _, opt := range opts {
@@ -1411,7 +1412,13 @@ func (s *clusterService) getClusterUpdateStatus(ctx context.Context, name string
 	}
 
 	if clusterUpdateStatus.InProgressStatus.InProgress != api.ClusterUpdateInProgressInactive {
-		clusterUpdateStatus.InProgressStatus.StatusDescription = ptr.To(clusterUpdateState(clusterUpdateStatus.InProgressStatus, servers))
+		// The progress is calculated from a live snapshot of the server states, which
+		// are updated asynchronously from several sources. Pass it through the latch,
+		// so the progress reported to the user never moves backwards.
+		progress := s.clusterUpdateProgress.apply(name, clusterUpdateState(clusterUpdateStatus.InProgressStatus, servers))
+		clusterUpdateStatus.InProgressStatus.StatusDescription = ptr.To(progress.String())
+	} else {
+		s.clusterUpdateProgress.reset(name)
 	}
 
 	return nil
@@ -1501,6 +1508,8 @@ func (s *clusterService) Rename(ctx context.Context, oldName string, newName str
 		return err
 	}
 
+	s.clusterUpdateProgress.reset(oldName)
+
 	lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{
 		Operation: lifecycle.ClusterUpdateOperationRename,
 		Name:      newName,
@@ -1521,6 +1530,8 @@ func (s *clusterService) DeleteByName(ctx context.Context, name string, force bo
 		if err != nil {
 			return fmt.Errorf("Failed to delete cluster: %w", err)
 		}
+
+		s.clusterUpdateProgress.reset(name)
 
 		lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{
 			Operation: lifecycle.ClusterUpdateOperationDelete,
@@ -1569,6 +1580,8 @@ func (s *clusterService) DeleteByName(ctx context.Context, name string, force bo
 	if err != nil {
 		return fmt.Errorf("Failed to delete cluster: %w", err)
 	}
+
+	s.clusterUpdateProgress.reset(name)
 
 	lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{
 		Operation: lifecycle.ClusterUpdateOperationDelete,
@@ -1668,6 +1681,8 @@ func (s *clusterService) DeleteAndFactoryResetByName(ctx context.Context, name s
 	if err != nil {
 		return fmt.Errorf("Failed to delete cluster: %w", err)
 	}
+
+	s.clusterUpdateProgress.reset(name)
 
 	lifecycle.ClusterUpdateSignal.Emit(ctx, lifecycle.ClusterUpdateMessage{
 		Operation: lifecycle.ClusterUpdateOperationDelete,
@@ -1793,6 +1808,8 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 	if err != nil {
 		return err
 	}
+
+	s.clusterUpdateProgress.reset(name)
 
 	if updateDone {
 		return nil
@@ -1974,7 +1991,7 @@ func (s *clusterService) executeRollingUpdate(ctx context.Context, cluster provi
 
 		// To get a consistent log, print the current state before triggering the next action, since
 		// it will likely update the state.
-		updateState := clusterUpdateState(cluster.UpdateStatus.InProgressStatus, servers)
+		updateState := clusterUpdateState(cluster.UpdateStatus.InProgressStatus, servers).String()
 		if updateState != "" {
 			log.InfoContext(ctx, "Cluster rolling update next step", slog.String("cluster_update_state", updateState))
 		}
@@ -2061,21 +2078,24 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 	}
 
 	for _, server := range servers {
-		// We intentionally ignore pending updates during during the rolling restart
-		// phase. All servers of a cluster have been updated to the same version
-		// before entering the rolling restart. This procedure should not be
-		// interrupted by new updates appearing while a rolling update is processed.
-		server.VersionData.NeedsUpdate = ptr.To(false)
+		// serverUpdateStateForRollingUpdate intentionally ignores pending updates
+		// during the rolling restart phase. All servers of a cluster have been updated
+		// to the same version before entering the rolling restart. This procedure
+		// should not be interrupted by new updates appearing while a rolling update is
+		// processed. The same state is used to report the progress to the user, so the
+		// reported progress can not disagree with the action taken here.
+		serverUpdateState := serverUpdateStateForRollingUpdate(cluster.UpdateStatus.InProgressStatus.InProgress, server)
 
 		if nextAction == nil {
-			switch server.UpdateState() {
+			switch serverUpdateState {
 			case api.ServerUpdateStateUndefined:
 				return fmt.Errorf("Server update state for %q (%s) is undefined", server.Name, server.ConnectionURL)
 
 			case api.ServerUpdateStateUpToDate:
 				continue
 
-			// Since we set NeedsUpdate = false above, this state is not possible.
+			// Since serverUpdateStateForRollingUpdate reports NeedsUpdate = false, this
+			// state is not possible.
 			// case api.ServerUpdateStateUpdatePending:
 			//
 			case api.ServerUpdateStateUpdating:
@@ -2124,7 +2144,7 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 				}
 
 			default:
-				return fmt.Errorf("Server update state %q for %q (%s) is not supported", server.UpdateState(), server.Name, server.ConnectionURL)
+				return fmt.Errorf("Server update state %q for %q (%s) is not supported", serverUpdateState, server.Name, server.ConnectionURL)
 			}
 
 			continue
@@ -2132,7 +2152,7 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 
 		// We know the next action so we need to determine, if we are allowed
 		// to perform this action as well as the number of steps, that are pending.
-		switch server.UpdateState() {
+		switch serverUpdateState {
 		case api.ServerUpdateStateUpToDate,
 			api.ServerUpdateStateEvacuationPending:
 			continue
@@ -2140,7 +2160,8 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 		case api.ServerUpdateStateUndefined:
 			return fmt.Errorf("Rolling update blocked, server %q (%s) is in unknown state", server.Name, server.ConnectionURL)
 
-		// Since we set NeedsUpdate = false above, this state is not possible.
+		// Since serverUpdateStateForRollingUpdate reports NeedsUpdate = false, this
+		// state is not possible.
 		// case api.ServerUpdateStateUpdatePending:
 		//
 		case api.ServerUpdateStateUpdating:
@@ -2162,13 +2183,13 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 			api.ServerUpdateStateInMaintenancePostRestore,
 			api.ServerUpdateStateRebootPending,
 			api.ServerUpdateStateRebooting:
-			return fmt.Errorf("Rolling update blocked, out of order update for server %q (%s) is ongoing, state %v", server.Name, server.ConnectionURL, server.UpdateState())
+			return fmt.Errorf("Rolling update blocked, out of order update for server %q (%s) is ongoing, state %v", server.Name, server.ConnectionURL, serverUpdateState)
 		}
 	}
 
 	// To get a consistent log, print the current state before triggering the next action, since
 	// it will likely update the state.
-	updateState := clusterUpdateState(cluster.UpdateStatus.InProgressStatus, servers)
+	updateState := clusterUpdateState(cluster.UpdateStatus.InProgressStatus, servers).String()
 	if updateState != "" {
 		log.InfoContext(ctx, "Cluster rolling update next step", slog.String("cluster_update_state", updateState))
 	}
@@ -2196,9 +2217,11 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 			}
 
 			if errors.Is(err, domain.ErrTerminal) {
-				updateErr := s.updateInProgressStatus(ctx, cluster.Name, api.ClusterUpdateInProgressStatus{
-					Error: err.Error(),
-				})
+				inProgressStatus := cluster.UpdateStatus.InProgressStatus
+				inProgressStatus.InProgress = api.ClusterUpdateInProgressError
+				inProgressStatus.Error = err.Error()
+
+				updateErr := s.updateInProgressStatus(ctx, cluster.Name, inProgressStatus)
 				if updateErr != nil {
 					err = errors.Join(err, updateErr)
 				}
@@ -2241,142 +2264,6 @@ func (s *clusterService) updateInProgressStatus(ctx context.Context, clusterName
 	})
 }
 
-func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgressStatus, servers provisioning.Servers) string {
-	perServerUpdateSteps := len([]api.ServerUpdateState{
-		api.ServerUpdateStateUpdatePending,
-		api.ServerUpdateStateUpdating,
-	})
-
-	perServerRestartSteps := len([]api.ServerUpdateState{
-		api.ServerUpdateStateEvacuationPending,
-		api.ServerUpdateStateEvacuating,
-		api.ServerUpdateStateInMaintenanceRebootPending,
-		api.ServerUpdateStateInMaintenanceRebooting,
-		api.ServerUpdateStateInMaintenanceRestorePending,
-		api.ServerUpdateStateInMaintenanceRestoring,
-		api.ServerUpdateStateInMaintenancePostRestore,
-	})
-
-	totalSteps := 0
-	pendingSteps := 0
-	currentStep := ""
-	currentServer := ""
-
-	if clusterUpdateInProgressStatus.InProgress == api.ClusterUpdateInProgressError {
-		return clusterUpdateInProgressStatus.Error
-	}
-
-	sort.SliceStable(servers, func(i, j int) bool {
-		return servers[i].Name < servers[j].Name
-	})
-
-	// Check the update states first, since the whole process is applied
-	// in two iterations, first updates and then reboots.
-	switch clusterUpdateInProgressStatus.InProgress {
-	case api.ClusterUpdateInProgressApplyUpdate,
-		api.ClusterUpdateInProgressApplyUpdateWithReboot:
-		withReboot := clusterUpdateInProgressStatus.InProgress == api.ClusterUpdateInProgressApplyUpdateWithReboot
-		perServerSteps := perServerUpdateSteps
-		if withReboot {
-			perServerSteps += perServerRestartSteps
-		}
-
-		firstEvacuationPendingServer := ""
-		for _, server := range servers {
-			totalSteps += perServerSteps
-
-			switch server.UpdateState() {
-			case api.ServerUpdateStateUpdatePending:
-				pendingSteps += perServerSteps
-				if currentServer == "" {
-					currentStep = server.UpdateState().String()
-					currentServer = server.Name
-				}
-
-			case api.ServerUpdateStateUpdating:
-				pendingSteps += perServerSteps - 1
-				currentStep = server.UpdateState().String()
-				currentServer = server.Name
-
-			case api.ServerUpdateStateEvacuationPending,
-				api.ServerUpdateStateEvacuating:
-				if !withReboot {
-					continue
-				}
-
-				pendingSteps += perServerSteps - 2
-				// Don't set the currentServer here, since these servers are ready for evacuation, but we might still have
-				// servers, which are not yet done with updating.
-				if firstEvacuationPendingServer == "" {
-					currentStep = server.UpdateState().String()
-					firstEvacuationPendingServer = server.Name
-				}
-			}
-		}
-
-		// If all servers are properly updated, but we have not yet updated the cluster's
-		// update in progress status, then currentServer might be empty here, so we take
-		// the first server, which is in state evacuation pending.
-		if withReboot && currentServer == "" {
-			currentServer = firstEvacuationPendingServer
-			currentStep = api.ServerUpdateStateEvacuationPending.String()
-		}
-
-	case api.ClusterUpdateInProgressRollingRestart:
-		perServerSteps := perServerUpdateSteps + perServerRestartSteps
-
-		for _, server := range servers {
-			totalSteps += perServerSteps
-
-			switch server.UpdateState() {
-			case api.ServerUpdateStateEvacuationPending:
-				pendingSteps += perServerSteps - 2
-				if currentServer == "" {
-					currentStep = server.UpdateState().String()
-					currentServer = server.Name
-				}
-
-			case api.ServerUpdateStateEvacuating:
-				pendingSteps += perServerSteps - 3
-				currentStep = server.UpdateState().String()
-				currentServer = server.Name
-
-			case api.ServerUpdateStateInMaintenanceRebootPending:
-				pendingSteps += perServerSteps - 4
-				currentStep = server.UpdateState().String()
-				currentServer = server.Name
-
-			case api.ServerUpdateStateInMaintenanceRebooting:
-				pendingSteps += perServerSteps - 5
-				currentStep = server.UpdateState().String()
-				currentServer = server.Name
-
-			case api.ServerUpdateStateInMaintenanceRestorePending:
-				pendingSteps += perServerSteps - 6
-				currentStep = server.UpdateState().String()
-				currentServer = server.Name
-
-			case api.ServerUpdateStateInMaintenanceRestoring:
-				pendingSteps += perServerSteps - 7
-				currentStep = server.UpdateState().String()
-				currentServer = server.Name
-
-			case api.ServerUpdateStateInMaintenancePostRestore:
-				pendingSteps += perServerSteps - 8
-				currentStep = server.UpdateState().String()
-				currentServer = server.Name
-			}
-		}
-	}
-
-	if pendingSteps > 0 {
-		format := fmt.Sprintf("[%%%[1]dd/%%%[1]dd] %%s server %%q", len(strconv.Itoa(totalSteps)))
-		return fmt.Sprintf(format, totalSteps-pendingSteps+1, totalSteps, currentStep, currentServer)
-	}
-
-	return ""
-}
-
 func (s *clusterService) AbortClusterUpdate(ctx context.Context, name string) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		cluster, err := s.repo.GetByName(ctx, name)
@@ -2398,6 +2285,8 @@ func (s *clusterService) AbortClusterUpdate(ctx context.Context, name string) er
 	if err != nil {
 		return err
 	}
+
+	s.clusterUpdateProgress.reset(name)
 
 	return nil
 }

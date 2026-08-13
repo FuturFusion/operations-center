@@ -838,7 +838,7 @@ const (
 	ServerUpdateStateInMaintenanceRebootPending  ServerUpdateState = "in maintenance, reboot pending"  // ServerStatusReady, NeedsUpdate: false, NeedsReboot: true, InMaintenance: InMaintenanceEvacuated
 	ServerUpdateStateInMaintenanceRebooting      ServerUpdateState = "in maintenance, rebooting"       // ServerStatusOffline, ServerStatusDetailOfflineRebooting, InMaintenance: InMaintenanceEvacuated
 	ServerUpdateStateInMaintenanceRestorePending ServerUpdateState = "in maintenance, restore pending" // ServerStatusReady, NeedsUpdate: false, InMaintenance: InMaintenanceEvacuated
-	ServerUpdateStateInMaintenanceRestoring      ServerUpdateState = "restoring"                       // ServerStatusReady, ServerStatusDetailReadyRestoring, NeedsUpdate: false, InMaintenance: InMaintenanceRestoring
+	ServerUpdateStateInMaintenanceRestoring      ServerUpdateState = "restoring"                       // ServerStatusReady, ServerStatusDetailReadyRestoring, NeedsUpdate: false, InMaintenance: InMaintenanceRestoring or InMaintenanceEvacuated
 	ServerUpdateStateInMaintenancePostRestore    ServerUpdateState = "post restore"                    // ServerStatusReady, ServerStatusDetailReadyRestoring, NeedsUpdate: false, InMaintenance: NotInMaintenance
 	ServerUpdateStateRebootPending               ServerUpdateState = "reboot pending"                  // ServerStatusReady, NeedsUpdate: false, NeedsReboot: true, IsIncusCluster: false, InMaintenance: NotInMaintenance
 	ServerUpdateStateRebooting                   ServerUpdateState = "rebooting"                       // ServerStatusOffline, ServerStatusDetailOfflineRebooting
@@ -895,7 +895,11 @@ func (s Server) UpdateState() ServerUpdateState {
 	}
 
 	if s.StatusDetail == ServerStatusDetailReadyRestoring {
-		return ServerUpdateStateInMaintenancePostRestore
+		if ptr.From(s.VersionData.InMaintenance) == NotInMaintenance {
+			return ServerUpdateStateInMaintenancePostRestore
+		}
+
+		return ServerUpdateStateInMaintenanceRestoring
 	}
 
 	if ptr.From(s.VersionData.NeedsReboot) {
