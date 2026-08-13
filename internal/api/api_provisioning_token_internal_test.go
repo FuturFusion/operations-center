@@ -2,10 +2,13 @@ package api
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -302,19 +305,19 @@ func Test_tokenHandler_tokenSeedImageGet(t *testing.T) {
 				GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
 					return &provisioning.TokenSeed{Public: true}, nil
 				},
-				GetTokenImageFromTokenSeedFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, error) {
+				GetTokenImageFromTokenSeedFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, int, error) {
 					serviceCalled = true
 					gotImageType = imageType
 					gotArchitecture = architecture
 					gotChannel = channel
 
-					return io.NopCloser(bytes.NewBufferString("image-data")), nil
+					return io.NopCloser(bytes.NewBufferString("image-data")), len("image-data"), nil
 				},
 			}
 
-			body, status := doTokenRequest(t, tokenService, http.MethodGet, tc.path, "")
+			body, resp := doTokenRequestFull(t, tokenService, http.MethodGet, tc.path, "", nil)
 
-			require.Equal(t, tc.wantStatus, status)
+			require.Equal(t, tc.wantStatus, resp.statusCode)
 			require.Equal(t, tc.wantServiceCalled, serviceCalled)
 
 			if tc.wantServiceCalled {
@@ -327,7 +330,80 @@ func Test_tokenHandler_tokenSeedImageGet(t *testing.T) {
 	}
 }
 
+func Test_tokenHandler_tokenSeedImageGet_wireFormat(t *testing.T) {
+	const (
+		path      = "/" + tokenUUID + "/seeds/test/architecture/x86_64/type/iso/file.iso"
+		imageData = "image-data"
+	)
+
+	newTokenService := func() *provisioningMock.TokenServiceMock {
+		return &provisioningMock.TokenServiceMock{
+			GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+				return &provisioning.TokenSeed{Public: true}, nil
+			},
+			GetCompressedTokenImageFromTokenSeedFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, error) {
+				return io.NopCloser(bytes.NewBufferString(imageData)), nil
+			},
+		}
+	}
+
+	t.Run("client without accept-encoding gets the image uncompressed", func(t *testing.T) {
+		body, resp := doTokenRequestFull(t, newTokenService(), http.MethodGet, path, "", nil)
+
+		require.Equal(t, http.StatusOK, resp.statusCode)
+		require.Equal(t, imageData, body)
+		require.Equal(t, "application/octet-stream", resp.header.Get("Content-Type"))
+		require.Empty(t, resp.header.Get("Content-Encoding"))
+		require.Equal(t, `attachment; filename="pre-seed-test.iso"`, resp.header.Get("Content-Disposition"))
+		require.Equal(t, int64(len(imageData)), resp.contentLength)
+		require.Equal(t, "none", resp.header.Get("Accept-Ranges"))
+	})
+
+	t.Run("client accepting gzip gets the image compressed in transit", func(t *testing.T) {
+		body, resp := doTokenRequestFull(t, newTokenService(len(imageData)), http.MethodGet, path, "", http.Header{"Accept-Encoding": []string{"gzip"}})
+
+		require.Equal(t, http.StatusOK, resp.statusCode)
+		require.Equal(t, "gzip", resp.header.Get("Content-Encoding"))
+
+		require.Equal(t, "application/octet-stream", resp.header.Get("Content-Type"))
+		require.Equal(t, `attachment; filename="pre-seed-test.iso"`, resp.header.Get("Content-Disposition"))
+		require.Equal(t, "none", resp.header.Get("Accept-Ranges"))
+
+		require.Equal(t, int64(len(body)), resp.contentLength)
+
+		gzipReader, err := gzip.NewReader(strings.NewReader(body))
+		require.NoError(t, err)
+
+		decompressed, err := io.ReadAll(gzipReader)
+		require.NoError(t, err)
+		require.Equal(t, imageData, string(decompressed))
+	})
+
+	t.Run("head reports the metadata without a body", func(t *testing.T) {
+		body, resp := doTokenRequestFull(t, newTokenService(), http.MethodHead, path, "", nil)
+
+		require.Equal(t, http.StatusOK, resp.statusCode)
+		require.Empty(t, body)
+		require.Equal(t, "application/octet-stream", resp.header.Get("Content-Type"))
+		require.Equal(t, int64(len(imageData)), resp.contentLength)
+	})
+}
+
 func doTokenRequest(t *testing.T, tokenService provisioning.TokenService, method string, target string, requestBody string) (string, int) {
+	t.Helper()
+
+	body, resp := doTokenRequestFull(t, tokenService, method, target, requestBody, nil)
+
+	return body, resp.statusCode
+}
+
+type tokenResponse struct {
+	statusCode    int
+	header        http.Header
+	contentLength int64
+}
+
+func doTokenRequestFull(t *testing.T, tokenService provisioning.TokenService, method string, target string, requestBody string, requestHeader http.Header) (string, tokenResponse) {
 	t.Helper()
 
 	authenticator := authn.New([]authn.Auther{dummyAuthenticator{}})
@@ -346,7 +422,12 @@ func doTokenRequest(t *testing.T, tokenService provisioning.TokenService, method
 	req, err := http.NewRequest(method, server.URL+target, bytes.NewBufferString(requestBody))
 	require.NoError(t, err)
 
-	resp, err := http.DefaultClient.Do(req)
+	maps.Copy(req.Header, requestHeader)
+
+	client := &http.Client{Transport: &http.Transport{DisableCompression: true}}
+	t.Cleanup(client.CloseIdleConnections)
+
+	resp, err := client.Do(req)
 	require.NoError(t, err)
 
 	defer resp.Body.Close()
@@ -354,5 +435,9 @@ func doTokenRequest(t *testing.T, tokenService provisioning.TokenService, method
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	return string(body), resp.StatusCode
+	return string(body), tokenResponse{
+		statusCode:    resp.StatusCode,
+		header:        resp.Header,
+		contentLength: resp.ContentLength,
+	}
 }

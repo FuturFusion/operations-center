@@ -847,14 +847,39 @@ func (t *tokenHandler) getPublicCheckedTokenSeed(r *http.Request, UUID uuid.UUID
 }
 
 // tokenSeedImageResponse streams the generated pre-seed image for the given
-// type/architecture/channel combination.
+// type/architecture/channel combination, gzip compressed.
 func (t *tokenHandler) tokenSeedImageResponse(r *http.Request, UUID uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) response.Response {
-	rc, err := t.service.GetTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture, channel)
+	rc, _, err := t.service.GetCompressedTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture, channel)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	return response.ReadCloserResponse(r, rc, true, fmt.Sprintf("pre-seed-%s%s", name, imageType.FileExt()), -1, nil)
+	return response.ReadCloserResponse(r, rc, true, tokenSeedImageFilename(name, imageType), -1, nil)
+}
+
+// tokenSeedRawImageResponse streams the generated pre-seed image itself, rather
+// than a gzip file wrapped around it.
+func (t *tokenHandler) tokenSeedRawImageResponse(r *http.Request, UUID uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) response.Response {
+	rc, size, err := t.service.GetTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture, channel)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	headers := map[string]string{
+		"Accept-Ranges": "none",
+	}
+
+	filename := tokenSeedImageFilename(name, imageType)
+
+	if response.AcceptsGzip(r) {
+		return response.ReadCloserResponse(r, rc, true, filename, -1, headers)
+	}
+
+	return response.ReadCloserResponse(r, rc, false, filename, size, headers)
+}
+
+func tokenSeedImageFilename(name string, imageType api.ImageType) string {
+	return fmt.Sprintf("pre-seed-%s%s", name, imageType.FileExt())
 }
 
 // swagger:operation GET /1.0/provisioning/tokens/{uuid}/seeds/{name}/{params} tokens token_seed_image_get
@@ -863,10 +888,10 @@ func (t *tokenHandler) tokenSeedImageResponse(r *http.Request, UUID uuid.UUID, n
 //
 //	Get the generated pre-seeded IncusOS ISO or raw image file for a token
 //	seed, with all parameters and the terminal filename encoded as path
-//	segments instead of a query string, so that the resulting URL ends with a
-//	recognized file extension (e.g. ".iso" or ".raw"). This is required to
-//	work around BMC/Redfish implementations that reject virtual media image
-//	URLs which don't end in a known media extension.
+//	segments and with the filename having a recognized file extension
+//	(e.g. ".iso" or ".raw"). This is required by some BMC/Redfish
+//	implementations that reject virtual media image URLs which don't end in a
+//	known media extension.
 //
 //	The path after the seed name is a flat sequence of "<key>/<value>" pairs
 //	followed by a final, free-form filename segment that is not inspected by
@@ -877,10 +902,16 @@ func (t *tokenHandler) tokenSeedImageResponse(r *http.Request, UUID uuid.UUID, n
 //	Recognized keys are "architecture" (required), "type" (required) and
 //	"channel" (optional, defaults to the configured default update channel).
 //
+//	The image is served uncompressed and, if its size can be determined, with a
+//	Content-Length header.
+//	If a client offers "Accept-Encoding: gzip" it gets it compressed in transit
+//	instead, without a Content-Length.
+//	Range requests are not supported.
+//	HEAD is answered with the headers alone.
+//
 //	---
 //	produces:
 //	  - application/octet-stream
-//	  - application/gzip
 //	parameters:
 //	  - in: path
 //	    name: uuid
@@ -950,7 +981,25 @@ func (t *tokenHandler) tokenSeedImageGet(r *http.Request) response.Response {
 		}
 	}
 
-	return t.tokenSeedImageResponse(r, UUID, name, imageType, architecture, channel)
+	filename := fmt.Sprintf("pre-seed-%s%s", name, imageType.FileExt())
+
+	if response.RequestsGzipFile(r) && r.Header.Get("Range") == "" {
+		rc, err := t.service.GetCompressedTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture, channel)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		return response.ReadCloserResponse(r, rc, true, filename, -1, map[string]string{
+			"Accept-Ranges": "none",
+		})
+	}
+
+	image, err := t.service.GetSeekableTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture, channel)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.ServeContentResponse(r, image.Content, filename, image.ModTime, image.Size, nil)
 }
 
 // seedImageFingerprintIDRegexp matches the terminal filename segment naming an
