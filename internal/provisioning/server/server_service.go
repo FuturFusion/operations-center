@@ -2739,6 +2739,10 @@ func (s *serverService) BMCAttachMediaByName(ctx context.Context, name string, m
 	// validates the format of the virtual media Image URI.
 	imageURL = imageURL.JoinPath("file" + imageType.FileExt())
 
+	for _, reason := range mediaURLWarnings(imageURL) {
+		slog.WarnContext(ctx, "Installation media URL might not be accepted by the BMC", slog.String("reason", reason), slog.String("url", imageURL.String()), slog.String("name", name))
+	}
+
 	server, err := s.repo.GetByName(ctx, name)
 	if err != nil {
 		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
@@ -2773,6 +2777,26 @@ func (s *serverService) BMCAttachMediaByName(ctx context.Context, name string, m
 	}()
 
 	return nil
+}
+
+// maxMediaURLLength is the length beyond which BMCs are known to cut the image
+// URI of a virtual media off.
+const maxMediaURLLength = 255
+
+// mediaURLWarnings returns what is known to trip BMC firmware up about an
+// installation media URL.
+func mediaURLWarnings(mediaURL *url.URL) []string {
+	var warnings []string
+
+	if mediaURL.Port() != "" && strings.Contains(mediaURL.Hostname(), ":") {
+		warnings = append(warnings, "it combines an IPv6 address with a non-default port, which BMC firmware is known to parse incorrectly")
+	}
+
+	if len(mediaURL.String()) > maxMediaURLLength {
+		warnings = append(warnings, fmt.Sprintf("it is longer than the %d characters some BMCs accept", maxMediaURLLength))
+	}
+
+	return warnings
 }
 
 func (s *serverService) BMCDetachMediaByName(ctx context.Context, name string, virtualMediaID string) error {
