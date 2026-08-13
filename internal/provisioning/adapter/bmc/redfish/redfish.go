@@ -660,7 +660,7 @@ func (r redfish) WaitForTask(ctx context.Context, server provisioning.Server, ta
 
 		resp, err := client.Get(uri)
 		if err != nil {
-			return err
+			return wrapRedfishError(err)
 		}
 
 		resp.Body.Close()
@@ -830,7 +830,7 @@ func (r redfish) performReset(ctx context.Context, server provisioning.Server, r
 
 	taskMonitor, err := system.Reset(resetType)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to perform BMC reset operation: %w", err)
+		return nil, fmt.Errorf("Failed to perform BMC reset operation: %w", wrapRedfishError(err))
 	}
 
 	// If taskMonitor is nil, the BMC completed synchronously.
@@ -868,12 +868,12 @@ func getVirtualMediaByID(client *gofish.APIClient, id string) (*schemas.VirtualM
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get BMC system: %w", err)
+		return nil, fmt.Errorf("Failed to get BMC system: %w", wrapRedfishError(err))
 	}
 
 	virtualMedias, err = virtualMediaReturner.VirtualMedia()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get virtual media from BMC system: %w", err)
+		return nil, fmt.Errorf("Failed to get virtual media from BMC system: %w", wrapRedfishError(err))
 	}
 
 	for _, vm := range virtualMedias {
@@ -918,7 +918,7 @@ func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, vi
 
 	taskMonitor, err := virtualMedia.InsertMedia(params)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to attach media to BMC: %w", err)
+		return nil, fmt.Errorf("Failed to attach media to BMC: %w", wrapRedfishError(err))
 	}
 
 	// If taskMonitor is nil, the BMC completed synchronously.
@@ -951,7 +951,7 @@ func (r redfish) DetachMedia(ctx context.Context, server provisioning.Server, vi
 
 	taskMonitor, err := virtualMedia.EjectMedia()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to detach media from BMC: %w", err)
+		return nil, fmt.Errorf("Failed to detach media from BMC: %w", wrapRedfishError(err))
 	}
 
 	// If taskMonitor is nil, the BMC completed synchronously.
