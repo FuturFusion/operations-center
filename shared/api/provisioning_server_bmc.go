@@ -47,6 +47,10 @@ type BMCDumpEntry struct {
 	// Error contains the error details, if the request failed.
 	Error *BMCDumpError `json:"error,omitempty" yaml:"error,omitempty"`
 
+	// Allow contains the methods the BMC reported as allowed for this endpoint
+	// in the "Allow" response header.
+	Allow string `json:"allow,omitempty" yaml:"allow,omitempty"`
+
 	// Trace contains additional dumped request and response details
 	// (e.g. HTTP headers). Opaque field for human inspection only. Populated if
 	// tracing is requested.
