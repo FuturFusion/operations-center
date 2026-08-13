@@ -855,14 +855,39 @@ func (t *tokenHandler) getPublicCheckedTokenSeed(r *http.Request, UUID uuid.UUID
 }
 
 // tokenSeedImageResponse streams the generated pre-seed image for the given
-// type/architecture/channel combination.
+// type/architecture/channel combination, gzip compressed.
 func (t *tokenHandler) tokenSeedImageResponse(r *http.Request, UUID uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) response.Response {
-	rc, err := t.service.GetTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture, channel)
+	rc, _, err := t.service.GetTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture, channel)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	return response.ReadCloserResponse(r, rc, true, fmt.Sprintf("pre-seed-%s%s", name, imageType.FileExt()), -1, nil)
+	return response.ReadCloserResponse(r, rc, true, tokenSeedImageFilename(name, imageType), -1, nil)
+}
+
+// tokenSeedRawImageResponse streams the generated pre-seed image itself, rather
+// than a gzip file wrapped around it.
+func (t *tokenHandler) tokenSeedRawImageResponse(r *http.Request, UUID uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) response.Response {
+	rc, size, err := t.service.GetTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture, channel)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	headers := map[string]string{
+		"Accept-Ranges": "none",
+	}
+
+	filename := tokenSeedImageFilename(name, imageType)
+
+	if response.AcceptsGzip(r) {
+		return response.ReadCloserResponse(r, rc, true, filename, -1, headers)
+	}
+
+	return response.ReadCloserResponse(r, rc, false, filename, size, headers)
+}
+
+func tokenSeedImageFilename(name string, imageType api.ImageType) string {
+	return fmt.Sprintf("pre-seed-%s%s", name, imageType.FileExt())
 }
 
 // swagger:operation GET /1.0/provisioning/tokens/{uuid}/seeds/{name}/{params} tokens token_seed_image_get
@@ -885,10 +910,16 @@ func (t *tokenHandler) tokenSeedImageResponse(r *http.Request, UUID uuid.UUID, n
 //	Recognized keys are "architecture" (required), "type" (required) and
 //	"channel" (optional, defaults to the configured default update channel).
 //
+//	The image is served uncompressed and, if its size can be determined, with a
+//	Content-Length header.
+//	If a client offers "Accept-Encoding: gzip" it gets it compressed in transit
+//	instead, without a Content-Length.
+//	Range requests are not supported.
+//	HEAD is answered with the headers alone.
+//
 //	---
 //	produces:
 //	  - application/octet-stream
-//	  - application/gzip
 //	parameters:
 //	  - in: path
 //	    name: uuid
@@ -940,7 +971,7 @@ func (t *tokenHandler) tokenSeedImageGet(r *http.Request) response.Response {
 		return resp
 	}
 
-	return t.tokenSeedImageResponse(r, UUID, name, imageType, architecture, channel)
+	return t.tokenSeedRawImageResponse(r, UUID, name, imageType, architecture, channel)
 }
 
 // parseSeedImageParams parses the "/{params...}" tail of the token seed
