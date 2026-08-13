@@ -234,7 +234,7 @@ func (d *dumper) get(uri string) map[string]any {
 }
 
 func newDumpError(err error) *api.BMCDumpError {
-	dumpErr := &api.BMCDumpError{Message: err.Error()}
+	dumpErr := &api.BMCDumpError{Error: err.Error(), Message: wrapRedfishError(err).Error()}
 
 	var redfishErr *schemas.Error
 	if errors.As(err, &redfishErr) {
