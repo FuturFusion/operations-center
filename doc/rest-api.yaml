@@ -431,6 +431,12 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     BMCDumpEntry:
         properties:
+            allow:
+                description: |-
+                    Allow contains the methods the BMC reported as allowed for this endpoint
+                    in the "Allow" response header.
+                type: string
+                x-go-name: Allow
             error:
                 $ref: '#/definitions/BMCDumpError'
             response:
@@ -452,6 +458,10 @@ definitions:
                 description: Code contains the error code, if any.
                 type: string
                 x-go-name: Code
+            error:
+                description: Error as reported by the API.
+                type: string
+                x-go-name: Error
             message:
                 description: Message contains the human readable error message.
                 type: string
