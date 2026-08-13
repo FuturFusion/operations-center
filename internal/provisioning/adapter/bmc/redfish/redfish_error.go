@@ -3,6 +3,7 @@ package redfish
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/stmcginnis/gofish/schemas"
@@ -101,4 +102,71 @@ func formatRedfishMessage(message schemas.Message) string {
 	}
 
 	return text
+}
+
+func isParameterMissing(err error, parameter string) bool {
+	return redfishErrorHasMessageID(err, "ActionParameterMissing", "PropertyMissing", "CreateFailedMissingReqProperties", "GeneralError") &&
+		redfishErrorMentions(err, parameter)
+}
+
+func isPropertyRejected(err error, property string) bool {
+	return redfishErrorHasMessageID(err, "PropertyUnknown", "PropertyNotWritable", "PropertyUnknownOrUnwritable") &&
+		redfishErrorMentions(err, property)
+}
+
+func redfishErrorHasMessageID(err error, ids ...string) bool {
+	var redfishErr *schemas.Error
+	if !errors.As(err, &redfishErr) {
+		return false
+	}
+
+	messageIDs := make([]string, 0, len(redfishErr.ExtendedInfos)+1)
+	messageIDs = append(messageIDs, redfishErr.Code)
+
+	for _, extendedInfo := range redfishErr.ExtendedInfos {
+		messageIDs = append(messageIDs, extendedInfo.MessageID)
+	}
+
+	for _, messageID := range messageIDs {
+		_, id, found := lastCut(messageID, ".")
+		if found && slices.Contains(ids, id) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func redfishErrorMentions(err error, name string) bool {
+	var redfishErr *schemas.Error
+	if !errors.As(err, &redfishErr) {
+		return false
+	}
+
+	if strings.Contains(redfishErr.Message, name) {
+		return true
+	}
+
+	for _, extendedInfo := range redfishErr.ExtendedInfos {
+		if slices.Contains(extendedInfo.MessageArgs, name) || strings.Contains(extendedInfo.Message, name) {
+			return true
+		}
+
+		for _, relatedProperty := range extendedInfo.RelatedProperties {
+			if strings.TrimPrefix(relatedProperty, "#") == "/"+name {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func lastCut(s string, sep string) (before string, after string, found bool) {
+	i := strings.LastIndex(s, sep)
+	if i < 0 {
+		return s, "", false
+	}
+
+	return s[:i], s[i+len(sep):], true
 }
