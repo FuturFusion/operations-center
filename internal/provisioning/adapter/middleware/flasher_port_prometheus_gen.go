@@ -42,7 +42,7 @@ func NewFlasherPortWithPrometheus(base provisioning.FlasherPort, instanceName st
 }
 
 // GenerateSeededImage implements provisioning.FlasherPort.
-func (_d FlasherPortWithPrometheus) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (readCloser io.ReadCloser, err error) {
+func (_d FlasherPortWithPrometheus) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (readCloser io.ReadCloser, size int, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"

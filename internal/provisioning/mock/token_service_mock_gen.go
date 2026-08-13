@@ -53,7 +53,7 @@ var _ provisioning.TokenService = &TokenServiceMock{}
 //			GetPreSeededImageFunc: func(ctx context.Context, id uuid.UUID, imageUUID uuid.UUID) (io.ReadCloser, string, error) {
 //				panic("mock out the GetPreSeededImage method")
 //			},
-//			GetTokenImageFromTokenSeedFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, error) {
+//			GetTokenImageFromTokenSeedFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, int, error) {
 //				panic("mock out the GetTokenImageFromTokenSeed method")
 //			},
 //			GetTokenProviderConfigFunc: func(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error) {
@@ -112,7 +112,7 @@ type TokenServiceMock struct {
 	GetPreSeededImageFunc func(ctx context.Context, id uuid.UUID, imageUUID uuid.UUID) (io.ReadCloser, string, error)
 
 	// GetTokenImageFromTokenSeedFunc mocks the GetTokenImageFromTokenSeed method.
-	GetTokenImageFromTokenSeedFunc func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, error)
+	GetTokenImageFromTokenSeedFunc func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, int, error)
 
 	// GetTokenProviderConfigFunc mocks the GetTokenProviderConfig method.
 	GetTokenProviderConfigFunc func(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error)
@@ -617,7 +617,7 @@ func (mock *TokenServiceMock) GetPreSeededImageCalls() []struct {
 }
 
 // GetTokenImageFromTokenSeed calls GetTokenImageFromTokenSeedFunc.
-func (mock *TokenServiceMock) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, error) {
+func (mock *TokenServiceMock) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, int, error) {
 	if mock.GetTokenImageFromTokenSeedFunc == nil {
 		panic("TokenServiceMock.GetTokenImageFromTokenSeedFunc: method is nil but TokenService.GetTokenImageFromTokenSeed was just called")
 	}

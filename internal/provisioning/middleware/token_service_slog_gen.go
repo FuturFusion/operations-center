@@ -359,7 +359,7 @@ func (_d TokenServiceWithSlog) GetPreSeededImage(ctx context.Context, id uuid.UU
 }
 
 // GetTokenImageFromTokenSeed implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (readCloser io.ReadCloser, err error) {
+func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (readCloser io.ReadCloser, size int, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -377,6 +377,7 @@ func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, i
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
 				slog.Any("readCloser", readCloser),
+				slog.Int("size", size),
 				slog.Any("err", err),
 			)
 		} else {

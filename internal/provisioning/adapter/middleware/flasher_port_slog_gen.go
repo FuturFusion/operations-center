@@ -44,7 +44,7 @@ func NewFlasherPortWithSlog(base provisioning.FlasherPort, opts ...FlasherPortWi
 }
 
 // GenerateSeededImage implements provisioning.FlasherPort.
-func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (readCloser io.ReadCloser, err error) {
+func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (readCloser io.ReadCloser, size int, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -60,6 +60,7 @@ func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, id uuid.U
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
 				slog.Any("readCloser", readCloser),
+				slog.Int("size", size),
 				slog.Any("err", err),
 			)
 		} else {

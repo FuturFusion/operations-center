@@ -25,7 +25,7 @@ var _ provisioning.FlasherPort = &FlasherPortMock{}
 //
 //		// make and configure a mocked provisioning.FlasherPort
 //		mockedFlasherPort := &FlasherPortMock{
-//			GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
+//			GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, int, error) {
 //				panic("mock out the GenerateSeededImage method")
 //			},
 //			GetProviderConfigFunc: func(ctx context.Context, tokenID uuid.UUID) (*api.TokenProviderConfig, error) {
@@ -39,7 +39,7 @@ var _ provisioning.FlasherPort = &FlasherPortMock{}
 //	}
 type FlasherPortMock struct {
 	// GenerateSeededImageFunc mocks the GenerateSeededImage method.
-	GenerateSeededImageFunc func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error)
+	GenerateSeededImageFunc func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, int, error)
 
 	// GetProviderConfigFunc mocks the GetProviderConfig method.
 	GetProviderConfigFunc func(ctx context.Context, tokenID uuid.UUID) (*api.TokenProviderConfig, error)
@@ -70,7 +70,7 @@ type FlasherPortMock struct {
 }
 
 // GenerateSeededImage calls GenerateSeededImageFunc.
-func (mock *FlasherPortMock) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
+func (mock *FlasherPortMock) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, int, error) {
 	if mock.GenerateSeededImageFunc == nil {
 		panic("FlasherPortMock.GenerateSeededImageFunc: method is nil but FlasherPort.GenerateSeededImage was just called")
 	}

@@ -169,7 +169,7 @@ func (_d TokenServiceWithPrometheus) GetPreSeededImage(ctx context.Context, id u
 }
 
 // GetTokenImageFromTokenSeed implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (readCloser io.ReadCloser, err error) {
+func (_d TokenServiceWithPrometheus) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (readCloser io.ReadCloser, size int, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
