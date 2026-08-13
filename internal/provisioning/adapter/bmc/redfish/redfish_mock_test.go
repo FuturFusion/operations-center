@@ -82,6 +82,7 @@ type mockRedfishServer struct {
 type mockRedfishRoute struct {
 	statusCode int
 	body       string
+	header     map[string]string
 }
 
 const defaultResetActionInfoBody = `{
@@ -117,6 +118,10 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
 	return func(w http.ResponseWriter, r *http.Request) {
 		route, ok := cfg.extraRoutes[r.URL.Path]
 		if ok {
+			for name, value := range route.header {
+				w.Header().Set(name, value)
+			}
+
 			w.WriteHeader(route.statusCode)
 			_, _ = w.Write([]byte(route.body))
 

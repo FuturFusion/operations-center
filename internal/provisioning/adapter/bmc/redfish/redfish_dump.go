@@ -92,7 +92,78 @@ func (r redfish) Dump(ctx context.Context, server provisioning.Server, additiona
 		d.get(uri)
 	}
 
+	d.getActionInfos()
+
 	return d.dump, nil
+}
+
+// getActionInfos fetches the action info resources referenced by the already
+// dumped responses.
+//
+// An action info describes which parameters an action accepts, which of them
+// are required and which values are allowed for them.
+func (d *dumper) getActionInfos() {
+	uris := map[string]struct{}{}
+
+	for _, entry := range d.dump {
+		if entry.Response == nil {
+			continue
+		}
+
+		var body map[string]any
+
+		err := json.Unmarshal(entry.Response, &body)
+		if err != nil {
+			continue
+		}
+
+		for _, uri := range actionInfoURIs(body) {
+			uris[uri] = struct{}{}
+		}
+	}
+
+	sortedURIs := make([]string, 0, len(uris))
+	for uri := range uris {
+		sortedURIs = append(sortedURIs, uri)
+	}
+
+	sort.Strings(sortedURIs)
+
+	for _, uri := range sortedURIs {
+		d.get(uri)
+	}
+}
+
+// actionInfoURIs returns the "@Redfish.ActionInfo" targets of all actions
+// declared in the "Actions" object of a Redfish resource.
+func actionInfoURIs(body map[string]any) []string {
+	actions, ok := body["Actions"].(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	uris := make([]string, 0, len(actions))
+
+	for name, rawAction := range actions {
+		// "Oem" is the only member of "Actions" which is not an action itself.
+		if name == "Oem" {
+			continue
+		}
+
+		action, ok := rawAction.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		uri, ok := action["@Redfish.ActionInfo"].(string)
+		if !ok || uri == "" {
+			continue
+		}
+
+		uris = append(uris, uri)
+	}
+
+	return uris
 }
 
 // dumper walks the dumpEndpoints templates against a connected Redfish
@@ -211,6 +282,8 @@ func (d *dumper) get(uri string) map[string]any {
 	}
 
 	defer resp.Body.Close()
+
+	entry.Allow = resp.Header.Get("Allow")
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

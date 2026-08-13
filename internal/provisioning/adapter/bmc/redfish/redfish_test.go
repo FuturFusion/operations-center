@@ -2779,6 +2779,49 @@ func TestRedfish_Dump(t *testing.T) {
 		  "@odata.id": "/redfish/v1/Systems/1/Oem/Vendor"
 		}`,
 			},
+			"/redfish/v1/Managers/1/VirtualMedia": {
+				statusCode: http.StatusOK,
+				body: `{
+		  "Members@odata.count": 1,
+		  "Members": [
+		    { "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1" }
+		  ]
+		}`,
+			},
+			"/redfish/v1/Managers/1/VirtualMedia/1": {
+				statusCode: http.StatusOK,
+				header: map[string]string{
+					"Allow": "GET, HEAD, PATCH",
+				},
+				body: `{
+		  "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1",
+		  "Id": "1",
+		  "Actions": {
+		    "#VirtualMedia.InsertMedia": {
+		      "@Redfish.ActionInfo": "/redfish/v1/Managers/1/VirtualMedia/1/InsertMediaActionInfo",
+		      "target": "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia"
+		    },
+		    "#VirtualMedia.EjectMedia": {
+		      "target": "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia"
+		    },
+		    "Oem": {
+		      "#VendorMedia.DoSomething": {
+		        "@Redfish.ActionInfo": "/redfish/v1/Managers/1/VirtualMedia/1/OemActionInfo"
+		      }
+		    }
+		  }
+		}`,
+			},
+			"/redfish/v1/Managers/1/VirtualMedia/1/InsertMediaActionInfo": {
+				statusCode: http.StatusOK,
+				body: `{
+		  "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1/InsertMediaActionInfo",
+		  "Parameters": [
+		    { "Name": "Image", "Required": true, "DataType": "String" },
+		    { "Name": "TransferProtocolType", "Required": true, "DataType": "String", "AllowableValues": ["NFS", "CIFS"] }
+		  ]
+		}`,
+			},
 		},
 	}
 
@@ -2871,6 +2914,30 @@ func TestRedfish_Dump(t *testing.T) {
 		// An additional endpoint that duplicates a predefined one still
 		// yields exactly one dump entry.
 		require.Contains(t, dump, "/redfish/v1/Systems/1/Bios")
+	})
+
+	t.Run("action info resources referenced by dumped responses are dumped", func(t *testing.T) {
+		dump, err := client.Dump(t.Context(), server, nil, false, false)
+		require.NoError(t, err)
+
+		actionInfo, ok := dump["/redfish/v1/Managers/1/VirtualMedia/1/InsertMediaActionInfo"]
+		require.True(t, ok)
+		require.Nil(t, actionInfo.Error)
+		require.Contains(t, string(actionInfo.Response), "TransferProtocolType")
+
+		// "Oem" is not an action itself, so it is not descended into.
+		require.NotContains(t, dump, "/redfish/v1/Managers/1/VirtualMedia/1/OemActionInfo")
+
+		// Actions without an action info do not yield an entry of their own.
+		require.NotContains(t, dump, "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia")
+	})
+
+	t.Run("allowed methods are recorded", func(t *testing.T) {
+		dump, err := client.Dump(t.Context(), server, nil, false, false)
+		require.NoError(t, err)
+
+		require.Equal(t, "GET, HEAD, PATCH", dump["/redfish/v1/Managers/1/VirtualMedia/1"].Allow)
+		require.Empty(t, dump["/redfish/v1/"].Allow)
 	})
 
 	t.Run("skip predefined dumps only additional endpoints", func(t *testing.T) {
