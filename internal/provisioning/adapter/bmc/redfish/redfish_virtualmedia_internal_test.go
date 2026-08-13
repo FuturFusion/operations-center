@@ -1,7 +1,9 @@
 package redfish
 
 import (
+	"encoding/json"
 	"errors"
+	"net/http"
 	"testing"
 
 	"github.com/stmcginnis/gofish/schemas"
@@ -67,7 +69,7 @@ func TestVirtualMediaHasMedia(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.want, virtualMediaHasMedia(&tc.virtualMedia))
+			require.Equal(t, tc.want, virtualMediaHasMedia(virtualMediaSlot{VirtualMedia: &tc.virtualMedia}))
 		})
 	}
 }
@@ -243,4 +245,150 @@ func TestIsParameterMissing_nonRedfishError(t *testing.T) {
 
 	require.False(t, isParameterMissing(err, "TransferProtocolType"))
 	require.False(t, isPropertyRejected(err, "Inserted"))
+	require.False(t, isPreconditionRejected(err))
+}
+
+func TestIsPreconditionRejected(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+		body       string
+
+		want bool
+	}{
+		{
+			name:       "precondition failed",
+			statusCode: http.StatusPreconditionFailed,
+			body:       `{"error":{"code":"Base.1.5.PreconditionFailed","message":"The ETag supplied did not match."}}`,
+
+			want: true,
+		},
+		{
+			name:       "precondition required",
+			statusCode: http.StatusPreconditionRequired,
+			body:       `{"error":{"code":"Base.1.5.PreconditionRequired","message":"A precondition header is required."}}`,
+
+			want: true,
+		},
+		{
+			name:       "header rejected",
+			statusCode: http.StatusBadRequest,
+			body:       `{"error":{"code":"Base.1.0.GeneralError","@Message.ExtendedInfo":[{"MessageId":"Base.1.0.HeaderInvalid","MessageArgs":["If-Match"]}]}}`,
+
+			want: true,
+		},
+		{
+			name:       "precondition reported without a matching status code",
+			statusCode: http.StatusBadRequest,
+			body:       `{"error":{"code":"Base.1.5.PreconditionFailed"}}`,
+
+			want: true,
+		},
+		{
+			name:       "rejected property",
+			statusCode: http.StatusBadRequest,
+			body:       `{"error":{"code":"iLO.0.10.ExtendedInfo","@Message.ExtendedInfo":[{"MessageID":"Base.0.10.PropertyUnknown","MessageArgs":["Inserted"]}]}}`,
+
+			want: false,
+		},
+		{
+			name:       "generic client error",
+			statusCode: http.StatusBadRequest,
+			body:       `{"error":{"code":"Base.1.0.GeneralError","message":"Something went wrong."}}`,
+
+			want: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := schemas.ConstructError(tc.statusCode, []byte(tc.body))
+
+			require.Equal(t, tc.want, isPreconditionRejected(err))
+		})
+	}
+}
+
+func TestFindOEMActionTarget(t *testing.T) {
+	tests := []struct {
+		name   string
+		oem    string
+		action string
+
+		want string
+	}{
+		{
+			// HPE iLO 4.
+			name:   "action directly below oem",
+			oem:    `{"#HpiLOVirtualMedia.InsertVirtualMedia":{"target":"/insert"}}`,
+			action: "InsertVirtualMedia",
+
+			want: "/insert",
+		},
+		{
+			// HPE iLO 5.
+			name:   "action grouped by vendor",
+			oem:    `{"Hpe":{"#HpeiLOVirtualMedia.InsertVirtualMedia":{"target":"/insert"},"#HpeiLOVirtualMedia.EjectVirtualMedia":{"target":"/eject"}}}`,
+			action: "EjectVirtualMedia",
+
+			want: "/eject",
+		},
+		{
+			name:   "action of a different name",
+			oem:    `{"Hpe":{"#HpeiLOVirtualMedia.EjectVirtualMedia":{"target":"/eject"}}}`,
+			action: "InsertVirtualMedia",
+
+			want: "",
+		},
+		{
+			name:   "action without a target",
+			oem:    `{"Hpe":{"#HpeiLOVirtualMedia.InsertVirtualMedia":{}}}`,
+			action: "InsertVirtualMedia",
+
+			want: "",
+		},
+		{
+			name:   "nested deeper than the search descends",
+			oem:    `{"a":{"b":{"c":{"#Vendor.InsertVirtualMedia":{"target":"/insert"}}}}}`,
+			action: "InsertVirtualMedia",
+
+			want: "",
+		},
+		{
+			name:   "no vendor specific actions at all",
+			oem:    `{}`,
+			action: "InsertVirtualMedia",
+
+			want: "",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var oem map[string]any
+
+			require.NoError(t, json.Unmarshal([]byte(tc.oem), &oem))
+			require.Equal(t, tc.want, findOEMActionTarget(oem, tc.action, maxOEMActionDepth))
+		})
+	}
+}
+
+func TestOEMActionTarget(t *testing.T) {
+	virtualMedia := virtualMediaSlot{VirtualMedia: &schemas.VirtualMedia{
+		RawData: []byte(`{
+  "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/2",
+  "Actions": {
+    "Oem": {
+      "Hpe": {
+        "#HpeiLOVirtualMedia.InsertVirtualMedia": { "target": "/insert" }
+      }
+    }
+  }
+}`),
+	}}
+
+	require.Equal(t, "/insert", oemActionTarget(virtualMedia, "InsertVirtualMedia"))
+	require.Empty(t, oemActionTarget(virtualMedia, "EjectVirtualMedia"))
+
+	require.Empty(t, oemActionTarget(virtualMediaSlot{VirtualMedia: &schemas.VirtualMedia{}}, "InsertVirtualMedia"))
 }

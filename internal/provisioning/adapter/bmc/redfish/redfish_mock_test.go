@@ -116,9 +116,10 @@ func (m *mockResponses) serve(w http.ResponseWriter) {
 }
 
 type mockRequest struct {
-	method string
-	path   string
-	body   string
+	method  string
+	path    string
+	body    string
+	ifMatch string
 }
 
 const defaultResetActionInfoBody = `{
@@ -157,9 +158,10 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotRequests *[]mockRequest) ht
 			body, _ := io.ReadAll(r.Body)
 
 			*gotRequests = append(*gotRequests, mockRequest{
-				method: r.Method,
-				path:   r.URL.Path,
-				body:   string(body),
+				method:  r.Method,
+				path:    r.URL.Path,
+				body:    string(body),
+				ifMatch: r.Header.Get("If-Match"),
 			})
 		}
 

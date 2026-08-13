@@ -26,6 +26,11 @@ var dumpEndpoints = []string{
 	schemas.DefaultServiceRoot,
 	"/redfish/v1/odata",
 
+	// Message registries, which hold the text of the messages BMCs report by
+	// their registry ID alone.
+	"/redfish/v1/Registries",
+	"/redfish/v1/Registries/*",
+
 	// Chassis.
 	"/redfish/v1/Chassis",
 	"/redfish/v1/Chassis/*",
