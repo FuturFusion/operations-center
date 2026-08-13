@@ -12884,6 +12884,13 @@ paths:
 
                 Recognized keys are "architecture" (required), "type" (required) and
                 "channel" (optional, defaults to the configured default update channel).
+
+                The image is served uncompressed and, if its size can be determined, with a
+                Content-Length header.
+                If a client offers "Accept-Encoding: gzip" it gets it compressed in transit
+                instead, without a Content-Length.
+                Range requests are not supported.
+                HEAD is answered with the headers alone.
             operationId: token_seed_image_get
             parameters:
                 - description: UUID of the token
@@ -12907,7 +12914,6 @@ paths:
                   type: string
             produces:
                 - application/octet-stream
-                - application/gzip
             responses:
                 "200":
                     $ref: '#/responses/TokenSeedResponse'
