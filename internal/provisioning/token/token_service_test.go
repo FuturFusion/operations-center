@@ -1159,10 +1159,10 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 			}
 
 			flasherAdapter := &adapterMock.FlasherPortMock{
-				GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
+				GenerateCompressedSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
 					require.Equal(t, tc.wantApplicationsSeed, seedConfig.Applications)
 					require.Equal(t, tc.wantIncusSeed, seedConfig.Incus)
-					return rc, tc.flasherAdapterGenerateSeededImageErr
+					return rc, tc.flasherAdapterGenerateCompressedSeededImageErr
 				},
 			}
 
@@ -1968,13 +1968,13 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			}
 
 			flasherAdapter := &adapterMock.FlasherPortMock{
-				GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
+				GenerateCompressedSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
 					if tc.wantIncusSeed.Version != "" {
 						require.Equal(t, tc.wantIncusSeed, seedConfig.Incus)
 						require.Equal(t, tc.wantUpdateSeed, seedConfig.Update)
 					}
 
-					return rc, tc.flasherAdapterGenerateSeededImageErr
+					return rc, tc.flasherAdapterGenerateCompressedSeededImageErr
 				},
 			}
 
@@ -1987,7 +1987,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			tokenSvc := provisioningToken.New(repo, updateSvc, channelSvc, flasherAdapter, client)
 
 			// Run test
-			rc, err := tokenSvc.GetTokenImageFromTokenSeed(context.Background(), uuidgen.FromPattern(t, "1"), "config", tc.imageTypeArg, tc.architectureArg, tc.channelArg)
+			rc, err := tokenSvc.GetCompressedTokenImageFromTokenSeed(context.Background(), uuidgen.FromPattern(t, "1"), "config", tc.imageTypeArg, tc.architectureArg, tc.channelArg)
 
 			// Assert
 			tc.assertErr(t, err)
