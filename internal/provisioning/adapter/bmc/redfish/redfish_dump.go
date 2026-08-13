@@ -244,39 +244,3 @@ func newDumpError(err error) *api.BMCDumpError {
 
 	return dumpErr
 }
-
-// traceWriter collects the HTTP dumps produced by gofish.
-type traceWriter struct {
-	sections []string
-}
-
-func (w *traceWriter) Write(p []byte) (int, error) {
-	w.sections = append(w.sections, string(p))
-
-	return len(p), nil
-}
-
-// headersOnly reduces the collected dump sections to their headers, dropping
-// request and response bodies, and redacts the Authorization header so BMC
-// credentials never leave the daemon.
-func (w *traceWriter) headersOnly() string {
-	sections := make([]string, 0, len(w.sections))
-
-	for _, section := range w.sections {
-		head, _, found := strings.Cut(section, "\r\n\r\n")
-		if !found {
-			head = section
-		}
-
-		lines := strings.Split(head, "\r\n")
-		for i, line := range lines {
-			if len(line) >= len("authorization:") && strings.EqualFold(line[:len("authorization:")], "authorization:") {
-				lines[i] = "Authorization: <redacted>"
-			}
-		}
-
-		sections = append(sections, strings.Join(lines, "\n"))
-	}
-
-	return strings.Join(sections, "\n---\n")
-}

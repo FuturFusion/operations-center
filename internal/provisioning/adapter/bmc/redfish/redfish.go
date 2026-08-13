@@ -948,8 +948,18 @@ func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, vi
 		TransferMethod: ptr.To(schemas.StreamTransferMethod),
 	}
 
+	trace, stopTrace := traceRequests(client)
+	defer stopTrace()
+
 	taskMonitor, err := virtualMedia.InsertMedia(params)
 	if err != nil {
+		slog.DebugContext(
+			ctx, "Attaching virtual media to BMC failed",
+			slog.String("endpoint", server.BMCConfig.Endpoint),
+			slog.String("virtual_media_id", virtualMediaID),
+			slog.String("trace", trace.String()),
+		)
+
 		return nil, fmt.Errorf("Failed to attach media to BMC: %w", wrapRedfishError(err))
 	}
 
@@ -981,8 +991,18 @@ func (r redfish) DetachMedia(ctx context.Context, server provisioning.Server, vi
 		return nil, nil
 	}
 
+	trace, stopTrace := traceRequests(client)
+	defer stopTrace()
+
 	taskMonitor, err := virtualMedia.EjectMedia()
 	if err != nil {
+		slog.DebugContext(
+			ctx, "Detaching virtual media from BMC failed",
+			slog.String("endpoint", server.BMCConfig.Endpoint),
+			slog.String("virtual_media_id", virtualMediaID),
+			slog.String("trace", trace.String()),
+		)
+
 		return nil, fmt.Errorf("Failed to detach media from BMC: %w", wrapRedfishError(err))
 	}
 
