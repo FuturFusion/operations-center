@@ -22,6 +22,15 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //
 //		// make and configure a mocked provisioning.BMCServerClientPort
 //		mockedBMCServerClientPort := &BMCServerClientPortMock{
+//			ApplyBIOSAttributesFunc: func(ctx context.Context, server provisioning.Server, attributes map[string]any) (*provisioning.BMCTaskMonitor, error) {
+//				panic("mock out the ApplyBIOSAttributes method")
+//			},
+//			BIOSAttributeFunc: func(ctx context.Context, server provisioning.Server, attributeName string) (api.BIOSAttribute, error) {
+//				panic("mock out the BIOSAttribute method")
+//			},
+//			BIOSAttributesFunc: func(ctx context.Context, server provisioning.Server) ([]api.BIOSAttribute, error) {
+//				panic("mock out the BIOSAttributes method")
+//			},
 //			ConnectionTestFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
 //				panic("mock out the ConnectionTest method")
 //			},
@@ -56,6 +65,15 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //
 //	}
 type BMCServerClientPortMock struct {
+	// ApplyBIOSAttributesFunc mocks the ApplyBIOSAttributes method.
+	ApplyBIOSAttributesFunc func(ctx context.Context, server provisioning.Server, attributes map[string]any) (*provisioning.BMCTaskMonitor, error)
+
+	// BIOSAttributeFunc mocks the BIOSAttribute method.
+	BIOSAttributeFunc func(ctx context.Context, server provisioning.Server, attributeName string) (api.BIOSAttribute, error)
+
+	// BIOSAttributesFunc mocks the BIOSAttributes method.
+	BIOSAttributesFunc func(ctx context.Context, server provisioning.Server) ([]api.BIOSAttribute, error)
+
 	// ConnectionTestFunc mocks the ConnectionTest method.
 	ConnectionTestFunc func(ctx context.Context, server provisioning.Server) (string, error)
 
@@ -85,6 +103,31 @@ type BMCServerClientPortMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// ApplyBIOSAttributes holds details about calls to the ApplyBIOSAttributes method.
+		ApplyBIOSAttributes []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Attributes is the attributes argument value.
+			Attributes map[string]any
+		}
+		// BIOSAttribute holds details about calls to the BIOSAttribute method.
+		BIOSAttribute []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// AttributeName is the attributeName argument value.
+			AttributeName string
+		}
+		// BIOSAttributes holds details about calls to the BIOSAttributes method.
+		BIOSAttributes []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// ConnectionTest holds details about calls to the ConnectionTest method.
 		ConnectionTest []struct {
 			// Ctx is the ctx argument value.
@@ -165,15 +208,134 @@ type BMCServerClientPortMock struct {
 			TaskMonitor *provisioning.BMCTaskMonitor
 		}
 	}
-	lockConnectionTest     sync.RWMutex
-	lockDump               sync.RWMutex
-	lockGetData            sync.RWMutex
-	lockLogEntriesBySource sync.RWMutex
-	lockLogSources         sync.RWMutex
-	lockServerPowerOff     sync.RWMutex
-	lockServerPowerOn      sync.RWMutex
-	lockServerRestart      sync.RWMutex
-	lockWaitForTask        sync.RWMutex
+	lockApplyBIOSAttributes sync.RWMutex
+	lockBIOSAttribute       sync.RWMutex
+	lockBIOSAttributes      sync.RWMutex
+	lockConnectionTest      sync.RWMutex
+	lockDump                sync.RWMutex
+	lockGetData             sync.RWMutex
+	lockLogEntriesBySource  sync.RWMutex
+	lockLogSources          sync.RWMutex
+	lockServerPowerOff      sync.RWMutex
+	lockServerPowerOn       sync.RWMutex
+	lockServerRestart       sync.RWMutex
+	lockWaitForTask         sync.RWMutex
+}
+
+// ApplyBIOSAttributes calls ApplyBIOSAttributesFunc.
+func (mock *BMCServerClientPortMock) ApplyBIOSAttributes(ctx context.Context, server provisioning.Server, attributes map[string]any) (*provisioning.BMCTaskMonitor, error) {
+	if mock.ApplyBIOSAttributesFunc == nil {
+		panic("BMCServerClientPortMock.ApplyBIOSAttributesFunc: method is nil but BMCServerClientPort.ApplyBIOSAttributes was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		Server     provisioning.Server
+		Attributes map[string]any
+	}{
+		Ctx:        ctx,
+		Server:     server,
+		Attributes: attributes,
+	}
+	mock.lockApplyBIOSAttributes.Lock()
+	mock.calls.ApplyBIOSAttributes = append(mock.calls.ApplyBIOSAttributes, callInfo)
+	mock.lockApplyBIOSAttributes.Unlock()
+	return mock.ApplyBIOSAttributesFunc(ctx, server, attributes)
+}
+
+// ApplyBIOSAttributesCalls gets all the calls that were made to ApplyBIOSAttributes.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.ApplyBIOSAttributesCalls())
+func (mock *BMCServerClientPortMock) ApplyBIOSAttributesCalls() []struct {
+	Ctx        context.Context
+	Server     provisioning.Server
+	Attributes map[string]any
+} {
+	var calls []struct {
+		Ctx        context.Context
+		Server     provisioning.Server
+		Attributes map[string]any
+	}
+	mock.lockApplyBIOSAttributes.RLock()
+	calls = mock.calls.ApplyBIOSAttributes
+	mock.lockApplyBIOSAttributes.RUnlock()
+	return calls
+}
+
+// BIOSAttribute calls BIOSAttributeFunc.
+func (mock *BMCServerClientPortMock) BIOSAttribute(ctx context.Context, server provisioning.Server, attributeName string) (api.BIOSAttribute, error) {
+	if mock.BIOSAttributeFunc == nil {
+		panic("BMCServerClientPortMock.BIOSAttributeFunc: method is nil but BMCServerClientPort.BIOSAttribute was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		Server        provisioning.Server
+		AttributeName string
+	}{
+		Ctx:           ctx,
+		Server:        server,
+		AttributeName: attributeName,
+	}
+	mock.lockBIOSAttribute.Lock()
+	mock.calls.BIOSAttribute = append(mock.calls.BIOSAttribute, callInfo)
+	mock.lockBIOSAttribute.Unlock()
+	return mock.BIOSAttributeFunc(ctx, server, attributeName)
+}
+
+// BIOSAttributeCalls gets all the calls that were made to BIOSAttribute.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.BIOSAttributeCalls())
+func (mock *BMCServerClientPortMock) BIOSAttributeCalls() []struct {
+	Ctx           context.Context
+	Server        provisioning.Server
+	AttributeName string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		Server        provisioning.Server
+		AttributeName string
+	}
+	mock.lockBIOSAttribute.RLock()
+	calls = mock.calls.BIOSAttribute
+	mock.lockBIOSAttribute.RUnlock()
+	return calls
+}
+
+// BIOSAttributes calls BIOSAttributesFunc.
+func (mock *BMCServerClientPortMock) BIOSAttributes(ctx context.Context, server provisioning.Server) ([]api.BIOSAttribute, error) {
+	if mock.BIOSAttributesFunc == nil {
+		panic("BMCServerClientPortMock.BIOSAttributesFunc: method is nil but BMCServerClientPort.BIOSAttributes was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockBIOSAttributes.Lock()
+	mock.calls.BIOSAttributes = append(mock.calls.BIOSAttributes, callInfo)
+	mock.lockBIOSAttributes.Unlock()
+	return mock.BIOSAttributesFunc(ctx, server)
+}
+
+// BIOSAttributesCalls gets all the calls that were made to BIOSAttributes.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.BIOSAttributesCalls())
+func (mock *BMCServerClientPortMock) BIOSAttributesCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockBIOSAttributes.RLock()
+	calls = mock.calls.BIOSAttributes
+	mock.lockBIOSAttributes.RUnlock()
+	return calls
 }
 
 // ConnectionTest calls ConnectionTestFunc.

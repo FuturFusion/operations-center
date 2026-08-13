@@ -17,6 +17,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/bmc/redfish"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -2541,4 +2542,900 @@ func TestRedfish_Dump(t *testing.T) {
 		require.NotNil(t, vendor.Response)
 		require.Nil(t, vendor.Error)
 	})
+}
+
+const biosSystemBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Bios": { "@odata.id": "/redfish/v1/Systems/1/Bios" }
+}`
+
+const biosBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/Bios",
+  "Id": "Bios",
+  "Attributes": {},
+  "@Redfish.Settings": { "SupportedApplyTimes": ["OnReset"] }
+}`
+
+const biosBodyApplyTimeNotDeclared = `{
+  "@odata.id": "/redfish/v1/Systems/1/Bios",
+  "Id": "Bios",
+  "Attributes": {}
+}`
+
+const biosBodyApplyTimeNotSupported = `{
+  "@odata.id": "/redfish/v1/Systems/1/Bios",
+  "Id": "Bios",
+  "Attributes": {},
+  "@Redfish.Settings": { "SupportedApplyTimes": ["Immediate"] }
+}`
+
+const wantBiosPatchBody = `{
+  "Attributes": {
+    "NumaNodesPerSocket": "4",
+    "SecureBoot": "Enabled",
+    "SecureBootMode": "UserMode",
+    "SecureBootPolicy": "Custom",
+    "TpmSecurity": "On"
+  },
+  "@Redfish.SettingsApplyTime": { "ApplyTime": "OnReset" }
+}`
+
+const wantBiosPatchBodyApplyTimeNotSupported = `{
+  "Attributes": {
+    "NumaNodesPerSocket": "4",
+    "SecureBoot": "Enabled",
+    "SecureBootMode": "UserMode",
+    "SecureBootPolicy": "Custom",
+    "TpmSecurity": "On"
+  }
+}`
+
+const biosBodyWithAttributeRegistry = `{
+  "@odata.id": "/redfish/v1/Systems/1/Bios",
+  "Id": "Bios",
+  "Attributes": {},
+  "@Redfish.Settings": { "SupportedApplyTimes": ["OnReset"] },
+  "AttributeRegistry": "BiosAttributeRegistryP89.v1_0_0"
+}`
+
+const biosPatchErrorBodyPropertyValueNotInList = `{
+  "error": {
+    "code": "Base.1.5.PropertyValueNotInList",
+    "message": "The value auto for the property CbsDfCmnAcpiSratL3Numa is not in the list of acceptable values.",
+    "@Message.ExtendedInfo": [
+      {
+        "MessageId": "Base.1.5.PropertyValueNotInList",
+        "Message": "The value auto for the property CbsDfCmnAcpiSratL3Numa is not in the list of acceptable values.",
+        "MessageArgs": ["auto", "CbsDfCmnAcpiSratL3Numa"],
+        "RelatedProperties": ["CbsDfCmnAcpiSratL3Numa"],
+        "Resolution": "Choose a value from the enumeration list that the implementation can support and resubmit the request if the operation failed.",
+        "Severity": "Warning"
+      }
+    ]
+  }
+}`
+
+// Message is optional in Redfish, a BMC might only report the message registry
+// identifier of the extended info.
+const biosPatchErrorBodyWithoutMessage = `{
+  "error": {
+    "code": "Base.1.5.PropertyValueNotInList",
+    "@Message.ExtendedInfo": [
+      {
+        "MessageId": "Base.1.5.PropertyValueNotInList",
+        "MessageArgs": ["auto", "CbsDfCmnAcpiSratL3Numa"],
+        "RelatedProperties": ["CbsDfCmnAcpiSratL3Numa"],
+        "Severity": "Warning"
+      }
+    ]
+  }
+}`
+
+const biosPatchErrorBodyWithoutAnyMessage = `{
+  "error": {
+    "code": "Base.1.5.PropertyValueNotInList",
+    "@Message.ExtendedInfo": [
+      {
+        "RelatedProperties": ["CbsDfCmnAcpiSratL3Numa"],
+        "Resolution": "Choose a value from the enumeration list.",
+        "Severity": "Warning"
+      }
+    ]
+  }
+}`
+
+const registriesCollectionBody = `{
+  "@odata.id": "/redfish/v1/Registries",
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Registries/BiosAttributeRegistry" }
+  ]
+}`
+
+const biosAttributeRegistryFileBody = `{
+  "@odata.id": "/redfish/v1/Registries/BiosAttributeRegistry",
+  "Id": "BiosAttributeRegistry",
+  "Registry": "BiosAttributeRegistryP89.v1_0_0",
+  "Location": [
+    { "Language": "en", "Uri": "/redfish/v1/Registries/BiosAttributeRegistry/File" }
+  ]
+}`
+
+const biosAttributeRegistryBody = `{
+  "@odata.id": "/redfish/v1/Registries/BiosAttributeRegistry/File",
+  "Id": "BiosAttributeRegistryP89.v1_0_0",
+  "RegistryEntries": {
+    "Attributes": [
+      {
+        "AttributeName": "CbsDfCmnAcpiSratL3Numa",
+        "Type": "Enumeration",
+        "Value": [
+          { "ValueName": "Enabled" },
+          { "ValueName": "Disabled" }
+        ]
+      },
+      {
+        "AttributeName": "CustomIntegerAttr",
+        "Type": "Integer",
+        "LowerBound": 0,
+        "UpperBound": 20
+      },
+      {
+        "AttributeName": "NumaNodesPerSocket",
+        "Type": "String",
+        "MinLength": 1,
+        "MaxLength": 2
+      }
+    ]
+  }
+}`
+
+const biosBodyWithAttributeRegistryAndCurrentValues = `{
+  "@odata.id": "/redfish/v1/Systems/1/Bios",
+  "Id": "Bios",
+  "Attributes": {
+    "CbsDfCmnAcpiSratL3Numa": "Enabled",
+    "CustomIntegerAttr": 5,
+    "NumaNodesPerSocket": "4"
+  },
+  "@Redfish.Settings": { "SupportedApplyTimes": ["OnReset"] },
+  "AttributeRegistry": "BiosAttributeRegistryP89.v1_0_0"
+}`
+
+const biosBodyWithAttributeRegistryAndExtraCurrentValue = `{
+  "@odata.id": "/redfish/v1/Systems/1/Bios",
+  "Id": "Bios",
+  "Attributes": {
+    "CbsDfCmnAcpiSratL3Numa": "Enabled",
+    "CustomIntegerAttr": 5,
+    "NumaNodesPerSocket": "4",
+    "UndocumentedAttr": "SomeValue"
+  },
+  "@Redfish.Settings": { "SupportedApplyTimes": ["OnReset"] },
+  "AttributeRegistry": "BiosAttributeRegistryP89.v1_0_0"
+}`
+
+const biosBodyWithAttributeRegistryAndMissingCurrentValue = `{
+  "@odata.id": "/redfish/v1/Systems/1/Bios",
+  "Id": "Bios",
+  "Attributes": {
+    "CbsDfCmnAcpiSratL3Numa": "Enabled"
+  },
+  "@Redfish.Settings": { "SupportedApplyTimes": ["OnReset"] },
+  "AttributeRegistry": "BiosAttributeRegistryP89.v1_0_0"
+}`
+
+const biosBodyWithCurrentValuesNoAttributeRegistry = `{
+  "@odata.id": "/redfish/v1/Systems/1/Bios",
+  "Id": "Bios",
+  "Attributes": {
+    "NumaNodesPerSocket": "4",
+    "SecureBoot": "Enabled"
+  },
+  "@Redfish.Settings": { "SupportedApplyTimes": ["OnReset"] }
+}`
+
+var biosAttributeRegistryExtraRoutes = map[string]mockRedfishRoute{
+	"/redfish/v1/Registries":                            {statusCode: http.StatusOK, body: registriesCollectionBody},
+	"/redfish/v1/Registries/BiosAttributeRegistry":      {statusCode: http.StatusOK, body: biosAttributeRegistryFileBody},
+	"/redfish/v1/Registries/BiosAttributeRegistry/File": {statusCode: http.StatusOK, body: biosAttributeRegistryBody},
+}
+
+func TestRedfish_BIOSAttributes(t *testing.T) {
+	tests := []struct {
+		name string
+
+		serviceRootStatusCode int
+		systemsStatusCode     int
+		systemsBody           string
+		systemStatusCode      int
+		systemBody            string
+		biosStatusCode        int
+		biosBody              string
+		extraRoutes           map[string]mockRedfishRoute
+
+		want      []api.BIOSAttribute
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithAttributeRegistryAndCurrentValues,
+			extraRoutes:           biosAttributeRegistryExtraRoutes,
+
+			want: []api.BIOSAttribute{
+				{Name: "CbsDfCmnAcpiSratL3Numa", Type: "Enumeration", CurrentValue: "Enabled", AcceptableValues: []string{"Enabled", "Disabled"}},
+				{Name: "CustomIntegerAttr", Type: "Integer", CurrentValue: float64(5), LowerBound: ptr.To(int64(0)), UpperBound: ptr.To(int64(20)), AcceptableValues: []string{}},
+				{Name: "NumaNodesPerSocket", Type: "String", CurrentValue: "4", MinLength: ptr.To(int64(1)), MaxLength: ptr.To(int64(2)), AcceptableValues: []string{}},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:                  "error - failed to connect to BMC",
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to get bios information",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "success - no attribute registry published by BMC, falls back to current values",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithCurrentValuesNoAttributeRegistry,
+
+			want: []api.BIOSAttribute{
+				{Name: "NumaNodesPerSocket", CurrentValue: "4"},
+				{Name: "SecureBoot", CurrentValue: "Enabled"},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - empty attribute registry name and no current values",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBody,
+
+			want:      []api.BIOSAttribute{},
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - attribute registry fetch fails, falls back to current values",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithAttributeRegistryAndCurrentValues,
+			extraRoutes: map[string]mockRedfishRoute{
+				"/redfish/v1/Registries": {statusCode: http.StatusInternalServerError},
+			},
+
+			want: []api.BIOSAttribute{
+				{Name: "CbsDfCmnAcpiSratL3Numa", CurrentValue: "Enabled"},
+				{Name: "CustomIntegerAttr", CurrentValue: float64(5)},
+				{Name: "NumaNodesPerSocket", CurrentValue: "4"},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - attribute not described by the attribute registry is reported as well",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithAttributeRegistryAndExtraCurrentValue,
+			extraRoutes:           biosAttributeRegistryExtraRoutes,
+
+			want: []api.BIOSAttribute{
+				{Name: "CbsDfCmnAcpiSratL3Numa", Type: "Enumeration", CurrentValue: "Enabled", AcceptableValues: []string{"Enabled", "Disabled"}},
+				{Name: "CustomIntegerAttr", Type: "Integer", CurrentValue: float64(5), LowerBound: ptr.To(int64(0)), UpperBound: ptr.To(int64(20)), AcceptableValues: []string{}},
+				{Name: "NumaNodesPerSocket", Type: "String", CurrentValue: "4", MinLength: ptr.To(int64(1)), MaxLength: ptr.To(int64(2)), AcceptableValues: []string{}},
+				{Name: "UndocumentedAttr", CurrentValue: "SomeValue"},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - attribute described by the attribute registry but not reported by the BMC is omitted",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithAttributeRegistryAndMissingCurrentValue,
+			extraRoutes:           biosAttributeRegistryExtraRoutes,
+
+			want: []api.BIOSAttribute{
+				{Name: "CbsDfCmnAcpiSratL3Numa", Type: "Enumeration", CurrentValue: "Enabled", AcceptableValues: []string{"Enabled", "Disabled"}},
+			},
+			assertErr: require.NoError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode: tc.serviceRootStatusCode,
+				systemsStatusCode:     tc.systemsStatusCode,
+				systemsBody:           tc.systemsBody,
+				systemStatusCode:      tc.systemStatusCode,
+				systemBody:            tc.systemBody,
+				biosStatusCode:        tc.biosStatusCode,
+				biosBody:              tc.biosBody,
+				extraRoutes:           tc.extraRoutes,
+			}, nil)
+
+			client := redfish.New()
+			got, err := client.BIOSAttributes(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}})
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestRedfish_BIOSAttribute(t *testing.T) {
+	tests := []struct {
+		name string
+
+		serviceRootStatusCode int
+		systemsStatusCode     int
+		systemsBody           string
+		systemStatusCode      int
+		systemBody            string
+		biosStatusCode        int
+		biosBody              string
+		extraRoutes           map[string]mockRedfishRoute
+
+		attributeName string
+
+		want      api.BIOSAttribute
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - enumeration attribute",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithAttributeRegistryAndCurrentValues,
+			extraRoutes:           biosAttributeRegistryExtraRoutes,
+			attributeName:         "CbsDfCmnAcpiSratL3Numa",
+
+			want: api.BIOSAttribute{
+				Name:             "CbsDfCmnAcpiSratL3Numa",
+				Type:             "Enumeration",
+				CurrentValue:     "Enabled",
+				AcceptableValues: []string{"Enabled", "Disabled"},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - non-enumeration attribute has no acceptable values",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithAttributeRegistryAndCurrentValues,
+			extraRoutes:           biosAttributeRegistryExtraRoutes,
+			attributeName:         "NumaNodesPerSocket",
+
+			want: api.BIOSAttribute{
+				Name:             "NumaNodesPerSocket",
+				Type:             "String",
+				CurrentValue:     "4",
+				AcceptableValues: []string{},
+				MinLength:        ptr.To(int64(1)),
+				MaxLength:        ptr.To(int64(2)),
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - integer attribute with bounds",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithAttributeRegistryAndCurrentValues,
+			extraRoutes:           biosAttributeRegistryExtraRoutes,
+			attributeName:         "CustomIntegerAttr",
+
+			want: api.BIOSAttribute{
+				Name:             "CustomIntegerAttr",
+				Type:             "Integer",
+				CurrentValue:     float64(5),
+				AcceptableValues: []string{},
+				LowerBound:       ptr.To(int64(0)),
+				UpperBound:       ptr.To(int64(20)),
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:                  "error - failed to connect to BMC",
+			serviceRootStatusCode: http.StatusInternalServerError,
+			attributeName:         "CbsDfCmnAcpiSratL3Numa",
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - no attribute registry published by BMC and attribute unknown to BMC",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBody,
+			attributeName:         "CbsDfCmnAcpiSratL3Numa",
+
+			assertErr: errassert.NotFoundError,
+		},
+		{
+			name: "success - no attribute registry published by BMC, falls back to current value",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithCurrentValuesNoAttributeRegistry,
+			attributeName:         "NumaNodesPerSocket",
+
+			want:      api.BIOSAttribute{Name: "NumaNodesPerSocket", CurrentValue: "4"},
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - attribute registry fetch fails, falls back to current value",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithAttributeRegistryAndCurrentValues,
+			extraRoutes: map[string]mockRedfishRoute{
+				"/redfish/v1/Registries": {statusCode: http.StatusInternalServerError},
+			},
+			attributeName: "CbsDfCmnAcpiSratL3Numa",
+
+			want:      api.BIOSAttribute{Name: "CbsDfCmnAcpiSratL3Numa", CurrentValue: "Enabled"},
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - attribute not found in registry",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithAttributeRegistryAndCurrentValues,
+			extraRoutes:           biosAttributeRegistryExtraRoutes,
+			attributeName:         "DoesNotExist",
+
+			assertErr: errassert.NotFoundError,
+		},
+		{
+			name: "success - attribute not in registry but reported as current value by BMC",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithAttributeRegistryAndExtraCurrentValue,
+			extraRoutes:           biosAttributeRegistryExtraRoutes,
+			attributeName:         "UndocumentedAttr",
+
+			want:      api.BIOSAttribute{Name: "UndocumentedAttr", CurrentValue: "SomeValue"},
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - attribute in registry but not reported as current value by BMC",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithAttributeRegistryAndMissingCurrentValue,
+			extraRoutes:           biosAttributeRegistryExtraRoutes,
+			attributeName:         "NumaNodesPerSocket",
+
+			assertErr: errassert.NotFoundError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode: tc.serviceRootStatusCode,
+				systemsStatusCode:     tc.systemsStatusCode,
+				systemsBody:           tc.systemsBody,
+				systemStatusCode:      tc.systemStatusCode,
+				systemBody:            tc.systemBody,
+				biosStatusCode:        tc.biosStatusCode,
+				biosBody:              tc.biosBody,
+				extraRoutes:           tc.extraRoutes,
+			}, nil)
+
+			client := redfish.New()
+			got, err := client.BIOSAttribute(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.attributeName)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+var defaultBiosAttributes = map[string]any{
+	"NumaNodesPerSocket": "4",
+	"SecureBoot":         "Enabled",
+	"SecureBootMode":     "UserMode",
+	"SecureBootPolicy":   "Custom",
+	"TpmSecurity":        "On",
+}
+
+func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
+	tests := []struct {
+		name string
+
+		serviceRootStatusCode        int
+		systemsStatusCode            int
+		systemsBody                  string
+		systemStatusCode             int
+		systemBody                   string
+		biosStatusCode               int
+		biosBody                     string
+		biosPatchStatusCode          int
+		biosPatchBody                string
+		biosPatchTaskMonitorLocation string
+		extraRoutes                  map[string]mockRedfishRoute
+
+		attributes         map[string]any
+		wantPatchBody      string
+		wantTaskMonitor    *provisioning.BMCTaskMonitor
+		wantErrContains    string
+		wantErrNotContains string
+		assertErr          require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - completed synchronously",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBody,
+			biosPatchStatusCode:   http.StatusOK,
+
+			attributes:    defaultBiosAttributes,
+			wantPatchBody: wantBiosPatchBody,
+			assertErr:     require.NoError,
+		},
+		{
+			name: "success - task monitor returned",
+
+			serviceRootStatusCode:        http.StatusOK,
+			systemsStatusCode:            http.StatusOK,
+			systemsBody:                  resetSystemsBody,
+			systemStatusCode:             http.StatusOK,
+			systemBody:                   biosSystemBody,
+			biosStatusCode:               http.StatusOK,
+			biosBody:                     biosBody,
+			biosPatchStatusCode:          http.StatusAccepted,
+			biosPatchTaskMonitorLocation: "/redfish/v1/TaskMonitor/1",
+
+			attributes:    defaultBiosAttributes,
+			wantPatchBody: wantBiosPatchBody,
+			wantTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - caller supplied custom attribute set",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBody,
+			biosPatchStatusCode:   http.StatusOK,
+
+			attributes: map[string]any{"SecureBoot": "Enabled"},
+			wantPatchBody: `{
+  "Attributes": { "SecureBoot": "Enabled" },
+  "@Redfish.SettingsApplyTime": { "ApplyTime": "OnReset" }
+}`,
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - apply time not declared by BMC, falls back to UpdateBiosAttributes",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyApplyTimeNotDeclared,
+			biosPatchStatusCode:   http.StatusOK,
+
+			attributes:    defaultBiosAttributes,
+			wantPatchBody: wantBiosPatchBodyApplyTimeNotSupported,
+			assertErr:     require.NoError,
+		},
+		{
+			name: "success - apply time explicitly not supported, falls back to UpdateBiosAttributes",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyApplyTimeNotSupported,
+			biosPatchStatusCode:   http.StatusOK,
+
+			attributes:    defaultBiosAttributes,
+			wantPatchBody: wantBiosPatchBodyApplyTimeNotSupported,
+			assertErr:     require.NoError,
+		},
+		{
+			name:                  "error - failed to connect to BMC",
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to get BMC systems",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - no BMC systems found",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetEmptySystemsBody,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to get bios information",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to apply bios attributes",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBody,
+			biosPatchStatusCode:   http.StatusInternalServerError,
+
+			attributes: defaultBiosAttributes,
+			assertErr:  require.Error,
+		},
+		{
+			name: "error - invalid bios attribute value, enriched with acceptable values from attribute registry",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithAttributeRegistry,
+			biosPatchStatusCode:   http.StatusBadRequest,
+			biosPatchBody:         biosPatchErrorBodyPropertyValueNotInList,
+			extraRoutes: map[string]mockRedfishRoute{
+				"/redfish/v1/Registries":                            {statusCode: http.StatusOK, body: registriesCollectionBody},
+				"/redfish/v1/Registries/BiosAttributeRegistry":      {statusCode: http.StatusOK, body: biosAttributeRegistryFileBody},
+				"/redfish/v1/Registries/BiosAttributeRegistry/File": {statusCode: http.StatusOK, body: biosAttributeRegistryBody},
+			},
+
+			attributes:      defaultBiosAttributes,
+			assertErr:       require.Error,
+			wantErrContains: `The value auto for the property CbsDfCmnAcpiSratL3Numa is not in the list of acceptable values. Acceptable values: Enabled, Disabled.`,
+		},
+		{
+			name: "error - invalid bios attribute value, no attribute registry declared, falls back to clean message",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBody,
+			biosPatchStatusCode:   http.StatusBadRequest,
+			biosPatchBody:         biosPatchErrorBodyPropertyValueNotInList,
+
+			attributes:         defaultBiosAttributes,
+			assertErr:          require.Error,
+			wantErrContains:    `The value auto for the property CbsDfCmnAcpiSratL3Numa is not in the list of acceptable values.`,
+			wantErrNotContains: `Acceptable values`,
+		},
+		{
+			name: "error - invalid bios attribute value, attribute registry lookup fails, falls back to clean message",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithAttributeRegistry,
+			biosPatchStatusCode:   http.StatusBadRequest,
+			biosPatchBody:         biosPatchErrorBodyPropertyValueNotInList,
+			// No extraRoutes configured for /redfish/v1/Registries, so the
+			// registry lookup itself fails (404).
+
+			attributes:         defaultBiosAttributes,
+			assertErr:          require.Error,
+			wantErrContains:    `The value auto for the property CbsDfCmnAcpiSratL3Numa is not in the list of acceptable values.`,
+			wantErrNotContains: `Acceptable values`,
+		},
+		{
+			name: "error - invalid bios attribute value without message, falls back to the message registry identifier",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithAttributeRegistry,
+			biosPatchStatusCode:   http.StatusBadRequest,
+			biosPatchBody:         biosPatchErrorBodyWithoutMessage,
+			extraRoutes:           biosAttributeRegistryExtraRoutes,
+
+			attributes:      defaultBiosAttributes,
+			assertErr:       require.Error,
+			wantErrContains: `Base.1.5.PropertyValueNotInList Acceptable values: Enabled, Disabled.`,
+		},
+		{
+			name: "error - invalid bios attribute value without any human readable message, original error is returned",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithAttributeRegistry,
+			biosPatchStatusCode:   http.StatusBadRequest,
+			biosPatchBody:         biosPatchErrorBodyWithoutAnyMessage,
+			extraRoutes:           biosAttributeRegistryExtraRoutes,
+
+			attributes:      defaultBiosAttributes,
+			assertErr:       require.Error,
+			wantErrContains: `Choose a value from the enumeration list.`,
+		},
+		{
+			name: "error - server error with structured message is not treated as invalid attribute value",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            biosSystemBody,
+			biosStatusCode:        http.StatusOK,
+			biosBody:              biosBodyWithAttributeRegistry,
+			biosPatchStatusCode:   http.StatusInternalServerError,
+			biosPatchBody:         biosPatchErrorBodyPropertyValueNotInList,
+
+			attributes:         defaultBiosAttributes,
+			assertErr:          require.Error,
+			wantErrNotContains: `Acceptable values`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotPatchBody []byte
+
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode:        tc.serviceRootStatusCode,
+				systemsStatusCode:            tc.systemsStatusCode,
+				systemsBody:                  tc.systemsBody,
+				systemStatusCode:             tc.systemStatusCode,
+				systemBody:                   tc.systemBody,
+				biosStatusCode:               tc.biosStatusCode,
+				biosBody:                     tc.biosBody,
+				biosPatchStatusCode:          tc.biosPatchStatusCode,
+				biosPatchBody:                tc.biosPatchBody,
+				biosPatchTaskMonitorLocation: tc.biosPatchTaskMonitorLocation,
+				extraRoutes:                  tc.extraRoutes,
+				gotBiosPatchBody:             &gotPatchBody,
+			}, nil)
+
+			client := redfish.New()
+			taskMonitor, err := client.ApplyBIOSAttributes(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.attributes)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantTaskMonitor, taskMonitor)
+
+			if tc.wantPatchBody != "" {
+				require.JSONEq(t, tc.wantPatchBody, string(gotPatchBody))
+			}
+
+			if tc.wantErrContains != "" {
+				require.ErrorContains(t, err, tc.wantErrContains)
+			}
+
+			if tc.wantErrNotContains != "" {
+				require.NotContains(t, err.Error(), tc.wantErrNotContains)
+			}
+		})
+	}
 }

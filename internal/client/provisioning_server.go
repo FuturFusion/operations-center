@@ -305,6 +305,48 @@ func (c OperationsCenterClient) BMCServerRestart(ctx context.Context, name strin
 	return nil
 }
 
+func (c OperationsCenterClient) ApplyBIOSAttributes(ctx context.Context, name string, attributes map[string]any) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "bmc/:apply-bios-attributes"), nil, api.ServerBMCApplyBIOSAttributesPost{
+		Attributes: attributes,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c OperationsCenterClient) GetServerBMCBIOSAttributes(ctx context.Context, name string) ([]api.BIOSAttribute, error) {
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name, "bmc/bios-attributes"), nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	attributes := []api.BIOSAttribute{}
+	err = json.Unmarshal(response.Metadata, &attributes)
+	if err != nil {
+		return nil, err
+	}
+
+	return attributes, nil
+}
+
+func (c OperationsCenterClient) GetServerBMCBIOSAttributeAcceptableValues(ctx context.Context, name string, attributeName string) (api.BIOSAttribute, error) {
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name, "bmc/bios-attributes", attributeName), nil, nil)
+	if err != nil {
+		return api.BIOSAttribute{}, err
+	}
+
+	var values api.BIOSAttribute
+
+	err = json.Unmarshal(response.Metadata, &values)
+	if err != nil {
+		return api.BIOSAttribute{}, err
+	}
+
+	return values, nil
+}
+
 func (c OperationsCenterClient) GetServerBMCLogSources(ctx context.Context, name string) ([]string, error) {
 	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name, "bmc/logs"), nil, nil)
 	if err != nil {

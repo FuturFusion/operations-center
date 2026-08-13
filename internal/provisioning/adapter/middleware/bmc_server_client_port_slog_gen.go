@@ -40,6 +40,113 @@ func NewBMCServerClientPortWithSlog(base provisioning.BMCServerClientPort, opts 
 	return this
 }
 
+// ApplyBIOSAttributes implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) ApplyBIOSAttributes(ctx context.Context, server provisioning.Server, attributes map[string]any) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.Any("attributes", attributes),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ApplyBIOSAttributes")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bMCTaskMonitor", bMCTaskMonitor),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method ApplyBIOSAttributes returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method ApplyBIOSAttributes returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method ApplyBIOSAttributes finished")
+		}
+	}()
+	return _d._base.ApplyBIOSAttributes(ctx, server, attributes)
+}
+
+// BIOSAttribute implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) BIOSAttribute(ctx context.Context, server provisioning.Server, attributeName string) (bIOSAttribute api.BIOSAttribute, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.String("attributeName", attributeName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BIOSAttribute")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bIOSAttribute", bIOSAttribute),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BIOSAttribute returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BIOSAttribute returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BIOSAttribute finished")
+		}
+	}()
+	return _d._base.BIOSAttribute(ctx, server, attributeName)
+}
+
+// BIOSAttributes implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) BIOSAttributes(ctx context.Context, server provisioning.Server) (bIOSAttributes []api.BIOSAttribute, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BIOSAttributes")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bIOSAttributes", bIOSAttributes),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BIOSAttributes returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BIOSAttributes returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BIOSAttributes finished")
+		}
+	}()
+	return _d._base.BIOSAttributes(ctx, server)
+}
+
 // ConnectionTest implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) ConnectionTest(ctx context.Context, server provisioning.Server) (certificate string, err error) {
 	log := slog.With()

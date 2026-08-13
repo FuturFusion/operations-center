@@ -39,6 +39,48 @@ func NewBMCServerClientPortWithPrometheus(base provisioning.BMCServerClientPort,
 	}
 }
 
+// ApplyBIOSAttributes implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) ApplyBIOSAttributes(ctx context.Context, server provisioning.Server, attributes map[string]any) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "ApplyBIOSAttributes", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ApplyBIOSAttributes(ctx, server, attributes)
+}
+
+// BIOSAttribute implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) BIOSAttribute(ctx context.Context, server provisioning.Server, attributeName string) (bIOSAttribute api.BIOSAttribute, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "BIOSAttribute", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BIOSAttribute(ctx, server, attributeName)
+}
+
+// BIOSAttributes implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) BIOSAttributes(ctx context.Context, server provisioning.Server) (bIOSAttributes []api.BIOSAttribute, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "BIOSAttributes", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BIOSAttributes(ctx, server)
+}
+
 // ConnectionTest implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithPrometheus) ConnectionTest(ctx context.Context, server provisioning.Server) (certificate string, err error) {
 	_since := time.Now()

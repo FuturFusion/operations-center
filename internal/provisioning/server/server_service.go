@@ -2415,6 +2415,24 @@ func (s *serverService) SyncCluster(ctx context.Context, clusterName string) err
 	return nil
 }
 
+func (s *serverService) getServerAndBMCClientByName(ctx context.Context, name string) (*provisioning.Server, provisioning.BMCServerClientPort, error) {
+	if name == "" {
+		return nil, nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
+	if !ok {
+		return nil, nil, fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
+	}
+
+	return server, client, nil
+}
+
 func (s *serverService) BMCRefreshByName(ctx context.Context, name string) error {
 	if name == "" {
 		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
@@ -2434,18 +2452,9 @@ func (s *serverService) BMCRefreshByName(ctx context.Context, name string) error
 }
 
 func (s *serverService) BMCServerPowerOnByName(ctx context.Context, name string, force bool) error {
-	if name == "" {
-		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
-	}
-
-	server, err := s.repo.GetByName(ctx, name)
+	server, client, err := s.getServerAndBMCClientByName(ctx, name)
 	if err != nil {
-		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
-	}
-
-	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
-	if !ok {
-		return fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCConfig.APIType, err)
+		return err
 	}
 
 	taskMonitor, err := client.ServerPowerOn(ctx, *server, force)
@@ -2472,18 +2481,9 @@ func (s *serverService) BMCServerPowerOnByName(ctx context.Context, name string,
 }
 
 func (s *serverService) BMCServerPowerOffByName(ctx context.Context, name string, force bool) error {
-	if name == "" {
-		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
-	}
-
-	server, err := s.repo.GetByName(ctx, name)
+	server, client, err := s.getServerAndBMCClientByName(ctx, name)
 	if err != nil {
-		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
-	}
-
-	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
-	if !ok {
-		return fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCConfig.APIType, err)
+		return err
 	}
 
 	taskMonitor, err := client.ServerPowerOff(ctx, *server, force)
@@ -2510,18 +2510,9 @@ func (s *serverService) BMCServerPowerOffByName(ctx context.Context, name string
 }
 
 func (s *serverService) BMCServerRestartByName(ctx context.Context, name string, force bool) error {
-	if name == "" {
-		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
-	}
-
-	server, err := s.repo.GetByName(ctx, name)
+	server, client, err := s.getServerAndBMCClientByName(ctx, name)
 	if err != nil {
-		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
-	}
-
-	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
-	if !ok {
-		return fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCConfig.APIType, err)
+		return err
 	}
 
 	_, err = client.ServerRestart(ctx, *server, force)
@@ -2532,19 +2523,64 @@ func (s *serverService) BMCServerRestartByName(ctx context.Context, name string,
 	return nil
 }
 
-func (s *serverService) BMCLogSourcesByName(ctx context.Context, name string) ([]string, error) {
-	if name == "" {
-		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
-	}
-
-	server, err := s.repo.GetByName(ctx, name)
+func (s *serverService) ApplyBIOSAttributesByName(ctx context.Context, name string, attributes map[string]any) error {
+	server, client, err := s.getServerAndBMCClientByName(ctx, name)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get server %q by name: %w", name, err)
+		return err
 	}
 
-	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
-	if !ok {
-		return nil, fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCConfig.APIType, err)
+	taskMonitor, err := client.ApplyBIOSAttributes(ctx, *server, attributes)
+	if err != nil {
+		return fmt.Errorf("Failed to trigger BIOS attribute application of server %q via BMC: %w", server.Name, err)
+	}
+
+	// The BIOS settings are applied on the next reset of the server, so the task
+	// is not awaited synchronously.
+	go func() {
+		// Use a detached context in order to make sure, no existing DB transaction is inherited.
+		ctx := context.Background()
+
+		err := client.WaitForTask(ctx, *server, taskMonitor)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after BIOS attribute application", logger.Err(err), slog.String("name", server.Name))
+		}
+	}()
+
+	return nil
+}
+
+func (s *serverService) BMCBIOSAttributesByName(ctx context.Context, name string) ([]api.BIOSAttribute, error) {
+	server, client, err := s.getServerAndBMCClientByName(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+
+	attributes, err := client.BIOSAttributes(ctx, *server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get BIOS attributes of server %q via BMC: %w", server.Name, err)
+	}
+
+	return attributes, nil
+}
+
+func (s *serverService) BMCBIOSAttributeByName(ctx context.Context, name string, attributeName string) (api.BIOSAttribute, error) {
+	server, client, err := s.getServerAndBMCClientByName(ctx, name)
+	if err != nil {
+		return api.BIOSAttribute{}, err
+	}
+
+	values, err := client.BIOSAttribute(ctx, *server, attributeName)
+	if err != nil {
+		return api.BIOSAttribute{}, fmt.Errorf("Failed to get acceptable values for BIOS attribute %q of server %q via BMC: %w", attributeName, server.Name, err)
+	}
+
+	return values, nil
+}
+
+func (s *serverService) BMCLogSourcesByName(ctx context.Context, name string) ([]string, error) {
+	server, client, err := s.getServerAndBMCClientByName(ctx, name)
+	if err != nil {
+		return nil, err
 	}
 
 	logSources, err := client.LogSources(ctx, *server)
@@ -2556,23 +2592,14 @@ func (s *serverService) BMCLogSourcesByName(ctx context.Context, name string) ([
 }
 
 func (s *serverService) BMCLogEntriesByNameAndLogSource(ctx context.Context, name string, logSource string) ([]api.BMCLogEvent, error) {
-	if name == "" {
-		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
-	}
-
 	logSourceParts := strings.Split(logSource, "/")
 	if len(logSourceParts) != 2 || logSourceParts[0] == "" || logSourceParts[1] == "" {
 		return nil, fmt.Errorf(`Log source %q must have the structure "service/logService": %w`, logSource, domain.ErrOperationNotPermitted)
 	}
 
-	server, err := s.repo.GetByName(ctx, name)
+	server, client, err := s.getServerAndBMCClientByName(ctx, name)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get server %q by name: %w", name, err)
-	}
-
-	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
-	if !ok {
-		return nil, fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCConfig.APIType, err)
+		return nil, err
 	}
 
 	logEntries, err := client.LogEntriesBySource(ctx, *server, logSource)
@@ -2584,18 +2611,9 @@ func (s *serverService) BMCLogEntriesByNameAndLogSource(ctx context.Context, nam
 }
 
 func (s *serverService) BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error) {
-	if name == "" {
-		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
-	}
-
-	server, err := s.repo.GetByName(ctx, name)
+	server, client, err := s.getServerAndBMCClientByName(ctx, name)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get server %q by name: %w", name, err)
-	}
-
-	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
-	if !ok {
-		return nil, fmt.Errorf("Failed to get BMC server client for type %q: %w", server.BMCConfig.APIType, err)
+		return nil, err
 	}
 
 	dump, err := client.Dump(ctx, *server, additionalEndpoints, skipPredefined, trace)
