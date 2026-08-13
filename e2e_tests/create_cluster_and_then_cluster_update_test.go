@@ -5,6 +5,8 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -93,9 +95,16 @@ func createClusterAndThenClusterUpdate(t *testing.T, tmpDir string) {
 	defer cancel()
 
 	previousUpdateStatusDescription := ""
+	previousStep := 0
+	previousTotalSteps := 0
 
 	for {
-		resp := mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.in_progress'`, cpuArch, clusterName)
+		resp := mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.error'`, cpuArch, clusterName)
+		if resp.OutputTrimmed() != "" {
+			t.Fatalf("Update cluster failed: %s", resp.OutputTrimmed())
+		}
+
+		resp = mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | .update_status.in_progress_status.in_progress'`, cpuArch, clusterName)
 		if resp.OutputTrimmed() == "" {
 			break
 		}
@@ -108,6 +117,25 @@ func createClusterAndThenClusterUpdate(t *testing.T, tmpDir string) {
 		}
 
 		previousUpdateStatusDescription = statusDescription
+
+		// The progress reported to the user must never move backwards.
+		match := clusterUpdateStateRegexp.FindStringSubmatch(statusDescription)
+		if match != nil {
+			step, err := strconv.Atoi(match[1])
+			require.NoError(t, err)
+
+			totalSteps, err := strconv.Atoi(match[2])
+			require.NoError(t, err)
+
+			require.GreaterOrEqualf(t, step, previousStep, "Update cluster: progress moved backwards from %d to %d of %d", previousStep, step, totalSteps)
+
+			if previousTotalSteps != 0 {
+				require.Equalf(t, previousTotalSteps, totalSteps, "Update cluster: total number of steps changed from %d to %d", previousTotalSteps, totalSteps)
+			}
+
+			previousStep = step
+			previousTotalSteps = totalSteps
+		}
 
 		if debug {
 			resp = mustRun(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq '[ .[] | { "server_status": .server_status, "server_status_detail": .server_status_detail, "version_data": .version_data } ]'`, cpuArch)
@@ -123,8 +151,20 @@ func createClusterAndThenClusterUpdate(t *testing.T, tmpDir string) {
 		}
 	}
 
+	// The progress has to have reached the last step and the cluster has to be fully
+	// updated.
+	require.NotZero(t, previousTotalSteps, "Update cluster: no progress has been reported at all")
+	require.Equal(t, previousTotalSteps, previousStep, "Update cluster: the last reported progress is not the last step")
+
+	resp := mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | (.update_status.needs_update // []) + (.update_status.needs_reboot // []) | join(",")'`, cpuArch, clusterName)
+	require.Emptyf(t, resp.OutputTrimmed(), "Update cluster: servers still need an update or a reboot: %s", resp.OutputTrimmed())
+
 	t.Log("Update cluster - update completed")
 }
+
+// clusterUpdateStateRegexp matches the step and the total number of steps of the
+// progress description of a rolling cluster update, e.g. "[ 2/27] ...".
+var clusterUpdateStateRegexp = regexp.MustCompile(`\[\s*(\d+)/\s*(\d+)\]`)
 
 func prodChannelCleanup(t *testing.T) func() {
 	t.Helper()
