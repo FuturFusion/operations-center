@@ -1,13 +1,16 @@
 package cluster
 
 import (
+	"context"
 	"testing"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -192,6 +195,7 @@ func Test_clusterUpdateState(t *testing.T) {
 		name                          string
 		clusterUpdateInProgressStatus api.ClusterUpdateInProgressStatus
 		serverStates                  []api.ServerUpdateState
+		newUpdateAvailable            bool
 
 		want string
 	}{
@@ -380,6 +384,110 @@ func Test_clusterUpdateState(t *testing.T) {
 
 			want: `[27/27] post restore server "serverC"`,
 		},
+
+		// Servers, which have been evacuated before the update was triggered, are kept
+		// evacuated and therefore have no restore step ahead of them.
+		{
+			name: "apply update with reboot - server evacuated before is not restored",
+			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
+				InProgress:      api.ClusterUpdateInProgressApplyUpdateWithReboot,
+				EvacuatedBefore: []string{"serverA"},
+			},
+			serverStates: []api.ServerUpdateState{
+				api.ServerUpdateStateInMaintenanceRestorePending,
+				api.ServerUpdateStateEvacuationPending,
+				api.ServerUpdateStateEvacuationPending,
+			},
+
+			want: `[14/27] evacuation pending server "serverB"`,
+		},
+		{
+			name: "rolling restart - server evacuated before is not restored",
+			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
+				InProgress:      api.ClusterUpdateInProgressRollingRestart,
+				EvacuatedBefore: []string{"serverA"},
+			},
+			serverStates: []api.ServerUpdateState{
+				api.ServerUpdateStateInMaintenanceRestorePending,
+				api.ServerUpdateStateEvacuationPending,
+				api.ServerUpdateStateEvacuationPending,
+			},
+
+			// Identical to the apply update phase above, the phase transition must not
+			// change the reported progress.
+			want: `[14/27] evacuation pending server "serverB"`,
+		},
+		{
+			name: "rolling restart - all servers done, server evacuated before stays evacuated",
+			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
+				InProgress:      api.ClusterUpdateInProgressRollingRestart,
+				EvacuatedBefore: []string{"serverA"},
+			},
+			serverStates: []api.ServerUpdateState{
+				api.ServerUpdateStateInMaintenanceRestorePending,
+				api.ServerUpdateStateUpToDate,
+				api.ServerUpdateStateUpToDate,
+			},
+
+			want: "",
+		},
+
+		// States, which are not part of the rolling update, are counted as not started.
+		{
+			name: "rolling restart - undefined state counts as not started",
+			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
+				InProgress: api.ClusterUpdateInProgressRollingRestart,
+			},
+			serverStates: []api.ServerUpdateState{
+				api.ServerUpdateStateUndefined,
+				api.ServerUpdateStateUpToDate,
+				api.ServerUpdateStateUpToDate,
+			},
+
+			want: `[19/27] undefined server "serverA"`,
+		},
+		{
+			name: "rolling restart - rebooting outside of maintenance counts as not started",
+			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
+				InProgress: api.ClusterUpdateInProgressRollingRestart,
+			},
+			serverStates: []api.ServerUpdateState{
+				api.ServerUpdateStateUpToDate,
+				api.ServerUpdateStateUpToDate,
+				api.ServerUpdateStateRebooting,
+			},
+
+			want: `[19/27] rebooting server "serverC"`,
+		},
+		{
+			name: "apply update with reboot - server updating applications is reported as updating",
+			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
+				InProgress: api.ClusterUpdateInProgressApplyUpdateWithReboot,
+			},
+			serverStates: []api.ServerUpdateState{
+				serverUpdateStateUpdatingApplication,
+				api.ServerUpdateStateUpdatePending,
+				api.ServerUpdateStateUpdatePending,
+			},
+
+			want: `[ 2/27] updating server "serverA"`,
+		},
+
+		// A newly published update must not interrupt an ongoing rolling restart.
+		{
+			name: "rolling restart - newly available update does not rewind the progress",
+			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
+				InProgress: api.ClusterUpdateInProgressRollingRestart,
+			},
+			serverStates: []api.ServerUpdateState{
+				api.ServerUpdateStateInMaintenanceRebootPending,
+				api.ServerUpdateStateEvacuationPending,
+				api.ServerUpdateStateEvacuationPending,
+			},
+			newUpdateAvailable: true,
+
+			want: `[ 9/27] in maintenance, reboot pending server "serverA"`,
+		},
 	}
 
 	serverNames := []string{"serverA", "serverB", "serverC"}
@@ -388,18 +496,75 @@ func Test_clusterUpdateState(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			servers := make(provisioning.Servers, 0, len(tc.serverStates))
 			for i, state := range tc.serverStates {
-				servers = append(servers, clusterUpdateStateTestServer(t, serverNames[i], state))
+				server := clusterUpdateStateTestServer(t, serverNames[i], state)
+				if tc.newUpdateAvailable {
+					server.VersionData.NeedsUpdate = ptr.To(true)
+				}
+
+				servers = append(servers, server)
 			}
 
-			got := clusterUpdateState(tc.clusterUpdateInProgressStatus, servers)
+			got := clusterUpdateState(tc.clusterUpdateInProgressStatus, servers).String()
 
 			require.Equal(t, tc.want, got)
 		})
 	}
 }
 
+func Test_clusterUpdateState_phaseTransitionKeepsProgress(t *testing.T) {
+	// The rolling update advances from the apply update phase to the rolling restart
+	// phase once all servers are updated. Both phases have to report the same
+	// progress for a given server state, otherwise the progress reported to the user
+	// jumps at the moment the phase changes.
+	serverNames := []string{"serverA", "serverB", "serverC"}
+
+	// Only the restart states are relevant, the phase does not change before all
+	// servers have passed the update states.
+	for _, state := range clusterUpdateSteps[clusterUpdateUpdateSteps:] {
+		t.Run(string(state), func(t *testing.T) {
+			servers := make(provisioning.Servers, 0, len(serverNames))
+			for _, name := range serverNames {
+				servers = append(servers, clusterUpdateStateTestServer(t, name, state))
+			}
+
+			applyUpdate := clusterUpdateState(api.ClusterUpdateInProgressStatus{
+				InProgress: api.ClusterUpdateInProgressApplyUpdateWithReboot,
+			}, servers)
+
+			rollingRestart := clusterUpdateState(api.ClusterUpdateInProgressStatus{
+				InProgress: api.ClusterUpdateInProgressRollingRestart,
+			}, servers)
+
+			require.Equal(t, applyUpdate, rollingRestart)
+		})
+	}
+}
+
+func Test_clusterUpdateState_doesNotReorderServers(t *testing.T) {
+	// clusterUpdateState is called with the servers of a cluster while the caller is
+	// iterating over them, so it must not reorder the slice it is given.
+	servers := provisioning.Servers{
+		clusterUpdateStateTestServer(t, "serverC", api.ServerUpdateStateUpdatePending),
+		clusterUpdateStateTestServer(t, "serverA", api.ServerUpdateStateUpdatePending),
+		clusterUpdateStateTestServer(t, "serverB", api.ServerUpdateStateUpdatePending),
+	}
+
+	got := clusterUpdateState(api.ClusterUpdateInProgressStatus{
+		InProgress: api.ClusterUpdateInProgressApplyUpdateWithReboot,
+	}, servers).String()
+
+	require.Equal(t, `[ 1/27] update pending server "serverA"`, got)
+	require.Equal(t, []string{"serverC", "serverA", "serverB"}, []string{servers[0].Name, servers[1].Name, servers[2].Name})
+}
+
+// serverUpdateStateUpdatingApplication is a test only marker for a server, which is
+// updating its applications. api.Server.UpdateState reports "undefined" for it.
+const serverUpdateStateUpdatingApplication = api.ServerUpdateState("updating application")
+
 func clusterUpdateStateTestServer(t *testing.T, name string, state api.ServerUpdateState) provisioning.Server {
 	t.Helper()
+
+	wantState := state
 
 	server := provisioning.Server{
 		Name:         name,
@@ -453,11 +618,112 @@ func clusterUpdateStateTestServer(t *testing.T, name string, state api.ServerUpd
 	case api.ServerUpdateStateInMaintenancePostRestore:
 		server.StatusDetail = api.ServerStatusDetailReadyRestoring
 
+	case api.ServerUpdateStateRebootPending:
+		// A reboot is only pending outside of maintenance for servers, which are not
+		// part of an Incus cluster.
+		server.Cluster = nil
+		server.VersionData.NeedsReboot = ptr.To(true)
+
+	case api.ServerUpdateStateRebooting:
+		server.Status = api.ServerStatusOffline
+		server.StatusDetail = api.ServerStatusDetailOfflineRebooting
+
+	case api.ServerUpdateStateUndefined:
+		server.Status = api.ServerStatusUnknown
+
+	case serverUpdateStateUpdatingApplication:
+		server.StatusDetail = api.ServerStatusDetailReadyUpdatingApplication
+		wantState = api.ServerUpdateStateUndefined
+
 	default:
 		t.Fatalf("unsupported server update state %q", state)
 	}
 
-	require.Equal(t, state, server.UpdateState())
+	require.Equal(t, wantState, server.UpdateState())
 
 	return server
+}
+
+func TestClusterService_getClusterUpdateStatus_progressOnlyMovesForward(t *testing.T) {
+	// The update state of a server is derived from data, which is refreshed
+	// asynchronously from several sources, so a server can briefly fall back to an
+	// earlier state.
+	serverStates := []api.ServerUpdateState{
+		api.ServerUpdateStateUpdating,
+		api.ServerUpdateStateUpdatePending, // Falls back, the version data is not refreshed yet.
+		api.ServerUpdateStateEvacuationPending,
+	}
+
+	serverSvcGetAllWithFilter := make([]queue.Item[provisioning.Servers], 0, len(serverStates))
+	for _, state := range serverStates {
+		serverSvcGetAllWithFilter = append(serverSvcGetAllWithFilter, queue.Item[provisioning.Servers]{
+			Value: provisioning.Servers{
+				clusterUpdateStateTestServer(t, "serverA", state),
+				clusterUpdateStateTestServer(t, "serverB", api.ServerUpdateStateUpdatePending),
+				clusterUpdateStateTestServer(t, "serverC", api.ServerUpdateStateUpdatePending),
+			},
+		})
+	}
+
+	serverSvc := &serviceMock.ServerServiceMock{
+		GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+			return queue.Pop(t, &serverSvcGetAllWithFilter)
+		},
+	}
+
+	clusterSvc := New(nil, nil, nil, serverSvc, nil, nil, nil, nil)
+
+	ctx := context.Background()
+
+	got := make([]string, 0, len(serverStates))
+	for range serverStates {
+		clusterUpdateStatus := api.ClusterUpdateStatus{
+			InProgressStatus: api.ClusterUpdateInProgressStatus{
+				InProgress: api.ClusterUpdateInProgressApplyUpdateWithReboot,
+			},
+		}
+
+		err := clusterSvc.getClusterUpdateStatus(ctx, "clusterA", &clusterUpdateStatus)
+		require.NoError(t, err)
+
+		got = append(got, ptr.From(clusterUpdateStatus.InProgressStatus.StatusDescription))
+	}
+
+	require.Equal(t, []string{
+		`[ 2/27] updating server "serverA"`,
+		`[ 2/27] updating server "serverA"`, // Held back, the calculated progress would be 1/27.
+		`[ 3/27] update pending server "serverB"`,
+	}, got)
+
+	// Once the update is done, the recorded progress is dropped, so the next rolling
+	// update of this cluster starts reporting from the beginning again.
+	serverSvcGetAllWithFilter = []queue.Item[provisioning.Servers]{
+		{
+			Value: provisioning.Servers{
+				clusterUpdateStateTestServer(t, "serverA", api.ServerUpdateStateUpToDate),
+			},
+		},
+		{
+			Value: provisioning.Servers{
+				clusterUpdateStateTestServer(t, "serverA", api.ServerUpdateStateUpdatePending),
+				clusterUpdateStateTestServer(t, "serverB", api.ServerUpdateStateUpdatePending),
+				clusterUpdateStateTestServer(t, "serverC", api.ServerUpdateStateUpdatePending),
+			},
+		},
+	}
+
+	inactive := api.ClusterUpdateStatus{}
+	err := clusterSvc.getClusterUpdateStatus(ctx, "clusterA", &inactive)
+	require.NoError(t, err)
+	require.Nil(t, inactive.InProgressStatus.StatusDescription)
+
+	relaunched := api.ClusterUpdateStatus{
+		InProgressStatus: api.ClusterUpdateInProgressStatus{
+			InProgress: api.ClusterUpdateInProgressApplyUpdateWithReboot,
+		},
+	}
+
+	err = clusterSvc.getClusterUpdateStatus(ctx, "clusterA", &relaunched)
+	require.NoError(t, err)
+	require.Equal(t, `[ 1/27] update pending server "serverA"`, ptr.From(relaunched.InProgressStatus.StatusDescription))
 }
