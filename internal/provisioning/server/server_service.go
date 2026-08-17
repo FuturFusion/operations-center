@@ -2539,6 +2539,25 @@ func (s *serverService) BMCServerRestartByName(ctx context.Context, name string,
 	return nil
 }
 
+func (s *serverService) BMCServerSetLocationIndicatorByName(ctx context.Context, name string, active bool) error {
+	server, client, err := s.getServerAndBMCClientByName(ctx, name)
+	if err != nil {
+		return err
+	}
+
+	err = client.ServerSetLocationIndicator(ctx, *server, active)
+	if err != nil {
+		return fmt.Errorf("Failed to set location indicator LED of server %q via BMC: %w", server.Name, err)
+	}
+
+	err = s.resyncBMCData(ctx, *server)
+	if err != nil {
+		slog.WarnContext(ctx, "Resync of BMC data after location indicator change failed", logger.Err(err), slog.String("name", server.Name))
+	}
+
+	return nil
+}
+
 func (s *serverService) ApplyBIOSAttributesByName(ctx context.Context, name string, attributes map[string]any) error {
 	server, client, err := s.getServerAndBMCClientByName(ctx, name)
 	if err != nil {
