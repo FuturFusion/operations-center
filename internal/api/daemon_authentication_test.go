@@ -126,7 +126,7 @@ func TestAuthentication(t *testing.T) {
 			wantStatusCode: http.StatusOK,
 		},
 		{
-			name: "plain http GET /1.0 - unauthorized",
+			name: "plain http GET /1.0 - infos for unauthorized client",
 			client: func() *http.Client {
 				return &http.Client{
 					Transport: &http.Transport{
@@ -140,7 +140,7 @@ func TestAuthentication(t *testing.T) {
 			resource: "https://localhost:17443/1.0",
 			body:     http.NoBody,
 
-			wantStatusCode: http.StatusUnauthorized,
+			wantStatusCode: http.StatusOK,
 		},
 		{
 			name: "socket GET /1.0",
@@ -194,6 +194,58 @@ func TestAuthentication(t *testing.T) {
 				"Authorization": "Bearer " + accessTokens[viewer],
 			},
 			body: http.NoBody,
+
+			wantStatusCode: http.StatusOK,
+		},
+		{
+			name: "plain http GET /1.0/provisioning/servers - unauthorized",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodGet,
+			resource: "https://localhost:17443/1.0/provisioning/servers",
+			body:     http.NoBody,
+
+			wantStatusCode: http.StatusUnauthorized,
+		},
+		{
+			name: "socket GET /1.0/provisioning/servers",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+							return net.Dial("unix", filepath.Join(tmpDir, "unix.socket"))
+						},
+					},
+				}
+			},
+			method:   http.MethodGet,
+			resource: "http://unix.socket/1.0/provisioning/servers",
+			body:     http.NoBody,
+
+			wantStatusCode: http.StatusOK,
+		},
+		{
+			name: "client cert http GET /1.0/provisioning/servers",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							Certificates:       []tls.Certificate{cert},
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodGet,
+			resource: "https://localhost:17443/1.0/provisioning/servers",
+			body:     http.NoBody,
 
 			wantStatusCode: http.StatusOK,
 		},

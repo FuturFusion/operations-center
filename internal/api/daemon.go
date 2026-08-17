@@ -992,6 +992,11 @@ func (d *Daemon) setupAPIRoutes(
 	}
 
 	isAuthenticationRequired := func(r *http.Request) bool {
+		// GET /1.0 signals the available authentication methods
+		if r.Method == http.MethodGet && r.URL.Path == "/1.0" {
+			return false
+		}
+
 		// POST /1.0/provisioning/servers is authenticated using a token.
 		if r.Method == http.MethodPost && r.URL.Path == "/1.0/provisioning/servers" {
 			return false
