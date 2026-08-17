@@ -1190,6 +1190,38 @@ const (
   }
 }`
 
+	resetSystemInlineBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Actions": {
+    "#ComputerSystem.Reset": {
+      "Target": "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset",
+      "ResetType@Redfish.AllowableValues": ["On", "ForceOn", "ForceOff", "GracefulShutdown", "GracefulRestart", "ForceRestart"]
+    }
+  }
+}`
+
+	resetSystemInlineUnsupportedBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Actions": {
+    "#ComputerSystem.Reset": {
+      "Target": "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset",
+      "ResetType@Redfish.AllowableValues": ["foobar"]
+    }
+  }
+}`
+
+	resetSystemNoResetTypesBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Actions": {
+    "#ComputerSystem.Reset": {
+      "Target": "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset"
+    }
+  }
+}`
+
 	// resetActionInfoUnsupportedBody advertises an unused reset type, so the reset type check fails.
 	resetActionInfoUnsupportedBody = `{
   "@odata.id": "/redfish/v1/Systems/1/ResetActionInfo",
@@ -1274,6 +1306,34 @@ func TestRedfish_ServerPowerOn(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name:  "success - reset types advertised inline without action info",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemInlineBody,
+			resetStatusCode:       http.StatusNoContent,
+
+			wantResetType: "On",
+			assertErr:     require.NoError,
+		},
+		{
+			name:  "success - no reset types advertised",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemNoResetTypesBody,
+			resetStatusCode:       http.StatusNoContent,
+
+			wantResetType: "On",
+			assertErr:     require.NoError,
+		},
+		{
 			name: "error - failed to connect to BMC",
 
 			serviceRootStatusCode: http.StatusInternalServerError,
@@ -1319,7 +1379,7 @@ func TestRedfish_ServerPowerOn(t *testing.T) {
 			systemBody:                resetSystemBody,
 			resetActionInfoStatusCode: http.StatusInternalServerError,
 
-			assertErr: errassert.Contains("Failed to get BMC reset action info"),
+			assertErr: errassert.Contains("Failed to get supported reset types from BMC"),
 		},
 		{
 			name: "error - reset type parameter missing from action info",
@@ -1347,6 +1407,17 @@ func TestRedfish_ServerPowerOn(t *testing.T) {
 			systemBody:                resetSystemBody,
 			resetActionInfoStatusCode: http.StatusOK,
 			resetActionInfoBody:       resetActionInfoUnsupportedBody,
+
+			assertErr: errassert.Contains("is not supported by the BMC"),
+		},
+		{
+			name: "error - reset type not supported by BMC advertised inline",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemInlineUnsupportedBody,
 
 			assertErr: errassert.Contains("is not supported by the BMC"),
 		},
@@ -1447,6 +1518,34 @@ func TestRedfish_ServerPowerOff(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name:  "success - reset types advertised inline without action info",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemInlineBody,
+			resetStatusCode:       http.StatusNoContent,
+
+			wantResetType: "GracefulShutdown",
+			assertErr:     require.NoError,
+		},
+		{
+			name:  "success - no reset types advertised",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemNoResetTypesBody,
+			resetStatusCode:       http.StatusNoContent,
+
+			wantResetType: "GracefulShutdown",
+			assertErr:     require.NoError,
+		},
+		{
 			name: "error - failed to connect to BMC",
 
 			serviceRootStatusCode: http.StatusInternalServerError,
@@ -1492,7 +1591,7 @@ func TestRedfish_ServerPowerOff(t *testing.T) {
 			systemBody:                resetSystemBody,
 			resetActionInfoStatusCode: http.StatusInternalServerError,
 
-			assertErr: errassert.Contains("Failed to get BMC reset action info"),
+			assertErr: errassert.Contains("Failed to get supported reset types from BMC"),
 		},
 		{
 			name: "error - reset type parameter missing from action info",
@@ -1520,6 +1619,17 @@ func TestRedfish_ServerPowerOff(t *testing.T) {
 			systemBody:                resetSystemBody,
 			resetActionInfoStatusCode: http.StatusOK,
 			resetActionInfoBody:       resetActionInfoUnsupportedBody,
+
+			assertErr: errassert.Contains("is not supported by the BMC"),
+		},
+		{
+			name: "error - reset type not supported by BMC advertised inline",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemInlineUnsupportedBody,
 
 			assertErr: errassert.Contains("is not supported by the BMC"),
 		},
@@ -1620,6 +1730,34 @@ func TestRedfish_ServerRestart(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name:  "success - reset types advertised inline without action info",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemInlineBody,
+			resetStatusCode:       http.StatusNoContent,
+
+			wantResetType: "GracefulRestart",
+			assertErr:     require.NoError,
+		},
+		{
+			name:  "success - no reset types advertised",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemNoResetTypesBody,
+			resetStatusCode:       http.StatusNoContent,
+
+			wantResetType: "GracefulRestart",
+			assertErr:     require.NoError,
+		},
+		{
 			name: "error - failed to connect to BMC",
 
 			serviceRootStatusCode: http.StatusInternalServerError,
@@ -1665,7 +1803,7 @@ func TestRedfish_ServerRestart(t *testing.T) {
 			systemBody:                resetSystemBody,
 			resetActionInfoStatusCode: http.StatusInternalServerError,
 
-			assertErr: errassert.Contains("Failed to get BMC reset action info"),
+			assertErr: errassert.Contains("Failed to get supported reset types from BMC"),
 		},
 		{
 			name: "error - reset type parameter missing from action info",
@@ -1693,6 +1831,17 @@ func TestRedfish_ServerRestart(t *testing.T) {
 			systemBody:                resetSystemBody,
 			resetActionInfoStatusCode: http.StatusOK,
 			resetActionInfoBody:       resetActionInfoUnsupportedBody,
+
+			assertErr: errassert.Contains("is not supported by the BMC"),
+		},
+		{
+			name: "error - reset type not supported by BMC advertised inline",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemInlineUnsupportedBody,
 
 			assertErr: errassert.Contains("is not supported by the BMC"),
 		},

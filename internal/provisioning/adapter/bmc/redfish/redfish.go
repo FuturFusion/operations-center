@@ -778,17 +778,12 @@ func (r redfish) performReset(ctx context.Context, server provisioning.Server, r
 		return nil, fmt.Errorf("Failed get BMC system: %w", err)
 	}
 
-	actionInfo, err := system.ResetActionInfo()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get BMC reset action info: %w", err)
-	}
-
-	allowedResetTypes, err := actionInfo.GetParamValues("ResetType", schemas.StringParameterTypes)
+	allowedResetTypes, err := system.GetSupportedResetTypes()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get supported reset types from BMC: %w", err)
 	}
 
-	if !slices.Contains(allowedResetTypes, string(resetType)) {
+	if len(allowedResetTypes) > 0 && !slices.Contains(allowedResetTypes, resetType) {
 		return nil, fmt.Errorf("Reset type %q is not supported by the BMC, supported types are: %v", resetType, allowedResetTypes)
 	}
 
