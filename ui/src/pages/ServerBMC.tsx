@@ -11,6 +11,7 @@ import {
   powerOnServerBMC,
   refreshServerBMC,
   restartServerBMC,
+  ServerSetLocationIndicatorBMC,
 } from "api/server";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import LoadingButton from "components/LoadingButton";
@@ -33,6 +34,18 @@ const powerStateBadge = (state: string | undefined) => {
   }
 
   return <Badge bg="warning">{state}</Badge>;
+};
+
+const locationIndicatorBadge = (active: boolean | undefined) => {
+  if (active === undefined) {
+    return <Badge bg="secondary">Unknown</Badge>;
+  }
+
+  return active ? (
+    <Badge bg="success">On</Badge>
+  ) : (
+    <Badge bg="secondary">Off</Badge>
+  );
 };
 
 const healthStatusBadge = (status: string | undefined) => {
@@ -142,6 +155,8 @@ const ServerBMC = () => {
 
   const bmcData = server?.bmc_data;
 
+  const hasBMCData = formatDate(bmcData?.last_updated || "") !== "";
+
   const logRows = logEntries.map((entry) => {
     return {
       cols: [
@@ -184,6 +199,22 @@ const ServerBMC = () => {
           Refresh
         </LoadingButton>
         <OSAction
+          label="LED on"
+          mode="confirm"
+          confirmMessage={`Turn on the indicator LED of the server "${name}" via its BMC?`}
+          run={() => ServerSetLocationIndicatorBMC(name, true)}
+          successMessage="Indicator LED turned on"
+          invalidateKeys={[["servers", name]]}
+        />
+        <OSAction
+          label="LED off"
+          mode="confirm"
+          confirmMessage={`Turn off the indicator LED of the server "${name}" via its BMC?`}
+          run={() => ServerSetLocationIndicatorBMC(name, false)}
+          successMessage="Indicator LED turned off"
+          invalidateKeys={[["servers", name]]}
+        />
+        <OSAction
           label="Power on"
           mode="fields"
           confirmMessage={`Power on the server "${name}" via its BMC?`}
@@ -223,6 +254,14 @@ const ServerBMC = () => {
         <div className="col-2 detail-table-header">Power state</div>
         <div className="col-10 detail-table-cell">
           {powerStateBadge(bmcData?.server_power_state)}
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Indicator LED</div>
+        <div className="col-10 detail-table-cell">
+          {locationIndicatorBadge(
+            hasBMCData ? bmcData?.server_location_indicator_active : undefined,
+          )}
         </div>
       </div>
       <div className="row">
