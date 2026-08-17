@@ -247,7 +247,7 @@ func (c *cmdServerPreRegister) Command() *cobra.Command {
 	cmd.Flags().StringVar(&c.description, "description", "", "Description of the server")
 	cmd.Flags().StringVar(&c.channel, "channel", "stable", "Channel the server should subscribe to")
 	cmd.Flags().StringVar(&c.publicConnectionURL, "public-connection-url", "", "Public connection URL of the server")
-	cmd.Flags().StringVar(&c.bmcAPIType, "bmc-api-type", "", "API type of the BMC of the server")
+	cmd.Flags().StringVar(&c.bmcAPIType, "bmc-api-type", "", "API type of the BMC of the server (e.g. redfish-v1-generic)")
 	cmd.Flags().StringVar(&c.bmcEndpoint, "bmc-endpoint", "", "Endpoint of the BMC")
 	cmd.Flags().StringVar(&c.bmcCertificateFile, "bmc-certificate-file", "", "Filename pointing to the trusted server certificate PEM of the BMC")
 	cmd.Flags().BoolVar(&c.bmcAutoPinCertificate, "bmc-auto-pin-certificate", false, "Auto accept and pin the certificate presented by the BMC")
