@@ -116,6 +116,17 @@ type ServerBMCApplyBIOSAttributesPost struct {
 	Attributes map[string]any `json:"attributes" yaml:"attributes"`
 }
 
+// ServerBMCLocatePost represents a request to change the state of
+// the location indicator LED of a server via its BMC.
+//
+// swagger:model
+type ServerBMCLocatePost struct {
+	// Active defines, if the location indicator LED should be turned on (true)
+	// or off (false).
+	// Example: true
+	Active bool `json:"active" yaml:"active"`
+}
+
 // BIOSAttribute describes a single BIOS attribute known to the BMC.
 //
 // swagger:model
