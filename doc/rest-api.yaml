@@ -5463,6 +5463,20 @@ definitions:
                 x-go-name: Attributes
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ServerBMCLocatePost:
+        description: |-
+            ServerBMCLocatePost represents a request to change the state of
+            the location indicator LED of a server via its BMC.
+        properties:
+            active:
+                description: |-
+                    Active defines, if the location indicator LED should be turned on (true)
+                    or off (false).
+                example: true
+                type: boolean
+                x-go-name: Active
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerPost:
         properties:
             bmc_config:
@@ -11548,6 +11562,42 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Refresh the BMC data
+            tags:
+                - servers_bmc
+    /1.0/provisioning/servers/{name}/bmc/:server-locate:
+        post:
+            consumes:
+                - application/json
+            description: Turns the location indicator LED of the server on or off via BMC.
+            operationId: server_bmc_server_locate_post
+            parameters:
+                - description: Name of the server
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+                - description: Desired state of the location indicator LED
+                  in: body
+                  name: locationIndicator
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ServerBMCLocatePost'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Set the state of the location indicator LED via BMC
             tags:
                 - servers_bmc
     /1.0/provisioning/servers/{name}/bmc/:server-power-off:
