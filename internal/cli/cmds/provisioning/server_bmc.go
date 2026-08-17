@@ -1,6 +1,8 @@
 package provisioning
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
@@ -50,6 +52,13 @@ func (c *cmdServerBMC) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(serverBMCServerRestartCmd.Command())
+
+	// Server locate
+	serverBMCServerLocateCmd := cmdServerBMCServerLocate{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverBMCServerLocateCmd.Command())
 
 	// BIOS attributes
 	serverBMCBIOSAttributesCmd := cmdServerBMCBIOSAttributes{
@@ -253,6 +262,57 @@ func (c *cmdServerBMCServerRestart) run(cmd *cobra.Command, args []string) error
 	name := args[0]
 
 	err := c.ocClient.BMCServerRestart(cmd.Context(), name, c.flagForce)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Set the state of the location indicator LED of a server via BMC.
+type cmdServerBMCServerLocate struct {
+	ocClient *client.OperationsCenterClient
+}
+
+const (
+	locationIndicatorStateOn  = "on"
+	locationIndicatorStateOff = "off"
+)
+
+func (c *cmdServerBMCServerLocate) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "server-locate <name> <on|off>"
+	cmd.Short = "Set the state of the location indicator LED of a server via BMC"
+	cmd.Long = `Description:
+  Set the state of the location indicator LED of a server via BMC
+
+  Turns the location indicator LED of a server on or off via BMC.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerBMCServerLocate) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 2, 2)
+	if exit {
+		return err
+	}
+
+	if args[1] != locationIndicatorStateOn && args[1] != locationIndicatorStateOff {
+		return fmt.Errorf("Invalid state %q, must be one of %q, %q", args[1], locationIndicatorStateOn, locationIndicatorStateOff)
+	}
+
+	return nil
+}
+
+func (c *cmdServerBMCServerLocate) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.BMCServerSetLocationIndicator(cmd.Context(), name, args[1] == locationIndicatorStateOn)
 	if err != nil {
 		return err
 	}
