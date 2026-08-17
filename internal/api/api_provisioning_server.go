@@ -80,6 +80,7 @@ func registerProvisioningServerHandler(
 	router.HandleFunc("POST /{name}/bmc/:server-power-on", response.With(handler.serverBMCServerPowerOnPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/bmc/:server-power-off", response.With(handler.serverBMCServerPowerOffPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/bmc/:server-restart", response.With(handler.serverBMCServerRestartPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/bmc/:server-locate", response.With(handler.serverBMCServerLocatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/bmc/:apply-bios-attributes", response.With(handler.serverBMCApplyBIOSAttributesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}/bmc/bios-attributes", response.With(handler.serverBMCBIOSAttributesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}/bmc/bios-attributes/{attributeName...}", response.With(handler.serverBMCBIOSAttributeGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -1008,6 +1009,60 @@ func (s *serverHandler) serverBMCServerRestartPost(r *http.Request) response.Res
 	err := s.service.BMCServerRestartByName(r.Context(), name, force)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to restart server %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:server-locate servers_bmc server_bmc_server_locate_post
+//
+//	Set the state of the location indicator LED via BMC
+//
+//	Turns the location indicator LED of the server on or off via BMC.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
+//	  - in: body
+//	    name: locationIndicator
+//	    description: Desired state of the location indicator LED
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/ServerBMCLocatePost"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverBMCServerLocatePost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	var req api.ServerBMCLocatePost
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Request decoding: %v", err))
+	}
+
+	err = s.service.BMCServerSetLocationIndicatorByName(r.Context(), name, req.Active)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to set location indicator LED of server %q: %w", name, err))
 	}
 
 	return response.EmptySyncResponse
