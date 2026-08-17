@@ -64,6 +64,10 @@ type mockRedfishServer struct {
 
 	gotBiosPatchBody *[]byte
 
+	systemPatchStatusCode int
+
+	gotSystemPatchBody *[]byte
+
 	// extraRoutes allows tests to serve additional canned responses for paths
 	// not covered by the dedicated fields above, keyed by the exact request
 	// path.
@@ -136,8 +140,7 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotBody *[]byte) http.HandlerF
 			_, _ = w.Write([]byte(cfg.systemsBody))
 
 		case "/redfish/v1/Systems/1":
-			w.WriteHeader(cfg.systemStatusCode)
-			_, _ = w.Write([]byte(cfg.systemBody))
+			handleSystem(w, r, cfg)
 
 		case "/redfish/v1/Systems/1/ResetActionInfo":
 			statusCode := cfg.resetActionInfoStatusCode
@@ -256,6 +259,26 @@ func newTLSServerWithoutSAN(t *testing.T, responses mockRedfishServer) (svr *htt
 	require.Empty(t, svr.Certificate().IPAddresses)
 
 	return svr, string(certPEMByte)
+}
+
+func handleSystem(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer) {
+	switch r.Method {
+	case http.MethodGet:
+		w.WriteHeader(cfg.systemStatusCode)
+		_, _ = w.Write([]byte(cfg.systemBody))
+
+	case http.MethodPatch:
+		body, _ := io.ReadAll(r.Body)
+
+		if cfg.gotSystemPatchBody != nil {
+			*cfg.gotSystemPatchBody = body
+		}
+
+		w.WriteHeader(cfg.systemPatchStatusCode)
+
+	default:
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	}
 }
 
 func handleBios(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer) {

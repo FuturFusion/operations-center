@@ -595,6 +595,47 @@ func (r redfish) ServerRestart(ctx context.Context, server provisioning.Server, 
 	return r.performReset(ctx, server, resetType)
 }
 
+func (r redfish) ServerSetLocationIndicator(ctx context.Context, server provisioning.Server, active bool) error {
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	system, err := getFirstSystem(client)
+	if err != nil {
+		return fmt.Errorf("Failed get BMC system: %w", err)
+	}
+
+	switch {
+	case system.LocationIndicatorActive != nil:
+		system.LocationIndicatorActive = &active
+
+	case system.IndicatorLED != "": // nolint: staticcheck // ignore deprecated property warning.
+		// Fall back to the deprecated IndicatorLED property, if the BMC does not
+		// report LocationIndicatorActive.
+		indicatorLED := schemas.OffIndicatorLED
+		if active {
+			indicatorLED = schemas.LitIndicatorLED
+		}
+
+		system.IndicatorLED = indicatorLED // nolint: staticcheck // ignore deprecated property warning.
+
+	default:
+		return fmt.Errorf("The BMC does not support the location indicator LED: %w", domain.ErrOperationNotPermitted)
+	}
+
+	// Update only performs a request, if the desired state differs from the
+	// state reported by the BMC.
+	err = system.Update()
+	if err != nil {
+		return fmt.Errorf("Failed to set location indicator LED via BMC: %w", err)
+	}
+
+	return nil
+}
+
 const defaultWaitForTaskRetryAfter = 2 * time.Second
 
 func (r redfish) WaitForTask(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) error {

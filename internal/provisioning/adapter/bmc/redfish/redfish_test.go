@@ -1238,6 +1238,35 @@ const (
   "Members@odata.count": 0,
   "Members": []
 }`
+
+	locationIndicatorSystemBodyInactive = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "LocationIndicatorActive": false
+}`
+
+	locationIndicatorSystemBodyActive = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "LocationIndicatorActive": true
+}`
+
+	locationIndicatorSystemBodyLEDOff = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "IndicatorLED": "Off"
+}`
+
+	locationIndicatorSystemBodyLEDLit = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "IndicatorLED": "Lit"
+}`
+
+	locationIndicatorSystemBodyUnsupported = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1"
+}`
 )
 
 func TestRedfish_ServerPowerOn(t *testing.T) {
@@ -1871,6 +1900,170 @@ func TestRedfish_ServerRestart(t *testing.T) {
 
 			if tc.wantResetType != "" {
 				require.JSONEq(t, fmt.Sprintf(`{"ResetType":%q}`, tc.wantResetType), string(gotBody))
+			}
+		})
+	}
+}
+
+func TestRedfish_ServerSetLocationIndicator(t *testing.T) {
+	tests := []struct {
+		name   string
+		active bool
+
+		serviceRootStatusCode int
+		systemsStatusCode     int
+		systemsBody           string
+		systemStatusCode      int
+		systemBody            string
+		systemPatchStatusCode int
+
+		wantPatchBody string
+		assertErr     require.ErrorAssertionFunc
+	}{
+		{
+			name:   "success - turn on",
+			active: true,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            locationIndicatorSystemBodyInactive,
+			systemPatchStatusCode: http.StatusNoContent,
+
+			wantPatchBody: `{"LocationIndicatorActive":true}`,
+			assertErr:     require.NoError,
+		},
+		{
+			name:   "success - turn off",
+			active: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            locationIndicatorSystemBodyActive,
+			systemPatchStatusCode: http.StatusNoContent,
+
+			wantPatchBody: `{"LocationIndicatorActive":false}`,
+			assertErr:     require.NoError,
+		},
+		{
+			name:   "success - turn on using deprecated IndicatorLED",
+			active: true,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            locationIndicatorSystemBodyLEDOff,
+			systemPatchStatusCode: http.StatusNoContent,
+
+			wantPatchBody: `{"IndicatorLED":"Lit"}`,
+			assertErr:     require.NoError,
+		},
+		{
+			name:   "success - turn off using deprecated IndicatorLED",
+			active: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            locationIndicatorSystemBodyLEDLit,
+			systemPatchStatusCode: http.StatusNoContent,
+
+			wantPatchBody: `{"IndicatorLED":"Off"}`,
+			assertErr:     require.NoError,
+		},
+		{
+			name:   "success - already in the requested state, no update performed",
+			active: true,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            locationIndicatorSystemBodyActive,
+			systemPatchStatusCode: http.StatusInternalServerError, // Would fail, if a patch was performed.
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - failed to connect to BMC",
+
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - failed to get BMC systems",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - no BMC systems found",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetEmptySystemsBody,
+
+			assertErr: require.Error,
+		},
+		{
+			name:   "error - location indicator LED not supported by BMC",
+			active: true,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            locationIndicatorSystemBodyUnsupported,
+
+			assertErr: errassert.Contains("The BMC does not support the location indicator LED"),
+		},
+		{
+			name:   "error - update failed",
+			active: true,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            locationIndicatorSystemBodyInactive,
+			systemPatchStatusCode: http.StatusInternalServerError,
+
+			wantPatchBody: `{"LocationIndicatorActive":true}`,
+			assertErr:     errassert.Contains("Failed to set location indicator LED via BMC"),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotPatchBody []byte
+
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode: tc.serviceRootStatusCode,
+				systemsStatusCode:     tc.systemsStatusCode,
+				systemsBody:           tc.systemsBody,
+				systemStatusCode:      tc.systemStatusCode,
+				systemBody:            tc.systemBody,
+				systemPatchStatusCode: tc.systemPatchStatusCode,
+				gotSystemPatchBody:    &gotPatchBody,
+			}, nil)
+
+			client := redfish.New()
+			err := client.ServerSetLocationIndicator(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.active)
+
+			tc.assertErr(t, err)
+
+			if tc.wantPatchBody != "" {
+				require.JSONEq(t, tc.wantPatchBody, string(gotPatchBody))
+			} else {
+				require.Empty(t, gotPatchBody)
 			}
 		})
 	}
