@@ -132,7 +132,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
 		// Expect unauthorized over http without trusted credentials.
-		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0", port), http.NoBody)
+		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0/provisioning/tokens", port), http.NoBody)
 		require.NoError(t, err)
 		resp, err = tcpClient.Do(req)
 		require.NoError(t, err)
@@ -161,7 +161,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 			},
 		}
 
-		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0", port), http.NoBody)
+		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0/provisioning/tokens", port), http.NoBody)
 		require.NoError(t, err)
 		resp, err = tcpClient.Do(req)
 		require.NoError(t, err)
@@ -177,7 +177,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 			},
 		}
 
-		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0", port), http.NoBody)
+		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0/provisioning/tokens", port), http.NoBody)
 		require.NoError(t, err)
 		req.Header.Add("Authorization", "Bearer "+accessTokens[admin])
 		resp, err = tcpClient.Do(req)
@@ -210,7 +210,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 			},
 		}
 
-		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0", port), http.NoBody)
+		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0/provisioning/tokens", port), http.NoBody)
 		require.NoError(t, err)
 		req.Header.Add("Authorization", "Bearer "+accessTokens[admin])
 		resp, err = tcpClient.Do(req)
@@ -259,7 +259,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 			},
 		}
 
-		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0", port), http.NoBody)
+		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0/provisioning/tokens", port), http.NoBody)
 		require.NoError(t, err)
 		req.Header.Add("Authorization", "Bearer "+accessTokens[viewer])
 		resp, err = tcpClient.Do(req)
