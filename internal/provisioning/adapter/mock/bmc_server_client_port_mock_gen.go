@@ -55,6 +55,9 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //			ServerRestartFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
 //				panic("mock out the ServerRestart method")
 //			},
+//			ServerSetLocationIndicatorFunc: func(ctx context.Context, server provisioning.Server, active bool) error {
+//				panic("mock out the ServerSetLocationIndicator method")
+//			},
 //			WaitForTaskFunc: func(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) error {
 //				panic("mock out the WaitForTask method")
 //			},
@@ -97,6 +100,9 @@ type BMCServerClientPortMock struct {
 
 	// ServerRestartFunc mocks the ServerRestart method.
 	ServerRestartFunc func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error)
+
+	// ServerSetLocationIndicatorFunc mocks the ServerSetLocationIndicator method.
+	ServerSetLocationIndicatorFunc func(ctx context.Context, server provisioning.Server, active bool) error
 
 	// WaitForTaskFunc mocks the WaitForTask method.
 	WaitForTaskFunc func(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) error
@@ -198,6 +204,15 @@ type BMCServerClientPortMock struct {
 			// Force is the force argument value.
 			Force bool
 		}
+		// ServerSetLocationIndicator holds details about calls to the ServerSetLocationIndicator method.
+		ServerSetLocationIndicator []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Active is the active argument value.
+			Active bool
+		}
 		// WaitForTask holds details about calls to the WaitForTask method.
 		WaitForTask []struct {
 			// Ctx is the ctx argument value.
@@ -208,18 +223,19 @@ type BMCServerClientPortMock struct {
 			TaskMonitor *provisioning.BMCTaskMonitor
 		}
 	}
-	lockApplyBIOSAttributes sync.RWMutex
-	lockBIOSAttribute       sync.RWMutex
-	lockBIOSAttributes      sync.RWMutex
-	lockConnectionTest      sync.RWMutex
-	lockDump                sync.RWMutex
-	lockGetData             sync.RWMutex
-	lockLogEntriesBySource  sync.RWMutex
-	lockLogSources          sync.RWMutex
-	lockServerPowerOff      sync.RWMutex
-	lockServerPowerOn       sync.RWMutex
-	lockServerRestart       sync.RWMutex
-	lockWaitForTask         sync.RWMutex
+	lockApplyBIOSAttributes        sync.RWMutex
+	lockBIOSAttribute              sync.RWMutex
+	lockBIOSAttributes             sync.RWMutex
+	lockConnectionTest             sync.RWMutex
+	lockDump                       sync.RWMutex
+	lockGetData                    sync.RWMutex
+	lockLogEntriesBySource         sync.RWMutex
+	lockLogSources                 sync.RWMutex
+	lockServerPowerOff             sync.RWMutex
+	lockServerPowerOn              sync.RWMutex
+	lockServerRestart              sync.RWMutex
+	lockServerSetLocationIndicator sync.RWMutex
+	lockWaitForTask                sync.RWMutex
 }
 
 // ApplyBIOSAttributes calls ApplyBIOSAttributesFunc.
@@ -651,6 +667,46 @@ func (mock *BMCServerClientPortMock) ServerRestartCalls() []struct {
 	mock.lockServerRestart.RLock()
 	calls = mock.calls.ServerRestart
 	mock.lockServerRestart.RUnlock()
+	return calls
+}
+
+// ServerSetLocationIndicator calls ServerSetLocationIndicatorFunc.
+func (mock *BMCServerClientPortMock) ServerSetLocationIndicator(ctx context.Context, server provisioning.Server, active bool) error {
+	if mock.ServerSetLocationIndicatorFunc == nil {
+		panic("BMCServerClientPortMock.ServerSetLocationIndicatorFunc: method is nil but BMCServerClientPort.ServerSetLocationIndicator was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Active bool
+	}{
+		Ctx:    ctx,
+		Server: server,
+		Active: active,
+	}
+	mock.lockServerSetLocationIndicator.Lock()
+	mock.calls.ServerSetLocationIndicator = append(mock.calls.ServerSetLocationIndicator, callInfo)
+	mock.lockServerSetLocationIndicator.Unlock()
+	return mock.ServerSetLocationIndicatorFunc(ctx, server, active)
+}
+
+// ServerSetLocationIndicatorCalls gets all the calls that were made to ServerSetLocationIndicator.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.ServerSetLocationIndicatorCalls())
+func (mock *BMCServerClientPortMock) ServerSetLocationIndicatorCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+	Active bool
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Active bool
+	}
+	mock.lockServerSetLocationIndicator.RLock()
+	calls = mock.calls.ServerSetLocationIndicator
+	mock.lockServerSetLocationIndicator.RUnlock()
 	return calls
 }
 

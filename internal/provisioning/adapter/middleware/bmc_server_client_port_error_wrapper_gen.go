@@ -136,6 +136,16 @@ func (_d BMCServerClientPortWithErrorWrapper) ServerRestart(ctx context.Context,
 	return _d._base.ServerRestart(ctx, server, force)
 }
 
+// ServerSetLocationIndicator implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) ServerSetLocationIndicator(ctx context.Context, server provisioning.Server, active bool) (err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.ServerSetLocationIndicator(ctx, server, active)
+}
+
 // WaitForTask implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithErrorWrapper) WaitForTask(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (err error) {
 	defer func() {
