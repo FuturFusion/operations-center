@@ -223,6 +223,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.43.0
 	github.com/testcontainers/testcontainers-go/modules/openfga v0.43.0
 	github.com/tidwall/gjson v1.19.0
+	github.com/timpalpant/gzran v0.0.0-20201127163450-7b631e56f57b
 	github.com/zclconf/go-cty v1.19.0
 	github.com/zitadel/oidc/v3 v3.48.1
 	go.starlark.net v0.0.0-20260708150628-5395d018f003
@@ -240,3 +241,5 @@ tool (
 	github.com/vektra/mockery/v3
 	golang.org/x/tools/cmd/goimports
 )
+
+replace github.com/timpalpant/gzran => github.com/breml/gzran v0.0.0-20260818105141-7dcc147e0f98
