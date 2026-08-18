@@ -8,8 +8,10 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
@@ -251,13 +253,13 @@ func Test_tokenHandler_tokenSeedImageGet(t *testing.T) {
 				GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
 					return &provisioning.TokenSeed{Public: true}, nil
 				},
-				GetTokenImageFromTokenSeedFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, int, error) {
+				GetSeekableTokenImageFromTokenSeedFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (*provisioning.TokenImage, error) {
 					serviceCalled = true
 					gotImageType = imageType
 					gotArchitecture = architecture
 					gotChannel = channel
 
-					return io.NopCloser(bytes.NewBufferString("image-data")), len("image-data"), nil
+					return testTokenImage("image-data"), nil
 				},
 			}
 
@@ -290,6 +292,9 @@ func Test_tokenHandler_tokenSeedImageGet_wireFormat(t *testing.T) {
 			GetTokenImageFromTokenSeedFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, int, error) {
 				return io.NopCloser(bytes.NewBufferString(imageData)), size, nil
 			},
+			GetSeekableTokenImageFromTokenSeedFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (*provisioning.TokenImage, error) {
+				return testTokenImage(imageData), nil
+			},
 		}
 	}
 
@@ -302,18 +307,29 @@ func Test_tokenHandler_tokenSeedImageGet_wireFormat(t *testing.T) {
 		require.Empty(t, resp.header.Get("Content-Encoding"))
 		require.Equal(t, `attachment; filename="pre-seed-test.iso"`, resp.header.Get("Content-Disposition"))
 		require.Equal(t, int64(len(imageData)), resp.contentLength)
-		require.Equal(t, "none", resp.header.Get("Accept-Ranges"))
+		require.Equal(t, "bytes", resp.header.Get("Accept-Ranges"))
 	})
 
-	t.Run("client accepting gzip gets the image compressed in transit", func(t *testing.T) {
+	t.Run("client accepting gzip still gets the rangeable image uncompressed", func(t *testing.T) {
 		body, resp := doTokenRequestFull(t, newTokenService(len(imageData)), http.MethodGet, path, "", http.Header{"Accept-Encoding": []string{"gzip"}})
 
 		require.Equal(t, http.StatusOK, resp.statusCode)
-		require.Equal(t, "gzip", resp.header.Get("Content-Encoding"))
-
+		require.Equal(t, imageData, body)
+		require.Empty(t, resp.header.Get("Content-Encoding"))
 		require.Equal(t, "application/octet-stream", resp.header.Get("Content-Type"))
 		require.Equal(t, `attachment; filename="pre-seed-test.iso"`, resp.header.Get("Content-Disposition"))
+		require.Equal(t, int64(len(imageData)), resp.contentLength)
+		require.Equal(t, "bytes", resp.header.Get("Accept-Ranges"))
+	})
+
+	t.Run("client asking for the gzip file gets it compressed", func(t *testing.T) {
+		body, resp := doTokenRequestFull(t, newTokenService(len(imageData)), http.MethodGet, path, "", http.Header{"Accept": []string{"application/gzip"}})
+
+		require.Equal(t, http.StatusOK, resp.statusCode)
+		require.Equal(t, "application/gzip", resp.header.Get("Content-Type"))
+		require.Equal(t, `attachment; filename="pre-seed-test.iso.gz"`, resp.header.Get("Content-Disposition"))
 		require.Equal(t, "none", resp.header.Get("Accept-Ranges"))
+		require.Empty(t, resp.header.Get("Content-Encoding"))
 
 		require.Equal(t, int64(len(body)), resp.contentLength)
 
@@ -333,6 +349,159 @@ func Test_tokenHandler_tokenSeedImageGet_wireFormat(t *testing.T) {
 		require.Equal(t, "application/octet-stream", resp.header.Get("Content-Type"))
 		require.Equal(t, int64(len(imageData)), resp.contentLength)
 	})
+}
+
+func testTokenImage(content string) *provisioning.TokenImage {
+	return &provisioning.TokenImage{
+		Content:  nopReadSeekCloser{strings.NewReader(content)},
+		Size:     int64(len(content)),
+		ModTime:  testTokenImageModTime,
+		Filename: "pre-seed-test.iso",
+	}
+}
+
+var testTokenImageModTime = time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
+
+type nopReadSeekCloser struct {
+	io.ReadSeeker
+}
+
+func (nopReadSeekCloser) Close() error { return nil }
+
+func Test_tokenHandler_tokenSeedImageGetRange(t *testing.T) {
+	const content = "0123456789abcdefghij"
+
+	const path = "/" + tokenUUID + "/seeds/test/architecture/x86_64/type/iso/file.iso"
+
+	tests := []struct {
+		name          string
+		requestHeader http.Header
+
+		wantStatus      int
+		wantBody        string
+		wantHeader      map[string]string
+		wantMissingHead []string
+	}{
+		{
+			name: "no range - full content with a content length",
+
+			wantStatus: http.StatusOK,
+			wantBody:   content,
+			wantHeader: map[string]string{
+				"Accept-Ranges":  "bytes",
+				"Content-Length": strconv.Itoa(len(content)),
+				"Content-Type":   "application/octet-stream",
+			},
+			wantMissingHead: []string{"Content-Encoding"},
+		},
+		{
+			name:          "range - a section in the middle",
+			requestHeader: http.Header{"Range": []string{"bytes=5-9"}},
+
+			wantStatus: http.StatusPartialContent,
+			wantBody:   content[5:10],
+			wantHeader: map[string]string{
+				"Content-Range":  "bytes 5-9/20",
+				"Content-Length": "5",
+			},
+		},
+		{
+			name:          "range - open ended, as a resuming client sends it",
+			requestHeader: http.Header{"Range": []string{"bytes=12-"}},
+
+			wantStatus: http.StatusPartialContent,
+			wantBody:   content[12:],
+			wantHeader: map[string]string{
+				"Content-Range": "bytes 12-19/20",
+			},
+		},
+		{
+			name:          "range - beyond the end of the content",
+			requestHeader: http.Header{"Range": []string{"bytes=100-200"}},
+
+			wantStatus: http.StatusRequestedRangeNotSatisfiable,
+			wantHeader: map[string]string{
+				"Content-Range": "bytes */20",
+			},
+		},
+		{
+			name: "range - resumed after the content changed",
+			requestHeader: http.Header{
+				"Range":    []string{"bytes=12-"},
+				"If-Range": []string{testTokenImageModTime.Add(-time.Hour).UTC().Format(http.TimeFormat)},
+			},
+
+			wantStatus: http.StatusOK,
+			wantBody:   content,
+		},
+		{
+			name: "range - resumed while the content is unchanged",
+			requestHeader: http.Header{
+				"Range":    []string{"bytes=12-"},
+				"If-Range": []string{testTokenImageModTime.UTC().Format(http.TimeFormat)},
+			},
+
+			wantStatus: http.StatusPartialContent,
+			wantBody:   content[12:],
+		},
+		{
+			name: "range - wins over a request for the compressed file",
+			requestHeader: http.Header{
+				"Range":  []string{"bytes=5-9"},
+				"Accept": []string{"application/gzip"},
+			},
+
+			wantStatus: http.StatusPartialContent,
+			wantBody:   content[5:10],
+			wantHeader: map[string]string{
+				"Content-Range": "bytes 5-9/20",
+			},
+			wantMissingHead: []string{"Content-Encoding"},
+		},
+		{
+			name: "range - offering a compressed transfer does not cost range support",
+			requestHeader: http.Header{
+				"Range":           []string{"bytes=5-9"},
+				"Accept-Encoding": []string{"gzip"},
+			},
+
+			wantStatus: http.StatusPartialContent,
+			wantBody:   content[5:10],
+			wantHeader: map[string]string{
+				"Content-Range": "bytes 5-9/20",
+			},
+			wantMissingHead: []string{"Content-Encoding"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tokenService := &provisioningMock.TokenServiceMock{
+				GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+					return &provisioning.TokenSeed{Public: true}, nil
+				},
+				GetSeekableTokenImageFromTokenSeedFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (*provisioning.TokenImage, error) {
+					return testTokenImage(content), nil
+				},
+			}
+
+			body, resp := doTokenRequestFull(t, tokenService, http.MethodGet, path, "", tc.requestHeader)
+
+			require.Equal(t, tc.wantStatus, resp.statusCode)
+
+			if tc.wantStatus != http.StatusRequestedRangeNotSatisfiable {
+				require.Equal(t, tc.wantBody, body)
+			}
+
+			for k, v := range tc.wantHeader {
+				require.Equal(t, v, resp.header.Get(k), "header %q", k)
+			}
+
+			for _, k := range tc.wantMissingHead {
+				require.Empty(t, resp.header.Get(k), "header %q", k)
+			}
+		})
+	}
 }
 
 func doTokenRequest(t *testing.T, tokenService provisioning.TokenService, method string, target string, requestBody string) (string, int) {
