@@ -4,11 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-<<<<<<< HEAD
-	"slices"
-=======
 	"net/http"
->>>>>>> 5306df9ea (provisioning/adapter/bmc/redfish: expand error reporting)
+	"slices"
 	"strings"
 
 	"github.com/stmcginnis/gofish/schemas"
@@ -199,6 +196,11 @@ func isParameterMissing(err error, parameter string) bool {
 func isPropertyRejected(err error, property string) bool {
 	return redfishErrorHasMessageID(err, "PropertyUnknown", "PropertyNotWritable", "PropertyUnknownOrUnwritable") &&
 		redfishErrorMentions(err, property)
+}
+
+func isValueRejected(err error, property string, value string) bool {
+	return redfishErrorHasMessageID(err, "PropertyValueNotInList", "PropertyValueNotSupported", "PropertyValueTypeError", "PropertyValueError", "PropertyValueOutOfRange", "PropertyValueConflict", "PropertyNotWritable", "GeneralError") &&
+		(redfishErrorMentions(err, property) || redfishErrorMentions(err, value))
 }
 
 func isPreconditionRejected(err error) bool {
