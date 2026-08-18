@@ -12893,11 +12893,12 @@ paths:
                 Recognized keys are "architecture" (required), "type" (required) and
                 "channel" (optional, defaults to the configured default update channel).
 
-                The image is served uncompressed and, if its size can be determined, with a
-                Content-Length header.
-                If a client offers "Accept-Encoding: gzip" it gets it compressed in transit
-                instead, without a Content-Length.
-                Range requests are not supported.
+                The image is served uncompressed, with a Content-Length header and support
+                for byte ranges, so a BMC whose transfer got interrupted can resume it
+                instead of fetching the whole image again.
+                A client asking for "Accept: application/gzip" and not requesting a range
+                gets the gzip compressed image as a ".gz" file instead, without a
+                Content-Length and without range support.
                 HEAD is answered with the headers alone.
             operationId: token_seed_image_get
             parameters:
@@ -12920,10 +12921,29 @@ paths:
                   name: params
                   required: true
                   type: string
+                - description: |-
+                    Set to "application/gzip" to get the gzip compressed image as a file,
+                    which is returned without range support.
+                  in: header
+                  name: Accept
+                  type: string
+                - description: Byte range of the image to return, e.g. "bytes=1048576-".
+                  in: header
+                  name: Range
+                  type: string
+                - description: |-
+                    Last modification the client saw, as returned in "Last-Modified".
+                    If the image changed since, the complete image is returned instead
+                    of the requested range.
+                  in: header
+                  name: If-Range
+                  type: string
             produces:
                 - application/octet-stream
             responses:
                 "200":
+                    $ref: '#/responses/TokenSeedResponse'
+                "206":
                     $ref: '#/responses/TokenSeedResponse'
                 "400":
                     $ref: '#/responses/BadRequest'
@@ -12931,6 +12951,8 @@ paths:
                     $ref: '#/responses/Forbidden'
                 "404":
                     $ref: '#/responses/NotFound'
+                "416":
+                    $ref: '#/responses/BadRequest'
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Get pre-seeded IncusOS image
