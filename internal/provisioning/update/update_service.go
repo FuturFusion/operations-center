@@ -533,6 +533,24 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 	return s.filesRepo.Get(ctx, *update, filename)
 }
 
+// GetSeekableUpdateFileByFilename returns a seekable reader over the
+// decompressed contents of a compressed file of an update, together with the
+// size of the decompressed contents and the modification time of the file.
+//
+// It is the caller's responsibility to close the returned reader.
+func (s updateService) GetSeekableUpdateFileByFilename(ctx context.Context, id uuid.UUID, filename string) (_ io.ReadSeekCloser, size int64, modTime time.Time, _ error) {
+	update, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return nil, 0, time.Time{}, err
+	}
+
+	if !slices.ContainsFunc(update.Files, func(f provisioning.UpdateFile) bool { return f.Filename == filename }) {
+		return nil, 0, time.Time{}, fmt.Errorf("Requested file %q is not part of update %q: %w", filename, id.String(), domain.ErrNotFound)
+	}
+
+	return s.filesRepo.GetSeekableGZip(ctx, *update, filename)
+}
+
 // Refresh refreshes the updates from an origin.
 //
 // This operations is performed in the following steps:

@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"context"
 	"io"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
@@ -25,6 +26,7 @@ type UpdateService interface {
 	// Files
 	GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (UpdateFiles, error)
 	GetUpdateFileByFilename(ctx context.Context, id uuid.UUID, filename string) (io.ReadCloser, int, error)
+	GetSeekableUpdateFileByFilename(ctx context.Context, id uuid.UUID, filename string) (_ io.ReadSeekCloser, size int64, modTime time.Time, _ error)
 
 	CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (uuid.UUID, error)
 	CleanupAll(ctx context.Context) error
@@ -54,6 +56,7 @@ type (
 type UpdateFilesRepo interface {
 	Exists(ctx context.Context, update Update, filename string) (bool, error)
 	Get(ctx context.Context, update Update, filename string) (_ io.ReadCloser, size int, _ error)
+	GetSeekableGZip(ctx context.Context, update Update, filename string) (_ io.ReadSeekCloser, size int64, modTime time.Time, _ error)
 	Put(ctx context.Context, update Update, filename string, content io.ReadCloser) (CommitFunc, CancelFunc, error)
 	Delete(ctx context.Context, update Update) error
 	PruneFiles(ctx context.Context, update Update) (_ error)
