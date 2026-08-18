@@ -25,7 +25,7 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //			ApplyBIOSAttributesFunc: func(ctx context.Context, server provisioning.Server, attributes map[string]any) (*provisioning.BMCTaskMonitor, error) {
 //				panic("mock out the ApplyBIOSAttributes method")
 //			},
-//			AttachMediaFunc: func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (*provisioning.BMCTaskMonitor, error) {
+//			AttachMediaFunc: func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
 //				panic("mock out the AttachMedia method")
 //			},
 //			BIOSAttributeFunc: func(ctx context.Context, server provisioning.Server, attributeName string) (api.BIOSAttribute, error) {
@@ -78,7 +78,7 @@ type BMCServerClientPortMock struct {
 	ApplyBIOSAttributesFunc func(ctx context.Context, server provisioning.Server, attributes map[string]any) (*provisioning.BMCTaskMonitor, error)
 
 	// AttachMediaFunc mocks the AttachMedia method.
-	AttachMediaFunc func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (*provisioning.BMCTaskMonitor, error)
+	AttachMediaFunc func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error)
 
 	// BIOSAttributeFunc mocks the BIOSAttribute method.
 	BIOSAttributeFunc func(ctx context.Context, server provisioning.Server, attributeName string) (api.BIOSAttribute, error)
@@ -140,6 +140,8 @@ type BMCServerClientPortMock struct {
 			VirtualMediaID string
 			// MediaURL is the mediaURL argument value.
 			MediaURL string
+			// SetBootDevice is the setBootDevice argument value.
+			SetBootDevice bool
 		}
 		// BIOSAttribute holds details about calls to the BIOSAttribute method.
 		BIOSAttribute []struct {
@@ -313,7 +315,7 @@ func (mock *BMCServerClientPortMock) ApplyBIOSAttributesCalls() []struct {
 }
 
 // AttachMedia calls AttachMediaFunc.
-func (mock *BMCServerClientPortMock) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (*provisioning.BMCTaskMonitor, error) {
+func (mock *BMCServerClientPortMock) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
 	if mock.AttachMediaFunc == nil {
 		panic("BMCServerClientPortMock.AttachMediaFunc: method is nil but BMCServerClientPort.AttachMedia was just called")
 	}
@@ -322,16 +324,18 @@ func (mock *BMCServerClientPortMock) AttachMedia(ctx context.Context, server pro
 		Server         provisioning.Server
 		VirtualMediaID string
 		MediaURL       string
+		SetBootDevice  bool
 	}{
 		Ctx:            ctx,
 		Server:         server,
 		VirtualMediaID: virtualMediaID,
 		MediaURL:       mediaURL,
+		SetBootDevice:  setBootDevice,
 	}
 	mock.lockAttachMedia.Lock()
 	mock.calls.AttachMedia = append(mock.calls.AttachMedia, callInfo)
 	mock.lockAttachMedia.Unlock()
-	return mock.AttachMediaFunc(ctx, server, virtualMediaID, mediaURL)
+	return mock.AttachMediaFunc(ctx, server, virtualMediaID, mediaURL, setBootDevice)
 }
 
 // AttachMediaCalls gets all the calls that were made to AttachMedia.
@@ -343,12 +347,14 @@ func (mock *BMCServerClientPortMock) AttachMediaCalls() []struct {
 	Server         provisioning.Server
 	VirtualMediaID string
 	MediaURL       string
+	SetBootDevice  bool
 } {
 	var calls []struct {
 		Ctx            context.Context
 		Server         provisioning.Server
 		VirtualMediaID string
 		MediaURL       string
+		SetBootDevice  bool
 	}
 	mock.lockAttachMedia.RLock()
 	calls = mock.calls.AttachMedia

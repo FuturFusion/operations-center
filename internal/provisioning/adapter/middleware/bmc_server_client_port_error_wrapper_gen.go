@@ -37,13 +37,13 @@ func (_d BMCServerClientPortWithErrorWrapper) ApplyBIOSAttributes(ctx context.Co
 }
 
 // AttachMedia implements provisioning.BMCServerClientPort.
-func (_d BMCServerClientPortWithErrorWrapper) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+func (_d BMCServerClientPortWithErrorWrapper) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)
 		}
 	}()
-	return _d._base.AttachMedia(ctx, server, virtualMediaID, mediaURL)
+	return _d._base.AttachMedia(ctx, server, virtualMediaID, mediaURL, setBootDevice)
 }
 
 // BIOSAttribute implements provisioning.BMCServerClientPort.

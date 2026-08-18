@@ -54,7 +54,7 @@ func (_d BMCServerClientPortWithPrometheus) ApplyBIOSAttributes(ctx context.Cont
 }
 
 // AttachMedia implements provisioning.BMCServerClientPort.
-func (_d BMCServerClientPortWithPrometheus) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+func (_d BMCServerClientPortWithPrometheus) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -64,7 +64,7 @@ func (_d BMCServerClientPortWithPrometheus) AttachMedia(ctx context.Context, ser
 
 		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "AttachMedia", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.AttachMedia(ctx, server, virtualMediaID, mediaURL)
+	return _d.base.AttachMedia(ctx, server, virtualMediaID, mediaURL, setBootDevice)
 }
 
 // BIOSAttribute implements provisioning.BMCServerClientPort.

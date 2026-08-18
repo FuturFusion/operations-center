@@ -77,7 +77,7 @@ func (_d BMCServerClientPortWithSlog) ApplyBIOSAttributes(ctx context.Context, s
 }
 
 // AttachMedia implements provisioning.BMCServerClientPort.
-func (_d BMCServerClientPortWithSlog) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+func (_d BMCServerClientPortWithSlog) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -85,6 +85,7 @@ func (_d BMCServerClientPortWithSlog) AttachMedia(ctx context.Context, server pr
 			slog.Any("server", server),
 			slog.String("virtualMediaID", virtualMediaID),
 			slog.String("mediaURL", mediaURL),
+			slog.Bool("setBootDevice", setBootDevice),
 		)
 	}
 	log.DebugContext(ctx, "=> calling AttachMedia")
@@ -110,7 +111,7 @@ func (_d BMCServerClientPortWithSlog) AttachMedia(ctx context.Context, server pr
 			log.DebugContext(ctx, "<= method AttachMedia finished")
 		}
 	}()
-	return _d._base.AttachMedia(ctx, server, virtualMediaID, mediaURL)
+	return _d._base.AttachMedia(ctx, server, virtualMediaID, mediaURL, setBootDevice)
 }
 
 // BIOSAttribute implements provisioning.BMCServerClientPort.
