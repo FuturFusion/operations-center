@@ -5499,6 +5499,14 @@ definitions:
                 example: default
                 type: string
                 x-go-name: Seed
+            set_boot_device:
+                description: |-
+                    SetBootDevice requests, that the virtual media is registered as the boot
+                    device for the next boot of the server in addition to being attached.
+                    Detaching the media restores the default boot configuration of the system.
+                example: true
+                type: boolean
+                x-go-name: SetBootDevice
             token_uuid:
                 description: TokenUUID holds the UUID of the provisioning token that owns the seed.
                 example: 8f6c3d1a-2b4e-4c9a-9f7d-1a2b3c4d5e6f
