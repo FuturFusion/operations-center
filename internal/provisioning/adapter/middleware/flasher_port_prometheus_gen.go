@@ -55,6 +55,20 @@ func (_d FlasherPortWithPrometheus) GenerateSeededImage(ctx context.Context, id 
 	return _d.base.GenerateSeededImage(ctx, id, seedConfig, rc)
 }
 
+// GenerateSeededImageFromSeekable implements provisioning.FlasherPort.
+func (_d FlasherPortWithPrometheus) GenerateSeededImageFromSeekable(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, image io.ReadSeekCloser, size int64) (readSeekCloser io.ReadSeekCloser, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GenerateSeededImageFromSeekable", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GenerateSeededImageFromSeekable(ctx, id, seedConfig, image, size)
+}
+
 // GetProviderConfig implements provisioning.FlasherPort.
 func (_d FlasherPortWithPrometheus) GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (tokenProviderConfig *api.TokenProviderConfig, err error) {
 	_since := time.Now()

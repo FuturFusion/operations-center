@@ -81,6 +81,44 @@ func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, id uuid.U
 	return _d._base.GenerateSeededImage(ctx, id, seedConfig, rc)
 }
 
+// GenerateSeededImageFromSeekable implements provisioning.FlasherPort.
+func (_d FlasherPortWithSlog) GenerateSeededImageFromSeekable(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, image io.ReadSeekCloser, size int64) (readSeekCloser io.ReadSeekCloser, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.Any("seedConfig", seedConfig),
+			slog.Any("image", image),
+			slog.Int64("size", size),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GenerateSeededImageFromSeekable")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("readSeekCloser", readSeekCloser),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GenerateSeededImageFromSeekable returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GenerateSeededImageFromSeekable returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GenerateSeededImageFromSeekable finished")
+		}
+	}()
+	return _d._base.GenerateSeededImageFromSeekable(ctx, id, seedConfig, image, size)
+}
+
 // GetProviderConfig implements provisioning.FlasherPort.
 func (_d FlasherPortWithSlog) GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (tokenProviderConfig *api.TokenProviderConfig, err error) {
 	log := slog.With()

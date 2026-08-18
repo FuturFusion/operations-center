@@ -9,6 +9,7 @@ import (
 	"context"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
@@ -53,6 +54,9 @@ var _ provisioning.UpdateService = &UpdateServiceMock{}
 //			},
 //			GetChangelogByChannelFunc: func(ctx context.Context, UUID uuid.UUID, channelName string, upstream bool, architecture images.UpdateFileArchitecture) (api.UpdateChangelog, error) {
 //				panic("mock out the GetChangelogByChannel method")
+//			},
+//			GetSeekableUpdateFileByFilenameFunc: func(ctx context.Context, id uuid.UUID, filename string) (io.ReadSeekCloser, int64, time.Time, error) {
+//				panic("mock out the GetSeekableUpdateFileByFilename method")
 //			},
 //			GetUpdateAllFilesFunc: func(ctx context.Context, id uuid.UUID) (provisioning.UpdateFiles, error) {
 //				panic("mock out the GetUpdateAllFiles method")
@@ -108,6 +112,9 @@ type UpdateServiceMock struct {
 
 	// GetChangelogByChannelFunc mocks the GetChangelogByChannel method.
 	GetChangelogByChannelFunc func(ctx context.Context, UUID uuid.UUID, channelName string, upstream bool, architecture images.UpdateFileArchitecture) (api.UpdateChangelog, error)
+
+	// GetSeekableUpdateFileByFilenameFunc mocks the GetSeekableUpdateFileByFilename method.
+	GetSeekableUpdateFileByFilenameFunc func(ctx context.Context, id uuid.UUID, filename string) (io.ReadSeekCloser, int64, time.Time, error)
 
 	// GetUpdateAllFilesFunc mocks the GetUpdateAllFiles method.
 	GetUpdateAllFilesFunc func(ctx context.Context, id uuid.UUID) (provisioning.UpdateFiles, error)
@@ -199,6 +206,15 @@ type UpdateServiceMock struct {
 			// Architecture is the architecture argument value.
 			Architecture images.UpdateFileArchitecture
 		}
+		// GetSeekableUpdateFileByFilename holds details about calls to the GetSeekableUpdateFileByFilename method.
+		GetSeekableUpdateFileByFilename []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+			// Filename is the filename argument value.
+			Filename string
+		}
 		// GetUpdateAllFiles holds details about calls to the GetUpdateAllFiles method.
 		GetUpdateAllFiles []struct {
 			// Ctx is the ctx argument value.
@@ -254,6 +270,7 @@ type UpdateServiceMock struct {
 	lockGetByUUID                       sync.RWMutex
 	lockGetChangelog                    sync.RWMutex
 	lockGetChangelogByChannel           sync.RWMutex
+	lockGetSeekableUpdateFileByFilename sync.RWMutex
 	lockGetUpdateAllFiles               sync.RWMutex
 	lockGetUpdateFileByFilename         sync.RWMutex
 	lockGetUpdatesByAssignedChannelName sync.RWMutex
@@ -592,6 +609,46 @@ func (mock *UpdateServiceMock) GetChangelogByChannelCalls() []struct {
 	mock.lockGetChangelogByChannel.RLock()
 	calls = mock.calls.GetChangelogByChannel
 	mock.lockGetChangelogByChannel.RUnlock()
+	return calls
+}
+
+// GetSeekableUpdateFileByFilename calls GetSeekableUpdateFileByFilenameFunc.
+func (mock *UpdateServiceMock) GetSeekableUpdateFileByFilename(ctx context.Context, id uuid.UUID, filename string) (io.ReadSeekCloser, int64, time.Time, error) {
+	if mock.GetSeekableUpdateFileByFilenameFunc == nil {
+		panic("UpdateServiceMock.GetSeekableUpdateFileByFilenameFunc: method is nil but UpdateService.GetSeekableUpdateFileByFilename was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		ID       uuid.UUID
+		Filename string
+	}{
+		Ctx:      ctx,
+		ID:       id,
+		Filename: filename,
+	}
+	mock.lockGetSeekableUpdateFileByFilename.Lock()
+	mock.calls.GetSeekableUpdateFileByFilename = append(mock.calls.GetSeekableUpdateFileByFilename, callInfo)
+	mock.lockGetSeekableUpdateFileByFilename.Unlock()
+	return mock.GetSeekableUpdateFileByFilenameFunc(ctx, id, filename)
+}
+
+// GetSeekableUpdateFileByFilenameCalls gets all the calls that were made to GetSeekableUpdateFileByFilename.
+// Check the length with:
+//
+//	len(mockedUpdateService.GetSeekableUpdateFileByFilenameCalls())
+func (mock *UpdateServiceMock) GetSeekableUpdateFileByFilenameCalls() []struct {
+	Ctx      context.Context
+	ID       uuid.UUID
+	Filename string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		ID       uuid.UUID
+		Filename string
+	}
+	mock.lockGetSeekableUpdateFileByFilename.RLock()
+	calls = mock.calls.GetSeekableUpdateFileByFilename
+	mock.lockGetSeekableUpdateFileByFilename.RUnlock()
 	return calls
 }
 

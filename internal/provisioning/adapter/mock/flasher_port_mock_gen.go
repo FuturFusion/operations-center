@@ -28,6 +28,9 @@ var _ provisioning.FlasherPort = &FlasherPortMock{}
 //			GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, int, error) {
 //				panic("mock out the GenerateSeededImage method")
 //			},
+//			GenerateSeededImageFromSeekableFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, image io.ReadSeekCloser, size int64) (io.ReadSeekCloser, error) {
+//				panic("mock out the GenerateSeededImageFromSeekable method")
+//			},
 //			GetProviderConfigFunc: func(ctx context.Context, tokenID uuid.UUID) (*api.TokenProviderConfig, error) {
 //				panic("mock out the GetProviderConfig method")
 //			},
@@ -40,6 +43,9 @@ var _ provisioning.FlasherPort = &FlasherPortMock{}
 type FlasherPortMock struct {
 	// GenerateSeededImageFunc mocks the GenerateSeededImage method.
 	GenerateSeededImageFunc func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, int, error)
+
+	// GenerateSeededImageFromSeekableFunc mocks the GenerateSeededImageFromSeekable method.
+	GenerateSeededImageFromSeekableFunc func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, image io.ReadSeekCloser, size int64) (io.ReadSeekCloser, error)
 
 	// GetProviderConfigFunc mocks the GetProviderConfig method.
 	GetProviderConfigFunc func(ctx context.Context, tokenID uuid.UUID) (*api.TokenProviderConfig, error)
@@ -57,6 +63,19 @@ type FlasherPortMock struct {
 			// Rc is the rc argument value.
 			Rc io.ReadCloser
 		}
+		// GenerateSeededImageFromSeekable holds details about calls to the GenerateSeededImageFromSeekable method.
+		GenerateSeededImageFromSeekable []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+			// SeedConfig is the seedConfig argument value.
+			SeedConfig provisioning.TokenImageSeedConfigs
+			// Image is the image argument value.
+			Image io.ReadSeekCloser
+			// Size is the size argument value.
+			Size int64
+		}
 		// GetProviderConfig holds details about calls to the GetProviderConfig method.
 		GetProviderConfig []struct {
 			// Ctx is the ctx argument value.
@@ -65,8 +84,9 @@ type FlasherPortMock struct {
 			TokenID uuid.UUID
 		}
 	}
-	lockGenerateSeededImage sync.RWMutex
-	lockGetProviderConfig   sync.RWMutex
+	lockGenerateSeededImage             sync.RWMutex
+	lockGenerateSeededImageFromSeekable sync.RWMutex
+	lockGetProviderConfig               sync.RWMutex
 }
 
 // GenerateSeededImage calls GenerateSeededImageFunc.
@@ -110,6 +130,54 @@ func (mock *FlasherPortMock) GenerateSeededImageCalls() []struct {
 	mock.lockGenerateSeededImage.RLock()
 	calls = mock.calls.GenerateSeededImage
 	mock.lockGenerateSeededImage.RUnlock()
+	return calls
+}
+
+// GenerateSeededImageFromSeekable calls GenerateSeededImageFromSeekableFunc.
+func (mock *FlasherPortMock) GenerateSeededImageFromSeekable(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, image io.ReadSeekCloser, size int64) (io.ReadSeekCloser, error) {
+	if mock.GenerateSeededImageFromSeekableFunc == nil {
+		panic("FlasherPortMock.GenerateSeededImageFromSeekableFunc: method is nil but FlasherPort.GenerateSeededImageFromSeekable was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		ID         uuid.UUID
+		SeedConfig provisioning.TokenImageSeedConfigs
+		Image      io.ReadSeekCloser
+		Size       int64
+	}{
+		Ctx:        ctx,
+		ID:         id,
+		SeedConfig: seedConfig,
+		Image:      image,
+		Size:       size,
+	}
+	mock.lockGenerateSeededImageFromSeekable.Lock()
+	mock.calls.GenerateSeededImageFromSeekable = append(mock.calls.GenerateSeededImageFromSeekable, callInfo)
+	mock.lockGenerateSeededImageFromSeekable.Unlock()
+	return mock.GenerateSeededImageFromSeekableFunc(ctx, id, seedConfig, image, size)
+}
+
+// GenerateSeededImageFromSeekableCalls gets all the calls that were made to GenerateSeededImageFromSeekable.
+// Check the length with:
+//
+//	len(mockedFlasherPort.GenerateSeededImageFromSeekableCalls())
+func (mock *FlasherPortMock) GenerateSeededImageFromSeekableCalls() []struct {
+	Ctx        context.Context
+	ID         uuid.UUID
+	SeedConfig provisioning.TokenImageSeedConfigs
+	Image      io.ReadSeekCloser
+	Size       int64
+} {
+	var calls []struct {
+		Ctx        context.Context
+		ID         uuid.UUID
+		SeedConfig provisioning.TokenImageSeedConfigs
+		Image      io.ReadSeekCloser
+		Size       int64
+	}
+	mock.lockGenerateSeededImageFromSeekable.RLock()
+	calls = mock.calls.GenerateSeededImageFromSeekable
+	mock.lockGenerateSeededImageFromSeekable.RUnlock()
 	return calls
 }
 

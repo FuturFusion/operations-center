@@ -358,6 +358,45 @@ func (_d TokenServiceWithSlog) GetPreSeededImage(ctx context.Context, id uuid.UU
 	return _d._base.GetPreSeededImage(ctx, id, imageUUID)
 }
 
+// GetSeekableTokenImageFromTokenSeed implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) GetSeekableTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (tokenImage *provisioning.TokenImage, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.String("name", name),
+			slog.Any("imageType", imageType),
+			slog.Any("architecture", architecture),
+			slog.String("channel", channel),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetSeekableTokenImageFromTokenSeed")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("tokenImage", tokenImage),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetSeekableTokenImageFromTokenSeed returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetSeekableTokenImageFromTokenSeed returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetSeekableTokenImageFromTokenSeed finished")
+		}
+	}()
+	return _d._base.GetSeekableTokenImageFromTokenSeed(ctx, id, name, imageType, architecture, channel)
+}
+
 // GetTokenImageFromTokenSeed implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (readCloser io.ReadCloser, size int, err error) {
 	log := slog.With()

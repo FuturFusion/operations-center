@@ -9,6 +9,7 @@ import (
 	"context"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
@@ -37,6 +38,9 @@ var _ provisioning.UpdateFilesRepo = &UpdateFilesRepoMock{}
 //			},
 //			GetFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
 //				panic("mock out the Get method")
+//			},
+//			GetSeekableGZipFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadSeekCloser, int64, time.Time, error) {
+//				panic("mock out the GetSeekableGZip method")
 //			},
 //			PruneFilesFunc: func(ctx context.Context, update provisioning.Update) error {
 //				panic("mock out the PruneFiles method")
@@ -68,6 +72,9 @@ type UpdateFilesRepoMock struct {
 
 	// GetFunc mocks the Get method.
 	GetFunc func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error)
+
+	// GetSeekableGZipFunc mocks the GetSeekableGZip method.
+	GetSeekableGZipFunc func(ctx context.Context, update provisioning.Update, filename string) (io.ReadSeekCloser, int64, time.Time, error)
 
 	// PruneFilesFunc mocks the PruneFiles method.
 	PruneFilesFunc func(ctx context.Context, update provisioning.Update) error
@@ -117,6 +124,15 @@ type UpdateFilesRepoMock struct {
 			// Filename is the filename argument value.
 			Filename string
 		}
+		// GetSeekableGZip holds details about calls to the GetSeekableGZip method.
+		GetSeekableGZip []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Update is the update argument value.
+			Update provisioning.Update
+			// Filename is the filename argument value.
+			Filename string
+		}
 		// PruneFiles holds details about calls to the PruneFiles method.
 		PruneFiles []struct {
 			// Ctx is the ctx argument value.
@@ -146,6 +162,7 @@ type UpdateFilesRepoMock struct {
 	lockDelete            sync.RWMutex
 	lockExists            sync.RWMutex
 	lockGet               sync.RWMutex
+	lockGetSeekableGZip   sync.RWMutex
 	lockPruneFiles        sync.RWMutex
 	lockPut               sync.RWMutex
 	lockUsageInformation  sync.RWMutex
@@ -332,6 +349,46 @@ func (mock *UpdateFilesRepoMock) GetCalls() []struct {
 	mock.lockGet.RLock()
 	calls = mock.calls.Get
 	mock.lockGet.RUnlock()
+	return calls
+}
+
+// GetSeekableGZip calls GetSeekableGZipFunc.
+func (mock *UpdateFilesRepoMock) GetSeekableGZip(ctx context.Context, update provisioning.Update, filename string) (io.ReadSeekCloser, int64, time.Time, error) {
+	if mock.GetSeekableGZipFunc == nil {
+		panic("UpdateFilesRepoMock.GetSeekableGZipFunc: method is nil but UpdateFilesRepo.GetSeekableGZip was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Update   provisioning.Update
+		Filename string
+	}{
+		Ctx:      ctx,
+		Update:   update,
+		Filename: filename,
+	}
+	mock.lockGetSeekableGZip.Lock()
+	mock.calls.GetSeekableGZip = append(mock.calls.GetSeekableGZip, callInfo)
+	mock.lockGetSeekableGZip.Unlock()
+	return mock.GetSeekableGZipFunc(ctx, update, filename)
+}
+
+// GetSeekableGZipCalls gets all the calls that were made to GetSeekableGZip.
+// Check the length with:
+//
+//	len(mockedUpdateFilesRepo.GetSeekableGZipCalls())
+func (mock *UpdateFilesRepoMock) GetSeekableGZipCalls() []struct {
+	Ctx      context.Context
+	Update   provisioning.Update
+	Filename string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Update   provisioning.Update
+		Filename string
+	}
+	mock.lockGetSeekableGZip.RLock()
+	calls = mock.calls.GetSeekableGZip
+	mock.lockGetSeekableGZip.RUnlock()
 	return calls
 }
 

@@ -8,6 +8,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
@@ -359,6 +360,44 @@ func (_d UpdateServiceWithSlog) GetChangelogByChannel(ctx context.Context, UUID 
 		}
 	}()
 	return _d._base.GetChangelogByChannel(ctx, UUID, channelName, upstream, architecture)
+}
+
+// GetSeekableUpdateFileByFilename implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) GetSeekableUpdateFileByFilename(ctx context.Context, id uuid.UUID, filename string) (readSeekCloser io.ReadSeekCloser, size int64, modTime time.Time, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.String("filename", filename),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetSeekableUpdateFileByFilename")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("readSeekCloser", readSeekCloser),
+				slog.Int64("size", size),
+				slog.Time("modTime", modTime),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetSeekableUpdateFileByFilename returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetSeekableUpdateFileByFilename returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetSeekableUpdateFileByFilename finished")
+		}
+	}()
+	return _d._base.GetSeekableUpdateFileByFilename(ctx, id, filename)
 }
 
 // GetUpdateAllFiles implements provisioning.UpdateService.

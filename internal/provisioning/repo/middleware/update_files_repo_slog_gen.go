@@ -8,6 +8,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -214,6 +215,44 @@ func (_d UpdateFilesRepoWithSlog) Get(ctx context.Context, update provisioning.U
 		}
 	}()
 	return _d._base.Get(ctx, update, filename)
+}
+
+// GetSeekableGZip implements provisioning.UpdateFilesRepo.
+func (_d UpdateFilesRepoWithSlog) GetSeekableGZip(ctx context.Context, update provisioning.Update, filename string) (readSeekCloser io.ReadSeekCloser, size int64, modTime time.Time, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("update", update),
+			slog.String("filename", filename),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetSeekableGZip")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("readSeekCloser", readSeekCloser),
+				slog.Int64("size", size),
+				slog.Time("modTime", modTime),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetSeekableGZip returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetSeekableGZip returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetSeekableGZip finished")
+		}
+	}()
+	return _d._base.GetSeekableGZip(ctx, update, filename)
 }
 
 // PruneFiles implements provisioning.UpdateFilesRepo.

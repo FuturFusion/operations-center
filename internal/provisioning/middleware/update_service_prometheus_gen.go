@@ -169,6 +169,20 @@ func (_d UpdateServiceWithPrometheus) GetChangelogByChannel(ctx context.Context,
 	return _d.base.GetChangelogByChannel(ctx, UUID, channelName, upstream, architecture)
 }
 
+// GetSeekableUpdateFileByFilename implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) GetSeekableUpdateFileByFilename(ctx context.Context, id uuid.UUID, filename string) (readSeekCloser io.ReadSeekCloser, size int64, modTime time.Time, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetSeekableUpdateFileByFilename", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetSeekableUpdateFileByFilename(ctx, id, filename)
+}
+
 // GetUpdateAllFiles implements provisioning.UpdateService.
 func (_d UpdateServiceWithPrometheus) GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (updateFiles provisioning.UpdateFiles, err error) {
 	_since := time.Now()

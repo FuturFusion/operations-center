@@ -110,6 +110,20 @@ func (_d UpdateFilesRepoWithPrometheus) Get(ctx context.Context, update provisio
 	return _d.base.Get(ctx, update, filename)
 }
 
+// GetSeekableGZip implements provisioning.UpdateFilesRepo.
+func (_d UpdateFilesRepoWithPrometheus) GetSeekableGZip(ctx context.Context, update provisioning.Update, filename string) (readSeekCloser io.ReadSeekCloser, size int64, modTime time.Time, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateFilesRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetSeekableGZip", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetSeekableGZip(ctx, update, filename)
+}
+
 // PruneFiles implements provisioning.UpdateFilesRepo.
 func (_d UpdateFilesRepoWithPrometheus) PruneFiles(ctx context.Context, update provisioning.Update) (err error) {
 	_since := time.Now()

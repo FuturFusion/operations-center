@@ -168,6 +168,20 @@ func (_d TokenServiceWithPrometheus) GetPreSeededImage(ctx context.Context, id u
 	return _d.base.GetPreSeededImage(ctx, id, imageUUID)
 }
 
+// GetSeekableTokenImageFromTokenSeed implements provisioning.TokenService.
+func (_d TokenServiceWithPrometheus) GetSeekableTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (tokenImage *provisioning.TokenImage, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetSeekableTokenImageFromTokenSeed", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetSeekableTokenImageFromTokenSeed(ctx, id, name, imageType, architecture, channel)
+}
+
 // GetTokenImageFromTokenSeed implements provisioning.TokenService.
 func (_d TokenServiceWithPrometheus) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (readCloser io.ReadCloser, size int, err error) {
 	_since := time.Now()

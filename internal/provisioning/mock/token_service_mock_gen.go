@@ -53,6 +53,9 @@ var _ provisioning.TokenService = &TokenServiceMock{}
 //			GetPreSeededImageFunc: func(ctx context.Context, id uuid.UUID, imageUUID uuid.UUID) (io.ReadCloser, string, error) {
 //				panic("mock out the GetPreSeededImage method")
 //			},
+//			GetSeekableTokenImageFromTokenSeedFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (*provisioning.TokenImage, error) {
+//				panic("mock out the GetSeekableTokenImageFromTokenSeed method")
+//			},
 //			GetTokenImageFromTokenSeedFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, int, error) {
 //				panic("mock out the GetTokenImageFromTokenSeed method")
 //			},
@@ -110,6 +113,9 @@ type TokenServiceMock struct {
 
 	// GetPreSeededImageFunc mocks the GetPreSeededImage method.
 	GetPreSeededImageFunc func(ctx context.Context, id uuid.UUID, imageUUID uuid.UUID) (io.ReadCloser, string, error)
+
+	// GetSeekableTokenImageFromTokenSeedFunc mocks the GetSeekableTokenImageFromTokenSeed method.
+	GetSeekableTokenImageFromTokenSeedFunc func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (*provisioning.TokenImage, error)
 
 	// GetTokenImageFromTokenSeedFunc mocks the GetTokenImageFromTokenSeed method.
 	GetTokenImageFromTokenSeedFunc func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, int, error)
@@ -200,6 +206,21 @@ type TokenServiceMock struct {
 			// ImageUUID is the imageUUID argument value.
 			ImageUUID uuid.UUID
 		}
+		// GetSeekableTokenImageFromTokenSeed holds details about calls to the GetSeekableTokenImageFromTokenSeed method.
+		GetSeekableTokenImageFromTokenSeed []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+			// Name is the name argument value.
+			Name string
+			// ImageType is the imageType argument value.
+			ImageType api.ImageType
+			// Architecture is the architecture argument value.
+			Architecture images.UpdateFileArchitecture
+			// Channel is the channel argument value.
+			Channel string
+		}
 		// GetTokenImageFromTokenSeed holds details about calls to the GetTokenImageFromTokenSeed method.
 		GetTokenImageFromTokenSeed []struct {
 			// Ctx is the ctx argument value.
@@ -273,23 +294,24 @@ type TokenServiceMock struct {
 			TokenSeed provisioning.TokenSeed
 		}
 	}
-	lockConsume                    sync.RWMutex
-	lockCreate                     sync.RWMutex
-	lockCreateTokenSeed            sync.RWMutex
-	lockDeleteByUUID               sync.RWMutex
-	lockDeleteTokenSeedByName      sync.RWMutex
-	lockGetAll                     sync.RWMutex
-	lockGetAllUUIDs                sync.RWMutex
-	lockGetByUUID                  sync.RWMutex
-	lockGetPreSeededImage          sync.RWMutex
-	lockGetTokenImageFromTokenSeed sync.RWMutex
-	lockGetTokenProviderConfig     sync.RWMutex
-	lockGetTokenSeedAll            sync.RWMutex
-	lockGetTokenSeedAllNames       sync.RWMutex
-	lockGetTokenSeedByName         sync.RWMutex
-	lockPreparePreSeededImage      sync.RWMutex
-	lockUpdate                     sync.RWMutex
-	lockUpdateTokenSeed            sync.RWMutex
+	lockConsume                            sync.RWMutex
+	lockCreate                             sync.RWMutex
+	lockCreateTokenSeed                    sync.RWMutex
+	lockDeleteByUUID                       sync.RWMutex
+	lockDeleteTokenSeedByName              sync.RWMutex
+	lockGetAll                             sync.RWMutex
+	lockGetAllUUIDs                        sync.RWMutex
+	lockGetByUUID                          sync.RWMutex
+	lockGetPreSeededImage                  sync.RWMutex
+	lockGetSeekableTokenImageFromTokenSeed sync.RWMutex
+	lockGetTokenImageFromTokenSeed         sync.RWMutex
+	lockGetTokenProviderConfig             sync.RWMutex
+	lockGetTokenSeedAll                    sync.RWMutex
+	lockGetTokenSeedAllNames               sync.RWMutex
+	lockGetTokenSeedByName                 sync.RWMutex
+	lockPreparePreSeededImage              sync.RWMutex
+	lockUpdate                             sync.RWMutex
+	lockUpdateTokenSeed                    sync.RWMutex
 }
 
 // Consume calls ConsumeFunc.
@@ -613,6 +635,58 @@ func (mock *TokenServiceMock) GetPreSeededImageCalls() []struct {
 	mock.lockGetPreSeededImage.RLock()
 	calls = mock.calls.GetPreSeededImage
 	mock.lockGetPreSeededImage.RUnlock()
+	return calls
+}
+
+// GetSeekableTokenImageFromTokenSeed calls GetSeekableTokenImageFromTokenSeedFunc.
+func (mock *TokenServiceMock) GetSeekableTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (*provisioning.TokenImage, error) {
+	if mock.GetSeekableTokenImageFromTokenSeedFunc == nil {
+		panic("TokenServiceMock.GetSeekableTokenImageFromTokenSeedFunc: method is nil but TokenService.GetSeekableTokenImageFromTokenSeed was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		ID           uuid.UUID
+		Name         string
+		ImageType    api.ImageType
+		Architecture images.UpdateFileArchitecture
+		Channel      string
+	}{
+		Ctx:          ctx,
+		ID:           id,
+		Name:         name,
+		ImageType:    imageType,
+		Architecture: architecture,
+		Channel:      channel,
+	}
+	mock.lockGetSeekableTokenImageFromTokenSeed.Lock()
+	mock.calls.GetSeekableTokenImageFromTokenSeed = append(mock.calls.GetSeekableTokenImageFromTokenSeed, callInfo)
+	mock.lockGetSeekableTokenImageFromTokenSeed.Unlock()
+	return mock.GetSeekableTokenImageFromTokenSeedFunc(ctx, id, name, imageType, architecture, channel)
+}
+
+// GetSeekableTokenImageFromTokenSeedCalls gets all the calls that were made to GetSeekableTokenImageFromTokenSeed.
+// Check the length with:
+//
+//	len(mockedTokenService.GetSeekableTokenImageFromTokenSeedCalls())
+func (mock *TokenServiceMock) GetSeekableTokenImageFromTokenSeedCalls() []struct {
+	Ctx          context.Context
+	ID           uuid.UUID
+	Name         string
+	ImageType    api.ImageType
+	Architecture images.UpdateFileArchitecture
+	Channel      string
+} {
+	var calls []struct {
+		Ctx          context.Context
+		ID           uuid.UUID
+		Name         string
+		ImageType    api.ImageType
+		Architecture images.UpdateFileArchitecture
+		Channel      string
+	}
+	mock.lockGetSeekableTokenImageFromTokenSeed.RLock()
+	calls = mock.calls.GetSeekableTokenImageFromTokenSeed
+	mock.lockGetSeekableTokenImageFromTokenSeed.RUnlock()
 	return calls
 }
 
