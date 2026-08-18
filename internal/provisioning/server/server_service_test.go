@@ -10509,6 +10509,26 @@ func TestServerService_BMCAttachMediaByName(t *testing.T) {
 			assertErr:          require.NoError,
 		},
 		{
+			name:    "success - with boot device",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				VirtualMediaID: "system:1",
+				SetBootDevice:  true,
+			},
+			operationsCenterAddress: "https://192.168.1.200:8443",
+			repoGetByNameServer:     server,
+			tokenSvcGetSeed:         &provisioning.TokenSeed{Name: "default", Public: true},
+			resyncDone:              make(chan struct{}),
+
+			wantMediaURL:       "https://192.168.1.200:8443/1.0/provisioning/tokens/" + tokenUUID + "/seeds/default/architecture/x86_64/type/iso/" + testSeedImageID + ".iso",
+			wantVirtualMediaID: "system:1",
+			assertErr:          require.NoError,
+		},
+		{
 			name:    "success - with channel",
 			nameArg: "one",
 			mediaArg: api.ServerBMCAttachMedia{
@@ -10882,9 +10902,10 @@ func TestServerService_BMCAttachMediaByName(t *testing.T) {
 			}
 
 			bmcClient := &adapterMock.BMCServerClientPortMock{
-				AttachMediaFunc: func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (*provisioning.BMCTaskMonitor, error) {
+				AttachMediaFunc: func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
 					require.Equal(t, tc.wantVirtualMediaID, virtualMediaID)
 					require.Equal(t, tc.wantMediaURL, mediaURL)
+					require.Equal(t, tc.mediaArg.SetBootDevice, setBootDevice)
 
 					return taskMonitor, tc.bmcClientAttachMediaErr
 				},

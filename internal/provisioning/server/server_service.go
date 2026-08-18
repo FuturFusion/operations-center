@@ -2753,7 +2753,19 @@ func (s *serverService) BMCAttachMediaByName(ctx context.Context, name string, m
 		return fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
 	}
 
-	taskMonitor, err := client.AttachMedia(ctx, *server, media.VirtualMediaID, imageURL.String())
+	mediaMessage := lifecycle.BMCVirtualMediaMessage{
+		Operation:      lifecycle.BMCVirtualMediaOperationPreAttach,
+		Server:         server.Name,
+		VirtualMediaID: media.VirtualMediaID,
+		TokenUUID:      tokenUUID,
+		Seed:           media.Seed,
+		ImageType:      imageType,
+		Architecture:   architecture,
+		Channel:        media.Channel,
+	}
+	lifecycle.BMCVirtualMediaSignal.Emit(ctx, mediaMessage)
+
+	taskMonitor, err := client.AttachMedia(ctx, *server, media.VirtualMediaID, imageURL.String(), media.SetBootDevice)
 	if err != nil {
 		return fmt.Errorf("Failed to attach media to server %q via BMC: %w", server.Name, err)
 	}

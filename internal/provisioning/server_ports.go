@@ -129,6 +129,6 @@ type BMCServerClientPort interface {
 	ApplyBIOSAttributes(ctx context.Context, server Server, attributes map[string]any) (*BMCTaskMonitor, error)
 	BIOSAttributes(ctx context.Context, server Server) ([]api.BIOSAttribute, error)
 	BIOSAttribute(ctx context.Context, server Server, attributeName string) (api.BIOSAttribute, error)
-	AttachMedia(ctx context.Context, server Server, virtualMediaID string, mediaURL string) (*BMCTaskMonitor, error)
+	AttachMedia(ctx context.Context, server Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*BMCTaskMonitor, error)
 	DetachMedia(ctx context.Context, server Server, virtualMediaID string) (*BMCTaskMonitor, error)
 }
