@@ -1426,7 +1426,7 @@ func (_d ServerServiceWithSlog) SyncCluster(ctx context.Context, clusterName str
 }
 
 // Update implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) Update(ctx context.Context, server provisioning.Server, force bool, updateSystem bool) (err error) {
+func (_d ServerServiceWithSlog) Update(ctx context.Context, server provisioning.Server, force bool, updateSystem bool, bmcConnectionTest bool) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1434,6 +1434,7 @@ func (_d ServerServiceWithSlog) Update(ctx context.Context, server provisioning.
 			slog.Any("server", server),
 			slog.Bool("force", force),
 			slog.Bool("updateSystem", updateSystem),
+			slog.Bool("bmcConnectionTest", bmcConnectionTest),
 		)
 	}
 	log.DebugContext(ctx, "=> calling Update")
@@ -1458,7 +1459,7 @@ func (_d ServerServiceWithSlog) Update(ctx context.Context, server provisioning.
 			log.DebugContext(ctx, "<= method Update finished")
 		}
 	}()
-	return _d._base.Update(ctx, server, force, updateSystem)
+	return _d._base.Update(ctx, server, force, updateSystem, bmcConnectionTest)
 }
 
 // UpdateSystemByName implements provisioning.ServerService.

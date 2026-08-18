@@ -145,7 +145,7 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			SyncClusterFunc: func(ctx context.Context, clusterName string) error {
 //				panic("mock out the SyncCluster method")
 //			},
-//			UpdateFunc: func(ctx context.Context, server provisioning.Server, force bool, updateSystem bool) error {
+//			UpdateFunc: func(ctx context.Context, server provisioning.Server, force bool, updateSystem bool, bmcConnectionTest bool) error {
 //				panic("mock out the Update method")
 //			},
 //			UpdateSystemByNameFunc: func(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error {
@@ -297,7 +297,7 @@ type ServerServiceMock struct {
 	SyncClusterFunc func(ctx context.Context, clusterName string) error
 
 	// UpdateFunc mocks the Update method.
-	UpdateFunc func(ctx context.Context, server provisioning.Server, force bool, updateSystem bool) error
+	UpdateFunc func(ctx context.Context, server provisioning.Server, force bool, updateSystem bool, bmcConnectionTest bool) error
 
 	// UpdateSystemByNameFunc mocks the UpdateSystemByName method.
 	UpdateSystemByNameFunc func(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error
@@ -654,6 +654,8 @@ type ServerServiceMock struct {
 			Force bool
 			// UpdateSystem is the updateSystem argument value.
 			UpdateSystem bool
+			// BmcConnectionTest is the bmcConnectionTest argument value.
+			BmcConnectionTest bool
 		}
 		// UpdateSystemByName holds details about calls to the UpdateSystemByName method.
 		UpdateSystemByName []struct {
@@ -2296,25 +2298,27 @@ func (mock *ServerServiceMock) SyncClusterCalls() []struct {
 }
 
 // Update calls UpdateFunc.
-func (mock *ServerServiceMock) Update(ctx context.Context, server provisioning.Server, force bool, updateSystem bool) error {
+func (mock *ServerServiceMock) Update(ctx context.Context, server provisioning.Server, force bool, updateSystem bool, bmcConnectionTest bool) error {
 	if mock.UpdateFunc == nil {
 		panic("ServerServiceMock.UpdateFunc: method is nil but ServerService.Update was just called")
 	}
 	callInfo := struct {
-		Ctx          context.Context
-		Server       provisioning.Server
-		Force        bool
-		UpdateSystem bool
+		Ctx               context.Context
+		Server            provisioning.Server
+		Force             bool
+		UpdateSystem      bool
+		BmcConnectionTest bool
 	}{
-		Ctx:          ctx,
-		Server:       server,
-		Force:        force,
-		UpdateSystem: updateSystem,
+		Ctx:               ctx,
+		Server:            server,
+		Force:             force,
+		UpdateSystem:      updateSystem,
+		BmcConnectionTest: bmcConnectionTest,
 	}
 	mock.lockUpdate.Lock()
 	mock.calls.Update = append(mock.calls.Update, callInfo)
 	mock.lockUpdate.Unlock()
-	return mock.UpdateFunc(ctx, server, force, updateSystem)
+	return mock.UpdateFunc(ctx, server, force, updateSystem, bmcConnectionTest)
 }
 
 // UpdateCalls gets all the calls that were made to Update.
@@ -2322,16 +2326,18 @@ func (mock *ServerServiceMock) Update(ctx context.Context, server provisioning.S
 //
 //	len(mockedServerService.UpdateCalls())
 func (mock *ServerServiceMock) UpdateCalls() []struct {
-	Ctx          context.Context
-	Server       provisioning.Server
-	Force        bool
-	UpdateSystem bool
+	Ctx               context.Context
+	Server            provisioning.Server
+	Force             bool
+	UpdateSystem      bool
+	BmcConnectionTest bool
 } {
 	var calls []struct {
-		Ctx          context.Context
-		Server       provisioning.Server
-		Force        bool
-		UpdateSystem bool
+		Ctx               context.Context
+		Server            provisioning.Server
+		Force             bool
+		UpdateSystem      bool
+		BmcConnectionTest bool
 	}
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update

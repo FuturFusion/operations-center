@@ -518,13 +518,13 @@ func availableVersionGreaterThan(currentVersion string, availableVersion string)
 
 // Update writes the new server state to the DB and pushes the changed
 // settings to the system as well, if updateSystem argument is set to true.
-func (s *serverService) Update(ctx context.Context, server provisioning.Server, force bool, updateSystem bool) error {
+func (s *serverService) Update(ctx context.Context, server provisioning.Server, force bool, updateSystem bool, bmcConnectionTest bool) error {
 	err := server.Validate()
 	if err != nil {
 		return fmt.Errorf("Failed to validate server for update: %w", err)
 	}
 
-	if server.BMCConfig.HasBMC() {
+	if bmcConnectionTest && server.BMCConfig.HasBMC() {
 		client, ok := s.bmcServerClients[server.BMCConfig.APIType]
 		if !ok {
 			return fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
@@ -619,7 +619,7 @@ func (s *serverService) UpdateSystemNetwork(ctx context.Context, name string, sy
 		updatedServer.LastStatusUpdated = s.now()
 		updatedServer.LastSeen = s.now()
 
-		err = s.Update(ctx, *updatedServer, true, false)
+		err = s.Update(ctx, *updatedServer, true, false, false)
 		if err != nil {
 			return fmt.Errorf("Failed to update system network: %w", err)
 		}
@@ -687,7 +687,7 @@ func (s *serverService) UpdateSystemStorage(ctx context.Context, name string, sy
 		updatedServer.LastStatusUpdated = s.now()
 		updatedServer.LastSeen = s.now()
 
-		err = s.Update(ctx, *updatedServer, true, false)
+		err = s.Update(ctx, *updatedServer, true, false, false)
 		if err != nil {
 			return fmt.Errorf("Failed to update system network: %w", err)
 		}
@@ -1564,7 +1564,7 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 		server.StatusDetail = api.ServerStatusDetailReadyUpdatingOS
 		server.LastStatusUpdated = s.now()
 
-		err = s.Update(ctx, *server, false, false)
+		err = s.Update(ctx, *server, false, false, false)
 		if err != nil {
 			return fmt.Errorf("Failed to update server state to updating for %q: %w", server.Name, err)
 		}
@@ -1576,7 +1576,7 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 	}
 
 	reverter.Add(func() {
-		err := s.Update(ctx, previousServer, false, false)
+		err := s.Update(ctx, previousServer, false, false, false)
 		if err != nil {
 			slog.ErrorContext(ctx, "Failed to restore previous server state after failed to update the system", slog.String("server", name), logger.Err(err))
 		}

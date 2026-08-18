@@ -539,7 +539,7 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 		currentServer.Channel = server.Channel
 	}
 
-	err = s.service.Update(ctx, *currentServer, false, updateServer)
+	err = s.service.Update(ctx, *currentServer, false, updateServer, true)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating server %q: %w", name, err))
 	}
