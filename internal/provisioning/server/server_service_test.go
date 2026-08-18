@@ -1383,15 +1383,18 @@ func TestServerService_Update(t *testing.T) {
 	certificate := string(certificatePEM)
 
 	tests := []struct {
-		name           string
-		argForce       bool
-		server         provisioning.Server
-		repoUpdateErrs queue.Errs
-		repoGetByName  []queue.Item[*provisioning.Server]
+		name                 string
+		argForce             bool
+		argBMCConnectionTest bool
+		server               provisioning.Server
+		repoUpdateErrs       queue.Errs
+		repoGetByName        []queue.Item[*provisioning.Server]
 
 		registerBMCClient    bool
 		bmcConnectionTestCrt string
 		bmcConnectionTestErr error
+
+		wantBMCConnectionTestCalled bool
 
 		assertErr           require.ErrorAssertionFunc
 		assertLog           log.MatcherFunc
@@ -1475,8 +1478,11 @@ one
 					},
 				},
 			},
+			argBMCConnectionTest: true,
 			registerBMCClient:    true,
 			bmcConnectionTestCrt: "cert-pem",
+
+			wantBMCConnectionTestCalled: true,
 
 			assertErr: require.NoError,
 			assertLog: log.Empty,
@@ -1526,8 +1532,11 @@ one
 					},
 				},
 			},
+			argBMCConnectionTest: true,
 			registerBMCClient:    true,
 			bmcConnectionTestCrt: "cert-pem",
+
+			wantBMCConnectionTestCalled: true,
 
 			assertErr: require.NoError,
 			assertLog: log.Empty,
@@ -1577,8 +1586,11 @@ one
 					},
 				},
 			},
+			argBMCConnectionTest: true,
 			registerBMCClient:    true,
 			bmcConnectionTestCrt: "cert-pem",
+
+			wantBMCConnectionTestCalled: true,
 
 			assertErr: require.NoError,
 			assertLog: log.Empty,
@@ -1608,7 +1620,8 @@ one
 					AutoPinCertificate: true,
 				},
 			},
-			registerBMCClient: false, // client for redfish-v1-generic is not registered
+			argBMCConnectionTest: true,
+			registerBMCClient:    false, // client for redfish-v1-generic is not registered
 
 			assertErr:           errassert.Contains(`Failed to get BMC server client for type "redfish-v1-generic"`),
 			assertLog:           log.Empty,
@@ -1634,12 +1647,71 @@ one
 					AutoPinCertificate: true,
 				},
 			},
+			argBMCConnectionTest: true,
 			registerBMCClient:    true,
 			bmcConnectionTestErr: boom.Error,
+
+			wantBMCConnectionTestCalled: true,
 
 			assertErr:           boom.ErrorIs,
 			assertLog:           log.Empty,
 			assertUpdatedServer: func(t *testing.T, server provisioning.Server) { t.Helper() },
+		},
+		{
+			name:     "success - BMC connection test not requested - unreachable BMC does not fail the server state update",
+			argForce: false,
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+				BMCConfig: api.BMCConfig{
+					APIType:            api.BMCAPITypeRedfishV1Generic,
+					Endpoint:           "https://bmc.example.com/",
+					AutoPinCertificate: true,
+				},
+			},
+			repoGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name:    "one",
+						Channel: "stable",
+					},
+				},
+			},
+			argBMCConnectionTest: false,
+			registerBMCClient:    true,
+			bmcConnectionTestErr: boom.Error,
+
+			wantBMCConnectionTestCalled: false,
+
+			assertErr: require.NoError,
+			assertLog: log.Empty,
+			assertUpdatedServer: func(t *testing.T, server provisioning.Server) {
+				t.Helper()
+				// The BMC config is persisted unmodified, pinning of the certificate
+				// is deferred to the next update, which requests a connection test.
+				require.Empty(t, server.BMCConfig.Certificate)
+				require.True(t, server.BMCConfig.AutoPinCertificate)
+			},
 		},
 		{
 			name: "error - validation",
@@ -1831,8 +1903,11 @@ one
 				},
 			}
 
+			bmcClientConnectionTestCalled := false
 			bmcClient := &adapterMock.BMCServerClientPortMock{
 				ConnectionTestFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
+					bmcClientConnectionTestCalled = true
+
 					return tc.bmcConnectionTestCrt, tc.bmcConnectionTestErr
 				},
 			}
@@ -1874,13 +1949,14 @@ one
 			)
 
 			// Run test
-			err = serverSvc.Update(t.Context(), tc.server, tc.argForce, true)
+			err = serverSvc.Update(t.Context(), tc.server, tc.argForce, true, tc.argBMCConnectionTest)
 
 			// Assert
 			tc.assertErr(t, err)
 			tc.assertLog(t, logBuf)
 			tc.assertUpdatedServer(t, updatedServer)
 
+			require.Equal(t, tc.wantBMCConnectionTestCalled, bmcClientConnectionTestCalled)
 			require.Empty(t, tc.repoUpdateErrs)
 		})
 	}
@@ -7766,6 +7842,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 		clientUpdateOSErr                               error
 		channelSvcGetByNameErr                          error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
+		registerUnreachableBMCClient                    bool
 		flakyLog                                        bool
 
 		assertErr require.ErrorAssertionFunc
@@ -7953,6 +8030,33 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 			assertLog: log.Match("Failed to restore previous server state after failed to update the system server=one err=.*boom!"),
 		},
+		{
+			name: "success - trigger OS update - unreachable BMC",
+			argUpdateRequest: api.ServerUpdatePost{
+				OS: api.ServerUpdateApplication{
+					Name:          "os",
+					TriggerUpdate: true,
+				},
+			},
+			repoGetByName: provisioning.Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   "certificate",
+				Status:        api.ServerStatusReady,
+				BMCConfig: api.BMCConfig{
+					APIType:            api.BMCAPITypeRedfishV1Generic,
+					Endpoint:           "https://bmc.example.com/",
+					AutoPinCertificate: true,
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+			registerUnreachableBMCClient:                    true,
+
+			assertErr: require.NoError,
+			assertLog: log.Noop,
+		},
 	}
 
 	for _, tc := range tests {
@@ -8004,9 +8108,22 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				},
 			}
 
+			opts := []provisioningServer.Option{
+				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
+			}
+			if tc.registerUnreachableBMCClient {
+				bmcClient := &adapterMock.BMCServerClientPortMock{
+					ConnectionTestFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
+						return "", boom.Error
+					},
+				}
+
+				opts = append(opts, provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient))
+			}
+
 			serverSvc := provisioningServer.New(
 				repo, client, nil, nil, clusterSvc, channelSvc, updateSvc, tls.Certificate{},
-				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
+				opts...,
 			)
 
 			logT := log.TestifyT(t)
