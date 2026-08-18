@@ -83,6 +83,48 @@ func (l localfs) Get(ctx context.Context, update provisioning.Update, filename s
 	return f, int(fi.Size()), nil
 }
 
+// GetSeekableGZip returns a seekable reader over the decompressed contents of a
+// gzip compressed file, together with the size of the decompressed
+// contents and the modification time of the compressed file.
+//
+// It is the caller's responsibility to close the returned reader.
+func (l localfs) GetSeekableGZip(ctx context.Context, update provisioning.Update, filename string) (_ io.ReadSeekCloser, size int64, modTime time.Time, _ error) {
+	fullFilename := filepath.Join(l.storageDir, update.UUID.String(), filename)
+
+	fi, err := os.Stat(fullFilename)
+	if err != nil {
+		return nil, 0, time.Time{}, err
+	}
+
+	f, err := os.Open(fullFilename)
+	if err != nil {
+		return nil, 0, time.Time{}, err
+	}
+
+	defer func() {
+		if err != nil {
+			_ = f.Close()
+		}
+	}()
+
+	cached := loadGzIndex(ctx, fullFilename)
+
+	size = cached.Size
+	if size <= 0 {
+		size, err = uncompressedSize(f, fi.Size())
+		if err != nil {
+			return nil, 0, time.Time{}, err
+		}
+	}
+
+	seekable, err := newSeekableFile(ctx, f, fullFilename, size, cached)
+	if err != nil {
+		return nil, 0, time.Time{}, err
+	}
+
+	return seekable, size, fi.ModTime(), nil
+}
+
 func (l localfs) Put(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (provisioning.CommitFunc, provisioning.CancelFunc, error) {
 	fullFilename := filepath.Join(l.storageDir, update.UUID.String(), filename)
 	temporaryFullFilename := fullFilename + ".partial"
@@ -195,6 +237,12 @@ func (l localfs) PruneFiles(ctx context.Context, update provisioning.Update) err
 			// Ignore directories. If all files are removed, an empty directory might
 			// be kept, but this is ok and will get cleaned up when the update is
 			// obsolete.
+			return nil
+		}
+
+		// Index sidecars are a cache belonging to a file of the update, not a
+		// file of the update itself, so they are not part of filesLookup.
+		if isGzIndexFilename(relPath) {
 			return nil
 		}
 
