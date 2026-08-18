@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -301,10 +303,19 @@ type readCloserResponse struct {
 // ReadCloserResponse returns a new file taking the file content from a io.ReadCloser.
 // If the fileSize is unknown, -1 should be passed in order to omit the
 // Content-Length HTTP header.
-// If compress is set to true and the client provides the HTTP header
-// "Accept-Encoding: gzip", the file is streamed with "Content-Encoding: gzip".
-// If compress is set to true but the client does not offer "Content-Encoding: gzip",
-// the file is returned as .gz file.
+//
+// If compress is set to true, the content may be gzip compressed, depending on
+// what the client asks for:
+//
+//   - "Accept: application/gzip" requests the compressed file itself, which is
+//     returned with the content type "application/gzip" and a ".gz" suffix
+//     appended to the filename.
+//   - "Accept-Encoding: gzip" only asks for a compressed transfer, which is
+//     returned with "Content-Encoding: gzip" and the unmodified filename.
+//   - Otherwise the content is returned uncompressed.
+//
+// Since the size of the compressed content is not known upfront, the
+// Content-Length HTTP header is omitted whenever the content is compressed.
 func ReadCloserResponse(r *http.Request, rc io.ReadCloser, compress bool, filename string, fileSize int, headers map[string]string) Response {
 	return &readCloserResponse{
 		req:      r,
@@ -322,6 +333,12 @@ func AcceptsGzip(r *http.Request) bool {
 	return strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
 }
 
+// RequestsGzipFile reports whether the client asked for the gzip compressed
+// file itself, rather than only offering to take a compressed transfer.
+func RequestsGzipFile(r *http.Request) bool {
+	return strings.Contains(r.Header.Get("Accept"), "application/gzip")
+}
+
 func (r readCloserResponse) Render(w http.ResponseWriter) error {
 	defer func() {
 		_ = r.rc.Close()
@@ -333,22 +350,25 @@ func (r readCloserResponse) Render(w http.ResponseWriter) error {
 		}
 	}
 
-	acceptCompress := AcceptsGzip(r.req)
+	wantsGzipFile := r.compress && RequestsGzipFile(r.req)
+	wantsGzipEncoding := r.compress && !wantsGzipFile && AcceptsGzip(r.req)
 
 	fileName := r.filename
 	contentType := "application/octet-stream"
 	var writer io.Writer = w
-	if r.compress {
+	if wantsGzipFile || wantsGzipEncoding {
 		gzWriter := gzip.NewWriter(w)
 		defer gzWriter.Close()
 
 		writer = gzWriter
 
-		if acceptCompress {
-			w.Header().Set("Content-Encoding", "gzip")
-		} else {
+		if wantsGzipFile {
 			contentType = "application/gzip"
-			fileName += ".gz"
+			if !strings.HasSuffix(fileName, ".gz") {
+				fileName += ".gz"
+			}
+		} else {
+			w.Header().Set("Content-Encoding", "gzip")
 		}
 	}
 
@@ -358,7 +378,7 @@ func (r readCloserResponse) Render(w http.ResponseWriter) error {
 	}
 
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fileName))
-	if r.fileSize >= 0 {
+	if r.fileSize >= 0 && writer == w {
 		w.Header().Set("Content-Length", strconv.Itoa(r.fileSize))
 	}
 
@@ -382,4 +402,127 @@ func (r readCloserResponse) String() string {
 
 func (r readCloserResponse) Code() int {
 	return http.StatusOK
+}
+
+type serveContentResponse struct {
+	req      *http.Request
+	content  io.ReadSeekCloser
+	filename string
+	modTime  time.Time
+	size     int64
+	headers  map[string]string
+}
+
+// ServeContentResponse returns a response serving the given seekable content.
+func ServeContentResponse(r *http.Request, content io.ReadSeekCloser, filename string, modTime time.Time, size int64, headers map[string]string) Response {
+	return &serveContentResponse{
+		req:      r,
+		content:  content,
+		filename: filename,
+		modTime:  modTime,
+		size:     size,
+		headers:  headers,
+	}
+}
+
+func (r serveContentResponse) Render(w http.ResponseWriter) error {
+	defer func() {
+		_ = r.content.Close()
+	}()
+
+	for k, v := range r.headers {
+		w.Header().Set(k, v)
+	}
+
+	if w.Header().Get("Content-Type") == "application/json" || w.Header().Get("Content-Type") == "" {
+		w.Header().Set("Content-Type", "application/octet-stream")
+	}
+
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", r.filename))
+
+	http.ServeContent(w, r.req, r.filename, r.modTime, newLazySeeker(r.content, r.size))
+
+	return nil
+}
+
+func (r serveContentResponse) String() string {
+	return fmt.Sprintf("serve content response for %q", r.filename)
+}
+
+// Code returns -1, since the status code is determined by http.ServeContent
+// while the response is rendered and is not known before.
+func (r serveContentResponse) Code() int {
+	return -1
+}
+
+// lazySeeker adapts an io.ReadSeeker of known size for use with
+// http.ServeContent.
+//
+// It answers seeks arithmetically and only repositions the underlying reader
+// once the next read actually needs the data.
+type lazySeeker struct {
+	rs   io.ReadSeeker
+	size int64
+
+	// pos is the position reads are expected to continue at, readerPos the
+	// position the underlying reader is actually at.
+	pos       int64
+	readerPos int64
+}
+
+func newLazySeeker(rs io.ReadSeeker, size int64) *lazySeeker {
+	return &lazySeeker{
+		rs:   rs,
+		size: size,
+	}
+}
+
+func (l *lazySeeker) Read(p []byte) (int, error) {
+	if l.pos >= l.size {
+		return 0, io.EOF
+	}
+
+	if l.pos != l.readerPos {
+		pos, err := l.rs.Seek(l.pos, io.SeekStart)
+		l.readerPos = pos
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	if int64(len(p)) > l.size-l.pos {
+		p = p[:l.size-l.pos]
+	}
+
+	n, err := l.rs.Read(p)
+	l.pos += int64(n)
+	l.readerPos += int64(n)
+
+	return n, err
+}
+
+func (l *lazySeeker) Seek(offset int64, whence int) (int64, error) {
+	var abs int64
+
+	switch whence {
+	case io.SeekStart:
+		abs = offset
+
+	case io.SeekCurrent:
+		abs = l.pos + offset
+
+	case io.SeekEnd:
+		abs = l.size + offset
+
+	default:
+		return 0, errors.New("invalid whence")
+	}
+
+	if abs < 0 {
+		return 0, errors.New("negative position")
+	}
+
+	l.pos = abs
+
+	return abs, nil
 }
