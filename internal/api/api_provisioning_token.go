@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -859,23 +861,31 @@ func (t *tokenHandler) tokenSeedImageResponse(r *http.Request, UUID uuid.UUID, n
 
 // tokenSeedRawImageResponse streams the generated pre-seed image itself, rather
 // than a gzip file wrapped around it.
+//
+// The image is served from a seekable stream, so byte ranges are supported and
+// an interrupted transfer can be resumed.
+// Compression is only applied to a client explicitly asking for the compressed
+// file, which rules out ranges.
 func (t *tokenHandler) tokenSeedRawImageResponse(r *http.Request, UUID uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) response.Response {
-	rc, size, err := t.service.GetTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture, channel)
+	filename := tokenSeedImageFilename(name, imageType)
+
+	if response.RequestsGzipFile(r) && r.Header.Get("Range") == "" {
+		rc, _, err := t.service.GetCompressedTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture, channel)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		return response.ReadCloserResponse(r, rc, true, filename, -1, map[string]string{
+			"Accept-Ranges": "none",
+		})
+	}
+
+	image, err := t.service.GetSeekableTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture, channel)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	headers := map[string]string{
-		"Accept-Ranges": "none",
-	}
-
-	filename := tokenSeedImageFilename(name, imageType)
-
-	if response.AcceptsGzip(r) {
-		return response.ReadCloserResponse(r, rc, true, filename, -1, headers)
-	}
-
-	return response.ReadCloserResponse(r, rc, false, filename, size, headers)
+	return response.ServeContentResponse(r, image.Content, filename, image.ModTime, image.Size, nil)
 }
 
 func tokenSeedImageFilename(name string, imageType api.ImageType) string {
@@ -894,19 +904,34 @@ func tokenSeedImageFilename(name string, imageType api.ImageType) string {
 //	known media extension.
 //
 //	The path after the seed name is a flat sequence of "<key>/<value>" pairs
-//	followed by a final, free-form filename segment that is not inspected by
-//	the server, e.g.:
+//	followed by a final filename segment, e.g.:
 //
 //	  /1.0/provisioning/tokens/{uuid}/seeds/{name}/architecture/x86_64/channel/stable/type/iso/file.iso
 //
 //	Recognized keys are "architecture" (required), "type" (required) and
 //	"channel" (optional, defaults to the configured default update channel).
 //
-//	The image is served uncompressed and, if its size can be determined, with a
-//	Content-Length header.
-//	If a client offers "Accept-Encoding: gzip" it gets it compressed in transit
-//	instead, without a Content-Length.
-//	Range requests are not supported.
+//	The filename segment picks one of two ways of asking for an image.
+//
+//	A filename of twelve characters out of "A-Za-z0-9_-" names one already
+//	generated image, e.g. "a1B2c3D4e5F6.iso". Such an image is served exactly
+//	as it was generated. It is the form Operations Center puts into the virtual
+//	media URL it hands to a BMC. An image, which has not been generated, is
+//	reported as "404 Not Found" rather than being generated on demand.
+//	Such an image is only reachable while it is cached, and only exists if the
+//	token seed was public when it was generated.
+//
+//	Any other filename, "file.iso" among them, asks for whatever image the
+//	token seed resolves to right now. That image is looked up, generated if
+//	need be, and served subject to the usual authorization for a token seed,
+//	which is not public.
+//
+//	The image is served uncompressed, with a Content-Length header and support
+//	for byte ranges, so a BMC whose transfer got interrupted can resume it
+//	instead of fetching the whole image again.
+//	A client asking for "Accept: application/gzip" and not requesting a range
+//	gets the gzip compressed image as a ".gz" file instead, without a
+//	Content-Length and without range support.
 //	HEAD is answered with the headers alone.
 //
 //	---
@@ -934,8 +959,31 @@ func tokenSeedImageFilename(name string, imageType api.ImageType) string {
 //	      one already generated image.
 //	    type: string
 //	    required: true
+//	  - in: header
+//	    name: Accept
+//	    description: |-
+//	      Set to "application/gzip" to get the gzip compressed image as a file,
+//	      which is returned without range support.
+//	    type: string
+//	    required: false
+//	  - in: header
+//	    name: Range
+//	    description: |-
+//	      Byte range of the image to return, e.g. "bytes=1048576-".
+//	    type: string
+//	    required: false
+//	  - in: header
+//	    name: If-Range
+//	    description: |-
+//	      Last modification the client saw, as returned in "Last-Modified".
+//	      If the image changed since, the complete image is returned instead
+//	      of the requested range.
+//	    type: string
+//	    required: false
 //	responses:
 //	  "200":
+//	    $ref: "#/responses/TokenSeedResponse"
+//	  "206":
 //	    $ref: "#/responses/TokenSeedResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
@@ -943,6 +991,8 @@ func tokenSeedImageFilename(name string, imageType api.ImageType) string {
 //	    $ref: "#/responses/Forbidden"
 //	  "404":
 //	    $ref: "#/responses/NotFound"
+//	  "416":
+//	    $ref: "#/responses/BadRequest"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (t *tokenHandler) tokenSeedImageGet(r *http.Request) response.Response {
