@@ -305,6 +305,17 @@ func (c OperationsCenterClient) BMCServerRestart(ctx context.Context, name strin
 	return nil
 }
 
+func (c OperationsCenterClient) BMCServerSetLocationIndicator(ctx context.Context, name string, active bool) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "bmc/:server-locate"), nil, api.ServerBMCLocatePost{
+		Active: active,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) ApplyBIOSAttributes(ctx context.Context, name string, attributes map[string]any) error {
 	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "bmc/:apply-bios-attributes"), nil, api.ServerBMCApplyBIOSAttributesPost{
 		Attributes: attributes,

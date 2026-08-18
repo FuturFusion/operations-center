@@ -9447,6 +9447,165 @@ func TestServerService_BMCServerRestartByName(t *testing.T) {
 	}
 }
 
+func TestServerService_BMCServerSetLocationIndicatorByName(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	tests := []struct {
+		name                                   string
+		nameArg                                string
+		activeArg                              bool
+		repoGetByNameServer                    *provisioning.Server
+		repoGetByNameErr                       error
+		bmcClientServerSetLocationIndicatorErr error
+		bmcClientGetData                       api.BMCData
+		bmcClientGetDataErr                    error
+		repoUpdateErr                          error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:      "success - turn on",
+			nameArg:   "one",
+			activeArg: true,
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientGetData: api.BMCData{
+				ServerLocationIndicatorActive: true,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:      "success - turn off",
+			nameArg:   "one",
+			activeArg: false,
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientGetData: api.BMCData{
+				ServerLocationIndicatorActive: false,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:      "success - resync fails",
+			nameArg:   "one",
+			activeArg: true,
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientGetDataErr: boom.Error,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:      "success - repo.Update fails during resync",
+			nameArg:   "one",
+			activeArg: true,
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "error - name empty",
+			nameArg: "", // invalid
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			nameArg:          "one",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - no BMC server client registered for type",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPIType("unknown"),
+				},
+			},
+
+			assertErr: errassert.Contains(`Failed to get BMC server client for type "unknown"`),
+		},
+		{
+			name:      "error - client.ServerSetLocationIndicator",
+			nameArg:   "one",
+			activeArg: true,
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientServerSetLocationIndicatorErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					wantDetails := tc.bmcClientGetData
+					wantDetails.LastUpdated = fixedDate
+					require.Equal(t, wantDetails, in.BMCData)
+
+					return tc.repoUpdateErr
+				},
+			}
+
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				ServerSetLocationIndicatorFunc: func(ctx context.Context, server provisioning.Server, active bool) error {
+					require.Equal(t, tc.activeArg, active)
+
+					return tc.bmcClientServerSetLocationIndicatorErr
+				},
+				GetDataFunc: func(ctx context.Context, server provisioning.Server) (api.BMCData, error) {
+					return tc.bmcClientGetData, tc.bmcClientGetDataErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				provisioningServer.WithNow(func() time.Time { return fixedDate }),
+				provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+			)
+
+			// Run test
+			err := serverSvc.BMCServerSetLocationIndicatorByName(t.Context(), tc.nameArg, tc.activeArg)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestServerService_ApplyBIOSAttributesByName(t *testing.T) {
 	taskMonitor := &provisioning.BMCTaskMonitor{
 		URI: "https://bmc.local/task/1",

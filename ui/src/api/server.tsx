@@ -203,6 +203,21 @@ export const restartServerBMC = (
   return serverBMCPowerAction(name, "server-restart", force);
 };
 
+export const ServerSetLocationIndicatorBMC = (
+  name: string,
+  active: boolean,
+): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/servers/${name}/bmc/:server-locate`, {
+      method: "POST",
+      body: JSON.stringify({ active: active }),
+    })
+      .then(processResponse)
+      .then(() => resolve())
+      .catch(reject);
+  });
+};
+
 export const fetchServerBMCLogSources = (name: string): Promise<string[]> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/bmc/logs`)

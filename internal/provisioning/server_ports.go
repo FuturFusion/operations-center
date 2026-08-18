@@ -56,6 +56,7 @@ type ServerService interface {
 	BMCServerPowerOnByName(ctx context.Context, name string, force bool) error
 	BMCServerPowerOffByName(ctx context.Context, name string, force bool) error
 	BMCServerRestartByName(ctx context.Context, name string, force bool) error
+	BMCServerSetLocationIndicatorByName(ctx context.Context, name string, active bool) error
 	BMCLogSourcesByName(ctx context.Context, name string) ([]string, error)
 	BMCLogEntriesByNameAndLogSource(ctx context.Context, name string, logSource string) ([]api.BMCLogEvent, error)
 	BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error)
@@ -118,6 +119,7 @@ type BMCServerClientPort interface {
 	ServerPowerOn(ctx context.Context, server Server, force bool) (*BMCTaskMonitor, error)
 	ServerPowerOff(ctx context.Context, server Server, force bool) (*BMCTaskMonitor, error)
 	ServerRestart(ctx context.Context, server Server, force bool) (*BMCTaskMonitor, error)
+	ServerSetLocationIndicator(ctx context.Context, server Server, active bool) error
 	WaitForTask(ctx context.Context, server Server, taskMonitor *BMCTaskMonitor) error
 	LogSources(ctx context.Context, server Server) ([]string, error)
 	LogEntriesBySource(ctx context.Context, server Server, logSource string) ([]api.BMCLogEvent, error)

@@ -434,6 +434,41 @@ func (_d BMCServerClientPortWithSlog) ServerRestart(ctx context.Context, server 
 	return _d._base.ServerRestart(ctx, server, force)
 }
 
+// ServerSetLocationIndicator implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) ServerSetLocationIndicator(ctx context.Context, server provisioning.Server, active bool) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.Bool("active", active),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ServerSetLocationIndicator")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method ServerSetLocationIndicator returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method ServerSetLocationIndicator returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method ServerSetLocationIndicator finished")
+		}
+	}()
+	return _d._base.ServerSetLocationIndicator(ctx, server, active)
+}
+
 // WaitForTask implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) WaitForTask(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (err error) {
 	log := slog.With()
