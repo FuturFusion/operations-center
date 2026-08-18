@@ -12,9 +12,10 @@ import (
 type cmdServerBMCAttachMedia struct {
 	ocClient *client.OperationsCenterClient
 
-	flagType         string
-	flagArchitecture string
-	flagChannel      string
+	flagType          string
+	flagArchitecture  string
+	flagChannel       string
+	flagSetBootDevice bool
 }
 
 func (c *cmdServerBMCAttachMedia) Command() *cobra.Command {
@@ -32,11 +33,17 @@ func (c *cmdServerBMCAttachMedia) Command() *cobra.Command {
   The virtual media device is selected by its ID in the "<service>:<id>"
   notation (e.g. "system:1" or "manager:2"), as reported in the server's BMC
   virtual media data.
+
+  With --set-boot-device, the virtual media is in addition registered as the
+  boot device for the next boot of the server, so the server boots the attached
+  installation media without changing the persistent boot order. Detaching the
+  media restores the default boot configuration of the system.
 `
 
 	cmd.Flags().StringVar(&c.flagType, "type", "iso", "type of image (iso|raw)")
 	cmd.Flags().StringVar(&c.flagArchitecture, "architecture", "x86_64", "CPU architecture for the image (x86_64|aarch64)")
 	cmd.Flags().StringVar(&c.flagChannel, "channel", "", "Channel, the most recent update should be taken from to generate the image")
+	cmd.Flags().BoolVar(&c.flagSetBootDevice, "set-boot-device", false, "Register the virtual media as the boot device for the next boot")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -67,6 +74,7 @@ func (c *cmdServerBMCAttachMedia) run(cmd *cobra.Command, args []string) error {
 		Architecture:   c.flagArchitecture,
 		Channel:        c.flagChannel,
 		VirtualMediaID: virtualMediaID,
+		SetBootDevice:  c.flagSetBootDevice,
 	})
 	if err != nil {
 		return err
@@ -90,6 +98,9 @@ func (c *cmdServerBMCDetachMedia) Command() *cobra.Command {
   The virtual media device is selected by its ID in the "<service>:<id>"
   notation (e.g. "system:1" or "manager:2"), as reported in the server's BMC
   virtual media data.
+
+  If the server is currently set to boot from the detached virtual media, the
+  default boot configuration of the system is restored as well.
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
