@@ -349,6 +349,42 @@ install_claude_cli() {
 }
 
 #######################################
+# Install OpenAI Codex CLI using native installer
+# See: https://learn.chatgpt.com/docs/codex/cli#getting-started
+#######################################
+install_codex_cli() {
+    log "Installing OpenAI Codex CLI (native)..."
+
+    # Run the native installer as the code user (with retries for transient network failures)
+    local attempt
+    for attempt in 1 2 3; do
+        export CODEX_NON_INTERACTIVE=1
+        if su -w CODEX_NON_INTERACTIVE - "$CODE_USER" -c 'curl -fsSL https://chatgpt.com/codex/install.sh | sh'; then
+            break
+        fi
+        if [ "$attempt" -eq 3 ]; then
+            log "ERROR: OpenAI Codex CLI installation failed after 3 attempts."
+            exit 1
+        fi
+        log "OpenAI Codex CLI install failed (attempt $attempt/3), retrying in 10s..."
+        sleep 10
+    done
+
+    # Verify that the installer actually created the OpenAI Codex CLI binary
+    local CODEX_PATH="/home/$CODE_USER/.local/bin/codex"
+    if [[ ! -x "$CODEX_PATH" ]]; then
+        log "ERROR: OpenAI Codex CLI binary not found at $CODEX_PATH after installation."
+        log "Installation may have failed or installed to an unexpected location."
+        exit 1
+    fi
+
+    # Create a global symlink so it's accessible system-wide
+    ln -sf "$CODEX_PATH" /usr/local/bin/codex
+
+    log "OpenAI Codex CLI $(codex --version 2>/dev/null || echo 'installed')"
+}
+
+#######################################
 # Install Docker CE
 #######################################
 install_docker() {
@@ -551,6 +587,7 @@ main() {
     configure_tmp_cleanup
     configure_tmux
     install_claude_cli
+    install_codex_cli
     install_docker
     install_github_cli
     install_go_tools
