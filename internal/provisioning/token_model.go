@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	"time"
 
@@ -108,3 +109,11 @@ func (t TokenSeed) Validate() error {
 }
 
 type TokenSeeds []TokenSeed
+
+type TokenImage struct {
+	// Content is the image itself. It is the caller's responsibility to close it.
+	Content  io.ReadSeekCloser
+	Size     int64
+	ModTime  time.Time
+	Filename string
+}

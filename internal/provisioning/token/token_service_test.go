@@ -1,11 +1,11 @@
 package token_test
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -1074,42 +1074,6 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 			wantImageCount: 1,
 		},
 		{
-			name:         "error - updateSvc.GetUpdateByFilename not *os.File",
-			tokenIDArg:   uuidgen.FromPattern(t, "2"),
-			imageUUIDArg: imageUUID,
-			existingImages: []image{
-				{
-					imageUUID:    imageUUID,
-					tokenID:      uuidgen.FromPattern(t, "2"),
-					imageType:    api.ImageTypeISO,
-					architecture: images.UpdateFileArchitecture64BitX86,
-					channel:      "stable",
-					seedConfig:   provisioning.TokenImageSeedConfigs{},
-					createdAt:    time.Now(),
-				},
-			},
-			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID: updateUUID,
-				},
-			},
-			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
-				{
-					Filename:     isoGzFilename,
-					Type:         images.UpdateFileTypeImageISO,
-					Architecture: images.UpdateFileArchitecture64BitX86,
-				},
-			},
-			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
-				return io.NopCloser(bytes.NewBufferString(``))
-			}(),
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "is not a file")
-			},
-			wantImageCount: 1,
-		},
-		{
 			name:         "error - flasher.GenerateSeededImage",
 			tokenIDArg:   uuidgen.FromPattern(t, "2"),
 			imageUUIDArg: imageUUID,
@@ -1861,32 +1825,6 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			wantChannel: "stable", // default value
 		},
 		{
-			name:                   "error - updateSvc.GetUpdateByFilename not *os.File",
-			imageTypeArg:           api.ImageTypeISO,
-			architectureArg:        images.UpdateFileArchitecture64BitX86,
-			repoGetTokenSeedByName: &provisioning.TokenSeed{},
-			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID: updateUUID,
-				},
-			},
-			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
-				{
-					Filename:     isoGzFilename,
-					Type:         images.UpdateFileTypeImageISO,
-					Architecture: images.UpdateFileArchitecture64BitX86,
-				},
-			},
-			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
-				return io.NopCloser(bytes.NewBufferString(``))
-			}(),
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "is not a file")
-			},
-			wantChannel: "stable", // default value
-		},
-		{
 			name:            "error - update channel not found",
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
@@ -2014,4 +1952,164 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTokenService_GetSeekableTokenImageFromTokenSeed(t *testing.T) {
+	const isoGzFilename = "IncusOS_1.iso.gz"
+
+	updateUUID := uuidgen.FromPattern(t, "3")
+
+	fileModTime := time.Date(2026, 8, 1, 10, 0, 0, 0, time.UTC)
+	seedUpdatedEarlier := fileModTime.Add(-24 * time.Hour)
+	seedUpdatedLater := fileModTime.Add(24 * time.Hour)
+
+	tests := []struct {
+		name                 string
+		imageTypeArg         api.ImageType
+		architectureArg      images.UpdateFileArchitecture
+		seedLastUpdated      time.Time
+		updateSvcSeekableErr error
+		flasherErr           error
+
+		assertErr   require.ErrorAssertionFunc
+		wantSize    int64
+		wantModTime time.Time
+	}{
+		{
+			name:            "success - update file is newer than the seed",
+			imageTypeArg:    api.ImageTypeISO,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			seedLastUpdated: seedUpdatedEarlier,
+
+			assertErr:   require.NoError,
+			wantSize:    1024,
+			wantModTime: fileModTime,
+		},
+		{
+			name:            "success - seed is newer than the update file",
+			imageTypeArg:    api.ImageTypeISO,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			seedLastUpdated: seedUpdatedLater,
+
+			assertErr:   require.NoError,
+			wantSize:    1024,
+			wantModTime: seedUpdatedLater,
+		},
+		{
+			name:            "error - invalid image type",
+			imageTypeArg:    api.ImageType("exe"),
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+
+			assertErr: require.Error,
+		},
+		{
+			name:                 "error - updateSvc.GetSeekableUpdateFileByFilename",
+			imageTypeArg:         api.ImageTypeISO,
+			architectureArg:      images.UpdateFileArchitecture64BitX86,
+			updateSvcSeekableErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:            "error - flasher",
+			imageTypeArg:    api.ImageTypeISO,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			flasherErr:      boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := &mock.TokenRepoMock{
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
+					return &provisioning.Token{}, nil
+				},
+				GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+					return &provisioning.TokenSeed{LastUpdated: tc.seedLastUpdated}, nil
+				},
+			}
+
+			imageClosed := false
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{{UUID: updateUUID}}, nil
+				},
+				GetUpdateAllFilesFunc: func(ctx context.Context, id uuid.UUID) (provisioning.UpdateFiles, error) {
+					return provisioning.UpdateFiles{
+						{
+							Filename:     isoGzFilename,
+							Type:         images.UpdateFileTypeImageISO,
+							Architecture: images.UpdateFileArchitecture64BitX86,
+						},
+					}, nil
+				},
+				GetSeekableUpdateFileByFilenameFunc: func(ctx context.Context, id uuid.UUID, filename string) (io.ReadSeekCloser, int64, time.Time, error) {
+					if tc.updateSvcSeekableErr != nil {
+						return nil, 0, time.Time{}, tc.updateSvcSeekableErr
+					}
+
+					return &closeTrackingReadSeeker{ReadSeeker: strings.NewReader(strings.Repeat("x", 1024)), closed: &imageClosed}, 1024, fileModTime, nil
+				},
+			}
+
+			channelSvc := &svcMock.ChannelServiceMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
+					return &provisioning.Channel{Name: name}, nil
+				},
+			}
+
+			flasherAdapter := &adapterMock.FlasherPortMock{
+				GenerateSeededImageFromSeekableFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, image io.ReadSeekCloser, size int64) (io.ReadSeekCloser, error) {
+					if tc.flasherErr != nil {
+						return nil, tc.flasherErr
+					}
+
+					return image, nil
+				},
+			}
+
+			client := &adapterMock.TokenClientPortMock{
+				GetSecurityConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemSecurity, error) {
+					return provisioning.ServerSystemSecurity{}, nil
+				},
+			}
+
+			tokenSvc := provisioningToken.New(repo, updateSvc, channelSvc, flasherAdapter, client)
+
+			image, err := tokenSvc.GetSeekableTokenImageFromTokenSeed(context.Background(), uuidgen.FromPattern(t, "1"), "config", tc.imageTypeArg, tc.architectureArg, "stable")
+
+			tc.assertErr(t, err)
+
+			if err != nil {
+				// A failure after the image has been opened must not leak it.
+				if tc.flasherErr != nil {
+					require.True(t, imageClosed, "image was not closed")
+				}
+
+				return
+			}
+
+			require.NotNil(t, image)
+
+			defer func() { _ = image.Content.Close() }()
+
+			require.Equal(t, tc.wantSize, image.Size)
+			require.Equal(t, tc.wantModTime, image.ModTime)
+			require.Equal(t, "pre-seed-config.iso", image.Filename)
+		})
+	}
+}
+
+type closeTrackingReadSeeker struct {
+	io.ReadSeeker
+
+	closed *bool
+}
+
+func (c closeTrackingReadSeeker) Close() error {
+	*c.closed = true
+	return nil
 }

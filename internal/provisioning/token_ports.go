@@ -28,6 +28,7 @@ type TokenService interface {
 	UpdateTokenSeed(ctx context.Context, tokenSeed TokenSeed) error
 	DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) error
 	GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (_ io.ReadCloser, size int, _ error)
+	GetSeekableTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (*TokenImage, error)
 }
 
 type TokenRepo interface {
@@ -52,4 +53,5 @@ type TokenClientPort interface {
 type FlasherPort interface {
 	GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (*api.TokenProviderConfig, error)
 	GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig TokenImageSeedConfigs, rc io.ReadCloser) (_ io.ReadCloser, size int, _ error)
+	GenerateSeededImageFromSeekable(ctx context.Context, id uuid.UUID, seedConfig TokenImageSeedConfigs, image io.ReadSeekCloser, size int64) (io.ReadSeekCloser, error)
 }

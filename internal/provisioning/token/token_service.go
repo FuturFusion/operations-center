@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"sync"
 	"time"
 
@@ -322,7 +321,86 @@ func (s *tokenService) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.U
 	return s.getPreSeedImage(ctx, id, imageType, architecture, channel, tokenSeed.Seeds)
 }
 
+// GetSeekableTokenImageFromTokenSeed returns the pre-seeded image for a token
+// seed as a seekable stream, so that arbitrary byte ranges of it can be served.
+func (s *tokenService) GetSeekableTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (*provisioning.TokenImage, error) {
+	if !imageType.IsValid() {
+		return nil, domain.NewValidationErrf("Invalid image type")
+	}
+
+	_, ok := images.UpdateFileArchitectures[architecture]
+	if !ok {
+		return nil, domain.NewValidationErrf("Invalid architecture")
+	}
+
+	_, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get token %q: %w", id.String(), err)
+	}
+
+	tokenSeed, err := s.repo.GetTokenSeedByName(ctx, id, name)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get token seed %q for token %q: %w", name, id.String(), err)
+	}
+
+	content, size, modTime, err := s.getSeekablePreSeedImage(ctx, id, imageType, architecture, channel, tokenSeed.Seeds)
+	if err != nil {
+		return nil, err
+	}
+
+	// The seed configuration is injected into the image on the fly, so a change
+	// to it changes the image.
+	if tokenSeed.LastUpdated.After(modTime) {
+		modTime = tokenSeed.LastUpdated
+	}
+
+	return &provisioning.TokenImage{
+		Content:  content,
+		Size:     size,
+		ModTime:  modTime,
+		Filename: fmt.Sprintf("pre-seed-%s%s", name, imageType.FileExt()),
+	}, nil
+}
+
 func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, seeds provisioning.TokenImageSeedConfigs) (_ io.ReadCloser, size int, err error) {
+	updateUUID, filename, seeds, err := s.resolvePreSeedImage(ctx, id, imageType, architecture, channel, seeds)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	filereader, _, err := s.updateSvc.GetUpdateFileByFilename(ctx, updateUUID, filename)
+	if err != nil {
+		return nil, -1, fmt.Errorf("Failed to get file %q form latest update %q: %w", filename, updateUUID.String(), err)
+	}
+
+	rc, size, err := s.flasher.GenerateSeededImage(ctx, id, seeds, filereader)
+	if err != nil {
+		return nil, -1, errors.Join(fmt.Errorf("Failed to generate seeded image: %w", err), filereader.Close())
+	}
+
+	return rc, size, nil
+}
+
+func (s *tokenService) getSeekablePreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, seeds provisioning.TokenImageSeedConfigs) (_ io.ReadSeekCloser, size int64, modTime time.Time, err error) {
+	updateUUID, filename, seeds, err := s.resolvePreSeedImage(ctx, id, imageType, architecture, channel, seeds)
+	if err != nil {
+		return nil, 0, time.Time{}, err
+	}
+
+	image, size, modTime, err := s.updateSvc.GetSeekableUpdateFileByFilename(ctx, updateUUID, filename)
+	if err != nil {
+		return nil, 0, time.Time{}, fmt.Errorf("Failed to get file %q form latest update %q: %w", filename, updateUUID.String(), err)
+	}
+
+	rsc, err := s.flasher.GenerateSeededImageFromSeekable(ctx, id, seeds, image, size)
+	if err != nil {
+		return nil, 0, time.Time{}, errors.Join(fmt.Errorf("Failed to generate seeded image: %w", err), image.Close())
+	}
+
+	return rsc, size, modTime, nil
+}
+
+func (s *tokenService) resolvePreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, seeds provisioning.TokenImageSeedConfigs) (updateUUID uuid.UUID, filename string, _ provisioning.TokenImageSeedConfigs, err error) {
 	if channel == "" {
 		channel = config.GetUpdates().UpdatesDefaultChannel
 	}
@@ -332,11 +410,11 @@ func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageT
 		Channel: ptr.To(channel),
 	})
 	if err != nil {
-		return nil, -1, fmt.Errorf("Failed to get updates: %w", err)
+		return uuid.Nil, "", seeds, fmt.Errorf("Failed to get updates: %w", err)
 	}
 
 	if len(updates) == 0 {
-		return nil, -1, fmt.Errorf("Failed to get updates: No ready updates found in channel %q: %w", channel, domain.ErrNotFound)
+		return uuid.Nil, "", seeds, fmt.Errorf("Failed to get updates: No ready updates found in channel %q: %w", channel, domain.ErrNotFound)
 	}
 
 	// Update service does return the updates ordered by version in descending order.
@@ -344,15 +422,14 @@ func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageT
 
 	updateFiles, err := s.updateSvc.GetUpdateAllFiles(ctx, latestUpdate.UUID)
 	if err != nil {
-		return nil, -1, fmt.Errorf("Failed to get files for update %q: %w", latestUpdate.UUID.String(), err)
+		return uuid.Nil, "", seeds, fmt.Errorf("Failed to get files for update %q: %w", latestUpdate.UUID.String(), err)
 	}
 
 	securityConfig, err := s.client.GetSecurityConfig(ctx, provisioning.ServerSelf)
 	if err != nil {
-		return nil, -1, fmt.Errorf("Failed to get operations-center's security config: %w", err)
+		return uuid.Nil, "", seeds, fmt.Errorf("Failed to get operations-center's security config: %w", err)
 	}
 
-	var filename string
 	for _, file := range updateFiles {
 		if file.Type == imageType.UpdateFileType() && file.Architecture == architecture {
 			filename = file.Filename
@@ -361,17 +438,7 @@ func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageT
 	}
 
 	if filename == "" {
-		return nil, -1, fmt.Errorf("Failed to find image file of type %q for architecture %q in latest update %q: %w", imageType, architecture, latestUpdate.UUID.String(), domain.ErrNotFound)
-	}
-
-	filereader, _, err := s.updateSvc.GetUpdateFileByFilename(ctx, latestUpdate.UUID, filename)
-	if err != nil {
-		return nil, -1, fmt.Errorf("Failed to get file %q form latest update %q: %w", filename, latestUpdate.UUID.String(), err)
-	}
-
-	file, ok := filereader.(*os.File)
-	if !ok {
-		return nil, -1, fmt.Errorf("Latest update %q is not a file", filename)
+		return uuid.Nil, "", seeds, fmt.Errorf("Failed to find image file of type %q for architecture %q in latest update %q: %w", imageType, architecture, latestUpdate.UUID.String(), domain.ErrNotFound)
 	}
 
 	// Apply defaults to seeds.
@@ -397,15 +464,10 @@ func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageT
 	seeds.Update.CheckFrequency = "never"
 	seeds.Update.Channel, err = s.ensureChannelName(ctx, seeds.Update, channel)
 	if err != nil {
-		return nil, -1, fmt.Errorf("Failed to validate update channel from seed config: %w", err)
+		return uuid.Nil, "", seeds, fmt.Errorf("Failed to validate update channel from seed config: %w", err)
 	}
 
-	rc, size, err := s.flasher.GenerateSeededImage(ctx, id, seeds, file)
-	if err != nil {
-		return nil, -1, fmt.Errorf("Failed to generate seeded image: %w", err)
-	}
-
-	return rc, size, nil
+	return latestUpdate.UUID, filename, seeds, nil
 }
 
 func (s *tokenService) ensureChannelName(ctx context.Context, update api.SeedUpdate, defaultChannel string) (string, error) {
