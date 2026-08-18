@@ -3355,7 +3355,7 @@ func TestClusterService_Create(t *testing.T) {
 					server, err := queue.Pop(t, &tc.serverSvcGetByName)
 					return server, err
 				},
-				UpdateFunc: func(ctx context.Context, server provisioning.Server, force bool, updateSystem bool) error {
+				UpdateFunc: func(ctx context.Context, server provisioning.Server, force bool, updateSystem bool, bmcConnectionTest bool) error {
 					return tc.serverSvcUpdateErr
 				},
 				UpdateSystemUpdateFunc: func(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) error {
@@ -4964,7 +4964,7 @@ func TestClusterService_AddServers(t *testing.T) {
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
 					return tc.serverSvcGetAllWithFilter, tc.serverSvcGetAllWithFilterErr
 				},
-				UpdateFunc: func(ctx context.Context, server provisioning.Server, force, updateSystem bool) error {
+				UpdateFunc: func(ctx context.Context, server provisioning.Server, force, updateSystem, bmcConnectionTest bool) error {
 					return tc.serverSvcUpdateErr
 				},
 			}
@@ -8174,7 +8174,7 @@ func TestClusterService_RemoveServer(t *testing.T) {
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
 					return tc.serverSvcGetAllWithFilter, tc.serverSvcGetAllWithFilterErr
 				},
-				UpdateFunc: func(ctx context.Context, server provisioning.Server, force, updateSystem bool) error {
+				UpdateFunc: func(ctx context.Context, server provisioning.Server, force, updateSystem, bmcConnectionTest bool) error {
 					return tc.serverSvcUpdateErr.PopOrNil(t)
 				},
 				FactoryResetByNameFunc: func(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string, force bool) error {
@@ -9067,7 +9067,7 @@ func TestClusterService_Update(t *testing.T) {
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
 					return tc.serverSvcGetAllWithFilter, tc.serverSvcGetAllWithFilterErr
 				},
-				UpdateFunc: func(ctx context.Context, server provisioning.Server, force, updateSystem bool) error {
+				UpdateFunc: func(ctx context.Context, server provisioning.Server, force, updateSystem, bmcConnectionTest bool) error {
 					return tc.serverSvcUpdateErrs.PopOrNil(t)
 				},
 			}

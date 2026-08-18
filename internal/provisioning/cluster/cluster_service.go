@@ -466,7 +466,7 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 	}
 
 	for _, server := range servers {
-		err = s.serverSvc.Update(ctx, server, true, true)
+		err = s.serverSvc.Update(ctx, server, true, true, false)
 		if err != nil {
 			return newCluster, err
 		}
@@ -768,7 +768,7 @@ func (s *clusterService) AddServers(ctx context.Context, name string, serverName
 
 		// Update Server records in the repo.
 		for _, server := range additionalServers {
-			err = s.serverSvc.Update(ctx, server, true, true)
+			err = s.serverSvc.Update(ctx, server, true, true, false)
 			if err != nil {
 				return fmt.Errorf("Failed to update server record for %q: %w", server.Name, err)
 			}
@@ -1475,14 +1475,14 @@ func (s *clusterService) Update(ctx context.Context, newCluster provisioning.Clu
 	for _, server := range servers {
 		previousChannel := server.Channel
 		server.Channel = newCluster.Channel
-		err = s.serverSvc.Update(ctx, server, true, true)
+		err = s.serverSvc.Update(ctx, server, true, true, false)
 		if err != nil {
 			return fmt.Errorf("Failed to update member %q of cluster %q: %w", server.Name, newCluster.Name, err)
 		}
 
 		reverter.Add(func() {
 			server.Channel = previousChannel
-			err = s.serverSvc.Update(ctx, server, true, false)
+			err = s.serverSvc.Update(ctx, server, true, false, false)
 			if err != nil {
 				slog.ErrorContext(ctx, "Failed to restore previous server state after failed to update member server of cluster", slog.String("cluster", newCluster.Name), slog.String("server", server.Name), logger.Err(err))
 			}
