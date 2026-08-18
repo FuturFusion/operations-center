@@ -211,6 +211,12 @@ type ServerBMCAttachMedia struct {
 	// "manager:2") as reported in the BMC virtual media data.
 	// Example: system:1
 	VirtualMediaID string `json:"virtual_media_id" yaml:"virtual_media_id"`
+
+	// SetBootDevice requests, that the virtual media is registered as the boot
+	// device for the next boot of the server in addition to being attached.
+	// Detaching the media restores the default boot configuration of the system.
+	// Example: true
+	SetBootDevice bool `json:"set_boot_device" yaml:"set_boot_device"`
 }
 
 // ServerBMCDetachMedia defines the request to detach installation media from a
