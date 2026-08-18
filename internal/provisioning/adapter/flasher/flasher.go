@@ -30,17 +30,35 @@ type Flasher struct {
 
 	serverURL         string
 	serverCertificate string
+
+	cache *imageCache
 }
 
 var _ provisioning.FlasherPort = &Flasher{}
 
-func New(serverURL string, serverCertificate tls.Certificate) *Flasher {
+type Option func(f *Flasher)
+
+// WithCacheDir enables the seed image cache and stores the cached images in dir.
+//
+// Without it, generating and opening a seeded image report the cache as
+// unavailable.
+func WithCacheDir(dir string) Option {
+	return func(f *Flasher) {
+		f.cache = newImageCache(dir)
+	}
+}
+
+func New(serverURL string, serverCertificate tls.Certificate, opts ...Option) *Flasher {
 	flasher := &Flasher{
 		mu:        sync.Mutex{},
 		serverURL: serverURL,
 	}
 
 	flasher.UpdateCertificate(serverCertificate)
+
+	for _, opt := range opts {
+		opt(flasher)
+	}
 
 	return flasher
 }
@@ -73,10 +91,13 @@ func (f *Flasher) GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (*ap
 	return seedProvider, nil
 }
 
-func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, file io.ReadCloser) (_ io.ReadCloser, size int, _ error) {
+// seedTarball returns the seed tarball for the given token and seed
+// configuration together with the offset it has to be injected at in the
+// uncompressed image.
+func (f *Flasher) seedTarball(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs) (offset int64, payload []byte, _ error) {
 	providerConfig, err := f.GetProviderConfig(ctx, id)
 	if err != nil {
-		return nil, -1, err
+		return 0, nil, err
 	}
 
 	seedProvider := &seed.Provider{
@@ -89,59 +110,30 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedCon
 		seedProvider,
 	)
 	if err != nil {
-		return nil, -1, fmt.Errorf("Failed to create seed tarball: %w", err)
+		return 0, nil, fmt.Errorf("Failed to create seed tarball: %w", err)
 	}
 
-	size, err = uncompressedSize(file, seedTarballStartPosition+len(tarball))
-	if err != nil {
-		return nil, -1, fmt.Errorf("Failed to determine size of the image: %w", err)
-	}
-
-	gzipReader, err := gzip.NewReader(file)
-	if err != nil {
-		return nil, -1, fmt.Errorf("Failed to initialize gzip reader: %w", err)
-	}
-
-	return newInjectReader(newParentCloser(gzipReader, file), seedTarballStartPosition, tarball), size, nil
+	return seedTarballStartPosition, tarball, nil
 }
 
-// uncompressedSize returns the size of the content of the gzip stream in
-// bytes, taken from the ISIZE field in its footer, and leaves the reader at
-// the position it was called with.
-//
-// It reports -1 if the size cannot be determined.
-func uncompressedSize(r io.Reader, minSize int) (int, error) {
-	seeker, ok := r.(io.Seeker)
-	if !ok {
-		return -1, nil
-	}
-
-	position, err := seeker.Seek(0, io.SeekCurrent)
+// GenerateCompressedSeededImage returns a forward-only stream of the seeded
+// image, taking the image from the compressed file, to be handed out as a
+// compressed file again.
+func (f *Flasher) GenerateCompressedSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, file io.ReadCloser) (io.ReadCloser, error) {
+	offset, tarball, err := f.seedTarball(ctx, id, seedConfig)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 
-	_, err = seeker.Seek(-4, io.SeekEnd)
+	return seededImage(file, offset, tarball)
+}
+
+// seededImage returns the image from the compressed file with the seed tarball
+// injected at offset.
+func seededImage(file io.ReadCloser, offset int64, tarball []byte) (io.ReadCloser, error) {
+	gzipReader, err := gzip.NewReader(file)
 	if err != nil {
-		return -1, err
-	}
-
-	var footer [4]byte
-
-	_, readErr := io.ReadFull(r, footer[:])
-
-	_, err = seeker.Seek(position, io.SeekStart)
-	if err != nil {
-		return -1, err
-	}
-
-	if readErr != nil {
-		return -1, readErr
-	}
-
-	size := int64(binary.LittleEndian.Uint32(footer[:]))
-	if size < int64(minSize) {
-		return -1, nil
+		return nil, fmt.Errorf("Failed to initialize gzip reader: %w", err)
 	}
 
 	return newInjectReader(newParentCloser(gzipReader, file), offset, tarball), nil
