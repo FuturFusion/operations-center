@@ -925,7 +925,7 @@ func getVirtualMediaByID(client *gofish.APIClient, id string) (virtualMediaSlot,
 	return virtualMediaSlot{}, fmt.Errorf("Virtual media %q not found on BMC: %w", id, domain.ErrNotFound)
 }
 
-func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string) (*provisioning.BMCTaskMonitor, error) {
+func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
 	client, logout, err := r.getClient(ctx, server)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
@@ -947,6 +947,22 @@ func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, vi
 		return nil, err
 	}
 
+	var system *schemas.ComputerSystem
+
+	var bootSource schemas.BootSource
+
+	if setBootDevice {
+		system, err = getFirstSystem(client)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get BMC system: %w", err)
+		}
+
+		bootSource, err = bootSourceForVirtualMedia(system, virtualMedia, virtualMediaID, mediaURL)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	trace, stopTrace := traceRequests(client)
 	defer stopTrace()
 
@@ -960,6 +976,30 @@ func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, vi
 		)
 
 		return nil, fmt.Errorf("Failed to attach media to BMC: %w", wrapRedfishError(err))
+	}
+
+	if setBootDevice {
+		err = overrideBootDevice(system, virtualMedia.registry, bootSource)
+		if err != nil {
+			slog.DebugContext(
+				ctx, "Setting the boot device of the BMC to the attached virtual media failed",
+				slog.String("endpoint", server.BMCConfig.Endpoint),
+				slog.String("virtual_media_id", virtualMediaID),
+				slog.String("trace", trace.String()),
+			)
+
+			_, ejectErr := ejectMedia(virtualMedia)
+			if ejectErr != nil {
+				slog.WarnContext(
+					ctx, "Failed to detach the virtual media again after setting the boot device failed",
+					logger.Err(ejectErr),
+					slog.String("endpoint", server.BMCConfig.Endpoint),
+					slog.String("virtual_media_id", virtualMediaID),
+				)
+			}
+
+			return nil, fmt.Errorf("Failed to set boot device on BMC: %w", wrapRedfishError(err))
+		}
 	}
 
 	// If taskMonitor is nil, the BMC completed synchronously.
@@ -990,6 +1030,11 @@ func (r redfish) DetachMedia(ctx context.Context, server provisioning.Server, vi
 		return nil, nil
 	}
 
+	system, err := getFirstSystem(client)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get BMC system: %w", err)
+	}
+
 	trace, stopTrace := traceRequests(client)
 	defer stopTrace()
 
@@ -1003,6 +1048,26 @@ func (r redfish) DetachMedia(ctx context.Context, server provisioning.Server, vi
 		)
 
 		return nil, fmt.Errorf("Failed to detach media from BMC: %w", wrapRedfishError(err))
+	}
+
+	restored, err := restoreDefaultBootDevice(system, virtualMedia.registry, bootSourcesForMediaTypes(virtualMedia.MediaTypes))
+	if err != nil {
+		slog.DebugContext(
+			ctx, "Restoring the default boot device of the BMC after detaching virtual media failed",
+			slog.String("endpoint", server.BMCConfig.Endpoint),
+			slog.String("virtual_media_id", virtualMediaID),
+			slog.String("trace", trace.String()),
+		)
+
+		return nil, fmt.Errorf("Failed to restore the default boot device on BMC: %w", wrapRedfishError(err))
+	}
+
+	if !restored {
+		slog.DebugContext(
+			ctx, "Left the boot device of the BMC alone, it does not point at the detached virtual media",
+			slog.String("endpoint", server.BMCConfig.Endpoint),
+			slog.String("virtual_media_id", virtualMediaID),
+		)
 	}
 
 	// If taskMonitor is nil, the BMC completed synchronously.

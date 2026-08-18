@@ -17,6 +17,7 @@ type mockRedfishServer struct {
 	systemsBody               string
 	systemStatusCode          int
 	systemBody                string
+	systemPatch               mockResponses
 	managersStatusCode        int
 	managersBody              string
 	managerStatusCode         int
@@ -199,7 +200,7 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotRequests *[]mockRequest) ht
 			_, _ = w.Write([]byte(cfg.systemsBody))
 
 		case "/redfish/v1/Systems/1":
-			handleSystem(w, r, cfg)
+			handleSystem(w, r, &cfg)
 
 		case "/redfish/v1/Systems/1/ResetActionInfo":
 			statusCode := cfg.resetActionInfoStatusCode
@@ -340,7 +341,7 @@ func newTLSServerWithoutSAN(t *testing.T, responses mockRedfishServer) (svr *htt
 	return svr, string(certPEMByte)
 }
 
-func handleSystem(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer) {
+func handleSystem(w http.ResponseWriter, r *http.Request, cfg *mockRedfishServer) {
 	switch r.Method {
 	case http.MethodGet:
 		w.WriteHeader(cfg.systemStatusCode)
@@ -353,7 +354,13 @@ func handleSystem(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer)
 			*cfg.gotSystemPatchBody = body
 		}
 
-		w.WriteHeader(cfg.systemPatchStatusCode)
+		if cfg.systemPatchStatusCode != 0 {
+			w.WriteHeader(cfg.systemPatchStatusCode)
+
+			return
+		}
+
+		cfg.systemPatch.serve(w)
 
 	default:
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
