@@ -1,13 +1,18 @@
 package provisioning
 
 import (
+	"crypto/sha256"
 	"database/sql/driver"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -108,3 +113,37 @@ func (t TokenSeed) Validate() error {
 }
 
 type TokenSeeds []TokenSeed
+
+type TokenImage struct {
+	// Content is the image itself. It is the caller's responsibility to close it.
+	Content  io.ReadSeekCloser
+	Size     int64
+	ModTime  time.Time
+	Filename string
+}
+
+const SeedImageCacheIDLength = 12
+
+// SeedImageCacheID returns the cache ID for a pre-seeded image.
+func SeedImageCacheID(id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) string {
+	sum := sha256.Sum256([]byte(strings.Join([]string{
+		id.String(),
+		name,
+		imageType.String(),
+		architecture.String(),
+		channel,
+	}, "\x00")))
+
+	return base64.RawURLEncoding.EncodeToString(sum[:])[:SeedImageCacheIDLength]
+}
+
+// SeedImageFingerprintID returns the ID of a pre-seeded image generated from
+// the given fingerprint.
+//
+// Together with the cache ID it addresses one generated image. It is the final
+// path segment of the URL a prepared image is served under.
+func SeedImageFingerprintID(fingerprint string) string {
+	sum := sha256.Sum256([]byte(fingerprint))
+
+	return base64.RawURLEncoding.EncodeToString(sum[:])[:SeedImageCacheIDLength]
+}
