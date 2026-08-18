@@ -1,7 +1,6 @@
 package flasher
 
 import (
-	"bytes"
 	"errors"
 	"io"
 )
@@ -30,50 +29,65 @@ func (p *parentCloser) Close() error {
 }
 
 type injectReader struct {
-	srcReader     io.ReadCloser
-	payloadReader io.Reader
+	srcReader io.ReadCloser
+	injectPos int64
+	payload   []byte
 
-	remainder        int
-	payloadRemainder int
+	pos int64
 }
 
-func newInjectReader(src io.ReadCloser, injectPos int, payload []byte) *injectReader {
+func newInjectReader(src io.ReadCloser, injectPos int64, payload []byte) *injectReader {
 	return &injectReader{
-		srcReader:     src,
-		payloadReader: bytes.NewBuffer(payload),
-
-		remainder:        injectPos,
-		payloadRemainder: len(payload),
+		srcReader: src,
+		injectPos: injectPos,
+		payload:   payload,
 	}
 }
 
 func (s *injectReader) Read(p []byte) (n int, err error) {
-	// Position before tarball
-	if s.remainder > 0 {
-		chunk := min(s.remainder, len(p))
-		n, err := s.srcReader.Read(p[:chunk])
-		s.remainder -= n
-		return n, err
-	}
+	n, err = s.srcReader.Read(p)
+	overlay(p[:n], s.pos, s.injectPos, s.payload)
+	s.pos += int64(n)
 
-	if s.payloadRemainder > 0 {
-		chunk := min(s.payloadRemainder, len(p))
-
-		// Read from file, to move position while injecting tarball.
-		n, err := s.srcReader.Read(p[:chunk])
-		if err != nil && !errors.Is(err, io.EOF) {
-			return n, err
-		}
-
-		// Read from tarball content, overwrite content written from file.
-		n, err = s.payloadReader.Read(p[:chunk])
-		s.payloadRemainder -= n
-		return n, err
-	}
-
-	return s.srcReader.Read(p)
+	return n, err
 }
 
 func (s *injectReader) Close() error {
 	return s.srcReader.Close()
+}
+
+type injectSeeker struct {
+	*injectReader
+
+	seeker io.Seeker
+}
+
+func newInjectSeeker(src io.ReadSeekCloser, injectPos int64, payload []byte) *injectSeeker {
+	return &injectSeeker{
+		injectReader: newInjectReader(src, injectPos, payload),
+		seeker:       src,
+	}
+}
+
+func (s *injectSeeker) Seek(offset int64, whence int) (int64, error) {
+	pos, err := s.seeker.Seek(offset, whence)
+	if err != nil {
+		return pos, err
+	}
+
+	s.pos = pos
+
+	return pos, nil
+}
+
+func overlay(buf []byte, bufPos int64, injectPos int64, payload []byte) {
+	// Intersect [bufPos, bufPos+len(buf)) with [injectPos, injectPos+len(payload)).
+	start := max(bufPos, injectPos)
+	end := min(bufPos+int64(len(buf)), injectPos+int64(len(payload)))
+
+	if start >= end {
+		return
+	}
+
+	copy(buf[start-bufPos:end-bufPos], payload[start-injectPos:end-injectPos])
 }

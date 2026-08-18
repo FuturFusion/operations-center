@@ -74,10 +74,13 @@ func (f *Flasher) GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (*ap
 	return seedProvider, nil
 }
 
-func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, file io.ReadCloser) (_ io.ReadCloser, size int, _ error) {
+// seedTarball returns the seed tarball for the given token and seed
+// configuration together with the offset it has to be injected at in the
+// uncompressed image.
+func (f *Flasher) seedTarball(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs) (offset int64, payload []byte, _ error) {
 	providerConfig, err := f.GetProviderConfig(ctx, id)
 	if err != nil {
-		return nil, -1, err
+		return 0, nil, err
 	}
 
 	seedProvider := &seed.Provider{
@@ -90,10 +93,19 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedCon
 		seedProvider,
 	)
 	if err != nil {
-		return nil, -1, fmt.Errorf("Failed to create seed tarball: %w", err)
+		return 0, nil, fmt.Errorf("Failed to create seed tarball: %w", err)
 	}
 
-	size, err = uncompressedSize(file, seedTarballStartPosition+len(tarball))
+	return seedTarballStartPosition, tarball, nil
+}
+
+func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, file io.ReadCloser) (_ io.ReadCloser, size int, _ error) {
+	offset, tarball, err := f.seedTarball(ctx, id, seedConfig)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	size, err = uncompressedSize(file, int(offset)+len(tarball))
 	if err != nil {
 		return nil, -1, fmt.Errorf("Failed to determine size of the image: %w", err)
 	}
@@ -103,7 +115,22 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedCon
 		return nil, -1, fmt.Errorf("Failed to initialize gzip reader: %w", err)
 	}
 
-	return newInjectReader(newParentCloser(gzipReader, file), seedTarballStartPosition, tarball), size, nil
+	return newInjectReader(newParentCloser(gzipReader, file), offset, tarball), size, nil
+}
+
+// GenerateSeededImageFromSeekable returns a seekable stream of the seeded
+// image, taking the uncompressed image of the given size from image.
+func (f *Flasher) GenerateSeededImageFromSeekable(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, image io.ReadSeekCloser, size int64) (io.ReadSeekCloser, error) {
+	offset, tarball, err := f.seedTarball(ctx, id, seedConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	if offset+int64(len(tarball)) > size {
+		return nil, fmt.Errorf("Seed tarball of %d bytes at offset %d does not fit into image of %d bytes", len(tarball), offset, size)
+	}
+
+	return newInjectSeeker(image, offset, tarball), nil
 }
 
 // uncompressedSize returns the size of the content of the gzip stream in
