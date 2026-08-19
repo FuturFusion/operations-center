@@ -124,6 +124,15 @@ func TestE2E_WithTokenAndUpdateChannel_CreateAndUpdateCluster(t *testing.T) {
 	)
 }
 
+func TestE2E_WithToken_CreateClusterAndRebootCluster(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - create cluster and perform an on demand rolling reboot",
+		setupIncusOSWithToken([]string{"IncusOS01", "IncusOS02", "IncusOS03"}),
+		createClusterAndThenClusterReboot,
+	)
+}
+
 func TestE2E_FromManualUpload_CreateCluster(t *testing.T) {
 	runE2ETest(
 		t,
