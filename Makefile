@@ -228,7 +228,9 @@ e2e-test-cover: bld-cover
 
 .PHONY: e2e-test-list
 e2e-test-list:
-	$(GO) test -list '^TestE2E' ./e2e_tests/
+	@$(GO) test -list '^TestE2E' ./e2e_tests/
+	@echo ""
+	@echo "Run a single test case by running 'make e2e-test GO_TEST_RUN=\"^TestMyTest$$\"'"
 
 .PHONY: clean-e2e-test
 clean-e2e-test: clean-e2e-test-soft

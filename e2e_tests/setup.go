@@ -489,7 +489,7 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string, na
 	existingServers, err := strconv.ParseInt(existingServersResp.OutputTrimmed(), 10, 64)
 	require.NoError(t, err)
 
-	timeout := 10 * time.Minute
+	timeout := 15*time.Minute + time.Duration(len(names))*3*time.Minute
 	if !concurrentSetup {
 		timeout = time.Duration(int(timeout) * len(names))
 	}
@@ -559,7 +559,9 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string, na
 					return err
 				}
 
-				err = waitExpectedLogWithContext(errgrpctx, t, "%s", "incus-osd", "IncusOS was successfully installed", false, name)
+				logWaitCtx, cancel := context.WithTimeout(errgrpctx, strechedTimeout(5*time.Minute))
+				err = waitExpectedLogWithContext(logWaitCtx, t, "%s", "incus-osd", "IncusOS was successfully installed", false, name)
+				cancel()
 				if err != nil {
 					return err
 				}
@@ -592,7 +594,9 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string, na
 				return err
 			}
 
-			err = waitExpectedLogWithContext(errgrpctx, t, name, "incus-osd", "System is ready", false)
+			logWaitCtx, cancel := context.WithTimeout(errgrpctx, strechedTimeout(5*time.Minute))
+			err = waitExpectedLogWithContext(logWaitCtx, t, name, "incus-osd", "System is ready", false)
+			cancel()
 			if err != nil {
 				return err
 			}

@@ -150,7 +150,9 @@ func runE2ETest(
 	tmpDir := setupE2ETest(t)
 
 	debugOutput = &bytes.Buffer{}
-	t.Cleanup(onTestFailDebugOutput(t, tmpDir))
+
+	debugOutputCollect := onTestFailDebugOutput(t, tmpDir)
+	defer debugOutputCollect()
 
 	stop := timeTrack(t, name)
 	defer stop()
