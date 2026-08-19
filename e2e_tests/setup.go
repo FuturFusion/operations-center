@@ -489,7 +489,7 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string, na
 	existingServers, err := strconv.ParseInt(existingServersResp.OutputTrimmed(), 10, 64)
 	require.NoError(t, err)
 
-	timeout := 10 * time.Minute
+	timeout := 15*time.Minute + time.Duration(len(names))*3*time.Minute
 	if !concurrentSetup {
 		timeout = time.Duration(int(timeout) * len(names))
 	}
