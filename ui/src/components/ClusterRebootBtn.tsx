@@ -1,6 +1,6 @@
 import { FC, useState } from "react";
-import { MdCancel } from "react-icons/md";
-import { cancelUpdateClusterRolling } from "api/cluster";
+import { MdRestartAlt } from "react-icons/md";
+import { rebootClusterRolling } from "api/cluster";
 import LoadingButton from "components/LoadingButton";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
@@ -12,7 +12,7 @@ interface Props {
   recommended?: boolean;
 }
 
-const ClusterCancelUpdateBtn: FC<Props> = ({ cluster, recommended }) => {
+const ClusterRebootBtn: FC<Props> = ({ cluster, recommended }) => {
   const [showModal, setShowModal] = useState(false);
   const [opInProgress, setOpInProgress] = useState(false);
   const { notify } = useNotification();
@@ -22,14 +22,14 @@ const ClusterCancelUpdateBtn: FC<Props> = ({ cluster, recommended }) => {
     color: recommended ? "red" : "grey",
   };
 
-  const onCancelUpdate = () => {
+  const onRebootCluster = () => {
     setOpInProgress(true);
-    cancelUpdateClusterRolling(cluster.name)
+    rebootClusterRolling(cluster.name)
       .then((response) => {
         setOpInProgress(false);
         setShowModal(false);
         if (response.error_code == 0) {
-          notify.success(`Cluster cancel update triggered`);
+          notify.success(`Cluster rolling reboot triggered`);
           queryClient.invalidateQueries({ queryKey: ["clusters"] });
           return;
         }
@@ -38,15 +38,15 @@ const ClusterCancelUpdateBtn: FC<Props> = ({ cluster, recommended }) => {
       .catch((e) => {
         setOpInProgress(false);
         setShowModal(false);
-        notify.error(`Error during cluster update cancel: ${e}`);
+        notify.error(`Error during cluster rolling reboot: ${e}`);
       });
   };
 
   return (
     <>
-      <MdCancel
+      <MdRestartAlt
         size={25}
-        title="Cancel cluster update"
+        title="Reboot cluster"
         style={actionStyle}
         onClick={() => {
           setShowModal(true);
@@ -56,23 +56,28 @@ const ClusterCancelUpdateBtn: FC<Props> = ({ cluster, recommended }) => {
         show={showModal}
         scrollable
         handleClose={() => setShowModal(false)}
-        title="Cancel cluster update"
+        title="Reboot cluster"
         footer={
           <>
             <LoadingButton
               isLoading={opInProgress}
               variant="danger"
-              onClick={onCancelUpdate}
+              onClick={onRebootCluster}
             >
-              Cancel
+              Reboot
             </LoadingButton>
           </>
         }
       >
         <div>
           <div className="mb-3">
-            Are you sure that you want to cancel the ongoing update of cluster "
+            Are you sure you want to perform a rolling reboot of the cluster "
             {cluster.name}"?
+          </div>
+          <div className="mb-3">
+            Every server of the cluster is evacuated, rebooted and restored
+            again, one server at a time. If an OS update has already been staged
+            on a server, the reboot applies it.
           </div>
         </div>
       </ModalWindow>
@@ -80,4 +85,4 @@ const ClusterCancelUpdateBtn: FC<Props> = ({ cluster, recommended }) => {
   );
 };
 
-export default ClusterCancelUpdateBtn;
+export default ClusterRebootBtn;

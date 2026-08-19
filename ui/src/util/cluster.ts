@@ -8,5 +8,6 @@ export const ClusterUpdateInProgress = {
   ApplyUpdate: "applying updates",
   ApplyUpdateWithReboot: "applying updates with reboot",
   RollingRestart: "restarting servers",
+  RollingReboot: "rolling reboot",
   Error: "error",
 } as const;
