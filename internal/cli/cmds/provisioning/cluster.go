@@ -136,12 +136,19 @@ func (c *CmdCluster) Command() *cobra.Command {
 
 	cmd.AddCommand(clusterUpdateCmd.Command())
 
-	// Cancel cluster wide update
-	clusterCancelUpdateCmd := cmdClusterCancelUpdate{
+	// Cluster wide reboot
+	clusterRebootCmd := cmdClusterReboot{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(clusterCancelUpdateCmd.Command())
+	cmd.AddCommand(clusterRebootCmd.Command())
+
+	// Cancel cluster wide operation
+	clusterCancelOperationCmd := cmdClusterCancelOperation{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(clusterCancelOperationCmd.Command())
 
 	// artifact sub-command
 	clusterArtifactCmd := cmdClusterArtifact{
@@ -1054,6 +1061,10 @@ func (c *cmdClusterUpdate) Command() *cobra.Command {
 	cmd.Short = "Launch cluster wide update for all servers"
 	cmd.Long = `Description:
   Perform a cluster wide update of all servers.
+
+  A cluster can only run a single cluster wide operation at a time, either an
+  update or a reboot. Use "cluster cancel-operation" to cancel the ongoing
+  operation.
 `
 
 	cmd.Flags().BoolVar(&c.flagReboot, "reboot", false, "perform rolling reboot after applying the update")
@@ -1087,17 +1098,24 @@ func (c *cmdClusterUpdate) run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Cancel cluster wide update.
-type cmdClusterCancelUpdate struct {
+// Cluster wide reboot.
+type cmdClusterReboot struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmdClusterCancelUpdate) Command() *cobra.Command {
+func (c *cmdClusterReboot) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "cancel-update <name>"
-	cmd.Short = "Cancel an ongoing cluster wide update"
+	cmd.Use = "reboot <name>"
+	cmd.Short = "Launch cluster wide reboot for all servers"
 	cmd.Long = `Description:
-  Cancel an ongoing cluster wide update of all servers.
+  Perform a cluster wide reboot of all servers.
+
+  Every server of the cluster is evacuated, rebooted and restored again, one
+  server at a time.
+
+  A cluster can only run a single cluster wide operation at a time, either an
+  update or a reboot. Use "cluster cancel-operation" to cancel the ongoing
+  operation.
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -1106,7 +1124,7 @@ func (c *cmdClusterCancelUpdate) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdClusterCancelUpdate) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterReboot) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -1116,10 +1134,51 @@ func (c *cmdClusterCancelUpdate) validateArgsAndFlags(cmd *cobra.Command, args [
 	return nil
 }
 
-func (c *cmdClusterCancelUpdate) run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterReboot) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	err := c.ocClient.CancelClusterWideUpdate(cmd.Context(), name)
+	err := c.ocClient.LaunchClusterWideReboot(cmd.Context(), name)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Cancel cluster wide operation.
+type cmdClusterCancelOperation struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdClusterCancelOperation) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "cancel-operation <name>"
+	cmd.Short = "Cancel the ongoing cluster wide operation"
+	cmd.Long = `Description:
+  Cancel the cluster wide operation, which is currently ongoing on the cluster,
+  either an update or a reboot.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdClusterCancelOperation) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdClusterCancelOperation) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.CancelClusterWideOperation(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
