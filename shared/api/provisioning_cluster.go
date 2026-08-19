@@ -109,6 +109,12 @@ type ClusterUpdateInProgressStatus struct {
 	// triggered.
 	EvacuatedBefore []string `json:"evacuated_before" yaml:"evacuated_before"`
 
+	// PendingReboot contains the list of server names of the servers, which still
+	// have to be rebooted as part of an on demand rolling reboot. A server is
+	// removed from the list as soon as its reboot has been triggered. The list is
+	// only populated during the rolling reboot, it is empty for all other phases.
+	PendingReboot []string `json:"pending_reboot" yaml:"pending_reboot"`
+
 	// LastUpdated is the time, when this information has been updated for the
 	// last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
@@ -122,6 +128,7 @@ const (
 	ClusterUpdateInProgressApplyUpdate           ClusterUpdateInProgress = "applying updates"
 	ClusterUpdateInProgressApplyUpdateWithReboot ClusterUpdateInProgress = "applying updates with reboot"
 	ClusterUpdateInProgressRollingRestart        ClusterUpdateInProgress = "restarting servers"
+	ClusterUpdateInProgressRollingReboot         ClusterUpdateInProgress = "rolling reboot"
 	ClusterUpdateInProgressError                 ClusterUpdateInProgress = "error"
 )
 
