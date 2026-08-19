@@ -28,6 +28,7 @@ import (
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
@@ -2849,6 +2850,12 @@ func (s *serverService) BMCDetachMediaByName(ctx context.Context, name string, v
 			slog.WarnContext(ctx, "Resync of BMC data after detach media failed", logger.Err(err), slog.String("name", server.Name))
 		}
 	}()
+
+	lifecycle.BMCVirtualMediaSignal.Emit(ctx, lifecycle.BMCVirtualMediaMessage{
+		Operation:      lifecycle.BMCVirtualMediaOperationDetach,
+		Server:         server.Name,
+		VirtualMediaID: virtualMediaID,
+	})
 
 	return nil
 }
