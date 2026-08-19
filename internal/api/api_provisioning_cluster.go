@@ -39,7 +39,8 @@ func registerProvisioningClusterHandler(router Router, authorizer *authz.Authori
 	router.HandleFunc("POST /{name}/:bulk-update", response.With(handler.clusterBulkUpdatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/:resync-inventory", response.With(handler.clusterResyncInventoryPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/:update", response.With(handler.clusterUpdatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
-	router.HandleFunc("POST /{name}/:cancel-update", response.With(handler.clusterCancelUpdatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/:reboot", response.With(handler.clusterRebootPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/:cancel-operation", response.With(handler.clusterCancelOperationPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("PUT /{name}/certificate", response.With(handler.clusterCertificatePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{clusterName}/artifacts", response.With(handler.clusterArtifactsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{clusterName}/artifacts/{artifactName}", response.With(handler.clusterArtifactGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -814,6 +815,8 @@ func (c *clusterHandler) clusterResyncInventoryPost(r *http.Request) response.Re
 //	Perform cluster wide update of servers
 //
 //	Perform a cluster wide update of OS and applications on all servers of the cluster.
+//	A cluster can only run a single cluster wide operation at a time, so the request
+//	fails, if an update or a reboot is already ongoing.
 //
 //	---
 //	consumes:
@@ -859,11 +862,53 @@ func (c *clusterHandler) clusterUpdatePost(r *http.Request) response.Response {
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/provisioning/clusters/{name}/:cancel-update clusters cluster_cancel_update_post
+// swagger:operation POST /1.0/provisioning/clusters/{name}/:reboot clusters cluster_reboot_post
 //
-//	Cancel an ongoing cluster wide update of servers
+//	Perform cluster wide reboot of servers
 //
-//	Cancel an ongoing cluster wide update of servers.
+//	Perform a cluster wide reboot of all servers of the cluster. The servers are
+//	evacuated, rebooted and restored one by one. In contrast to a cluster wide
+//	update, the reboot is performed independently of whether updates are pending.
+//	A cluster can only run a single cluster wide operation at a time, so the request
+//	fails, if an update or a reboot is already ongoing.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the cluster
+//	    type: string
+//	    required: true
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (c *clusterHandler) clusterRebootPost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	err := c.service.LaunchClusterReboot(r.Context(), name)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to launch cluster wide reboot: %w", err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/clusters/{name}/:cancel-operation clusters cluster_cancel_operation_post
+//
+//	Cancel the ongoing cluster wide operation
+//
+//	Cancel the cluster wide operation, which is currently ongoing on the cluster,
+//	either an update or a reboot.
 //
 //	---
 //	produces:
@@ -883,12 +928,12 @@ func (c *clusterHandler) clusterUpdatePost(r *http.Request) response.Response {
 //	    $ref: "#/responses/NotFound"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (c *clusterHandler) clusterCancelUpdatePost(r *http.Request) response.Response {
+func (c *clusterHandler) clusterCancelOperationPost(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	err := c.service.AbortClusterUpdate(r.Context(), name)
+	err := c.service.AbortClusterOperation(r.Context(), name)
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to cancel cluster wide update: %w", err))
+		return response.SmartError(fmt.Errorf("Failed to cancel cluster wide operation: %w", err))
 	}
 
 	return response.EmptySyncResponse
