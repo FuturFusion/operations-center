@@ -33,12 +33,32 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-type redfish struct{}
+const defaultConnectionTestTimeout = 5 * time.Second
+
+type redfish struct {
+	connectionTestTimeout time.Duration
+}
 
 var _ provisioning.BMCServerClientPort = redfish{}
 
-func New() redfish {
-	return redfish{}
+type Option func(r *redfish)
+
+func WithConnectionTestTimeout(timeout time.Duration) Option {
+	return func(r *redfish) {
+		r.connectionTestTimeout = timeout
+	}
+}
+
+func New(opts ...Option) redfish {
+	r := redfish{
+		connectionTestTimeout: defaultConnectionTestTimeout,
+	}
+
+	for _, opt := range opts {
+		opt(&r)
+	}
+
+	return r
 }
 
 func (r redfish) getClient(ctx context.Context, server provisioning.Server) (_ *gofish.APIClient, logout func(), _ error) {
@@ -138,8 +158,11 @@ func (r redfish) getClient(ctx context.Context, server provisioning.Server) (_ *
 func (r redfish) ConnectionTest(ctx context.Context, server provisioning.Server) (certificate string, _ error) {
 	var certPEM string
 
+	ctx, cancel := context.WithTimeout(ctx, r.connectionTestTimeout)
+	defer cancel()
+
 	if server.BMCConfig.AutoPinCertificate && server.BMCConfig.Certificate == "" {
-		cert, err := getRemoteCertificate(server.BMCConfig.Endpoint)
+		cert, err := getRemoteCertificate(ctx, server.BMCConfig.Endpoint)
 		if err != nil {
 			return certPEM, fmt.Errorf("Failed to get remote certificate from BMC during connection test: %w", err)
 		}
@@ -158,7 +181,7 @@ func (r redfish) ConnectionTest(ctx context.Context, server provisioning.Server)
 	return certPEM, nil
 }
 
-func getRemoteCertificate(address string) (*x509.Certificate, error) {
+func getRemoteCertificate(ctx context.Context, address string) (*x509.Certificate, error) {
 	parsedAddress, err := url.Parse(address)
 	if err != nil {
 		return nil, err
@@ -168,9 +191,13 @@ func getRemoteCertificate(address string) (*x509.Certificate, error) {
 		parsedAddress.Host = net.JoinHostPort(parsedAddress.Hostname(), "443")
 	}
 
-	conn, err := tls.Dial("tcp", parsedAddress.Host, &tls.Config{
-		InsecureSkipVerify: true,
-	})
+	dialer := tls.Dialer{
+		Config: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+
+	conn, err := dialer.DialContext(ctx, "tcp", parsedAddress.Host)
 	if err != nil {
 		return nil, err
 	}
@@ -179,11 +206,16 @@ func getRemoteCertificate(address string) (*x509.Certificate, error) {
 		_ = conn.Close()
 	}()
 
-	if len(conn.ConnectionState().PeerCertificates) == 0 {
+	tlsConn, ok := conn.(*tls.Conn)
+	if !ok {
+		return nil, errors.New("Unable to read remote TLS certificate, not a TLS connection")
+	}
+
+	if len(tlsConn.ConnectionState().PeerCertificates) == 0 {
 		return nil, errors.New("Unable to read remote TLS certificate")
 	}
 
-	return conn.ConnectionState().PeerCertificates[0], nil
+	return tlsConn.ConnectionState().PeerCertificates[0], nil
 }
 
 func (r redfish) GetData(ctx context.Context, server provisioning.Server) (api.BMCData, error) {
