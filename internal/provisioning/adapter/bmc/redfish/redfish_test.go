@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -122,6 +123,68 @@ func TestRedfish_ConnectionTest(t *testing.T) {
 			}
 
 			require.Equal(t, wantCert, cert)
+		})
+	}
+}
+
+func TestRedfish_ConnectionTest_timeout(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	defer func() {
+		_ = listener.Close()
+	}()
+
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+
+			t.Cleanup(func() {
+				_ = conn.Close()
+			})
+		}
+	}()
+
+	tests := []struct {
+		name string
+
+		autoPinCertificate bool
+		certificate        string
+	}{
+		{
+			name:               "timeout while fetching the remote certificate",
+			autoPinCertificate: true,
+		},
+		{
+			name: "timeout while connecting to the Redfish API",
+			certificate: func() string {
+				certPEMByte, _, err := incustls.GenerateMemCert(true, false)
+				require.NoError(t, err)
+
+				return string(certPEMByte)
+			}(),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			client := redfish.New(redfish.WithConnectionTestTimeout(100 * time.Millisecond))
+
+			start := time.Now()
+
+			_, err := client.ConnectionTest(t.Context(), provisioning.Server{
+				BMCConfig: api.BMCConfig{
+					Endpoint:           "https://" + listener.Addr().String(),
+					Certificate:        tc.certificate,
+					AutoPinCertificate: tc.autoPinCertificate,
+				},
+			})
+
+			require.Error(t, err)
+			require.Less(t, time.Since(start), 5*time.Second)
 		})
 	}
 }
