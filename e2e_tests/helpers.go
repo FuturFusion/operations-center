@@ -406,7 +406,7 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("Context done: %v", t.Context().Err())
+			return fmt.Errorf("Timed out after %ds waiting for log %q on %s: %w", count, want, vm, ctx.Err())
 
 		case <-time.After(1 * time.Second):
 		}
@@ -568,7 +568,7 @@ func mustWaitInventoryReady(t *testing.T, names []string) {
 
 				select {
 				case <-errgrpctx.Done():
-					return fmt.Errorf("Context done: %w", t.Context().Err())
+					return fmt.Errorf("Timed out after %ds waiting for %s to be registered as ready in inventory: %w", count, name, errgrpctx.Err())
 
 				case <-time.After(1 * time.Second):
 				}
