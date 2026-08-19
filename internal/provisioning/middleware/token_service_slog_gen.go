@@ -321,6 +321,45 @@ func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (tok
 	return _d._base.GetByUUID(ctx, id)
 }
 
+// GetCompressedTokenImageFromTokenSeed implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) GetCompressedTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (readCloser io.ReadCloser, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.String("name", name),
+			slog.Any("imageType", imageType),
+			slog.Any("architecture", architecture),
+			slog.String("channel", channel),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetCompressedTokenImageFromTokenSeed")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("readCloser", readCloser),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetCompressedTokenImageFromTokenSeed returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetCompressedTokenImageFromTokenSeed returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetCompressedTokenImageFromTokenSeed finished")
+		}
+	}()
+	return _d._base.GetCompressedTokenImageFromTokenSeed(ctx, id, name, imageType, architecture, channel)
+}
+
 // GetPreSeededImage implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetPreSeededImage(ctx context.Context, id uuid.UUID, imageUUID uuid.UUID) (readCloser io.ReadCloser, filename string, err error) {
 	log := slog.With()
@@ -358,8 +397,48 @@ func (_d TokenServiceWithSlog) GetPreSeededImage(ctx context.Context, id uuid.UU
 	return _d._base.GetPreSeededImage(ctx, id, imageUUID)
 }
 
-// GetTokenImageFromTokenSeed implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (readCloser io.ReadCloser, err error) {
+// GetPreparedTokenSeedImage implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) GetPreparedTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) (tokenImage *provisioning.TokenImage, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.String("name", name),
+			slog.Any("imageType", imageType),
+			slog.Any("architecture", architecture),
+			slog.String("channel", channel),
+			slog.String("fingerprintID", fingerprintID),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetPreparedTokenSeedImage")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("tokenImage", tokenImage),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetPreparedTokenSeedImage returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetPreparedTokenSeedImage returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetPreparedTokenSeedImage finished")
+		}
+	}()
+	return _d._base.GetPreparedTokenSeedImage(ctx, id, name, imageType, architecture, channel, fingerprintID)
+}
+
+// GetSeekableTokenImageFromTokenSeed implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) GetSeekableTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (tokenImage *provisioning.TokenImage, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -371,12 +450,12 @@ func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, i
 			slog.String("channel", channel),
 		)
 	}
-	log.DebugContext(ctx, "=> calling GetTokenImageFromTokenSeed")
+	log.DebugContext(ctx, "=> calling GetSeekableTokenImageFromTokenSeed")
 	defer func() {
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("readCloser", readCloser),
+				slog.Any("tokenImage", tokenImage),
 				slog.Any("err", err),
 			)
 		} else {
@@ -386,15 +465,15 @@ func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, i
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetTokenImageFromTokenSeed returned an informative error")
+				log.DebugContext(ctx, "<= method GetSeekableTokenImageFromTokenSeed returned an informative error")
 			} else {
-				log.ErrorContext(ctx, "<= method GetTokenImageFromTokenSeed returned an error")
+				log.ErrorContext(ctx, "<= method GetSeekableTokenImageFromTokenSeed returned an error")
 			}
 		} else {
-			log.DebugContext(ctx, "<= method GetTokenImageFromTokenSeed finished")
+			log.DebugContext(ctx, "<= method GetSeekableTokenImageFromTokenSeed finished")
 		}
 	}()
-	return _d._base.GetTokenImageFromTokenSeed(ctx, id, name, imageType, architecture, channel)
+	return _d._base.GetSeekableTokenImageFromTokenSeed(ctx, id, name, imageType, architecture, channel)
 }
 
 // GetTokenProviderConfig implements provisioning.TokenService.
@@ -574,6 +653,83 @@ func (_d TokenServiceWithSlog) PreparePreSeededImage(ctx context.Context, id uui
 		}
 	}()
 	return _d._base.PreparePreSeededImage(ctx, id, imageType, architecture, seedConfig)
+}
+
+// PrepareTokenSeedImage implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) PrepareTokenSeedImage(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.String("name", name),
+			slog.Any("imageType", imageType),
+			slog.Any("architecture", architecture),
+			slog.String("channel", channel),
+		)
+	}
+	log.DebugContext(ctx, "=> calling PrepareTokenSeedImage")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method PrepareTokenSeedImage returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method PrepareTokenSeedImage returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method PrepareTokenSeedImage finished")
+		}
+	}()
+	return _d._base.PrepareTokenSeedImage(ctx, id, name, imageType, architecture, channel)
+}
+
+// ResolveTokenSeedImageID implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) ResolveTokenSeedImageID(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (fingerprintID string, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.String("name", name),
+			slog.Any("imageType", imageType),
+			slog.Any("architecture", architecture),
+			slog.String("channel", channel),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ResolveTokenSeedImageID")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.String("fingerprintID", fingerprintID),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method ResolveTokenSeedImageID returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method ResolveTokenSeedImageID returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method ResolveTokenSeedImageID finished")
+		}
+	}()
+	return _d._base.ResolveTokenSeedImageID(ctx, id, name, imageType, architecture, channel)
 }
 
 // Update implements provisioning.TokenService.

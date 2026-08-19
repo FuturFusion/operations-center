@@ -31,11 +31,17 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			ApplyBIOSAttributesByNameFunc: func(ctx context.Context, name string, attributes map[string]any) error {
 //				panic("mock out the ApplyBIOSAttributesByName method")
 //			},
+//			BMCAttachMediaByNameFunc: func(ctx context.Context, name string, media api.ServerBMCAttachMedia) error {
+//				panic("mock out the BMCAttachMediaByName method")
+//			},
 //			BMCBIOSAttributeByNameFunc: func(ctx context.Context, name string, attributeName string) (api.BIOSAttribute, error) {
 //				panic("mock out the BMCBIOSAttributeByName method")
 //			},
 //			BMCBIOSAttributesByNameFunc: func(ctx context.Context, name string) ([]api.BIOSAttribute, error) {
 //				panic("mock out the BMCBIOSAttributesByName method")
+//			},
+//			BMCDetachMediaByNameFunc: func(ctx context.Context, name string, virtualMediaID string) error {
+//				panic("mock out the BMCDetachMediaByName method")
 //			},
 //			BMCDumpByNameFunc: func(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error) {
 //				panic("mock out the BMCDumpByName method")
@@ -185,11 +191,17 @@ type ServerServiceMock struct {
 	// ApplyBIOSAttributesByNameFunc mocks the ApplyBIOSAttributesByName method.
 	ApplyBIOSAttributesByNameFunc func(ctx context.Context, name string, attributes map[string]any) error
 
+	// BMCAttachMediaByNameFunc mocks the BMCAttachMediaByName method.
+	BMCAttachMediaByNameFunc func(ctx context.Context, name string, media api.ServerBMCAttachMedia) error
+
 	// BMCBIOSAttributeByNameFunc mocks the BMCBIOSAttributeByName method.
 	BMCBIOSAttributeByNameFunc func(ctx context.Context, name string, attributeName string) (api.BIOSAttribute, error)
 
 	// BMCBIOSAttributesByNameFunc mocks the BMCBIOSAttributesByName method.
 	BMCBIOSAttributesByNameFunc func(ctx context.Context, name string) ([]api.BIOSAttribute, error)
+
+	// BMCDetachMediaByNameFunc mocks the BMCDetachMediaByName method.
+	BMCDetachMediaByNameFunc func(ctx context.Context, name string, virtualMediaID string) error
 
 	// BMCDumpByNameFunc mocks the BMCDumpByName method.
 	BMCDumpByNameFunc func(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error)
@@ -346,6 +358,15 @@ type ServerServiceMock struct {
 			// Attributes is the attributes argument value.
 			Attributes map[string]any
 		}
+		// BMCAttachMediaByName holds details about calls to the BMCAttachMediaByName method.
+		BMCAttachMediaByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// Media is the media argument value.
+			Media api.ServerBMCAttachMedia
+		}
 		// BMCBIOSAttributeByName holds details about calls to the BMCBIOSAttributeByName method.
 		BMCBIOSAttributeByName []struct {
 			// Ctx is the ctx argument value.
@@ -361,6 +382,15 @@ type ServerServiceMock struct {
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+		}
+		// BMCDetachMediaByName holds details about calls to the BMCDetachMediaByName method.
+		BMCDetachMediaByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// VirtualMediaID is the virtualMediaID argument value.
+			VirtualMediaID string
 		}
 		// BMCDumpByName holds details about calls to the BMCDumpByName method.
 		BMCDumpByName []struct {
@@ -740,8 +770,10 @@ type ServerServiceMock struct {
 	}
 	lockAddApplication                      sync.RWMutex
 	lockApplyBIOSAttributesByName           sync.RWMutex
+	lockBMCAttachMediaByName                sync.RWMutex
 	lockBMCBIOSAttributeByName              sync.RWMutex
 	lockBMCBIOSAttributesByName             sync.RWMutex
+	lockBMCDetachMediaByName                sync.RWMutex
 	lockBMCDumpByName                       sync.RWMutex
 	lockBMCLogEntriesByNameAndLogSource     sync.RWMutex
 	lockBMCLogSourcesByName                 sync.RWMutex
@@ -869,6 +901,46 @@ func (mock *ServerServiceMock) ApplyBIOSAttributesByNameCalls() []struct {
 	return calls
 }
 
+// BMCAttachMediaByName calls BMCAttachMediaByNameFunc.
+func (mock *ServerServiceMock) BMCAttachMediaByName(ctx context.Context, name string, media api.ServerBMCAttachMedia) error {
+	if mock.BMCAttachMediaByNameFunc == nil {
+		panic("ServerServiceMock.BMCAttachMediaByNameFunc: method is nil but ServerService.BMCAttachMediaByName was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Name  string
+		Media api.ServerBMCAttachMedia
+	}{
+		Ctx:   ctx,
+		Name:  name,
+		Media: media,
+	}
+	mock.lockBMCAttachMediaByName.Lock()
+	mock.calls.BMCAttachMediaByName = append(mock.calls.BMCAttachMediaByName, callInfo)
+	mock.lockBMCAttachMediaByName.Unlock()
+	return mock.BMCAttachMediaByNameFunc(ctx, name, media)
+}
+
+// BMCAttachMediaByNameCalls gets all the calls that were made to BMCAttachMediaByName.
+// Check the length with:
+//
+//	len(mockedServerService.BMCAttachMediaByNameCalls())
+func (mock *ServerServiceMock) BMCAttachMediaByNameCalls() []struct {
+	Ctx   context.Context
+	Name  string
+	Media api.ServerBMCAttachMedia
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Name  string
+		Media api.ServerBMCAttachMedia
+	}
+	mock.lockBMCAttachMediaByName.RLock()
+	calls = mock.calls.BMCAttachMediaByName
+	mock.lockBMCAttachMediaByName.RUnlock()
+	return calls
+}
+
 // BMCBIOSAttributeByName calls BMCBIOSAttributeByNameFunc.
 func (mock *ServerServiceMock) BMCBIOSAttributeByName(ctx context.Context, name string, attributeName string) (api.BIOSAttribute, error) {
 	if mock.BMCBIOSAttributeByNameFunc == nil {
@@ -942,6 +1014,46 @@ func (mock *ServerServiceMock) BMCBIOSAttributesByNameCalls() []struct {
 	mock.lockBMCBIOSAttributesByName.RLock()
 	calls = mock.calls.BMCBIOSAttributesByName
 	mock.lockBMCBIOSAttributesByName.RUnlock()
+	return calls
+}
+
+// BMCDetachMediaByName calls BMCDetachMediaByNameFunc.
+func (mock *ServerServiceMock) BMCDetachMediaByName(ctx context.Context, name string, virtualMediaID string) error {
+	if mock.BMCDetachMediaByNameFunc == nil {
+		panic("ServerServiceMock.BMCDetachMediaByNameFunc: method is nil but ServerService.BMCDetachMediaByName was just called")
+	}
+	callInfo := struct {
+		Ctx            context.Context
+		Name           string
+		VirtualMediaID string
+	}{
+		Ctx:            ctx,
+		Name:           name,
+		VirtualMediaID: virtualMediaID,
+	}
+	mock.lockBMCDetachMediaByName.Lock()
+	mock.calls.BMCDetachMediaByName = append(mock.calls.BMCDetachMediaByName, callInfo)
+	mock.lockBMCDetachMediaByName.Unlock()
+	return mock.BMCDetachMediaByNameFunc(ctx, name, virtualMediaID)
+}
+
+// BMCDetachMediaByNameCalls gets all the calls that were made to BMCDetachMediaByName.
+// Check the length with:
+//
+//	len(mockedServerService.BMCDetachMediaByNameCalls())
+func (mock *ServerServiceMock) BMCDetachMediaByNameCalls() []struct {
+	Ctx            context.Context
+	Name           string
+	VirtualMediaID string
+} {
+	var calls []struct {
+		Ctx            context.Context
+		Name           string
+		VirtualMediaID string
+	}
+	mock.lockBMCDetachMediaByName.RLock()
+	calls = mock.calls.BMCDetachMediaByName
+	mock.lockBMCDetachMediaByName.RUnlock()
 	return calls
 }
 
