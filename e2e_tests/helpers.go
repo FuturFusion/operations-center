@@ -738,13 +738,7 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 			return
 		}
 
-		if !noCleanup && !noCleanupOnError {
-			// Cleanup happened, so there is little use in collecting debug information, since most of it is gone anyway.
-			return
-		}
-
-		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
-		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
+		ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(30*time.Second))
 		defer cancel()
 
 		timestamp := time.Now().Format("2006-01-02-15-04-05")
