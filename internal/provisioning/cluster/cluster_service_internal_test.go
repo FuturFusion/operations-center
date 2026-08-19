@@ -3,13 +3,16 @@ package cluster
 import (
 	"context"
 	"testing"
+	"time"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
+	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -488,6 +491,90 @@ func Test_clusterUpdateState(t *testing.T) {
 
 			want: `[ 9/27] in maintenance, reboot pending server "serverA"`,
 		},
+		{
+			name: "rolling reboot - all servers pending",
+			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
+				InProgress:    api.ClusterUpdateInProgressRollingReboot,
+				PendingReboot: []string{"serverA", "serverB", "serverC"},
+			},
+			serverStates: []api.ServerUpdateState{
+				api.ServerUpdateStateUpToDate,
+				api.ServerUpdateStateUpToDate,
+				api.ServerUpdateStateUpToDate,
+			},
+
+			want: `[ 1/21] evacuation pending server "serverA"`,
+		},
+		{
+			name: "rolling reboot - first server evacuated, awaiting its reboot",
+			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
+				InProgress:    api.ClusterUpdateInProgressRollingReboot,
+				PendingReboot: []string{"serverA", "serverB", "serverC"},
+			},
+			serverStates: []api.ServerUpdateState{
+				api.ServerUpdateStateInMaintenanceRestorePending,
+				api.ServerUpdateStateUpToDate,
+				api.ServerUpdateStateUpToDate,
+			},
+
+			want: `[ 3/21] in maintenance, reboot pending server "serverA"`,
+		},
+		{
+			name: "rolling reboot - first server rebooted, awaiting its restore",
+			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
+				InProgress:    api.ClusterUpdateInProgressRollingReboot,
+				PendingReboot: []string{"serverB", "serverC"},
+			},
+			serverStates: []api.ServerUpdateState{
+				api.ServerUpdateStateInMaintenanceRestorePending,
+				api.ServerUpdateStateUpToDate,
+				api.ServerUpdateStateUpToDate,
+			},
+
+			want: `[ 5/21] in maintenance, restore pending server "serverA"`,
+		},
+		{
+			name: "rolling reboot - server off the pending list is up to date",
+			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
+				InProgress:    api.ClusterUpdateInProgressRollingReboot,
+				PendingReboot: []string{"serverB", "serverC"},
+			},
+			serverStates: []api.ServerUpdateState{
+				api.ServerUpdateStateUpToDate,
+				api.ServerUpdateStateUpToDate,
+				api.ServerUpdateStateUpToDate,
+			},
+
+			want: `[ 8/21] evacuation pending server "serverB"`,
+		},
+		{
+			name: "rolling reboot - all servers done",
+			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
+				InProgress: api.ClusterUpdateInProgressRollingReboot,
+			},
+			serverStates: []api.ServerUpdateState{
+				api.ServerUpdateStateUpToDate,
+				api.ServerUpdateStateUpToDate,
+				api.ServerUpdateStateUpToDate,
+			},
+
+			want: "",
+		},
+		{
+			name: "rolling reboot - newly available update does not rewind the progress",
+			clusterUpdateInProgressStatus: api.ClusterUpdateInProgressStatus{
+				InProgress:    api.ClusterUpdateInProgressRollingReboot,
+				PendingReboot: []string{"serverA", "serverB", "serverC"},
+			},
+			serverStates: []api.ServerUpdateState{
+				api.ServerUpdateStateInMaintenanceRestorePending,
+				api.ServerUpdateStateUpToDate,
+				api.ServerUpdateStateUpToDate,
+			},
+			newUpdateAvailable: true,
+
+			want: `[ 3/21] in maintenance, reboot pending server "serverA"`,
+		},
 	}
 
 	serverNames := []string{"serverA", "serverB", "serverC"}
@@ -536,6 +623,38 @@ func Test_clusterUpdateState_phaseTransitionKeepsProgress(t *testing.T) {
 			}, servers)
 
 			require.Equal(t, applyUpdate, rollingRestart)
+		})
+	}
+}
+
+func Test_clusterUpdateState_rollingRebootSkipsTheUpdateSteps(t *testing.T) {
+	serverNames := []string{"serverA", "serverB", "serverC"}
+
+	// The update steps are skipped altogether, so only the restart states can occur
+	// during a rolling reboot.
+	for _, state := range clusterUpdateSteps[clusterUpdateUpdateSteps:] {
+		t.Run(string(state), func(t *testing.T) {
+			servers := make(provisioning.Servers, 0, len(serverNames))
+			for _, name := range serverNames {
+				servers = append(servers, clusterUpdateStateTestServer(t, name, state))
+			}
+
+			rollingRestart := clusterUpdateState(api.ClusterUpdateInProgressStatus{
+				InProgress: api.ClusterUpdateInProgressRollingRestart,
+			}, servers)
+
+			rollingReboot := clusterUpdateState(api.ClusterUpdateInProgressStatus{
+				InProgress: api.ClusterUpdateInProgressRollingReboot,
+			}, servers)
+
+			// The reboot reports the same server in the same state, but its scale is
+			// shorter by the update steps of every server.
+			skipped := clusterUpdateUpdateSteps * len(serverNames)
+
+			require.Equal(t, rollingRestart.state, rollingReboot.state)
+			require.Equal(t, rollingRestart.serverName, rollingReboot.serverName)
+			require.Equal(t, rollingRestart.totalSteps-skipped, rollingReboot.totalSteps)
+			require.Equal(t, rollingRestart.step-skipped, rollingReboot.step)
 		})
 	}
 }
@@ -726,4 +845,86 @@ func TestClusterService_getClusterUpdateStatus_progressOnlyMovesForward(t *testi
 	err = clusterSvc.getClusterUpdateStatus(ctx, "clusterA", &relaunched)
 	require.NoError(t, err)
 	require.Equal(t, `[ 1/27] update pending server "serverA"`, ptr.From(relaunched.InProgressStatus.StatusDescription))
+}
+
+func TestClusterService_markServerRebooted(t *testing.T) {
+	tests := []struct {
+		name             string
+		repoGetByNameErr error
+		repoUpdateErr    error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:          "error - repo.Update",
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	fixedTime := time.Date(2026, 3, 12, 8, 54, 35, 123, time.UTC)
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					if tc.repoGetByNameErr != nil {
+						return nil, tc.repoGetByNameErr
+					}
+
+					return &provisioning.Cluster{
+						Name: "clusterA",
+
+						UpdateStatus: api.ClusterUpdateStatus{
+							InProgressStatus: api.ClusterUpdateInProgressStatus{
+								InProgress:    api.ClusterUpdateInProgressRollingReboot,
+								PendingReboot: []string{"serverA", "serverB"},
+							},
+						},
+					}, nil
+				},
+				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
+					require.Equal(t, fixedTime, cluster.UpdateStatus.InProgressStatus.LastUpdated)
+					require.Equal(t, []string{"serverB"}, cluster.UpdateStatus.InProgressStatus.PendingReboot)
+					return tc.repoUpdateErr
+				},
+			}
+
+			clusterSvc := New(
+				repo, nil, nil, nil, nil, nil, nil, nil,
+				WithNow(func() time.Time {
+					return fixedTime
+				}),
+			)
+
+			cluster := provisioning.Cluster{
+				Name: "clusterA",
+
+				UpdateStatus: api.ClusterUpdateStatus{
+					InProgressStatus: api.ClusterUpdateInProgressStatus{
+						InProgress: api.ClusterUpdateInProgressRollingReboot,
+					},
+				},
+			}
+
+			// Run test
+			err := clusterSvc.markServerRebooted(context.Background(), cluster, "serverA")
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
 }

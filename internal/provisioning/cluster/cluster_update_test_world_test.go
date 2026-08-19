@@ -46,6 +46,13 @@ var (
 	versionDataRestored   = versionData("2", "2", false, "2", api.NotInMaintenance)
 )
 
+var (
+	versionDataRebootOnlyEvacuating = versionData("1", "1", false, "1", api.InMaintenanceEvacuating)
+	versionDataRebootOnlyEvacuated  = versionData("1", "1", false, "1", api.InMaintenanceEvacuated)
+	versionDataRebootOnlyRestoring  = versionData("1", "1", false, "1", api.InMaintenanceRestoring)
+	versionDataRebootOnlyRestored   = versionData("1", "1", false, "1", api.NotInMaintenance)
+)
+
 // serverWorld is the state of the fake servers, the ServerClientPortMock serves.
 //
 // State transitions, which a real server completes asynchronously, are released
