@@ -44,8 +44,8 @@ func NewClusterServiceWithSlog(base provisioning.ClusterService, opts ...Cluster
 	return this
 }
 
-// AbortClusterUpdate implements provisioning.ClusterService.
-func (_d ClusterServiceWithSlog) AbortClusterUpdate(ctx context.Context, name string) (err error) {
+// AbortClusterOperation implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) AbortClusterOperation(ctx context.Context, name string) (err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -53,7 +53,7 @@ func (_d ClusterServiceWithSlog) AbortClusterUpdate(ctx context.Context, name st
 			slog.String("name", name),
 		)
 	}
-	log.DebugContext(ctx, "=> calling AbortClusterUpdate")
+	log.DebugContext(ctx, "=> calling AbortClusterOperation")
 	defer func() {
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
@@ -67,15 +67,15 @@ func (_d ClusterServiceWithSlog) AbortClusterUpdate(ctx context.Context, name st
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method AbortClusterUpdate returned an informative error")
+				log.DebugContext(ctx, "<= method AbortClusterOperation returned an informative error")
 			} else {
-				log.ErrorContext(ctx, "<= method AbortClusterUpdate returned an error")
+				log.ErrorContext(ctx, "<= method AbortClusterOperation returned an error")
 			}
 		} else {
-			log.DebugContext(ctx, "<= method AbortClusterUpdate finished")
+			log.DebugContext(ctx, "<= method AbortClusterOperation finished")
 		}
 	}()
-	return _d._base.AbortClusterUpdate(ctx, name)
+	return _d._base.AbortClusterOperation(ctx, name)
 }
 
 // AddApplication implements provisioning.ClusterService.
@@ -840,6 +840,40 @@ func (_d ClusterServiceWithSlog) IsInstanceLifecycleOperationPermitted(ctx conte
 		log.DebugContext(ctx, "<= method IsInstanceLifecycleOperationPermitted finished")
 	}()
 	return _d._base.IsInstanceLifecycleOperationPermitted(ctx, name)
+}
+
+// LaunchClusterReboot implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) LaunchClusterReboot(ctx context.Context, name string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling LaunchClusterReboot")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method LaunchClusterReboot returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method LaunchClusterReboot returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method LaunchClusterReboot finished")
+		}
+	}()
+	return _d._base.LaunchClusterReboot(ctx, name)
 }
 
 // LaunchClusterUpdate implements provisioning.ClusterService.

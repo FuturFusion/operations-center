@@ -22,6 +22,7 @@ type ExprApiClusterUpdateInProgressStatus struct {
 	Error             string                      `json:"error" yaml:"error" expr:"error"`
 	StatusDescription *string                     `json:"status_description,omitempty" yaml:"status_description" expr:"status_description"`
 	EvacuatedBefore   []string                    `json:"evacuated_before" yaml:"evacuated_before" expr:"evacuated_before"`
+	PendingReboot     []string                    `json:"pending_reboot" yaml:"pending_reboot" expr:"pending_reboot"`
 	LastUpdated       time.Time                   `json:"last_updated" yaml:"last_updated" expr:"last_updated"`
 }
 
@@ -70,6 +71,7 @@ func ToExprApiClusterUpdateInProgressStatus(c api.ClusterUpdateInProgressStatus)
 		Error:             c.Error,
 		StatusDescription: c.StatusDescription,
 		EvacuatedBefore:   c.EvacuatedBefore,
+		PendingReboot:     c.PendingReboot,
 		LastUpdated:       c.LastUpdated,
 	}
 }
