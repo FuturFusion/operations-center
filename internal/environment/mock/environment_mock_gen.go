@@ -8,6 +8,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/lxc/incus-os/incus-osd/api"
+
 	"github.com/FuturFusion/operations-center/internal/environment"
 )
 
@@ -23,6 +25,9 @@ var _ environment.Environment = &EnvironmentMock{}
 //		mockedEnvironment := &EnvironmentMock{
 //			CacheDirFunc: func() string {
 //				panic("mock out the CacheDir method")
+//			},
+//			GetSecureBootCertificatesFunc: func(ctx context.Context) (api.InternalSecureBootCertificates, error) {
+//				panic("mock out the GetSecureBootCertificates method")
 //			},
 //			GetTokenFunc: func(ctx context.Context) (string, error) {
 //				panic("mock out the GetToken method")
@@ -58,6 +63,9 @@ type EnvironmentMock struct {
 	// CacheDirFunc mocks the CacheDir method.
 	CacheDirFunc func() string
 
+	// GetSecureBootCertificatesFunc mocks the GetSecureBootCertificates method.
+	GetSecureBootCertificatesFunc func(ctx context.Context) (api.InternalSecureBootCertificates, error)
+
 	// GetTokenFunc mocks the GetToken method.
 	GetTokenFunc func(ctx context.Context) (string, error)
 
@@ -87,6 +95,11 @@ type EnvironmentMock struct {
 		// CacheDir holds details about calls to the CacheDir method.
 		CacheDir []struct {
 		}
+		// GetSecureBootCertificates holds details about calls to the GetSecureBootCertificates method.
+		GetSecureBootCertificates []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// GetToken holds details about calls to the GetToken method.
 		GetToken []struct {
 			// Ctx is the ctx argument value.
@@ -114,15 +127,16 @@ type EnvironmentMock struct {
 		VarDir []struct {
 		}
 	}
-	lockCacheDir      sync.RWMutex
-	lockGetToken      sync.RWMutex
-	lockGetUnixSocket sync.RWMutex
-	lockIsIncusOS     sync.RWMutex
-	lockLogDir        sync.RWMutex
-	lockRunDir        sync.RWMutex
-	lockUserConfigDir sync.RWMutex
-	lockUsrShareDir   sync.RWMutex
-	lockVarDir        sync.RWMutex
+	lockCacheDir                  sync.RWMutex
+	lockGetSecureBootCertificates sync.RWMutex
+	lockGetToken                  sync.RWMutex
+	lockGetUnixSocket             sync.RWMutex
+	lockIsIncusOS                 sync.RWMutex
+	lockLogDir                    sync.RWMutex
+	lockRunDir                    sync.RWMutex
+	lockUserConfigDir             sync.RWMutex
+	lockUsrShareDir               sync.RWMutex
+	lockVarDir                    sync.RWMutex
 }
 
 // CacheDir calls CacheDirFunc.
@@ -149,6 +163,38 @@ func (mock *EnvironmentMock) CacheDirCalls() []struct {
 	mock.lockCacheDir.RLock()
 	calls = mock.calls.CacheDir
 	mock.lockCacheDir.RUnlock()
+	return calls
+}
+
+// GetSecureBootCertificates calls GetSecureBootCertificatesFunc.
+func (mock *EnvironmentMock) GetSecureBootCertificates(ctx context.Context) (api.InternalSecureBootCertificates, error) {
+	if mock.GetSecureBootCertificatesFunc == nil {
+		panic("EnvironmentMock.GetSecureBootCertificatesFunc: method is nil but Environment.GetSecureBootCertificates was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetSecureBootCertificates.Lock()
+	mock.calls.GetSecureBootCertificates = append(mock.calls.GetSecureBootCertificates, callInfo)
+	mock.lockGetSecureBootCertificates.Unlock()
+	return mock.GetSecureBootCertificatesFunc(ctx)
+}
+
+// GetSecureBootCertificatesCalls gets all the calls that were made to GetSecureBootCertificates.
+// Check the length with:
+//
+//	len(mockedEnvironment.GetSecureBootCertificatesCalls())
+func (mock *EnvironmentMock) GetSecureBootCertificatesCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetSecureBootCertificates.RLock()
+	calls = mock.calls.GetSecureBootCertificates
+	mock.lockGetSecureBootCertificates.RUnlock()
 	return calls
 }
 
