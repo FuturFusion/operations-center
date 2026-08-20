@@ -71,6 +71,34 @@ func Test_tokenHandler_tokenSeedsPost(t *testing.T) {
 			wantStatus:              http.StatusBadRequest,
 			wantResponseBodyContain: `unknown field \"application\"`,
 		},
+		{
+			name: "error - incus seed is managed by operations center",
+			requestBody: `{
+  "name": "test",
+  "seeds": {
+    "incus": {
+      "version": "1"
+    }
+  }
+}`,
+
+			wantStatus:              http.StatusBadRequest,
+			wantResponseBodyContain: `unknown field \"incus\"`,
+		},
+		{
+			name: "error - update seed is managed by operations center",
+			requestBody: `{
+  "name": "test",
+  "seeds": {
+    "update": {
+      "version": "1"
+    }
+  }
+}`,
+
+			wantStatus:              http.StatusBadRequest,
+			wantResponseBodyContain: `unknown field \"update\"`,
+		},
 	}
 
 	for _, tc := range tests {
@@ -125,6 +153,32 @@ func Test_tokenHandler_tokenSeedPut(t *testing.T) {
 
 			wantStatus:              http.StatusBadRequest,
 			wantResponseBodyContain: `unknown field \"name\"`,
+		},
+		{
+			name: "error - incus seed is managed by operations center",
+			requestBody: `{
+  "seeds": {
+    "incus": {
+      "version": "1"
+    }
+  }
+}`,
+
+			wantStatus:              http.StatusBadRequest,
+			wantResponseBodyContain: `unknown field \"incus\"`,
+		},
+		{
+			name: "error - update seed is managed by operations center",
+			requestBody: `{
+  "seeds": {
+    "update": {
+      "version": "1"
+    }
+  }
+}`,
+
+			wantStatus:              http.StatusBadRequest,
+			wantResponseBodyContain: `unknown field \"update\"`,
 		},
 	}
 
