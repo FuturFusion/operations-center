@@ -627,6 +627,23 @@ func mustNotBeAlreadyClustered(t *testing.T) {
 	require.NotEqual(t, 0, clusterListResp.exitCode, "IncusOS01 is already part of a cluster")
 }
 
+func mustDeleteClusterImages(t *testing.T, clusterName string) {
+	t.Helper()
+
+	t.Log("Delete cached images from cluster")
+	resp := mustRun(t, `incus image list %s: --all-projects -f json | jq -r '.[] | .project + " " + .fingerprint + " " + ((.locations // []) | join(","))'`, clusterName)
+
+	for line := range strings.Lines(resp.OutputTrimmed()) {
+		image := strings.Fields(line)
+		if len(image) < 2 {
+			continue
+		}
+
+		t.Logf("Delete image %s/%s", image[0], image[1])
+		mustRun(t, `incus --project %s image delete %s:%s`, image[0], clusterName, image[1])
+	}
+}
+
 func mustGetInstanceIPAndNames(t *testing.T, names []string) (instanceIPs []string, instanceNames []string) {
 	t.Helper()
 

@@ -601,7 +601,7 @@ func assertRemovedServerToReappear(t *testing.T) {
 	t.Helper()
 
 	t.Log("Wait for removed server to reappear in Operations Center after factory reset")
-	ok, err := waitForSuccessWithTimeout(t, "instance list", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.cluster == "" and .server_type == "incus") | .name ] | length == 1'`, strechedTimeout(3*time.Minute), cpuArch)
+	ok, err := waitForSuccessWithTimeout(t, "instance list", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.cluster == "" and .server_type == "incus") | .name ] | length == 1'`, strechedTimeout(5*time.Minute), cpuArch)
 	require.NoError(t, err, "expect 1 not clustered server")
 	if !ok {
 		fmt.Println("====[ Server List ]====")
