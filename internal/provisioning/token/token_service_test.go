@@ -11,7 +11,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
-	incusapi "github.com/lxc/incus/v7/shared/api"
 	"github.com/stretchr/testify/require"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -808,22 +807,6 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 								},
 							},
 						},
-						Incus: api.SeedIncus{
-							Version: "1",
-							Preseed: &incusapi.InitPreseed{
-								InitLocalPreseed: incusapi.InitLocalPreseed{
-									Certificates: []incusapi.CertificatesPost{
-										{
-											CertificatePut: incusapi.CertificatePut{
-												Name:        "admin",
-												Type:        "client",
-												Certificate: "foobar",
-											},
-										},
-									},
-								},
-							},
-						},
 					},
 					createdAt: time.Now(),
 				},
@@ -869,19 +852,6 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 			wantIncusSeed: api.SeedIncus{
 				Version:       "1",
 				ApplyDefaults: false,
-				Preseed: &incusapi.InitPreseed{
-					InitLocalPreseed: incusapi.InitLocalPreseed{
-						Certificates: []incusapi.CertificatesPost{
-							{
-								CertificatePut: incusapi.CertificatePut{
-									Name:        "admin",
-									Type:        "client",
-									Certificate: "foobar",
-								},
-							},
-						},
-					},
-				},
 			},
 			wantImageCount: 1,
 		},
@@ -1640,8 +1610,10 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 		flasherAdapterGenerateSeededImageErr  error
 		clientGetSecurityConfigErr            error
 
-		assertErr   require.ErrorAssertionFunc
-		wantChannel string
+		assertErr      require.ErrorAssertionFunc
+		wantChannel    string
+		wantIncusSeed  api.SeedIncus
+		wantUpdateSeed api.SeedUpdate
 	}{
 		{
 			name:                   "success",
@@ -1699,15 +1671,21 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			wantChannel: "testing",
 		},
 		{
-			name:            "success - with update channel from seed",
+			name:            "success - persisted incus and update seeds are ignored",
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
 			repoGetTokenSeedByName: &provisioning.TokenSeed{
 				Seeds: provisioning.TokenImageSeedConfigs{
+					Incus: api.SeedIncus{
+						Version:       "1",
+						ApplyDefaults: true,
+					},
 					Update: api.SeedUpdate{
 						Version: "1",
 						SystemUpdateConfig: api.SeedUpdateConfig{
-							Channel: "production",
+							AutoReboot:     true,
+							Channel:        "production",
+							CheckFrequency: "daily",
 						},
 					},
 				},
@@ -1733,6 +1711,18 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 
 			assertErr:   require.NoError,
 			wantChannel: "stable", // default value
+			wantIncusSeed: api.SeedIncus{
+				Version:       "1",
+				ApplyDefaults: false,
+			},
+			wantUpdateSeed: api.SeedUpdate{
+				Version: "1",
+				SystemUpdateConfig: api.SeedUpdateConfig{
+					AutoReboot:     false,
+					Channel:        "stable",
+					CheckFrequency: "never",
+				},
+			},
 		},
 
 		{
@@ -1887,19 +1877,10 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			wantChannel: "stable", // default value
 		},
 		{
-			name:            "error - update channel not found",
-			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: images.UpdateFileArchitecture64BitX86,
-			repoGetTokenSeedByName: &provisioning.TokenSeed{
-				Seeds: provisioning.TokenImageSeedConfigs{
-					Update: api.SeedUpdate{
-						Version: "1",
-						SystemUpdateConfig: api.SeedUpdateConfig{
-							Channel: "not found",
-						},
-					},
-				},
-			},
+			name:                   "error - update channel not found",
+			imageTypeArg:           api.ImageTypeISO,
+			architectureArg:        images.UpdateFileArchitecture64BitX86,
+			repoGetTokenSeedByName: &provisioning.TokenSeed{},
 			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -1988,6 +1969,11 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 
 			flasherAdapter := &adapterMock.FlasherPortMock{
 				GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
+					if tc.wantIncusSeed.Version != "" {
+						require.Equal(t, tc.wantIncusSeed, seedConfig.Incus)
+						require.Equal(t, tc.wantUpdateSeed, seedConfig.Update)
+					}
+
 					return rc, tc.flasherAdapterGenerateSeededImageErr
 				},
 			}

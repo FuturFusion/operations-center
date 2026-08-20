@@ -386,18 +386,26 @@ func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageT
 		}
 	}
 
-	seeds.Incus.Version = "1"
-	seeds.Incus.ApplyDefaults = false
+	seeds.Incus = api.SeedIncus{
+		Version:       "1",
+		ApplyDefaults: false,
+	}
 
 	seeds.Security.Version = "1"
 	seeds.Security.CustomCACerts = securityConfig.Config.CustomCACerts
 
-	seeds.Update.Version = "1"
-	seeds.Update.AutoReboot = false
-	seeds.Update.CheckFrequency = "never"
-	seeds.Update.Channel, err = s.ensureChannelName(ctx, seeds.Update, channel)
+	_, err = s.channelSvc.GetByName(ctx, channel)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to validate update channel from seed config: %w", err)
+		return nil, fmt.Errorf("Failed to validate update channel %q: %w", channel, err)
+	}
+
+	seeds.Update = api.SeedUpdate{
+		Version: "1",
+		SystemUpdateConfig: api.SeedUpdateConfig{
+			AutoReboot:     false,
+			Channel:        channel,
+			CheckFrequency: "never",
+		},
 	}
 
 	rc, err := s.flasher.GenerateSeededImage(ctx, id, seeds, file)
@@ -406,18 +414,4 @@ func (s *tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageT
 	}
 
 	return rc, nil
-}
-
-func (s *tokenService) ensureChannelName(ctx context.Context, update api.SeedUpdate, defaultChannel string) (string, error) {
-	channel := update.Channel
-	if channel == "" {
-		channel = defaultChannel
-	}
-
-	_, err := s.channelSvc.GetByName(ctx, channel)
-	if err != nil {
-		return "", err
-	}
-
-	return channel, nil
 }
