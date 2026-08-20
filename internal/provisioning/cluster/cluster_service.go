@@ -1657,11 +1657,12 @@ func (s *clusterService) DeleteAndFactoryResetByName(ctx context.Context, name s
 				Version:      "1",
 				Applications: applications,
 			},
-			Incus: api.SeedIncus{
-				Version:       "1",
-				ApplyDefaults: false,
-			},
 		}
+	}
+
+	seed.Incus = api.SeedIncus{
+		Version:       "1",
+		ApplyDefaults: false,
 	}
 
 	providerConfig, err := s.tokenSvc.GetTokenProviderConfig(ctx, *tokenID)
