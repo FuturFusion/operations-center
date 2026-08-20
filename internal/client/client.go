@@ -150,7 +150,7 @@ func New(addr string, opts ...Option) (OperationsCenterClient, error) {
 	return c, nil
 }
 
-func (c OperationsCenterClient) doRequestRawResponse(ctx context.Context, method string, endpoint string, query url.Values, content any) (*http.Response, error) {
+func (c OperationsCenterClient) doRequestRawResponse(ctx context.Context, method string, endpoint string, query url.Values, content any, reqOpts ...func(*http.Request)) (*http.Response, error) {
 	apiEndpoint, err := url.JoinPath(apiVersionPrefix, endpoint)
 	if err != nil {
 		return nil, err
@@ -195,6 +195,10 @@ func (c OperationsCenterClient) doRequestRawResponse(ctx context.Context, method
 
 	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("Accept-Encoding", "gzip")
+
+	for _, opt := range reqOpts {
+		opt(req)
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
