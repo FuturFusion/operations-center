@@ -368,6 +368,7 @@ type ExprOsapiSystemStoragePool struct {
 	Cache                     []string                               `json:"cache,omitempty"   yaml:"cache,omitempty" expr:"cache"`
 	Log                       []string                               `json:"log,omitempty"     yaml:"log,omitempty" expr:"log"`
 	Special                   *ExprOsapiSystemStoragePoolSpecial     `json:"special,omitempty" yaml:"special" expr:"special"`
+	Managed                   bool                                   `json:"managed"                       yaml:"managed" expr:"managed"`
 	State                     string                                 `json:"state"                         yaml:"state" expr:"state"`
 	LastScrub                 *ExprOsapiSystemStoragePoolScrubStatus `json:"last_scrub,omitempty"          yaml:"last_scrub,omitempty,omitempty" expr:"last_scrub"`
 	EncryptionKeyStatus       string                                 `json:"encryption_key_status"         yaml:"encryption_key_status" expr:"encryption_key_status"`
@@ -402,9 +403,15 @@ type ExprOsapiSystemStoragePoolVolume struct {
 	Use          string `json:"use"            yaml:"use" expr:"use"`
 }
 
+type ExprOsapiSystemStorageRootPartition struct {
+	SizeInBytes      int `json:"size_in_bytes"      yaml:"size_in_bytes" expr:"size_in_bytes"`
+	AvailableInBytes int `json:"available_in_bytes" yaml:"available_in_bytes" expr:"available_in_bytes"`
+}
+
 type ExprOsapiSystemStorageState struct {
-	Drives []ExprOsapiSystemStorageDrive `json:"drives" yaml:"drives" expr:"drives"`
-	Pools  []ExprOsapiSystemStoragePool  `json:"pools"  yaml:"pools" expr:"pools"`
+	Drives        []ExprOsapiSystemStorageDrive       `json:"drives"         yaml:"drives" expr:"drives"`
+	Pools         []ExprOsapiSystemStoragePool        `json:"pools"          yaml:"pools" expr:"pools"`
+	RootPartition ExprOsapiSystemStorageRootPartition `json:"root_partition" yaml:"root_partition" expr:"root_partition"`
 }
 
 type ExprServer struct {
@@ -871,6 +878,7 @@ func ToExprOsapiSystemStoragePool(s osapi.SystemStoragePool) ExprOsapiSystemStor
 		Cache:                     s.Cache,
 		Log:                       s.Log,
 		Special:                   toPtr(ToExprOsapiSystemStoragePoolSpecial(fromPtr(s.Special))),
+		Managed:                   s.Managed,
 		State:                     s.State,
 		LastScrub:                 toPtr(ToExprOsapiSystemStoragePoolScrubStatus(fromPtr(s.LastScrub))),
 		EncryptionKeyStatus:       s.EncryptionKeyStatus,
@@ -912,10 +920,18 @@ func ToExprOsapiSystemStoragePoolVolume(s osapi.SystemStoragePoolVolume) ExprOsa
 	}
 }
 
+func ToExprOsapiSystemStorageRootPartition(s osapi.SystemStorageRootPartition) ExprOsapiSystemStorageRootPartition {
+	return ExprOsapiSystemStorageRootPartition{
+		SizeInBytes:      s.SizeInBytes,
+		AvailableInBytes: s.AvailableInBytes,
+	}
+}
+
 func ToExprOsapiSystemStorageState(s osapi.SystemStorageState) ExprOsapiSystemStorageState {
 	return ExprOsapiSystemStorageState{
-		Drives: sliceConvert(s.Drives, ToExprOsapiSystemStorageDrive),
-		Pools:  sliceConvert(s.Pools, ToExprOsapiSystemStoragePool),
+		Drives:        sliceConvert(s.Drives, ToExprOsapiSystemStorageDrive),
+		Pools:         sliceConvert(s.Pools, ToExprOsapiSystemStoragePool),
+		RootPartition: ToExprOsapiSystemStorageRootPartition(s.RootPartition),
 	}
 }
 
