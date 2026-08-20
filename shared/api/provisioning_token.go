@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -99,6 +100,44 @@ func (i ImageType) FileExt() string {
 
 func (i ImageType) UpdateFileType() images.UpdateFileType {
 	return imageTypes[i].updateFileType
+}
+
+// TokenSeedImagePathSegments returns the path segments addressing the
+// pre-seeded image of a token seed, relative to the token seed, e.g.
+// "architecture/x86_64/channel/stable/type/iso/file.iso".
+//
+// The channel is omitted if empty, which lets the server fall back to the
+// configured default update channel. The trailing filename segment is not
+// inspected by the server, it only exists so the URL ends in a recognized
+// media extension, for the sake of BMC firmware that validates the format of
+// the virtual media Image URI.
+func TokenSeedImagePathSegments(imageType ImageType, architecture images.UpdateFileArchitecture, channel string) []string {
+	return tokenSeedImagePathSegments(imageType, architecture, channel, "file")
+}
+
+// TokenSeedPreparedImagePathSegments returns the path segments addressing one
+// already generated pre-seeded image of a token seed, e.g.
+// "architecture/x86_64/channel/stable/type/iso/a1B2c3D4e5F6.iso".
+func TokenSeedPreparedImagePathSegments(imageType ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) []string {
+	return tokenSeedImagePathSegments(imageType, architecture, channel, fingerprintID)
+}
+
+func tokenSeedImagePathSegments(imageType ImageType, architecture images.UpdateFileArchitecture, channel string, filename string) []string {
+	segments := []string{
+		"architecture", architecture.String(),
+	}
+
+	if channel != "" {
+		segments = append(segments, "channel", url.PathEscape(channel))
+	}
+
+	segments = append(
+		segments,
+		"type", imageType.String(),
+		filename+imageType.FileExt(),
+	)
+
+	return segments
 }
 
 // TokenImagePost defines the configuration to generate a pre-seeded ISO or raw
