@@ -33,8 +33,9 @@ type ClusterService interface {
 	GetEndpoint(ctx context.Context, name string) (Endpoint, error)
 	IsInstanceLifecycleOperationPermitted(ctx context.Context, name string) bool
 	LaunchClusterUpdate(ctx context.Context, name string, reboot bool) error
+	LaunchClusterReboot(ctx context.Context, name string) error
+	AbortClusterOperation(ctx context.Context, name string) error
 	ClusterUpdateControlLoop(ctx context.Context, clusterNameFilter *string) error
-	AbortClusterUpdate(ctx context.Context, name string) error
 
 	GetClusterArtifactAll(ctx context.Context, clusterName string) (ClusterArtifacts, error)
 	GetClusterArtifactAllNames(ctx context.Context, clusterName string) ([]string, error)

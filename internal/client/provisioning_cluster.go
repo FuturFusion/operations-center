@@ -189,8 +189,17 @@ func (c OperationsCenterClient) LaunchClusterWideUpdate(ctx context.Context, nam
 	return nil
 }
 
-func (c OperationsCenterClient) CancelClusterWideUpdate(ctx context.Context, name string) error {
-	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, ":cancel-update"), nil, nil)
+func (c OperationsCenterClient) LaunchClusterWideReboot(ctx context.Context, name string) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, ":reboot"), nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c OperationsCenterClient) CancelClusterWideOperation(ctx context.Context, name string) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, ":cancel-operation"), nil, nil)
 	if err != nil {
 		return err
 	}

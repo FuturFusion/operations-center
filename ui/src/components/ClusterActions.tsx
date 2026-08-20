@@ -13,7 +13,8 @@ import { Cluster } from "types/cluster";
 import { ClusterUpdateInProgress } from "util/cluster";
 import { downloadFile } from "util/util";
 import ClusterAddServerBtn from "components/ClusterAddServerBtn";
-import ClusterCancelUpdateBtn from "components/ClusterCancelUpdateBtn";
+import ClusterCancelOperationBtn from "components/ClusterCancelOperationBtn";
+import ClusterRebootBtn from "components/ClusterRebootBtn";
 import ClusterRemoveServerBtn from "components/ClusterRemoveServerBtn";
 import ClusterUpdateBtn from "components/ClusterUpdateBtn";
 
@@ -81,9 +82,13 @@ const ClusterActions: FC<Props> = ({ cluster }) => {
           ClusterUpdateInProgress.Inactive && (
           <ClusterUpdateBtn cluster={cluster} recommended={true} />
         )}
+      {cluster.update_status?.in_progress_status?.in_progress ==
+        ClusterUpdateInProgress.Inactive && (
+        <ClusterRebootBtn cluster={cluster} />
+      )}
       {cluster.update_status?.in_progress_status?.in_progress !=
         ClusterUpdateInProgress.Inactive && (
-        <ClusterCancelUpdateBtn cluster={cluster} />
+        <ClusterCancelOperationBtn cluster={cluster} />
       )}
       <PiCertificate
         size={25}

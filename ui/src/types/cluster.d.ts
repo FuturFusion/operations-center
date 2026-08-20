@@ -1,6 +1,8 @@
 export interface ClusterUpdateStatusProgress {
   in_progress: string;
   status_description: string;
+  evacuated_before?: string[];
+  pending_reboot?: string[];
 }
 
 export interface ClusterUpdateStatus {

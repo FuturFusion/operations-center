@@ -63,17 +63,17 @@ func (p clusterUpdateProgress) String() string {
 // serverPendingSteps returns the number of the perServerSteps steps, that the
 // server in the given state still has ahead of it.
 //
-// States, which are not part of clusterUpdateSteps and which are not "up to date"
+// States, which are not part of the phases steps and which are not "up to date"
 // are deliberately counted as not started at all. Under reporting the progress is
 // harmless, since clusterUpdateProgressLatch keeps the last reported value in
 // place, while over reporting would leave the reported progress ahead of reality
 // for the rest of the run.
-func serverPendingSteps(state api.ServerUpdateState, perServerSteps int) int {
+func serverPendingSteps(state api.ServerUpdateState, perServerSteps int, firstStep int) int {
 	if state == api.ServerUpdateStateUpToDate {
 		return 0
 	}
 
-	idx := slices.Index(clusterUpdateSteps, state)
+	idx := slices.Index(clusterUpdateSteps, state) - firstStep
 	if idx < 0 {
 		return perServerSteps
 	}
@@ -84,18 +84,30 @@ func serverPendingSteps(state api.ServerUpdateState, perServerSteps int) int {
 // serverUpdateStateForRollingUpdate returns the update state of the server as the
 // rolling cluster update in the given phase sees it.
 //
-// During the rolling restart phase, pending updates are intentionally ignored. All
-// servers of a cluster have been updated to the same version before entering the
-// rolling restart, so a newly published update must not interrupt the ongoing
-// restart cycle.
+// During the rolling restart and the rolling reboot phase, pending updates are
+// intentionally ignored. All servers of a cluster have been updated to the same
+// version before entering the rolling restart, so a newly published update must
+// not interrupt the ongoing restart cycle.
+//
+// During the rolling reboot phase, the need for a reboot is synthesized for all
+// servers, which still have to be rebooted. A server is removed from
+// PendingReboot as soon as its reboot has been triggered, which is what lets it
+// advance to the restore step afterwards.
 //
 // During the update phase, a server updating its applications is reported as
 // updating instead of the undefined state, api.Server.UpdateState reports for it,
 // since applications are updated as part of the OS update.
-func serverUpdateStateForRollingUpdate(inProgress api.ClusterUpdateInProgress, server provisioning.Server) api.ServerUpdateState {
-	switch inProgress {
+func serverUpdateStateForRollingUpdate(inProgressStatus api.ClusterUpdateInProgressStatus, server provisioning.Server) api.ServerUpdateState {
+	switch inProgressStatus.InProgress {
 	case api.ClusterUpdateInProgressRollingRestart:
 		server.VersionData.NeedsUpdate = ptr.To(false)
+
+	case api.ClusterUpdateInProgressRollingReboot:
+		server.VersionData.NeedsUpdate = ptr.To(false)
+
+		if slices.Contains(inProgressStatus.PendingReboot, server.Name) {
+			server.VersionData.NeedsReboot = ptr.To(true)
+		}
 
 	case api.ClusterUpdateInProgressApplyUpdate,
 		api.ClusterUpdateInProgressApplyUpdateWithReboot:
@@ -116,6 +128,7 @@ func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgres
 		}
 	}
 
+	var firstStep int
 	var perServerSteps int
 	switch clusterUpdateInProgressStatus.InProgress {
 	case api.ClusterUpdateInProgressApplyUpdate:
@@ -124,6 +137,10 @@ func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgres
 	case api.ClusterUpdateInProgressApplyUpdateWithReboot,
 		api.ClusterUpdateInProgressRollingRestart:
 		perServerSteps = len(clusterUpdateSteps)
+
+	case api.ClusterUpdateInProgressRollingReboot:
+		firstStep = clusterUpdateUpdateSteps
+		perServerSteps = len(clusterUpdateSteps) - clusterUpdateUpdateSteps
 
 	default:
 		return clusterUpdateProgress{}
@@ -148,7 +165,7 @@ func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgres
 	for _, server := range servers {
 		totalSteps += perServerSteps
 
-		state := serverUpdateStateForRollingUpdate(clusterUpdateInProgressStatus.InProgress, server)
+		state := serverUpdateStateForRollingUpdate(clusterUpdateInProgressStatus, server)
 
 		// Servers, which have been evacuated before the update was triggered, are kept
 		// in the evacuated state and therefore have no restore step ahead of them.
@@ -157,7 +174,7 @@ func clusterUpdateState(clusterUpdateInProgressStatus api.ClusterUpdateInProgres
 			continue
 		}
 
-		serverSteps := serverPendingSteps(state, perServerSteps)
+		serverSteps := serverPendingSteps(state, perServerSteps, firstStep)
 		if serverSteps == 0 {
 			continue
 		}

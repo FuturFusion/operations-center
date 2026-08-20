@@ -42,8 +42,8 @@ func NewClusterServiceWithPrometheus(base provisioning.ClusterService, instanceN
 	}
 }
 
-// AbortClusterUpdate implements provisioning.ClusterService.
-func (_d ClusterServiceWithPrometheus) AbortClusterUpdate(ctx context.Context, name string) (err error) {
+// AbortClusterOperation implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) AbortClusterOperation(ctx context.Context, name string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -51,9 +51,9 @@ func (_d ClusterServiceWithPrometheus) AbortClusterUpdate(ctx context.Context, n
 			result = "error"
 		}
 
-		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AbortClusterUpdate", result).Observe(time.Since(_since).Seconds())
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "AbortClusterOperation", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.AbortClusterUpdate(ctx, name)
+	return _d.base.AbortClusterOperation(ctx, name)
 }
 
 // AddApplication implements provisioning.ClusterService.
@@ -358,6 +358,20 @@ func (_d ClusterServiceWithPrometheus) IsInstanceLifecycleOperationPermitted(ctx
 		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "IsInstanceLifecycleOperationPermitted", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.IsInstanceLifecycleOperationPermitted(ctx, name)
+}
+
+// LaunchClusterReboot implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) LaunchClusterReboot(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "LaunchClusterReboot", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.LaunchClusterReboot(ctx, name)
 }
 
 // LaunchClusterUpdate implements provisioning.ClusterService.

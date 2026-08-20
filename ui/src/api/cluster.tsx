@@ -119,11 +119,24 @@ export const updateClusterRolling = (
   });
 };
 
-export const cancelUpdateClusterRolling = (
+export const rebootClusterRolling = (
   name: string,
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/provisioning/clusters/${name}/:cancel-update`, {
+    fetch(`/1.0/provisioning/clusters/${name}/:reboot`, {
+      method: "POST",
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
+export const cancelClusterOperation = (
+  name: string,
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/clusters/${name}/:cancel-operation`, {
       method: "POST",
     })
       .then((response) => response.json())

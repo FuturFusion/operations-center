@@ -2157,7 +2157,7 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 		}
 
 		if cluster.IsUpdateInProgress() {
-			return fmt.Errorf("Update for cluster %q already in progress: %w", name, domain.ErrOperationNotPermitted)
+			return fmt.Errorf("Cluster %q already has an operation in progress: %w", name, domain.ErrOperationNotPermitted)
 		}
 
 		if (len(cluster.UpdateStatus.NeedsUpdate) == 0) && (len(cluster.UpdateStatus.NeedsReboot) == 0) {
@@ -2228,19 +2228,9 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 		return fmt.Errorf("Failed to get server details for cluster %q: %w", name, err)
 	}
 
-	var evacuatedBefore []string
-	for _, server := range servers {
-		if server.Status != api.ServerStatusReady {
-			return domain.NewValidationErrf("Cluster update can not be launched for %q: Server %q (%s) is in state %q (%s)", name, server.Name, server.ConnectionURL, server.Status, server.StatusDetail)
-		}
-
-		if server.VersionData.InMaintenance == nil || *server.VersionData.InMaintenance == api.InMaintenanceEvacuating || *server.VersionData.InMaintenance == api.InMaintenanceRestoring {
-			return domain.NewValidationErrf("Cluster update can not be launched for %q: Server %q (%s) is in maintenance state %q", name, server.Name, server.ConnectionURL, server.VersionData.InMaintenance.String())
-		}
-
-		if ptr.From(server.VersionData.InMaintenance) == api.InMaintenanceEvacuated {
-			evacuatedBefore = append(evacuatedBefore, server.Name)
-		}
+	evacuatedBefore, err := clusterReadyForRollingUpdate("update", name, servers)
+	if err != nil {
+		return err
 	}
 
 	cluster.UpdateStatus.InProgressStatus.EvacuatedBefore = evacuatedBefore
@@ -2252,6 +2242,137 @@ func (s *clusterService) LaunchClusterUpdate(ctx context.Context, name string, r
 	}
 
 	reverter.Success()
+
+	return nil
+}
+
+// clusterReadyForRollingUpdate verifies, that the cluster is in a state, which
+// allows a rolling update or a rolling reboot to be launched.
+// This is the case if
+//
+//   - all servers are in ready state with no update currently running
+//   - none of the servers is in maintenance.
+//
+// It returns the names of the servers, which have been evacuated manually
+// before, since those are kept in the evacuated state for the whole run.
+//
+// operation names the operation, that is about to be launched, and is only used
+// to report which one has been rejected.
+func clusterReadyForRollingUpdate(operation string, name string, servers provisioning.Servers) ([]string, error) {
+	var evacuatedBefore []string
+	for _, server := range servers {
+		if server.Status != api.ServerStatusReady {
+			return nil, domain.NewValidationErrf("Cluster %s can not be launched for %q: Server %q (%s) is in state %q (%s)", operation, name, server.Name, server.ConnectionURL, server.Status, server.StatusDetail)
+		}
+
+		if server.VersionData.InMaintenance == nil || *server.VersionData.InMaintenance == api.InMaintenanceEvacuating || *server.VersionData.InMaintenance == api.InMaintenanceRestoring {
+			return nil, domain.NewValidationErrf("Cluster %s can not be launched for %q: Server %q (%s) is in maintenance state %q", operation, name, server.Name, server.ConnectionURL, server.VersionData.InMaintenance.String())
+		}
+
+		if ptr.From(server.VersionData.InMaintenance) == api.InMaintenanceEvacuated {
+			evacuatedBefore = append(evacuatedBefore, server.Name)
+		}
+	}
+
+	return evacuatedBefore, nil
+}
+
+// clusterReadyForRollingReboot verifies the additional preconditions, an on
+// demand rolling reboot has on top of clusterReadyForRollingUpdate:
+//
+//   - None of the servers is ready but currently busy (e.g. applying an update).
+func clusterReadyForRollingReboot(name string, servers provisioning.Servers) ([]string, error) {
+	evacuatedBefore, err := clusterReadyForRollingUpdate("reboot", name, servers)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, server := range servers {
+		if server.StatusDetail != api.ServerStatusDetailNone {
+			return nil, domain.NewValidationErrf("Cluster reboot can not be launched for %q: Server %q (%s) is busy (%s)", name, server.Name, server.ConnectionURL, server.StatusDetail)
+		}
+	}
+
+	return evacuatedBefore, nil
+}
+
+// LaunchClusterReboot launches an on demand rolling reboot of all servers of the
+// cluster.
+func (s *clusterService) LaunchClusterReboot(ctx context.Context, name string) error {
+	cluster, err := s.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get cluster %q: %w", name, err)
+	}
+
+	if cluster.IsUpdateInProgress() {
+		return fmt.Errorf("Cluster %q already has an operation in progress: %w", name, domain.ErrOperationNotPermitted)
+	}
+
+	// Refresh all status information for all servers.
+	err = s.serverSvc.PollServers(ctx, provisioning.ServerFilter{
+		Cluster: ptr.To(name),
+	}, true)
+	if err != nil {
+		return fmt.Errorf("Failed to refresh server state information for cluster %q: %w", name, err)
+	}
+
+	servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
+		Cluster: ptr.To(name),
+	})
+	if err == nil && len(servers) == 0 {
+		err = domain.ErrNotFound
+	}
+
+	if err != nil {
+		return fmt.Errorf("Failed to get server details for cluster %q: %w", name, err)
+	}
+
+	evacuatedBefore, err := clusterReadyForRollingReboot(name, servers)
+	if err != nil {
+		return err
+	}
+
+	// The control loop is driven by the in progress status, so a rolling reboot,
+	// which is visible without its pending reboot list, would be seen as a run
+	// with nothing left to do and would be cleaned up right away.
+	pendingReboot := make([]string, 0, len(servers))
+	for _, server := range servers {
+		pendingReboot = append(pendingReboot, server.Name)
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		cluster, err := s.repo.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get cluster %q: %w", name, err)
+		}
+
+		if cluster.IsUpdateInProgress() {
+			return fmt.Errorf("Cluster %q already has an operation in progress: %w", name, domain.ErrOperationNotPermitted)
+		}
+
+		cluster.UpdateStatus.InProgressStatus = api.ClusterUpdateInProgressStatus{
+			InProgress:      api.ClusterUpdateInProgressRollingReboot,
+			EvacuatedBefore: evacuatedBefore,
+			PendingReboot:   pendingReboot,
+			LastUpdated:     s.now(),
+		}
+
+		err = s.repo.Update(ctx, *cluster)
+		if err != nil {
+			return fmt.Errorf("Failed to update cluster %q: %w", name, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	s.clusterUpdateProgress.reset(name)
+
+	// Kick the control loop right away instead of waiting for the next tick of the
+	// periodic cluster update control loop.
+	servers[0].SignalLifecycleEvent()
 
 	return nil
 }
@@ -2329,7 +2450,8 @@ func (s *clusterService) ClusterUpdateControlLoop(ctx context.Context, clusterNa
 				api.ClusterUpdateInProgressApplyUpdateWithReboot:
 				err = s.executeRollingUpdate(ctx, cluster, servers)
 
-			case api.ClusterUpdateInProgressRollingRestart:
+			case api.ClusterUpdateInProgressRollingRestart,
+				api.ClusterUpdateInProgressRollingReboot:
 				err = s.executeRollingRestartNextStep(ctx, cluster, servers)
 			}
 
@@ -2458,9 +2580,14 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 		// during the rolling restart phase. All servers of a cluster have been updated
 		// to the same version before entering the rolling restart. This procedure
 		// should not be interrupted by new updates appearing while a rolling update is
-		// processed. The same state is used to report the progress to the user, so the
-		// reported progress can not disagree with the action taken here.
-		serverUpdateState := serverUpdateStateForRollingUpdate(cluster.UpdateStatus.InProgressStatus.InProgress, server)
+		// processed.
+		// For an on demand rolling reboot, it also synthesizes the need for
+		// a reboot for all servers, which have not been rebooted yet, which is what
+		// drives the cycle in the absence of a pending update.
+		// The same state is used
+		// to report the progress to the user, so the reported progress can not
+		// disagree with the action taken here.
+		serverUpdateState := serverUpdateStateForRollingUpdate(cluster.UpdateStatus.InProgressStatus, server)
 
 		if nextAction == nil {
 			switch serverUpdateState {
@@ -2487,7 +2614,15 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 
 			case api.ServerUpdateStateInMaintenanceRebootPending:
 				nextAction = func(ctx context.Context) error {
-					return s.serverSvc.RebootSystemByName(ctx, server.Name, true)
+					err := s.serverSvc.RebootSystemByName(ctx, server.Name, true)
+					if err != nil {
+						return err
+					}
+
+					// During an on demand rolling reboot, the need for the reboot is
+					// synthesized from the pending reboot list. Dropping the server from the
+					// list is therefore what lets it advance to the restore step.
+					return s.markServerRebooted(ctx, cluster, server.Name)
 				}
 
 			case api.ServerUpdateStateInMaintenanceRebooting:
@@ -2620,6 +2755,38 @@ func (s *clusterService) executeRollingRestartNextStep(ctx context.Context, clus
 	return nil
 }
 
+// markServerRebooted removes the server from the list of servers, which still
+// have to be rebooted as part of an on demand rolling reboot. It is a no-op for
+// all other phases.
+func (s *clusterService) markServerRebooted(ctx context.Context, cluster provisioning.Cluster, serverName string) error {
+	if cluster.UpdateStatus.InProgressStatus.InProgress != api.ClusterUpdateInProgressRollingReboot {
+		return nil
+	}
+
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		updateCluster, err := s.repo.GetByName(ctx, cluster.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to get cluster %q: %w", cluster.Name, err)
+		}
+
+		updateCluster.UpdateStatus.InProgressStatus.PendingReboot = slices.DeleteFunc(
+			updateCluster.UpdateStatus.InProgressStatus.PendingReboot,
+			func(name string) bool {
+				return name == serverName
+			},
+		)
+
+		updateCluster.UpdateStatus.InProgressStatus.LastUpdated = s.now()
+
+		err = s.repo.Update(ctx, *updateCluster)
+		if err != nil {
+			return fmt.Errorf("Failed to update cluster %q: %w", cluster.Name, err)
+		}
+
+		return nil
+	})
+}
+
 func (s *clusterService) updateInProgressStatus(ctx context.Context, clusterName string, inProgressStatus api.ClusterUpdateInProgressStatus) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		inProgressStatus.LastUpdated = s.now()
@@ -2640,7 +2807,7 @@ func (s *clusterService) updateInProgressStatus(ctx context.Context, clusterName
 	})
 }
 
-func (s *clusterService) AbortClusterUpdate(ctx context.Context, name string) error {
+func (s *clusterService) AbortClusterOperation(ctx context.Context, name string) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		cluster, err := s.repo.GetByName(ctx, name)
 		if err != nil {
