@@ -50,6 +50,8 @@ func createClusterAndAddServerAndRemoveServer() func(t *testing.T, tmpDir string
 			t.FailNow()
 		}
 
+		mustDeleteClusterImages(t, "incus-os-cluster")
+
 		// Remove IncusOS03 from cluster.
 		mustRun(t, `../bin/operations-center.linux.%s provisioning cluster remove-servers incus-os-cluster --server-names IncusOS03`, cpuArch)
 
