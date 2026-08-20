@@ -1678,11 +1678,12 @@ func (s *serverService) FactoryResetByName(ctx context.Context, name string, tok
 				Version:      "1",
 				Applications: applications,
 			},
-			Incus: api.SeedIncus{
-				Version:       "1",
-				ApplyDefaults: false,
-			},
 		}
+	}
+
+	seed.Incus = api.SeedIncus{
+		Version:       "1",
+		ApplyDefaults: false,
 	}
 
 	providerConfig, err := s.tokenSvc.GetTokenProviderConfig(ctx, *tokenID)

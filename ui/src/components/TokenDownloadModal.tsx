@@ -89,9 +89,7 @@ const TokenDownloadModal: FC<Props> = ({
 
       handleClose();
 
-      const bootSecurity = values.seeds.install.boot_security;
-
-      delete values.seeds.install.boot_security;
+      const { boot_security: bootSecurity, ...install } = values.seeds.install;
 
       download({
         ...values,
@@ -101,7 +99,7 @@ const TokenDownloadModal: FC<Props> = ({
             applications: applications,
           },
           install: {
-            ...values.seeds.install,
+            ...install,
             security: {
               missing_tpm: bootSecurity == BootSecurity.NO_TPM,
               missing_secure_boot: bootSecurity == BootSecurity.NO_SECURE_BOOT,

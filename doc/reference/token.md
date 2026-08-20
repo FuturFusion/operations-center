@@ -24,6 +24,10 @@ The details about the installation seed is documented in
 The seed configuration is only accepted, if it exclusively contains fields,
 which are part of the respective seed definition. Unknown fields are rejected.
 
+The seed configuration for Incus (`incus.yaml`) and for updates
+(`update.yaml`) is managed by Operations Center itself and is therefore
+rejected, if provided as part of a seed configuration.
+
 ### Seed Configuration (`pre-seed.yaml`)
 
 The seed configuration has the following structure:
@@ -34,13 +38,6 @@ applications:
   applications:
     - name: incus
     - name: debug
-incus:
-  version: "1"
-  preseed:
-    certificates:
-      - name: admin
-        type: client
-# ...
 # install:
 # ...
 # migration_manager:
@@ -56,8 +53,6 @@ network:
       - slaac
 # ...
 # operations_center:
-# ...
-# update:
 # ...
 ```
 

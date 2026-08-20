@@ -16,11 +16,10 @@ func TestJSON(t *testing.T) {
 		name string
 		body string
 
-		assertErr           require.ErrorAssertionFunc
-		wantErrContain      string
-		wantInterfaceCount  int
-		wantNetworkVersion  string
-		wantIncusConfigKeys int
+		assertErr          require.ErrorAssertionFunc
+		wantErrContain     string
+		wantInterfaceCount int
+		wantNetworkVersion string
 	}{
 		{
 			name: "success - flat network seed",
@@ -51,23 +50,30 @@ func TestJSON(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "success - arbitrary incus preseed config keys",
+			name: "error - incus seed is not accepted",
 			body: `{
   "seeds": {
     "incus": {
-      "version": "1",
-      "preseed": {
-        "config": {
-          "core.https_address": ":8443",
-          "some.key.unknown.to.us": "value"
-        }
-      }
+      "version": "1"
     }
   }
 }`,
 
-			assertErr:           require.NoError,
-			wantIncusConfigKeys: 2,
+			assertErr:      require.Error,
+			wantErrContain: `unknown field "incus"`,
+		},
+		{
+			name: "error - update seed is not accepted",
+			body: `{
+  "seeds": {
+    "update": {
+      "version": "1"
+    }
+  }
+}`,
+
+			assertErr:      require.Error,
+			wantErrContain: `unknown field "update"`,
 		},
 		{
 			name: "error - network seed nested in config block",
@@ -118,10 +124,6 @@ func TestJSON(t *testing.T) {
 
 			require.Equal(t, tc.wantNetworkVersion, tokenImagePost.Seeds.Network.Version)
 			require.Len(t, tokenImagePost.Seeds.Network.Interfaces, tc.wantInterfaceCount)
-
-			if tc.wantIncusConfigKeys > 0 {
-				require.Len(t, tokenImagePost.Seeds.Incus.Preseed.Config, tc.wantIncusConfigKeys)
-			}
 		})
 	}
 }
@@ -151,12 +153,30 @@ network:
       addresses:
         - dhcp4
         - slaac
-incus:
-  version: "1"
 `,
 
 			assertErr:          require.NoError,
 			wantInterfaceCount: 1,
+		},
+		{
+			name: "error - incus seed is not accepted",
+			body: `---
+incus:
+  version: "1"
+`,
+
+			assertErr:      require.Error,
+			wantErrContain: "field incus not found in type",
+		},
+		{
+			name: "error - update seed is not accepted",
+			body: `---
+update:
+  version: "1"
+`,
+
+			assertErr:      require.Error,
+			wantErrContain: "field update not found in type",
 		},
 		{
 			name: "success - empty document",
@@ -243,6 +263,32 @@ network:
 
 			assertErr:      require.Error,
 			wantErrContain: "field applications not found in type",
+		},
+		{
+			name: "error - incus seed is not accepted",
+			body: `---
+description: some description
+public: false
+seeds:
+  incus:
+    version: "1"
+`,
+
+			assertErr:      require.Error,
+			wantErrContain: "field incus not found in type",
+		},
+		{
+			name: "error - update seed is not accepted",
+			body: `---
+description: some description
+public: false
+seeds:
+  update:
+    version: "1"
+`,
+
+			assertErr:      require.Error,
+			wantErrContain: "field update not found in type",
 		},
 	}
 

@@ -59,8 +59,6 @@ network:
       - dhcp4
       - dhcp6
       - slaac
-incus:
-  version: "1"
 `)
 
 	tokenSeedPutYAMLTemplate = []byte(`---
@@ -82,34 +80,6 @@ seeds:
         - dhcp4
         - dhcp6
         - slaac
-  incus:
-    version: "1"
-`)
-
-	incusOSFactoryResetSeedFileYAMLTemplate = []byte(`---
-applications:
-  version: "1"
-  applications:
-    - name: incus
-    - name: debug
-network:
-  interfaces:
-    - name: enp5s0
-      hwaddr: enp5s0
-      required_for_online: both
-      addresses:
-      - dhcp4
-      - dhcp6
-      - slaac
-incus:
-  version: "1"
-  preseed:
-    certificates:
-      - name: admin
-        type: client
-        certificate: |
-$CLIENT_CERTIFICATE$
-        description: Initial admin client
 `)
 
 	// createCluster templates.
@@ -144,6 +114,12 @@ $CLIENT_CERTIFICATE$
 	incusOSClusterApplicationConfigPostFactoryResetWithTokenSeed = []byte(`---
 config:
   user.ui.title: E2E Test IncusOS Cluster
+certificates:
+  - name: admin
+    type: client
+    certificate: |
+$CLIENT_CERTIFICATE$
+    description: Initial admin client
 `)
 
 	incusOSServiceLVMConfig = []byte(`---
