@@ -41,7 +41,9 @@ const TokenSeedDownloadModal: FC<Props> = ({
 
     try {
       const tokenUUID = seed.token_uuid || "";
-      const url = `/1.0/provisioning/tokens/${tokenUUID}/seeds/${seed.name}?type=${values.type}&architecture=${values.architecture}`;
+      // Parameters and the terminal filename are encoded as path segments, so
+      // that the URL ends in a recognized media extension.
+      const url = `/1.0/provisioning/tokens/${tokenUUID}/seeds/${encodeURIComponent(seed.name)}/architecture/${values.architecture}/type/${values.type}/file.${values.type}`;
       const filename = `${seed.name}.${(values as TokenSeedImageFormValues).type}`;
 
       downloadFile(url, filename);
