@@ -11,6 +11,8 @@ import (
 	"os/user"
 	"path/filepath"
 
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -38,6 +40,7 @@ type Environment interface {
 	UserConfigDir() (string, error)
 	IsIncusOS() bool
 	GetToken(ctx context.Context) (string, error)
+	GetSecureBootCertificates(ctx context.Context) (incusosapi.InternalSecureBootCertificates, error)
 }
 
 type httpClient interface {
@@ -215,4 +218,53 @@ func (e environment) GetToken(ctx context.Context) (string, error) {
 	}
 
 	return token, nil
+}
+
+// GetSecureBootCertificates returns the secure boot certificates of IncusOS,
+// which are provided by the internal API of IncusOS.
+func (e environment) GetSecureBootCertificates(ctx context.Context) (incusosapi.InternalSecureBootCertificates, error) {
+	certificates := incusosapi.InternalSecureBootCertificates{}
+
+	if !e.IsIncusOS() {
+		return certificates, fmt.Errorf("Not an IncusOS system")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://unix/internal/secureboot", http.NoBody)
+	if err != nil {
+		return certificates, fmt.Errorf("Failed to create request to get IncusOS secure boot certificates: %w", err)
+	}
+
+	resp, err := e.httpClient.Do(req)
+	if err != nil {
+		return certificates, fmt.Errorf("Failed to get IncusOS secure boot certificates: %w", err)
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return certificates, fmt.Errorf("Failed to read request body of IncusOS secure boot certificates response: %w", err)
+	}
+
+	response := api.Response{}
+
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return certificates, fmt.Errorf("Failed to fetch IncusOS secure boot certificates: %s: %s", resp.Status, string(body))
+		}
+
+		return certificates, fmt.Errorf("Invalid response for IncusOS secure boot certificates: %w", err)
+	}
+
+	if response.Type == api.ErrorResponse {
+		return certificates, api.StatusErrorf(resp.StatusCode, "%v", response.Error)
+	}
+
+	err = json.Unmarshal(response.Metadata, &certificates)
+	if err != nil {
+		return certificates, fmt.Errorf("Invalid response for IncusOS secure boot certificates: %w", err)
+	}
+
+	return certificates, nil
 }
