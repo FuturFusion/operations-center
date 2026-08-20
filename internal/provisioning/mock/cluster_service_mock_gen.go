@@ -35,7 +35,7 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			AddServerSystemNetworkVLANTagsFunc: func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error {
 //				panic("mock out the AddServerSystemNetworkVLANTags method")
 //			},
-//			AddServersFunc: func(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool) error {
+//			AddServersFunc: func(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool, copyServicesConfig bool) error {
 //				panic("mock out the AddServers method")
 //			},
 //			AddStorageTargetISCSIFunc: func(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error {
@@ -157,7 +157,7 @@ type ClusterServiceMock struct {
 	AddServerSystemNetworkVLANTagsFunc func(ctx context.Context, clusterName string, interfaceName string, vlanTags []int) error
 
 	// AddServersFunc mocks the AddServers method.
-	AddServersFunc func(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool) error
+	AddServersFunc func(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool, copyServicesConfig bool) error
 
 	// AddStorageTargetISCSIFunc mocks the AddStorageTargetISCSI method.
 	AddStorageTargetISCSIFunc func(ctx context.Context, clusterName string, target api.ServiceISCSITarget) error
@@ -300,6 +300,8 @@ type ClusterServiceMock struct {
 			ServerNames []string
 			// SkipPostJoinOperations is the skipPostJoinOperations argument value.
 			SkipPostJoinOperations bool
+			// CopyServicesConfig is the copyServicesConfig argument value.
+			CopyServicesConfig bool
 		}
 		// AddStorageTargetISCSI holds details about calls to the AddStorageTargetISCSI method.
 		AddStorageTargetISCSI []struct {
@@ -739,7 +741,7 @@ func (mock *ClusterServiceMock) AddServerSystemNetworkVLANTagsCalls() []struct {
 }
 
 // AddServers calls AddServersFunc.
-func (mock *ClusterServiceMock) AddServers(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool) error {
+func (mock *ClusterServiceMock) AddServers(ctx context.Context, name string, serverNames []string, skipPostJoinOperations bool, copyServicesConfig bool) error {
 	if mock.AddServersFunc == nil {
 		panic("ClusterServiceMock.AddServersFunc: method is nil but ClusterService.AddServers was just called")
 	}
@@ -748,16 +750,18 @@ func (mock *ClusterServiceMock) AddServers(ctx context.Context, name string, ser
 		Name                   string
 		ServerNames            []string
 		SkipPostJoinOperations bool
+		CopyServicesConfig     bool
 	}{
 		Ctx:                    ctx,
 		Name:                   name,
 		ServerNames:            serverNames,
 		SkipPostJoinOperations: skipPostJoinOperations,
+		CopyServicesConfig:     copyServicesConfig,
 	}
 	mock.lockAddServers.Lock()
 	mock.calls.AddServers = append(mock.calls.AddServers, callInfo)
 	mock.lockAddServers.Unlock()
-	return mock.AddServersFunc(ctx, name, serverNames, skipPostJoinOperations)
+	return mock.AddServersFunc(ctx, name, serverNames, skipPostJoinOperations, copyServicesConfig)
 }
 
 // AddServersCalls gets all the calls that were made to AddServers.
@@ -769,12 +773,14 @@ func (mock *ClusterServiceMock) AddServersCalls() []struct {
 	Name                   string
 	ServerNames            []string
 	SkipPostJoinOperations bool
+	CopyServicesConfig     bool
 } {
 	var calls []struct {
 		Ctx                    context.Context
 		Name                   string
 		ServerNames            []string
 		SkipPostJoinOperations bool
+		CopyServicesConfig     bool
 	}
 	mock.lockAddServers.RLock()
 	calls = mock.calls.AddServers

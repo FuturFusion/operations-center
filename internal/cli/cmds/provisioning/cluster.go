@@ -790,6 +790,7 @@ type cmdClusterAddServers struct {
 
 	flagServerNames            []string
 	flagSkipPostJoinOperations bool
+	flagCopyServicesConfig     bool
 }
 
 func (c *cmdClusterAddServers) Command() *cobra.Command {
@@ -805,6 +806,7 @@ func (c *cmdClusterAddServers) Command() *cobra.Command {
 	_ = cmd.MarkFlagRequired(flagServerNames)
 
 	cmd.Flags().BoolVar(&c.flagSkipPostJoinOperations, "skip-post-join", false, "if this flag is provided, the post join configuration operations are skipped for the newly joined servers")
+	cmd.Flags().BoolVar(&c.flagCopyServicesConfig, "copy-services-config", false, "if this flag is provided, the services config is copied from an existing cluster member to the servers to be added")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -825,7 +827,7 @@ func (c *cmdClusterAddServers) validateArgsAndFlags(cmd *cobra.Command, args []s
 func (c *cmdClusterAddServers) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	err := c.ocClient.AddServersToCluster(cmd.Context(), name, c.flagServerNames, c.flagSkipPostJoinOperations)
+	err := c.ocClient.AddServersToCluster(cmd.Context(), name, c.flagServerNames, c.flagSkipPostJoinOperations, c.flagCopyServicesConfig)
 	if err != nil {
 		return err
 	}

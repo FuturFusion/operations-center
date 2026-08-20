@@ -255,6 +255,41 @@ func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, endpoint prov
 	return _d._base.GetOSData(ctx, endpoint)
 }
 
+// GetOSServiceCeph implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) GetOSServiceCeph(ctx context.Context, server provisioning.Server) (serviceCeph api0.ServiceCeph, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetOSServiceCeph")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("serviceCeph", serviceCeph),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetOSServiceCeph returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetOSServiceCeph returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetOSServiceCeph finished")
+		}
+	}()
+	return _d._base.GetOSServiceCeph(ctx, server)
+}
+
 // GetOSServiceISCSI implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetOSServiceISCSI(ctx context.Context, server provisioning.Server) (serviceISCSI api0.ServiceISCSI, err error) {
 	log := slog.With()
@@ -325,6 +360,41 @@ func (_d ClusterClientPortWithSlog) GetOSServiceLVM(ctx context.Context, server 
 	return _d._base.GetOSServiceLVM(ctx, server)
 }
 
+// GetOSServiceLinstor implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) GetOSServiceLinstor(ctx context.Context, server provisioning.Server) (serviceLinstor api0.ServiceLinstor, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetOSServiceLinstor")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("serviceLinstor", serviceLinstor),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetOSServiceLinstor returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetOSServiceLinstor returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetOSServiceLinstor finished")
+		}
+	}()
+	return _d._base.GetOSServiceLinstor(ctx, server)
+}
+
 // GetOSServiceMultipath implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetOSServiceMultipath(ctx context.Context, server provisioning.Server) (serviceMultipath api0.ServiceMultipath, err error) {
 	log := slog.With()
@@ -393,6 +463,41 @@ func (_d ClusterClientPortWithSlog) GetOSServiceNVME(ctx context.Context, server
 		}
 	}()
 	return _d._base.GetOSServiceNVME(ctx, server)
+}
+
+// GetOSServiceOVN implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) GetOSServiceOVN(ctx context.Context, server provisioning.Server) (serviceOVN api0.ServiceOVN, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetOSServiceOVN")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("serviceOVN", serviceOVN),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetOSServiceOVN returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetOSServiceOVN returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetOSServiceOVN finished")
+		}
+	}()
+	return _d._base.GetOSServiceOVN(ctx, server)
 }
 
 // GetRemoteCertificate implements provisioning.ClusterClientPort.

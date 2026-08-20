@@ -620,6 +620,14 @@ definitions:
             ClusterAddServersPost represents a cluster add servers request containing
             the names of the servers to be added to the cluster.
         properties:
+            copy_services_config:
+                description: |-
+                    If set to true, the IncusOS services configuration (lvm, iscsi, multipath, nvme, ceph, linstor, ovn) is
+                    copied from an existing member of the cluster to the servers to be added, before they join the cluster.
+                    Member dependent addresses, such as the linstor listen address and the ovn tunnel address, are adapted
+                    for each added server.
+                type: boolean
+                x-go-name: CopyServicesConfig
             server_names:
                 description: Names of the servers to be added to the cluster.
                 example:

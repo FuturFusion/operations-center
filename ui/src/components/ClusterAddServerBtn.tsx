@@ -21,6 +21,7 @@ const ClusterAddServerBtn: FC<Props> = ({ cluster, recommended }) => {
   const [showModal, setShowModal] = useState(false);
   const [opInProgress, setOpInProgress] = useState(false);
   const [skipPostJoin, setSkipPostJoin] = useState(false);
+  const [copyServicesConfig, setCopyServicesConfig] = useState(false);
   const [serverNames, setServerNames] = useState<string[]>([]);
   const { notify } = useNotification();
   const queryClient = useQueryClient();
@@ -36,6 +37,7 @@ const ClusterAddServerBtn: FC<Props> = ({ cluster, recommended }) => {
 
   const clearValues = () => {
     setSkipPostJoin(false);
+    setCopyServicesConfig(false);
     setServerNames([]);
   };
 
@@ -44,7 +46,11 @@ const ClusterAddServerBtn: FC<Props> = ({ cluster, recommended }) => {
     clusterAddServers(
       cluster.name,
       JSON.stringify(
-        { skip_post_join_operations: skipPostJoin, server_names: serverNames },
+        {
+          skip_post_join_operations: skipPostJoin,
+          copy_services_config: copyServicesConfig,
+          server_names: serverNames,
+        },
         null,
         2,
       ),
@@ -121,6 +127,24 @@ const ClusterAddServerBtn: FC<Props> = ({ cluster, recommended }) => {
                 If set to true, the post join operations (namely the creation of
                 the local storage volumes for backups, images and logs) are
                 skipped.
+              </Form.Label>
+            </Form.Group>
+            <Form.Group
+              controlId="copyServicesConfig"
+              className="mb-3 d-flex align-items-center gap-2"
+            >
+              <Form.Check
+                type="checkbox"
+                name="copyServicesConfig"
+                checked={copyServicesConfig}
+                disabled={opInProgress}
+                onChange={(e) => setCopyServicesConfig(e.target.checked)}
+              />
+              <Form.Label className="me-2 mb-0">
+                If set to true, the services config (lvm, iscsi, multipath,
+                nvme, ceph, linstor, ovn) is copied from an existing member of
+                the cluster to the servers to be added, before they join the
+                cluster.
               </Form.Label>
             </Form.Group>
           </div>

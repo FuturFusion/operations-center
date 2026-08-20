@@ -46,6 +46,38 @@ nvme:
       port: 8009
 ```
 
+### Copying the Service Configuration when Adding Servers
+
+When servers are added to an existing cluster, the service configuration of the
+added servers is required to be consistent with the one of the existing cluster
+members.
+
+Instead of configuring the services on the new servers manually, the service
+configuration can be copied from an existing cluster member by adding the
+`--copy-services-config` flag:
+
+```bash
+operations-center cluster add-servers my-cluster --server-names new-server --copy-services-config
+```
+
+The configuration of the `lvm`, `iscsi`, `multipath`, `nvme`, `ceph`, `linstor`
+and `ovn` services is copied. The LVM `system_id` is never copied. If the LVM
+service needs to be enabled on an added server, the value is determined by
+Operations Center for each added server individually, otherwise the `system_id`
+of the added server is kept as is.
+
+The `listen_address` of the `linstor` service and the `tunnel_address` of the
+`ovn` service are member dependent, if they are set to a concrete IP address.
+For those, the address of the added server is used, which is taken from the
+network interface with the same role and of the same IP family as the address of
+the cluster member the configuration is copied from. Empty and wildcard
+addresses (e.g. `[::]:3366`) are copied as they are.
+
+The configuration is copied before the servers join the cluster. If one of the
+steps up to the join fails, Operations Center tries to restore the previous
+service configuration of the added servers. Failures during the restore are
+logged.
+
 ## Application Configuration
 
 The application configuration provided during clustering follows the same format
