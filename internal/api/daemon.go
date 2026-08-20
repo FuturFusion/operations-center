@@ -1046,8 +1046,7 @@ func (d *Daemon) setupAPIRoutes(
 			return false
 		}
 
-		if r.Pattern == "GET /1.0/provisioning/tokens/{uuid}/seeds/{name}" ||
-			r.Pattern == "GET /1.0/provisioning/tokens/{uuid}/seeds/{name}/{params...}" {
+		if r.Pattern == "GET /1.0/provisioning/tokens/{uuid}/seeds/{name}/{params...}" {
 			return false
 		}
 

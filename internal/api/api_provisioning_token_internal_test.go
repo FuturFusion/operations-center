@@ -210,6 +210,60 @@ func Test_tokenHandler_tokenSeedPut(t *testing.T) {
 	}
 }
 
+func Test_tokenHandler_tokenSeedGet(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+	}{
+		{
+			name: "plain",
+			path: "/" + tokenUUID + "/seeds/test",
+		},
+		{
+			// The image used to be served from this route, if the "type" query
+			// parameter was set. It is served from
+			// GET /{uuid}/seeds/{name}/{params...} exclusively now, so the
+			// query parameters are without effect.
+			name: "image query parameters are ignored",
+			path: "/" + tokenUUID + "/seeds/test?type=iso&architecture=x86_64&channel=stable",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var imageServiceCalled bool
+
+			tokenService := &provisioningMock.TokenServiceMock{
+				GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+					return &provisioning.TokenSeed{
+						Token:       uuid.MustParse(tokenUUID),
+						Name:        name,
+						Description: "test seed",
+					}, nil
+				},
+				GetCompressedTokenImageFromTokenSeedFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, error) {
+					imageServiceCalled = true
+
+					return io.NopCloser(strings.NewReader("image-data")), nil
+				},
+				GetSeekableTokenImageFromTokenSeedFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (*provisioning.TokenImage, error) {
+					imageServiceCalled = true
+
+					return testTokenImage("image-data"), nil
+				},
+			}
+
+			body, resp := doTokenRequestFull(t, tokenService, http.MethodGet, tc.path, "", nil)
+
+			require.Equal(t, http.StatusOK, resp.statusCode)
+			require.False(t, imageServiceCalled)
+			require.Contains(t, resp.header.Get("Content-Type"), "application/json")
+			require.Contains(t, body, `"name":"test"`)
+			require.Contains(t, body, `"description":"test seed"`)
+		})
+	}
+}
+
 func Test_tokenHandler_tokenSeedImageGet(t *testing.T) {
 	tests := []struct {
 		name string

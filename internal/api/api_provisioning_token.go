@@ -31,8 +31,7 @@ func registerProvisioningTokenHandler(router Router, authorizer *authz.Authorize
 		authorizer: authorizer,
 	}
 
-	// Authentication and authorization are only required, if the respective token image seed is not public.
-	router.HandleFunc("GET /{uuid}/seeds/{name}", response.With(handler.tokenSeedGet))
+	// Authentication and authorization are only required, if the respective token seed is not defined as public.
 	router.HandleFunc("GET /{uuid}/seeds/{name}/{params...}", response.With(handler.tokenSeedImageGet))
 
 	// Normal authentication and authorization rules apply.
@@ -45,6 +44,7 @@ func registerProvisioningTokenHandler(router Router, authorizer *authz.Authorize
 	router.HandleFunc("GET /{uuid}/image/{imageUUID}", response.With(handler.tokenImageGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{uuid}/provider-config", response.With(handler.tokenProviderConfigGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{uuid}/seeds", response.With(handler.tokenSeedsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{uuid}/seeds/{name}", response.With(handler.tokenSeedGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("POST /{uuid}/seeds", response.With(handler.tokenSeedsPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
 	router.HandleFunc("PUT /{uuid}/seeds/{name}", response.With(handler.tokenSeedPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{uuid}/seeds/{name}", response.With(handler.tokenSeedDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
@@ -710,17 +710,16 @@ func (t *tokenHandler) tokenSeedsGet(r *http.Request) response.Response {
 //
 //	Get token seed config
 //
-//	Get token seed config. This can be the literal config as JSON or it can be
-//	the generated pre-seeded IncusOS ISO or raw image file, if the `type`
-//	query parameter is provided.
+//	Get the token seed config as JSON.
+//
+//	The generated pre-seeded IncusOS ISO or raw image file is served by
+//	`GET /1.0/provisioning/tokens/{uuid}/seeds/{name}/{params}` instead.
 //
 //	---
 //	consumes:
 //	  - application/json
 //	produces:
 //	  - application/json
-//	  - application/octet-stream
-//	  - application/gzip
 //	parameters:
 //	  - in: path
 //	    name: uuid
@@ -733,33 +732,6 @@ func (t *tokenHandler) tokenSeedsGet(r *http.Request) response.Response {
 //	    description: Name of the seed
 //	    type: string
 //	    required: true
-//	  - in: query
-//	    name: architecture
-//	    description: |-
-//	      Architecture of the generated file, "x86_64", "aarch64".
-//	    type: string
-//	    enum:
-//	      - x86_64
-//	      - aarch64
-//	    x-example: x86_64
-//	  - in: query
-//	    name: channel
-//	    description: |-
-//	      Name of the channel, the most recent update should be taken from
-//	      for the generated image.
-//	      If omitted, the default update channel is used.
-//	    type: string
-//	    x-example: stable
-//	  - in: query
-//	    name: type
-//	    description: |-
-//	      Type of the generated file, "iso" or "raw".
-//	      If omitted, the token seed configuration is returned as JSON.
-//	    type: string
-//	    enum:
-//	      - iso
-//	      - raw
-//	    x-example: iso
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/TokenSeedResponse"
@@ -781,115 +753,33 @@ func (t *tokenHandler) tokenSeedGet(r *http.Request) response.Response {
 
 	name := r.PathValue("name")
 
-	typeArg := r.URL.Query().Get("type")
-	architectureArg := r.URL.Query().Get("architecture")
-	channelArg := r.URL.Query().Get("channel")
-
-	seedConfig, resp := t.getPublicCheckedTokenSeed(r, UUID, name)
-	if resp != nil {
-		return resp
-	}
-
-	if typeArg == "" {
-		return response.SyncResponseETag(
-			true,
-			api.TokenSeed{
-				Token: seedConfig.Token,
-				TokenSeedPost: api.TokenSeedPost{
-					Name: seedConfig.Name,
-					TokenSeedPut: api.TokenSeedPut{
-						Description: seedConfig.Description,
-						Public:      seedConfig.Public,
-						Seeds: api.TokenSeedConfigs{
-							Applications:     seedConfig.Seeds.Applications,
-							Install:          seedConfig.Seeds.Install,
-							MigrationManager: seedConfig.Seeds.MigrationManager,
-							Network:          seedConfig.Seeds.Network,
-							OperationsCenter: seedConfig.Seeds.OperationsCenter,
-						},
-					},
-				},
-				LastUpdated: seedConfig.LastUpdated,
-			},
-			seedConfig,
-		)
-	}
-
-	imageType := api.ImageType(typeArg)
-	if !imageType.IsValid() {
-		return response.BadRequest(fmt.Errorf("image type %q is not valid", typeArg))
-	}
-
-	architecture := images.UpdateFileArchitecture(architectureArg)
-	_, ok := images.UpdateFileArchitectures[architecture]
-	if !ok {
-		return response.BadRequest(fmt.Errorf("architecture %q is not valid", architectureArg))
-	}
-
-	return t.tokenSeedImageResponse(r, UUID, name, imageType, architecture, channelArg)
-}
-
-// getPublicCheckedTokenSeed fetches the token seed config identified by
-// UUID/name and, if it is not public, performs the regular authorization
-// check for viewing it.
-func (t *tokenHandler) getPublicCheckedTokenSeed(r *http.Request, UUID uuid.UUID, name string) (*provisioning.TokenSeed, response.Response) {
 	seedConfig, err := t.service.GetTokenSeedByName(r.Context(), UUID, name)
 	if err != nil {
-		return nil, response.SmartError(err)
-	}
-
-	if !seedConfig.Public {
-		resp := checkPermission(t.authorizer, r, authz.ObjectTypeServer, authz.EntitlementCanView)
-		if resp != nil {
-			return nil, resp
-		}
-	}
-
-	return seedConfig, nil
-}
-
-// tokenSeedImageResponse streams the generated pre-seed image for the given
-// type/architecture/channel combination, gzip compressed.
-func (t *tokenHandler) tokenSeedImageResponse(r *http.Request, UUID uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) response.Response {
-	rc, _, err := t.service.GetCompressedTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture, channel)
-	if err != nil {
 		return response.SmartError(err)
 	}
 
-	return response.ReadCloserResponse(r, rc, true, tokenSeedImageFilename(name, imageType), -1, nil)
-}
-
-// tokenSeedRawImageResponse streams the generated pre-seed image itself, rather
-// than a gzip file wrapped around it.
-//
-// The image is served from a seekable stream, so byte ranges are supported and
-// an interrupted transfer can be resumed.
-// Compression is only applied to a client explicitly asking for the compressed
-// file, which rules out ranges.
-func (t *tokenHandler) tokenSeedRawImageResponse(r *http.Request, UUID uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) response.Response {
-	filename := tokenSeedImageFilename(name, imageType)
-
-	if response.RequestsGzipFile(r) && r.Header.Get("Range") == "" {
-		rc, _, err := t.service.GetCompressedTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture, channel)
-		if err != nil {
-			return response.SmartError(err)
-		}
-
-		return response.ReadCloserResponse(r, rc, true, filename, -1, map[string]string{
-			"Accept-Ranges": "none",
-		})
-	}
-
-	image, err := t.service.GetSeekableTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture, channel)
-	if err != nil {
-		return response.SmartError(err)
-	}
-
-	return response.ServeContentResponse(r, image.Content, filename, image.ModTime, image.Size, nil)
-}
-
-func tokenSeedImageFilename(name string, imageType api.ImageType) string {
-	return fmt.Sprintf("pre-seed-%s%s", name, imageType.FileExt())
+	return response.SyncResponseETag(
+		true,
+		api.TokenSeed{
+			Token: seedConfig.Token,
+			TokenSeedPost: api.TokenSeedPost{
+				Name: seedConfig.Name,
+				TokenSeedPut: api.TokenSeedPut{
+					Description: seedConfig.Description,
+					Public:      seedConfig.Public,
+					Seeds: api.TokenSeedConfigs{
+						Applications:     seedConfig.Seeds.Applications,
+						Install:          seedConfig.Seeds.Install,
+						MigrationManager: seedConfig.Seeds.MigrationManager,
+						Network:          seedConfig.Seeds.Network,
+						OperationsCenter: seedConfig.Seeds.OperationsCenter,
+					},
+				},
+			},
+			LastUpdated: seedConfig.LastUpdated,
+		},
+		seedConfig,
+	)
 }
 
 // swagger:operation GET /1.0/provisioning/tokens/{uuid}/seeds/{name}/{params} tokens token_seed_image_get
