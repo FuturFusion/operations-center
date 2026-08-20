@@ -83,65 +83,6 @@ definitions:
                 x-go-name: UsedBy
         type: object
         x-go-package: github.com/lxc/incus/v7/shared/api
-    APIUpdate:
-        properties:
-            channels:
-                description: Channels holds the name of the channels the update is assigned to.
-                example:
-                    - stable
-                items:
-                    type: string
-                type: array
-                x-go-name: Channels
-            origin:
-                description: Origin of the Update.
-                example: linuxcontainers.org
-                type: string
-                x-go-name: Origin
-            published_at:
-                description: PublishedAt is the date, when the Update has been published in RFC3339 format.
-                example: "2025-02-12T09:59:00Z"
-                format: date-time
-                type: string
-                x-go-name: PublishedAt
-            severity:
-                $ref: '#/definitions/UpdateSeverity'
-            update_status:
-                description: |-
-                    Status contains the status the update is currently in.
-                    Possible values for status are: pending, ready
-                example: ready
-                type: string
-                x-go-name: Status
-                x-go-type: github.com/FuturFusion/operations-center/shared/api.UpdateStatus
-            upstream_channels:
-                description: |-
-                    UpstreamChannels holds the name of the channels from upstream (source)
-                    the update is part of.
-                example:
-                    - stable
-                items:
-                    type: string
-                type: array
-                x-go-name: UpstreamChannels
-            url:
-                description: URL of the File.
-                example: releases/download/202501311418/
-                type: string
-                x-go-name: URL
-            uuid:
-                description: UUID of the update.
-                format: uuid
-                type: string
-                x-go-name: UUID
-            version:
-                description: Version of the Update as opaque string.
-                example: "202501311418"
-                type: string
-                x-go-name: Version
-        title: Update defines an update.
-        type: object
-        x-go-package: github.com/FuturFusion/operations-center/shared/api
     Application:
         properties:
             name:
@@ -566,71 +507,6 @@ definitions:
                 x-go-name: Key
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api/system
-    CertificatesPost:
-        description: CertificatesPost represents the fields of a new certificate
-        properties:
-            certificate:
-                description: |-
-                    The certificate itself, as PEM encoded X509 (or as base64 encoded X509 on POST)
-
-                    API extension: certificate_self_renewal
-                example: X509 PEM certificate
-                type: string
-                x-go-name: Certificate
-            description:
-                description: |-
-                    Certificate description
-
-                    API extension: certificate_description
-                example: X509 certificate
-                type: string
-                x-go-name: Description
-            name:
-                description: Name associated with the certificate
-                example: castiana
-                type: string
-                x-go-name: Name
-            projects:
-                description: |-
-                    List of allowed projects (applies when restricted)
-
-                    API extension: certificate_project
-                example:
-                    - default
-                    - foo
-                    - bar
-                items:
-                    type: string
-                type: array
-                x-go-name: Projects
-            restricted:
-                description: |-
-                    Whether to limit the certificate to listed projects
-
-                    API extension: certificate_project
-                example: true
-                type: boolean
-                x-go-name: Restricted
-            token:
-                description: |-
-                    Whether to create a certificate add token
-
-                    API extension: certificate_token
-                example: true
-                type: boolean
-                x-go-name: Token
-            trust_token:
-                description: Trust token (used to add an untrusted client)
-                example: blah
-                type: string
-                x-go-name: TrustToken
-            type:
-                description: Usage type for the certificate
-                example: client
-                type: string
-                x-go-name: Type
-        type: object
-        x-go-package: github.com/lxc/incus/v7/shared/api
     Channel:
         properties:
             description:
@@ -882,68 +758,6 @@ definitions:
                 x-go-name: RestoreMode
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
-    ClusterGroupsPost:
-        properties:
-            config:
-                $ref: '#/definitions/V7SharedAPIConfigMap'
-            description:
-                description: The description of the cluster group
-                example: amd64 servers
-                type: string
-                x-go-name: Description
-            members:
-                description: List of members in this group
-                example:
-                    - server01
-                    - server02
-                items:
-                    type: string
-                type: array
-                x-go-name: Members
-            name:
-                description: The new name of the cluster group
-                example: group1
-                type: string
-                x-go-name: Name
-        title: ClusterGroupsPost represents the fields available for a new cluster group.
-        type: object
-        x-go-package: github.com/lxc/incus/v7/shared/api
-    ClusterMemberConfigKey:
-        description: |-
-            The Value field is empty when getting clustering information with GET
-            1.0/cluster, and should be filled by the joining server when performing a PUT
-            1.0/cluster join request.
-        properties:
-            description:
-                description: A human friendly description key
-                example: '"source" property for storage pool "local"'
-                type: string
-                x-go-name: Description
-            entity:
-                description: The kind of configuration key (network, storage-pool, ...)
-                example: storage-pool
-                type: string
-                x-go-name: Entity
-            key:
-                description: The name of the key
-                example: source
-                type: string
-                x-go-name: Key
-            name:
-                description: The name of the object requiring this key
-                example: local
-                type: string
-                x-go-name: Name
-            value:
-                description: The value on the answering cluster member
-                example: /dev/sdb
-                type: string
-                x-go-name: Value
-        title: |-
-            ClusterMemberConfigKey represents a single config key that a new member of
-            the cluster is required to provide when joining.
-        type: object
-        x-go-package: github.com/lxc/incus/v7/shared/api
     ClusterPost:
         properties:
             application_seed_config:
@@ -1567,19 +1381,6 @@ definitions:
         format: int64
         type: integer
         x-go-package: github.com/FuturFusion/operations-center/shared/api
-    Incus:
-        properties:
-            apply_defaults:
-                type: boolean
-                x-go-name: ApplyDefaults
-            preseed:
-                $ref: '#/definitions/InitPreseed'
-            version:
-                type: string
-                x-go-name: Version
-        title: Incus represents the Incus seed file.
-        type: object
-        x-go-package: github.com/lxc/incus-os/incus-osd/api/seed
     IncusImage:
         properties:
             aliases:
@@ -1781,231 +1582,6 @@ definitions:
         title: SystemSecurity defines a struct to hold information about the system's security state.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
-    InitClusterPreseed:
-        properties:
-            cluster_address:
-                description: The address of the cluster you wish to join
-                example: 10.0.0.1:8443
-                type: string
-                x-go-name: ClusterAddress
-            cluster_certificate:
-                description: The expected certificate (X509 PEM encoded) for the cluster
-                example: X509 PEM certificate
-                type: string
-                x-go-name: ClusterCertificate
-            cluster_certificate_path:
-                description: The path to the cluster certificate
-                example: /tmp/cluster.crt
-                type: string
-                x-go-name: ClusterCertificatePath
-            cluster_token:
-                description: |-
-                    The cluster join token for the cluster you're trying to join
-
-                    API extension: clustering_join
-                example: blah
-                type: string
-                x-go-name: ClusterToken
-            enabled:
-                description: Whether clustering is enabled
-                example: true
-                type: boolean
-                x-go-name: Enabled
-            member_config:
-                description: |-
-                    List of member configuration keys (used during join)
-
-                    API extension: clustering_join
-                example: []
-                items:
-                    $ref: '#/definitions/ClusterMemberConfigKey'
-                type: array
-                x-go-name: MemberConfig
-            server_address:
-                description: |-
-                    The local address to use for cluster communication
-
-                    API extension: clustering_join
-                example: 10.0.0.2:8443
-                type: string
-                x-go-name: ServerAddress
-            server_name:
-                description: Name of the cluster member answering the request
-                example: server01
-                type: string
-                x-go-name: ServerName
-        title: InitClusterPreseed represents initialization configuration for the cluster.
-        type: object
-        x-go-package: github.com/lxc/incus/v7/shared/api
-    InitNetworksProjectPost:
-        properties:
-            Project:
-                description: Project in which the network will reside
-                example: default
-                type: string
-            config:
-                $ref: '#/definitions/V7SharedAPIConfigMap'
-            description:
-                description: |-
-                    Description of the profile
-
-                    API extension: entity_description
-                example: My new bridge
-                type: string
-                x-go-name: Description
-            name:
-                description: The name of the new network
-                example: mybr1
-                type: string
-                x-go-name: Name
-            type:
-                description: The network type (refer to doc/networks.md)
-                example: bridge
-                type: string
-                x-go-name: Type
-        title: InitNetworksProjectPost represents the fields of a new network along with its associated project.
-        type: object
-        x-go-package: github.com/lxc/incus/v7/shared/api
-    InitPreseed:
-        properties:
-            certificates:
-                description: |-
-                    Certificates to add
-
-                    API extension: init_preseed_certificates.
-                example: PEM encoded certificate
-                items:
-                    $ref: '#/definitions/CertificatesPost'
-                type: array
-                x-go-name: Certificates
-            cluster:
-                $ref: '#/definitions/InitClusterPreseed'
-            cluster_groups:
-                description: |-
-                    Cluster groups to add
-
-                    API extension: init_preseed_cluster_groups.
-                items:
-                    $ref: '#/definitions/ClusterGroupsPost'
-                type: array
-                x-go-name: ClusterGroups
-            config:
-                $ref: '#/definitions/V7SharedAPIConfigMap'
-            networks:
-                description: Networks by project to add
-                example: Network on the "default" project
-                items:
-                    $ref: '#/definitions/InitNetworksProjectPost'
-                type: array
-                x-go-name: Networks
-            profiles:
-                description: Profiles to add
-                example: '"default" profile with a root disk device'
-                items:
-                    $ref: '#/definitions/InitProfileProjectPost'
-                type: array
-                x-go-name: Profiles
-            projects:
-                description: Projects to add
-                example: '"default" project'
-                items:
-                    $ref: '#/definitions/ProjectsPost'
-                type: array
-                x-go-name: Projects
-            storage_pools:
-                description: Storage Pools to add
-                example: local dir storage pool
-                items:
-                    $ref: '#/definitions/StoragePoolsPost'
-                type: array
-                x-go-name: StoragePools
-            storage_volumes:
-                description: |-
-                    Storage Volumes to add
-
-                    API extension: init_preseed_storage_volumes.
-                example: local dir storage volume
-                items:
-                    $ref: '#/definitions/InitStorageVolumesProjectPost'
-                type: array
-                x-go-name: StorageVolumes
-        title: InitPreseed represents initialization configuration that can be supplied to `init`.
-        type: object
-        x-go-package: github.com/lxc/incus/v7/shared/api
-    InitProfileProjectPost:
-        properties:
-            Project:
-                description: Project in which the profile will reside
-                example: default
-                type: string
-            config:
-                $ref: '#/definitions/V7SharedAPIConfigMap'
-            description:
-                description: Description of the profile
-                example: Medium size instances
-                type: string
-                x-go-name: Description
-            devices:
-                $ref: '#/definitions/DevicesMap'
-            name:
-                description: The name of the new profile
-                example: foo
-                type: string
-                x-go-name: Name
-        title: InitProfileProjectPost represents the fields of a new profile along with its associated project.
-        type: object
-        x-go-package: github.com/lxc/incus/v7/shared/api
-    InitStorageVolumesProjectPost:
-        properties:
-            Pool:
-                description: Storage pool in which the volume will reside
-                example: default
-                type: string
-            Project:
-                description: Project in which the volume will reside
-                example: default
-                type: string
-            config:
-                $ref: '#/definitions/V7SharedAPIConfigMap'
-            content_type:
-                description: |-
-                    Volume content type (filesystem or block)
-
-                    API extension: custom_block_volumes
-                example: filesystem
-                type: string
-                x-go-name: ContentType
-            description:
-                description: |-
-                    Description of the storage volume
-
-                    API extension: entity_description
-                example: My custom volume
-                type: string
-                x-go-name: Description
-            name:
-                description: Volume name
-                example: foo
-                type: string
-                x-go-name: Name
-            restore:
-                description: |-
-                    Name of a snapshot to restore
-
-                    API extension: storage_api_volume_snapshots
-                example: snap0
-                type: string
-                x-go-name: Restore
-            source:
-                $ref: '#/definitions/StorageVolumeSource'
-            type:
-                description: Volume type (container, custom, image or virtual-machine)
-                example: custom
-                type: string
-                x-go-name: Type
-        title: InitStorageVolumesProjectPost represents the fields of a new storage volume along with its associated pool.
-        type: object
-        x-go-package: github.com/lxc/incus/v7/shared/api
     Install:
         properties:
             force_install:
@@ -3755,23 +3331,6 @@ definitions:
                 x-go-name: UsedBy
         type: object
         x-go-package: github.com/lxc/incus/v7/shared/api
-    ProjectsPost:
-        description: ProjectsPost represents the fields of a new project
-        properties:
-            config:
-                $ref: '#/definitions/V7SharedAPIConfigMap'
-            description:
-                description: Description of the project
-                example: My new project
-                type: string
-                x-go-name: Description
-            name:
-                description: The name of the new project
-                example: foo
-                type: string
-                x-go-name: Name
-        type: object
-        x-go-package: github.com/lxc/incus/v7/shared/api
     ResourcesCPU:
         description: ResourcesCPU represents the cpu resources available on the system
         properties:
@@ -5304,28 +4863,6 @@ definitions:
         title: Network represents the network seed.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api/seed
-    SeedUpdate:
-        properties:
-            auto_reboot:
-                type: boolean
-                x-go-name: AutoReboot
-            channel:
-                type: string
-                x-go-name: Channel
-            check_frequency:
-                type: string
-                x-go-name: CheckFrequency
-            maintenance_windows:
-                items:
-                    $ref: '#/definitions/SystemUpdateMaintenanceWindow'
-                type: array
-                x-go-name: MaintenanceWindows
-            version:
-                type: string
-                x-go-name: Version
-        title: Update represents the update seed.
-        type: object
-        x-go-package: github.com/lxc/incus-os/incus-osd/api/seed
     Server:
         properties:
             bmc_config:
@@ -6055,31 +5592,6 @@ definitions:
         title: StoragePool represents the fields of a storage pool.
         type: object
         x-go-package: github.com/lxc/incus/v7/shared/api
-    StoragePoolsPost:
-        description: StoragePoolsPost represents the fields of a new storage pool
-        properties:
-            config:
-                $ref: '#/definitions/V7SharedAPIConfigMap'
-            description:
-                description: |-
-                    Description of the storage pool
-
-                    API extension: entity_description
-                example: Local SSD pool
-                type: string
-                x-go-name: Description
-            driver:
-                description: Storage pool driver (btrfs, ceph, cephfs, cephobject, dir, lvm, lvmcluster or zfs)
-                example: zfs
-                type: string
-                x-go-name: Driver
-            name:
-                description: Storage pool name
-                example: local
-                type: string
-                x-go-name: Name
-        type: object
-        x-go-package: github.com/lxc/incus/v7/shared/api
     StorageVolumeBackup:
         description: StorageVolumeBackup represents a volume backup
         properties:
@@ -6239,101 +5751,6 @@ definitions:
                 example: snap0
                 type: string
                 x-go-name: Name
-        type: object
-        x-go-package: github.com/lxc/incus/v7/shared/api
-    StorageVolumeSource:
-        description: StorageVolumeSource represents the creation source for a new storage volume
-        properties:
-            certificate:
-                description: |-
-                    Certificate (for migration)
-
-                    API extension: storage_api_remote_volume_handling
-                example: X509 PEM certificate
-                type: string
-                x-go-name: Certificate
-            location:
-                description: |-
-                    What cluster member this record was found on
-
-                    API extension: cluster_internal_custom_volume_copy
-                example: server01
-                type: string
-                x-go-name: Location
-            mode:
-                description: |-
-                    Whether to use pull or push mode (for migration)
-
-                    API extension: storage_api_remote_volume_handling
-                example: pull
-                type: string
-                x-go-name: Mode
-            name:
-                description: Source volume name (for copy)
-                example: foo
-                type: string
-                x-go-name: Name
-            operation:
-                description: |-
-                    Remote operation URL (for migration)
-
-                    API extension: storage_api_remote_volume_handling
-                example: https://1.2.3.4:8443/1.0/operations/1721ae08-b6a8-416a-9614-3f89302466e1
-                type: string
-                x-go-name: Operation
-            pool:
-                description: Source storage pool (for copy)
-                example: local
-                type: string
-                x-go-name: Pool
-            project:
-                description: |-
-                    Source project name
-
-                    API extension: storage_api_project
-                example: foo
-                type: string
-                x-go-name: Project
-            refresh:
-                description: |-
-                    Whether existing destination volume should be refreshed
-
-                    API extension: custom_volume_refresh
-                example: false
-                type: boolean
-                x-go-name: Refresh
-            refresh_exclude_older:
-                description: |-
-                    Whether to exclude source snapshots earlier than latest target snapshot
-
-                    API extension: custom_volume_refresh_exclude_older_snapshots
-                example: false
-                type: boolean
-                x-go-name: RefreshExcludeOlder
-            secrets:
-                additionalProperties:
-                    type: string
-                description: |-
-                    Map of migration websockets (for migration)
-
-                    API extension: storage_api_remote_volume_handling
-                example:
-                    rsync: RANDOM-STRING
-                type: object
-                x-go-name: Websockets
-            type:
-                description: Source type (copy or migration)
-                example: copy
-                type: string
-                x-go-name: Type
-            volume_only:
-                description: |-
-                    Whether snapshots should be discarded (for migration)
-
-                    API extension: storage_api_volume_snapshots
-                example: false
-                type: boolean
-                x-go-name: VolumeOnly
         type: object
         x-go-package: github.com/lxc/incus/v7/shared/api
     StorageVolumeState:
@@ -7540,6 +6957,9 @@ definitions:
             of the provided configuration besides of ensuring it to be valid yaml and to
             only contain fields, which are part of the respective seed definition.
             Unknown fields are rejected instead of being silently ignored.
+
+            The incus.yaml and update.yaml seeds are managed by Operations Center itself
+            and are therefore not accepted as part of the provided configuration.
         properties:
             architecture:
                 $ref: '#/definitions/UpdateFileArchitecture'
@@ -7610,6 +7030,9 @@ definitions:
             of the provided configuration besides of ensuring it to be valid yaml and to
             only contain fields, which are part of the respective seed definition.
             Unknown fields are rejected instead of being silently ignored.
+
+            The incus.yaml and update.yaml seeds are managed by Operations Center itself
+            and are therefore not accepted as part of the provided configuration.
         properties:
             description:
                 description: Description contains the description of the token seed configuration.
@@ -7653,8 +7076,6 @@ definitions:
         properties:
             applications:
                 $ref: '#/definitions/Applications'
-            incus:
-                $ref: '#/definitions/Incus'
             install:
                 $ref: '#/definitions/Install'
             migration_manager:
@@ -7663,8 +7084,6 @@ definitions:
                 $ref: '#/definitions/SeedNetwork'
             operations_center:
                 $ref: '#/definitions/OperationsCenter'
-            update:
-                $ref: '#/definitions/SeedUpdate'
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     TokenSeedPost:
@@ -7674,6 +7093,9 @@ definitions:
             of the provided configuration besides of ensuring it to be valid yaml and to
             only contain fields, which are part of the respective seed definition.
             Unknown fields are rejected instead of being silently ignored.
+
+            The incus.yaml and update.yaml seeds are managed by Operations Center itself
+            and are therefore not accepted as part of the provided configuration.
         properties:
             description:
                 description: Description contains the description of the token seed configuration.
@@ -7708,6 +7130,9 @@ definitions:
             of the provided configuration besides of ensuring it to be valid yaml and to
             only contain fields, which are part of the respective seed definition.
             Unknown fields are rejected instead of being silently ignored.
+
+            The incus.yaml and update.yaml seeds are managed by Operations Center itself
+            and are therefore not accepted as part of the provided configuration.
         properties:
             description:
                 description: Description contains the description of the token seed configuration.
@@ -7728,6 +7153,65 @@ definitions:
         title: |-
             TokenSeedPut defines the updateable part of a named token seed
             configuration, for which a pre-seeded ISO or raw image can be fetched later.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    Update:
+        properties:
+            channels:
+                description: Channels holds the name of the channels the update is assigned to.
+                example:
+                    - stable
+                items:
+                    type: string
+                type: array
+                x-go-name: Channels
+            origin:
+                description: Origin of the Update.
+                example: linuxcontainers.org
+                type: string
+                x-go-name: Origin
+            published_at:
+                description: PublishedAt is the date, when the Update has been published in RFC3339 format.
+                example: "2025-02-12T09:59:00Z"
+                format: date-time
+                type: string
+                x-go-name: PublishedAt
+            severity:
+                $ref: '#/definitions/UpdateSeverity'
+            update_status:
+                description: |-
+                    Status contains the status the update is currently in.
+                    Possible values for status are: pending, ready
+                example: ready
+                type: string
+                x-go-name: Status
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.UpdateStatus
+            upstream_channels:
+                description: |-
+                    UpstreamChannels holds the name of the channels from upstream (source)
+                    the update is part of.
+                example:
+                    - stable
+                items:
+                    type: string
+                type: array
+                x-go-name: UpstreamChannels
+            url:
+                description: URL of the File.
+                example: releases/download/202501311418/
+                type: string
+                x-go-name: URL
+            uuid:
+                description: UUID of the update.
+                format: uuid
+                type: string
+                x-go-name: UUID
+            version:
+                description: Version of the Update as opaque string.
+                example: "202501311418"
+                type: string
+                x-go-name: Version
+        title: Update defines an update.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     UpdateChangelog:
@@ -14995,7 +14479,7 @@ responses:
         schema:
             properties:
                 metadata:
-                    $ref: '#/definitions/APIUpdate'
+                    $ref: '#/definitions/Update'
                 status:
                     example: Success
                     type: string
@@ -15016,7 +14500,7 @@ responses:
             properties:
                 metadata:
                     items:
-                        $ref: '#/definitions/APIUpdate'
+                        $ref: '#/definitions/Update'
                     type: array
                     x-go-name: Metadata
                 status:
