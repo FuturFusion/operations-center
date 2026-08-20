@@ -2727,18 +2727,12 @@ func (s *serverService) BMCAttachMediaByName(ctx context.Context, name string, m
 	// OperationsCenterAddress is validated on config save.
 	baseURL, _ := url.Parse(base)
 
-	imageURL := baseURL.JoinPath("1.0", "provisioning", "tokens", tokenUUID.String(), "seeds", url.PathEscape(media.Seed))
-	imageURL = imageURL.JoinPath("architecture", architecture.String())
-	if media.Channel != "" {
-		imageURL = imageURL.JoinPath("channel", url.PathEscape(media.Channel))
-	}
+	segments := append(
+		[]string{"1.0", "provisioning", "tokens", tokenUUID.String(), "seeds", seed.Name},
+		api.TokenSeedPreparedImagePathSegments(imageType, architecture, media.Channel, fingerprintID)...,
+	)
 
-	imageURL = imageURL.JoinPath("type", imageType.String())
-
-	// The trailing filename is not inspected by the server; it only needs to
-	// end in a recognized extension for the sake of BMC firmware that
-	// validates the format of the virtual media Image URI.
-	imageURL = imageURL.JoinPath("file" + imageType.FileExt())
+	imageURL := baseURL.JoinPath(segments...)
 
 	for _, reason := range mediaURLWarnings(imageURL) {
 		slog.WarnContext(ctx, "Installation media URL might not be accepted by the BMC", slog.String("reason", reason), slog.String("url", imageURL.String()), slog.String("name", name))
