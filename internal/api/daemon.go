@@ -105,6 +105,7 @@ type environment interface {
 	UsrShareDir() string
 	IsIncusOS() bool
 	GetToken(ctx context.Context) (string, error)
+	GetSecureBootCertificates(ctx context.Context) (incusosapi.InternalSecureBootCertificates, error)
 }
 
 type Daemon struct {
@@ -815,7 +816,9 @@ func (d *Daemon) setupServerService(
 		provisioningServer.AddBMCServerClient(
 			api.BMCAPITypeRedfishV1Generic,
 			provisioningAdapterMiddleware.NewBMCServerClientPortWithSlog(
-				redfish.New(),
+				redfish.New(
+					redfish.WithSecureBootCertificates(d.env),
+				),
 			),
 		),
 	)
