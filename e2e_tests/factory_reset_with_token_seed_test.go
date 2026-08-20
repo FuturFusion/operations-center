@@ -54,14 +54,7 @@ func factoryResetClusterWithTokenSeed(t *testing.T, tmpDir string) {
 	t.Log("Create token seed for factory reset")
 	token := createProvisioningToken(t)
 
-	incusOSSeedFileYAML := replacePlaceholders(
-		incusOSFactoryResetSeedFileYAMLTemplate,
-		map[string]string{
-			"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 10)),
-		},
-	)
-
-	err = os.WriteFile(filepath.Join(tmpDir, "incusos_seed.yaml"), incusOSSeedFileYAML, 0o600)
+	err = os.WriteFile(filepath.Join(tmpDir, "incusos_seed.yaml"), incusOSSeedFileYAMLTemplate, 0o600)
 	require.NoError(t, err)
 
 	t.Cleanup(cleanupTokenSeed(t, token))
@@ -79,7 +72,9 @@ func factoryResetClusterWithTokenSeed(t *testing.T, tmpDir string) {
 		filepath.Join(tmpDir, "application-post-factory-reset.yaml"),
 		replacePlaceholders(
 			incusOSClusterApplicationConfigPostFactoryResetWithTokenSeed,
-			map[string]string{},
+			map[string]string{
+				"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 6)),
+			},
 		),
 		0o600,
 	)
