@@ -110,6 +110,9 @@ func (i ImageType) UpdateFileType() images.UpdateFileType {
 // only contain fields, which are part of the respective seed definition.
 // Unknown fields are rejected instead of being silently ignored.
 //
+// The incus.yaml and update.yaml seeds are managed by Operations Center itself
+// and are therefore not accepted as part of the provided configuration.
+//
 // swagger:model
 type TokenImagePost struct {
 	// Type contains the type of image to be generated.
@@ -139,9 +142,6 @@ type TokenSeedConfigs struct {
 	// Applications represents the applications configuration (applications.yaml) to be included in the pre-seeded image.
 	Applications SeedApplications `json:"applications" yaml:"applications"`
 
-	// Incus represents the incus preseed configuration (incus.yaml) fo be included in the pre-seeded image.
-	Incus SeedIncus `json:"incus" yaml:"incus"`
-
 	// Install represents the install configuration (install.yaml) to be included in the pre-seeded image.
 	Install SeedInstall `json:"install" yaml:"install"`
 
@@ -153,9 +153,6 @@ type TokenSeedConfigs struct {
 
 	// OperationsCenter represents the seed configuration for operations center (operations-center.yaml) to be included in the pre-seeded image.
 	OperationsCenter SeedOperationsCenter `json:"operations_center" yaml:"operations_center"`
-
-	// Update represents the seed configuration for updates (update.yaml) to be included in the pre-seeded image.
-	Update SeedUpdate `json:"update" yaml:"update"`
 }
 
 // TokenSeedPost defines a named token seed configuration, for which a
@@ -166,6 +163,9 @@ type TokenSeedConfigs struct {
 // of the provided configuration besides of ensuring it to be valid yaml and to
 // only contain fields, which are part of the respective seed definition.
 // Unknown fields are rejected instead of being silently ignored.
+//
+// The incus.yaml and update.yaml seeds are managed by Operations Center itself
+// and are therefore not accepted as part of the provided configuration.
 //
 // swagger:model
 type TokenSeedPost struct {
@@ -184,6 +184,9 @@ type TokenSeedPost struct {
 // of the provided configuration besides of ensuring it to be valid yaml and to
 // only contain fields, which are part of the respective seed definition.
 // Unknown fields are rejected instead of being silently ignored.
+//
+// The incus.yaml and update.yaml seeds are managed by Operations Center itself
+// and are therefore not accepted as part of the provided configuration.
 //
 // swagger:model
 type TokenSeedPut struct {
@@ -211,6 +214,9 @@ type TokenSeedPut struct {
 // of the provided configuration besides of ensuring it to be valid yaml and to
 // only contain fields, which are part of the respective seed definition.
 // Unknown fields are rejected instead of being silently ignored.
+//
+// The incus.yaml and update.yaml seeds are managed by Operations Center itself
+// and are therefore not accepted as part of the provided configuration.
 //
 // swagger:model
 type TokenSeed struct {
