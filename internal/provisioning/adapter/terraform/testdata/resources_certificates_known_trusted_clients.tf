@@ -1,13 +1,14 @@
-resource "incus_certificate" "cert1" {
-  name        = "cert1"
-  description = "metrics certificate 1"
-  restricted  = true
-  type        = "metrics"
+# The cluster does already trust the following client certificates, e.g. because
+# they have been applied with the seed config of the servers. They are therefore
+# imported into the Terraform state instead of being added to the cluster.
 
-  projects = [
-    "project1",
-    "project2"
-  ]
+resource "incus_certificate" "oc-trusted-b4e08ef4c7fb" {
+  name        = "oc-trusted-b4e08ef4c7fb"
+  description = "Client trusted by Operations Center"
+  restricted  = false
+  type        = "client"
+
+  projects = []
 
   certificate = <<EOT
 -----BEGIN CERTIFICATE-----
@@ -28,8 +29,13 @@ EOT
   depends_on = []
 }
 
+import {
+  to = incus_certificate.oc-trusted-b4e08ef4c7fb
+  id = "b4e08ef4c7fb1c14b4b73422e9375fa3bdd992836ed58bc78673dcd532083ad0"
+}
+
 resource "null_resource" "post_certificates" {
   depends_on = [
-    incus_certificate.cert1,
+    incus_certificate.oc-trusted-b4e08ef4c7fb,
   ]
 }

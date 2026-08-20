@@ -9,6 +9,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
@@ -346,6 +347,55 @@ func Test_validate(t *testing.T) {
 
 			assertErr: require.Error,
 		},
+		{
+			name: "valid security.trusted_tls_client_certificates",
+			cfg: config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSClientCertificates: []string{testcert.ClientCertificate},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "security.trusted_tls_client_certificates is a valid fallback authentication method on IncusOS",
+			oldCfg: &config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSClientCertFingerprints: []string{"fingerprint"},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			cfg: config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSClientCertFingerprints: []string{}, // empty
+						TrustedTLSClientCertificates:     []string{testcert.ClientCertificate},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			isIncusOS: true,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "invalid security.trusted_tls_client_certificates",
+			cfg: config{
+				Security: system.Security{
+					SecurityPut: system.SecurityPut{
+						TrustedTLSClientCertificates: []string{"not a certificate"}, // invalid
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: require.Error,
+		},
 
 		// Settings
 		{
@@ -440,6 +490,35 @@ MFEwHQYDVR0OBBYEFERR7s37UYWIfjdauwuftLTUULcaMB8GA1UdIwQYMBaAFERR
 SAAwRQIhAId625vznH0/C9E/gLLRz5S95x3mZmqIHOQBFHRf2mLyAiB2kMK4Idcn
 dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 -----END CERTIFICATE-----`
+
+func Test_UpdateSecurity_trustedClientCertificates(t *testing.T) {
+	env := &mock.EnvironmentMock{
+		IsIncusOSFunc: func() bool {
+			return true
+		},
+	}
+
+	InitTest(t, env, nil)
+
+	// On IncusOS, a security config without any trusted TLS client would lock the
+	// user out. Providing only a trusted client certificate is enough, since its
+	// fingerprint is derived from the certificate.
+	err := UpdateSecurity(t.Context(), system.SecurityPut{
+		TrustedTLSClientCertificates: []string{testcert.ClientCertificate},
+	})
+	require.NoError(t, err)
+
+	require.Empty(t, GetSecurity().TrustedTLSClientCertFingerprints)
+	require.Equal(t, []string{testcert.ClientCertificate}, GetSecurity().TrustedTLSClientCertificates)
+
+	err = UpdateSecurity(t.Context(), system.SecurityPut{
+		TrustedTLSClientCertFingerprints: []string{"fingerprint"},
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, []string{"fingerprint"}, GetSecurity().TrustedTLSClientCertFingerprints)
+	require.Empty(t, GetSecurity().TrustedTLSClientCertificates)
+}
 
 func Test_validateURI(t *testing.T) {
 	tests := []struct {

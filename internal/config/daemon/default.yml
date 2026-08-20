@@ -17,6 +17,13 @@ security:
   # Array of SHA256 certificate fingerprints that belong to trusted TLS clients.
   trusted_tls_client_cert_fingerprints: []
 
+  # Array of X509 PEM encoded certificates that belong to trusted TLS clients.
+  # The SHA256 fingerprint of each certificate is derived on load and trusted in
+  # addition to trusted_tls_client_cert_fingerprints, but it is never persisted.
+  # These certificates are additionally passed on to the servers and clusters
+  # deployed by Operations Center, if the user did not provide their own set.
+  trusted_tls_client_certificates: []
+
   # OIDCconfiguration.
   oidc:
     issuer: ""

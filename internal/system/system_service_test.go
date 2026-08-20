@@ -23,6 +23,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
+	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 	"github.com/FuturFusion/operations-center/shared/api"
 	systemapi "github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -1249,6 +1250,47 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 			},
 		},
 		{
+			// The fingerprint derived from the certificate is not persisted, it is
+			// only added to the trusted fingerprints in memory when the security
+			// configuration is loaded.
+			name: "success - trusted client certificate",
+			securityConfig: systemapi.Security{
+				SecurityPut: systemapi.SecurityPut{
+					TrustedTLSClientCertificates: []string{testcert.ClientCertificate},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantSecurityConfig: systemapi.Security{
+				SecurityPut: systemapi.SecurityPut{
+					TrustedTLSClientCertificates: []string{testcert.ClientCertificate},
+				},
+			},
+		},
+		{
+			name: "error - invalid trusted client certificate",
+			securityConfig: systemapi.Security{
+				SecurityPut: systemapi.SecurityPut{
+					TrustedTLSClientCertificates: []string{"not a certificate"}, // invalid
+				},
+			},
+
+			assertErr: require.Error,
+			wantSecurityConfig: systemapi.Security{
+				SecurityPut: systemapi.SecurityPut{
+					TrustedTLSClientCertFingerprints: []string{},
+					TrustedTLSClientCertificates:     []string{},
+					ACME: systemapi.SecurityACME{
+						CAURL:               "https://acme-v02.api.letsencrypt.org/directory",
+						Challenge:           "HTTP-01",
+						Address:             ":80",
+						ProviderEnvironment: []string{},
+						ProviderResolvers:   []string{},
+					},
+				},
+			},
+		},
+		{
 			name: "error",
 			securityConfig: systemapi.Security{
 				SecurityPut: systemapi.SecurityPut{
@@ -1262,6 +1304,7 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 			wantSecurityConfig: systemapi.Security{
 				SecurityPut: systemapi.SecurityPut{
 					TrustedTLSClientCertFingerprints: []string{},
+					TrustedTLSClientCertificates:     []string{},
 					ACME: systemapi.SecurityACME{
 						CAURL:               "https://acme-v02.api.letsencrypt.org/directory",
 						Challenge:           "HTTP-01",

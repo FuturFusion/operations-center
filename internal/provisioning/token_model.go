@@ -8,8 +8,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -54,6 +56,42 @@ type TokenImageSeedConfigs struct {
 	OperationsCenter api.SeedOperationsCenter `json:"operations_center"`
 	Security         api.SeedSecurity         `json:"security"`
 	Update           api.SeedUpdate           `json:"update"`
+}
+
+// ApplyTrustedClientCertificates passes the given X509 PEM encoded client
+// certificates trusted by Operations Center on to the deployed system, so
+// whoever has access to Operations Center also has access to what Operations
+// Center deploys.
+//
+// Each seed is only populated if the user did not provide their own set of
+// trusted client certificates for it.
+func (t *TokenImageSeedConfigs) ApplyTrustedClientCertificates(certificatesPEM []string) error {
+	if len(certificatesPEM) == 0 {
+		return nil
+	}
+
+	if t.Incus.Preseed == nil {
+		t.Incus.Preseed = &incusapi.InitPreseed{}
+	}
+
+	if len(t.Incus.Preseed.Certificates) == 0 {
+		certificates, err := securitytls.TrustedClientCertificates(certificatesPEM)
+		if err != nil {
+			return fmt.Errorf("Failed to derive Incus certificates from the trusted client certificates: %w", err)
+		}
+
+		t.Incus.Preseed.Certificates = certificates
+	}
+
+	if len(t.OperationsCenter.TrustedClientCertificates) == 0 {
+		t.OperationsCenter.TrustedClientCertificates = certificatesPEM
+	}
+
+	if len(t.MigrationManager.TrustedClientCertificates) == 0 {
+		t.MigrationManager.TrustedClientCertificates = certificatesPEM
+	}
+
+	return nil
 }
 
 // Value implements the sql driver.Valuer interface.
