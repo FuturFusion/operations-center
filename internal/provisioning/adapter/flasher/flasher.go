@@ -30,17 +30,35 @@ type Flasher struct {
 
 	serverURL         string
 	serverCertificate string
+
+	cache *imageCache
 }
 
 var _ provisioning.FlasherPort = &Flasher{}
 
-func New(serverURL string, serverCertificate tls.Certificate) *Flasher {
+type Option func(f *Flasher)
+
+// WithCacheDir enables the seed image cache and stores the cached images in dir.
+//
+// Without it, generating and opening a seeded image report the cache as
+// unavailable.
+func WithCacheDir(dir string) Option {
+	return func(f *Flasher) {
+		f.cache = newImageCache(dir)
+	}
+}
+
+func New(serverURL string, serverCertificate tls.Certificate, opts ...Option) *Flasher {
 	flasher := &Flasher{
 		mu:        sync.Mutex{},
 		serverURL: serverURL,
 	}
 
 	flasher.UpdateCertificate(serverCertificate)
+
+	for _, opt := range opts {
+		opt(flasher)
+	}
 
 	return flasher
 }
@@ -73,10 +91,13 @@ func (f *Flasher) GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (*ap
 	return seedProvider, nil
 }
 
-func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, file io.ReadCloser) (_ io.ReadCloser, _ error) {
+// seedTarball returns the seed tarball for the given token and seed
+// configuration together with the offset it has to be injected at in the
+// uncompressed image.
+func (f *Flasher) seedTarball(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs) (offset int64, payload []byte, _ error) {
 	providerConfig, err := f.GetProviderConfig(ctx, id)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
 	seedProvider := &seed.Provider{
@@ -89,15 +110,33 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedCon
 		seedProvider,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create seed tarball: %w", err)
+		return 0, nil, fmt.Errorf("Failed to create seed tarball: %w", err)
 	}
 
+	return seedTarballStartPosition, tarball, nil
+}
+
+// GenerateCompressedSeededImage returns a forward-only stream of the seeded
+// image, taking the image from the compressed file, to be handed out as a
+// compressed file again.
+func (f *Flasher) GenerateCompressedSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, file io.ReadCloser) (io.ReadCloser, error) {
+	offset, tarball, err := f.seedTarball(ctx, id, seedConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return seededImage(file, offset, tarball)
+}
+
+// seededImage returns the image from the compressed file with the seed tarball
+// injected at offset.
+func seededImage(file io.ReadCloser, offset int64, tarball []byte) (io.ReadCloser, error) {
 	gzipReader, err := gzip.NewReader(file)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to initialize gzip reader: %w", err)
 	}
 
-	return newInjectReader(newParentCloser(gzipReader, file), seedTarballStartPosition, tarball), nil
+	return newInjectReader(newParentCloser(gzipReader, file), offset, tarball), nil
 }
 
 func createSeedTarball(seedConfig provisioning.TokenImageSeedConfigs, providerSeed *seed.Provider) (_ []byte, err error) {

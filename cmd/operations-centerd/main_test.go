@@ -89,6 +89,9 @@ network:
 		VarDirFunc: func() string {
 			return tmpDir
 		},
+		CacheDirFunc: func() string {
+			return tmpDir
+		},
 		GetTokenFunc: func(ctx context.Context) (string, error) {
 			return "", nil
 		},
@@ -222,6 +225,9 @@ func TestMain0RunDaemonStartError(t *testing.T) {
 				},
 				VarDirFunc: func() string {
 					return tc.varDir
+				},
+				CacheDirFunc: func() string {
+					return tmpDir
 				},
 				GetTokenFunc: func(ctx context.Context) (string, error) {
 					return "", nil

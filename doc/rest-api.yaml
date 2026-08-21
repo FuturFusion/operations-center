@@ -372,6 +372,12 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     BMCDumpEntry:
         properties:
+            allow:
+                description: |-
+                    Allow contains the methods the BMC reported as allowed for this endpoint
+                    in the "Allow" response header.
+                type: string
+                x-go-name: Allow
             error:
                 $ref: '#/definitions/BMCDumpError'
             response:
@@ -393,6 +399,10 @@ definitions:
                 description: Code contains the error code, if any.
                 type: string
                 x-go-name: Code
+            error:
+                description: Error as reported by the API.
+                type: string
+                x-go-name: Error
             message:
                 description: Message contains the human readable error message.
                 type: string
@@ -5016,6 +5026,75 @@ definitions:
                     are BMC/BIOS vendor specific.
                 type: object
                 x-go-name: Attributes
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ServerBMCAttachMedia:
+        description: |-
+            ServerBMCAttachMedia defines the request to attach installation media to a
+            server via its BMC.
+        properties:
+            architecture:
+                description: |-
+                    Architecture holds the CPU architecture of the image to generate. Possible
+                    values: x86_64, aarch64.
+                example: x86_64
+                type: string
+                x-go-name: Architecture
+            channel:
+                description: |-
+                    Channel holds the channel the most recent update should be taken from to
+                    generate the image. Optional, defaults to the configured default channel.
+                example: stable
+                type: string
+                x-go-name: Channel
+            seed:
+                description: |-
+                    Seed holds the name of the token seed used to generate the installation
+                    media. The referenced token seed must be public.
+                example: default
+                type: string
+                x-go-name: Seed
+            set_boot_device:
+                description: |-
+                    SetBootDevice requests, that the virtual media is registered as the boot
+                    device for the next boot of the server in addition to being attached.
+                    Detaching the media restores the default boot configuration of the system.
+                example: true
+                type: boolean
+                x-go-name: SetBootDevice
+            token_uuid:
+                description: TokenUUID holds the UUID of the provisioning token that owns the seed.
+                example: 8f6c3d1a-2b4e-4c9a-9f7d-1a2b3c4d5e6f
+                type: string
+                x-go-name: TokenUUID
+            type:
+                description: 'Type holds the type of image to generate. Possible values: iso, raw.'
+                example: iso
+                type: string
+                x-go-name: Type
+            virtual_media_id:
+                description: |-
+                    VirtualMediaID identifies the virtual media device the media is attached
+                    to, using the "<service>:<bmc-id>" notation (e.g. "system:1" or
+                    "manager:2") as reported in the BMC virtual media data.
+                example: system:1
+                type: string
+                x-go-name: VirtualMediaID
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ServerBMCDetachMedia:
+        description: |-
+            ServerBMCDetachMedia defines the request to detach installation media from a
+            server via its BMC.
+        properties:
+            virtual_media_id:
+                description: |-
+                    VirtualMediaID identifies the virtual media device the media is detached
+                    from, using the "<service>:<bmc-id>" notation (e.g. "system:1" or
+                    "manager:2") as reported in the BMC virtual media data.
+                example: system:1
+                type: string
+                x-go-name: VirtualMediaID
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerBMCLocatePost:
@@ -11018,6 +11097,79 @@ paths:
             summary: Apply BIOS attributes via BMC
             tags:
                 - servers_bmc
+    /1.0/provisioning/servers/{name}/bmc/:attach-media:
+        post:
+            consumes:
+                - application/json
+            description: |-
+                Attaches installation media, generated from a public token seed, to a virtual
+                media device of the server. The BMC streams the generated image directly from
+                Operations Center, so the referenced token seed must be public.
+            operationId: server_bmc_attach_media_post
+            parameters:
+                - description: Name of the server
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+                - description: Installation media to attach
+                  in: body
+                  name: media
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ServerBMCAttachMedia'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Attach installation media to a server via BMC
+            tags:
+                - servers_bmc
+    /1.0/provisioning/servers/{name}/bmc/:detach-media:
+        post:
+            consumes:
+                - application/json
+            description: |-
+                Detaches (ejects) the installation media currently attached to the given
+                virtual media device of the server.
+            operationId: server_bmc_detach_media_post
+            parameters:
+                - description: Name of the server
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+                - description: Installation media to detach
+                  in: body
+                  name: media
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ServerBMCDetachMedia'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Detach installation media from a server via BMC
+            tags:
+                - servers_bmc
     /1.0/provisioning/servers/{name}/bmc/:dump:
         post:
             description: |-
@@ -12159,9 +12311,10 @@ paths:
             consumes:
                 - application/json
             description: |-
-                Get token seed config. This can be the literal config as JSON or it can be
-                the generated pre-seeded IncusOS ISO or raw image file, if the `type`
-                query parameter is provided.
+                Get the token seed config as JSON.
+
+                The generated pre-seeded IncusOS ISO or raw image file is served by
+                `GET /1.0/provisioning/tokens/{uuid}/seeds/{name}/{params}` instead.
             operationId: token_seed_get
             parameters:
                 - description: UUID of the token
@@ -12175,36 +12328,8 @@ paths:
                   name: name
                   required: true
                   type: string
-                - description: Architecture of the generated file, "x86_64", "aarch64".
-                  enum:
-                    - x86_64
-                    - aarch64
-                  in: query
-                  name: architecture
-                  type: string
-                  x-example: x86_64
-                - description: |-
-                    Name of the channel, the most recent update should be taken from
-                    for the generated image.
-                    If omitted, the default update channel is used.
-                  in: query
-                  name: channel
-                  type: string
-                  x-example: stable
-                - description: |-
-                    Type of the generated file, "iso" or "raw".
-                    If omitted, the token seed configuration is returned as JSON.
-                  enum:
-                    - iso
-                    - raw
-                  in: query
-                  name: type
-                  type: string
-                  x-example: iso
             produces:
                 - application/json
-                - application/octet-stream
-                - application/gzip
             responses:
                 "200":
                     $ref: '#/responses/TokenSeedResponse'
@@ -12258,6 +12383,106 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Update the token seed config
+            tags:
+                - tokens
+    /1.0/provisioning/tokens/{uuid}/seeds/{name}/{params}:
+        get:
+            description: |-
+                Get the generated pre-seeded IncusOS ISO or raw image file for a token
+                seed, with all parameters and the terminal filename encoded as path
+                segments and with the filename having a recognized file extension
+                (e.g. ".iso" or ".raw"). This is required by some BMC/Redfish
+                implementations that reject virtual media image URLs which don't end in a
+                known media extension.
+
+                The path after the seed name is a flat sequence of "<key>/<value>" pairs
+                followed by a final filename segment, e.g.:
+
+                1.0/provisioning/tokens/{uuid}/seeds/{name}/architecture/x86_64/channel/stable/type/iso/file.iso
+
+                Recognized keys are "architecture" (required), "type" (required) and
+                "channel" (optional, defaults to the configured default update channel).
+
+                The filename segment picks one of two ways of asking for an image.
+
+                A filename of twelve characters out of "A-Za-z0-9_-" names one already
+                generated image, e.g. "a1B2c3D4e5F6.iso". Such an image is served exactly
+                as it was generated. It is the form Operations Center puts into the virtual
+                media URL it hands to a BMC. An image, which has not been generated, is
+                reported as "404 Not Found" rather than being generated on demand.
+                Such an image is only reachable while it is cached, and only exists if the
+                token seed was public when it was generated.
+
+                Any other filename, "file.iso" among them, asks for whatever image the
+                token seed resolves to right now. That image is looked up, generated if
+                need be, and served subject to the usual authorization for a token seed,
+                which is not public.
+
+                The image is served uncompressed, with a Content-Length header and support
+                for byte ranges, so a BMC whose transfer got interrupted can resume it
+                instead of fetching the whole image again.
+                A client asking for "Accept: application/gzip" and not requesting a range
+                gets the gzip compressed image as a ".gz" file instead, without a
+                Content-Length and without range support.
+                HEAD is answered with the headers alone.
+            operationId: token_seed_image_get
+            parameters:
+                - description: UUID of the token
+                  format: uuid
+                  in: path
+                  name: uuid
+                  required: true
+                  type: string
+                - description: Name of the seed
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+                - description: |-
+                    Flat sequence of "<key>/<value>" pairs (architecture, type,
+                    optionally channel) followed by a filename segment, e.g.
+                    "architecture/x86_64/type/iso/file.iso" for the image the token seed
+                    resolves to, or "architecture/x86_64/type/iso/a1B2c3D4e5F6.iso" for
+                    one already generated image.
+                  in: path
+                  name: params
+                  required: true
+                  type: string
+                - description: |-
+                    Set to "application/gzip" to get the gzip compressed image as a file,
+                    which is returned without range support.
+                  in: header
+                  name: Accept
+                  type: string
+                - description: Byte range of the image to return, e.g. "bytes=1048576-".
+                  in: header
+                  name: Range
+                  type: string
+                - description: |-
+                    Last modification the client saw, as returned in "Last-Modified".
+                    If the image changed since, the complete image is returned instead
+                    of the requested range.
+                  in: header
+                  name: If-Range
+                  type: string
+            produces:
+                - application/octet-stream
+            responses:
+                "200":
+                    $ref: '#/responses/TokenSeedResponse'
+                "206":
+                    $ref: '#/responses/TokenSeedResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "416":
+                    $ref: '#/responses/BadRequest'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get pre-seeded IncusOS image
             tags:
                 - tokens
     /1.0/provisioning/tokens/{uuid}/seeds?recursion=1:

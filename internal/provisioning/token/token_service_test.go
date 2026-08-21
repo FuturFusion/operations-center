@@ -1,11 +1,11 @@
 package token_test
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -709,18 +709,18 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name                                  string
-		tokenIDArg                            uuid.UUID
-		imageUUIDArg                          uuid.UUID
-		existingImages                        []image
-		repoGetByUUIDErr                      error
-		updateSvcGetAllWithFilterUpdates      provisioning.Updates
-		updateSvcGetAllWithFilterErr          error
-		updateSvcGetUpdateAllFilesUpdateFiles provisioning.UpdateFiles
-		updateSvcGetUpdateAllFilesErr         error
-		updateSvcGetFileByFilenameReadCloser  io.ReadCloser
-		updateSvcGetFileByFilenameErr         error
-		flasherAdapterGenerateSeededImageErr  error
+		name                                           string
+		tokenIDArg                                     uuid.UUID
+		imageUUIDArg                                   uuid.UUID
+		existingImages                                 []image
+		repoGetByUUIDErr                               error
+		updateSvcGetAllWithFilterUpdates               provisioning.Updates
+		updateSvcGetAllWithFilterErr                   error
+		updateSvcGetUpdateAllFilesUpdateFiles          provisioning.UpdateFiles
+		updateSvcGetUpdateAllFilesErr                  error
+		updateSvcGetFileByFilenameReadCloser           io.ReadCloser
+		updateSvcGetFileByFilenameErr                  error
+		flasherAdapterGenerateCompressedSeededImageErr error
 
 		assertErr            require.ErrorAssertionFunc
 		wantFilename         string
@@ -1044,43 +1044,7 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 			wantImageCount: 1,
 		},
 		{
-			name:         "error - updateSvc.GetUpdateByFilename not *os.File",
-			tokenIDArg:   uuidgen.FromPattern(t, "2"),
-			imageUUIDArg: imageUUID,
-			existingImages: []image{
-				{
-					imageUUID:    imageUUID,
-					tokenID:      uuidgen.FromPattern(t, "2"),
-					imageType:    api.ImageTypeISO,
-					architecture: images.UpdateFileArchitecture64BitX86,
-					channel:      "stable",
-					seedConfig:   provisioning.TokenImageSeedConfigs{},
-					createdAt:    time.Now(),
-				},
-			},
-			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID: updateUUID,
-				},
-			},
-			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
-				{
-					Filename:     isoGzFilename,
-					Type:         images.UpdateFileTypeImageISO,
-					Architecture: images.UpdateFileArchitecture64BitX86,
-				},
-			},
-			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
-				return io.NopCloser(bytes.NewBufferString(``))
-			}(),
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "is not a file")
-			},
-			wantImageCount: 1,
-		},
-		{
-			name:         "error - flasher.GenerateSeededImage",
+			name:         "error - flasher.GenerateCompressedSeededImage",
 			tokenIDArg:   uuidgen.FromPattern(t, "2"),
 			imageUUIDArg: imageUUID,
 			existingImages: []image{
@@ -1112,7 +1076,7 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 
 				return f
 			}(),
-			flasherAdapterGenerateSeededImageErr: boom.Error,
+			flasherAdapterGenerateCompressedSeededImageErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			wantApplicationsSeed: api.SeedApplications{
@@ -1159,10 +1123,10 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 			}
 
 			flasherAdapter := &adapterMock.FlasherPortMock{
-				GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
+				GenerateCompressedSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
 					require.Equal(t, tc.wantApplicationsSeed, seedConfig.Applications)
 					require.Equal(t, tc.wantIncusSeed, seedConfig.Incus)
-					return rc, tc.flasherAdapterGenerateSeededImageErr
+					return rc, tc.flasherAdapterGenerateCompressedSeededImageErr
 				},
 			}
 
@@ -1578,7 +1542,7 @@ func TestTokenService_DeleteTokenSeedByUUID(t *testing.T) {
 	}
 }
 
-func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
+func TestTokenService_GetCompressedTokenImageFromTokenSeed(t *testing.T) {
 	updateUUID := uuid.MustParse(`00219aa8-ae44-4306-927e-728a2f780836`)
 
 	tmpDir := t.TempDir()
@@ -1593,22 +1557,22 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name                                  string
-		imageTypeArg                          api.ImageType
-		architectureArg                       images.UpdateFileArchitecture
-		channelArg                            string
-		repoGetByUUIDErr                      error
-		repoGetTokenSeedByName                *provisioning.TokenSeed
-		repoGetTokenSeedByNameErr             error
-		updateSvcGetAllWithFilterUpdates      provisioning.Updates
-		updateSvcGetAllWithFilterErr          error
-		updateSvcGetUpdateAllFilesUpdateFiles provisioning.UpdateFiles
-		updateSvcGetUpdateAllFilesErr         error
-		updateSvcGetFileByFilenameReadCloser  io.ReadCloser
-		updateSvcGetFileByFilenameErr         error
-		channelSvcGetByNameErr                error
-		flasherAdapterGenerateSeededImageErr  error
-		clientGetSecurityConfigErr            error
+		name                                           string
+		imageTypeArg                                   api.ImageType
+		architectureArg                                images.UpdateFileArchitecture
+		channelArg                                     string
+		repoGetByUUIDErr                               error
+		repoGetTokenSeedByName                         *provisioning.TokenSeed
+		repoGetTokenSeedByNameErr                      error
+		updateSvcGetAllWithFilterUpdates               provisioning.Updates
+		updateSvcGetAllWithFilterErr                   error
+		updateSvcGetUpdateAllFilesUpdateFiles          provisioning.UpdateFiles
+		updateSvcGetUpdateAllFilesErr                  error
+		updateSvcGetFileByFilenameReadCloser           io.ReadCloser
+		updateSvcGetFileByFilenameErr                  error
+		channelSvcGetByNameErr                         error
+		flasherAdapterGenerateCompressedSeededImageErr error
+		clientGetSecurityConfigErr                     error
 
 		assertErr      require.ErrorAssertionFunc
 		wantChannel    string
@@ -1851,32 +1815,6 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			wantChannel: "stable", // default value
 		},
 		{
-			name:                   "error - updateSvc.GetUpdateByFilename not *os.File",
-			imageTypeArg:           api.ImageTypeISO,
-			architectureArg:        images.UpdateFileArchitecture64BitX86,
-			repoGetTokenSeedByName: &provisioning.TokenSeed{},
-			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID: updateUUID,
-				},
-			},
-			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
-				{
-					Filename:     isoGzFilename,
-					Type:         images.UpdateFileTypeImageISO,
-					Architecture: images.UpdateFileArchitecture64BitX86,
-				},
-			},
-			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
-				return io.NopCloser(bytes.NewBufferString(``))
-			}(),
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "is not a file")
-			},
-			wantChannel: "stable", // default value
-		},
-		{
 			name:                   "error - update channel not found",
 			imageTypeArg:           api.ImageTypeISO,
 			architectureArg:        images.UpdateFileArchitecture64BitX86,
@@ -1905,7 +1843,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			wantChannel: "stable", // default value
 		},
 		{
-			name:                   "error - flasher.GenerateSeededImage",
+			name:                   "error - flasher.GenerateCompressedSeededImage",
 			imageTypeArg:           api.ImageTypeISO,
 			architectureArg:        images.UpdateFileArchitecture64BitX86,
 			repoGetTokenSeedByName: &provisioning.TokenSeed{},
@@ -1927,7 +1865,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 
 				return f
 			}(),
-			flasherAdapterGenerateSeededImageErr: boom.Error,
+			flasherAdapterGenerateCompressedSeededImageErr: boom.Error,
 
 			assertErr:   boom.ErrorIs,
 			wantChannel: "stable", // default value
@@ -1968,13 +1906,13 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			}
 
 			flasherAdapter := &adapterMock.FlasherPortMock{
-				GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
+				GenerateCompressedSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
 					if tc.wantIncusSeed.Version != "" {
 						require.Equal(t, tc.wantIncusSeed, seedConfig.Incus)
 						require.Equal(t, tc.wantUpdateSeed, seedConfig.Update)
 					}
 
-					return rc, tc.flasherAdapterGenerateSeededImageErr
+					return rc, tc.flasherAdapterGenerateCompressedSeededImageErr
 				},
 			}
 
@@ -1987,7 +1925,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			tokenSvc := provisioningToken.New(repo, updateSvc, channelSvc, flasherAdapter, client)
 
 			// Run test
-			rc, err := tokenSvc.GetTokenImageFromTokenSeed(context.Background(), uuidgen.FromPattern(t, "1"), "config", tc.imageTypeArg, tc.architectureArg, tc.channelArg)
+			rc, err := tokenSvc.GetCompressedTokenImageFromTokenSeed(context.Background(), uuidgen.FromPattern(t, "1"), "config", tc.imageTypeArg, tc.architectureArg, tc.channelArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -2000,4 +1938,247 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTokenService_GetSeekableTokenImageFromTokenSeed(t *testing.T) {
+	const isoGzFilename = "IncusOS_1.iso.gz"
+
+	tokenUUID := uuidgen.FromPattern(t, "1")
+	updateUUID := uuidgen.FromPattern(t, "3")
+
+	seedLastUpdated := time.Date(2026, 8, 1, 10, 0, 0, 0, time.UTC)
+	modTime := time.Date(2026, 8, 2, 10, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name            string
+		imageTypeArg    api.ImageType
+		architectureArg images.UpdateFileArchitecture
+
+		repoGetByUUIDErr                      error
+		repoGetTokenSeedByNameErr             error
+		updateSvcGetAllWithFilterUpdates      provisioning.Updates
+		updateSvcGetAllWithFilterErr          error
+		updateSvcGetUpdateAllFilesUpdateFiles provisioning.UpdateFiles
+		updateSvcGetUpdateAllFilesErr         error
+		updateSvcGetUpdateFileByFilenameErr   error
+		clientGetSecurityConfigErr            error
+		channelSvcGetByNameErr                error
+		flasherErr                            error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:            "success",
+			imageTypeArg:    api.ImageTypeISO,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:            "error - invalid image type",
+			imageTypeArg:    api.ImageType("exe"),
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+
+			assertErr: errassert.ValidationError,
+		},
+		{
+			name:            "error - invalid architecture",
+			imageTypeArg:    api.ImageTypeISO,
+			architectureArg: images.UpdateFileArchitecture("mips"),
+
+			assertErr: errassert.ValidationError,
+		},
+		{
+			name:             "error - repo.GetByUUID",
+			imageTypeArg:     api.ImageTypeISO,
+			architectureArg:  images.UpdateFileArchitecture64BitX86,
+			repoGetByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                      "error - repo.GetTokenSeedByName",
+			imageTypeArg:              api.ImageTypeISO,
+			architectureArg:           images.UpdateFileArchitecture64BitX86,
+			repoGetTokenSeedByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                         "error - updateSvc.GetAllWithFilter",
+			imageTypeArg:                 api.ImageTypeISO,
+			architectureArg:              images.UpdateFileArchitecture64BitX86,
+			updateSvcGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                             "error - updateSvc.GetAllWithFilter - no updates",
+			imageTypeArg:                     api.ImageTypeISO,
+			architectureArg:                  images.UpdateFileArchitecture64BitX86,
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{},
+
+			assertErr: errassert.NotFoundErrorContains(`Failed to get updates: No ready updates found in channel "stable"`),
+		},
+		{
+			name:                          "error - updateSvc.GetUpdateAllFiles",
+			imageTypeArg:                  api.ImageTypeISO,
+			architectureArg:               images.UpdateFileArchitecture64BitX86,
+			updateSvcGetUpdateAllFilesErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                                  "error - updateSvc.GetUpdateAllFiles - no matching file",
+			imageTypeArg:                          api.ImageTypeISO,
+			architectureArg:                       images.UpdateFileArchitecture64BitX86,
+			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{},
+
+			assertErr: errassert.NotFoundErrorContains(`Failed to find image file of type "iso" for architecture "x86_64" in latest update`),
+		},
+		{
+			name:                       "error - client.GetSecurityConfig",
+			imageTypeArg:               api.ImageTypeISO,
+			architectureArg:            images.UpdateFileArchitecture64BitX86,
+			clientGetSecurityConfigErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                   "error - channelSvc.GetByName",
+			imageTypeArg:           api.ImageTypeISO,
+			architectureArg:        images.UpdateFileArchitecture64BitX86,
+			channelSvcGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                                "error - updateSvc.GetUpdateFileByFilename",
+			imageTypeArg:                        api.ImageTypeISO,
+			architectureArg:                     images.UpdateFileArchitecture64BitX86,
+			updateSvcGetUpdateFileByFilenameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:            "error - flasher.GenerateSeekableSeededImage",
+			imageTypeArg:    api.ImageTypeISO,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			flasherErr:      boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := &mock.TokenRepoMock{
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
+					return &provisioning.Token{}, tc.repoGetByUUIDErr
+				},
+				GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+					return &provisioning.TokenSeed{LastUpdated: seedLastUpdated}, tc.repoGetTokenSeedByNameErr
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					if tc.updateSvcGetAllWithFilterUpdates != nil {
+						return tc.updateSvcGetAllWithFilterUpdates, nil
+					}
+
+					return provisioning.Updates{{UUID: updateUUID}}, tc.updateSvcGetAllWithFilterErr
+				},
+				GetUpdateAllFilesFunc: func(ctx context.Context, id uuid.UUID) (provisioning.UpdateFiles, error) {
+					if tc.updateSvcGetUpdateAllFilesUpdateFiles != nil {
+						return tc.updateSvcGetUpdateAllFilesUpdateFiles, nil
+					}
+
+					return provisioning.UpdateFiles{
+						{
+							Filename:     isoGzFilename,
+							Type:         images.UpdateFileTypeImageISO,
+							Architecture: images.UpdateFileArchitecture64BitX86,
+						},
+					}, tc.updateSvcGetUpdateAllFilesErr
+				},
+				GetUpdateFileByFilenameFunc: func(ctx context.Context, id uuid.UUID, filename string) (io.ReadCloser, int, error) {
+					if tc.updateSvcGetUpdateFileByFilenameErr != nil {
+						return nil, 0, tc.updateSvcGetUpdateFileByFilenameErr
+					}
+
+					return io.NopCloser(strings.NewReader(strings.Repeat("x", 1024))), 1024, nil
+				},
+			}
+
+			channelSvc := &svcMock.ChannelServiceMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
+					return &provisioning.Channel{Name: name}, tc.channelSvcGetByNameErr
+				},
+			}
+
+			var (
+				gotCacheID     string
+				gotFingerprint string
+			)
+
+			flasherAdapter := &adapterMock.FlasherPortMock{
+				GenerateSeededImageFunc: func(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (io.ReadSeekCloser, int64, time.Time, error) {
+					gotCacheID = cacheID
+					gotFingerprint = fingerprint
+
+					if source != nil {
+						_ = source.Close()
+					}
+
+					if tc.flasherErr != nil {
+						return nil, 0, time.Time{}, tc.flasherErr
+					}
+
+					return &closeTrackingReadSeeker{ReadSeeker: strings.NewReader(strings.Repeat("x", 1024)), closed: new(bool)}, 1024, modTime, nil
+				},
+			}
+
+			client := &adapterMock.TokenClientPortMock{
+				GetSecurityConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemSecurity, error) {
+					return provisioning.ServerSystemSecurity{}, tc.clientGetSecurityConfigErr
+				},
+			}
+
+			tokenSvc := provisioningToken.New(repo, updateSvc, channelSvc, flasherAdapter, client)
+
+			image, err := tokenSvc.GetSeekableTokenImageFromTokenSeed(context.Background(), tokenUUID, "config", tc.imageTypeArg, tc.architectureArg, "stable")
+
+			tc.assertErr(t, err)
+
+			if err != nil {
+				require.Nil(t, image)
+
+				return
+			}
+
+			require.NotNil(t, image)
+
+			defer func() { _ = image.Content.Close() }()
+
+			require.Equal(t, int64(1024), image.Size)
+			require.Equal(t, modTime, image.ModTime)
+			require.Equal(t, "pre-seed-config.iso", image.Filename)
+
+			require.Equal(t, provisioning.SeedImageCacheID(tokenUUID, "config", tc.imageTypeArg, tc.architectureArg, "stable"), gotCacheID)
+			require.Contains(t, gotFingerprint, updateUUID.String())
+			require.Contains(t, gotFingerprint, isoGzFilename)
+		})
+	}
+}
+
+type closeTrackingReadSeeker struct {
+	io.ReadSeeker
+
+	closed *bool
+}
+
+func (c closeTrackingReadSeeker) Close() error {
+	*c.closed = true
+	return nil
 }

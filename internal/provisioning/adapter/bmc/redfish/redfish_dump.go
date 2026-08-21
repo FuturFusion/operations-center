@@ -26,6 +26,11 @@ var dumpEndpoints = []string{
 	schemas.DefaultServiceRoot,
 	"/redfish/v1/odata",
 
+	// Message registries, which hold the text of the messages BMCs report by
+	// their registry ID alone.
+	"/redfish/v1/Registries",
+	"/redfish/v1/Registries/*",
+
 	// Chassis.
 	"/redfish/v1/Chassis",
 	"/redfish/v1/Chassis/*",
@@ -92,7 +97,78 @@ func (r redfish) Dump(ctx context.Context, server provisioning.Server, additiona
 		d.get(uri)
 	}
 
+	d.getActionInfos()
+
 	return d.dump, nil
+}
+
+// getActionInfos fetches the action info resources referenced by the already
+// dumped responses.
+//
+// An action info describes which parameters an action accepts, which of them
+// are required and which values are allowed for them.
+func (d *dumper) getActionInfos() {
+	uris := map[string]struct{}{}
+
+	for _, entry := range d.dump {
+		if entry.Response == nil {
+			continue
+		}
+
+		var body map[string]any
+
+		err := json.Unmarshal(entry.Response, &body)
+		if err != nil {
+			continue
+		}
+
+		for _, uri := range actionInfoURIs(body) {
+			uris[uri] = struct{}{}
+		}
+	}
+
+	sortedURIs := make([]string, 0, len(uris))
+	for uri := range uris {
+		sortedURIs = append(sortedURIs, uri)
+	}
+
+	sort.Strings(sortedURIs)
+
+	for _, uri := range sortedURIs {
+		d.get(uri)
+	}
+}
+
+// actionInfoURIs returns the "@Redfish.ActionInfo" targets of all actions
+// declared in the "Actions" object of a Redfish resource.
+func actionInfoURIs(body map[string]any) []string {
+	actions, ok := body["Actions"].(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	uris := make([]string, 0, len(actions))
+
+	for name, rawAction := range actions {
+		// "Oem" is the only member of "Actions" which is not an action itself.
+		if name == "Oem" {
+			continue
+		}
+
+		action, ok := rawAction.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		uri, ok := action["@Redfish.ActionInfo"].(string)
+		if !ok || uri == "" {
+			continue
+		}
+
+		uris = append(uris, uri)
+	}
+
+	return uris
 }
 
 // dumper walks the dumpEndpoints templates against a connected Redfish
@@ -212,6 +288,8 @@ func (d *dumper) get(uri string) map[string]any {
 
 	defer resp.Body.Close()
 
+	entry.Allow = resp.Header.Get("Allow")
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		entry.Error = newDumpError(err)
@@ -234,7 +312,7 @@ func (d *dumper) get(uri string) map[string]any {
 }
 
 func newDumpError(err error) *api.BMCDumpError {
-	dumpErr := &api.BMCDumpError{Message: err.Error()}
+	dumpErr := &api.BMCDumpError{Error: err.Error(), Message: wrapRedfishError(err).Error()}
 
 	var redfishErr *schemas.Error
 	if errors.As(err, &redfishErr) {
@@ -243,40 +321,4 @@ func newDumpError(err error) *api.BMCDumpError {
 	}
 
 	return dumpErr
-}
-
-// traceWriter collects the HTTP dumps produced by gofish.
-type traceWriter struct {
-	sections []string
-}
-
-func (w *traceWriter) Write(p []byte) (int, error) {
-	w.sections = append(w.sections, string(p))
-
-	return len(p), nil
-}
-
-// headersOnly reduces the collected dump sections to their headers, dropping
-// request and response bodies, and redacts the Authorization header so BMC
-// credentials never leave the daemon.
-func (w *traceWriter) headersOnly() string {
-	sections := make([]string, 0, len(w.sections))
-
-	for _, section := range w.sections {
-		head, _, found := strings.Cut(section, "\r\n\r\n")
-		if !found {
-			head = section
-		}
-
-		lines := strings.Split(head, "\r\n")
-		for i, line := range lines {
-			if len(line) >= len("authorization:") && strings.EqualFold(line[:len("authorization:")], "authorization:") {
-				lines[i] = "Authorization: <redacted>"
-			}
-		}
-
-		sections = append(sections, strings.Join(lines, "\n"))
-	}
-
-	return strings.Join(sections, "\n---\n")
 }
