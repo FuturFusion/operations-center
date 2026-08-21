@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/stmcginnis/gofish"
 	"github.com/stmcginnis/gofish/schemas"
 
@@ -35,8 +36,14 @@ import (
 
 const defaultConnectionTestTimeout = 5 * time.Second
 
+// environment provides access to the internal API of IncusOS.
+type environment interface {
+	GetSecureBootCertificates(ctx context.Context) (incusosapi.InternalSecureBootCertificates, error)
+}
+
 type redfish struct {
 	connectionTestTimeout time.Duration
+	env                   environment
 }
 
 var _ provisioning.BMCServerClientPort = redfish{}
@@ -46,6 +53,15 @@ type Option func(r *redfish)
 func WithConnectionTestTimeout(timeout time.Duration) Option {
 	return func(r *redfish) {
 		r.connectionTestTimeout = timeout
+	}
+}
+
+// WithSecureBootCertificates defines the source for the certificates, which are
+// written to the respective secure boot databases (e.g. "KEK", "DB") during
+// setup of the secure boot certificates.
+func WithSecureBootCertificates(env environment) Option {
+	return func(r *redfish) {
+		r.env = env
 	}
 }
 
@@ -836,6 +852,102 @@ func (r redfish) BIOSAttribute(ctx context.Context, server provisioning.Server, 
 	}
 
 	return newBIOSAttribute(registry, attributeName, value), nil
+}
+
+func (r redfish) SetupSecureBootCertificates(ctx context.Context, server provisioning.Server) error {
+	if r.env == nil {
+		return fmt.Errorf("Setup of secure boot certificates is not supported, no source for the certificates is configured: %w", domain.ErrOperationNotPermitted)
+	}
+
+	incusOSCertificates, err := r.env.GetSecureBootCertificates(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to get secure boot certificates from IncusOS: %w", err)
+	}
+
+	certificates := map[string][]schemas.Certificate{
+		"KEK": toRedfishCertificates(incusOSCertificates.KEK),
+		"DB":  toRedfishCertificates(incusOSCertificates.DB),
+		"DBX": toRedfishCertificates(incusOSCertificates.DBX),
+	}
+
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	system, err := getFirstSystem(client)
+	if err != nil {
+		return fmt.Errorf("Failed get BMC system: %w", err)
+	}
+
+	secureBoot, err := system.SecureBoot()
+	if err != nil {
+		return fmt.Errorf("Failed to get secure boot information: %w", err)
+	}
+
+	secureBootDatabases, err := secureBoot.SecureBootDatabases()
+	if err != nil {
+		return fmt.Errorf("Failed to get secure boot databases: %w", err)
+	}
+
+	// Wipe certificates from secure boot databases and reinitialize the
+	// secure boot databases with the Incus certificates.
+	toBeCleanedSecureBootDatabases := []string{"KEK", "DB", "DBX"}
+	for _, secureBootDB := range secureBootDatabases {
+		dbName := strings.ToUpper(secureBootDB.Name)
+		if !slices.Contains(toBeCleanedSecureBootDatabases, dbName) {
+			continue
+		}
+
+		certs, err := secureBootDB.Certificates()
+		if err != nil {
+			return fmt.Errorf("Failed to get secure boot database certificates: %w", err)
+		}
+
+		for _, cert := range certs {
+			resp, err := client.Delete(cert.ODataID)
+			if err != nil {
+				slog.WarnContext(ctx, "Failed to delete secure boot certificate", slog.String("odata_id", cert.ODataID), logger.Err(err))
+				continue
+			}
+
+			_ = resp.Body.Close()
+		}
+
+		for _, cert := range certificates[dbName] {
+			resp, err := client.Post(secureBootDB.ODataID, cert)
+			if err != nil {
+				return fmt.Errorf("Failed to add certificate to secure boot DB %q: %w", secureBootDB.ODataID, err)
+			}
+
+			_ = resp.Body.Close()
+
+			if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+				return fmt.Errorf("Unexpected status %d when adding certificate to secure boot DB %q", resp.StatusCode, secureBootDB.ODataID)
+			}
+		}
+	}
+
+	return nil
+}
+
+func toRedfishCertificates(pemCertificates []string) []schemas.Certificate {
+	certificates := make([]schemas.Certificate, 0, len(pemCertificates))
+
+	for _, pemCertificate := range pemCertificates {
+		if pemCertificate == "" {
+			continue
+		}
+
+		certificates = append(certificates, schemas.Certificate{
+			CertificateString: pemCertificate,
+			CertificateType:   schemas.PEMCertificateType,
+		})
+	}
+
+	return certificates
 }
 
 func (r redfish) performReset(ctx context.Context, server provisioning.Server, resetType schemas.ResetType) (*provisioning.BMCTaskMonitor, error) {

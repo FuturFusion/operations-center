@@ -469,6 +469,40 @@ func (_d BMCServerClientPortWithSlog) ServerSetLocationIndicator(ctx context.Con
 	return _d._base.ServerSetLocationIndicator(ctx, server, active)
 }
 
+// SetupSecureBootCertificates implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) SetupSecureBootCertificates(ctx context.Context, server provisioning.Server) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling SetupSecureBootCertificates")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method SetupSecureBootCertificates returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method SetupSecureBootCertificates returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method SetupSecureBootCertificates finished")
+		}
+	}()
+	return _d._base.SetupSecureBootCertificates(ctx, server)
+}
+
 // WaitForTask implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) WaitForTask(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (err error) {
 	log := slog.With()

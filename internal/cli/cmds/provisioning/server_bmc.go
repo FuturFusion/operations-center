@@ -67,6 +67,13 @@ func (c *cmdServerBMC) Command() *cobra.Command {
 
 	cmd.AddCommand(serverBMCBIOSAttributesCmd.Command())
 
+	// Setup secure boot certificates
+	serverBMCSetupSecureBootCertificatesCmd := cmdServerBMCSetupSecureBootCertificates{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverBMCSetupSecureBootCertificatesCmd.Command())
+
 	// Logs
 	serverBMCLogsCmd := cmdServerBMCLogs{
 		ocClient: c.ocClient,
@@ -313,6 +320,49 @@ func (c *cmdServerBMCServerLocate) run(cmd *cobra.Command, args []string) error 
 	name := args[0]
 
 	err := c.ocClient.BMCServerSetLocationIndicator(cmd.Context(), name, args[1] == locationIndicatorStateOn)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Setup the secure boot certificates of a server via BMC.
+type cmdServerBMCSetupSecureBootCertificates struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdServerBMCSetupSecureBootCertificates) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "setup-secure-boot-certificates <name>"
+	cmd.Short = "Setup the secure boot certificates of a server via BMC"
+	cmd.Long = `Description:
+  Setup the secure boot certificates of a server via BMC
+
+  Wipes the KEK, DB and DBX secure boot databases of the server and
+  reinitializes them with the secure boot certificates provided by IncusOS.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerBMCSetupSecureBootCertificates) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdServerBMCSetupSecureBootCertificates) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.BMCSetupSecureBootCertificates(cmd.Context(), name)
 	if err != nil {
 		return err
 	}

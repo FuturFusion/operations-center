@@ -61,6 +61,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			BMCServerSetLocationIndicatorByNameFunc: func(ctx context.Context, name string, active bool) error {
 //				panic("mock out the BMCServerSetLocationIndicatorByName method")
 //			},
+//			BMCSetupSecureBootCertificatesByNameFunc: func(ctx context.Context, name string) error {
+//				panic("mock out the BMCSetupSecureBootCertificatesByName method")
+//			},
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the DeleteByName method")
 //			},
@@ -214,6 +217,9 @@ type ServerServiceMock struct {
 
 	// BMCServerSetLocationIndicatorByNameFunc mocks the BMCServerSetLocationIndicatorByName method.
 	BMCServerSetLocationIndicatorByNameFunc func(ctx context.Context, name string, active bool) error
+
+	// BMCSetupSecureBootCertificatesByNameFunc mocks the BMCSetupSecureBootCertificatesByName method.
+	BMCSetupSecureBootCertificatesByNameFunc func(ctx context.Context, name string) error
 
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
@@ -433,6 +439,13 @@ type ServerServiceMock struct {
 			Name string
 			// Active is the active argument value.
 			Active bool
+		}
+		// BMCSetupSecureBootCertificatesByName holds details about calls to the BMCSetupSecureBootCertificatesByName method.
+		BMCSetupSecureBootCertificatesByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
 		}
 		// DeleteByName holds details about calls to the DeleteByName method.
 		DeleteByName []struct {
@@ -738,55 +751,56 @@ type ServerServiceMock struct {
 			UpdateConfig provisioning.ServerSystemUpdate
 		}
 	}
-	lockAddApplication                      sync.RWMutex
-	lockApplyBIOSAttributesByName           sync.RWMutex
-	lockBMCBIOSAttributeByName              sync.RWMutex
-	lockBMCBIOSAttributesByName             sync.RWMutex
-	lockBMCDumpByName                       sync.RWMutex
-	lockBMCLogEntriesByNameAndLogSource     sync.RWMutex
-	lockBMCLogSourcesByName                 sync.RWMutex
-	lockBMCRefreshByName                    sync.RWMutex
-	lockBMCServerPowerOffByName             sync.RWMutex
-	lockBMCServerPowerOnByName              sync.RWMutex
-	lockBMCServerRestartByName              sync.RWMutex
-	lockBMCServerSetLocationIndicatorByName sync.RWMutex
-	lockDeleteByName                        sync.RWMutex
-	lockEvacuateSystemByName                sync.RWMutex
-	lockFactoryResetByName                  sync.RWMutex
-	lockGetAll                              sync.RWMutex
-	lockGetAllNames                         sync.RWMutex
-	lockGetAllNamesWithFilter               sync.RWMutex
-	lockGetAllWithFilter                    sync.RWMutex
-	lockGetByName                           sync.RWMutex
-	lockGetChangelogByName                  sync.RWMutex
-	lockGetSystemKernel                     sync.RWMutex
-	lockGetSystemLogging                    sync.RWMutex
-	lockGetSystemProvider                   sync.RWMutex
-	lockGetSystemUpdate                     sync.RWMutex
-	lockPollServer                          sync.RWMutex
-	lockPollServers                         sync.RWMutex
-	lockPostRestoreSystemDoneByName         sync.RWMutex
-	lockPoweroffSystemByName                sync.RWMutex
-	lockPreRegister                         sync.RWMutex
-	lockRebootSystemByName                  sync.RWMutex
-	lockRegister                            sync.RWMutex
-	lockRename                              sync.RWMutex
-	lockRestartApplication                  sync.RWMutex
-	lockRestoreSystemByName                 sync.RWMutex
-	lockResyncBMCData                       sync.RWMutex
-	lockResyncByName                        sync.RWMutex
-	lockSelfRegisterOperationsCenter        sync.RWMutex
-	lockSelfUpdate                          sync.RWMutex
-	lockSetClusterService                   sync.RWMutex
-	lockSyncCluster                         sync.RWMutex
-	lockUpdate                              sync.RWMutex
-	lockUpdateSystemByName                  sync.RWMutex
-	lockUpdateSystemKernel                  sync.RWMutex
-	lockUpdateSystemLogging                 sync.RWMutex
-	lockUpdateSystemNetwork                 sync.RWMutex
-	lockUpdateSystemProvider                sync.RWMutex
-	lockUpdateSystemStorage                 sync.RWMutex
-	lockUpdateSystemUpdate                  sync.RWMutex
+	lockAddApplication                       sync.RWMutex
+	lockApplyBIOSAttributesByName            sync.RWMutex
+	lockBMCBIOSAttributeByName               sync.RWMutex
+	lockBMCBIOSAttributesByName              sync.RWMutex
+	lockBMCDumpByName                        sync.RWMutex
+	lockBMCLogEntriesByNameAndLogSource      sync.RWMutex
+	lockBMCLogSourcesByName                  sync.RWMutex
+	lockBMCRefreshByName                     sync.RWMutex
+	lockBMCServerPowerOffByName              sync.RWMutex
+	lockBMCServerPowerOnByName               sync.RWMutex
+	lockBMCServerRestartByName               sync.RWMutex
+	lockBMCServerSetLocationIndicatorByName  sync.RWMutex
+	lockBMCSetupSecureBootCertificatesByName sync.RWMutex
+	lockDeleteByName                         sync.RWMutex
+	lockEvacuateSystemByName                 sync.RWMutex
+	lockFactoryResetByName                   sync.RWMutex
+	lockGetAll                               sync.RWMutex
+	lockGetAllNames                          sync.RWMutex
+	lockGetAllNamesWithFilter                sync.RWMutex
+	lockGetAllWithFilter                     sync.RWMutex
+	lockGetByName                            sync.RWMutex
+	lockGetChangelogByName                   sync.RWMutex
+	lockGetSystemKernel                      sync.RWMutex
+	lockGetSystemLogging                     sync.RWMutex
+	lockGetSystemProvider                    sync.RWMutex
+	lockGetSystemUpdate                      sync.RWMutex
+	lockPollServer                           sync.RWMutex
+	lockPollServers                          sync.RWMutex
+	lockPostRestoreSystemDoneByName          sync.RWMutex
+	lockPoweroffSystemByName                 sync.RWMutex
+	lockPreRegister                          sync.RWMutex
+	lockRebootSystemByName                   sync.RWMutex
+	lockRegister                             sync.RWMutex
+	lockRename                               sync.RWMutex
+	lockRestartApplication                   sync.RWMutex
+	lockRestoreSystemByName                  sync.RWMutex
+	lockResyncBMCData                        sync.RWMutex
+	lockResyncByName                         sync.RWMutex
+	lockSelfRegisterOperationsCenter         sync.RWMutex
+	lockSelfUpdate                           sync.RWMutex
+	lockSetClusterService                    sync.RWMutex
+	lockSyncCluster                          sync.RWMutex
+	lockUpdate                               sync.RWMutex
+	lockUpdateSystemByName                   sync.RWMutex
+	lockUpdateSystemKernel                   sync.RWMutex
+	lockUpdateSystemLogging                  sync.RWMutex
+	lockUpdateSystemNetwork                  sync.RWMutex
+	lockUpdateSystemProvider                 sync.RWMutex
+	lockUpdateSystemStorage                  sync.RWMutex
+	lockUpdateSystemUpdate                   sync.RWMutex
 }
 
 // AddApplication calls AddApplicationFunc.
@@ -1262,6 +1276,42 @@ func (mock *ServerServiceMock) BMCServerSetLocationIndicatorByNameCalls() []stru
 	mock.lockBMCServerSetLocationIndicatorByName.RLock()
 	calls = mock.calls.BMCServerSetLocationIndicatorByName
 	mock.lockBMCServerSetLocationIndicatorByName.RUnlock()
+	return calls
+}
+
+// BMCSetupSecureBootCertificatesByName calls BMCSetupSecureBootCertificatesByNameFunc.
+func (mock *ServerServiceMock) BMCSetupSecureBootCertificatesByName(ctx context.Context, name string) error {
+	if mock.BMCSetupSecureBootCertificatesByNameFunc == nil {
+		panic("ServerServiceMock.BMCSetupSecureBootCertificatesByNameFunc: method is nil but ServerService.BMCSetupSecureBootCertificatesByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockBMCSetupSecureBootCertificatesByName.Lock()
+	mock.calls.BMCSetupSecureBootCertificatesByName = append(mock.calls.BMCSetupSecureBootCertificatesByName, callInfo)
+	mock.lockBMCSetupSecureBootCertificatesByName.Unlock()
+	return mock.BMCSetupSecureBootCertificatesByNameFunc(ctx, name)
+}
+
+// BMCSetupSecureBootCertificatesByNameCalls gets all the calls that were made to BMCSetupSecureBootCertificatesByName.
+// Check the length with:
+//
+//	len(mockedServerService.BMCSetupSecureBootCertificatesByNameCalls())
+func (mock *ServerServiceMock) BMCSetupSecureBootCertificatesByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockBMCSetupSecureBootCertificatesByName.RLock()
+	calls = mock.calls.BMCSetupSecureBootCertificatesByName
+	mock.lockBMCSetupSecureBootCertificatesByName.RUnlock()
 	return calls
 }
 
