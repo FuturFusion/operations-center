@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -257,4 +259,66 @@ func TestTokenSeed_Validate(t *testing.T) {
 			tc.assertErr(t, err)
 		})
 	}
+}
+
+func TestSeedImageCacheID(t *testing.T) {
+	tokenUUID := uuid.MustParse("f4f8bbb2-1f0a-4c4e-9d5f-2b4a6c8e0d13")
+
+	id := provisioning.SeedImageCacheID(tokenUUID, "default", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, "stable")
+
+	t.Run("is stable for the same inputs", func(t *testing.T) {
+		require.Equal(t, id, provisioning.SeedImageCacheID(tokenUUID, "default", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, "stable"))
+	})
+
+	t.Run("is usable as a URL path segment and as a filename", func(t *testing.T) {
+		require.Len(t, id, provisioning.SeedImageCacheIDLength)
+		require.Regexp(t, `^[A-Za-z0-9_-]+$`, id)
+	})
+
+	t.Run("differs for every input it is derived from", func(t *testing.T) {
+		otherUUID := uuid.MustParse("a1b2c3d4-1f0a-4c4e-9d5f-2b4a6c8e0d13")
+
+		tests := []struct {
+			name string
+			id   string
+		}{
+			{
+				name: "token",
+				id:   provisioning.SeedImageCacheID(otherUUID, "default", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, "stable"),
+			},
+			{
+				name: "seed",
+				id:   provisioning.SeedImageCacheID(tokenUUID, "other", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, "stable"),
+			},
+			{
+				name: "type",
+				id:   provisioning.SeedImageCacheID(tokenUUID, "default", api.ImageTypeRaw, images.UpdateFileArchitecture64BitX86, "stable"),
+			},
+			{
+				name: "architecture",
+				id:   provisioning.SeedImageCacheID(tokenUUID, "default", api.ImageTypeISO, images.UpdateFileArchitecture64BitARM, "stable"),
+			},
+			{
+				name: "channel",
+				id:   provisioning.SeedImageCacheID(tokenUUID, "default", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, "daily"),
+			},
+			{
+				name: "default channel",
+				id:   provisioning.SeedImageCacheID(tokenUUID, "default", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, ""),
+			},
+		}
+
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				require.NotEqual(t, id, tc.id)
+			})
+		}
+	})
+
+	t.Run("does not collide, if a separator appears in a value", func(t *testing.T) {
+		require.NotEqual(t,
+			provisioning.SeedImageCacheID(tokenUUID, "a", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, "b"),
+			provisioning.SeedImageCacheID(tokenUUID, "a\x00b", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, ""),
+		)
+	})
 }

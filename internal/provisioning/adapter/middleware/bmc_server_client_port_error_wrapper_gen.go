@@ -36,6 +36,16 @@ func (_d BMCServerClientPortWithErrorWrapper) ApplyBIOSAttributes(ctx context.Co
 	return _d._base.ApplyBIOSAttributes(ctx, server, attributes)
 }
 
+// AttachMedia implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.AttachMedia(ctx, server, virtualMediaID, mediaURL, setBootDevice)
+}
+
 // BIOSAttribute implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithErrorWrapper) BIOSAttribute(ctx context.Context, server provisioning.Server, attributeName string) (bIOSAttribute api.BIOSAttribute, err error) {
 	defer func() {
@@ -64,6 +74,16 @@ func (_d BMCServerClientPortWithErrorWrapper) ConnectionTest(ctx context.Context
 		}
 	}()
 	return _d._base.ConnectionTest(ctx, server)
+}
+
+// DetachMedia implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithErrorWrapper) DetachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
+	defer func() {
+		if err != nil {
+			err = _d._wrapErrFunc(err)
+		}
+	}()
+	return _d._base.DetachMedia(ctx, server, virtualMediaID)
 }
 
 // Dump implements provisioning.BMCServerClientPort.

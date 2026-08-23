@@ -1,9 +1,12 @@
 package client
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"path"
@@ -165,13 +168,14 @@ func (c OperationsCenterClient) DeleteTokenSeed(ctx context.Context, id string, 
 	return nil
 }
 
+// GetTokenImageFromSeed returns the pre-seeded image of a token seed as an
+// uncompressed stream.
 func (c OperationsCenterClient) GetTokenImageFromSeed(ctx context.Context, id string, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (io.ReadCloser, error) {
-	query := url.Values{}
-	query.Add("type", imageType.String())
-	query.Add("architecture", architecture.String())
-	query.Add("channel", channel)
+	segments := append([]string{"/provisioning/tokens", id, "seeds", name}, api.TokenSeedImagePathSegments(imageType, architecture, channel)...)
 
-	resp, err := c.doRequestRawResponse(ctx, http.MethodGet, path.Join("/provisioning/tokens", id, "seeds", name), query, nil)
+	resp, err := c.doRequestRawResponse(ctx, http.MethodGet, path.Join(segments...), nil, nil, func(req *http.Request) {
+		req.Header.Set("Accept", "application/gzip")
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -181,5 +185,42 @@ func (c OperationsCenterClient) GetTokenImageFromSeed(ctx context.Context, id st
 		return nil, err
 	}
 
-	return resp.Body, nil
+	// The compressed file is only asked for, not required. A server not honoring
+	// the Accept header hands out the image itself, which is passed through as
+	// is, since the caller gets an uncompressed stream either way.
+	if !isGzipFile(resp.Header.Get("Content-Type")) {
+		return resp.Body, nil
+	}
+
+	gzipReader, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		return nil, errors.Join(err, resp.Body.Close())
+	}
+
+	return gzipReadCloser{
+		Reader: gzipReader,
+		parent: resp.Body,
+	}, nil
+}
+
+// isGzipFile reports whether the content type denotes a gzip file, ignoring any
+// media type parameters.
+func isGzipFile(contentType string) bool {
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return false
+	}
+
+	return mediaType == "application/gzip"
+}
+
+// gzipReadCloser closes the gzip reader together with the reader it consumes.
+type gzipReadCloser struct {
+	*gzip.Reader
+
+	parent io.Closer
+}
+
+func (r gzipReadCloser) Close() error {
+	return errors.Join(r.Reader.Close(), r.parent.Close())
 }

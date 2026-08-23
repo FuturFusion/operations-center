@@ -679,9 +679,10 @@ func TestAuthentication(t *testing.T) {
 			wantStatusCode: http.StatusOK,
 		},
 
-		// GET /1.0/provisioning/tokens/{token}/seeds/public does not need
-		// authentication, since this seed is created with the public flag set to
-		// true during setup.
+		// GET /1.0/provisioning/tokens/{token}/seeds/{name} serves the seed
+		// config, which needs authentication like any other endpoint. The
+		// public flag only relaxes access to the image itself, so it makes no
+		// difference here.
 		{
 			name: "plain http GET /1.0/provisioning/tokens/{token}/seeds/public",
 			client: func() *http.Client {
@@ -697,11 +698,8 @@ func TestAuthentication(t *testing.T) {
 			resource: "https://localhost:17443/1.0/provisioning/tokens/TOKEN/seeds/public",
 			body:     http.NoBody,
 
-			wantStatusCode: http.StatusOK,
+			wantStatusCode: http.StatusUnauthorized,
 		},
-		// GET /1.0/provisioning/tokens/{token}/seeds/privat does need
-		// authentication, since this seed is created with the public flag set to
-		// false during setup.
 		{
 			name: "plain http GET /1.0/provisioning/tokens/{token}/seeds/private",
 			client: func() *http.Client {
@@ -717,6 +715,48 @@ func TestAuthentication(t *testing.T) {
 			resource: "https://localhost:17443/1.0/provisioning/tokens/TOKEN/seeds/private",
 			body:     http.NoBody,
 
+			wantStatusCode: http.StatusUnauthorized,
+		},
+		// GET /1.0/provisioning/tokens/{token}/seeds/public/... (path-based
+		// image route) does not need authentication either. It returns 404
+		// here because no ready updates exist in this test setup, not
+		// because of an authentication failure - the auth bypass check only
+		// cares that the request reaches the handler at all.
+		{
+			name: "plain http GET /1.0/provisioning/tokens/{token}/seeds/public/architecture/x86_64/type/iso/file.iso",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodGet,
+			resource: "https://localhost:17443/1.0/provisioning/tokens/TOKEN/seeds/public/architecture/x86_64/type/iso/file.iso",
+			body:     http.NoBody,
+
+			wantStatusCode: http.StatusNotFound,
+		},
+		// GET /1.0/provisioning/tokens/{token}/seeds/private/... (path-based
+		// image route) does need authentication, since this seed is created
+		// with the public flag set to false during setup.
+		{
+			name: "plain http GET /1.0/provisioning/tokens/{token}/seeds/private/architecture/x86_64/type/iso/file.iso",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodGet,
+			resource: "https://localhost:17443/1.0/provisioning/tokens/TOKEN/seeds/private/architecture/x86_64/type/iso/file.iso",
+			body:     http.NoBody,
+
 			wantStatusCode: http.StatusForbidden,
 		},
 	}
@@ -729,6 +769,9 @@ func TestAuthentication(t *testing.T) {
 			return filepath.Join(tmpDir, "unix.socket")
 		},
 		VarDirFunc: func() string {
+			return tmpDir
+		},
+		CacheDirFunc: func() string {
 			return tmpDir
 		},
 		UsrShareDirFunc: func() string {

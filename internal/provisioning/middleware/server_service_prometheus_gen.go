@@ -69,6 +69,20 @@ func (_d ServerServiceWithPrometheus) ApplyBIOSAttributesByName(ctx context.Cont
 	return _d.base.ApplyBIOSAttributesByName(ctx, name, attributes)
 }
 
+// BMCAttachMediaByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BMCAttachMediaByName(ctx context.Context, name string, media api.ServerBMCAttachMedia) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCAttachMediaByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BMCAttachMediaByName(ctx, name, media)
+}
+
 // BMCBIOSAttributeByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) BMCBIOSAttributeByName(ctx context.Context, name string, attributeName string) (bIOSAttribute api.BIOSAttribute, err error) {
 	_since := time.Now()
@@ -95,6 +109,20 @@ func (_d ServerServiceWithPrometheus) BMCBIOSAttributesByName(ctx context.Contex
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCBIOSAttributesByName", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.BMCBIOSAttributesByName(ctx, name)
+}
+
+// BMCDetachMediaByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BMCDetachMediaByName(ctx context.Context, name string, virtualMediaID string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BMCDetachMediaByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BMCDetachMediaByName(ctx, name, virtualMediaID)
 }
 
 // BMCDumpByName implements provisioning.ServerService.

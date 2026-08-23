@@ -47,6 +47,10 @@ type BMCDumpEntry struct {
 	// Error contains the error details, if the request failed.
 	Error *BMCDumpError `json:"error,omitempty" yaml:"error,omitempty"`
 
+	// Allow contains the methods the BMC reported as allowed for this endpoint
+	// in the "Allow" response header.
+	Allow string `json:"allow,omitempty" yaml:"allow,omitempty"`
+
 	// Trace contains additional dumped request and response details
 	// (e.g. HTTP headers). Opaque field for human inspection only. Populated if
 	// tracing is requested.
@@ -59,6 +63,9 @@ type BMCDumpEntry struct {
 type BMCDumpError struct {
 	// Message contains the human readable error message.
 	Message string `json:"message" yaml:"message"`
+
+	// Error as reported by the API.
+	Error string `json:"error" yaml:"error"`
 
 	// Code contains the error code, if any.
 	Code string `json:"code,omitempty" yaml:"code,omitempty"`
@@ -169,4 +176,57 @@ type BIOSAttribute struct {
 	// the BIOS attribute. Empty if the attribute is not an enumeration.
 	// Example: ["UserMode", "SetupMode"]
 	AcceptableValues []string `json:"acceptable_values" yaml:"acceptable_values"`
+}
+
+// ServerBMCAttachMedia defines the request to attach installation media to a
+// server via its BMC.
+//
+// swagger:model
+type ServerBMCAttachMedia struct {
+	// TokenUUID holds the UUID of the provisioning token that owns the seed.
+	// Example: 8f6c3d1a-2b4e-4c9a-9f7d-1a2b3c4d5e6f
+	TokenUUID string `json:"token_uuid" yaml:"token_uuid"`
+
+	// Seed holds the name of the token seed used to generate the installation
+	// media. The referenced token seed must be public.
+	// Example: default
+	Seed string `json:"seed" yaml:"seed"`
+
+	// Type holds the type of image to generate. Possible values: iso, raw.
+	// Example: iso
+	Type string `json:"type" yaml:"type"`
+
+	// Architecture holds the CPU architecture of the image to generate. Possible
+	// values: x86_64, aarch64.
+	// Example: x86_64
+	Architecture string `json:"architecture" yaml:"architecture"`
+
+	// Channel holds the channel the most recent update should be taken from to
+	// generate the image. Optional, defaults to the configured default channel.
+	// Example: stable
+	Channel string `json:"channel" yaml:"channel"`
+
+	// VirtualMediaID identifies the virtual media device the media is attached
+	// to, using the "<service>:<bmc-id>" notation (e.g. "system:1" or
+	// "manager:2") as reported in the BMC virtual media data.
+	// Example: system:1
+	VirtualMediaID string `json:"virtual_media_id" yaml:"virtual_media_id"`
+
+	// SetBootDevice requests, that the virtual media is registered as the boot
+	// device for the next boot of the server in addition to being attached.
+	// Detaching the media restores the default boot configuration of the system.
+	// Example: true
+	SetBootDevice bool `json:"set_boot_device" yaml:"set_boot_device"`
+}
+
+// ServerBMCDetachMedia defines the request to detach installation media from a
+// server via its BMC.
+//
+// swagger:model
+type ServerBMCDetachMedia struct {
+	// VirtualMediaID identifies the virtual media device the media is detached
+	// from, using the "<service>:<bmc-id>" notation (e.g. "system:1" or
+	// "manager:2") as reported in the BMC virtual media data.
+	// Example: system:1
+	VirtualMediaID string `json:"virtual_media_id" yaml:"virtual_media_id"`
 }

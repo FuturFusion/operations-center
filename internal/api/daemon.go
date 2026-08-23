@@ -302,7 +302,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	channelSvc := d.setupChannelService(dbWithTransaction, updateSvc)
 
-	tokenSvc := d.setupTokenService(dbWithTransaction, client, updateSvc, channelSvc)
+	tokenSvc, imageFlasher := d.setupTokenService(dbWithTransaction, client, updateSvc, channelSvc)
 	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter)
 	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc)
 	if err != nil {
@@ -391,7 +391,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// Background tasks
-	d.setupBackgroundTasks(ctx, updateSvc, imageSourceSvc, serverSvc, clusterSvc, warningLogEmitter)
+	d.setupBackgroundTasks(ctx, updateSvc, imageSourceSvc, serverSvc, clusterSvc, imageFlasher, warningLogEmitter)
 
 	// Finalize daemon start
 	// Wait for immediate errors during startup.
@@ -685,10 +685,11 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 	), nil
 }
 
-func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenClientPort, updateSvc provisioning.UpdateService, channelSvc provisioning.ChannelService) provisioning.TokenService {
+func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenClientPort, updateSvc provisioning.UpdateService, channelSvc provisioning.ChannelService) (provisioning.TokenService, *flasher.Flasher) {
 	imageFlasher := flasher.New(
 		config.GetNetwork().OperationsCenterAddress,
 		d.serverCertificate,
+		flasher.WithCacheDir(filepath.Join(d.env.CacheDir(), "seed-images")),
 	)
 	// Image flasher needs to learn about updates to the server certificate.
 	lifecycle.ServerCertificateUpdateSignal.AddListener(func(_ context.Context, cert tls.Certificate) {
@@ -699,7 +700,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenCl
 		imageFlasher.UpdateServerURL(cfg.OperationsCenterAddress)
 	})
 
-	return provisioningServiceMiddleware.NewTokenServiceWithSlog(
+	tokenSvc := provisioningServiceMiddleware.NewTokenServiceWithSlog(
 		provisioningToken.New(
 			provisioningRepoMiddleware.NewTokenRepoWithSlog(
 				provisioningSqlite.NewToken(db),
@@ -720,6 +721,38 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenCl
 			},
 		),
 	)
+
+	lifecycle.BMCVirtualMediaSignal.AddListener(func(ctx context.Context, msg lifecycle.BMCVirtualMediaMessage) {
+		switch msg.Operation {
+		case lifecycle.BMCVirtualMediaOperationPreAttach:
+			go func() {
+				// Use a detached context, so that generating the image is neither
+				// bound to a DB transaction nor to the request having triggered it.
+				ctx := context.WithoutCancel(ctx)
+
+				slog.InfoContext(ctx, "Preparation of installation media triggered", slog.String("name", msg.Server))
+
+				err := tokenSvc.PrepareTokenSeedImage(ctx, msg.TokenUUID, msg.Seed, msg.ImageType, msg.Architecture, msg.Channel)
+				if err != nil {
+					slog.WarnContext(ctx, "Failed to prepare installation media", logger.Err(err), slog.String("name", msg.Server))
+					return
+				}
+
+				slog.InfoContext(ctx, "Preparation of installation media completed", slog.String("name", msg.Server))
+			}()
+
+		case lifecycle.BMCVirtualMediaOperationAttach:
+			slog.DebugContext(ctx, "Installation media attached", slog.String("name", msg.Server), slog.String("virtual_media_id", msg.VirtualMediaID))
+
+		case lifecycle.BMCVirtualMediaOperationDetach:
+			// A cached image is shared by all servers installed from the same
+			// token seed, so detaching one of them must not remove it. Cached
+			// images are removed time based instead.
+			slog.DebugContext(ctx, "Installation media detached", slog.String("name", msg.Server), slog.String("virtual_media_id", msg.VirtualMediaID))
+		}
+	})
+
+	return tokenSvc, imageFlasher
 }
 
 func (d *Daemon) setupServerService(
@@ -1013,7 +1046,7 @@ func (d *Daemon) setupAPIRoutes(
 			return false
 		}
 
-		if r.Pattern == "GET /1.0/provisioning/tokens/{uuid}/seeds/{name}" {
+		if r.Pattern == "GET /1.0/provisioning/tokens/{uuid}/seeds/{name}/{params...}" {
 			return false
 		}
 
@@ -1090,6 +1123,7 @@ func (d *Daemon) setupBackgroundTasks(
 	imageSourceSvc image.IncusImageSourceService,
 	serverSvc provisioning.ServerService,
 	clusterSvc provisioning.ClusterService,
+	imageFlasher *flasher.Flasher,
 	warningSvc warning.WarningEmitter,
 ) {
 	if config.IsBackgroundTasksDisabled() {
@@ -1378,6 +1412,25 @@ func (d *Daemon) setupBackgroundTasks(
 	refreshBMCDataTaskStop, _ := task.Start(ctx, refreshBMCDataTask, task.Every(config.BMCDataResyncInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return refreshBMCDataTaskStop(deadlineFrom(ctx, 10*time.Second))
+	})
+
+	// Start background task to prune the cache of generated seed images.
+	pruneSeedImageCacheTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "Seed image cache prune triggered")
+
+		err := imageFlasher.PruneCache(ctx, config.SeedImageCacheTTL)
+		if err != nil {
+			slog.WarnContext(ctx, "Seed image cache prune failed", logger.Err(err))
+
+			return
+		}
+
+		slog.InfoContext(ctx, "Seed image cache prune completed")
+	}
+
+	pruneSeedImageCacheTaskStop, _ := task.Start(ctx, pruneSeedImageCacheTask, task.Every(config.SeedImageCachePruneInterval))
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return pruneSeedImageCacheTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
 
 	// Start background task to renew ACME server certificate.
@@ -1788,6 +1841,7 @@ func (d *Daemon) Stop(ctx context.Context) error {
 	lifecycle.UpdatesUpdateSignal.Reset()
 	lifecycle.ClusterUpdateSignal.Reset()
 	lifecycle.ServerLifecycleSignal.Reset()
+	lifecycle.BMCVirtualMediaSignal.Reset()
 
 	return errors.Join(errs...)
 }

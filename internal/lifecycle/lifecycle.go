@@ -3,6 +3,8 @@ package lifecycle
 import (
 	"crypto/tls"
 
+	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/maniartech/signals"
 
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -28,6 +30,8 @@ var (
 	ClusterUpdateSignal = signals.NewSync[ClusterUpdateMessage]()
 
 	ServerLifecycleSignal = signals.NewSync[ServerLifecycleMessage]()
+
+	BMCVirtualMediaSignal = signals.NewSync[BMCVirtualMediaMessage]()
 )
 
 type ClusterUpdateMessage struct {
@@ -48,4 +52,26 @@ type ServerLifecycleMessage struct {
 	Server            string
 	Cluster           *string
 	ServerUpdateState api.ServerUpdateState
+}
+
+type BMCVirtualMediaOperation string
+
+const (
+	BMCVirtualMediaOperationPreAttach BMCVirtualMediaOperation = "pre-attach"
+	BMCVirtualMediaOperationAttach    BMCVirtualMediaOperation = "attach"
+	BMCVirtualMediaOperationDetach    BMCVirtualMediaOperation = "detach"
+)
+
+// BMCVirtualMediaMessage reports, that installation media is about to be
+// attached to, has been attached to or has been detached from a virtual media
+// device of a server via its BMC.
+type BMCVirtualMediaMessage struct {
+	Operation      BMCVirtualMediaOperation
+	Server         string
+	VirtualMediaID string
+	TokenUUID      uuid.UUID
+	Seed           string
+	ImageType      api.ImageType
+	Architecture   images.UpdateFileArchitecture
+	Channel        string
 }

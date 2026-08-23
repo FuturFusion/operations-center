@@ -134,6 +134,9 @@ func TestStartAndStop(t *testing.T) {
 				VarDirFunc: func() string {
 					return tmpDir
 				},
+				CacheDirFunc: func() string {
+					return tmpDir
+				},
 				UsrShareDirFunc: func() string {
 					return tmpDir
 				},

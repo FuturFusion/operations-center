@@ -41,8 +41,22 @@ func NewFlasherPortWithPrometheus(base provisioning.FlasherPort, instanceName st
 	}
 }
 
+// GenerateCompressedSeededImage implements provisioning.FlasherPort.
+func (_d FlasherPortWithPrometheus) GenerateCompressedSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (readCloser io.ReadCloser, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GenerateCompressedSeededImage", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GenerateCompressedSeededImage(ctx, id, seedConfig, rc)
+}
+
 // GenerateSeededImage implements provisioning.FlasherPort.
-func (_d FlasherPortWithPrometheus) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (readCloser io.ReadCloser, err error) {
+func (_d FlasherPortWithPrometheus) GenerateSeededImage(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (readSeekCloser io.ReadSeekCloser, size int64, modTime time.Time, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -52,7 +66,7 @@ func (_d FlasherPortWithPrometheus) GenerateSeededImage(ctx context.Context, id 
 
 		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GenerateSeededImage", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GenerateSeededImage(ctx, id, seedConfig, rc)
+	return _d.base.GenerateSeededImage(ctx, cacheID, fingerprint, id, seedConfig, public, source)
 }
 
 // GetProviderConfig implements provisioning.FlasherPort.
@@ -67,4 +81,32 @@ func (_d FlasherPortWithPrometheus) GetProviderConfig(ctx context.Context, token
 		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetProviderConfig", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetProviderConfig(ctx, tokenID)
+}
+
+// OpenSeededImage implements provisioning.FlasherPort.
+func (_d FlasherPortWithPrometheus) OpenSeededImage(ctx context.Context, cacheID string, fingerprintID string) (readSeekCloser io.ReadSeekCloser, size int64, modTime time.Time, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "OpenSeededImage", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.OpenSeededImage(ctx, cacheID, fingerprintID)
+}
+
+// SeedImageFingerprintID implements provisioning.FlasherPort.
+func (_d FlasherPortWithPrometheus) SeedImageFingerprintID(ctx context.Context, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs) (s string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "SeedImageFingerprintID", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.SeedImageFingerprintID(ctx, fingerprint, id, seedConfig)
 }

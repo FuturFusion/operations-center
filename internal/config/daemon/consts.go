@@ -58,6 +58,12 @@ const (
 	// Interval in which the BMC data is resynced.
 	BMCDataResyncInterval = 1 * time.Hour
 
+	// Time after the last access, after which a cached seed image is removed.
+	SeedImageCacheTTL = 2 * time.Hour
+
+	// Interval in which the seed image cache is pruned.
+	SeedImageCachePruneInterval = 10 * time.Minute
+
 	// ACME server certificate renew interval.
 	ACMEServerCertificateRenewInterval = 24 * time.Hour
 

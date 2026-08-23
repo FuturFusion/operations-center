@@ -59,6 +59,9 @@ func daemonSetup(t *testing.T) (socketClient client.OperationsCenterClient, unau
 		VarDirFunc: func() string {
 			return tmpDir
 		},
+		CacheDirFunc: func() string {
+			return tmpDir
+		},
 		UsrShareDirFunc: func() string {
 			return ""
 		},

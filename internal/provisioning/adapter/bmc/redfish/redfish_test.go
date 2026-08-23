@@ -1517,7 +1517,7 @@ func TestRedfish_ServerPowerOn(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			var gotBody []byte
+			var gotRequests []mockRequest
 
 			svr := newMockRedfishServer(t, mockRedfishServer{
 				serviceRootStatusCode:     tc.serviceRootStatusCode,
@@ -1529,7 +1529,7 @@ func TestRedfish_ServerPowerOn(t *testing.T) {
 				resetActionInfoBody:       tc.resetActionInfoBody,
 				resetStatusCode:           tc.resetStatusCode,
 				resetLocation:             tc.resetLocation,
-			}, &gotBody)
+			}, &gotRequests)
 
 			client := redfish.New()
 			taskMonitor, err := client.ServerPowerOn(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.force)
@@ -1538,7 +1538,8 @@ func TestRedfish_ServerPowerOn(t *testing.T) {
 			require.Equal(t, tc.wantTaskMonitor, taskMonitor)
 
 			if tc.wantResetType != "" {
-				require.JSONEq(t, fmt.Sprintf(`{"ResetType":%q}`, tc.wantResetType), string(gotBody))
+				require.Len(t, gotRequests, 1)
+				require.JSONEq(t, fmt.Sprintf(`{"ResetType":%q}`, tc.wantResetType), gotRequests[0].body)
 			}
 		})
 	}
@@ -1729,7 +1730,7 @@ func TestRedfish_ServerPowerOff(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			var gotBody []byte
+			var gotRequests []mockRequest
 
 			svr := newMockRedfishServer(t, mockRedfishServer{
 				serviceRootStatusCode:     tc.serviceRootStatusCode,
@@ -1741,7 +1742,7 @@ func TestRedfish_ServerPowerOff(t *testing.T) {
 				resetActionInfoBody:       tc.resetActionInfoBody,
 				resetStatusCode:           tc.resetStatusCode,
 				resetLocation:             tc.resetLocation,
-			}, &gotBody)
+			}, &gotRequests)
 
 			client := redfish.New()
 			taskMonitor, err := client.ServerPowerOff(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.force)
@@ -1750,7 +1751,8 @@ func TestRedfish_ServerPowerOff(t *testing.T) {
 			require.Equal(t, tc.wantTaskMonitor, taskMonitor)
 
 			if tc.wantResetType != "" {
-				require.JSONEq(t, fmt.Sprintf(`{"ResetType":%q}`, tc.wantResetType), string(gotBody))
+				require.Len(t, gotRequests, 1)
+				require.JSONEq(t, fmt.Sprintf(`{"ResetType":%q}`, tc.wantResetType), gotRequests[0].body)
 			}
 		})
 	}
@@ -1941,7 +1943,7 @@ func TestRedfish_ServerRestart(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			var gotBody []byte
+			var gotRequests []mockRequest
 
 			svr := newMockRedfishServer(t, mockRedfishServer{
 				serviceRootStatusCode:     tc.serviceRootStatusCode,
@@ -1953,7 +1955,7 @@ func TestRedfish_ServerRestart(t *testing.T) {
 				resetActionInfoBody:       tc.resetActionInfoBody,
 				resetStatusCode:           tc.resetStatusCode,
 				resetLocation:             tc.resetLocation,
-			}, &gotBody)
+			}, &gotRequests)
 
 			client := redfish.New()
 			taskMonitor, err := client.ServerRestart(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.force)
@@ -1962,7 +1964,8 @@ func TestRedfish_ServerRestart(t *testing.T) {
 			require.Equal(t, tc.wantTaskMonitor, taskMonitor)
 
 			if tc.wantResetType != "" {
-				require.JSONEq(t, fmt.Sprintf(`{"ResetType":%q}`, tc.wantResetType), string(gotBody))
+				require.Len(t, gotRequests, 1)
+				require.JSONEq(t, fmt.Sprintf(`{"ResetType":%q}`, tc.wantResetType), gotRequests[0].body)
 			}
 		})
 	}
@@ -2842,6 +2845,49 @@ func TestRedfish_Dump(t *testing.T) {
 		  "@odata.id": "/redfish/v1/Systems/1/Oem/Vendor"
 		}`,
 			},
+			"/redfish/v1/Managers/1/VirtualMedia": {
+				statusCode: http.StatusOK,
+				body: `{
+		  "Members@odata.count": 1,
+		  "Members": [
+		    { "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1" }
+		  ]
+		}`,
+			},
+			"/redfish/v1/Managers/1/VirtualMedia/1": {
+				statusCode: http.StatusOK,
+				header: map[string]string{
+					"Allow": "GET, HEAD, PATCH",
+				},
+				body: `{
+		  "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1",
+		  "Id": "1",
+		  "Actions": {
+		    "#VirtualMedia.InsertMedia": {
+		      "@Redfish.ActionInfo": "/redfish/v1/Managers/1/VirtualMedia/1/InsertMediaActionInfo",
+		      "target": "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia"
+		    },
+		    "#VirtualMedia.EjectMedia": {
+		      "target": "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia"
+		    },
+		    "Oem": {
+		      "#VendorMedia.DoSomething": {
+		        "@Redfish.ActionInfo": "/redfish/v1/Managers/1/VirtualMedia/1/OemActionInfo"
+		      }
+		    }
+		  }
+		}`,
+			},
+			"/redfish/v1/Managers/1/VirtualMedia/1/InsertMediaActionInfo": {
+				statusCode: http.StatusOK,
+				body: `{
+		  "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1/InsertMediaActionInfo",
+		  "Parameters": [
+		    { "Name": "Image", "Required": true, "DataType": "String" },
+		    { "Name": "TransferProtocolType", "Required": true, "DataType": "String", "AllowableValues": ["NFS", "CIFS"] }
+		  ]
+		}`,
+			},
 		},
 	}
 
@@ -2934,6 +2980,30 @@ func TestRedfish_Dump(t *testing.T) {
 		// An additional endpoint that duplicates a predefined one still
 		// yields exactly one dump entry.
 		require.Contains(t, dump, "/redfish/v1/Systems/1/Bios")
+	})
+
+	t.Run("action info resources referenced by dumped responses are dumped", func(t *testing.T) {
+		dump, err := client.Dump(t.Context(), server, nil, false, false)
+		require.NoError(t, err)
+
+		actionInfo, ok := dump["/redfish/v1/Managers/1/VirtualMedia/1/InsertMediaActionInfo"]
+		require.True(t, ok)
+		require.Nil(t, actionInfo.Error)
+		require.Contains(t, string(actionInfo.Response), "TransferProtocolType")
+
+		// "Oem" is not an action itself, so it is not descended into.
+		require.NotContains(t, dump, "/redfish/v1/Managers/1/VirtualMedia/1/OemActionInfo")
+
+		// Actions without an action info do not yield an entry of their own.
+		require.NotContains(t, dump, "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia")
+	})
+
+	t.Run("allowed methods are recorded", func(t *testing.T) {
+		dump, err := client.Dump(t.Context(), server, nil, false, false)
+		require.NoError(t, err)
+
+		require.Equal(t, "GET, HEAD, PATCH", dump["/redfish/v1/Managers/1/VirtualMedia/1"].Allow)
+		require.Empty(t, dump["/redfish/v1/"].Allow)
 	})
 
 	t.Run("skip predefined dumps only additional endpoints", func(t *testing.T) {
@@ -3842,5 +3912,1520 @@ func TestRedfish_ApplyBIOSAttributes(t *testing.T) {
 				require.NotContains(t, err.Error(), tc.wantErrNotContains)
 			}
 		})
+	}
+}
+
+const (
+	mediaAttachURL = "http://example.com/install.iso"
+
+	mediaSystemsBody = `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`
+
+	mediaSystemBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia" }
+}`
+
+	mediaSystemBootUndeclaredBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Boot": {
+    "BootSourceOverrideEnabled": "Disabled",
+    "BootSourceOverrideTarget": "None"
+  },
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia" }
+}`
+
+	mediaSystemBootDeclaredBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Boot": {
+    "BootSourceOverrideEnabled": "Disabled",
+    "BootSourceOverrideEnabled@Redfish.AllowableValues": ["Disabled", "Once", "Continuous"],
+    "BootSourceOverrideTarget": "None",
+    "BootSourceOverrideTarget@Redfish.AllowableValues": ["None", "Pxe", "Cd", "Usb", "Hdd"]
+  },
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia" }
+}`
+
+	mediaSystemBootContinuousOnlyBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Boot": {
+    "BootSourceOverrideEnabled": "Disabled",
+    "BootSourceOverrideEnabled@Redfish.AllowableValues": ["Disabled", "Continuous"],
+    "BootSourceOverrideTarget": "None",
+    "BootSourceOverrideTarget@Redfish.AllowableValues": ["None", "Pxe", "Cd"]
+  },
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia" }
+}`
+
+	mediaSystemBootNoOverrideBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Boot": {
+    "BootSourceOverrideEnabled": "Disabled",
+    "BootSourceOverrideEnabled@Redfish.AllowableValues": ["Disabled"],
+    "BootSourceOverrideTarget": "None"
+  },
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia" }
+}`
+
+	mediaSystemBootNoCdTargetBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Boot": {
+    "BootSourceOverrideEnabled": "Disabled",
+    "BootSourceOverrideTarget": "None",
+    "BootSourceOverrideTarget@Redfish.AllowableValues": ["None", "Pxe", "Hdd"]
+  },
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia" }
+}`
+
+	mediaSystemBootCdOnceBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Boot": {
+    "BootSourceOverrideEnabled": "Once",
+    "BootSourceOverrideTarget": "Cd"
+  },
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia" }
+}`
+
+	mediaSystemBootPxeOnceBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Boot": {
+    "BootSourceOverrideEnabled": "Once",
+    "BootSourceOverrideTarget": "Pxe"
+  },
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia" }
+}`
+
+	mediaManagersBody = `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`
+
+	mediaManagerBody = `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1",
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Managers/1/VirtualMedia" }
+}`
+
+	mediaSystemVMCollectionBody = `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1" }
+  ]
+}`
+
+	mediaManagerVMCollectionBody = `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1" }
+  ]
+}`
+
+	mediaSystemVMFreeBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaSystemVMFreeWithActionInfoBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": {
+      "@Redfish.ActionInfo": "/redfish/v1/Systems/1/VirtualMedia/1/InsertMediaActionInfo",
+      "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia"
+    },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaSystemVMFreeWithoutActionsBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["CD", "DVD"]
+}`
+
+	mediaSystemVMInsertedWithoutActionsBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": true,
+  "Image": "http://example.com/existing.iso",
+  "MediaTypes": ["CD", "DVD"]
+}`
+
+	mediaSystemVMFreeWithoutActionsWithETagBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "@odata.etag": "W/\"1234567890\"",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["CD", "DVD"]
+}`
+
+	mediaSystemVMFreeWithOEMActionsBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "Oem": {
+      "Hpe": {
+        "#HpeiLOVirtualMedia.InsertVirtualMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hpe/HpeiLOVirtualMedia.InsertVirtualMedia" },
+        "#HpeiLOVirtualMedia.EjectVirtualMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hpe/HpeiLOVirtualMedia.EjectVirtualMedia" }
+      }
+    }
+  }
+}`
+
+	mediaSystemVMFreeWithFlatOEMActionsBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "Oem": {
+      "#HpiLOVirtualMedia.InsertVirtualMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hp/HpiLOVirtualMedia.InsertVirtualMedia" },
+      "#HpiLOVirtualMedia.EjectVirtualMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hp/HpiLOVirtualMedia.EjectVirtualMedia" }
+    }
+  }
+}`
+
+	mediaSystemVMInsertedWithOEMActionsBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": true,
+  "Image": "http://example.com/existing.iso",
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "Oem": {
+      "Hpe": {
+        "#HpeiLOVirtualMedia.InsertVirtualMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hpe/HpeiLOVirtualMedia.InsertVirtualMedia" },
+        "#HpeiLOVirtualMedia.EjectVirtualMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hpe/HpeiLOVirtualMedia.EjectVirtualMedia" }
+      }
+    }
+  }
+}`
+
+	mediaSystemVMFreeFloppyBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["Floppy", "USBStick"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaSystemVMStaleImageBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "Image": "/mnt/tank/iso",
+  "MediaTypes": ["CD", "DVD"],
+  "TransferProtocolType": "NFS",
+  "Actions": {
+    "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaSystemVMInsertedWithoutImageBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": true,
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaSystemVMInsertedBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": true,
+  "Image": "http://example.com/existing.iso",
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaManagerVMFreeBody = `{
+  "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaManagerVMInsertedBody = `{
+  "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": true,
+  "Image": "http://example.com/existing.iso",
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaTransferProtocolMissingBody = `{
+  "error": {
+    "code": "Base.1.5.ActionParameterMissing",
+    "message": "The action VirtualMedia.InsertMedia requires the parameter TransferProtocolType to be present in the request body.",
+    "@Message.ExtendedInfo": [
+      {
+        "MessageId": "Base.1.5.ActionParameterMissing",
+        "MessageArgs": ["VirtualMedia.InsertMedia", "TransferProtocolType"],
+        "RelatedProperties": ["/TransferProtocolType"]
+      }
+    ]
+  }
+}`
+
+	mediaBootOnceRejectedBody = `{
+  "error": {
+    "code": "Base.1.5.PropertyValueNotInList",
+    "message": "The value Once for the property BootSourceOverrideEnabled is not in the list of acceptable values.",
+    "@Message.ExtendedInfo": [
+      {
+        "MessageId": "Base.1.5.PropertyValueNotInList",
+        "MessageArgs": ["Once", "BootSourceOverrideEnabled"],
+        "RelatedProperties": ["#/Boot/BootSourceOverrideEnabled"]
+      }
+    ]
+  }
+}`
+
+	mediaBootNoneTargetRejectedBody = `{
+  "error": {
+    "code": "Base.1.5.PropertyValueNotInList",
+    "message": "The value None for the property BootSourceOverrideTarget is not in the list of acceptable values.",
+    "@Message.ExtendedInfo": [
+      {
+        "MessageId": "Base.1.5.PropertyValueNotInList",
+        "MessageArgs": ["None", "BootSourceOverrideTarget"],
+        "RelatedProperties": ["#/Boot/BootSourceOverrideTarget"]
+      }
+    ]
+  }
+}`
+
+	mediaBootRefusedBody = `{
+  "error": {
+    "code": "Base.1.5.InsufficientPrivilege",
+    "message": "There are insufficient privileges for the account or credentials associated with the current session to perform the requested operation.",
+    "@Message.ExtendedInfo": [
+      {
+        "MessageId": "Base.1.5.InsufficientPrivilege"
+      }
+    ]
+  }
+}`
+
+	mediaImageFormatErrorBody = `{
+  "error": {
+    "code": "Base.1.5.PropertyValueFormatError",
+    "message": "The value for the property Image is of a different format than the property can accept.",
+    "@Message.ExtendedInfo": [
+      {
+        "MessageId": "Base.1.5.PropertyValueFormatError",
+        "MessageArgs": ["http://example.com/install.iso", "Image"],
+        "RelatedProperties": ["#/Image"]
+      }
+    ]
+  }
+}`
+
+	mediaPreconditionFailedBody = `{
+  "error": {
+    "code": "Base.1.5.PreconditionFailed",
+    "message": "The ETag supplied did not match the ETag required to change this resource.",
+    "@Message.ExtendedInfo": [
+      {
+        "MessageId": "Base.1.5.PreconditionFailed",
+        "Resolution": "Try the operation again using the appropriate ETag."
+      }
+    ]
+  }
+}`
+
+	mediaInsertedUnknownBody = `{
+  "error": {
+    "code": "iLO.0.10.ExtendedInfo",
+    "message": "See @Message.ExtendedInfo for more information.",
+    "@Message.ExtendedInfo": [
+      {
+        "MessageID": "Base.0.10.PropertyUnknown",
+        "MessageArgs": ["Inserted"]
+      }
+    ]
+  }
+}`
+)
+
+// baseRegistryRoutes serves the Base message registry the way a BMC publishes
+// it, so that messages reported by their registry ID alone can be expanded.
+var baseRegistryRoutes = map[string]mockRedfishRoute{
+	"/redfish/v1/Registries": {
+		statusCode: http.StatusOK,
+		body: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Registries/Base" }
+  ]
+}`,
+	},
+	"/redfish/v1/Registries/Base": {
+		statusCode: http.StatusOK,
+		body: `{
+  "@odata.id": "/redfish/v1/Registries/Base",
+  "Id": "Base",
+  "Registry": "Base.1.0.0",
+  "Languages": ["en"],
+  "Location": [
+    {
+      "Language": "en",
+      "Uri": "/redfish/v1/registrystore/registries/en/base.json",
+      "PublicationUri": "https://redfish.dmtf.org/registries/Base.1.0.0.json"
+    }
+  ]
+}`,
+	},
+	"/redfish/v1/registrystore/registries/en/base.json": {
+		statusCode: http.StatusOK,
+		body: `{
+  "@odata.id": "/redfish/v1/registrystore/registries/en/base.json",
+  "Id": "Base.1.0.0",
+  "RegistryPrefix": "Base",
+  "RegistryVersion": "1.0.0",
+  "Language": "en",
+  "Messages": {
+    "PropertyUnknown": {
+      "Description": "Indicates that an unknown property was included in the request body.",
+      "Message": "The property %1 is not in the list of valid properties for the resource.",
+      "NumberOfArgs": 1,
+      "Resolution": "Remove the unknown property from the request body and resubmit the request.",
+      "Severity": "Warning"
+    }
+  }
+}`,
+	},
+}
+
+func insertMediaActionInfoRoute(allowableValues string) mockRedfishRoute {
+	return mockRedfishRoute{
+		statusCode: http.StatusOK,
+		body: `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1/InsertMediaActionInfo",
+  "Parameters": [
+    { "Name": "Image", "Required": true, "DataType": "String" },
+    { "Name": "TransferProtocolType", "Required": true, "DataType": "String", "AllowableValues": [` + allowableValues + `] }
+  ]
+}`,
+	}
+}
+
+func TestRedfish_AttachMedia(t *testing.T) {
+	tests := []struct {
+		name           string
+		virtualMediaID string
+		mediaURL       string
+		setBootDevice  bool
+
+		serviceRootStatusCode int
+
+		systemsBody         string
+		systemBody          string
+		systemVMBody        string
+		systemVMMemberBody  string
+		managersBody        string
+		managerBody         string
+		managerVMBody       string
+		managerVMMemberBody string
+		extraRoutes         map[string]mockRedfishRoute
+
+		insertMedia       mockResponses
+		ejectMedia        mockResponses
+		virtualMediaPatch mockResponses
+		systemPatch       mockResponses
+
+		wantRequests    []mockRequest
+		wantTaskMonitor *provisioning.BMCTaskMonitor
+		assertErr       require.ErrorAssertionFunc
+	}{
+		{
+			name:           "success - system slot",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso"}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - manager slot (abstraction)",
+			virtualMediaID: "manager:1",
+
+			managersBody:        mediaManagersBody,
+			managerBody:         mediaManagerBody,
+			managerVMBody:       mediaManagerVMCollectionBody,
+			managerVMMemberBody: mediaManagerVMFreeBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso"}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - task monitor returned",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{
+				statusCodes: []int{http.StatusAccepted},
+				location:    "/redfish/v1/TaskMonitor/1",
+			},
+
+			wantTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - action info adds the transfer protocol",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeWithActionInfoBody,
+			extraRoutes: map[string]mockRedfishRoute{
+				"/redfish/v1/Systems/1/VirtualMedia/1/InsertMediaActionInfo": insertMediaActionInfoRoute(`"HTTP", "HTTPS", "NFS", "CIFS"`),
+			},
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso","TransferProtocolType":"HTTP"}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - missing transfer protocol is added and the request retried",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{
+				statusCodes: []int{http.StatusBadRequest, http.StatusNoContent},
+				bodies:      []string{mediaTransferProtocolMissingBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso"}`,
+				},
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso","TransferProtocolType":"HTTP"}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - patch fallback without insert action",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeWithoutActionsBody,
+
+			virtualMediaPatch: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:   `{"Image":"http://example.com/install.iso","Inserted":true,"WriteProtected":true}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - vendor specific action grouped by vendor",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeWithOEMActionsBody,
+			extraRoutes: map[string]mockRedfishRoute{
+				"/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hpe/HpeiLOVirtualMedia.InsertVirtualMedia": {statusCode: http.StatusOK},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hpe/HpeiLOVirtualMedia.InsertVirtualMedia",
+					body:   `{"Image":"http://example.com/install.iso"}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - vendor specific action directly below oem",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeWithFlatOEMActionsBody,
+			extraRoutes: map[string]mockRedfishRoute{
+				"/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hp/HpiLOVirtualMedia.InsertVirtualMedia": {statusCode: http.StatusOK},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hp/HpiLOVirtualMedia.InsertVirtualMedia",
+					body:   `{"Image":"http://example.com/install.iso"}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - patch repeated unconditionally after the precondition was rejected",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeWithoutActionsWithETagBody,
+
+			virtualMediaPatch: mockResponses{
+				statusCodes: []int{http.StatusPreconditionFailed, http.StatusNoContent},
+				bodies:      []string{mediaPreconditionFailedBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method:  http.MethodPatch,
+					path:    "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:    `{"Image":"http://example.com/install.iso","Inserted":true,"WriteProtected":true}`,
+					ifMatch: `W/"1234567890"`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:   `{"Image":"http://example.com/install.iso","Inserted":true,"WriteProtected":true}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - names the request and expands the message from the registry",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeWithoutActionsBody,
+			extraRoutes:        baseRegistryRoutes,
+
+			virtualMediaPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest},
+				bodies:      []string{mediaInsertedUnknownBody, mediaInsertedUnknownBody},
+			},
+
+			assertErr: func(t require.TestingT, err error, _ ...any) {
+				require.EqualError(t, err,
+					`Failed to attach media to BMC: PATCH /redfish/v1/Systems/1/VirtualMedia/1 {"Image":"http://example.com/install.iso","WriteProtected":true}: `+
+						`BMC returned HTTP 400: Base.0.10.PropertyUnknown: The property Inserted is not in the list of valid properties for the resource. `+
+						`Resolution: Remove the unknown property from the request body and resubmit the request.`)
+			},
+		},
+		{
+			name:           "error - patch is not repeated for a rejected payload",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeWithoutActionsWithETagBody,
+
+			virtualMediaPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest},
+				bodies:      []string{mediaImageFormatErrorBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method:  http.MethodPatch,
+					path:    "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:    `{"Image":"http://example.com/install.iso","Inserted":true,"WriteProtected":true}`,
+					ifMatch: `W/"1234567890"`,
+				},
+			},
+			assertErr: require.Error,
+		},
+		{
+			name:           "success - patch fallback drops the rejected inserted property",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeWithoutActionsBody,
+
+			virtualMediaPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest, http.StatusNoContent},
+				bodies:      []string{mediaInsertedUnknownBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:   `{"Image":"http://example.com/install.iso","Inserted":true,"WriteProtected":true}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:   `{"Image":"http://example.com/install.iso","WriteProtected":true}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - stale image without inserted does not block the attach",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMStaleImageBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - inserted without image does not block the attach",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedWithoutImageBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - boot device set to the virtual CD",
+			virtualMediaID: "system:1",
+			setBootDevice:  true,
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootDeclaredBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso"}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1",
+					body:   `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Cd"}}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - boot device set for a manager slot",
+			virtualMediaID: "manager:1",
+			setBootDevice:  true,
+
+			systemsBody:         mediaSystemsBody,
+			systemBody:          mediaSystemBootDeclaredBody,
+			managersBody:        mediaManagersBody,
+			managerBody:         mediaManagerBody,
+			managerVMBody:       mediaManagerVMCollectionBody,
+			managerVMMemberBody: mediaManagerVMFreeBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso"}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1",
+					body:   `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Cd"}}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - boot device set to the virtual USB stick",
+			virtualMediaID: "system:1",
+			mediaURL:       "http://example.com/install.raw",
+			setBootDevice:  true,
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootDeclaredBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeFloppyBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.raw"}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1",
+					body:   `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Usb"}}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - continuous override for a BMC declaring no one-time one",
+			virtualMediaID: "system:1",
+			setBootDevice:  true,
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootContinuousOnlyBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso"}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1",
+					body:   `{"Boot":{"BootSourceOverrideEnabled":"Continuous","BootSourceOverrideTarget":"Cd"}}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - continuous override after the one-time one is turned down",
+			virtualMediaID: "system:1",
+			setBootDevice:  true,
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootUndeclaredBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest, http.StatusNoContent},
+				bodies:      []string{mediaBootOnceRejectedBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso"}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1",
+					body:   `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Cd"}}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1",
+					body:   `{"Boot":{"BootSourceOverrideEnabled":"Continuous","BootSourceOverrideTarget":"Cd"}}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - boot device is left alone without the flag",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootDeclaredBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso"}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - server cannot boot from the virtual media",
+			virtualMediaID: "system:1",
+			setBootDevice:  true,
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootNoCdTargetBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			wantRequests: []mockRequest{},
+			assertErr:    errassert.Contains(`Server cannot be set to boot from virtual media "system:1", it boots from: None, Pxe, Hdd`),
+		},
+		{
+			name:           "error - BMC offers no boot device override",
+			virtualMediaID: "system:1",
+			setBootDevice:  true,
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootNoOverrideBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			ejectMedia:  mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso"}`,
+				},
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia",
+					body:   `{}`,
+				},
+			},
+			assertErr: errassert.Contains("BMC offers neither a one-time nor a continuous boot device override, it offers: Disabled"),
+		},
+		{
+			name:           "error - setting the boot device failed",
+			virtualMediaID: "system:1",
+			setBootDevice:  true,
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootDeclaredBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			ejectMedia:  mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{
+				statusCodes: []int{http.StatusForbidden},
+				bodies:      []string{mediaBootRefusedBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso"}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1",
+					body:   `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Cd"}}`,
+				},
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia",
+					body:   `{}`,
+				},
+			},
+			assertErr: errassert.Contains("Failed to set boot device on BMC"),
+		},
+		{
+			name:           "error - transfer protocol not supported by the BMC",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeWithActionInfoBody,
+			extraRoutes: map[string]mockRedfishRoute{
+				"/redfish/v1/Systems/1/VirtualMedia/1/InsertMediaActionInfo": insertMediaActionInfoRoute(`"NFS", "CIFS"`),
+			},
+
+			wantRequests: []mockRequest{},
+			assertErr:    errassert.Contains(`BMC does not support transfer protocol "HTTP" for virtual media, supported protocols are: NFS, CIFS`),
+		},
+		{
+			name:           "error - media type not supported by the slot",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeFloppyBody,
+
+			wantRequests: []mockRequest{},
+			assertErr:    errassert.Contains(`Virtual media "system:1" does not accept the media, it supports Floppy, USBStick`),
+		},
+		{
+			name:           "error - invalid virtual media ID format",
+			virtualMediaID: "system-1",
+
+			assertErr: errassert.Contains("Invalid virtual media ID"),
+		},
+		{
+			name:           "error - unknown virtual media service",
+			virtualMediaID: "chassis:1",
+
+			assertErr: errassert.Contains("Unknown virtual media service"),
+		},
+		{
+			name:           "error - virtual media not found",
+			virtualMediaID: "system:9",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			assertErr: errassert.Contains("not found"),
+		},
+		{
+			name:           "error - media already attached",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			assertErr: errassert.Contains("already has media attached"),
+		},
+		{
+			name:           "error - insert action failed",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusInternalServerError}},
+
+			assertErr: errassert.Contains("Failed to attach media"),
+		},
+		{
+			name:           "error - insert action rejection is reported in readable form",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeWithActionInfoBody,
+			extraRoutes: map[string]mockRedfishRoute{
+				"/redfish/v1/Systems/1/VirtualMedia/1/InsertMediaActionInfo": insertMediaActionInfoRoute(`"HTTP", "HTTPS"`),
+			},
+
+			insertMedia: mockResponses{
+				statusCodes: []int{http.StatusBadRequest},
+				bodies:      []string{mediaTransferProtocolMissingBody},
+			},
+
+			assertErr: errassert.Contains("BMC returned HTTP 400: Base.1.5.ActionParameterMissing [VirtualMedia.InsertMedia, TransferProtocolType] (related properties: /TransferProtocolType)"),
+		},
+		{
+			name:           "error - failed to connect to BMC",
+			virtualMediaID: "system:1",
+
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotRequests []mockRequest
+
+			serviceRootStatusCode := tc.serviceRootStatusCode
+			if serviceRootStatusCode == 0 {
+				serviceRootStatusCode = http.StatusOK
+			}
+
+			mediaURL := tc.mediaURL
+			if mediaURL == "" {
+				mediaURL = mediaAttachURL
+			}
+
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode:               serviceRootStatusCode,
+				systemsStatusCode:                   http.StatusOK,
+				systemsBody:                         tc.systemsBody,
+				systemStatusCode:                    http.StatusOK,
+				systemBody:                          tc.systemBody,
+				systemVirtualMediaStatusCode:        http.StatusOK,
+				systemVirtualMediaBody:              tc.systemVMBody,
+				systemVirtualMediaMemberStatusCode:  http.StatusOK,
+				systemVirtualMediaMemberBody:        tc.systemVMMemberBody,
+				managersStatusCode:                  http.StatusOK,
+				managersBody:                        tc.managersBody,
+				managerStatusCode:                   http.StatusOK,
+				managerBody:                         tc.managerBody,
+				managerVirtualMediaStatusCode:       http.StatusOK,
+				managerVirtualMediaBody:             tc.managerVMBody,
+				managerVirtualMediaMemberStatusCode: http.StatusOK,
+				managerVirtualMediaMemberBody:       tc.managerVMMemberBody,
+				extraRoutes:                         tc.extraRoutes,
+				insertMedia:                         tc.insertMedia,
+				ejectMedia:                          tc.ejectMedia,
+				virtualMediaPatch:                   tc.virtualMediaPatch,
+				systemPatch:                         tc.systemPatch,
+			}, &gotRequests)
+
+			client := redfish.New()
+			taskMonitor, err := client.AttachMedia(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.virtualMediaID, mediaURL, tc.setBootDevice)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantTaskMonitor, taskMonitor)
+
+			if tc.wantRequests != nil {
+				requireRequestsEqual(t, tc.wantRequests, gotRequests)
+			}
+		})
+	}
+}
+
+func TestRedfish_DetachMedia(t *testing.T) {
+	tests := []struct {
+		name           string
+		virtualMediaID string
+
+		serviceRootStatusCode int
+
+		systemsBody         string
+		systemBody          string
+		systemVMBody        string
+		systemVMMemberBody  string
+		managersBody        string
+		managerBody         string
+		managerVMBody       string
+		managerVMMemberBody string
+
+		extraRoutes map[string]mockRedfishRoute
+
+		ejectMedia        mockResponses
+		virtualMediaPatch mockResponses
+		systemPatch       mockResponses
+
+		wantRequests    []mockRequest
+		wantTaskMonitor *provisioning.BMCTaskMonitor
+		assertErr       require.ErrorAssertionFunc
+	}{
+		{
+			name:           "success - system slot",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			ejectMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia",
+					body:   `{}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - manager slot (abstraction)",
+			virtualMediaID: "manager:1",
+
+			systemsBody:         mediaSystemsBody,
+			systemBody:          mediaSystemBody,
+			managersBody:        mediaManagersBody,
+			managerBody:         mediaManagerBody,
+			managerVMBody:       mediaManagerVMCollectionBody,
+			managerVMMemberBody: mediaManagerVMInsertedBody,
+
+			ejectMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - default boot device restored",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootCdOnceBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			ejectMedia:  mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia",
+					body:   `{}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1",
+					body:   `{"Boot":{"BootSourceOverrideEnabled":"Disabled","BootSourceOverrideTarget":"None"}}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - default boot device restored without the None target",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootCdOnceBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			ejectMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest, http.StatusNoContent},
+				bodies:      []string{mediaBootNoneTargetRejectedBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia",
+					body:   `{}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1",
+					body:   `{"Boot":{"BootSourceOverrideEnabled":"Disabled","BootSourceOverrideTarget":"None"}}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1",
+					body:   `{"Boot":{"BootSourceOverrideEnabled":"Disabled"}}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - unrelated boot device override is left alone",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootPxeOnceBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			ejectMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia",
+					body:   `{}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - restoring the default boot device failed",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootCdOnceBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			ejectMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{
+				statusCodes: []int{http.StatusForbidden},
+				bodies:      []string{mediaBootRefusedBody},
+			},
+
+			assertErr: errassert.Contains("Failed to restore the default boot device on BMC"),
+		},
+		{
+			name:           "success - task monitor returned",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			ejectMedia: mockResponses{
+				statusCodes: []int{http.StatusAccepted},
+				location:    "/redfish/v1/TaskMonitor/1",
+			},
+
+			wantTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - patch fallback without eject action",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedWithoutActionsBody,
+
+			virtualMediaPatch: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:   `{"Image":null,"Inserted":false}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - patch fallback drops the rejected inserted property",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedWithoutActionsBody,
+
+			virtualMediaPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest, http.StatusNoContent},
+				bodies:      []string{mediaInsertedUnknownBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:   `{"Image":null,"Inserted":false}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:   `{"Image":null}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - vendor specific action",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedWithOEMActionsBody,
+			extraRoutes: map[string]mockRedfishRoute{
+				"/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hpe/HpeiLOVirtualMedia.EjectVirtualMedia": {statusCode: http.StatusOK},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/Oem/Hpe/HpeiLOVirtualMedia.EjectVirtualMedia",
+					body:   `{}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "no-op - nothing attached",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			wantRequests: []mockRequest{},
+			assertErr:    require.NoError,
+		},
+		{
+			name:           "error - virtual media not found",
+			virtualMediaID: "system:9",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			assertErr: errassert.Contains("not found"),
+		},
+		{
+			name:           "error - eject action failed",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMInsertedBody,
+
+			ejectMedia: mockResponses{statusCodes: []int{http.StatusInternalServerError}},
+
+			assertErr: errassert.Contains("Failed to detach media"),
+		},
+		{
+			name:           "error - failed to connect to BMC",
+			virtualMediaID: "system:1",
+
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotRequests []mockRequest
+
+			serviceRootStatusCode := tc.serviceRootStatusCode
+			if serviceRootStatusCode == 0 {
+				serviceRootStatusCode = http.StatusOK
+			}
+
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode:               serviceRootStatusCode,
+				systemsStatusCode:                   http.StatusOK,
+				systemsBody:                         tc.systemsBody,
+				systemStatusCode:                    http.StatusOK,
+				systemBody:                          tc.systemBody,
+				systemVirtualMediaStatusCode:        http.StatusOK,
+				systemVirtualMediaBody:              tc.systemVMBody,
+				systemVirtualMediaMemberStatusCode:  http.StatusOK,
+				systemVirtualMediaMemberBody:        tc.systemVMMemberBody,
+				managersStatusCode:                  http.StatusOK,
+				managersBody:                        tc.managersBody,
+				managerStatusCode:                   http.StatusOK,
+				managerBody:                         tc.managerBody,
+				managerVirtualMediaStatusCode:       http.StatusOK,
+				managerVirtualMediaBody:             tc.managerVMBody,
+				managerVirtualMediaMemberStatusCode: http.StatusOK,
+				managerVirtualMediaMemberBody:       tc.managerVMMemberBody,
+				ejectMedia:                          tc.ejectMedia,
+				virtualMediaPatch:                   tc.virtualMediaPatch,
+				systemPatch:                         tc.systemPatch,
+				extraRoutes:                         tc.extraRoutes,
+			}, &gotRequests)
+
+			client := redfish.New()
+			taskMonitor, err := client.DetachMedia(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.virtualMediaID)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantTaskMonitor, taskMonitor)
+
+			if tc.wantRequests != nil {
+				requireRequestsEqual(t, tc.wantRequests, gotRequests)
+			}
+		})
+	}
+}
+
+func requireRequestsEqual(t *testing.T, want []mockRequest, got []mockRequest) {
+	t.Helper()
+
+	require.Len(t, got, len(want))
+
+	for i, wantRequest := range want {
+		require.Equal(t, wantRequest.method, got[i].method, "request %d", i)
+		require.Equal(t, wantRequest.path, got[i].path, "request %d", i)
+		require.JSONEq(t, wantRequest.body, got[i].body, "request %d", i)
+		require.Equal(t, wantRequest.ifMatch, got[i].ifMatch, "request %d", i)
 	}
 }

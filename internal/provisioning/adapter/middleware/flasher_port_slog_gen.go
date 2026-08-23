@@ -7,6 +7,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -43,8 +44,8 @@ func NewFlasherPortWithSlog(base provisioning.FlasherPort, opts ...FlasherPortWi
 	return this
 }
 
-// GenerateSeededImage implements provisioning.FlasherPort.
-func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (readCloser io.ReadCloser, err error) {
+// GenerateCompressedSeededImage implements provisioning.FlasherPort.
+func (_d FlasherPortWithSlog) GenerateCompressedSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (readCloser io.ReadCloser, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -54,12 +55,54 @@ func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, id uuid.U
 			slog.Any("rc", rc),
 		)
 	}
-	log.DebugContext(ctx, "=> calling GenerateSeededImage")
+	log.DebugContext(ctx, "=> calling GenerateCompressedSeededImage")
 	defer func() {
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
 				slog.Any("readCloser", readCloser),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GenerateCompressedSeededImage returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GenerateCompressedSeededImage returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GenerateCompressedSeededImage finished")
+		}
+	}()
+	return _d._base.GenerateCompressedSeededImage(ctx, id, seedConfig, rc)
+}
+
+// GenerateSeededImage implements provisioning.FlasherPort.
+func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (readSeekCloser io.ReadSeekCloser, size int64, modTime time.Time, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("cacheID", cacheID),
+			slog.String("fingerprint", fingerprint),
+			slog.Any("id", id),
+			slog.Any("seedConfig", seedConfig),
+			slog.Bool("public", public),
+			slog.Any("source", source),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GenerateSeededImage")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("readSeekCloser", readSeekCloser),
+				slog.Int64("size", size),
+				slog.Time("modTime", modTime),
 				slog.Any("err", err),
 			)
 		} else {
@@ -77,7 +120,7 @@ func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, id uuid.U
 			log.DebugContext(ctx, "<= method GenerateSeededImage finished")
 		}
 	}()
-	return _d._base.GenerateSeededImage(ctx, id, seedConfig, rc)
+	return _d._base.GenerateSeededImage(ctx, cacheID, fingerprint, id, seedConfig, public, source)
 }
 
 // GetProviderConfig implements provisioning.FlasherPort.
@@ -113,4 +156,79 @@ func (_d FlasherPortWithSlog) GetProviderConfig(ctx context.Context, tokenID uui
 		}
 	}()
 	return _d._base.GetProviderConfig(ctx, tokenID)
+}
+
+// OpenSeededImage implements provisioning.FlasherPort.
+func (_d FlasherPortWithSlog) OpenSeededImage(ctx context.Context, cacheID string, fingerprintID string) (readSeekCloser io.ReadSeekCloser, size int64, modTime time.Time, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("cacheID", cacheID),
+			slog.String("fingerprintID", fingerprintID),
+		)
+	}
+	log.DebugContext(ctx, "=> calling OpenSeededImage")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("readSeekCloser", readSeekCloser),
+				slog.Int64("size", size),
+				slog.Time("modTime", modTime),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method OpenSeededImage returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method OpenSeededImage returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method OpenSeededImage finished")
+		}
+	}()
+	return _d._base.OpenSeededImage(ctx, cacheID, fingerprintID)
+}
+
+// SeedImageFingerprintID implements provisioning.FlasherPort.
+func (_d FlasherPortWithSlog) SeedImageFingerprintID(ctx context.Context, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs) (s string, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("fingerprint", fingerprint),
+			slog.Any("id", id),
+			slog.Any("seedConfig", seedConfig),
+		)
+	}
+	log.DebugContext(ctx, "=> calling SeedImageFingerprintID")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.String("s", s),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method SeedImageFingerprintID returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method SeedImageFingerprintID returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method SeedImageFingerprintID finished")
+		}
+	}()
+	return _d._base.SeedImageFingerprintID(ctx, fingerprint, id, seedConfig)
 }

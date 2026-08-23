@@ -2,6 +2,7 @@ package flasher
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"testing"
 
@@ -38,7 +39,8 @@ func (c *closer) Close() error {
 func Test_injectReader(t *testing.T) {
 	tests := []struct {
 		name      string
-		injectPos int
+		injectPos int64
+		readSize  int
 
 		want string
 	}{
@@ -64,13 +66,27 @@ func Test_injectReader(t *testing.T) {
 			name:      "inject end - over length",
 			injectPos: 8,
 
-			want: `foobarbaAAA`,
+			want: `foobarbaA`,
 		},
 		{
-			name:      "append",
+			name:      "inject after end",
 			injectPos: 9,
 
-			want: `foobarbazAAA`,
+			want: `foobarbaz`,
+		},
+		{
+			name:      "inject middle - single byte reads",
+			injectPos: 3,
+			readSize:  1,
+
+			want: `fooAAAbaz`,
+		},
+		{
+			name:      "inject middle - reads straddling both payload bounds",
+			injectPos: 3,
+			readSize:  4,
+
+			want: `fooAAAbaz`,
 		},
 	}
 
@@ -81,10 +97,36 @@ func Test_injectReader(t *testing.T) {
 
 			ir := newInjectReader(io.NopCloser(buf), tc.injectPos, payload)
 
-			got, err := io.ReadAll(ir)
-			require.NoError(t, err)
+			var got []byte
+			var err error
 
+			if tc.readSize == 0 {
+				got, err = io.ReadAll(ir)
+			} else {
+				got, err = readInChunks(ir, tc.readSize)
+			}
+
+			require.NoError(t, err)
 			require.Equal(t, tc.want, string(got))
 		})
+	}
+}
+
+func readInChunks(r io.Reader, chunkSize int) ([]byte, error) {
+	var got []byte
+
+	for {
+		buf := make([]byte, chunkSize)
+
+		n, err := r.Read(buf)
+		got = append(got, buf[:n]...)
+
+		if errors.Is(err, io.EOF) {
+			return got, nil
+		}
+
+		if err != nil {
+			return got, err
+		}
 	}
 }

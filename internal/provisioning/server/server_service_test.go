@@ -24,6 +24,7 @@ import (
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
@@ -41,6 +42,8 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
+
+const testSeedImageID = "a1B2c3D4e5F6"
 
 func TestServerService_UpdateCertificate(t *testing.T) {
 	config.InitTest(t, &envMock.EnvironmentMock{}, nil)
@@ -10443,5 +10446,939 @@ func pollServerVersionData(incusVersion string) api.ServerVersionData {
 			},
 		},
 		UpdateChannel: "stable",
+	}
+}
+
+func TestServerService_BMCAttachMediaByName(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	const tokenUUID = "e9de436e-b94e-4aef-8563-883aec84096e"
+
+	taskMonitor := &provisioning.BMCTaskMonitor{
+		URI: "https://bmc.local/task/1",
+	}
+
+	closedChannel := func() chan struct{} {
+		ch := make(chan struct{})
+		close(ch)
+		return ch
+	}
+
+	server := &provisioning.Server{
+		Name: "one",
+		BMCConfig: api.BMCConfig{
+			APIType: api.BMCAPITypeRedfishV1Generic,
+		},
+	}
+
+	tests := []struct {
+		name                      string
+		nameArg                   string
+		mediaArg                  api.ServerBMCAttachMedia
+		operationsCenterAddress   string
+		repoGetByNameServer       *provisioning.Server
+		repoGetByNameErr          error
+		tokenSvcGetSeed           *provisioning.TokenSeed
+		tokenSvcGetSeedErr        error
+		tokenSvcResolveImageIDErr error
+		channelSvcGetByNameErr    error
+		bmcClientAttachMediaErr   error
+		bmcClientWaitErr          error
+		bmcClientGetDataErr       error
+		repoUpdateErr             error
+		resyncDone                chan struct{}
+
+		wantMediaURL       string
+		wantVirtualMediaID string
+		assertErr          require.ErrorAssertionFunc
+	}{
+		{
+			name:    "success - without channel",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				VirtualMediaID: "system:1",
+			},
+			operationsCenterAddress: "https://192.168.1.200:8443",
+			repoGetByNameServer:     server,
+			tokenSvcGetSeed:         &provisioning.TokenSeed{Name: "default", Public: true},
+			resyncDone:              make(chan struct{}),
+
+			wantMediaURL:       "https://192.168.1.200:8443/1.0/provisioning/tokens/" + tokenUUID + "/seeds/default/architecture/x86_64/type/iso/" + testSeedImageID + ".iso",
+			wantVirtualMediaID: "system:1",
+			assertErr:          require.NoError,
+		},
+		{
+			name:    "success - with boot device",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				VirtualMediaID: "system:1",
+				SetBootDevice:  true,
+			},
+			operationsCenterAddress: "https://192.168.1.200:8443",
+			repoGetByNameServer:     server,
+			tokenSvcGetSeed:         &provisioning.TokenSeed{Name: "default", Public: true},
+			resyncDone:              make(chan struct{}),
+
+			wantMediaURL:       "https://192.168.1.200:8443/1.0/provisioning/tokens/" + tokenUUID + "/seeds/default/architecture/x86_64/type/iso/" + testSeedImageID + ".iso",
+			wantVirtualMediaID: "system:1",
+			assertErr:          require.NoError,
+		},
+		{
+			name:    "success - with channel",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "raw",
+				Architecture:   "aarch64",
+				Channel:        "stable",
+				VirtualMediaID: "manager:2",
+			},
+			operationsCenterAddress: "https://192.168.1.200:8443",
+			repoGetByNameServer:     server,
+			tokenSvcGetSeed:         &provisioning.TokenSeed{Name: "default", Public: true},
+			resyncDone:              make(chan struct{}),
+
+			wantMediaURL:       "https://192.168.1.200:8443/1.0/provisioning/tokens/" + tokenUUID + "/seeds/default/architecture/aarch64/channel/stable/type/raw/" + testSeedImageID + ".raw",
+			wantVirtualMediaID: "manager:2",
+			assertErr:          require.NoError,
+		},
+		{
+			name:    "success - channel needs URL escaping",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				Channel:        "team/beta 2",
+				VirtualMediaID: "system:1",
+			},
+			operationsCenterAddress: "https://192.168.1.200:8443",
+			repoGetByNameServer:     server,
+			tokenSvcGetSeed:         &provisioning.TokenSeed{Name: "default", Public: true},
+			resyncDone:              make(chan struct{}),
+
+			wantMediaURL:       "https://192.168.1.200:8443/1.0/provisioning/tokens/" + tokenUUID + "/seeds/default/architecture/x86_64/channel/team%2Fbeta%202/type/iso/" + testSeedImageID + ".iso",
+			wantVirtualMediaID: "system:1",
+			assertErr:          require.NoError,
+		},
+		{
+			name:    "success - task monitor wait fails but resync still runs",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				VirtualMediaID: "system:1",
+			},
+			operationsCenterAddress: "https://192.168.1.200:8443",
+			repoGetByNameServer:     server,
+			tokenSvcGetSeed:         &provisioning.TokenSeed{Name: "default", Public: true},
+			bmcClientWaitErr:        boom.Error,
+			resyncDone:              make(chan struct{}),
+
+			wantMediaURL:       "https://192.168.1.200:8443/1.0/provisioning/tokens/" + tokenUUID + "/seeds/default/architecture/x86_64/type/iso/" + testSeedImageID + ".iso",
+			wantVirtualMediaID: "system:1",
+			assertErr:          require.NoError,
+		},
+		{
+			name:    "success - resync fails to get BMC data",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				VirtualMediaID: "system:1",
+			},
+			operationsCenterAddress: "https://192.168.1.200:8443",
+			repoGetByNameServer:     server,
+			tokenSvcGetSeed:         &provisioning.TokenSeed{Name: "default", Public: true},
+			bmcClientGetDataErr:     boom.Error,
+			resyncDone:              make(chan struct{}),
+
+			wantMediaURL:       "https://192.168.1.200:8443/1.0/provisioning/tokens/" + tokenUUID + "/seeds/default/architecture/x86_64/type/iso/" + testSeedImageID + ".iso",
+			wantVirtualMediaID: "system:1",
+			assertErr:          require.NoError,
+		},
+		{
+			name:    "success - resync fails to update the server",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				VirtualMediaID: "system:1",
+			},
+			operationsCenterAddress: "https://192.168.1.200:8443",
+			repoGetByNameServer:     server,
+			tokenSvcGetSeed:         &provisioning.TokenSeed{Name: "default", Public: true},
+			repoUpdateErr:           boom.Error,
+			resyncDone:              make(chan struct{}),
+
+			wantMediaURL:       "https://192.168.1.200:8443/1.0/provisioning/tokens/" + tokenUUID + "/seeds/default/architecture/x86_64/type/iso/" + testSeedImageID + ".iso",
+			wantVirtualMediaID: "system:1",
+			assertErr:          require.NoError,
+		},
+		{
+			name:    "error - name empty",
+			nameArg: "", // invalid
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				VirtualMediaID: "system:1",
+			},
+			resyncDone: closedChannel(),
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:    "error - seed empty",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "", // invalid
+				VirtualMediaID: "system:1",
+			},
+			resyncDone: closedChannel(),
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:    "error - virtual media ID empty",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				VirtualMediaID: "", // invalid
+			},
+			resyncDone: closedChannel(),
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:    "error - invalid token UUID",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      "not-a-uuid", // invalid
+				Seed:           "default",
+				VirtualMediaID: "system:1",
+			},
+			resyncDone: closedChannel(),
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:    "error - invalid image type",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "qcow2", // invalid
+				VirtualMediaID: "system:1",
+			},
+			resyncDone: closedChannel(),
+
+			assertErr: errassert.Contains(`Invalid image type "qcow2"`),
+		},
+		{
+			name:    "error - image type empty",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "", // invalid
+				Architecture:   "x86_64",
+				VirtualMediaID: "system:1",
+			},
+			resyncDone: closedChannel(),
+
+			assertErr: errassert.Contains(`Invalid image type ""`),
+		},
+		{
+			name:    "error - invalid architecture",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "riscv64", // invalid
+				VirtualMediaID: "system:1",
+			},
+			resyncDone: closedChannel(),
+
+			assertErr: errassert.Contains(`Invalid architecture "riscv64"`),
+		},
+		{
+			name:    "error - architecture empty",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "", // invalid, undefined architecture
+				VirtualMediaID: "system:1",
+			},
+			resyncDone: closedChannel(),
+
+			assertErr: errassert.Contains(`Invalid architecture ""`),
+		},
+		{
+			name:    "error - channel does not exist",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				Channel:        "does-not-exist",
+				VirtualMediaID: "system:1",
+			},
+			channelSvcGetByNameErr: boom.Error,
+			resyncDone:             closedChannel(),
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - token seed not found",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				VirtualMediaID: "system:1",
+			},
+			tokenSvcGetSeedErr: boom.Error,
+			resyncDone:         closedChannel(),
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - token seed not public",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				VirtualMediaID: "system:1",
+			},
+			tokenSvcGetSeed: &provisioning.TokenSeed{Name: "default", Public: false},
+			resyncDone:      closedChannel(),
+
+			assertErr: errassert.Contains("must be public"),
+		},
+		{
+			name:    "error - Operations Center address not configured",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				VirtualMediaID: "system:1",
+			},
+			operationsCenterAddress: "", // not configured
+			tokenSvcGetSeed:         &provisioning.TokenSeed{Name: "default", Public: true},
+			resyncDone:              closedChannel(),
+
+			assertErr: errassert.Contains("Operations Center address is not configured"),
+		},
+		{
+			name:    "error - repo.GetByName",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				VirtualMediaID: "system:1",
+			},
+			operationsCenterAddress: "https://192.168.1.200:8443",
+			repoGetByNameErr:        boom.Error,
+			tokenSvcGetSeed:         &provisioning.TokenSeed{Name: "default", Public: true},
+			resyncDone:              closedChannel(),
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - no BMC server client registered for type",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				VirtualMediaID: "system:1",
+			},
+			operationsCenterAddress: "https://192.168.1.200:8443",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPIType("unknown"),
+				},
+			},
+			tokenSvcGetSeed: &provisioning.TokenSeed{Name: "default", Public: true},
+			resyncDone:      closedChannel(),
+
+			assertErr: errassert.Contains(`Failed to get BMC server client for type "unknown"`),
+		},
+		{
+			name:    "error - client.AttachMedia",
+			nameArg: "one",
+			mediaArg: api.ServerBMCAttachMedia{
+				TokenUUID:      tokenUUID,
+				Seed:           "default",
+				Type:           "iso",
+				Architecture:   "x86_64",
+				VirtualMediaID: "system:1",
+			},
+			operationsCenterAddress: "https://192.168.1.200:8443",
+			repoGetByNameServer:     server,
+			tokenSvcGetSeed:         &provisioning.TokenSeed{Name: "default", Public: true},
+			bmcClientAttachMediaErr: boom.Error,
+			resyncDone:              closedChannel(),
+
+			wantMediaURL:       "https://192.168.1.200:8443/1.0/provisioning/tokens/" + tokenUUID + "/seeds/default/architecture/x86_64/type/iso/" + testSeedImageID + ".iso",
+			wantVirtualMediaID: "system:1",
+			assertErr:          boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			config.InitTest(t, &envMock.EnvironmentMock{
+				IsIncusOSFunc: func() bool {
+					return false
+				},
+			}, nil)
+
+			if tc.operationsCenterAddress != "" {
+				err := config.UpdateNetwork(t.Context(), system.NetworkPut{
+					OperationsCenterAddress: tc.operationsCenterAddress,
+					RestServerAddress:       "[::]:8443",
+				})
+				require.NoError(t, err)
+			}
+
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					defer close(tc.resyncDone)
+
+					return tc.repoUpdateErr
+				},
+			}
+
+			tokenSvc := &svcMock.TokenServiceMock{
+				GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+					require.Equal(t, tc.mediaArg.Seed, name)
+
+					return tc.tokenSvcGetSeed, tc.tokenSvcGetSeedErr
+				},
+				ResolveTokenSeedImageIDFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
+					return testSeedImageID, tc.tokenSvcResolveImageIDErr
+				},
+			}
+
+			channelSvc := &svcMock.ChannelServiceMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
+					require.Equal(t, tc.mediaArg.Channel, name)
+
+					return &provisioning.Channel{Name: name}, tc.channelSvcGetByNameErr
+				},
+			}
+
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				AttachMediaFunc: func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
+					require.Equal(t, tc.wantVirtualMediaID, virtualMediaID)
+					require.Equal(t, tc.wantMediaURL, mediaURL)
+					require.Equal(t, tc.mediaArg.SetBootDevice, setBootDevice)
+
+					return taskMonitor, tc.bmcClientAttachMediaErr
+				},
+				WaitForTaskFunc: func(ctx context.Context, server provisioning.Server, monitor *provisioning.BMCTaskMonitor) error {
+					require.Same(t, taskMonitor, monitor)
+
+					return tc.bmcClientWaitErr
+				},
+				GetDataFunc: func(ctx context.Context, server provisioning.Server) (api.BMCData, error) {
+					if tc.bmcClientGetDataErr != nil {
+						close(tc.resyncDone)
+					}
+
+					return api.BMCData{}, tc.bmcClientGetDataErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, tokenSvc, nil, channelSvc, nil, tls.Certificate{},
+				provisioningServer.WithNow(func() time.Time { return fixedDate }),
+				provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+			)
+
+			// Run test
+			err := serverSvc.BMCAttachMediaByName(t.Context(), tc.nameArg, tc.mediaArg)
+
+			// Assert
+			tc.assertErr(t, err)
+
+			select {
+			case <-tc.resyncDone:
+			case <-time.After(100 * time.Millisecond):
+				t.Fatal("timed out waiting for asynchronous BMC resync")
+			}
+		})
+	}
+}
+
+func TestServerService_BMCVirtualMediaSignal(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	const tokenUUID = "e9de436e-b94e-4aef-8563-883aec84096e"
+
+	server := &provisioning.Server{
+		Name: "one",
+		BMCConfig: api.BMCConfig{
+			APIType: api.BMCAPITypeRedfishV1Generic,
+		},
+	}
+
+	setup := func(t *testing.T) (provisioning.ServerService, chan lifecycle.BMCVirtualMediaMessage, chan struct{}, *adapterMock.BMCServerClientPortMock) {
+		t.Helper()
+
+		config.InitTest(t, &envMock.EnvironmentMock{
+			IsIncusOSFunc: func() bool {
+				return false
+			},
+		}, nil)
+
+		err := config.UpdateNetwork(t.Context(), system.NetworkPut{
+			OperationsCenterAddress: "https://192.168.1.200:8443",
+			RestServerAddress:       "[::]:8443",
+		})
+		require.NoError(t, err)
+
+		resyncDone := make(chan struct{})
+
+		repo := &repoMock.ServerRepoMock{
+			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+				return server, nil
+			},
+			UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+				defer close(resyncDone)
+
+				return nil
+			},
+		}
+
+		tokenSvc := &svcMock.TokenServiceMock{
+			GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+				return &provisioning.TokenSeed{Name: name, Public: true}, nil
+			},
+			ResolveTokenSeedImageIDFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
+				return testSeedImageID, nil
+			},
+		}
+
+		channelSvc := &svcMock.ChannelServiceMock{
+			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
+				return &provisioning.Channel{Name: name}, nil
+			},
+		}
+
+		bmcClient := &adapterMock.BMCServerClientPortMock{
+			AttachMediaFunc: func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
+				return nil, nil
+			},
+			DetachMediaFunc: func(ctx context.Context, server provisioning.Server, virtualMediaID string) (*provisioning.BMCTaskMonitor, error) {
+				return nil, nil
+			},
+			WaitForTaskFunc: func(ctx context.Context, server provisioning.Server, monitor *provisioning.BMCTaskMonitor) error {
+				return nil
+			},
+			GetDataFunc: func(ctx context.Context, server provisioning.Server) (api.BMCData, error) {
+				return api.BMCData{}, nil
+			},
+		}
+
+		serverSvc := provisioningServer.New(
+			repo, nil, nil, tokenSvc, nil, channelSvc, nil, tls.Certificate{},
+			provisioningServer.WithNow(func() time.Time { return fixedDate }),
+			provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+		)
+
+		messages := make(chan lifecycle.BMCVirtualMediaMessage, 8)
+
+		lifecycle.BMCVirtualMediaSignal.AddListener(func(ctx context.Context, msg lifecycle.BMCVirtualMediaMessage) {
+			messages <- msg
+		})
+
+		t.Cleanup(lifecycle.BMCVirtualMediaSignal.Reset)
+
+		return serverSvc, messages, resyncDone, bmcClient
+	}
+
+	awaitMessage := func(t *testing.T, messages chan lifecycle.BMCVirtualMediaMessage) lifecycle.BMCVirtualMediaMessage {
+		t.Helper()
+
+		select {
+		case msg := <-messages:
+			return msg
+
+		case <-time.After(time.Second):
+			t.Fatal("timed out waiting for the virtual media signal")
+		}
+
+		return lifecycle.BMCVirtualMediaMessage{}
+	}
+
+	awaitResync := func(t *testing.T, resyncDone chan struct{}) {
+		t.Helper()
+
+		select {
+		case <-resyncDone:
+		case <-time.After(time.Second):
+			t.Fatal("timed out waiting for asynchronous BMC resync")
+		}
+	}
+
+	t.Run("attach reports everything needed to prepare the image", func(t *testing.T) {
+		serverSvc, messages, resyncDone, _ := setup(t)
+
+		err := serverSvc.BMCAttachMediaByName(t.Context(), "one", api.ServerBMCAttachMedia{
+			TokenUUID:      tokenUUID,
+			Seed:           "default",
+			Type:           "iso",
+			Architecture:   "x86_64",
+			Channel:        "stable",
+			VirtualMediaID: "system:1",
+		})
+		require.NoError(t, err)
+
+		require.Equal(t, lifecycle.BMCVirtualMediaMessage{
+			Operation:      lifecycle.BMCVirtualMediaOperationPreAttach,
+			Server:         "one",
+			VirtualMediaID: "system:1",
+			TokenUUID:      uuid.MustParse(tokenUUID),
+			Seed:           "default",
+			ImageType:      api.ImageTypeISO,
+			Architecture:   images.UpdateFileArchitecture64BitX86,
+			Channel:        "stable",
+		}, awaitMessage(t, messages))
+
+		require.Equal(t, lifecycle.BMCVirtualMediaMessage{
+			Operation:      lifecycle.BMCVirtualMediaOperationAttach,
+			Server:         "one",
+			VirtualMediaID: "system:1",
+			TokenUUID:      uuid.MustParse(tokenUUID),
+			Seed:           "default",
+			ImageType:      api.ImageTypeISO,
+			Architecture:   images.UpdateFileArchitecture64BitX86,
+			Channel:        "stable",
+		}, awaitMessage(t, messages))
+
+		awaitResync(t, resyncDone)
+	})
+
+	t.Run("detach reports the virtual media it has been detached from", func(t *testing.T) {
+		serverSvc, messages, resyncDone, _ := setup(t)
+
+		err := serverSvc.BMCDetachMediaByName(t.Context(), "one", "system:1")
+		require.NoError(t, err)
+
+		require.Equal(t, lifecycle.BMCVirtualMediaMessage{
+			Operation:      lifecycle.BMCVirtualMediaOperationDetach,
+			Server:         "one",
+			VirtualMediaID: "system:1",
+		}, awaitMessage(t, messages))
+
+		awaitResync(t, resyncDone)
+	})
+
+	t.Run("the preparation is reported before the BMC is instructed", func(t *testing.T) {
+		serverSvc, messages, resyncDone, bmcClient := setup(t)
+
+		var reportedBeforeAttach []lifecycle.BMCVirtualMediaMessage
+
+		bmcClient.AttachMediaFunc = func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
+			for len(messages) > 0 {
+				reportedBeforeAttach = append(reportedBeforeAttach, <-messages)
+			}
+
+			return nil, nil
+		}
+
+		err := serverSvc.BMCAttachMediaByName(t.Context(), "one", api.ServerBMCAttachMedia{
+			TokenUUID:      tokenUUID,
+			Seed:           "default",
+			Type:           "iso",
+			Architecture:   "x86_64",
+			Channel:        "stable",
+			VirtualMediaID: "system:1",
+		})
+		require.NoError(t, err)
+
+		require.Len(t, reportedBeforeAttach, 1, "the installation media has to be reported before the BMC is instructed to attach it")
+		require.Equal(t, lifecycle.BMCVirtualMediaOperationPreAttach, reportedBeforeAttach[0].Operation)
+
+		awaitResync(t, resyncDone)
+	})
+
+	t.Run("a failed attach only reports the preparation", func(t *testing.T) {
+		serverSvc, messages, _, bmcClient := setup(t)
+
+		bmcClient.AttachMediaFunc = func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
+			return nil, boom.Error
+		}
+
+		err := serverSvc.BMCAttachMediaByName(t.Context(), "one", api.ServerBMCAttachMedia{
+			TokenUUID:      tokenUUID,
+			Seed:           "default",
+			Type:           "iso",
+			Architecture:   "x86_64",
+			Channel:        "stable",
+			VirtualMediaID: "system:1",
+		})
+		boom.ErrorIs(t, err)
+
+		require.Equal(t, lifecycle.BMCVirtualMediaMessage{
+			Operation:      lifecycle.BMCVirtualMediaOperationPreAttach,
+			Server:         "one",
+			VirtualMediaID: "system:1",
+			TokenUUID:      uuid.MustParse(tokenUUID),
+			Seed:           "default",
+			ImageType:      api.ImageTypeISO,
+			Architecture:   images.UpdateFileArchitecture64BitX86,
+			Channel:        "stable",
+		}, awaitMessage(t, messages))
+
+		require.Empty(t, messages)
+	})
+
+	t.Run("a rejected attach request reports nothing", func(t *testing.T) {
+		serverSvc, messages, _, _ := setup(t)
+
+		err := serverSvc.BMCAttachMediaByName(t.Context(), "one", api.ServerBMCAttachMedia{
+			TokenUUID:      tokenUUID,
+			Seed:           "default",
+			Type:           "exe",
+			Architecture:   "x86_64",
+			VirtualMediaID: "system:1",
+		})
+		require.Error(t, err)
+		require.Empty(t, messages)
+	})
+}
+
+func TestServerService_BMCDetachMediaByName(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	taskMonitor := &provisioning.BMCTaskMonitor{
+		URI: "https://bmc.local/task/1",
+	}
+
+	closedChannel := func() chan struct{} {
+		ch := make(chan struct{})
+		close(ch)
+		return ch
+	}
+
+	tests := []struct {
+		name                    string
+		nameArg                 string
+		virtualMediaIDArg       string
+		repoGetByNameServer     *provisioning.Server
+		repoGetByNameErr        error
+		bmcClientDetachMediaErr error
+		bmcClientWaitErr        error
+		bmcClientGetDataErr     error
+		repoUpdateErr           error
+		resyncDone              chan struct{}
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:              "success",
+			nameArg:           "one",
+			virtualMediaIDArg: "system:1",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			resyncDone: make(chan struct{}),
+
+			assertErr: require.NoError,
+		},
+		{
+			name:              "success - task monitor wait fails but resync still runs",
+			nameArg:           "one",
+			virtualMediaIDArg: "system:1",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientWaitErr: boom.Error,
+			resyncDone:       make(chan struct{}),
+
+			assertErr: require.NoError,
+		},
+		{
+			name:              "success - resync fails to get BMC data",
+			nameArg:           "one",
+			virtualMediaIDArg: "system:1",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientGetDataErr: boom.Error,
+			resyncDone:          make(chan struct{}),
+
+			assertErr: require.NoError,
+		},
+		{
+			name:              "success - resync fails to update the server",
+			nameArg:           "one",
+			virtualMediaIDArg: "system:1",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			repoUpdateErr: boom.Error,
+			resyncDone:    make(chan struct{}),
+
+			assertErr: require.NoError,
+		},
+		{
+			name:              "error - name empty",
+			nameArg:           "", // invalid
+			virtualMediaIDArg: "system:1",
+			resyncDone:        closedChannel(),
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:              "error - virtual media ID empty",
+			nameArg:           "one",
+			virtualMediaIDArg: "", // invalid
+			resyncDone:        closedChannel(),
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:              "error - repo.GetByName",
+			nameArg:           "one",
+			virtualMediaIDArg: "system:1",
+			repoGetByNameErr:  boom.Error,
+			resyncDone:        closedChannel(),
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:              "error - no BMC server client registered for type",
+			nameArg:           "one",
+			virtualMediaIDArg: "system:1",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPIType("unknown"),
+				},
+			},
+			resyncDone: closedChannel(),
+
+			assertErr: errassert.Contains(`Failed to get BMC server client for type "unknown"`),
+		},
+		{
+			name:              "error - client.DetachMedia",
+			nameArg:           "one",
+			virtualMediaIDArg: "system:1",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientDetachMediaErr: boom.Error,
+			resyncDone:              closedChannel(),
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					defer close(tc.resyncDone)
+
+					return tc.repoUpdateErr
+				},
+			}
+
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				DetachMediaFunc: func(ctx context.Context, server provisioning.Server, virtualMediaID string) (*provisioning.BMCTaskMonitor, error) {
+					require.Equal(t, tc.virtualMediaIDArg, virtualMediaID)
+
+					return taskMonitor, tc.bmcClientDetachMediaErr
+				},
+				WaitForTaskFunc: func(ctx context.Context, server provisioning.Server, monitor *provisioning.BMCTaskMonitor) error {
+					require.Same(t, taskMonitor, monitor)
+
+					return tc.bmcClientWaitErr
+				},
+				GetDataFunc: func(ctx context.Context, server provisioning.Server) (api.BMCData, error) {
+					if tc.bmcClientGetDataErr != nil {
+						close(tc.resyncDone)
+					}
+
+					return api.BMCData{}, tc.bmcClientGetDataErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				provisioningServer.WithNow(func() time.Time { return fixedDate }),
+				provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+			)
+
+			// Run test
+			err := serverSvc.BMCDetachMediaByName(t.Context(), tc.nameArg, tc.virtualMediaIDArg)
+
+			// Assert
+			tc.assertErr(t, err)
+
+			select {
+			case <-tc.resyncDone:
+			case <-time.After(100 * time.Millisecond):
+				t.Fatal("timed out waiting for asynchronous BMC resync")
+			}
+		})
 	}
 }
