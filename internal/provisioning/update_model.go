@@ -196,12 +196,6 @@ func (u *UpdateFiles) Scan(value any) error {
 	}
 }
 
-type UsageInformation struct {
-	TotalSpaceBytes     uint64
-	AvailableSpaceBytes uint64
-	UsedSpaceBytes      uint64
-}
-
 type UpdateUpstreamChannels []string
 
 // Value implements the sql driver.Valuer interface.

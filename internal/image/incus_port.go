@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 	"mime/multipart"
+
+	"github.com/FuturFusion/operations-center/internal/util/file"
 )
 
 type ImageIncusService interface {
@@ -44,7 +46,7 @@ type ImageIncusFileRepo interface {
 	Delete(ctx context.Context, img *IncusImage) error
 	DeleteVersion(ctx context.Context, img *IncusImage, versionIdentifier string) error
 	DeleteVersionFile(ctx context.Context, img *IncusImage, versionIdentifier string, filename string) error
-	UsageInformation(ctx context.Context) (UsageInformation, error)
+	UsageInformation(ctx context.Context) (file.UsageInformation, error)
 }
 
 type SimplestreamsPort interface {

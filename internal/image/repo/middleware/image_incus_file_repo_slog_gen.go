@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	"github.com/FuturFusion/operations-center/internal/image"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
@@ -261,7 +262,7 @@ func (_d ImageIncusFileRepoWithSlog) Put(ctx context.Context, img *image.IncusIm
 }
 
 // UsageInformation implements image.ImageIncusFileRepo.
-func (_d ImageIncusFileRepoWithSlog) UsageInformation(ctx context.Context) (usageInformation image.UsageInformation, err error) {
+func (_d ImageIncusFileRepoWithSlog) UsageInformation(ctx context.Context) (usageInformation file.UsageInformation, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

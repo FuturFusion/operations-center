@@ -4,25 +4,10 @@ package localfs
 
 import (
 	"context"
-	"fmt"
 
-	"golang.org/x/sys/unix"
-
-	"github.com/FuturFusion/operations-center/internal/image"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 )
 
-func (l localfs) UsageInformation(_ context.Context) (image.UsageInformation, error) {
-	var stat unix.Statfs_t
-
-	err := unix.Statfs(l.storageDir, &stat)
-	if err != nil {
-		return image.UsageInformation{}, fmt.Errorf("Failed to statfs for %q: %w", l.storageDir, err)
-	}
-
-	// space in bytes = blocks * size per block
-	return image.UsageInformation{
-		TotalSpaceBytes:     stat.Blocks * uint64(stat.Bsize),
-		AvailableSpaceBytes: stat.Bavail * uint64(stat.Bsize),
-		UsedSpaceBytes:      (stat.Blocks - stat.Bavail) * uint64(stat.Bsize),
-	}, nil
+func (l localfs) UsageInformation(_ context.Context) (file.UsageInformation, error) {
+	return file.UsageInformationForPath(l.storageDir)
 }

@@ -21,6 +21,7 @@ import (
 	adapterMock "github.com/FuturFusion/operations-center/internal/image/adapter/mock"
 	"github.com/FuturFusion/operations-center/internal/image/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/archive/xz"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
@@ -1802,7 +1803,7 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 		repoGetAllWithFilterErr       error
 		repoDeleteByNameErr           error
 		filesRepoDeleteVersionFileErr error
-		filesRepoUsageInformation     image.UsageInformation
+		filesRepoUsageInformation     file.UsageInformation
 		filesRepoUsageInformationErr  error
 		simplestreamsGetFileRC        io.ReadCloser
 		simplestreamsGetFileErr       error
@@ -2542,7 +2543,7 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 				DeleteVersionFileFunc: func(ctx context.Context, img *image.IncusImage, versionIdentifier, filename string) error {
 					return tc.filesRepoDeleteVersionFileErr
 				},
-				UsageInformationFunc: func(ctx context.Context) (image.UsageInformation, error) {
+				UsageInformationFunc: func(ctx context.Context) (file.UsageInformation, error) {
 					return tc.filesRepoUsageInformation, tc.filesRepoUsageInformationErr
 				},
 				PutFunc: func(ctx context.Context, img *image.IncusImage, versionIdentifier, filename string, content io.ReadCloser) (image.CommitFunc, image.CancelFunc, int64, error) {
@@ -2578,9 +2579,9 @@ func TestIncusImageService_RefreshFromSource(t *testing.T) {
 	}
 }
 
-func usageInfoGiB(totalSpaceGiB int, availableSpaceGiB int) image.UsageInformation {
+func usageInfoGiB(totalSpaceGiB int, availableSpaceGiB int) file.UsageInformation {
 	const GiB = 1024 * 1024 * 1024
-	return image.UsageInformation{
+	return file.UsageInformation{
 		TotalSpaceBytes:     uint64(totalSpaceGiB) * GiB,
 		AvailableSpaceBytes: uint64(availableSpaceGiB) * GiB,
 		UsedSpaceBytes:      uint64(totalSpaceGiB-availableSpaceGiB) * GiB,

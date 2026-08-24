@@ -20,6 +20,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -31,8 +32,8 @@ func testFlasher(t *testing.T) *Flasher {
 	t.Helper()
 
 	cache := newImageCache(t.TempDir())
-	cache.usage = func() (provisioning.UsageInformation, error) {
-		return provisioning.UsageInformation{
+	cache.usage = func() (file.UsageInformation, error) {
+		return file.UsageInformation{
 			TotalSpaceBytes:     1 << 60,
 			AvailableSpaceBytes: 1 << 60,
 		}, nil
@@ -249,8 +250,8 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 
 	t.Run("refuses to generate the image, if the space does not suffice", func(t *testing.T) {
 		flasher := testFlasher(t)
-		flasher.cache.usage = func() (provisioning.UsageInformation, error) {
-			return provisioning.UsageInformation{
+		flasher.cache.usage = func() (file.UsageInformation, error) {
+			return file.UsageInformation{
 				TotalSpaceBytes:     100,
 				AvailableSpaceBytes: 1,
 			}, nil
