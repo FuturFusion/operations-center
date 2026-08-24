@@ -52,6 +52,9 @@ type Certificate struct {
 // swagger:model
 type CertificatePost struct {
 	// The new certificate (X509 PEM encoded) for the system (server certificate).
+	// Optionally, intermediate CA certificates are appended to the server
+	// certificate to form a certificate chain. The server certificate is
+	// expected first, followed by the intermediate CA certificates in order.
 	// Example: X509 PEM certificate
 	Certificate string `json:"certificate" yaml:"certificate"`
 
