@@ -167,9 +167,3 @@ type ExprIncusImageVersionFile struct {
 }
 
 type IncusImages []IncusImage
-
-type UsageInformation struct {
-	TotalSpaceBytes     uint64
-	AvailableSpaceBytes uint64
-	UsedSpaceBytes      uint64
-}
