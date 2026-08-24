@@ -13,7 +13,6 @@ import (
 	"github.com/stmcginnis/gofish/schemas"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
 // maxInsertMediaAttempts bounds the number of times insertMedia retries the
@@ -39,7 +38,7 @@ func insertMedia(virtualMedia virtualMediaSlot, mediaURL string) (*schemas.TaskM
 		return postVirtualMediaAction(virtualMedia, target, map[string]any{"Image": mediaURL})
 	}
 
-	return nil, patchVirtualMedia(virtualMedia, ptr.To(mediaURL))
+	return nil, patchVirtualMedia(virtualMedia, new(mediaURL))
 }
 
 // insertMediaAction attaches mediaURL using the standard
@@ -98,7 +97,7 @@ func applyInsertMediaActionInfo(params *schemas.VirtualMediaInsertMediaParameter
 				return fmt.Errorf("BMC does not support transfer protocol %q for virtual media, supported protocols are: %s: %w", transferProtocolType, strings.Join(parameter.AllowableValues, ", "), domain.ErrOperationNotPermitted)
 			}
 
-			params.TransferProtocolType = ptr.To(transferProtocolType)
+			params.TransferProtocolType = new(transferProtocolType)
 
 		case "TransferMethod":
 			// Streaming leaves the image where it is, uploading would copy it
@@ -107,7 +106,7 @@ func applyInsertMediaActionInfo(params *schemas.VirtualMediaInsertMediaParameter
 				continue
 			}
 
-			params.TransferMethod = ptr.To(schemas.StreamTransferMethod)
+			params.TransferMethod = new(schemas.StreamTransferMethod)
 		}
 	}
 
@@ -120,14 +119,14 @@ func addMissingInsertMediaParameter(params *schemas.VirtualMediaInsertMediaParam
 	if params.TransferProtocolType == nil && isParameterMissing(err, "TransferProtocolType") {
 		transferProtocolType := transferProtocolTypeForURL(mediaURL)
 		if transferProtocolType != "" {
-			params.TransferProtocolType = ptr.To(transferProtocolType)
+			params.TransferProtocolType = new(transferProtocolType)
 
 			return true
 		}
 	}
 
 	if params.TransferMethod == nil && isParameterMissing(err, "TransferMethod") {
-		params.TransferMethod = ptr.To(schemas.StreamTransferMethod)
+		params.TransferMethod = new(schemas.StreamTransferMethod)
 
 		return true
 	}

@@ -13,7 +13,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
 func TestIncusImageDatabaseActions(t *testing.T) {
@@ -78,7 +77,7 @@ func TestIncusImageDatabaseActions(t *testing.T) {
 	require.Len(t, incusImages, 2)
 
 	incusImages, err = incusImage.GetAllWithFilter(ctx, image.IncusImageFilter{
-		Name: ptr.To("almalinux:10:amd64:default"),
+		Name: new("almalinux:10:amd64:default"),
 	})
 	require.NoError(t, err)
 	require.Len(t, incusImages, 1)

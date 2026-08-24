@@ -811,7 +811,7 @@ func Test_clusterUpdateState(t *testing.T) {
 			for i, state := range tc.serverStates {
 				server := clusterUpdateStateTestServer(t, serverNames[i], state)
 				if tc.newUpdateAvailable {
-					server.VersionData.NeedsUpdate = ptr.To(true)
+					server.VersionData.NeedsUpdate = new(true)
 				}
 
 				servers = append(servers, server)
@@ -913,7 +913,7 @@ func clusterUpdateStateTestServer(t *testing.T, name string, state api.ServerUpd
 
 	server := provisioning.Server{
 		Name:         name,
-		Cluster:      ptr.To("clusterA"),
+		Cluster:      new("clusterA"),
 		Type:         api.ServerTypeIncus,
 		Status:       api.ServerStatusReady,
 		StatusDetail: api.ServerStatusDetailNone,
@@ -923,9 +923,9 @@ func clusterUpdateStateTestServer(t *testing.T, name string, state api.ServerUpd
 					Name: "incus",
 				},
 			},
-			NeedsUpdate:   ptr.To(false),
-			NeedsReboot:   ptr.To(false),
-			InMaintenance: ptr.To(api.NotInMaintenance),
+			NeedsUpdate:   new(false),
+			NeedsReboot:   new(false),
+			InMaintenance: new(api.NotInMaintenance),
 		},
 	}
 
@@ -933,32 +933,32 @@ func clusterUpdateStateTestServer(t *testing.T, name string, state api.ServerUpd
 	case api.ServerUpdateStateUpToDate:
 
 	case api.ServerUpdateStateUpdatePending:
-		server.VersionData.NeedsUpdate = ptr.To(true)
+		server.VersionData.NeedsUpdate = new(true)
 
 	case api.ServerUpdateStateUpdating:
 		server.StatusDetail = api.ServerStatusDetailReadyUpdatingOS
 
 	case api.ServerUpdateStateEvacuationPending:
-		server.VersionData.NeedsReboot = ptr.To(true)
+		server.VersionData.NeedsReboot = new(true)
 
 	case api.ServerUpdateStateEvacuating:
-		server.VersionData.NeedsReboot = ptr.To(true)
-		server.VersionData.InMaintenance = ptr.To(api.InMaintenanceEvacuating)
+		server.VersionData.NeedsReboot = new(true)
+		server.VersionData.InMaintenance = new(api.InMaintenanceEvacuating)
 
 	case api.ServerUpdateStateInMaintenanceRebootPending:
-		server.VersionData.NeedsReboot = ptr.To(true)
-		server.VersionData.InMaintenance = ptr.To(api.InMaintenanceEvacuated)
+		server.VersionData.NeedsReboot = new(true)
+		server.VersionData.InMaintenance = new(api.InMaintenanceEvacuated)
 
 	case api.ServerUpdateStateInMaintenanceRebooting:
 		server.Status = api.ServerStatusOffline
 		server.StatusDetail = api.ServerStatusDetailOfflineRebooting
-		server.VersionData.InMaintenance = ptr.To(api.InMaintenanceEvacuated)
+		server.VersionData.InMaintenance = new(api.InMaintenanceEvacuated)
 
 	case api.ServerUpdateStateInMaintenanceRestorePending:
-		server.VersionData.InMaintenance = ptr.To(api.InMaintenanceEvacuated)
+		server.VersionData.InMaintenance = new(api.InMaintenanceEvacuated)
 
 	case api.ServerUpdateStateInMaintenanceRestoring:
-		server.VersionData.InMaintenance = ptr.To(api.InMaintenanceRestoring)
+		server.VersionData.InMaintenance = new(api.InMaintenanceRestoring)
 
 	case api.ServerUpdateStateInMaintenancePostRestore:
 		server.StatusDetail = api.ServerStatusDetailReadyRestoring
@@ -967,7 +967,7 @@ func clusterUpdateStateTestServer(t *testing.T, name string, state api.ServerUpd
 		// A reboot is only pending outside of maintenance for servers, which are not
 		// part of an Incus cluster.
 		server.Cluster = nil
-		server.VersionData.NeedsReboot = ptr.To(true)
+		server.VersionData.NeedsReboot = new(true)
 
 	case api.ServerUpdateStateRebooting:
 		server.Status = api.ServerStatusOffline

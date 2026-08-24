@@ -15,7 +15,6 @@ import (
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -25,7 +24,7 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
 		Name:          "one",
 		ConnectionURL: "https://cluster-one/",
-		Certificate: ptr.To(`-----BEGIN CERTIFICATE-----
+		Certificate: new(`-----BEGIN CERTIFICATE-----
 cluster A
 -----END CERTIFICATE-----
 `),
@@ -37,7 +36,7 @@ cluster A
 	testClusterB := provisioning.Cluster{
 		Name:          "two",
 		ConnectionURL: "https://cluster-two/",
-		Certificate: ptr.To(`-----BEGIN CERTIFICATE-----
+		Certificate: new(`-----BEGIN CERTIFICATE-----
 cluster B
 -----END CERTIFICATE-----
 `),
@@ -50,7 +49,7 @@ cluster B
 
 	testServerA := provisioning.Server{
 		Name:          "one",
-		Cluster:       ptr.To("one"),
+		Cluster:       new("one"),
 		ConnectionURL: "https://server-one/",
 		Certificate:   `-----BEGIN CERTIFICATE-----
 server-one
@@ -64,7 +63,7 @@ server-one
 
 	testServerB := provisioning.Server{
 		Name:          "two",
-		Cluster:       ptr.To("two"),
+		Cluster:       new("two"),
 		ConnectionURL: "https://server-two/",
 		Certificate:   `-----BEGIN CERTIFICATE-----
 server-two
@@ -82,7 +81,7 @@ server-two
 		Cluster:     "one",
 {{- if .ServerIDByLocation }}
 	{{- if .IsServerIDOptional }}
-		Server:      ptr.To("one"),
+		Server:      new("one"),
 	{{- else }}
 		Server:      "one",
 	{{- end }}
@@ -107,7 +106,7 @@ server-two
 		Cluster:     "two",
 {{- if .ServerIDByLocation }}
 	{{- if .IsServerIDOptional }}
-		Server:      ptr.To("two"),
+		Server:      new("two"),
 	{{- else }}
 		Server:      "two",
 	{{- end }}
@@ -181,17 +180,17 @@ server-two
 
 	// Ensure we have one entry with filter for cluster, server{{ if .HasProject }}, project{{ end }}{{ if .HasParent }}, {{ .ParentName }}{{ end }} and name.
 	{{ .Name | camelcase }}UUIDs, err = {{ .Name | camelcase }}.GetAllUUIDsWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{
-		Cluster: ptr.To("one"),
+		Cluster: new("one"),
 {{- if .ServerIDByLocation }}
-		Server:  ptr.To("one"),
+		Server:  new("one"),
 {{- end }}
 {{- if .HasProject }}
-		ProjectName: ptr.To("one"),
+		ProjectName: new("one"),
 {{- end }}
 {{- if .HasParent }}
-		{{ .ParentName | pascalcase }}Name: ptr.To("parent one"),
+		{{ .ParentName | pascalcase }}Name: new("parent one"),
 {{- end }}
-		Name:    ptr.To("one"),
+		Name:    new("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, {{ .Name | camelcase }}UUIDs, 1)
@@ -199,17 +198,17 @@ server-two
 
 	// Ensure we have one entry with filter for cluster, server{{ if .HasProject }}, project{{ end }}{{ if .HasParent }}, {{ .ParentName }}{{ end }} and name.
 	db{{ .Name | pascalcase }}, err = {{ .Name | camelcase }}.GetAllWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{
-		Cluster:     ptr.To("one"),
+		Cluster:     new("one"),
 {{- if .ServerIDByLocation }}
-		Server:      ptr.To("one"),
+		Server:      new("one"),
 {{- end }}
 {{- if .HasProject }}
-		ProjectName: ptr.To("one"),
+		ProjectName: new("one"),
 {{- end }}
 {{- if .HasParent }}
-		{{ .ParentName | pascalcase }}Name: ptr.To("parent one"),
+		{{ .ParentName | pascalcase }}Name: new("parent one"),
 {{- end }}
-		Name:        ptr.To("one"),
+		Name:        new("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, db{{ .Name | pascalcase }}, 1)
@@ -269,7 +268,7 @@ server-two
 
 	// Delete {{ .PluralName }} by cluster Name.
 	err = {{ .Name | camelcase }}.DeleteWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{
-		Cluster: ptr.To("two"),
+		Cluster: new("two"),
 	})
 	require.NoError(t, err)
 

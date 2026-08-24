@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/acme"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -113,7 +113,7 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 	// on IncusOS.
 	if s.env.IsIncusOS() {
 		servers, err := s.serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
-			Type: ptr.To(api.ServerTypeOperationsCenter),
+			Type: new(api.ServerTypeOperationsCenter),
 		})
 		if err != nil {
 			return fmt.Errorf("Failed to get operations-center server entry: %w", err)
@@ -246,9 +246,7 @@ func (s *systemService) updateProviderConfigAll(ctx context.Context, cfg map[str
 			providerConfig.Config.Config = map[string]string{}
 		}
 
-		for key, value := range cfg {
-			providerConfig.Config.Config[key] = value
-		}
+		maps.Copy(providerConfig.Config.Config, cfg)
 
 		err = s.serverSvc.UpdateSystemProvider(ctx, server.Name, providerConfig)
 		if err != nil {

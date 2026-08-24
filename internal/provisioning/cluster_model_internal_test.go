@@ -4,8 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
 func Test_clusterEndpoint(t *testing.T) {
@@ -46,10 +44,10 @@ func Test_clusterEndpoint(t *testing.T) {
 			endpoint: ClusterEndpoint{
 				{
 					Name:               "server",
-					Cluster:            ptr.To("cluster"),
+					Cluster:            new("cluster"),
 					ConnectionURL:      "http://one/",
 					Certificate:        "cert",
-					ClusterCertificate: ptr.To("cluster cert"),
+					ClusterCertificate: new("cluster cert"),
 				},
 			},
 

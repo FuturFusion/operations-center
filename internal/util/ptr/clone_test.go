@@ -10,7 +10,7 @@ import (
 )
 
 func TestClone_string(t *testing.T) {
-	original := ptr.To("string")
+	original := new("string")
 	clone, err := ptr.Clone(original)
 	require.NoError(t, err)
 
@@ -33,7 +33,7 @@ func TestClone_struct(t *testing.T) {
 		Ptr *int
 	}
 
-	original := ptr.To(somestruct{
+	original := new(somestruct{
 		Int:    1,
 		String: "str",
 		Nested: struct {
@@ -41,28 +41,28 @@ func TestClone_struct(t *testing.T) {
 			Ptr *int
 		}{
 			Int: 2,
-			Ptr: ptr.To(20),
+			Ptr: new(20),
 		},
-		Ptr: ptr.To(10),
+		Ptr: new(10),
 	})
 	clone, err := ptr.Clone(original)
 	require.NoError(t, err)
 
 	require.Equal(t, original, clone)
 
-	original.Ptr = ptr.To(50)
+	original.Ptr = new(50)
 
 	require.NotEqual(t, original, clone)
 }
 
 func TestClone_error_marshal(t *testing.T) {
-	original := ptr.To(func() {})
+	original := new(func() {})
 	_, err := ptr.Clone(original)
 	require.Error(t, err)
 }
 
 func TestClone_error_unmarshal(t *testing.T) {
-	original := ptr.To(errors.New("err"))
+	original := new(errors.New("err"))
 	_, err := ptr.Clone(original)
 	require.Error(t, err)
 }

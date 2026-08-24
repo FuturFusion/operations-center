@@ -1269,7 +1269,7 @@ func (d *Daemon) setupBackgroundTasks(
 		serverSvc,
 		"pending",
 		provisioning.ServerFilter{
-			Status: ptr.To(api.ServerStatusPending),
+			Status: new(api.ServerStatusPending),
 		},
 		true,
 		config.PendingServerPollInterval,
@@ -1281,8 +1281,8 @@ func (d *Daemon) setupBackgroundTasks(
 		serverSvc,
 		"updating",
 		provisioning.ServerFilter{
-			Status:       ptr.To(api.ServerStatusReady),
-			StatusDetail: ptr.To(api.ServerStatusDetailReadyUpdatingOS),
+			Status:       new(api.ServerStatusReady),
+			StatusDetail: new(api.ServerStatusDetailReadyUpdatingOS),
 		},
 		false,
 		config.UpdatingServerPollInterval,
@@ -1294,8 +1294,8 @@ func (d *Daemon) setupBackgroundTasks(
 		serverSvc,
 		"evacuating",
 		provisioning.ServerFilter{
-			Status:       ptr.To(api.ServerStatusReady),
-			StatusDetail: ptr.To(api.ServerStatusDetailReadyEvacuating),
+			Status:       new(api.ServerStatusReady),
+			StatusDetail: new(api.ServerStatusDetailReadyEvacuating),
 		},
 		false,
 		config.EvacuatingServerPollInterval,
@@ -1307,8 +1307,8 @@ func (d *Daemon) setupBackgroundTasks(
 		serverSvc,
 		"restoring",
 		provisioning.ServerFilter{
-			Status:       ptr.To(api.ServerStatusReady),
-			StatusDetail: ptr.To(api.ServerStatusDetailReadyRestoring),
+			Status:       new(api.ServerStatusReady),
+			StatusDetail: new(api.ServerStatusDetailReadyRestoring),
 		},
 		false,
 		config.RestoringServerPollInterval,
@@ -1320,8 +1320,8 @@ func (d *Daemon) setupBackgroundTasks(
 		serverSvc,
 		"rebooting",
 		provisioning.ServerFilter{
-			Status:       ptr.To(api.ServerStatusOffline),
-			StatusDetail: ptr.To(api.ServerStatusDetailOfflineRebooting),
+			Status:       new(api.ServerStatusOffline),
+			StatusDetail: new(api.ServerStatusDetailOfflineRebooting),
 		},
 		false,
 		config.RebootingServerPollInterval,
@@ -1333,8 +1333,8 @@ func (d *Daemon) setupBackgroundTasks(
 		serverSvc,
 		"unresponsive",
 		provisioning.ServerFilter{
-			Status:       ptr.To(api.ServerStatusOffline),
-			StatusDetail: ptr.To(api.ServerStatusDetailOfflineUnresponsive),
+			Status:       new(api.ServerStatusOffline),
+			StatusDetail: new(api.ServerStatusDetailOfflineUnresponsive),
 		},
 		false,
 		config.UnresponsiveServerPollInterval,
@@ -1347,7 +1347,7 @@ func (d *Daemon) setupBackgroundTasks(
 		// Within the first connectivityInterval of the hour, we also update the configuration.
 		updateConfiguration := time.Since(time.Now().Truncate(time.Hour)) <= config.ConnectivityCheckInterval
 		err := serverSvc.PollServers(ctx, provisioning.ServerFilter{
-			Status: ptr.To(api.ServerStatusReady),
+			Status: new(api.ServerStatusReady),
 		}, updateConfiguration)
 		if err != nil {
 			logCtx := slog.ErrorContext
@@ -1790,7 +1790,7 @@ func (d *Daemon) incusOSSelfPoll(ctx context.Context, serverSvc provisioning.Ser
 	slog.DebugContext(ctx, "Self poll server status on IncusOS to update own inventory record")
 
 	operationCenters, err := serverSvc.GetAllWithFilter(ctx, provisioning.ServerFilter{
-		Type: ptr.To(api.ServerTypeOperationsCenter),
+		Type: new(api.ServerTypeOperationsCenter),
 	})
 	if err != nil {
 		return fmt.Errorf("Failed to get self server instance: %w", err)

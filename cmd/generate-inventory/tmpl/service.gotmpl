@@ -16,9 +16,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
-{{- if .IsServerIDOptional }}
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
-{{- end }}
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 )
 
@@ -218,7 +215,7 @@ func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uui
 
 {{ if .ServerIDByLocation }}
 	{{- if .IsServerIDOptional }}
-		{{ .Name | camelcase }}.Server = ptr.To(retrieved{{ .Name | pascalcase }}.Location)
+		{{ .Name | camelcase }}.Server = new(retrieved{{ .Name | pascalcase }}.Location)
 	{{- else }}
 		{{ .Name | camelcase }}.Server = retrieved{{ .Name | pascalcase }}.Location
 	{{- end }}
@@ -311,7 +308,7 @@ func (s {{ .Name | camelcase }}Service) handleCreateEvent(ctx context.Context, c
 		Cluster:   clusterName,
 {{- if .ServerIDByLocation }}
 	{{- if .IsServerIDOptional }}
-		Server:      ptr.To(retrieved{{ .Name | pascalcase }}.Location),
+		Server:      new(retrieved{{ .Name | pascalcase }}.Location),
 	{{- else }}
 		Server:      retrieved{{ .Name | pascalcase }}.Location,
 	{{- end }}
@@ -519,7 +516,7 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 				Cluster:   name,
 {{- if .ServerIDByLocation }}
 	{{- if .IsServerIDOptional }}
-				Server:      ptr.To(retrieved{{ .Name | pascalcase }}.Location),
+				Server:      new(retrieved{{ .Name | pascalcase }}.Location),
 	{{- else }}
 				Server:      retrieved{{ .Name | pascalcase }}.Location,
 	{{- end }}

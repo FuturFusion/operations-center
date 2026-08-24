@@ -24,23 +24,23 @@ func TestToInt64_int(t *testing.T) {
 		},
 		{
 			name:  "zero",
-			value: ptr.To(0),
-			want:  ptr.To(int64(0)),
+			value: new(0),
+			want:  new(int64(0)),
 		},
 		{
 			name:  "positive",
-			value: ptr.To(20),
-			want:  ptr.To(int64(20)),
+			value: new(20),
+			want:  new(int64(20)),
 		},
 		{
 			name:  "negative",
-			value: ptr.To(-20),
-			want:  ptr.To(int64(-20)),
+			value: new(-20),
+			want:  new(int64(-20)),
 		},
 		{
 			name:  "minimum",
-			value: ptr.To(math.MinInt64),
-			want:  ptr.To(int64(math.MinInt64)),
+			value: new(math.MinInt64),
+			want:  new(int64(math.MinInt64)),
 		},
 	}
 
@@ -66,28 +66,28 @@ func TestToInt64_uint64(t *testing.T) {
 		},
 		{
 			name:  "zero",
-			value: ptr.To(uint64(0)),
-			want:  ptr.To(int64(0)),
+			value: new(uint64(0)),
+			want:  new(int64(0)),
 		},
 		{
 			name:  "positive",
-			value: ptr.To(uint64(20)),
-			want:  ptr.To(int64(20)),
+			value: new(uint64(20)),
+			want:  new(int64(20)),
 		},
 		{
 			name:  "maximum representable as int64",
-			value: ptr.To(uint64(math.MaxInt64)),
-			want:  ptr.To(int64(math.MaxInt64)),
+			value: new(uint64(math.MaxInt64)),
+			want:  new(int64(math.MaxInt64)),
 		},
 		{
 			name:  "too large for int64, capped instead of wrapped",
-			value: ptr.To(uint64(math.MaxInt64) + 1),
-			want:  ptr.To(int64(math.MaxInt64)),
+			value: new(uint64(math.MaxInt64) + 1),
+			want:  new(int64(math.MaxInt64)),
 		},
 		{
 			name:  "maximum uint64, capped instead of wrapped",
-			value: ptr.To(uint64(math.MaxUint64)),
-			want:  ptr.To(int64(math.MaxInt64)),
+			value: new(uint64(math.MaxUint64)),
+			want:  new(int64(math.MaxInt64)),
 		},
 	}
 

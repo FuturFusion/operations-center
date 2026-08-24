@@ -489,12 +489,12 @@ func (s *ServerVersionData) Scan(value any) error {
 // for each component.
 func (s *ServerVersionData) Compute(osName string, latestAvailableVersions map[string]string) {
 	// Init calculated fields with default values, if no value is currently set.
-	s.NeedsReboot = ptr.To(false)
-	s.InMaintenance = ptr.To(NotInMaintenance)
-	s.NeedsUpdate = ptr.To(false)
-	s.OS.NeedsUpdate = ptr.To(false)
+	s.NeedsReboot = new(false)
+	s.InMaintenance = new(NotInMaintenance)
+	s.NeedsUpdate = new(false)
+	s.OS.NeedsUpdate = new(false)
 	for i := range s.Applications {
-		s.Applications[i].NeedsUpdate = ptr.To(false)
+		s.Applications[i].NeedsUpdate = new(false)
 	}
 
 	// NeedsReboot is true, if OS.NeedsReboot is true.
@@ -518,7 +518,7 @@ func (s *ServerVersionData) Compute(osName string, latestAvailableVersions map[s
 			currentOrPendingVersion = s.OS.VersionNext
 		}
 
-		s.OS.NeedsUpdate = ptr.To(availableVersionGreaterThan(currentOrPendingVersion, osLatestAvailableVersion))
+		s.OS.NeedsUpdate = new(availableVersionGreaterThan(currentOrPendingVersion, osLatestAvailableVersion))
 	}
 
 	// Set per application AvailableVersion and NeedsUpdate.
@@ -526,7 +526,7 @@ func (s *ServerVersionData) Compute(osName string, latestAvailableVersions map[s
 		appLatestAvailableVersion, ok := latestAvailableVersions[s.Applications[i].Name]
 		if ok {
 			s.Applications[i].AvailableVersion = &appLatestAvailableVersion
-			s.Applications[i].NeedsUpdate = ptr.To(availableVersionGreaterThan(s.Applications[i].Version, appLatestAvailableVersion))
+			s.Applications[i].NeedsUpdate = new(availableVersionGreaterThan(s.Applications[i].Version, appLatestAvailableVersion))
 		}
 	}
 

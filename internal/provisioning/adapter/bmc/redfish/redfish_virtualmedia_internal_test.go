@@ -8,8 +8,6 @@ import (
 
 	"github.com/stmcginnis/gofish/schemas"
 	"github.com/stretchr/testify/require"
-
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
 func TestVirtualMediaHasMedia(t *testing.T) {
@@ -21,13 +19,13 @@ func TestVirtualMediaHasMedia(t *testing.T) {
 	}{
 		{
 			name:         "free slot",
-			virtualMedia: schemas.VirtualMedia{Inserted: ptr.To(false)},
+			virtualMedia: schemas.VirtualMedia{Inserted: new(false)},
 
 			want: false,
 		},
 		{
 			name:         "occupied slot",
-			virtualMedia: schemas.VirtualMedia{Inserted: ptr.To(true), Image: "http://example.com/install.iso"},
+			virtualMedia: schemas.VirtualMedia{Inserted: new(true), Image: "http://example.com/install.iso"},
 
 			want: true,
 		},
@@ -35,7 +33,7 @@ func TestVirtualMediaHasMedia(t *testing.T) {
 			// AMI MegaRAC keeps the image URI of the last redirection around
 			// after ejecting it.
 			name:         "stale image without inserted",
-			virtualMedia: schemas.VirtualMedia{Inserted: ptr.To(false), Image: "/mnt/tank/iso"},
+			virtualMedia: schemas.VirtualMedia{Inserted: new(false), Image: "/mnt/tank/iso"},
 
 			want: false,
 		},
@@ -43,7 +41,7 @@ func TestVirtualMediaHasMedia(t *testing.T) {
 			// HPE iLO reports a slot as inserted as soon as an image URI is
 			// configured, even one it could not reach.
 			name:         "inserted without image",
-			virtualMedia: schemas.VirtualMedia{Inserted: ptr.To(true)},
+			virtualMedia: schemas.VirtualMedia{Inserted: new(true)},
 
 			want: false,
 		},

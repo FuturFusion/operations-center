@@ -12,7 +12,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/inventory"
-	"github.com/FuturFusion/operations-center/internal/util/ptr"
 )
 
 //go:embed templates/resource_tree.gotmpl
@@ -22,8 +21,8 @@ var templateResourceTree string
 var templateClusterNames string
 
 var embeddedTemplates = map[string]*string{
-	"cluster_names": ptr.To(templateClusterNames),
-	"resource_tree": ptr.To(templateResourceTree),
+	"cluster_names": new(templateClusterNames),
+	"resource_tree": new(templateResourceTree),
 }
 
 type CmdQuery struct {
@@ -90,8 +89,8 @@ func (c *CmdQuery) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	var tmpl *template.Template
-	if strings.HasPrefix(c.flagOutputTemplate, ":") {
-		name := strings.TrimPrefix(c.flagOutputTemplate, ":")
+	name, ok := strings.CutPrefix(c.flagOutputTemplate, ":")
+	if ok {
 		tmplBody, ok := embeddedTemplates[name]
 		if !ok {
 			return fmt.Errorf("%q is not a valid embedded template", name)
@@ -131,7 +130,7 @@ func (c *CmdQuery) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	if c.flagFilterExpression != "" {
-		filter.Expression = ptr.To(c.flagFilterExpression)
+		filter.Expression = new(c.flagFilterExpression)
 	}
 
 	inventoryAggregates, err := c.OCClient.GetWithFilterInventoryAggregates(cmd.Context(), filter)
