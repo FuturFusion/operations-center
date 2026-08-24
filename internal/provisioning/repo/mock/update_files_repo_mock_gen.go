@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 )
 
 // Ensure that UpdateFilesRepoMock does implement provisioning.UpdateFilesRepo.
@@ -44,7 +45,7 @@ var _ provisioning.UpdateFilesRepo = &UpdateFilesRepoMock{}
 //			PutFunc: func(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (provisioning.CommitFunc, provisioning.CancelFunc, error) {
 //				panic("mock out the Put method")
 //			},
-//			UsageInformationFunc: func(ctx context.Context) (provisioning.UsageInformation, error) {
+//			UsageInformationFunc: func(ctx context.Context) (file.UsageInformation, error) {
 //				panic("mock out the UsageInformation method")
 //			},
 //		}
@@ -76,7 +77,7 @@ type UpdateFilesRepoMock struct {
 	PutFunc func(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (provisioning.CommitFunc, provisioning.CancelFunc, error)
 
 	// UsageInformationFunc mocks the UsageInformation method.
-	UsageInformationFunc func(ctx context.Context) (provisioning.UsageInformation, error)
+	UsageInformationFunc func(ctx context.Context) (file.UsageInformation, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -416,7 +417,7 @@ func (mock *UpdateFilesRepoMock) PutCalls() []struct {
 }
 
 // UsageInformation calls UsageInformationFunc.
-func (mock *UpdateFilesRepoMock) UsageInformation(ctx context.Context) (provisioning.UsageInformation, error) {
+func (mock *UpdateFilesRepoMock) UsageInformation(ctx context.Context) (file.UsageInformation, error) {
 	if mock.UsageInformationFunc == nil {
 		panic("UpdateFilesRepoMock.UsageInformationFunc: method is nil but UpdateFilesRepo.UsageInformation was just called")
 	}

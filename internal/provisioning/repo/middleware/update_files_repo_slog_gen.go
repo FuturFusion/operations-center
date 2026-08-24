@@ -10,6 +10,7 @@ import (
 	"log/slog"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 )
 
@@ -289,7 +290,7 @@ func (_d UpdateFilesRepoWithSlog) Put(ctx context.Context, update provisioning.U
 }
 
 // UsageInformation implements provisioning.UpdateFilesRepo.
-func (_d UpdateFilesRepoWithSlog) UsageInformation(ctx context.Context) (usageInformation provisioning.UsageInformation, err error) {
+func (_d UpdateFilesRepoWithSlog) UsageInformation(ctx context.Context) (usageInformation file.UsageInformation, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
