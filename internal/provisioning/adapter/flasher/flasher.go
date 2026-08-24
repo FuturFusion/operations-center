@@ -240,8 +240,40 @@ func isSystemCertPoolTrusted(cert tls.Certificate) bool {
 		return false
 	}
 
-	opts := x509.VerifyOptions{Roots: roots}
-	_, err = cert.Leaf.Verify(opts)
+	return isCertChainTrusted(cert, roots)
+}
+
+// isCertChainTrusted reports, if the leaf certificate can be verified against
+// roots, taking the intermediate certificates of the chain into account.
+func isCertChainTrusted(cert tls.Certificate, roots *x509.CertPool) bool {
+	if len(cert.Certificate) == 0 {
+		return false
+	}
+
+	leaf := cert.Leaf
+	if leaf == nil {
+		var err error
+
+		leaf, err = x509.ParseCertificate(cert.Certificate[0])
+		if err != nil {
+			return false
+		}
+	}
+
+	intermediates := x509.NewCertPool()
+	for _, cert := range cert.Certificate[1:] {
+		intermediate, err := x509.ParseCertificate(cert)
+		if err != nil {
+			return false
+		}
+
+		intermediates.AddCert(intermediate)
+	}
+
+	_, err := leaf.Verify(x509.VerifyOptions{
+		Roots:         roots,
+		Intermediates: intermediates,
+	})
 
 	return err == nil
 }
