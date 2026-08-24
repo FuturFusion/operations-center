@@ -1549,9 +1549,9 @@ func (s *serverHandler) serverOSProxy(r *http.Request) response.Response {
 				return nil, nil
 			},
 		},
-		Director: func(r *http.Request) {
-			r.URL.Scheme = "https"
-			r.URL.Host = connectionURL.Host
+		Rewrite: func(r *httputil.ProxyRequest) {
+			r.Out.URL.Scheme = "https"
+			r.Out.URL.Host = connectionURL.Host
 		},
 	}
 
