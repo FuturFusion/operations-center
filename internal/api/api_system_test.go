@@ -19,6 +19,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/api"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
+	"github.com/FuturFusion/operations-center/internal/util/testing/certs"
 	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -100,9 +101,10 @@ func TestSystemCertificate(t *testing.T) {
 
 	initialCertificateSerialNumber := resp1.TLS.PeerCertificates[0].SerialNumber.String()
 
-	// 2. Update certificate
-	certPEM, keyPEM, err := incustls.GenerateMemCert(false, false)
-	require.NoError(t, err)
+	// 2. Update certificate with a certificate chain, consisting of the server
+	// certificate followed by the intermediate CA certificate.
+	_, intermediatePEM, leafPEM, keyPEM := certs.GenerateChain(t)
+	certPEM := append(append([]byte{}, leafPEM...), intermediatePEM...)
 
 	systemCertificatePost := system.CertificatePost{
 		Certificate: string(certPEM),
@@ -157,6 +159,7 @@ func TestSystemCertificate(t *testing.T) {
 
 	require.NotEqual(t, initialCertificateSerialNumber, updatedCertificateSerialNumber)
 	require.Equal(t, cert.Leaf.SerialNumber.String(), updatedCertificateSerialNumber)
+	require.Len(t, resp3.TLS.PeerCertificates, 2)
 
 	require.Equal(t, string(certPEM), certificateResponse.Metadata.Certificate)
 	require.Equal(t, incustls.CertFingerprint(cert.Leaf), certificateResponse.Metadata.Fingerprint)
