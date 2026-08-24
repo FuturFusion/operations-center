@@ -615,7 +615,11 @@ definitions:
             system certificate (server certificate) and key.
         properties:
             certificate:
-                description: The new certificate (X509 PEM encoded) for the system (server certificate).
+                description: |-
+                    The new certificate (X509 PEM encoded) for the system (server certificate).
+                    Optionally, intermediate CA certificates are appended to the server
+                    certificate to form a certificate chain. The server certificate is
+                    expected first, followed by the intermediate CA certificates in order.
                 example: X509 PEM certificate
                 type: string
                 x-go-name: Certificate
