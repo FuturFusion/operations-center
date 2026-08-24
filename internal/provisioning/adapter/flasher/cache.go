@@ -46,7 +46,7 @@ type imageCache struct {
 	dir string
 
 	// usage reports the space situation of the filesystem holding the cache.
-	usage func() (provisioning.UsageInformation, error)
+	usage func() (file.UsageInformation, error)
 
 	mu      sync.Mutex
 	entries map[string]*cacheEntry
