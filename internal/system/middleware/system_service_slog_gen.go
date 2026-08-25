@@ -40,6 +40,39 @@ func NewSystemServiceWithSlog(base system0.SystemService, opts ...SystemServiceW
 	return this
 }
 
+// CleanCache implements system0.SystemService.
+func (_d SystemServiceWithSlog) CleanCache(ctx context.Context) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling CleanCache")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method CleanCache returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method CleanCache returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method CleanCache finished")
+		}
+	}()
+	return _d._base.CleanCache(ctx)
+}
+
 // GetNetworkConfig implements system0.SystemService.
 func (_d SystemServiceWithSlog) GetNetworkConfig(ctx context.Context) (network system.Network) {
 	log := slog.With()

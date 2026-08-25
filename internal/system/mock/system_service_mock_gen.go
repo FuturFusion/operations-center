@@ -22,6 +22,9 @@ var _ system0.SystemService = &SystemServiceMock{}
 //
 //		// make and configure a mocked system0.SystemService
 //		mockedSystemService := &SystemServiceMock{
+//			CleanCacheFunc: func(ctx context.Context) error {
+//				panic("mock out the CleanCache method")
+//			},
 //			GetNetworkConfigFunc: func(ctx context.Context) system.Network {
 //				panic("mock out the GetNetworkConfig method")
 //			},
@@ -59,6 +62,9 @@ var _ system0.SystemService = &SystemServiceMock{}
 //
 //	}
 type SystemServiceMock struct {
+	// CleanCacheFunc mocks the CleanCache method.
+	CleanCacheFunc func(ctx context.Context) error
+
 	// GetNetworkConfigFunc mocks the GetNetworkConfig method.
 	GetNetworkConfigFunc func(ctx context.Context) system.Network
 
@@ -91,6 +97,11 @@ type SystemServiceMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// CleanCache holds details about calls to the CleanCache method.
+		CleanCache []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// GetNetworkConfig holds details about calls to the GetNetworkConfig method.
 		GetNetworkConfig []struct {
 			// Ctx is the ctx argument value.
@@ -156,6 +167,7 @@ type SystemServiceMock struct {
 			Cfg system.UpdatesPut
 		}
 	}
+	lockCleanCache              sync.RWMutex
 	lockGetNetworkConfig        sync.RWMutex
 	lockGetSecurityConfig       sync.RWMutex
 	lockGetSettingsConfig       sync.RWMutex
@@ -166,6 +178,38 @@ type SystemServiceMock struct {
 	lockUpdateSecurityConfig    sync.RWMutex
 	lockUpdateSettingsConfig    sync.RWMutex
 	lockUpdateUpdatesConfig     sync.RWMutex
+}
+
+// CleanCache calls CleanCacheFunc.
+func (mock *SystemServiceMock) CleanCache(ctx context.Context) error {
+	if mock.CleanCacheFunc == nil {
+		panic("SystemServiceMock.CleanCacheFunc: method is nil but SystemService.CleanCache was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockCleanCache.Lock()
+	mock.calls.CleanCache = append(mock.calls.CleanCache, callInfo)
+	mock.lockCleanCache.Unlock()
+	return mock.CleanCacheFunc(ctx)
+}
+
+// CleanCacheCalls gets all the calls that were made to CleanCache.
+// Check the length with:
+//
+//	len(mockedSystemService.CleanCacheCalls())
+func (mock *SystemServiceMock) CleanCacheCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockCleanCache.RLock()
+	calls = mock.calls.CleanCache
+	mock.lockCleanCache.RUnlock()
+	return calls
 }
 
 // GetNetworkConfig calls GetNetworkConfigFunc.
