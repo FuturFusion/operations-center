@@ -622,6 +622,14 @@ func determineClusterRoleAddress(server provisioning.Server) (string, error) {
 	return net.JoinHostPort(ip.String(), "8443"), nil
 }
 
+// hasApplication reports, whether the given application is installed on the server.
+// Some OS services are only available, if the corresponding application is installed.
+func hasApplication(server provisioning.Server, application images.UpdateFileComponent) bool {
+	return slices.ContainsFunc(server.VersionData.Applications, func(app api.ApplicationVersionData) bool {
+		return app.Name == string(application)
+	})
+}
+
 // memberDependentAddress returns the address of targetServer, which corresponds to
 // referenceAddress of referenceServer.
 //
@@ -966,14 +974,23 @@ func (s *clusterService) copyServicesConfigFromClusterMember(ctx context.Context
 		return fmt.Errorf("Failed to get nvme service config from cluster member %q (%s): %w", sourceServer.Name, sourceServer.GetConnectionURL(), err)
 	}
 
-	cephConfig, err := s.client.GetOSServiceCeph(ctx, sourceServer)
-	if err != nil {
-		return fmt.Errorf("Failed to get ceph service config from cluster member %q (%s): %w", sourceServer.Name, sourceServer.GetConnectionURL(), err)
+	copyCeph := hasApplication(sourceServer, images.UpdateFileComponentIncusCeph)
+	copyLinstor := hasApplication(sourceServer, images.UpdateFileComponentIncusLinstor)
+
+	var cephConfig incusosapi.ServiceCeph
+	if copyCeph {
+		cephConfig, err = s.client.GetOSServiceCeph(ctx, sourceServer)
+		if err != nil {
+			return fmt.Errorf("Failed to get ceph service config from cluster member %q (%s): %w", sourceServer.Name, sourceServer.GetConnectionURL(), err)
+		}
 	}
 
-	linstorConfig, err := s.client.GetOSServiceLinstor(ctx, sourceServer)
-	if err != nil {
-		return fmt.Errorf("Failed to get linstor service config from cluster member %q (%s): %w", sourceServer.Name, sourceServer.GetConnectionURL(), err)
+	var linstorConfig incusosapi.ServiceLinstor
+	if copyLinstor {
+		linstorConfig, err = s.client.GetOSServiceLinstor(ctx, sourceServer)
+		if err != nil {
+			return fmt.Errorf("Failed to get linstor service config from cluster member %q (%s): %w", sourceServer.Name, sourceServer.GetConnectionURL(), err)
+		}
 	}
 
 	ovnConfig, err := s.client.GetOSServiceOVN(ctx, sourceServer)
@@ -1002,6 +1019,12 @@ func (s *clusterService) copyServicesConfigFromClusterMember(ctx context.Context
 		ovn       incusosapi.ServiceOVNConfig
 	}
 
+	type copiedServiceConfig struct {
+		name          string
+		config        any
+		currentConfig any
+	}
+
 	currentServicesConfigs := make(map[string]servicesConfig, len(targetServers))
 	for _, server := range targetServers {
 		currentLVMConfig, err := s.client.GetOSServiceLVM(ctx, server)
@@ -1024,14 +1047,20 @@ func (s *clusterService) copyServicesConfigFromClusterMember(ctx context.Context
 			return fmt.Errorf("Failed to get nvme service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
 		}
 
-		currentCephConfig, err := s.client.GetOSServiceCeph(ctx, server)
-		if err != nil {
-			return fmt.Errorf("Failed to get ceph service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		var currentCephConfig incusosapi.ServiceCeph
+		if copyCeph && hasApplication(server, images.UpdateFileComponentIncusCeph) {
+			currentCephConfig, err = s.client.GetOSServiceCeph(ctx, server)
+			if err != nil {
+				return fmt.Errorf("Failed to get ceph service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+			}
 		}
 
-		currentLinstorConfig, err := s.client.GetOSServiceLinstor(ctx, server)
-		if err != nil {
-			return fmt.Errorf("Failed to get linstor service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+		var currentLinstorConfig incusosapi.ServiceLinstor
+		if copyLinstor && hasApplication(server, images.UpdateFileComponentIncusLinstor) {
+			currentLinstorConfig, err = s.client.GetOSServiceLinstor(ctx, server)
+			if err != nil {
+				return fmt.Errorf("Failed to get linstor service config from server %q (%s): %w", server.Name, server.GetConnectionURL(), err)
+			}
 		}
 
 		currentOVNConfig, err := s.client.GetOSServiceOVN(ctx, server)
@@ -1080,19 +1109,22 @@ func (s *clusterService) copyServicesConfigFromClusterMember(ctx context.Context
 			return fmt.Errorf("Failed to derive the ovn tunnel address for server %q (%s) from cluster member %q: %w", server.Name, server.GetConnectionURL(), sourceServer.Name, err)
 		}
 
-		copiedServicesConfigs := []struct {
-			name          string
-			config        any
-			currentConfig any
-		}{
+		copiedServicesConfigs := []copiedServiceConfig{
 			{name: "lvm", config: incusosapi.ServiceLVM{Config: serverLVMConfig}, currentConfig: incusosapi.ServiceLVM{Config: currentServicesConfig.lvm}},
 			{name: "iscsi", config: incusosapi.ServiceISCSI{Config: iscsiConfig.Config}, currentConfig: incusosapi.ServiceISCSI{Config: currentServicesConfig.iscsi}},
 			{name: "multipath", config: incusosapi.ServiceMultipath{Config: multipathConfig.Config}, currentConfig: incusosapi.ServiceMultipath{Config: currentServicesConfig.multipath}},
 			{name: "nvme", config: incusosapi.ServiceNVME{Config: nvmeConfig.Config}, currentConfig: incusosapi.ServiceNVME{Config: currentServicesConfig.nvme}},
-			{name: "ceph", config: incusosapi.ServiceCeph{Config: cephConfig.Config}, currentConfig: incusosapi.ServiceCeph{Config: currentServicesConfig.ceph}},
-			{name: "linstor", config: incusosapi.ServiceLinstor{Config: serverLinstorConfig}, currentConfig: incusosapi.ServiceLinstor{Config: currentServicesConfig.linstor}},
-			{name: "ovn", config: incusosapi.ServiceOVN{Config: serverOVNConfig}, currentConfig: incusosapi.ServiceOVN{Config: currentServicesConfig.ovn}},
 		}
+
+		if copyCeph && hasApplication(server, images.UpdateFileComponentIncusCeph) {
+			copiedServicesConfigs = append(copiedServicesConfigs, copiedServiceConfig{name: "ceph", config: incusosapi.ServiceCeph{Config: cephConfig.Config}, currentConfig: incusosapi.ServiceCeph{Config: currentServicesConfig.ceph}})
+		}
+
+		if copyLinstor && hasApplication(server, images.UpdateFileComponentIncusLinstor) {
+			copiedServicesConfigs = append(copiedServicesConfigs, copiedServiceConfig{name: "linstor", config: incusosapi.ServiceLinstor{Config: serverLinstorConfig}, currentConfig: incusosapi.ServiceLinstor{Config: currentServicesConfig.linstor}})
+		}
+
+		copiedServicesConfigs = append(copiedServicesConfigs, copiedServiceConfig{name: "ovn", config: incusosapi.ServiceOVN{Config: serverOVNConfig}, currentConfig: incusosapi.ServiceOVN{Config: currentServicesConfig.ovn}})
 
 		for _, serviceConfig := range copiedServicesConfigs {
 			err = s.client.UpdateOSService(ctx, server, serviceConfig.name, serviceConfig.config)
@@ -1311,51 +1343,55 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 	}
 
 	// Compare Ceph service configuration.
-	referenceCephConfig, err := s.client.GetOSServiceCeph(ctx, servers[0])
-	if err != nil {
-		return false, "", fmt.Errorf("Failed to get Ceph service configuration for server %q: %w", servers[0].Name, err)
-	}
-
-	for _, server := range servers[1:] {
-		cephConfig, err := s.client.GetOSServiceCeph(ctx, server)
+	if hasApplication(servers[0], images.UpdateFileComponentIncusCeph) {
+		referenceCephConfig, err := s.client.GetOSServiceCeph(ctx, servers[0])
 		if err != nil {
-			return false, "", fmt.Errorf("Failed to get Ceph service configuration for server %q: %w", server.Name, err)
+			return false, "", fmt.Errorf("Failed to get Ceph service configuration for server %q: %w", servers[0].Name, err)
 		}
 
-		if !reflect.DeepEqual(referenceCephConfig.Config, cephConfig.Config) {
-			return false, fmt.Sprintf("Ceph configuration mismatch, found %v (%s) and %v (%s)", referenceCephConfig.Config, servers[0].Name, cephConfig.Config, server.Name), nil
+		for _, server := range servers[1:] {
+			cephConfig, err := s.client.GetOSServiceCeph(ctx, server)
+			if err != nil {
+				return false, "", fmt.Errorf("Failed to get Ceph service configuration for server %q: %w", server.Name, err)
+			}
+
+			if !reflect.DeepEqual(referenceCephConfig.Config, cephConfig.Config) {
+				return false, fmt.Sprintf("Ceph configuration mismatch, found %v (%s) and %v (%s)", referenceCephConfig.Config, servers[0].Name, cephConfig.Config, server.Name), nil
+			}
 		}
 	}
 
 	// Compare Linstor service configuration. The listen address is member dependent,
 	// unless it is empty or a wildcard address, so it is compared separately.
-	referenceLinstorConfig, err := s.client.GetOSServiceLinstor(ctx, servers[0])
-	if err != nil {
-		return false, "", fmt.Errorf("Failed to get Linstor service configuration for server %q: %w", servers[0].Name, err)
-	}
-
-	for _, server := range servers[1:] {
-		linstorConfig, err := s.client.GetOSServiceLinstor(ctx, server)
+	if hasApplication(servers[0], images.UpdateFileComponentIncusLinstor) {
+		referenceLinstorConfig, err := s.client.GetOSServiceLinstor(ctx, servers[0])
 		if err != nil {
-			return false, "", fmt.Errorf("Failed to get Linstor service configuration for server %q: %w", server.Name, err)
+			return false, "", fmt.Errorf("Failed to get Linstor service configuration for server %q: %w", servers[0].Name, err)
 		}
 
-		expectedListenAddress, err := memberDependentListenAddress(servers[0], referenceLinstorConfig.Config.ListenAddress, server)
-		if err != nil {
-			return false, fmt.Sprintf("Linstor listen address mismatch, failed to derive the listen address for %s: %v", server.Name, err), nil
-		}
+		for _, server := range servers[1:] {
+			linstorConfig, err := s.client.GetOSServiceLinstor(ctx, server)
+			if err != nil {
+				return false, "", fmt.Errorf("Failed to get Linstor service configuration for server %q: %w", server.Name, err)
+			}
 
-		if expectedListenAddress != linstorConfig.Config.ListenAddress {
-			return false, fmt.Sprintf("Linstor listen address mismatch, found %q (%s) and %q (%s), expected %q for %s", referenceLinstorConfig.Config.ListenAddress, servers[0].Name, linstorConfig.Config.ListenAddress, server.Name, expectedListenAddress, server.Name), nil
-		}
+			expectedListenAddress, err := memberDependentListenAddress(servers[0], referenceLinstorConfig.Config.ListenAddress, server)
+			if err != nil {
+				return false, fmt.Sprintf("Linstor listen address mismatch, failed to derive the listen address for %s: %v", server.Name, err), nil
+			}
 
-		referenceConfig := referenceLinstorConfig.Config
-		referenceConfig.ListenAddress = ""
-		serverConfig := linstorConfig.Config
-		serverConfig.ListenAddress = ""
+			if expectedListenAddress != linstorConfig.Config.ListenAddress {
+				return false, fmt.Sprintf("Linstor listen address mismatch, found %q (%s) and %q (%s), expected %q for %s", referenceLinstorConfig.Config.ListenAddress, servers[0].Name, linstorConfig.Config.ListenAddress, server.Name, expectedListenAddress, server.Name), nil
+			}
 
-		if !reflect.DeepEqual(referenceConfig, serverConfig) {
-			return false, fmt.Sprintf("Linstor configuration mismatch, found %v (%s) and %v (%s)", referenceLinstorConfig.Config, servers[0].Name, linstorConfig.Config, server.Name), nil
+			referenceConfig := referenceLinstorConfig.Config
+			referenceConfig.ListenAddress = ""
+			serverConfig := linstorConfig.Config
+			serverConfig.ListenAddress = ""
+
+			if !reflect.DeepEqual(referenceConfig, serverConfig) {
+				return false, fmt.Sprintf("Linstor configuration mismatch, found %v (%s) and %v (%s)", referenceLinstorConfig.Config, servers[0].Name, linstorConfig.Config, server.Name), nil
+			}
 		}
 	}
 
