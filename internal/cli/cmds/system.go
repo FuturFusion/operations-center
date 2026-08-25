@@ -55,5 +55,11 @@ func (c *CmdSystem) Command() *cobra.Command {
 
 	cmd.AddCommand(updatesCmd.Command())
 
+	cleanCacheCmd := system.CmdCleanCache{
+		OCClient: c.OCClient,
+	}
+
+	cmd.AddCommand(cleanCacheCmd.Command())
+
 	return cmd
 }
