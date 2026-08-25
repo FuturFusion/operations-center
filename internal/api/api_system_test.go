@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -138,4 +139,97 @@ func TestSystemCertificatePut(t *testing.T) {
 
 	require.NotEqual(t, initialCertificateSerialNumber, updatedCertificateSerialNumber)
 	require.Equal(t, cert.Leaf.SerialNumber.String(), updatedCertificateSerialNumber)
+}
+
+// Test POST /1.0/system/:clean-cache.
+func TestSystemCleanCachePost(t *testing.T) {
+	// Setup daemon
+	varDir := t.TempDir()
+	cacheDir := t.TempDir()
+
+	ctx := context.Background()
+
+	env := &mock.EnvironmentMock{
+		IsIncusOSFunc: func() bool {
+			return false
+		},
+		GetUnixSocketFunc: func() string {
+			return filepath.Join(varDir, "unix.socket")
+		},
+		VarDirFunc: func() string {
+			return varDir
+		},
+		CacheDirFunc: func() string {
+			return cacheDir
+		},
+		UsrShareDirFunc: func() string {
+			return varDir
+		},
+		GetTokenFunc: func(ctx context.Context) (string, error) {
+			return "", nil
+		},
+	}
+
+	config.InitTest(t, env, nil, config.InternalConfig{
+		IsBackgroundTasksDisabled: true,
+		SourcePollSkipFirst:       true,
+	})
+	err := config.UpdateNetwork(ctx, system.NetworkPut{
+		OperationsCenterAddress: "https://127.0.0.1:17444",
+		RestServerAddress:       testingnet.LocalhostIP(t) + ":17444",
+	})
+	require.NoError(t, err)
+
+	d := api.NewDaemon(
+		ctx,
+		env,
+	)
+
+	err = d.Start(ctx)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err = d.Stop(context.Background())
+		require.NoError(t, err)
+	})
+
+	socketClient := &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				return net.Dial("unix", filepath.Join(varDir, "unix.socket"))
+			},
+		},
+	}
+
+	// Populate the cache directory with some leftover data.
+	err = os.MkdirAll(filepath.Join(cacheDir, "seed-images"), 0o700)
+	require.NoError(t, err)
+
+	err = os.WriteFile(filepath.Join(cacheDir, "seed-images", "leftover.img"), []byte(`leftover`), 0o600)
+	require.NoError(t, err)
+
+	// The ACME account below the cache dir can not be regenerated.
+	err = os.MkdirAll(filepath.Join(cacheDir, "acme", "accounts"), 0o700)
+	require.NoError(t, err)
+
+	err = os.WriteFile(filepath.Join(cacheDir, "acme", "accounts", "key.pem"), []byte(`account key`), 0o600)
+	require.NoError(t, err)
+
+	// Execute test
+	req, err := http.NewRequest(http.MethodPost, "http://unix/1.0/system/:clean-cache", nil)
+	require.NoError(t, err)
+
+	resp, err := socketClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Contains(t, string(body), `"Success"`)
+
+	// Assert results
+	entries, err := os.ReadDir(filepath.Join(cacheDir, "seed-images"))
+	require.NoError(t, err)
+	require.Empty(t, entries)
+
+	require.FileExists(t, filepath.Join(cacheDir, "acme", "accounts", "key.pem"))
 }
