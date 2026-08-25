@@ -68,7 +68,7 @@ func (_d ServerClientPortWithPrometheus) Evacuate(ctx context.Context, server pr
 }
 
 // GetNetworkConfig implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithPrometheus) GetNetworkConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemNetwork, err error) {
+func (_d ServerClientPortWithPrometheus) GetNetworkConfig(ctx context.Context, server provisioning.Server) (serverSystemNetwork provisioning.ServerSystemNetwork, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -96,7 +96,7 @@ func (_d ServerClientPortWithPrometheus) GetOSData(ctx context.Context, endpoint
 }
 
 // GetProviderConfig implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithPrometheus) GetProviderConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemProvider, err error) {
+func (_d ServerClientPortWithPrometheus) GetProviderConfig(ctx context.Context, server provisioning.Server) (serverSystemProvider provisioning.ServerSystemProvider, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -138,7 +138,7 @@ func (_d ServerClientPortWithPrometheus) GetServerType(ctx context.Context, endp
 }
 
 // GetStorageConfig implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithPrometheus) GetStorageConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemStorage, err error) {
+func (_d ServerClientPortWithPrometheus) GetStorageConfig(ctx context.Context, server provisioning.Server) (serverSystemStorage provisioning.ServerSystemStorage, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -152,7 +152,7 @@ func (_d ServerClientPortWithPrometheus) GetStorageConfig(ctx context.Context, s
 }
 
 // GetSystemKernel implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithPrometheus) GetSystemKernel(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemKernel, err error) {
+func (_d ServerClientPortWithPrometheus) GetSystemKernel(ctx context.Context, server provisioning.Server) (serverSystemKernel provisioning.ServerSystemKernel, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -166,7 +166,7 @@ func (_d ServerClientPortWithPrometheus) GetSystemKernel(ctx context.Context, se
 }
 
 // GetSystemLogging implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithPrometheus) GetSystemLogging(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemLogging, err error) {
+func (_d ServerClientPortWithPrometheus) GetSystemLogging(ctx context.Context, server provisioning.Server) (serverSystemLogging provisioning.ServerSystemLogging, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -180,7 +180,7 @@ func (_d ServerClientPortWithPrometheus) GetSystemLogging(ctx context.Context, s
 }
 
 // GetUpdateConfig implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithPrometheus) GetUpdateConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemUpdate, err error) {
+func (_d ServerClientPortWithPrometheus) GetUpdateConfig(ctx context.Context, server provisioning.Server) (serverSystemUpdate provisioning.ServerSystemUpdate, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"

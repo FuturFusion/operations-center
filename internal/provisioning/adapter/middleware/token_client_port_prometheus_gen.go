@@ -39,7 +39,7 @@ func NewTokenClientPortWithPrometheus(base provisioning.TokenClientPort, instanc
 }
 
 // GetSecurityConfig implements provisioning.TokenClientPort.
-func (_d TokenClientPortWithPrometheus) GetSecurityConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemSecurity, err error) {
+func (_d TokenClientPortWithPrometheus) GetSecurityConfig(ctx context.Context, server provisioning.Server) (serverSystemSecurity provisioning.ServerSystemSecurity, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"

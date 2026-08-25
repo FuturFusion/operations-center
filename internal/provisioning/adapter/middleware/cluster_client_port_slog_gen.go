@@ -151,7 +151,7 @@ func (_d ClusterClientPortWithSlog) GetClusterNodeNames(ctx context.Context, end
 }
 
 // GetNetworkConfig implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) GetNetworkConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemNetwork, err error) {
+func (_d ClusterClientPortWithSlog) GetNetworkConfig(ctx context.Context, server provisioning.Server) (serverSystemNetwork provisioning.ServerSystemNetwork, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -164,7 +164,7 @@ func (_d ClusterClientPortWithSlog) GetNetworkConfig(ctx context.Context, server
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("serverSystemNetwork", serverSystemNetwork),
 				slog.Any("err", err),
 			)
 		} else {
@@ -536,7 +536,7 @@ func (_d ClusterClientPortWithSlog) GetRemoteCertificate(ctx context.Context, en
 }
 
 // GetStorageConfig implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) GetStorageConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemStorage, err error) {
+func (_d ClusterClientPortWithSlog) GetStorageConfig(ctx context.Context, server provisioning.Server) (serverSystemStorage provisioning.ServerSystemStorage, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -549,7 +549,7 @@ func (_d ClusterClientPortWithSlog) GetStorageConfig(ctx context.Context, server
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("serverSystemStorage", serverSystemStorage),
 				slog.Any("err", err),
 			)
 		} else {
@@ -571,7 +571,7 @@ func (_d ClusterClientPortWithSlog) GetStorageConfig(ctx context.Context, server
 }
 
 // IncusClient implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) IncusClient(ctx context.Context, endpoint provisioning.Endpoint) (v provisioning.InstanceServer, err error) {
+func (_d ClusterClientPortWithSlog) IncusClient(ctx context.Context, endpoint provisioning.Endpoint) (instanceServer provisioning.InstanceServer, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -584,7 +584,7 @@ func (_d ClusterClientPortWithSlog) IncusClient(ctx context.Context, endpoint pr
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("instanceServer", instanceServer),
 				slog.Any("err", err),
 			)
 		} else {

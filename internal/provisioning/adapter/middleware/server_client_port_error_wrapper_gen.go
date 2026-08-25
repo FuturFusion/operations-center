@@ -47,7 +47,7 @@ func (_d ServerClientPortWithErrorWrapper) Evacuate(ctx context.Context, server 
 }
 
 // GetNetworkConfig implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithErrorWrapper) GetNetworkConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemNetwork, err error) {
+func (_d ServerClientPortWithErrorWrapper) GetNetworkConfig(ctx context.Context, server provisioning.Server) (serverSystemNetwork provisioning.ServerSystemNetwork, err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)
@@ -67,7 +67,7 @@ func (_d ServerClientPortWithErrorWrapper) GetOSData(ctx context.Context, endpoi
 }
 
 // GetProviderConfig implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithErrorWrapper) GetProviderConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemProvider, err error) {
+func (_d ServerClientPortWithErrorWrapper) GetProviderConfig(ctx context.Context, server provisioning.Server) (serverSystemProvider provisioning.ServerSystemProvider, err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)
@@ -97,7 +97,7 @@ func (_d ServerClientPortWithErrorWrapper) GetServerType(ctx context.Context, en
 }
 
 // GetStorageConfig implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithErrorWrapper) GetStorageConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemStorage, err error) {
+func (_d ServerClientPortWithErrorWrapper) GetStorageConfig(ctx context.Context, server provisioning.Server) (serverSystemStorage provisioning.ServerSystemStorage, err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)
@@ -107,7 +107,7 @@ func (_d ServerClientPortWithErrorWrapper) GetStorageConfig(ctx context.Context,
 }
 
 // GetSystemKernel implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithErrorWrapper) GetSystemKernel(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemKernel, err error) {
+func (_d ServerClientPortWithErrorWrapper) GetSystemKernel(ctx context.Context, server provisioning.Server) (serverSystemKernel provisioning.ServerSystemKernel, err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)
@@ -117,7 +117,7 @@ func (_d ServerClientPortWithErrorWrapper) GetSystemKernel(ctx context.Context, 
 }
 
 // GetSystemLogging implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithErrorWrapper) GetSystemLogging(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemLogging, err error) {
+func (_d ServerClientPortWithErrorWrapper) GetSystemLogging(ctx context.Context, server provisioning.Server) (serverSystemLogging provisioning.ServerSystemLogging, err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)
@@ -127,7 +127,7 @@ func (_d ServerClientPortWithErrorWrapper) GetSystemLogging(ctx context.Context,
 }
 
 // GetUpdateConfig implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithErrorWrapper) GetUpdateConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemUpdate, err error) {
+func (_d ServerClientPortWithErrorWrapper) GetUpdateConfig(ctx context.Context, server provisioning.Server) (serverSystemUpdate provisioning.ServerSystemUpdate, err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)

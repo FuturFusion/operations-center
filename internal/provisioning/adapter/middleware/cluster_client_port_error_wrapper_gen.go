@@ -61,7 +61,7 @@ func (_d ClusterClientPortWithErrorWrapper) GetClusterNodeNames(ctx context.Cont
 }
 
 // GetNetworkConfig implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithErrorWrapper) GetNetworkConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemNetwork, err error) {
+func (_d ClusterClientPortWithErrorWrapper) GetNetworkConfig(ctx context.Context, server provisioning.Server) (serverSystemNetwork provisioning.ServerSystemNetwork, err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)
@@ -171,7 +171,7 @@ func (_d ClusterClientPortWithErrorWrapper) GetRemoteCertificate(ctx context.Con
 }
 
 // GetStorageConfig implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithErrorWrapper) GetStorageConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemStorage, err error) {
+func (_d ClusterClientPortWithErrorWrapper) GetStorageConfig(ctx context.Context, server provisioning.Server) (serverSystemStorage provisioning.ServerSystemStorage, err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)
@@ -181,7 +181,7 @@ func (_d ClusterClientPortWithErrorWrapper) GetStorageConfig(ctx context.Context
 }
 
 // IncusClient implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithErrorWrapper) IncusClient(ctx context.Context, endpoint provisioning.Endpoint) (v provisioning.InstanceServer, err error) {
+func (_d ClusterClientPortWithErrorWrapper) IncusClient(ctx context.Context, endpoint provisioning.Endpoint) (instanceServer provisioning.InstanceServer, err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)

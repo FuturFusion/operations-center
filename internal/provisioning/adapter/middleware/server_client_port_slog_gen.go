@@ -111,7 +111,7 @@ func (_d ServerClientPortWithSlog) Evacuate(ctx context.Context, server provisio
 }
 
 // GetNetworkConfig implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) GetNetworkConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemNetwork, err error) {
+func (_d ServerClientPortWithSlog) GetNetworkConfig(ctx context.Context, server provisioning.Server) (serverSystemNetwork provisioning.ServerSystemNetwork, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -124,7 +124,7 @@ func (_d ServerClientPortWithSlog) GetNetworkConfig(ctx context.Context, server 
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("serverSystemNetwork", serverSystemNetwork),
 				slog.Any("err", err),
 			)
 		} else {
@@ -181,7 +181,7 @@ func (_d ServerClientPortWithSlog) GetOSData(ctx context.Context, endpoint provi
 }
 
 // GetProviderConfig implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) GetProviderConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemProvider, err error) {
+func (_d ServerClientPortWithSlog) GetProviderConfig(ctx context.Context, server provisioning.Server) (serverSystemProvider provisioning.ServerSystemProvider, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -194,7 +194,7 @@ func (_d ServerClientPortWithSlog) GetProviderConfig(ctx context.Context, server
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("serverSystemProvider", serverSystemProvider),
 				slog.Any("err", err),
 			)
 		} else {
@@ -286,7 +286,7 @@ func (_d ServerClientPortWithSlog) GetServerType(ctx context.Context, endpoint p
 }
 
 // GetStorageConfig implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) GetStorageConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemStorage, err error) {
+func (_d ServerClientPortWithSlog) GetStorageConfig(ctx context.Context, server provisioning.Server) (serverSystemStorage provisioning.ServerSystemStorage, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -299,7 +299,7 @@ func (_d ServerClientPortWithSlog) GetStorageConfig(ctx context.Context, server 
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("serverSystemStorage", serverSystemStorage),
 				slog.Any("err", err),
 			)
 		} else {
@@ -321,7 +321,7 @@ func (_d ServerClientPortWithSlog) GetStorageConfig(ctx context.Context, server 
 }
 
 // GetSystemKernel implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) GetSystemKernel(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemKernel, err error) {
+func (_d ServerClientPortWithSlog) GetSystemKernel(ctx context.Context, server provisioning.Server) (serverSystemKernel provisioning.ServerSystemKernel, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -334,7 +334,7 @@ func (_d ServerClientPortWithSlog) GetSystemKernel(ctx context.Context, server p
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("serverSystemKernel", serverSystemKernel),
 				slog.Any("err", err),
 			)
 		} else {
@@ -356,7 +356,7 @@ func (_d ServerClientPortWithSlog) GetSystemKernel(ctx context.Context, server p
 }
 
 // GetSystemLogging implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) GetSystemLogging(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemLogging, err error) {
+func (_d ServerClientPortWithSlog) GetSystemLogging(ctx context.Context, server provisioning.Server) (serverSystemLogging provisioning.ServerSystemLogging, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -369,7 +369,7 @@ func (_d ServerClientPortWithSlog) GetSystemLogging(ctx context.Context, server 
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("serverSystemLogging", serverSystemLogging),
 				slog.Any("err", err),
 			)
 		} else {
@@ -391,7 +391,7 @@ func (_d ServerClientPortWithSlog) GetSystemLogging(ctx context.Context, server 
 }
 
 // GetUpdateConfig implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) GetUpdateConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemUpdate, err error) {
+func (_d ServerClientPortWithSlog) GetUpdateConfig(ctx context.Context, server provisioning.Server) (serverSystemUpdate provisioning.ServerSystemUpdate, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -404,7 +404,7 @@ func (_d ServerClientPortWithSlog) GetUpdateConfig(ctx context.Context, server p
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("serverSystemUpdate", serverSystemUpdate),
 				slog.Any("err", err),
 			)
 		} else {

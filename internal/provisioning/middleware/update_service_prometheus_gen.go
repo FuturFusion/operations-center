@@ -142,7 +142,7 @@ func (_d UpdateServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUI
 }
 
 // GetChangelog implements provisioning.UpdateService.
-func (_d UpdateServiceWithPrometheus) GetChangelog(ctx context.Context, currentID uuid.UUID, priorID uuid.UUID, architecture images.UpdateFileArchitecture) (v api.UpdateChangelog, err error) {
+func (_d UpdateServiceWithPrometheus) GetChangelog(ctx context.Context, currentID uuid.UUID, priorID uuid.UUID, architecture images.UpdateFileArchitecture) (updateChangelog api.UpdateChangelog, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -156,7 +156,7 @@ func (_d UpdateServiceWithPrometheus) GetChangelog(ctx context.Context, currentI
 }
 
 // GetChangelogByChannel implements provisioning.UpdateService.
-func (_d UpdateServiceWithPrometheus) GetChangelogByChannel(ctx context.Context, UUID uuid.UUID, channelName string, upstream bool, architecture images.UpdateFileArchitecture) (v api.UpdateChangelog, err error) {
+func (_d UpdateServiceWithPrometheus) GetChangelogByChannel(ctx context.Context, UUID uuid.UUID, channelName string, upstream bool, architecture images.UpdateFileArchitecture) (updateChangelog api.UpdateChangelog, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
