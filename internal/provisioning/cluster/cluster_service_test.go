@@ -3447,6 +3447,14 @@ func readyServerForClustering(id int64, name string) *provisioning.Server {
 					Name:    "incus",
 					Version: "1",
 				},
+				{
+					Name:    "incus-ceph",
+					Version: "1",
+				},
+				{
+					Name:    "incus-linstor",
+					Version: "1",
+				},
 			},
 		},
 	}
@@ -3517,6 +3525,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -3540,6 +3556,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -3557,6 +3581,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -3622,6 +3654,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -3645,6 +3685,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -3662,6 +3710,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -3721,6 +3777,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -3902,6 +3966,14 @@ func TestClusterService_AddServers(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -3954,6 +4026,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -4173,6 +4253,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -4209,6 +4297,14 @@ func TestClusterService_AddServers(t *testing.T) {
 							Applications: []api.ApplicationVersionData{
 								{
 									Name:    "incus",
+									Version: "1",
+								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
 									Version: "1",
 								},
 							},
@@ -4249,6 +4345,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -4285,6 +4389,14 @@ func TestClusterService_AddServers(t *testing.T) {
 							Applications: []api.ApplicationVersionData{
 								{
 									Name:    "incus",
+									Version: "1",
+								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
 									Version: "1",
 								},
 							},
@@ -4363,6 +4475,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -4399,6 +4519,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -4416,6 +4544,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -4453,6 +4589,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -4470,6 +4614,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -4509,6 +4661,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -4526,6 +4686,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -4565,6 +4733,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -4582,6 +4758,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -4619,6 +4803,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -4636,6 +4828,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -4682,6 +4882,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -4699,6 +4907,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -4752,6 +4968,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -4769,6 +4993,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -4807,6 +5039,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -4824,6 +5064,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -4862,6 +5110,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -4883,6 +5139,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -4920,6 +5184,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -4944,6 +5216,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -4961,6 +5241,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -5001,6 +5289,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -5024,6 +5320,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -5041,6 +5345,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -5079,6 +5391,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -5102,6 +5422,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -5119,6 +5447,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -5157,6 +5493,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -5180,6 +5524,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -5197,6 +5549,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -5238,6 +5598,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -5261,6 +5629,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -5278,6 +5654,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -5316,6 +5700,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -5339,6 +5731,14 @@ func TestClusterService_AddServers(t *testing.T) {
 									Name:    "incus",
 									Version: "1",
 								},
+								{
+									Name:    "incus-ceph",
+									Version: "1",
+								},
+								{
+									Name:    "incus-linstor",
+									Version: "1",
+								},
 							},
 						},
 					},
@@ -5356,6 +5756,14 @@ func TestClusterService_AddServers(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -5530,9 +5938,24 @@ func TestClusterService_AddServers(t *testing.T) {
 }
 
 func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
+	servicesApplications := []api.ApplicationVersionData{
+		{Name: "incus", Version: "1"},
+		{Name: "incus-ceph", Version: "1"},
+		{Name: "incus-linstor", Version: "1"},
+	}
+
+	targetServer := func(id int64, name string) provisioning.Server {
+		return provisioning.Server{
+			ID:          id,
+			Name:        name,
+			VersionData: api.ServerVersionData{Applications: servicesApplications},
+		}
+	}
+
 	sourceServer := provisioning.Server{
-		ID:   1,
-		Name: "one",
+		ID:          1,
+		Name:        "one",
+		VersionData: api.ServerVersionData{Applications: servicesApplications},
 		OSData: api.OSData{
 			Network: incusosapi.SystemNetwork{
 				State: incusosapi.SystemNetworkState{
@@ -5573,8 +5996,9 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 
 	serverWithClusterRoleAddress := func(id int64, name string, address string) provisioning.Server {
 		return provisioning.Server{
-			ID:   id,
-			Name: name,
+			ID:          id,
+			Name:        name,
+			VersionData: api.ServerVersionData{Applications: servicesApplications},
 			OSData: api.OSData{
 				Network: incusosapi.SystemNetwork{
 					State: incusosapi.SystemNetworkState{
@@ -5592,6 +6016,7 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 
 	tests := []struct {
 		name                        string
+		sourceServer                *provisioning.Server
 		targetServers               []provisioning.Server
 		clientGetOSServiceLVM       []queue.Item[incusosapi.ServiceLVM]
 		clientGetOSServiceISCSI     []queue.Item[incusosapi.ServiceISCSI]
@@ -5608,8 +6033,8 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "success",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new-1"},
-				{ID: 12, Name: "new-2"},
+				targetServer(11, "new-1"),
+				targetServer(12, "new-2"),
 			},
 			// The services config is read from the source server exactly once,
 			// independent of the number of target servers. The current config of the
@@ -5746,9 +6171,88 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			// The ceph and linstor services are not available on a source server
+			// without the respective application, so their config is not copied.
+			name:          "success - source server without incus-ceph and incus-linstor application",
+			sourceServer:  &provisioning.Server{ID: 1, Name: "one"},
+			targetServers: []provisioning.Server{targetServer(11, "new")},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: currentLVM(91)},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: currentISCSI("new")},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: currentMultipath("new")},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: currentNVME},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: currentOVN},
+			},
+
+			assertErr: require.NoError,
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{SystemID: 91}}},
+				{serverName: "new", name: "iscsi", config: incusosapi.ServiceISCSI{}},
+				{serverName: "new", name: "multipath", config: incusosapi.ServiceMultipath{}},
+				{serverName: "new", name: "nvme", config: incusosapi.ServiceNVME{}},
+				{serverName: "new", name: "ovn", config: incusosapi.ServiceOVN{}},
+			},
+		},
+		{
+			// The ceph and linstor services are not available on a target server
+			// without the respective application, so their config is not copied.
+			name:          "success - target server without incus-ceph and incus-linstor application",
+			targetServers: []provisioning.Server{{ID: 11, Name: "new"}},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: currentLVM(91)},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: currentISCSI("new")},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: currentMultipath("new")},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: currentNVME},
+			},
+			// The config of the source server is still read, only the target server
+			// is skipped.
+			clientGetOSServiceCeph: []queue.Item[incusosapi.ServiceCeph]{
+				{Value: incusosapi.ServiceCeph{}},
+			},
+			clientGetOSServiceLinstor: []queue.Item[incusosapi.ServiceLinstor]{
+				{Value: incusosapi.ServiceLinstor{}},
+			},
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: currentOVN},
+			},
+
+			assertErr: require.NoError,
+			wantOSServiceConfig: []osServiceConfig{
+				{serverName: "new", name: "lvm", config: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{SystemID: 91}}},
+				{serverName: "new", name: "iscsi", config: incusosapi.ServiceISCSI{}},
+				{serverName: "new", name: "multipath", config: incusosapi.ServiceMultipath{}},
+				{serverName: "new", name: "nvme", config: incusosapi.ServiceNVME{}},
+				{serverName: "new", name: "ovn", config: incusosapi.ServiceOVN{}},
+			},
+		},
+		{
 			name: "success - lvm disabled on source server",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new"},
+				targetServer(11, "new"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				// A disabled LVM service does not get a system_id assigned, the
@@ -5795,7 +6299,7 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "success - lvm already enabled on target server",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new"},
+				targetServer(11, "new"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 1}}},
@@ -5842,7 +6346,7 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - client.GetOSServiceLVM - source server",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new"},
+				targetServer(11, "new"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Err: boom.Error},
@@ -5853,7 +6357,7 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - client.GetOSServiceISCSI - source server",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new"},
+				targetServer(11, "new"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{}},
@@ -5867,7 +6371,7 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - client.GetOSServiceMultipath - source server",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new"},
+				targetServer(11, "new"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{}},
@@ -5884,7 +6388,7 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - client.GetOSServiceNVME - source server",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new"},
+				targetServer(11, "new"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{}},
@@ -5904,7 +6408,7 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - client.GetOSServiceCeph - source server",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new"},
+				targetServer(11, "new"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{}},
@@ -5927,7 +6431,7 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - client.GetOSServiceLinstor - source server",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new"},
+				targetServer(11, "new"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{}},
@@ -5953,7 +6457,7 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - client.GetOSServiceLVM - target server",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new"},
+				targetServer(11, "new"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{}},
@@ -5986,8 +6490,8 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - client.GetOSServiceNVME - second target server",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new-1"},
-				{ID: 12, Name: "new-2"},
+				targetServer(11, "new-1"),
+				targetServer(12, "new-2"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{}},
@@ -6030,8 +6534,8 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - lvm enabled with server ID > 2000",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new-1"},
-				{ID: 2001, Name: "new-2"},
+				targetServer(11, "new-1"),
+				targetServer(2001, "new-2"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{Config: incusosapi.ServiceLVMConfig{Enabled: true, SystemID: 1}}},
@@ -6128,7 +6632,7 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - target server without an address for the linstor listen address",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new"},
+				targetServer(11, "new"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{}},
@@ -6168,7 +6672,7 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - client.UpdateOSService - lvm",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new"},
+				targetServer(11, "new"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{}},
@@ -6209,7 +6713,7 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - client.UpdateOSService - iscsi",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new"},
+				targetServer(11, "new"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{}},
@@ -6252,7 +6756,7 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - client.UpdateOSService - multipath",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new"},
+				targetServer(11, "new"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{}},
@@ -6297,7 +6801,7 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - client.UpdateOSService - nvme",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new"},
+				targetServer(11, "new"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{}},
@@ -6343,7 +6847,7 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - client.UpdateOSService - ceph",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new"},
+				targetServer(11, "new"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{}},
@@ -6391,7 +6895,7 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - client.UpdateOSService - linstor",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new"},
+				targetServer(11, "new"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{}},
@@ -6441,7 +6945,7 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - client.UpdateOSService - ovn",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new"},
+				targetServer(11, "new"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{}},
@@ -6493,8 +6997,8 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 		{
 			name: "error - client.UpdateOSService - second target server",
 			targetServers: []provisioning.Server{
-				{ID: 11, Name: "new-1"},
-				{ID: 12, Name: "new-2"},
+				targetServer(11, "new-1"),
+				targetServer(12, "new-2"),
 			},
 			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
 				{Value: incusosapi.ServiceLVM{}},
@@ -6605,7 +7109,12 @@ func TestClusterService_copyServicesConfigFromClusterMember(t *testing.T) {
 			)
 
 			// Run test
-			err := clusterSvc.CopyServicesConfigFromClusterMember(t.Context(), sourceServer, tc.targetServers)
+			source := sourceServer
+			if tc.sourceServer != nil {
+				source = *tc.sourceServer
+			}
+
+			err := clusterSvc.CopyServicesConfigFromClusterMember(t.Context(), source, tc.targetServers)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -6668,6 +7177,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Version: "1",
 							},
 							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
+							{
 								Name:    "gpu-support",
 								Version: "1",
 							},
@@ -6688,6 +7205,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 							// gpu-support and debug are missing, but this is ok.
@@ -6886,6 +7411,75 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 			wantConsistent: true,
 		},
 		{
+			// The ceph and linstor services are not available on servers without the
+			// respective application, so their configuration is not compared.
+			name: "success - without incus-ceph and incus-linstor application",
+			servers: []provisioning.Server{
+				{
+					ID:   1,
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					ID:   2,
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				{Value: incusosapi.SystemNetwork{Config: &incusosapi.SystemNetworkConfig{}}},
+				{Value: incusosapi.SystemNetwork{Config: &incusosapi.SystemNetworkConfig{}}},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				{Value: incusosapi.SystemStorage{}},
+				{Value: incusosapi.SystemStorage{}},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: incusosapi.ServiceLVM{}},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: incusosapi.ServiceMultipath{}},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: incusosapi.ServiceNVME{}},
+			},
+			// No ceph and linstor service configuration is fetched.
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: incusosapi.ServiceOVN{}},
+			},
+
+			assertErr:      require.NoError,
+			wantConsistent: true,
+		},
+		{
 			name: "success - auto fix LVM",
 			servers: []provisioning.Server{
 				{
@@ -6898,6 +7492,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 							{
@@ -6921,6 +7523,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 							// gpu-support and debug are missing, but this is ok.
@@ -7145,6 +7755,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -7157,6 +7775,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -7179,6 +7805,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -7217,6 +7851,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -7229,6 +7871,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -7258,6 +7908,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -7270,6 +7928,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -7305,6 +7971,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -7317,6 +7991,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -7364,6 +8046,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -7376,6 +8066,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -7419,6 +8117,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -7431,6 +8137,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -7485,6 +8199,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -7497,6 +8219,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -7569,6 +8299,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -7581,6 +8319,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -7640,6 +8386,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -7652,6 +8406,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -7724,6 +8486,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -7736,6 +8506,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -7818,6 +8596,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -7830,6 +8616,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -7917,6 +8711,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -7929,6 +8731,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -8025,6 +8835,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -8037,6 +8855,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -8140,6 +8966,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -8153,6 +8987,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -8256,6 +9098,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -8269,6 +9119,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -8374,6 +9232,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -8386,6 +9252,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -8488,6 +9362,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -8500,6 +9382,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -8611,6 +9501,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -8623,6 +9521,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -8743,6 +9649,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -8755,6 +9669,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -8881,6 +9803,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -8893,6 +9823,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -9024,6 +9962,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -9036,6 +9982,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -9182,6 +10136,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -9194,6 +10156,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -9352,6 +10322,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -9364,6 +10342,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -9525,6 +10511,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -9537,6 +10531,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -9712,6 +10714,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -9724,6 +10734,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -9912,6 +10930,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -9924,6 +10950,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -10115,6 +11149,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -10127,6 +11169,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -10327,6 +11377,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -10339,6 +11397,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -10559,6 +11625,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -10583,6 +11657,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -10795,6 +11877,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -10819,6 +11909,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -11013,6 +12111,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -11025,6 +12131,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -11219,6 +12333,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -11231,6 +12353,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -11437,6 +12567,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -11461,6 +12599,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -11673,6 +12819,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -11697,6 +12851,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -11897,6 +13059,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -11909,6 +13079,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
@@ -12109,6 +13287,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 								Name:    "incus",
 								Version: "1",
 							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
+								Version: "1",
+							},
 						},
 					},
 				},
@@ -12121,6 +13307,14 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 						Applications: []api.ApplicationVersionData{
 							{
 								Name:    "incus",
+								Version: "1",
+							},
+							{
+								Name:    "incus-ceph",
+								Version: "1",
+							},
+							{
+								Name:    "incus-linstor",
 								Version: "1",
 							},
 						},
