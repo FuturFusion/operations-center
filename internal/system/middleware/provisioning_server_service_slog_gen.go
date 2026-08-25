@@ -110,7 +110,7 @@ func (_d ProvisioningServerServiceWithSlog) GetAllWithFilter(ctx context.Context
 }
 
 // GetSystemProvider implements system.ProvisioningServerService.
-func (_d ProvisioningServerServiceWithSlog) GetSystemProvider(ctx context.Context, name string) (v provisioning.ServerSystemProvider, err error) {
+func (_d ProvisioningServerServiceWithSlog) GetSystemProvider(ctx context.Context, name string) (serverSystemProvider provisioning.ServerSystemProvider, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -123,7 +123,7 @@ func (_d ProvisioningServerServiceWithSlog) GetSystemProvider(ctx context.Contex
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("serverSystemProvider", serverSystemProvider),
 				slog.Any("err", err),
 			)
 		} else {
