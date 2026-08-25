@@ -543,6 +543,42 @@ func (_d BMCServerClientPortWithSlog) ServerSetLocationIndicator(ctx context.Con
 	return _d._base.ServerSetLocationIndicator(ctx, server, active)
 }
 
+// TaskState implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) TaskState(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (bMCTaskState api.BMCTaskState, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.Any("taskMonitor", taskMonitor),
+		)
+	}
+	log.DebugContext(ctx, "=> calling TaskState")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bMCTaskState", bMCTaskState),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method TaskState returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method TaskState returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method TaskState finished")
+		}
+	}()
+	return _d._base.TaskState(ctx, server, taskMonitor)
+}
+
 // WaitForTask implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) WaitForTask(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (err error) {
 	log := slog.With()

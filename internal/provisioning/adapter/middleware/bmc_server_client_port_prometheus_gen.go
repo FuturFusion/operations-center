@@ -235,6 +235,20 @@ func (_d BMCServerClientPortWithPrometheus) ServerSetLocationIndicator(ctx conte
 	return _d.base.ServerSetLocationIndicator(ctx, server, active)
 }
 
+// TaskState implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithPrometheus) TaskState(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (bMCTaskState api.BMCTaskState, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		bmcserverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "TaskState", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.TaskState(ctx, server, taskMonitor)
+}
+
 // WaitForTask implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithPrometheus) WaitForTask(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (err error) {
 	_since := time.Now()

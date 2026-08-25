@@ -64,6 +64,9 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //			ServerSetLocationIndicatorFunc: func(ctx context.Context, server provisioning.Server, active bool) error {
 //				panic("mock out the ServerSetLocationIndicator method")
 //			},
+//			TaskStateFunc: func(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (api.BMCTaskState, error) {
+//				panic("mock out the TaskState method")
+//			},
 //			WaitForTaskFunc: func(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) error {
 //				panic("mock out the WaitForTask method")
 //			},
@@ -115,6 +118,9 @@ type BMCServerClientPortMock struct {
 
 	// ServerSetLocationIndicatorFunc mocks the ServerSetLocationIndicator method.
 	ServerSetLocationIndicatorFunc func(ctx context.Context, server provisioning.Server, active bool) error
+
+	// TaskStateFunc mocks the TaskState method.
+	TaskStateFunc func(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (api.BMCTaskState, error)
 
 	// WaitForTaskFunc mocks the WaitForTask method.
 	WaitForTaskFunc func(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) error
@@ -247,6 +253,15 @@ type BMCServerClientPortMock struct {
 			// Active is the active argument value.
 			Active bool
 		}
+		// TaskState holds details about calls to the TaskState method.
+		TaskState []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// TaskMonitor is the taskMonitor argument value.
+			TaskMonitor *provisioning.BMCTaskMonitor
+		}
 		// WaitForTask holds details about calls to the WaitForTask method.
 		WaitForTask []struct {
 			// Ctx is the ctx argument value.
@@ -271,6 +286,7 @@ type BMCServerClientPortMock struct {
 	lockServerPowerOn              sync.RWMutex
 	lockServerRestart              sync.RWMutex
 	lockServerSetLocationIndicator sync.RWMutex
+	lockTaskState                  sync.RWMutex
 	lockWaitForTask                sync.RWMutex
 }
 
@@ -831,6 +847,46 @@ func (mock *BMCServerClientPortMock) ServerSetLocationIndicatorCalls() []struct 
 	mock.lockServerSetLocationIndicator.RLock()
 	calls = mock.calls.ServerSetLocationIndicator
 	mock.lockServerSetLocationIndicator.RUnlock()
+	return calls
+}
+
+// TaskState calls TaskStateFunc.
+func (mock *BMCServerClientPortMock) TaskState(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (api.BMCTaskState, error) {
+	if mock.TaskStateFunc == nil {
+		panic("BMCServerClientPortMock.TaskStateFunc: method is nil but BMCServerClientPort.TaskState was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		Server      provisioning.Server
+		TaskMonitor *provisioning.BMCTaskMonitor
+	}{
+		Ctx:         ctx,
+		Server:      server,
+		TaskMonitor: taskMonitor,
+	}
+	mock.lockTaskState.Lock()
+	mock.calls.TaskState = append(mock.calls.TaskState, callInfo)
+	mock.lockTaskState.Unlock()
+	return mock.TaskStateFunc(ctx, server, taskMonitor)
+}
+
+// TaskStateCalls gets all the calls that were made to TaskState.
+// Check the length with:
+//
+//	len(mockedBMCServerClientPort.TaskStateCalls())
+func (mock *BMCServerClientPortMock) TaskStateCalls() []struct {
+	Ctx         context.Context
+	Server      provisioning.Server
+	TaskMonitor *provisioning.BMCTaskMonitor
+} {
+	var calls []struct {
+		Ctx         context.Context
+		Server      provisioning.Server
+		TaskMonitor *provisioning.BMCTaskMonitor
+	}
+	mock.lockTaskState.RLock()
+	calls = mock.calls.TaskState
+	mock.lockTaskState.RUnlock()
 	return calls
 }
 
