@@ -127,6 +127,83 @@ func TestMediaTypesForURL(t *testing.T) {
 	}
 }
 
+func TestMediaTypeForInsert(t *testing.T) {
+	tests := []struct {
+		name            string
+		slotMediaTypes  []schemas.VirtualMediaType
+		mediaURL        string
+		allowableValues []string
+
+		want schemas.VirtualMediaType
+	}{
+		{
+			name:           "raw image on a slot taking every media type",
+			slotMediaTypes: []schemas.VirtualMediaType{schemas.CDVirtualMediaType, schemas.DVDVirtualMediaType, schemas.FloppyVirtualMediaType, schemas.USBStickVirtualMediaType},
+			mediaURL:       "https://example.com/file.raw",
+
+			want: schemas.USBStickVirtualMediaType,
+		},
+		{
+			name:           "ISO image on a slot taking every media type",
+			slotMediaTypes: []schemas.VirtualMediaType{schemas.CDVirtualMediaType, schemas.DVDVirtualMediaType, schemas.FloppyVirtualMediaType, schemas.USBStickVirtualMediaType},
+			mediaURL:       "https://example.com/file.iso",
+
+			want: schemas.CDVirtualMediaType,
+		},
+		{
+			name:           "slot taking a single media type",
+			slotMediaTypes: []schemas.VirtualMediaType{schemas.DVDVirtualMediaType},
+			mediaURL:       "https://example.com/file.iso",
+
+			want: schemas.DVDVirtualMediaType,
+		},
+		{
+			name:     "slot reporting no media types",
+			mediaURL: "https://example.com/file.raw",
+
+			want: schemas.USBStickVirtualMediaType,
+		},
+		{
+			name:           "image of an unrecognized kind",
+			slotMediaTypes: []schemas.VirtualMediaType{schemas.CDVirtualMediaType, schemas.DVDVirtualMediaType},
+			mediaURL:       "https://example.com/image",
+
+			want: "",
+		},
+		{
+			name:           "slot taking none of the media types the image fits",
+			slotMediaTypes: []schemas.VirtualMediaType{schemas.FloppyVirtualMediaType, schemas.USBStickVirtualMediaType},
+			mediaURL:       "https://example.com/file.iso",
+
+			want: "",
+		},
+		{
+			name:            "allowable values narrow the choice down",
+			slotMediaTypes:  []schemas.VirtualMediaType{schemas.CDVirtualMediaType, schemas.DVDVirtualMediaType, schemas.FloppyVirtualMediaType, schemas.USBStickVirtualMediaType},
+			mediaURL:        "https://example.com/file.raw",
+			allowableValues: []string{"CD", "DVD", "Floppy"},
+
+			want: schemas.FloppyVirtualMediaType,
+		},
+		{
+			name:            "allowable values leaving nothing the image fits",
+			slotMediaTypes:  []schemas.VirtualMediaType{schemas.CDVirtualMediaType, schemas.DVDVirtualMediaType, schemas.FloppyVirtualMediaType, schemas.USBStickVirtualMediaType},
+			mediaURL:        "https://example.com/file.raw",
+			allowableValues: []string{"CD", "DVD"},
+
+			want: "",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			virtualMedia := virtualMediaSlot{VirtualMedia: &schemas.VirtualMedia{MediaTypes: tc.slotMediaTypes}}
+
+			require.Equal(t, tc.want, mediaTypeForInsert(tc.mediaURL, mediaTypesForImage(virtualMedia, tc.mediaURL), tc.allowableValues))
+		})
+	}
+}
+
 func TestIsParameterMissing(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -191,6 +268,111 @@ func TestIsParameterMissing(t *testing.T) {
 	}
 }
 
+func TestIsHintRejected(t *testing.T) {
+	tests := []struct {
+		name      string
+		body      string
+		parameter string
+
+		want bool
+	}{
+		{
+			name:      "action parameter unknown",
+			body:      `{"error":{"code":"Base.1.5.ActionParameterUnknown","message":"The action VirtualMedia.InsertMedia was submitted with the invalid parameter MediaType.","@Message.ExtendedInfo":[{"MessageId":"Base.1.5.ActionParameterUnknown","MessageArgs":["VirtualMedia.InsertMedia","MediaType"],"RelatedProperties":["/MediaType"]}]}}`,
+			parameter: "MediaType",
+
+			want: true,
+		},
+		{
+			name:      "action parameter not supported",
+			body:      `{"error":{"code":"Base.1.18.1.ActionParameterNotSupported","@Message.ExtendedInfo":[{"MessageId":"Base.1.18.1.ActionParameterNotSupported","MessageArgs":["MediaType","VirtualMedia.InsertMedia"]}]}}`,
+			parameter: "MediaType",
+
+			want: true,
+		},
+		{
+			// BMCs treating the action parameters as resource properties.
+			name:      "property unknown",
+			body:      `{"error":{"code":"iLO.0.10.ExtendedInfo","@Message.ExtendedInfo":[{"MessageID":"Base.0.10.PropertyUnknown","MessageArgs":["MediaType"]}]}}`,
+			parameter: "MediaType",
+
+			want: true,
+		},
+		{
+			name:      "value not in the list the BMC accepts",
+			body:      `{"error":{"code":"Base.1.5.ActionParameterValueNotInList","@Message.ExtendedInfo":[{"MessageId":"Base.1.5.ActionParameterValueNotInList","MessageArgs":["USBStick","MediaType","VirtualMedia.InsertMedia"]}]}}`,
+			parameter: "MediaType",
+
+			want: true,
+		},
+		{
+			name:      "general error naming the parameter in the message",
+			body:      `{"error":{"code":"Base.1.0.GeneralError","message":"The parameter MediaType is not supported by this implementation."}}`,
+			parameter: "MediaType",
+
+			want: true,
+		},
+		{
+			name:      "property value not in the list the BMC accepts",
+			body:      `{"error":{"code":"Base.1.5.PropertyValueNotInList","@Message.ExtendedInfo":[{"MessageId":"Base.1.5.PropertyValueNotInList","MessageArgs":["USBStick","MediaType"]}]}}`,
+			parameter: "MediaType",
+
+			want: true,
+		},
+		{
+			name:      "property value not supported",
+			body:      `{"error":{"code":"Base.1.5.PropertyValueNotSupported","@Message.ExtendedInfo":[{"MessageId":"Base.1.5.PropertyValueNotSupported","RelatedProperties":["#/MediaType"]}]}}`,
+			parameter: "MediaType",
+
+			want: true,
+		},
+		{
+			name:      "property value error",
+			body:      `{"error":{"code":"Base.1.5.PropertyValueError","message":"The value for the property MediaType is invalid."}}`,
+			parameter: "MediaType",
+
+			want: true,
+		},
+		{
+			name:      "property not writable",
+			body:      `{"error":{"code":"Base.1.5.PropertyNotWritable","@Message.ExtendedInfo":[{"MessageId":"Base.1.5.PropertyNotWritable","MessageArgs":["MediaType"]}]}}`,
+			parameter: "MediaType",
+
+			want: true,
+		},
+		{
+			// "MediaType" is a substring of the standard property "MediaTypes".
+			name:      "general error naming a longer property the name is part of",
+			body:      `{"error":{"code":"Base.1.0.GeneralError","message":"The image does not match the MediaTypes supported by this slot."}}`,
+			parameter: "MediaType",
+
+			want: false,
+		},
+		{
+			name:      "different parameter",
+			body:      `{"error":{"code":"Base.1.5.ActionParameterUnknown","@Message.ExtendedInfo":[{"MessageId":"Base.1.5.ActionParameterUnknown","RelatedProperties":["/TransferMethod"]}]}}`,
+			parameter: "MediaType",
+
+			want: false,
+		},
+		{
+			name:      "parameter reported as missing, not rejected",
+			body:      `{"error":{"code":"Base.1.5.ActionParameterMissing","@Message.ExtendedInfo":[{"MessageId":"Base.1.5.ActionParameterMissing","RelatedProperties":["/MediaType"]}]}}`,
+			parameter: "MediaType",
+
+			want: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := schemas.ConstructError(400, []byte(tc.body))
+
+			require.Equal(t, tc.want, isHintRejected(err, tc.parameter))
+		})
+	}
+}
+
 func TestIsPropertyRejected(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -242,8 +424,10 @@ func TestIsParameterMissing_nonRedfishError(t *testing.T) {
 	err := errors.New("connection refused")
 
 	require.False(t, isParameterMissing(err, "TransferProtocolType"))
+	require.False(t, isHintRejected(err, "MediaType"))
 	require.False(t, isPropertyRejected(err, "Inserted"))
 	require.False(t, isPreconditionRejected(err))
+	require.False(t, isRequestRejected(err))
 }
 
 func TestIsPreconditionRejected(t *testing.T) {
@@ -303,6 +487,78 @@ func TestIsPreconditionRejected(t *testing.T) {
 			err := schemas.ConstructError(tc.statusCode, []byte(tc.body))
 
 			require.Equal(t, tc.want, isPreconditionRejected(err))
+		})
+	}
+}
+
+func TestIsRequestRejected(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+		body       string
+
+		want bool
+	}{
+		{
+			name:       "rejected parameter",
+			statusCode: http.StatusBadRequest,
+			body:       `{"error":{"code":"Base.1.5.ActionParameterUnknown","@Message.ExtendedInfo":[{"MessageId":"Base.1.5.ActionParameterUnknown","MessageArgs":["VirtualMedia.InsertMedia","MediaType"]}]}}`,
+
+			want: true,
+		},
+		{
+			// The case the media type hint is given up for: the BMC turned the
+			// request down without saying anything which could be read.
+			name:       "client error in no readable form",
+			statusCode: http.StatusBadRequest,
+			body:       `<html><body>Bad Request</body></html>`,
+
+			want: true,
+		},
+		{
+			name:       "not found",
+			statusCode: http.StatusNotFound,
+			body:       `{"error":{"code":"Base.1.5.ResourceMissingAtURI"}}`,
+
+			want: true,
+		},
+		{
+			name:       "conflict",
+			statusCode: http.StatusConflict,
+			body:       `{"error":{"code":"Base.1.5.ResourceInUse"}}`,
+
+			want: true,
+		},
+		{
+			// The BMC may well have attached the media before failing to report
+			// it, so the request must not be repeated.
+			name:       "internal server error",
+			statusCode: http.StatusInternalServerError,
+			body:       `{"error":{"code":"Base.1.0.InternalError"}}`,
+
+			want: false,
+		},
+		{
+			name:       "service unavailable",
+			statusCode: http.StatusServiceUnavailable,
+			body:       `{"error":{"code":"Base.1.5.ServiceTemporarilyUnavailable"}}`,
+
+			want: false,
+		},
+		{
+			name:       "unreadable response",
+			statusCode: 0,
+			body:       `unexpected EOF`,
+
+			want: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := schemas.ConstructError(tc.statusCode, []byte(tc.body))
+
+			require.Equal(t, tc.want, isRequestRejected(err))
 		})
 	}
 }

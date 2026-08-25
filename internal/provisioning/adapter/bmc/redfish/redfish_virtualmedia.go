@@ -16,29 +16,41 @@ import (
 )
 
 // maxInsertMediaAttempts bounds the number of times insertMedia retries the
-// InsertMedia action after adding a parameter the BMC reported as missing. One
-// attempt per parameter insertMedia knows how to supply, plus the initial one.
-const maxInsertMediaAttempts = 3
+// InsertMedia action after adjusting its parameters. One attempt per adjustment
+// insertMedia knows how to make, plus the initial one: supplying
+// TransferProtocolType, supplying TransferMethod and dropping MediaType, the
+// latter either because the BMC named it or because it turned the request down
+// without naming anything.
+const maxInsertMediaAttempts = 4
 
-// insertMedia attaches mediaURL to a virtual media slot.
+// insertMedia attaches mediaURL to a virtual media slot, asking the BMC to
+// emulate one of mediaTypes, and reports the media type it ended up asking for.
 //
-// Three ways of doing so exist, in descending order of preference: the standard
+// An empty media type means the BMC was left to decide on its own, either
+// because nothing narrowed the choice down or because it turned the request for
+// a specific one down.
+//
+// Three ways of attaching exist, in descending order of preference: the standard
 // VirtualMedia.InsertMedia action, a vendor specific action for BMCs not
 // offering the standard one, and modifying the resource directly for BMCs
 // offering no action at all.
-func insertMedia(virtualMedia virtualMediaSlot, mediaURL string) (*schemas.TaskMonitorInfo, error) {
+func insertMedia(virtualMedia virtualMediaSlot, mediaURL string, mediaTypes []schemas.VirtualMediaType) (schemas.VirtualMediaType, *schemas.TaskMonitorInfo, error) {
 	if virtualMedia.SupportsMediaInsert {
-		return insertMediaAction(virtualMedia, mediaURL)
+		return insertMediaAction(virtualMedia, mediaURL, mediaTypes)
 	}
 
 	target := oemActionTarget(virtualMedia, "InsertVirtualMedia")
 	if target != "" {
 		// Vendor specific actions predate the properties the standard action
 		// takes besides the image, so the image is all which is sent.
-		return postVirtualMediaAction(virtualMedia, target, map[string]any{"Image": mediaURL})
+		taskMonitor, err := postVirtualMediaAction(virtualMedia, target, map[string]any{"Image": mediaURL})
+
+		return "", taskMonitor, err
 	}
 
-	return nil, patchVirtualMedia(virtualMedia, new(mediaURL))
+	mediaType, err := patchVirtualMedia(virtualMedia, new(mediaURL), mediaTypes)
+
+	return mediaType, nil, err
 }
 
 // insertMediaAction attaches mediaURL using the standard
@@ -51,7 +63,14 @@ func insertMedia(virtualMedia virtualMediaSlot, mediaURL string) (*schemas.TaskM
 // Start from the minimal request the specification asks for, add the parameters
 // the BMC declares in the action info of InsertMedia, and add whatever it
 // reports as missing after a rejected attempt.
-func insertMediaAction(virtualMedia virtualMediaSlot, mediaURL string) (*schemas.TaskMonitorInfo, error) {
+//
+// MediaType is the one parameter sent without the BMC asking for it. It is not
+// part of the schema of the action, but a slot supporting more than one media
+// type otherwise leaves the BMC to guess which one to emulate from the image URL
+// alone. A BMC enumerating the parameters of the action has said what it takes,
+// so the hint is only offered to one which does not, and given up on as soon as
+// the BMC objects to it.
+func insertMediaAction(virtualMedia virtualMediaSlot, mediaURL string, mediaTypes []schemas.VirtualMediaType) (schemas.VirtualMediaType, *schemas.TaskMonitorInfo, error) {
 	params := &schemas.VirtualMediaInsertMediaParameters{
 		Image: mediaURL,
 	}
@@ -59,11 +78,13 @@ func insertMediaAction(virtualMedia virtualMediaSlot, mediaURL string) (*schemas
 	// The action info is optional, BMCs not offering one simply leave the
 	// request minimal.
 	actionInfo, err := virtualMedia.InsertMediaActionInfo()
-	if err == nil {
-		err = applyInsertMediaActionInfo(params, actionInfo, mediaURL)
+	if err == nil && len(actionInfo.Parameters) > 0 {
+		err = applyInsertMediaActionInfo(params, actionInfo, mediaURL, mediaTypes)
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
+	} else {
+		params.MediaType = mediaTypeForInsert(mediaURL, mediaTypes, nil)
 	}
 
 	var taskMonitor *schemas.TaskMonitorInfo
@@ -71,20 +92,22 @@ func insertMediaAction(virtualMedia virtualMediaSlot, mediaURL string) (*schemas
 	for range maxInsertMediaAttempts {
 		taskMonitor, err = virtualMedia.InsertMedia(params)
 		if err == nil {
-			return taskMonitor, nil
+			return params.MediaType, taskMonitor, nil
 		}
 
-		if !addMissingInsertMediaParameter(params, mediaURL, err) {
+		if !addMissingInsertMediaParameter(params, mediaURL, err) &&
+			!dropRejectedInsertMediaParameter(params, err) &&
+			!dropMediaTypeParameter(params, err) {
 			break
 		}
 	}
 
-	return nil, redfishRequestError(err, virtualMedia.registry, http.MethodPost, standardActionTarget(virtualMedia, "VirtualMedia.InsertMedia"), params)
+	return "", nil, redfishRequestError(err, virtualMedia.registry, http.MethodPost, standardActionTarget(virtualMedia, "VirtualMedia.InsertMedia"), params)
 }
 
 // applyInsertMediaActionInfo adds the parameters the BMC declares for
 // InsertMedia to the request.
-func applyInsertMediaActionInfo(params *schemas.VirtualMediaInsertMediaParameters, actionInfo *schemas.ActionInfo, mediaURL string) error {
+func applyInsertMediaActionInfo(params *schemas.VirtualMediaInsertMediaParameters, actionInfo *schemas.ActionInfo, mediaURL string, mediaTypes []schemas.VirtualMediaType) error {
 	for _, parameter := range actionInfo.Parameters {
 		switch parameter.Name {
 		case "TransferProtocolType":
@@ -107,6 +130,11 @@ func applyInsertMediaActionInfo(params *schemas.VirtualMediaInsertMediaParameter
 			}
 
 			params.TransferMethod = new(schemas.StreamTransferMethod)
+
+		case "MediaType":
+			// A BMC declaring the parameter also declares which media types it
+			// takes, so let it narrow the choice down.
+			params.MediaType = mediaTypeForInsert(mediaURL, mediaTypes, parameter.AllowableValues)
 		}
 	}
 
@@ -134,6 +162,31 @@ func addMissingInsertMediaParameter(params *schemas.VirtualMediaInsertMediaParam
 	return false
 }
 
+// dropRejectedInsertMediaParameter removes the parameter the BMC turned down
+// from the request and reports whether the request is worth repeating.
+func dropRejectedInsertMediaParameter(params *schemas.VirtualMediaInsertMediaParameters, err error) bool {
+	if params.MediaType == "" || !isHintRejected(err, "MediaType") {
+		return false
+	}
+
+	params.MediaType = ""
+
+	return true
+}
+
+// dropMediaTypeParameter gives the media type hint up after the BMC turned the
+// request down without naming what it took offense at, and reports whether the
+// request is worth repeating.
+func dropMediaTypeParameter(params *schemas.VirtualMediaInsertMediaParameters, err error) bool {
+	if params.MediaType == "" || !isRequestRejected(err) {
+		return false
+	}
+
+	params.MediaType = ""
+
+	return true
+}
+
 // ejectMedia detaches the image from a virtual media slot, using the same three
 // ways of doing so as insertMedia.
 func ejectMedia(virtualMedia virtualMediaSlot) (*schemas.TaskMonitorInfo, error) {
@@ -146,7 +199,9 @@ func ejectMedia(virtualMedia virtualMediaSlot) (*schemas.TaskMonitorInfo, error)
 		return postVirtualMediaAction(virtualMedia, target, map[string]any{})
 	}
 
-	return nil, patchVirtualMedia(virtualMedia, nil)
+	_, err := patchVirtualMedia(virtualMedia, nil, nil)
+
+	return nil, err
 }
 
 // standardActionTarget returns the target URI of the standard action with the
@@ -238,14 +293,16 @@ func postVirtualMediaAction(virtualMedia virtualMediaSlot, target string, payloa
 }
 
 // maxPatchVirtualMediaAttempts bounds the number of times patchVirtualMedia
-// repeats the request after dropping a property the BMC rejected. One attempt
-// per property it is allowed to drop, plus the initial one.
-const maxPatchVirtualMediaAttempts = 3
+// repeats the request after dropping a property. One attempt per property it is
+// allowed to drop, plus the initial one: Inserted, WriteProtected and MediaType,
+// the latter either because the BMC named it or because it turned the request
+// down without naming anything.
+const maxPatchVirtualMediaAttempts = 4
 
 // patchVirtualMedia modifies the virtual media resource directly, for BMCs
 // exposing neither a standard nor a vendor specific action. Passing a nil image
-// ejects.
-func patchVirtualMedia(virtualMedia virtualMediaSlot, image *string) error {
+// ejects. It reports the media type the request ended up carrying.
+func patchVirtualMedia(virtualMedia virtualMediaSlot, image *string, mediaTypes []schemas.VirtualMediaType) (schemas.VirtualMediaType, error) {
 	payload := map[string]any{
 		"Image":    image,
 		"Inserted": image != nil,
@@ -254,6 +311,15 @@ func patchVirtualMedia(virtualMedia virtualMediaSlot, image *string) error {
 	// Only meaningful while media is attached.
 	if image != nil {
 		payload["WriteProtected"] = true
+
+		// For the same reason the InsertMedia action carries it: without being
+		// told, the BMC guesses which media type to emulate. There is no action
+		// info to ask what the resource takes, so the hint is offered to every
+		// BMC and given up on as soon as one objects to it.
+		mediaType := mediaTypeForInsert(*image, mediaTypes, nil)
+		if mediaType != "" {
+			payload["MediaType"] = mediaType
+		}
 	}
 
 	var err error
@@ -261,22 +327,37 @@ func patchVirtualMedia(virtualMedia virtualMediaSlot, image *string) error {
 	for range maxPatchVirtualMediaAttempts {
 		err = patchVirtualMediaResource(virtualMedia, payload)
 		if err == nil {
-			return nil
+			return payloadMediaType(payload), nil
 		}
 
-		if !dropRejectedProperty(payload, err) {
+		if !dropRejectedProperty(payload, err) && !dropMediaTypeProperty(payload, err) {
 			break
 		}
 	}
 
-	return err
+	return "", err
 }
 
-// dropRejectedProperty removes the property the BMC reported as unknown or not
-// writable from the payload and reports whether the request is worth repeating.
-//
-// Image is never dropped, sending it is the whole point of the request.
+// payloadMediaType returns the media type the payload still carries.
+func payloadMediaType(payload map[string]any) schemas.VirtualMediaType {
+	mediaType, ok := payload["MediaType"].(schemas.VirtualMediaType)
+	if !ok {
+		return ""
+	}
+
+	return mediaType
+}
+
+// dropRejectedProperty removes the property the BMC turned down from the payload
+// and reports whether the request is worth repeating.
 func dropRejectedProperty(payload map[string]any, err error) bool {
+	_, present := payload["MediaType"]
+	if present && isHintRejected(err, "MediaType") {
+		delete(payload, "MediaType")
+
+		return true
+	}
+
 	for _, property := range []string{"Inserted", "WriteProtected"} {
 		_, present := payload[property]
 		if present && isPropertyRejected(err, property) {
@@ -287,6 +368,20 @@ func dropRejectedProperty(payload map[string]any, err error) bool {
 	}
 
 	return false
+}
+
+// dropMediaTypeProperty gives the media type hint up and reports whether the
+// request is worth repeating, for the same reason dropMediaTypeParameter does and
+// under the same condition.
+func dropMediaTypeProperty(payload map[string]any, err error) bool {
+	_, present := payload["MediaType"]
+	if !present || !isRequestRejected(err) {
+		return false
+	}
+
+	delete(payload, "MediaType")
+
+	return true
 }
 
 // patchVirtualMediaResource sends the payload to the virtual media resource.
@@ -368,6 +463,52 @@ func mediaTypesForURL(mediaURL string) []schemas.VirtualMediaType {
 	}
 
 	return nil
+}
+
+// mediaTypesForImage returns the media types able to hold the image about to be
+// attached, narrowed down to what the slot supports, most suitable first.
+// Either side being unknown leaves the other one to decide on its own.
+func mediaTypesForImage(virtualMedia virtualMediaSlot, mediaURL string) []schemas.VirtualMediaType {
+	imageMediaTypes := mediaTypesForURL(mediaURL)
+
+	if len(imageMediaTypes) == 0 {
+		return virtualMedia.MediaTypes
+	}
+
+	if len(virtualMedia.MediaTypes) == 0 {
+		return imageMediaTypes
+	}
+
+	mediaTypes := make([]schemas.VirtualMediaType, 0, len(imageMediaTypes))
+
+	for _, mediaType := range imageMediaTypes {
+		if slices.Contains(virtualMedia.MediaTypes, mediaType) {
+			mediaTypes = append(mediaTypes, mediaType)
+		}
+	}
+
+	return mediaTypes
+}
+
+// mediaTypeForInsert returns the media type to ask the BMC to emulate for the
+// image, picked from mediaTypes and narrowed down to allowableValues if the BMC
+// declares any, or an empty string to leave the choice to the BMC.
+//
+// An image of an unrecognized kind offers nothing to choose by, and a slot
+// taking none of the media types the image fits was already turned away by
+// checkMediaTypeSupported.
+func mediaTypeForInsert(mediaURL string, mediaTypes []schemas.VirtualMediaType, allowableValues []string) schemas.VirtualMediaType {
+	if len(mediaTypesForURL(mediaURL)) == 0 {
+		return ""
+	}
+
+	for _, mediaType := range mediaTypes {
+		if len(allowableValues) == 0 || slices.Contains(allowableValues, string(mediaType)) {
+			return mediaType
+		}
+	}
+
+	return ""
 }
 
 // transferProtocolTypeForURL returns the Redfish transfer protocol matching the
