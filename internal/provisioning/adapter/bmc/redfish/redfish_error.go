@@ -203,6 +203,16 @@ func isValueRejected(err error, property string, value string) bool {
 		(redfishErrorMentions(err, property) || redfishErrorMentions(err, value))
 }
 
+func isTaskMonitorGone(err error) bool {
+	var redfishErr *schemas.Error
+	if !errors.As(err, &redfishErr) {
+		return false
+	}
+
+	return redfishErr.HTTPReturnedStatusCode == http.StatusNotFound ||
+		redfishErr.HTTPReturnedStatusCode == http.StatusGone
+}
+
 func isPreconditionRejected(err error) bool {
 	var redfishErr *schemas.Error
 	if !errors.As(err, &redfishErr) {

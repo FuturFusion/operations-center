@@ -2470,21 +2470,32 @@ func (s *serverService) BMCRefreshByName(ctx context.Context, name string) error
 }
 
 func (s *serverService) BMCServerPowerOnByName(ctx context.Context, name string, force bool) error {
+	_, err := s.bmcServerPowerOnByName(ctx, name, force, true)
+
+	return err
+}
+
+// bmcServerPowerOnByName returns the task monitor instead of awaiting it in the background, if wait is false.
+func (s *serverService) bmcServerPowerOnByName(ctx context.Context, name string, force bool, wait bool) (*provisioning.BMCTaskMonitor, error) {
 	server, client, err := s.getServerAndBMCClientByName(ctx, name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	taskMonitor, err := client.ServerPowerOn(ctx, *server, force)
 	if err != nil {
-		return fmt.Errorf("Failed to trigger power on of server %q via BMC: %w", server.Name, err)
+		return nil, fmt.Errorf("Failed to trigger power on of server %q via BMC: %w", server.Name, err)
+	}
+
+	if !wait {
+		return taskMonitor, nil
 	}
 
 	go func() {
 		// Use a detached context in order to make sure, no existing DB transaction is inherited.
 		ctx := context.Background()
 
-		err = client.WaitForTask(ctx, *server, taskMonitor)
+		err := client.WaitForTask(ctx, *server, taskMonitor)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after server power on operation", logger.Err(err))
 		}
@@ -2495,25 +2506,36 @@ func (s *serverService) BMCServerPowerOnByName(ctx context.Context, name string,
 		}
 	}()
 
-	return nil
+	return nil, nil
 }
 
 func (s *serverService) BMCServerPowerOffByName(ctx context.Context, name string, force bool) error {
+	_, err := s.bmcServerPowerOffByName(ctx, name, force, true)
+
+	return err
+}
+
+// bmcServerPowerOffByName returns the task monitor instead of awaiting it in the background, if wait is false.
+func (s *serverService) bmcServerPowerOffByName(ctx context.Context, name string, force bool, wait bool) (*provisioning.BMCTaskMonitor, error) {
 	server, client, err := s.getServerAndBMCClientByName(ctx, name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	taskMonitor, err := client.ServerPowerOff(ctx, *server, force)
 	if err != nil {
-		return fmt.Errorf("Failed to trigger power off of server %q via BMC: %w", server.Name, err)
+		return nil, fmt.Errorf("Failed to trigger power off of server %q via BMC: %w", server.Name, err)
+	}
+
+	if !wait {
+		return taskMonitor, nil
 	}
 
 	go func() {
 		// Use a detached context in order to make sure, no existing DB transaction is inherited.
 		ctx := context.Background()
 
-		err = client.WaitForTask(ctx, *server, taskMonitor)
+		err := client.WaitForTask(ctx, *server, taskMonitor)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after server power off operation", logger.Err(err))
 		}
@@ -2524,21 +2546,32 @@ func (s *serverService) BMCServerPowerOffByName(ctx context.Context, name string
 		}
 	}()
 
-	return nil
+	return nil, nil
 }
 
 func (s *serverService) BMCServerRestartByName(ctx context.Context, name string, force bool) error {
+	_, err := s.bmcServerRestartByName(ctx, name, force, true)
+
+	return err
+}
+
+// bmcServerRestartByName returns the task monitor instead of discarding it, if wait is false.
+func (s *serverService) bmcServerRestartByName(ctx context.Context, name string, force bool, wait bool) (*provisioning.BMCTaskMonitor, error) {
 	server, client, err := s.getServerAndBMCClientByName(ctx, name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	_, err = client.ServerRestart(ctx, *server, force)
+	taskMonitor, err := client.ServerRestart(ctx, *server, force)
 	if err != nil {
-		return fmt.Errorf("Failed to trigger restart of server %q via BMC: %w", server.Name, err)
+		return nil, fmt.Errorf("Failed to trigger restart of server %q via BMC: %w", server.Name, err)
 	}
 
-	return nil
+	if !wait {
+		return taskMonitor, nil
+	}
+
+	return nil, nil
 }
 
 func (s *serverService) BMCServerSetLocationIndicatorByName(ctx context.Context, name string, active bool) error {
@@ -2561,14 +2594,25 @@ func (s *serverService) BMCServerSetLocationIndicatorByName(ctx context.Context,
 }
 
 func (s *serverService) ApplyBIOSAttributesByName(ctx context.Context, name string, attributes map[string]any) error {
+	_, err := s.applyBIOSAttributesByName(ctx, name, attributes, true)
+
+	return err
+}
+
+// applyBIOSAttributesByName returns the task monitor instead of awaiting it in the background, if wait is false.
+func (s *serverService) applyBIOSAttributesByName(ctx context.Context, name string, attributes map[string]any, wait bool) (*provisioning.BMCTaskMonitor, error) {
 	server, client, err := s.getServerAndBMCClientByName(ctx, name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	taskMonitor, err := client.ApplyBIOSAttributes(ctx, *server, attributes)
 	if err != nil {
-		return fmt.Errorf("Failed to trigger BIOS attribute application of server %q via BMC: %w", server.Name, err)
+		return nil, fmt.Errorf("Failed to trigger BIOS attribute application of server %q via BMC: %w", server.Name, err)
+	}
+
+	if !wait {
+		return taskMonitor, nil
 	}
 
 	// The BIOS settings are applied on the next reset of the server, so the task
@@ -2583,7 +2627,7 @@ func (s *serverService) ApplyBIOSAttributesByName(ctx context.Context, name stri
 		}
 	}()
 
-	return nil
+	return nil, nil
 }
 
 func (s *serverService) BMCBIOSAttributesByName(ctx context.Context, name string) ([]api.BIOSAttribute, error) {
@@ -2662,26 +2706,33 @@ func (s *serverService) BMCDumpByName(ctx context.Context, name string, addition
 }
 
 func (s *serverService) BMCAttachMediaByName(ctx context.Context, name string, media api.ServerBMCAttachMedia) error {
+	_, err := s.bmcAttachMediaByName(ctx, name, media, true)
+
+	return err
+}
+
+// bmcAttachMediaByName returns the task monitor instead of awaiting it in the background, if wait is false.
+func (s *serverService) bmcAttachMediaByName(ctx context.Context, name string, media api.ServerBMCAttachMedia, wait bool) (*provisioning.BMCTaskMonitor, error) {
 	if name == "" {
-		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
 	tokenUUID, err := uuid.Parse(media.TokenUUID)
 	if err != nil {
-		return fmt.Errorf("Invalid token UUID %q: %w", media.TokenUUID, domain.ErrOperationNotPermitted)
+		return nil, fmt.Errorf("Invalid token UUID %q: %w", media.TokenUUID, domain.ErrOperationNotPermitted)
 	}
 
 	if media.Seed == "" {
-		return fmt.Errorf("Token seed cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, fmt.Errorf("Token seed cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
 	if media.VirtualMediaID == "" {
-		return fmt.Errorf("Virtual media ID cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, fmt.Errorf("Virtual media ID cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
 	imageType := api.ImageType(media.Type)
 	if !imageType.IsValid() {
-		return fmt.Errorf("Invalid image type %q: %w", media.Type, domain.ErrOperationNotPermitted)
+		return nil, fmt.Errorf("Invalid image type %q: %w", media.Type, domain.ErrOperationNotPermitted)
 	}
 
 	// The undefined architecture is part of images.UpdateFileArchitectures, but
@@ -2689,7 +2740,7 @@ func (s *serverService) BMCAttachMediaByName(ctx context.Context, name string, m
 	architecture := images.UpdateFileArchitecture(media.Architecture)
 	_, ok := images.UpdateFileArchitectures[architecture]
 	if !ok || architecture == images.UpdateFileArchitectureUndefined {
-		return fmt.Errorf("Invalid architecture %q: %w", media.Architecture, domain.ErrOperationNotPermitted)
+		return nil, fmt.Errorf("Invalid architecture %q: %w", media.Architecture, domain.ErrOperationNotPermitted)
 	}
 
 	// Verify the requested channel exists, if provided. An empty channel lets
@@ -2697,7 +2748,7 @@ func (s *serverService) BMCAttachMediaByName(ctx context.Context, name string, m
 	if media.Channel != "" {
 		_, err = s.channelSvc.GetByName(ctx, media.Channel)
 		if err != nil {
-			return fmt.Errorf("Failed to get channel %q: %w", media.Channel, err)
+			return nil, fmt.Errorf("Failed to get channel %q: %w", media.Channel, err)
 		}
 	}
 
@@ -2705,23 +2756,23 @@ func (s *serverService) BMCAttachMediaByName(ctx context.Context, name string, m
 	// without authentication.
 	seed, err := s.tokenSvc.GetTokenSeedByName(ctx, tokenUUID, media.Seed)
 	if err != nil {
-		return fmt.Errorf("Failed to get token seed %q: %w", media.Seed, err)
+		return nil, fmt.Errorf("Failed to get token seed %q: %w", media.Seed, err)
 	}
 
 	if !seed.Public {
-		return fmt.Errorf("Token seed %q must be public to attach it as installation media via the BMC: %w", media.Seed, domain.ErrOperationNotPermitted)
+		return nil, fmt.Errorf("Token seed %q must be public to attach it as installation media via the BMC: %w", media.Seed, domain.ErrOperationNotPermitted)
 	}
 
 	fingerprintID, err := s.tokenSvc.ResolveTokenSeedImageID(ctx, tokenUUID, seed.Name, imageType, architecture, media.Channel)
 	if err != nil {
-		return fmt.Errorf("Failed to resolve the installation media image of token seed %q: %w", media.Seed, err)
+		return nil, fmt.Errorf("Failed to resolve the installation media image of token seed %q: %w", media.Seed, err)
 	}
 
 	// Build the image URL the BMC streams the installation media from. It points
 	// at the public token seed image endpoint of Operations Center.
 	base := config.GetNetwork().OperationsCenterAddress
 	if base == "" {
-		return fmt.Errorf("Operations Center address is not configured, cannot build installation media URL: %w", domain.ErrOperationNotPermitted)
+		return nil, fmt.Errorf("Operations Center address is not configured, cannot build installation media URL: %w", domain.ErrOperationNotPermitted)
 	}
 
 	// OperationsCenterAddress is validated on config save.
@@ -2740,12 +2791,12 @@ func (s *serverService) BMCAttachMediaByName(ctx context.Context, name string, m
 
 	server, err := s.repo.GetByName(ctx, name)
 	if err != nil {
-		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+		return nil, fmt.Errorf("Failed to get server %q by name: %w", name, err)
 	}
 
 	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
 	if !ok {
-		return fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
+		return nil, fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
 	}
 
 	mediaMessage := lifecycle.BMCVirtualMediaMessage{
@@ -2762,17 +2813,21 @@ func (s *serverService) BMCAttachMediaByName(ctx context.Context, name string, m
 
 	taskMonitor, err := client.AttachMedia(ctx, *server, media.VirtualMediaID, imageURL.String(), media.SetBootDevice)
 	if err != nil {
-		return fmt.Errorf("Failed to attach media to server %q via BMC: %w", server.Name, err)
+		return nil, fmt.Errorf("Failed to attach media to server %q via BMC: %w", server.Name, err)
 	}
 
 	mediaMessage.Operation = lifecycle.BMCVirtualMediaOperationAttach
 	lifecycle.BMCVirtualMediaSignal.Emit(ctx, mediaMessage)
 
+	if !wait {
+		return taskMonitor, nil
+	}
+
 	go func() {
 		// Use a detached context in order to make sure, no existing DB transaction is inherited.
 		ctx := context.Background()
 
-		err = client.WaitForTask(ctx, *server, taskMonitor)
+		err := client.WaitForTask(ctx, *server, taskMonitor)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after attach media operation", logger.Err(err))
 		}
@@ -2783,7 +2838,7 @@ func (s *serverService) BMCAttachMediaByName(ctx context.Context, name string, m
 		}
 	}()
 
-	return nil
+	return nil, nil
 }
 
 // maxMediaURLLength is the length beyond which BMCs are known to cut the image
@@ -2807,34 +2862,51 @@ func mediaURLWarnings(mediaURL *url.URL) []string {
 }
 
 func (s *serverService) BMCDetachMediaByName(ctx context.Context, name string, virtualMediaID string) error {
+	_, err := s.bmcDetachMediaByName(ctx, name, virtualMediaID, true)
+
+	return err
+}
+
+// bmcDetachMediaByName returns the task monitor instead of awaiting it in the background, if wait is false.
+func (s *serverService) bmcDetachMediaByName(ctx context.Context, name string, virtualMediaID string, wait bool) (*provisioning.BMCTaskMonitor, error) {
 	if name == "" {
-		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
 	if virtualMediaID == "" {
-		return fmt.Errorf("Virtual media ID cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, fmt.Errorf("Virtual media ID cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
 	server, err := s.repo.GetByName(ctx, name)
 	if err != nil {
-		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+		return nil, fmt.Errorf("Failed to get server %q by name: %w", name, err)
 	}
 
 	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
 	if !ok {
-		return fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
+		return nil, fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
 	}
 
 	taskMonitor, err := client.DetachMedia(ctx, *server, virtualMediaID)
 	if err != nil {
-		return fmt.Errorf("Failed to detach media from server %q via BMC: %w", server.Name, err)
+		return nil, fmt.Errorf("Failed to detach media from server %q via BMC: %w", server.Name, err)
+	}
+
+	lifecycle.BMCVirtualMediaSignal.Emit(ctx, lifecycle.BMCVirtualMediaMessage{
+		Operation:      lifecycle.BMCVirtualMediaOperationDetach,
+		Server:         server.Name,
+		VirtualMediaID: virtualMediaID,
+	})
+
+	if !wait {
+		return taskMonitor, nil
 	}
 
 	go func() {
 		// Use a detached context in order to make sure, no existing DB transaction is inherited.
 		ctx := context.Background()
 
-		err = client.WaitForTask(ctx, *server, taskMonitor)
+		err := client.WaitForTask(ctx, *server, taskMonitor)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after detach media operation", logger.Err(err))
 		}
@@ -2845,11 +2917,5 @@ func (s *serverService) BMCDetachMediaByName(ctx context.Context, name string, v
 		}
 	}()
 
-	lifecycle.BMCVirtualMediaSignal.Emit(ctx, lifecycle.BMCVirtualMediaMessage{
-		Operation:      lifecycle.BMCVirtualMediaOperationDetach,
-		Server:         server.Name,
-		VirtualMediaID: virtualMediaID,
-	})
-
-	return nil
+	return nil, nil
 }

@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -229,4 +230,43 @@ type ServerBMCDetachMedia struct {
 	// "manager:2") as reported in the BMC virtual media data.
 	// Example: system:1
 	VirtualMediaID string `json:"virtual_media_id" yaml:"virtual_media_id"`
+}
+
+// BMCTaskState describes the state of a task started via the BMC.
+type BMCTaskState string
+
+const (
+	BMCTaskStateUnknown   BMCTaskState = "unknown"
+	BMCTaskStateRunning   BMCTaskState = "running"
+	BMCTaskStateCompleted BMCTaskState = "completed"
+)
+
+var bmcTaskStates = map[BMCTaskState]struct{}{
+	BMCTaskStateUnknown:   {},
+	BMCTaskStateRunning:   {},
+	BMCTaskStateCompleted: {},
+}
+
+func (s BMCTaskState) String() string {
+	return string(s)
+}
+
+func (s BMCTaskState) MarshalText() ([]byte, error) {
+	return []byte(s), nil
+}
+
+func (s *BMCTaskState) UnmarshalText(text []byte) error {
+	if len(text) == 0 {
+		*s = BMCTaskStateUnknown
+		return nil
+	}
+
+	_, ok := bmcTaskStates[BMCTaskState(text)]
+	if !ok {
+		return fmt.Errorf("%q is not a valid BMC task state", string(text))
+	}
+
+	*s = BMCTaskState(text)
+
+	return nil
 }

@@ -2235,6 +2235,21 @@ func TestRedfish_WaitForTask(t *testing.T) {
 			assertErr: require.Error,
 		},
 		{
+			name: "error - task monitor gone",
+			argCtx: func(t *testing.T) context.Context {
+				t.Helper()
+				return t.Context()
+			},
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode:  http.StatusOK,
+			taskMonitorStatusCodes: []int{http.StatusGone},
+
+			assertErr: require.Error,
+		},
+		{
 			name: "error - context already canceled",
 			argCtx: func(t *testing.T) context.Context {
 				t.Helper()
@@ -2287,6 +2302,149 @@ func TestRedfish_WaitForTask(t *testing.T) {
 			err := client.WaitForTask(tc.argCtx(t), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.argTaskMonitor)
 
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestRedfish_TaskState(t *testing.T) {
+	tests := []struct {
+		name           string
+		argTaskMonitor *provisioning.BMCTaskMonitor
+
+		serviceRootStatusCode  int
+		taskMonitorStatusCodes []int
+
+		wantState api.BMCTaskState
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:           "success - nil task monitor",
+			argTaskMonitor: nil,
+
+			// The BMC is never contacted, so the service root is not served.
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			wantState: api.BMCTaskStateUnknown,
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - empty task monitor URI",
+			argTaskMonitor: &provisioning.BMCTaskMonitor{},
+
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			wantState: api.BMCTaskStateUnknown,
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - running",
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode:  http.StatusOK,
+			taskMonitorStatusCodes: []int{http.StatusAccepted},
+
+			wantState: api.BMCTaskStateRunning,
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - completed",
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode:  http.StatusOK,
+			taskMonitorStatusCodes: []int{http.StatusOK},
+
+			wantState: api.BMCTaskStateCompleted,
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - completed with created status",
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode:  http.StatusOK,
+			taskMonitorStatusCodes: []int{http.StatusCreated},
+
+			wantState: api.BMCTaskStateCompleted,
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - task monitor not found",
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode:  http.StatusOK,
+			taskMonitorStatusCodes: []int{http.StatusNotFound},
+
+			wantState: api.BMCTaskStateUnknown,
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - task monitor gone",
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode:  http.StatusOK,
+			taskMonitorStatusCodes: []int{http.StatusGone},
+
+			wantState: api.BMCTaskStateUnknown,
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - failed to connect to BMC",
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode: http.StatusInternalServerError,
+
+			wantState: api.BMCTaskStateUnknown,
+			assertErr: require.Error,
+		},
+		{
+			name: "error - unexpected status code polling task",
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode:  http.StatusOK,
+			taskMonitorStatusCodes: []int{http.StatusInternalServerError},
+
+			wantState: api.BMCTaskStateUnknown,
+			assertErr: require.Error,
+		},
+		{
+			name: "error - unexpected success status code polling task",
+			argTaskMonitor: &provisioning.BMCTaskMonitor{
+				URI: "/redfish/v1/TaskMonitor/1",
+			},
+
+			serviceRootStatusCode:  http.StatusOK,
+			taskMonitorStatusCodes: []int{http.StatusNoContent},
+
+			wantState: api.BMCTaskStateUnknown,
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			svr := newMockRedfishServer(t, mockRedfishServer{
+				serviceRootStatusCode:  tc.serviceRootStatusCode,
+				taskMonitorStatusCodes: tc.taskMonitorStatusCodes,
+			}, nil)
+
+			client := redfish.New()
+			state, err := client.TaskState(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.argTaskMonitor)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantState, state)
 		})
 	}
 }
