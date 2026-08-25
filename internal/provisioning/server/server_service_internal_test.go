@@ -1,11 +1,25 @@
 package server
 
 import (
+	"context"
+	"crypto/tls"
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
+
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
+	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
+	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
+	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 func Test_availableVersionGreaterThan(t *testing.T) {
@@ -116,6 +130,142 @@ func Test_mediaURLWarnings(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, tc.want, mediaURLWarnings(mediaURL))
+		})
+	}
+}
+
+func TestServerService_bmcTaskMonitorHandover(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	const tokenUUID = "e9de436e-b94e-4aef-8563-883aec84096e"
+
+	taskMonitor := &provisioning.BMCTaskMonitor{
+		URI: "https://bmc.local/task/1",
+	}
+
+	setup := func(t *testing.T) *serverService {
+		t.Helper()
+
+		config.InitTest(t, &envMock.EnvironmentMock{
+			IsIncusOSFunc: func() bool {
+				return false
+			},
+		}, nil)
+
+		err := config.UpdateNetwork(t.Context(), system.NetworkPut{
+			OperationsCenterAddress: "https://192.168.1.200:8443",
+			RestServerAddress:       "[::]:8443",
+		})
+		require.NoError(t, err)
+
+		repo := &repoMock.ServerRepoMock{
+			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+				return &provisioning.Server{
+					Name: "one",
+					BMCConfig: api.BMCConfig{
+						APIType: api.BMCAPITypeRedfishV1Generic,
+					},
+				}, nil
+			},
+		}
+
+		tokenSvc := &svcMock.TokenServiceMock{
+			GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+				return &provisioning.TokenSeed{Name: name, Public: true}, nil
+			},
+			ResolveTokenSeedImageIDFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
+				return "a1B2c3D4e5F6", nil
+			},
+		}
+
+		bmcClient := &adapterMock.BMCServerClientPortMock{
+			ServerPowerOnFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+				return taskMonitor, nil
+			},
+			ServerPowerOffFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+				return taskMonitor, nil
+			},
+			ServerRestartFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
+				return taskMonitor, nil
+			},
+			ApplyBIOSAttributesFunc: func(ctx context.Context, server provisioning.Server, attributes map[string]any) (*provisioning.BMCTaskMonitor, error) {
+				return taskMonitor, nil
+			},
+			AttachMediaFunc: func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
+				return taskMonitor, nil
+			},
+			DetachMediaFunc: func(ctx context.Context, server provisioning.Server, virtualMediaID string) (*provisioning.BMCTaskMonitor, error) {
+				return taskMonitor, nil
+			},
+		}
+
+		return New(
+			repo, nil, nil, tokenSvc, nil, nil, nil, tls.Certificate{},
+			WithNow(func() time.Time { return fixedDate }),
+			AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+		)
+	}
+
+	tests := []struct {
+		name string
+		call func(t *testing.T, serverSvc *serverService) (*provisioning.BMCTaskMonitor, error)
+	}{
+		{
+			name: "bmcServerPowerOnByName",
+			call: func(t *testing.T, serverSvc *serverService) (*provisioning.BMCTaskMonitor, error) {
+				t.Helper()
+				return serverSvc.bmcServerPowerOnByName(t.Context(), "one", false, false)
+			},
+		},
+		{
+			name: "bmcServerPowerOffByName",
+			call: func(t *testing.T, serverSvc *serverService) (*provisioning.BMCTaskMonitor, error) {
+				t.Helper()
+				return serverSvc.bmcServerPowerOffByName(t.Context(), "one", false, false)
+			},
+		},
+		{
+			name: "bmcServerRestartByName",
+			call: func(t *testing.T, serverSvc *serverService) (*provisioning.BMCTaskMonitor, error) {
+				t.Helper()
+				return serverSvc.bmcServerRestartByName(t.Context(), "one", false, false)
+			},
+		},
+		{
+			name: "applyBIOSAttributesByName",
+			call: func(t *testing.T, serverSvc *serverService) (*provisioning.BMCTaskMonitor, error) {
+				t.Helper()
+				return serverSvc.applyBIOSAttributesByName(t.Context(), "one", map[string]any{"NumaNodesPerSocket": 4}, false)
+			},
+		},
+		{
+			name: "bmcAttachMediaByName",
+			call: func(t *testing.T, serverSvc *serverService) (*provisioning.BMCTaskMonitor, error) {
+				t.Helper()
+				return serverSvc.bmcAttachMediaByName(t.Context(), "one", api.ServerBMCAttachMedia{
+					TokenUUID:      tokenUUID,
+					Seed:           "default",
+					Type:           "iso",
+					Architecture:   "x86_64",
+					VirtualMediaID: "system:1",
+				}, false)
+			},
+		},
+		{
+			name: "bmcDetachMediaByName",
+			call: func(t *testing.T, serverSvc *serverService) (*provisioning.BMCTaskMonitor, error) {
+				t.Helper()
+				return serverSvc.bmcDetachMediaByName(t.Context(), "one", "system:1", false)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			gotTaskMonitor, err := tc.call(t, setup(t))
+
+			require.NoError(t, err)
+			require.Same(t, taskMonitor, gotTaskMonitor)
 		})
 	}
 }

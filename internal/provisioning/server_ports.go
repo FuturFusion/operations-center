@@ -123,6 +123,7 @@ type BMCServerClientPort interface {
 	ServerRestart(ctx context.Context, server Server, force bool) (*BMCTaskMonitor, error)
 	ServerSetLocationIndicator(ctx context.Context, server Server, active bool) error
 	WaitForTask(ctx context.Context, server Server, taskMonitor *BMCTaskMonitor) error
+	TaskState(ctx context.Context, server Server, taskMonitor *BMCTaskMonitor) (api.BMCTaskState, error)
 	LogSources(ctx context.Context, server Server) ([]string, error)
 	LogEntriesBySource(ctx context.Context, server Server, logSource string) ([]api.BMCLogEvent, error)
 	Dump(ctx context.Context, server Server, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error)
