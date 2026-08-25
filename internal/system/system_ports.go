@@ -22,6 +22,12 @@ type SystemService interface {
 
 	GetUpdatesConfig(ctx context.Context) system.Updates
 	UpdateUpdatesConfig(ctx context.Context, cfg system.UpdatesPut) error
+
+	CleanCache(ctx context.Context) error
+}
+
+type CacheRepo interface {
+	CleanupAll(ctx context.Context) error
 }
 
 type ProvisioningServerService interface {

@@ -29,6 +29,7 @@ type environment interface {
 type systemService struct {
 	env       environment
 	serverSvc ProvisioningServerService
+	cacheRepo CacheRepo
 
 	acmeUpdateCertificateFunc func(
 		ctx context.Context,
@@ -48,11 +49,13 @@ type SystemServiceOption func(s *systemService)
 func NewSystemService(
 	env environment,
 	serverSvc ProvisioningServerService,
+	cacheRepo CacheRepo,
 	opts ...SystemServiceOption,
 ) *systemService {
 	systemSvc := &systemService{
 		env:       env,
 		serverSvc: serverSvc,
+		cacheRepo: cacheRepo,
 
 		acmeUpdateCertificateFunc: acme.UpdateCertificate,
 	}
@@ -300,6 +303,15 @@ func (s *systemService) UpdateUpdatesConfig(ctx context.Context, newConfig syste
 	err := config.UpdateUpdates(ctx, newConfig)
 	if err != nil {
 		return fmt.Errorf("Failed to update updates configuration: %w", err)
+	}
+
+	return nil
+}
+
+func (s *systemService) CleanCache(ctx context.Context) error {
+	err := s.cacheRepo.CleanupAll(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to clean cache: %w", err)
 	}
 
 	return nil
