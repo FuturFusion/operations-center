@@ -818,7 +818,7 @@ func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (ser
 }
 
 // GetChangelogByName implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) GetChangelogByName(ctx context.Context, name string) (v api.UpdateChangelog, err error) {
+func (_d ServerServiceWithSlog) GetChangelogByName(ctx context.Context, name string) (updateChangelog api.UpdateChangelog, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -831,7 +831,7 @@ func (_d ServerServiceWithSlog) GetChangelogByName(ctx context.Context, name str
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("updateChangelog", updateChangelog),
 				slog.Any("err", err),
 			)
 		} else {
@@ -853,7 +853,7 @@ func (_d ServerServiceWithSlog) GetChangelogByName(ctx context.Context, name str
 }
 
 // GetSystemKernel implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) GetSystemKernel(ctx context.Context, name string) (v provisioning.ServerSystemKernel, err error) {
+func (_d ServerServiceWithSlog) GetSystemKernel(ctx context.Context, name string) (serverSystemKernel provisioning.ServerSystemKernel, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -866,7 +866,7 @@ func (_d ServerServiceWithSlog) GetSystemKernel(ctx context.Context, name string
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("serverSystemKernel", serverSystemKernel),
 				slog.Any("err", err),
 			)
 		} else {
@@ -888,7 +888,7 @@ func (_d ServerServiceWithSlog) GetSystemKernel(ctx context.Context, name string
 }
 
 // GetSystemLogging implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) GetSystemLogging(ctx context.Context, name string) (v provisioning.ServerSystemLogging, err error) {
+func (_d ServerServiceWithSlog) GetSystemLogging(ctx context.Context, name string) (serverSystemLogging provisioning.ServerSystemLogging, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -901,7 +901,7 @@ func (_d ServerServiceWithSlog) GetSystemLogging(ctx context.Context, name strin
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("serverSystemLogging", serverSystemLogging),
 				slog.Any("err", err),
 			)
 		} else {
@@ -923,7 +923,7 @@ func (_d ServerServiceWithSlog) GetSystemLogging(ctx context.Context, name strin
 }
 
 // GetSystemProvider implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) GetSystemProvider(ctx context.Context, name string) (v provisioning.ServerSystemProvider, err error) {
+func (_d ServerServiceWithSlog) GetSystemProvider(ctx context.Context, name string) (serverSystemProvider provisioning.ServerSystemProvider, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -936,7 +936,7 @@ func (_d ServerServiceWithSlog) GetSystemProvider(ctx context.Context, name stri
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("serverSystemProvider", serverSystemProvider),
 				slog.Any("err", err),
 			)
 		} else {
@@ -958,7 +958,7 @@ func (_d ServerServiceWithSlog) GetSystemProvider(ctx context.Context, name stri
 }
 
 // GetSystemUpdate implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) GetSystemUpdate(ctx context.Context, name string) (v provisioning.ServerSystemUpdate, err error) {
+func (_d ServerServiceWithSlog) GetSystemUpdate(ctx context.Context, name string) (serverSystemUpdate provisioning.ServerSystemUpdate, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -971,7 +971,7 @@ func (_d ServerServiceWithSlog) GetSystemUpdate(ctx context.Context, name string
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("serverSystemUpdate", serverSystemUpdate),
 				slog.Any("err", err),
 			)
 		} else {

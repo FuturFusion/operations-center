@@ -85,7 +85,7 @@ func (_d ClusterClientPortWithPrometheus) GetClusterNodeNames(ctx context.Contex
 }
 
 // GetNetworkConfig implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) GetNetworkConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemNetwork, err error) {
+func (_d ClusterClientPortWithPrometheus) GetNetworkConfig(ctx context.Context, server provisioning.Server) (serverSystemNetwork provisioning.ServerSystemNetwork, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -239,7 +239,7 @@ func (_d ClusterClientPortWithPrometheus) GetRemoteCertificate(ctx context.Conte
 }
 
 // GetStorageConfig implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) GetStorageConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemStorage, err error) {
+func (_d ClusterClientPortWithPrometheus) GetStorageConfig(ctx context.Context, server provisioning.Server) (serverSystemStorage provisioning.ServerSystemStorage, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -253,7 +253,7 @@ func (_d ClusterClientPortWithPrometheus) GetStorageConfig(ctx context.Context, 
 }
 
 // IncusClient implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) IncusClient(ctx context.Context, endpoint provisioning.Endpoint) (v provisioning.InstanceServer, err error) {
+func (_d ClusterClientPortWithPrometheus) IncusClient(ctx context.Context, endpoint provisioning.Endpoint) (instanceServer provisioning.InstanceServer, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"

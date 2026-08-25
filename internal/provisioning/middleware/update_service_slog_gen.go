@@ -287,7 +287,7 @@ func (_d UpdateServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (up
 }
 
 // GetChangelog implements provisioning.UpdateService.
-func (_d UpdateServiceWithSlog) GetChangelog(ctx context.Context, currentID uuid.UUID, priorID uuid.UUID, architecture images.UpdateFileArchitecture) (v api.UpdateChangelog, err error) {
+func (_d UpdateServiceWithSlog) GetChangelog(ctx context.Context, currentID uuid.UUID, priorID uuid.UUID, architecture images.UpdateFileArchitecture) (updateChangelog api.UpdateChangelog, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -302,7 +302,7 @@ func (_d UpdateServiceWithSlog) GetChangelog(ctx context.Context, currentID uuid
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("updateChangelog", updateChangelog),
 				slog.Any("err", err),
 			)
 		} else {
@@ -324,7 +324,7 @@ func (_d UpdateServiceWithSlog) GetChangelog(ctx context.Context, currentID uuid
 }
 
 // GetChangelogByChannel implements provisioning.UpdateService.
-func (_d UpdateServiceWithSlog) GetChangelogByChannel(ctx context.Context, UUID uuid.UUID, channelName string, upstream bool, architecture images.UpdateFileArchitecture) (v api.UpdateChangelog, err error) {
+func (_d UpdateServiceWithSlog) GetChangelogByChannel(ctx context.Context, UUID uuid.UUID, channelName string, upstream bool, architecture images.UpdateFileArchitecture) (updateChangelog api.UpdateChangelog, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -340,7 +340,7 @@ func (_d UpdateServiceWithSlog) GetChangelogByChannel(ctx context.Context, UUID 
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("updateChangelog", updateChangelog),
 				slog.Any("err", err),
 			)
 		} else {

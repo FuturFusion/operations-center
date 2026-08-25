@@ -26,7 +26,7 @@ func NewTokenClientPortWithErrorWrapper(base provisioning.TokenClientPort, wrapE
 }
 
 // GetSecurityConfig implements provisioning.TokenClientPort.
-func (_d TokenClientPortWithErrorWrapper) GetSecurityConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemSecurity, err error) {
+func (_d TokenClientPortWithErrorWrapper) GetSecurityConfig(ctx context.Context, server provisioning.Server) (serverSystemSecurity provisioning.ServerSystemSecurity, err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)

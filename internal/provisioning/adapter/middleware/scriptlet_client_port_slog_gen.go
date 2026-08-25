@@ -76,7 +76,7 @@ func (_d ScriptletClientPortWithSlog) AddApplication(ctx context.Context, server
 }
 
 // GetOSService implements scriptlet.ScriptletClientPort.
-func (_d ScriptletClientPortWithSlog) GetOSService(ctx context.Context, server provisioning.Server, name string) (stringToV map[string]any, err error) {
+func (_d ScriptletClientPortWithSlog) GetOSService(ctx context.Context, server provisioning.Server, name string) (stringToAnyMoqParam map[string]any, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -90,7 +90,7 @@ func (_d ScriptletClientPortWithSlog) GetOSService(ctx context.Context, server p
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("stringToV", stringToV),
+				slog.Any("stringToAnyMoqParam", stringToAnyMoqParam),
 				slog.Any("err", err),
 			)
 		} else {
@@ -112,7 +112,7 @@ func (_d ScriptletClientPortWithSlog) GetOSService(ctx context.Context, server p
 }
 
 // GetSystem implements scriptlet.ScriptletClientPort.
-func (_d ScriptletClientPortWithSlog) GetSystem(ctx context.Context, server provisioning.Server, resource string) (stringToV map[string]any, err error) {
+func (_d ScriptletClientPortWithSlog) GetSystem(ctx context.Context, server provisioning.Server, resource string) (stringToAnyMoqParam map[string]any, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -126,7 +126,7 @@ func (_d ScriptletClientPortWithSlog) GetSystem(ctx context.Context, server prov
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("stringToV", stringToV),
+				slog.Any("stringToAnyMoqParam", stringToAnyMoqParam),
 				slog.Any("err", err),
 			)
 		} else {

@@ -350,7 +350,7 @@ func (_d ServerServiceWithPrometheus) GetByName(ctx context.Context, name string
 }
 
 // GetChangelogByName implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) GetChangelogByName(ctx context.Context, name string) (v api.UpdateChangelog, err error) {
+func (_d ServerServiceWithPrometheus) GetChangelogByName(ctx context.Context, name string) (updateChangelog api.UpdateChangelog, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -364,7 +364,7 @@ func (_d ServerServiceWithPrometheus) GetChangelogByName(ctx context.Context, na
 }
 
 // GetSystemKernel implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) GetSystemKernel(ctx context.Context, name string) (v provisioning.ServerSystemKernel, err error) {
+func (_d ServerServiceWithPrometheus) GetSystemKernel(ctx context.Context, name string) (serverSystemKernel provisioning.ServerSystemKernel, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -378,7 +378,7 @@ func (_d ServerServiceWithPrometheus) GetSystemKernel(ctx context.Context, name 
 }
 
 // GetSystemLogging implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) GetSystemLogging(ctx context.Context, name string) (v provisioning.ServerSystemLogging, err error) {
+func (_d ServerServiceWithPrometheus) GetSystemLogging(ctx context.Context, name string) (serverSystemLogging provisioning.ServerSystemLogging, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -392,7 +392,7 @@ func (_d ServerServiceWithPrometheus) GetSystemLogging(ctx context.Context, name
 }
 
 // GetSystemProvider implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) GetSystemProvider(ctx context.Context, name string) (v provisioning.ServerSystemProvider, err error) {
+func (_d ServerServiceWithPrometheus) GetSystemProvider(ctx context.Context, name string) (serverSystemProvider provisioning.ServerSystemProvider, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -406,7 +406,7 @@ func (_d ServerServiceWithPrometheus) GetSystemProvider(ctx context.Context, nam
 }
 
 // GetSystemUpdate implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) GetSystemUpdate(ctx context.Context, name string) (v provisioning.ServerSystemUpdate, err error) {
+func (_d ServerServiceWithPrometheus) GetSystemUpdate(ctx context.Context, name string) (serverSystemUpdate provisioning.ServerSystemUpdate, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"

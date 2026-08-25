@@ -37,7 +37,7 @@ func (_d ScriptletClientPortWithErrorWrapper) AddApplication(ctx context.Context
 }
 
 // GetOSService implements scriptlet.ScriptletClientPort.
-func (_d ScriptletClientPortWithErrorWrapper) GetOSService(ctx context.Context, server provisioning.Server, name string) (stringToV map[string]any, err error) {
+func (_d ScriptletClientPortWithErrorWrapper) GetOSService(ctx context.Context, server provisioning.Server, name string) (stringToAnyMoqParam map[string]any, err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)
@@ -47,7 +47,7 @@ func (_d ScriptletClientPortWithErrorWrapper) GetOSService(ctx context.Context, 
 }
 
 // GetSystem implements scriptlet.ScriptletClientPort.
-func (_d ScriptletClientPortWithErrorWrapper) GetSystem(ctx context.Context, server provisioning.Server, resource string) (stringToV map[string]any, err error) {
+func (_d ScriptletClientPortWithErrorWrapper) GetSystem(ctx context.Context, server provisioning.Server, resource string) (stringToAnyMoqParam map[string]any, err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)

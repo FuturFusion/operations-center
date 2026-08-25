@@ -40,7 +40,7 @@ func NewTokenClientPortWithSlog(base provisioning.TokenClientPort, opts ...Token
 }
 
 // GetSecurityConfig implements provisioning.TokenClientPort.
-func (_d TokenClientPortWithSlog) GetSecurityConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemSecurity, err error) {
+func (_d TokenClientPortWithSlog) GetSecurityConfig(ctx context.Context, server provisioning.Server) (serverSystemSecurity provisioning.ServerSystemSecurity, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -53,7 +53,7 @@ func (_d TokenClientPortWithSlog) GetSecurityConfig(ctx context.Context, server 
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
-				slog.Any("v", v),
+				slog.Any("serverSystemSecurity", serverSystemSecurity),
 				slog.Any("err", err),
 			)
 		} else {
