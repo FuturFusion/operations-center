@@ -11,14 +11,12 @@ import (
 	"testing"
 	"time"
 
-	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	provisioningCluster "github.com/FuturFusion/operations-center/internal/provisioning/cluster"
 	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
@@ -177,86 +175,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 		},
 	}
 
-	serverClient := &adapterMock.ServerClientPortMock{
-		UpdateUpdateConfigFunc: func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemUpdate) error {
-			return nil
-		},
-		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
-			if world.isRebooting(endpoint.GetName()) {
-				return domain.NewRetryableErr(errors.New("rebooting"))
-			}
-
-			return nil
-		},
-		IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
-			return nil
-		},
-		GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
-			return api.HardwareData{}, nil
-		},
-		GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
-			return api.OSData{
-				Network: incusosapi.SystemNetwork{
-					State: incusosapi.SystemNetworkState{
-						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
-							"eth0": {
-								Addresses: []string{
-									"192.168.0.100",
-								},
-								Roles: []string{
-									"management",
-								},
-							},
-						},
-					},
-				},
-			}, nil
-		},
-		GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
-			return world.getVersionData(server.Name), nil
-		},
-		GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
-			return api.ServerTypeIncus, nil
-		},
-		UpdateOSFunc: func(ctx context.Context, server provisioning.Server) error {
-			world.set(server.Name, versionDataUpdating, false)
-			world.deferTransition(serverWorldTransition{
-				server:      server.Name,
-				versionData: versionDataUpdated,
-			})
-
-			return nil
-		},
-		EvacuateFunc: func(ctx context.Context, server provisioning.Server, callback func(ctx context.Context, err error)) error {
-			world.set(server.Name, versionDataEvacuating, false)
-			world.deferTransition(serverWorldTransition{
-				server:      server.Name,
-				versionData: versionDataEvacuated,
-				callback:    callback,
-			})
-
-			return nil
-		},
-		RebootFunc: func(ctx context.Context, server provisioning.Server) error {
-			world.set(server.Name, versionDataRebooting, true)
-			world.deferTransition(serverWorldTransition{
-				server:      server.Name,
-				versionData: versionDataRebooted,
-			})
-
-			return nil
-		},
-		RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) error {
-			world.set(server.Name, versionDataRestoring, false)
-			world.deferTransition(serverWorldTransition{
-				server:      server.Name,
-				versionData: versionDataRestored,
-				callback:    callback,
-			})
-
-			return nil
-		},
-	}
+	serverClient := rollingUpdateServerClient(world)
 
 	serverSvc := provisioningServer.New(
 		serverDB, serverClient, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{},
@@ -539,86 +458,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 		},
 	}
 
-	serverClient := &adapterMock.ServerClientPortMock{
-		UpdateUpdateConfigFunc: func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemUpdate) error {
-			return nil
-		},
-		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
-			if world.isRebooting(endpoint.GetName()) {
-				return domain.NewRetryableErr(errors.New("rebooting"))
-			}
-
-			return nil
-		},
-		IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
-			return nil
-		},
-		GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
-			return api.HardwareData{}, nil
-		},
-		GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
-			return api.OSData{
-				Network: incusosapi.SystemNetwork{
-					State: incusosapi.SystemNetworkState{
-						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
-							"eth0": {
-								Addresses: []string{
-									"192.168.0.100",
-								},
-								Roles: []string{
-									"management",
-								},
-							},
-						},
-					},
-				},
-			}, nil
-		},
-		GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
-			return world.getVersionData(server.Name), nil
-		},
-		GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
-			return api.ServerTypeIncus, nil
-		},
-		UpdateOSFunc: func(ctx context.Context, server provisioning.Server) error {
-			world.set(server.Name, versionDataUpdating, false)
-			world.deferTransition(serverWorldTransition{
-				server:      server.Name,
-				versionData: versionDataUpdated,
-			})
-
-			return nil
-		},
-		EvacuateFunc: func(ctx context.Context, server provisioning.Server, callback func(ctx context.Context, err error)) error {
-			world.set(server.Name, versionDataEvacuating, false)
-			world.deferTransition(serverWorldTransition{
-				server:      server.Name,
-				versionData: versionDataEvacuated,
-				callback:    callback,
-			})
-
-			return nil
-		},
-		RebootFunc: func(ctx context.Context, server provisioning.Server) error {
-			world.set(server.Name, versionDataRebooting, true)
-			world.deferTransition(serverWorldTransition{
-				server:      server.Name,
-				versionData: versionDataRebooted,
-			})
-
-			return nil
-		},
-		RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) error {
-			world.set(server.Name, versionDataRestoring, false)
-			world.deferTransition(serverWorldTransition{
-				server:      server.Name,
-				versionData: versionDataRestored,
-				callback:    callback,
-			})
-
-			return nil
-		},
-	}
+	serverClient := rollingUpdateServerClient(world)
 
 	serverSvc := provisioningServer.New(
 		serverDB, serverClient, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{},
