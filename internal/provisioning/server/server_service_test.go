@@ -4610,6 +4610,7 @@ func TestServerService_PollServer(t *testing.T) {
 		assertErr              require.ErrorAssertionFunc
 		assertLog              log.MatcherFunc
 		wantServerStatusDetail *api.ServerStatusDetail
+		wantServerVersionData  *api.ServerVersionData
 	}{
 		{
 			name: "success",
@@ -4808,6 +4809,110 @@ func TestServerService_PollServer(t *testing.T) {
 			assertErr:              require.NoError,
 			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatusDetail: new(api.ServerStatusDetailReadyUpdatingOS),
+		},
+		{
+			// The version data of a server, which has been rebooted, is outdated,
+			// since the reboot activates the update, that has been applied before.
+			// The maintenance state is taken from the server as well, so that a
+			// server, which is still evacuated, is not reported as up to date, which
+			// would make the rolling update skip its restore.
+			name: "success - rebooting, server is back after the reboot",
+			serverArg: provisioning.Server{
+				Name:              "one",
+				Cluster:           new("clusterA"),
+				Status:            api.ServerStatusOffline,
+				StatusDetail:      api.ServerStatusDetailOfflineRebooting,
+				LastStatusUpdated: fixedDate.Add(-1 * time.Minute),
+				Channel:           "stable",
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:              "one",
+				Cluster:           new("clusterA"),
+				Status:            api.ServerStatusOffline,
+				StatusDetail:      api.ServerStatusDetailOfflineRebooting,
+				LastStatusUpdated: fixedDate.Add(-1 * time.Minute),
+				Channel:           "stable",
+				// State from before the reboot, the update has been applied, but the
+				// server has not yet been rebooted.
+				VersionData: pollServerClusteredVersionData("1", "2", true, api.InMaintenanceEvacuated),
+			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetVersionData: pollServerClusteredVersionData("2", "2", false, api.InMaintenanceEvacuated),
+
+			assertErr:              require.NoError,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerStatusDetail: new(api.ServerStatusDetailNone),
+			wantServerVersionData:  new(pollServerClusteredVersionData("2", "2", false, api.InMaintenanceEvacuated)),
+		},
+		{
+			name: "success - unresponsive, server is back after the update has been applied",
+			serverArg: provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusOffline,
+				StatusDetail: api.ServerStatusDetailOfflineUnresponsive,
+				Channel:      "stable",
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusOffline,
+				StatusDetail: api.ServerStatusDetailOfflineUnresponsive,
+				Channel:      "stable",
+				VersionData:  pollServerVersionData("1"),
+			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetVersionData: pollServerVersionData("2"),
+			updateSvcGetAllWithFilter: provisioning.Updates{
+				{
+					ID:      2,
+					UUID:    uuidgen.FromPattern(t, "2"),
+					Version: "2",
+					Files: provisioning.UpdateFiles{
+						{
+							Filename: "x86_64/IncusOS_20260610.img.gz",
+						},
+						{
+							Filename: "x86_64/incus.raw.gz",
+						},
+					},
+				},
+			},
+
+			assertErr:              require.NoError,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerStatusDetail: new(api.ServerStatusDetailNone),
+			wantServerVersionData:  new(pollServerVersionData("2")),
 		},
 		{
 			name: "success - pending registration",
@@ -5319,6 +5424,11 @@ func TestServerService_PollServer(t *testing.T) {
 					require.Equal(t, fixedDate, server.LastSeen)
 					if tc.wantServerStatusDetail != nil {
 						require.Equal(t, *tc.wantServerStatusDetail, server.StatusDetail)
+					}
+
+					if tc.wantServerVersionData != nil {
+						require.Equal(t, tc.wantServerVersionData.OS, server.VersionData.OS)
+						require.Equal(t, tc.wantServerVersionData.Applications, server.VersionData.Applications)
 					}
 
 					return tc.repoUpdateErr
@@ -10428,6 +10538,27 @@ func TestServerService_BMCRefreshByName(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 		})
+	}
+}
+
+// pollServerClusteredVersionData is the version data, a clustered server reports
+// while it passes through an update with reboot.
+func pollServerClusteredVersionData(osVersion string, osVersionNext string, needsReboot bool, inMaintenance api.InMaintenanceState) api.ServerVersionData {
+	return api.ServerVersionData{
+		OS: api.OSVersionData{
+			Name:        "IncusOS",
+			Version:     osVersion,
+			VersionNext: osVersionNext,
+			NeedsReboot: needsReboot,
+		},
+		Applications: []api.ApplicationVersionData{
+			{
+				Name:          "incus",
+				Version:       osVersionNext,
+				InMaintenance: inMaintenance,
+			},
+		},
+		UpdateChannel: "stable",
 	}
 }
 
