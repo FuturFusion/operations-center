@@ -1,17 +1,205 @@
 package cluster_test
 
 import (
+	"bytes"
 	"context"
+	"crypto/tls"
+	"errors"
+	"io"
+	"log/slog"
+	"os"
 	"regexp"
 	"slices"
 	"strconv"
 	"sync"
 	"testing"
 
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/lifecycle"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
+	provisioningCluster "github.com/FuturFusion/operations-center/internal/provisioning/cluster"
+	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	provisioningServer "github.com/FuturFusion/operations-center/internal/provisioning/server"
+	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
+	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
+	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
+	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
+
+// clusterMemberServer returns a server, which is a member of the cluster and
+// which is fully up to date, so it neither asks for an update nor for a reboot on
+// its own.
+func clusterMemberServer(t *testing.T, name string) provisioning.Server {
+	t.Helper()
+
+	certPEM, _, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+
+	fingerprint, err := incustls.CertFingerprintStr(string(certPEM))
+	require.NoError(t, err)
+
+	return provisioning.Server{
+		Name:          name,
+		Cluster:       new("clusterA"),
+		Type:          api.ServerTypeIncus,
+		ConnectionURL: "https://" + name + "/",
+		Certificate:   string(certPEM),
+		Fingerprint:   fingerprint,
+		HardwareData:  api.HardwareData{},
+		VersionData: api.ServerVersionData{
+			OS: api.OSVersionData{
+				Name:        "incusos",
+				Version:     "1",
+				VersionNext: "1",
+				NeedsReboot: false,
+			},
+			Applications: []api.ApplicationVersionData{
+				{
+					Name:          "incus",
+					Version:       "1",
+					InMaintenance: api.NotInMaintenance,
+				},
+			},
+			NeedsUpdate:   new(false),
+			NeedsReboot:   new(false),
+			InMaintenance: new(api.NotInMaintenance),
+			UpdateChannel: "stable",
+		},
+		Status:       api.ServerStatusReady,
+		StatusDetail: api.ServerStatusDetailNone,
+		Channel:      "stable",
+	}
+}
+
+// setupControlLoopCluster wires up a cluster service backed by a real SQLite
+// schema, with the given servers already registered. The fake servers are served
+// by the given client mock and availableVersion is the most recent update
+// version, which is available in the update channel of the cluster.
+func setupControlLoopCluster(t *testing.T, ctx context.Context, listenerName string, serverClient *adapterMock.ServerClientPortMock, availableVersion string, servers ...provisioning.Server) (provisioning.ClusterService, provisioning.ServerService, *bytes.Buffer) {
+	t.Helper()
+
+	certPEM, _, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+
+	fingerprint, err := incustls.CertFingerprintStr(string(certPEM))
+	require.NoError(t, err)
+
+	serverNames := make([]string, 0, len(servers))
+	for _, server := range servers {
+		serverNames = append(serverNames, server.Name)
+	}
+
+	clusterA := provisioning.Cluster{
+		Name:          "clusterA",
+		ConnectionURL: "https://cluster-one/",
+		Certificate:   new(string(certPEM)),
+		Fingerprint:   fingerprint,
+		Status:        api.ClusterStatusReady,
+		ServerNames:   serverNames,
+		Channel:       "stable",
+		Config: api.ClusterConfig{
+			RollingRestart: api.ClusterConfigRollingRestart{
+				PostRestoreDelay: (2 * controlLoopInterval).String(),
+			},
+		},
+	}
+
+	logBuf := &bytes.Buffer{}
+	var logSink io.Writer = logBuf
+	if testing.Verbose() {
+		logSink = io.MultiWriter(os.Stdout, logBuf)
+	}
+
+	err = logger.InitLogger(logSink, "", false, true, true)
+	require.NoError(t, err)
+
+	tmpDir := t.TempDir()
+	db, err := dbdriver.Open(tmpDir)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		err := db.Close()
+		require.NoError(t, err)
+	})
+
+	_, err = dbschema.Ensure(ctx, db, tmpDir)
+	require.NoError(t, err)
+
+	tx := transaction.Enable(db)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	require.NoError(t, err)
+
+	clusterDB := sqlite.NewCluster(tx)
+	serverDB := sqlite.NewServer(tx)
+
+	_, err = clusterDB.Create(ctx, clusterA)
+	require.NoError(t, err)
+
+	for _, server := range servers {
+		_, err = serverDB.Create(ctx, server)
+		require.NoError(t, err)
+	}
+
+	channelSvc := &serviceMock.ChannelServiceMock{
+		GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Channel, error) {
+			return &provisioning.Channel{}, nil
+		},
+	}
+
+	updateSvc := &serviceMock.UpdateServiceMock{
+		GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+			return provisioning.Updates{
+				{
+					ID:      1,
+					UUID:    uuidgen.FromPattern(t, availableVersion),
+					Version: availableVersion,
+					Files: provisioning.UpdateFiles{
+						{Filename: "x86_64/IncusOS_20260610.img.gz"},
+						{Filename: "x86_64/incus.raw.gz"},
+					},
+				},
+			}, nil
+		},
+	}
+
+	serverSvc := provisioningServer.New(
+		serverDB, serverClient, nil, nil, nil, channelSvc, updateSvc, tls.Certificate{},
+		provisioningServer.WithRebootStatusUpdateGracePeriod(0),
+	)
+
+	clusterSvc := provisioningCluster.New(
+		clusterDB, nil, nil, serverSvc, nil, nil, nil, nil,
+		provisioningCluster.WithPendingUpdateRecheckInterval(controlLoopInterval),
+		provisioningCluster.WithWarningEmitter(provisioning.LogWarningService{}),
+	)
+
+	serverSvc.SetClusterService(clusterSvc)
+
+	// Trigger ClusterUpdateControlLoop also from server lifecycle events.
+	lifecycle.ServerLifecycleSignal.AddListenerWithErr(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) error {
+		err := clusterSvc.ClusterUpdateControlLoop(ctx, slm.Cluster)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to handle server lifecycle event", logger.Err(err), slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
+		}
+
+		return err
+	}, listenerName)
+	t.Cleanup(func() {
+		lifecycle.ServerLifecycleSignal.RemoveListener(listenerName)
+	})
+
+	return clusterSvc, serverSvc, logBuf
+}
 
 // The version data, the fake servers report while passing through a rolling
 // cluster update. Version "1" is installed initially, version "2" is available.
@@ -52,6 +240,91 @@ var (
 	versionDataRebootOnlyRestoring  = versionData("1", "1", false, "1", api.InMaintenanceRestoring)
 	versionDataRebootOnlyRestored   = versionData("1", "1", false, "1", api.NotInMaintenance)
 )
+
+// rollingUpdateServerClient returns a client mock, which drives the given world
+// through a rolling cluster update with reboot.
+func rollingUpdateServerClient(world *serverWorld) *adapterMock.ServerClientPortMock {
+	return &adapterMock.ServerClientPortMock{
+		UpdateUpdateConfigFunc: func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemUpdate) error {
+			return nil
+		},
+		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+			if world.isRebooting(endpoint.GetName()) {
+				return domain.NewRetryableErr(errors.New("rebooting"))
+			}
+
+			return nil
+		},
+		IsReadyFunc: func(ctx context.Context, server provisioning.Server) error {
+			return nil
+		},
+		GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
+			return api.HardwareData{}, nil
+		},
+		GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
+			return api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			}, nil
+		},
+		GetVersionDataFunc: func(ctx context.Context, server provisioning.Server) (api.ServerVersionData, error) {
+			return world.getVersionData(server.Name), nil
+		},
+		GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
+			return api.ServerTypeIncus, nil
+		},
+		UpdateOSFunc: func(ctx context.Context, server provisioning.Server) error {
+			world.set(server.Name, versionDataUpdating, false)
+			world.deferTransition(serverWorldTransition{
+				server:      server.Name,
+				versionData: versionDataUpdated,
+			})
+
+			return nil
+		},
+		EvacuateFunc: func(ctx context.Context, server provisioning.Server, callback func(ctx context.Context, err error)) error {
+			world.set(server.Name, versionDataEvacuating, false)
+			world.deferTransition(serverWorldTransition{
+				server:      server.Name,
+				versionData: versionDataEvacuated,
+				callback:    callback,
+			})
+
+			return nil
+		},
+		RebootFunc: func(ctx context.Context, server provisioning.Server) error {
+			world.set(server.Name, versionDataRebooting, true)
+			world.deferTransition(serverWorldTransition{
+				server:      server.Name,
+				versionData: versionDataRebooted,
+			})
+
+			return nil
+		},
+		RestoreFunc: func(ctx context.Context, server provisioning.Server, restoreModeSkip bool, callback func(ctx context.Context, err error)) error {
+			world.set(server.Name, versionDataRestoring, false)
+			world.deferTransition(serverWorldTransition{
+				server:      server.Name,
+				versionData: versionDataRestored,
+				callback:    callback,
+			})
+
+			return nil
+		},
+	}
+}
 
 // serverWorld is the state of the fake servers, the ServerClientPortMock serves.
 //
