@@ -1284,7 +1284,7 @@ func (d *Daemon) setupBackgroundTasks(
 			Status:       new(api.ServerStatusReady),
 			StatusDetail: new(api.ServerStatusDetailReadyUpdatingOS),
 		},
-		false,
+		true,
 		config.UpdatingServerPollInterval,
 	)
 
@@ -1323,7 +1323,7 @@ func (d *Daemon) setupBackgroundTasks(
 			Status:       new(api.ServerStatusOffline),
 			StatusDetail: new(api.ServerStatusDetailOfflineRebooting),
 		},
-		false,
+		true,
 		config.RebootingServerPollInterval,
 	)
 
@@ -1336,7 +1336,7 @@ func (d *Daemon) setupBackgroundTasks(
 			Status:       new(api.ServerStatusOffline),
 			StatusDetail: new(api.ServerStatusDetailOfflineUnresponsive),
 		},
-		false,
+		true,
 		config.UnresponsiveServerPollInterval,
 	)
 
