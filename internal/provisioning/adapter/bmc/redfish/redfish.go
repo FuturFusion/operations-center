@@ -670,6 +670,67 @@ func (r redfish) ServerSetLocationIndicator(ctx context.Context, server provisio
 
 const defaultWaitForTaskRetryAfter = 2 * time.Second
 
+// taskState reports the state of the task behind uri and, while it is still
+// running, how long the BMC asks to wait before the next poll.
+func taskState(client *gofish.APIClient, uri string) (api.BMCTaskState, time.Duration, error) {
+	resp, err := client.Get(uri)
+	if err != nil {
+		if isTaskMonitorGone(err) {
+			return api.BMCTaskStateUnknown, 0, nil
+		}
+
+		return api.BMCTaskStateUnknown, 0, wrapRedfishError(err)
+	}
+
+	resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusAccepted: // still running
+		return api.BMCTaskStateRunning, taskRetryAfter(resp), nil
+
+	case http.StatusOK, http.StatusCreated: // task finished
+		return api.BMCTaskStateCompleted, 0, nil
+
+	default:
+		return api.BMCTaskStateUnknown, 0, fmt.Errorf("Unexpected status %d polling %s", resp.StatusCode, uri)
+	}
+}
+
+// taskRetryAfter returns the poll interval the BMC asks for.
+func taskRetryAfter(resp *http.Response) time.Duration {
+	ra := resp.Header.Get("Retry-After")
+	if ra == "" {
+		return defaultWaitForTaskRetryAfter
+	}
+
+	secs, err := strconv.Atoi(ra)
+	if err != nil {
+		return defaultWaitForTaskRetryAfter
+	}
+
+	return time.Duration(secs) * time.Second
+}
+
+func (r redfish) TaskState(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) (api.BMCTaskState, error) {
+	if taskMonitor == nil || taskMonitor.URI == "" {
+		return api.BMCTaskStateUnknown, nil
+	}
+
+	client, logout, err := r.getClient(ctx, server)
+	if err != nil {
+		return api.BMCTaskStateUnknown, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+	}
+
+	defer logout()
+
+	state, _, err := taskState(client, taskMonitor.URI)
+	if err != nil {
+		return api.BMCTaskStateUnknown, err
+	}
+
+	return state, nil
+}
+
 func (r redfish) WaitForTask(ctx context.Context, server provisioning.Server, taskMonitor *provisioning.BMCTaskMonitor) error {
 	if taskMonitor == nil {
 		return nil
@@ -690,34 +751,23 @@ func (r redfish) WaitForTask(ctx context.Context, server provisioning.Server, ta
 			return fmt.Errorf("Waiting for task %s: %w", uri, err)
 		}
 
-		resp, err := client.Get(uri)
+		state, retryAfter, err := taskState(client, uri)
 		if err != nil {
-			return wrapRedfishError(err)
+			return err
 		}
 
-		resp.Body.Close()
+		switch state {
+		case api.BMCTaskStateRunning: // keep polling
 
-		switch resp.StatusCode {
-		case http.StatusAccepted: // still running
-
-		case http.StatusOK, http.StatusCreated: // task finished
+		case api.BMCTaskStateCompleted:
 			return nil
 
-		default:
-			return fmt.Errorf("Unexpected status %d polling %s", resp.StatusCode, uri)
-		}
-
-		wait := defaultWaitForTaskRetryAfter
-		ra := resp.Header.Get("Retry-After")
-		if ra != "" {
-			secs, err := strconv.Atoi(ra)
-			if err == nil {
-				wait = time.Duration(secs) * time.Second
-			}
+		case api.BMCTaskStateUnknown:
+			return fmt.Errorf("The BMC does not know the task %s (any more)", uri)
 		}
 
 		select {
-		case <-time.After(wait):
+		case <-time.After(retryAfter):
 			continue
 
 		case <-ctx.Done():
