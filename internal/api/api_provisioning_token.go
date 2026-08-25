@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"path/filepath"
 	"regexp"
@@ -21,14 +22,16 @@ import (
 )
 
 type tokenHandler struct {
-	service    provisioning.TokenService
-	authorizer *authz.Authorizer
+	service      provisioning.TokenService
+	authorizer   *authz.Authorizer
+	seedProgress provisioning.SeedImageProgressPort
 }
 
-func registerProvisioningTokenHandler(router Router, authorizer *authz.Authorizer, service provisioning.TokenService) {
+func registerProvisioningTokenHandler(router Router, authorizer *authz.Authorizer, service provisioning.TokenService, seedProgress provisioning.SeedImageProgressPort) {
 	handler := &tokenHandler{
-		service:    service,
-		authorizer: authorizer,
+		service:      service,
+		authorizer:   authorizer,
+		seedProgress: seedProgress,
 	}
 
 	// Authentication and authorization are only required, if the respective token seed is not defined as public.
@@ -906,7 +909,12 @@ func (t *tokenHandler) tokenSeedImageGet(r *http.Request) response.Response {
 			return response.SmartError(err)
 		}
 
-		return response.ServeContentResponse(r, image.Content, image.Filename, image.ModTime, image.Size, nil)
+		content := t.trackSeedImageRead(r, provisioning.SeedImageID{
+			CacheID:       provisioning.SeedImageCacheID(UUID, name, imageType, architecture, channel),
+			FingerprintID: fingerprintID,
+		}, image.Size, image.Content)
+
+		return response.ServeContentResponse(r, content, image.Filename, image.ModTime, image.Size, nil)
 	}
 
 	seedConfig, err := t.service.GetTokenSeedByName(r.Context(), UUID, name)
@@ -940,6 +948,24 @@ func (t *tokenHandler) tokenSeedImageGet(r *http.Request) response.Response {
 	}
 
 	return response.ServeContentResponse(r, image.Content, filename, image.ModTime, image.Size, nil)
+}
+
+// trackSeedImageRead wraps the image, so that the reads a BMC performs while
+// streaming it are recorded as progress of the installation it feeds.
+//
+// The wrapper goes around the image itself and not around the response, since
+// http.ServeContent answers a range request by seeking, which only the image
+// underneath it sees as reads.
+//
+// Only a request naming an already prepared image is tracked, since that is the
+// only address a BMC is ever pointed at, see BMCAttachMediaByName. A request
+// naming a token seed serves a CLI or UI download instead, which tells nothing
+// about an installation.
+//
+// A request arriving through a trusted HTTPS proxy carries the address of the
+// real peer, since such a proxy speaks the PROXY protocol to the listener.
+func (t *tokenHandler) trackSeedImageRead(r *http.Request, imageID provisioning.SeedImageID, size int64, content io.ReadSeekCloser) io.ReadSeekCloser {
+	return t.seedProgress.Track(r.Context(), imageID, provisioning.SeedImageSource(r.RemoteAddr), size, content)
 }
 
 // seedImageFingerprintIDRegexp matches the terminal filename segment naming an

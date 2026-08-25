@@ -6,6 +6,7 @@ import (
 	"context"
 	"io"
 	"maps"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -18,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/seedprogress"
 	provisioningMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	"github.com/FuturFusion/operations-center/internal/security/authn"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
@@ -691,6 +693,106 @@ func Test_tokenHandler_tokenSeedImageGetRange(t *testing.T) {
 	}
 }
 
+func Test_tokenHandler_tokenSeedImageGet_readProgress(t *testing.T) {
+	const (
+		fingerprintID = "AAAAAAAAAAAA"
+		path          = "/" + tokenUUID + "/seeds/test/architecture/x86_64/channel/stable/type/iso/" + fingerprintID + ".iso"
+		content       = "0123456789abcdefghij"
+	)
+
+	tokenService := &provisioningMock.TokenServiceMock{
+		GetPreparedTokenSeedImageFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string, fingerprintID string) (*provisioning.TokenImage, error) {
+			return testTokenImage(content), nil
+		},
+		GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+			return &provisioning.TokenSeed{Public: true}, nil
+		},
+		GetSeekableTokenImageFromTokenSeedFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (*provisioning.TokenImage, error) {
+			return testTokenImage(content), nil
+		},
+	}
+
+	tracker := seedprogress.New()
+	server := newTokenTestServer(t, tokenService, tracker)
+
+	imageID := provisioning.SeedImageID{
+		CacheID:       provisioning.SeedImageCacheID(uuid.MustParse(tokenUUID), "test", api.ImageTypeISO, images.UpdateFileArchitecture64BitX86, "stable"),
+		FingerprintID: fingerprintID,
+	}
+
+	// A BMC streams the image from its own address, which is what tells the
+	// reads of several servers installing from the same image apart.
+	firstBMC := loopbackClient(t, "127.0.0.1")
+	secondBMC := loopbackClient(t, "127.0.0.2")
+
+	body, resp := doTokenRequestFullWithClient(t, firstBMC, server, http.MethodGet, path, "", nil)
+	require.Equal(t, http.StatusOK, resp.statusCode)
+	require.Equal(t, content, body)
+
+	body, resp = doTokenRequestFullWithClient(t, firstBMC, server, http.MethodGet, path, "", http.Header{"Range": []string{"bytes=5-9"}})
+	require.Equal(t, http.StatusPartialContent, resp.statusCode)
+	require.Equal(t, content[5:10], body)
+
+	body, resp = doTokenRequestFullWithClient(t, secondBMC, server, http.MethodGet, path, "", http.Header{"Range": []string{"bytes=10-14"}})
+	require.Equal(t, http.StatusPartialContent, resp.statusCode)
+	require.Equal(t, content[10:15], body)
+
+	firstProgress, ok := tracker.Get(context.Background(), imageID, "127.0.0.1")
+	require.True(t, ok)
+	require.Equal(t, int64(len(content)), firstProgress.Size)
+	require.Equal(t, int64(len(content)+5), firstProgress.BytesServed)
+	require.Equal(t, 2, firstProgress.RequestCount)
+
+	// The second request read a range already read before, which does not make
+	// the highest offset reached regress.
+	require.Equal(t, int64(len(content)), firstProgress.HighestOffset)
+	require.InDelta(t, 100.0, firstProgress.PercentComplete(), 0.001)
+	require.False(t, firstProgress.FirstRead.IsZero())
+	require.Equal(t, time.Minute, firstProgress.IdleFor(firstProgress.LastRead.Add(time.Minute)))
+
+	secondProgress, ok := tracker.Get(context.Background(), imageID, "127.0.0.2")
+	require.True(t, ok)
+	require.Equal(t, int64(5), secondProgress.BytesServed)
+	require.Equal(t, int64(15), secondProgress.HighestOffset)
+	require.Equal(t, 1, secondProgress.RequestCount)
+	require.InDelta(t, 75.0, secondProgress.PercentComplete(), 0.001)
+
+	// A download naming the token seed instead of a prepared image is served to
+	// a CLI or to the UI and is not tracked at all.
+	downloadPath := "/" + tokenUUID + "/seeds/test/architecture/x86_64/channel/stable/type/iso/file.iso"
+
+	body, resp = doTokenRequestFullWithClient(t, loopbackClient(t, "127.0.0.3"), server, http.MethodGet, downloadPath, "", nil)
+	require.Equal(t, http.StatusOK, resp.statusCode)
+	require.Equal(t, content, body)
+
+	_, ok = tracker.Get(context.Background(), imageID, "127.0.0.3")
+	require.False(t, ok)
+
+	_, ok = tracker.Get(context.Background(), provisioning.SeedImageID{CacheID: imageID.CacheID}, "127.0.0.3")
+	require.False(t, ok)
+}
+
+func loopbackClient(t *testing.T, address string) *http.Client {
+	t.Helper()
+
+	dialer := &net.Dialer{
+		LocalAddr: &net.TCPAddr{
+			IP: net.ParseIP(address),
+		},
+	}
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			DisableCompression: true,
+			DialContext:        dialer.DialContext,
+		},
+	}
+
+	t.Cleanup(client.CloseIdleConnections)
+
+	return client
+}
+
 func doTokenRequest(t *testing.T, tokenService provisioning.TokenService, method string, target string, requestBody string) (string, int) {
 	t.Helper()
 
@@ -708,6 +810,17 @@ type tokenResponse struct {
 func doTokenRequestFull(t *testing.T, tokenService provisioning.TokenService, method string, target string, requestBody string, requestHeader http.Header) (string, tokenResponse) {
 	t.Helper()
 
+	server := newTokenTestServer(t, tokenService, seedprogress.New())
+
+	client := &http.Client{Transport: &http.Transport{DisableCompression: true}}
+	t.Cleanup(client.CloseIdleConnections)
+
+	return doTokenRequestFullWithClient(t, client, server, method, target, requestBody, requestHeader)
+}
+
+func newTokenTestServer(t *testing.T, tokenService provisioning.TokenService, seedProgress provisioning.SeedImageProgressPort) *httptest.Server {
+	t.Helper()
+
 	authenticator := authn.New([]authn.Auther{dummyAuthenticator{}})
 
 	serveMux := http.NewServeMux()
@@ -716,18 +829,21 @@ func doTokenRequestFull(t *testing.T, tokenService provisioning.TokenService, me
 	)
 
 	var authorizer authz.Authorizer = noopAuthorizer{}
-	registerProvisioningTokenHandler(router, &authorizer, tokenService)
+	registerProvisioningTokenHandler(router, &authorizer, tokenService, seedProgress)
 
 	server := httptest.NewServer(serveMux)
 	t.Cleanup(server.Close)
+
+	return server
+}
+
+func doTokenRequestFullWithClient(t *testing.T, client *http.Client, server *httptest.Server, method string, target string, requestBody string, requestHeader http.Header) (string, tokenResponse) {
+	t.Helper()
 
 	req, err := http.NewRequest(method, server.URL+target, bytes.NewBufferString(requestBody))
 	require.NoError(t, err)
 
 	maps.Copy(req.Header, requestHeader)
-
-	client := &http.Client{Transport: &http.Transport{DisableCompression: true}}
-	t.Cleanup(client.CloseIdleConnections)
 
 	resp, err := client.Do(req)
 	require.NoError(t, err)

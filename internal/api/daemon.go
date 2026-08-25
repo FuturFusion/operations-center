@@ -52,6 +52,7 @@ import (
 	provisioningIncusAdapter "github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
 	provisioningAdapterMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/scriptlet"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/seedprogress"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
 	provisioningChannel "github.com/FuturFusion/operations-center/internal/provisioning/channel"
@@ -303,6 +304,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 	channelSvc := d.setupChannelService(dbWithTransaction, updateSvc)
 
 	tokenSvc, imageFlasher := d.setupTokenService(dbWithTransaction, client, updateSvc, channelSvc)
+
+	seedImageProgress := provisioningAdapterMiddleware.NewSeedImageProgressPortWithSlog(
+		seedprogress.New(),
+	)
+
 	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter)
 	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc)
 	if err != nil {
@@ -328,6 +334,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		inventoryInventoryAggregateSvc,
 		imageSourceSvc,
 		incusImageSvc,
+		seedImageProgress,
 		dbWithTransaction,
 	)
 	inventorySyncers[domain.ResourceTypeServer] = serverSvc
@@ -978,6 +985,7 @@ func (d *Daemon) setupAPIRoutes(
 	inventoryInventoryAggregateSvc inventory.InventoryAggregateService,
 	imageSourceSvc image.IncusImageSourceService,
 	incusImageSvc image.ImageIncusService,
+	seedImageProgress provisioning.SeedImageProgressPort,
 	db dbdriver.DBTX,
 ) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
@@ -1080,7 +1088,7 @@ func (d *Daemon) setupAPIRoutes(
 	provisioningRouter := api10router.SubGroup("/provisioning")
 
 	provisioningTokenRouter := provisioningRouter.SubGroup("/tokens")
-	registerProvisioningTokenHandler(provisioningTokenRouter, d.authorizer, tokenSvc)
+	registerProvisioningTokenHandler(provisioningTokenRouter, d.authorizer, tokenSvc, seedImageProgress)
 
 	provisioningClusterRouter := provisioningRouter.SubGroup("/clusters")
 	registerProvisioningClusterHandler(provisioningClusterRouter, d.authorizer, clusterSvc, clusterTemplateSvc)
