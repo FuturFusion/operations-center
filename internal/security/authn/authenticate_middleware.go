@@ -25,6 +25,8 @@ func WithIsAuthenticationRequired(isAuthenticationRequired func(r *http.Request)
 // a request by probing all provided authers in sequence.
 // When successful, the authenticated username and the protocol of the
 // authentication is stored in the request context.
+// For requests, which are not authenticated, only the authentication status is
+// stored in the request context.
 func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.HandlerFunc) http.HandlerFunc {
 	cfg := &middlewareConfig{
 		isAuthenticationRequired: func(r *http.Request) bool { return true },
@@ -73,8 +75,10 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 
 			// Add authentication/authorization context data.
 			ctx = context.WithValue(ctx, CtxAuthenticated, trusted)
-			ctx = context.WithValue(ctx, CtxUsername, username)
-			ctx = context.WithValue(ctx, CtxProtocol, protocol)
+			if trusted {
+				ctx = context.WithValue(ctx, CtxUsername, username)
+				ctx = context.WithValue(ctx, CtxProtocol, protocol)
+			}
 
 			r = r.WithContext(ctx)
 
