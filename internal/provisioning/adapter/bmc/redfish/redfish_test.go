@@ -4110,6 +4110,18 @@ const (
   "VirtualMedia": { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia" }
 }`
 
+	mediaSystemBootRemovableDeclaredBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Boot": {
+    "BootSourceOverrideEnabled": "Disabled",
+    "BootSourceOverrideEnabled@Redfish.AllowableValues": ["Disabled", "Once", "Continuous"],
+    "BootSourceOverrideTarget": "None",
+    "BootSourceOverrideTarget@Redfish.AllowableValues": ["None", "Pxe", "Cd", "Usb", "Floppy", "Hdd"]
+  },
+  "VirtualMedia": { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia" }
+}`
+
 	mediaSystemBootContinuousOnlyBody = `{
   "@odata.id": "/redfish/v1/Systems/1",
   "Id": "1",
@@ -4214,6 +4226,52 @@ const (
     },
     "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
   }
+}`
+
+	mediaSystemVMFreeAllTypesBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["CD", "DVD", "Floppy", "USBStick"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaSystemVMFreeAllTypesWithActionInfoBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["CD", "DVD", "Floppy", "USBStick"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": {
+      "@Redfish.ActionInfo": "/redfish/v1/Systems/1/VirtualMedia/1/InsertMediaActionInfo",
+      "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia"
+    },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaSystemVMFreeRemovableWithActionInfoBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["USBStick", "Floppy"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": {
+      "@Redfish.ActionInfo": "/redfish/v1/Systems/1/VirtualMedia/1/InsertMediaActionInfo",
+      "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia"
+    },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaSystemVMFreeAllTypesWithoutActionsBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": false,
+  "MediaTypes": ["CD", "DVD", "Floppy", "USBStick"]
 }`
 
 	mediaSystemVMFreeWithoutActionsBody = `{
@@ -4434,6 +4492,48 @@ const (
   }
 }`
 
+	mediaMediaTypeUnknownBody = `{
+  "error": {
+    "code": "Base.1.5.ActionParameterUnknown",
+    "message": "The action VirtualMedia.InsertMedia was submitted with the invalid parameter MediaType.",
+    "@Message.ExtendedInfo": [
+      {
+        "MessageId": "Base.1.5.ActionParameterUnknown",
+        "MessageArgs": ["VirtualMedia.InsertMedia", "MediaType"],
+        "RelatedProperties": ["/MediaType"]
+      }
+    ]
+  }
+}`
+
+	mediaMediaTypeUnknownPropertyBody = `{
+  "error": {
+    "code": "Base.1.5.PropertyUnknown",
+    "message": "The property MediaType is not in the list of valid properties for the resource.",
+    "@Message.ExtendedInfo": [
+      {
+        "MessageId": "Base.1.5.PropertyUnknown",
+        "MessageArgs": ["MediaType"],
+        "RelatedProperties": ["#/MediaType"]
+      }
+    ]
+  }
+}`
+
+	mediaMediaTypeValueNotInListBody = `{
+  "error": {
+    "code": "Base.1.5.PropertyValueNotInList",
+    "message": "The value USBStick for the property MediaType is not in the list of acceptable values.",
+    "@Message.ExtendedInfo": [
+      {
+        "MessageId": "Base.1.5.PropertyValueNotInList",
+        "MessageArgs": ["USBStick", "MediaType"],
+        "RelatedProperties": ["#/MediaType"]
+      }
+    ]
+  }
+}`
+
 	mediaInsertedUnknownBody = `{
   "error": {
     "code": "iLO.0.10.ExtendedInfo",
@@ -4510,6 +4610,19 @@ func insertMediaActionInfoRoute(allowableValues string) mockRedfishRoute {
 	}
 }
 
+func insertMediaActionInfoMediaTypeRoute(allowableValues string) mockRedfishRoute {
+	return mockRedfishRoute{
+		statusCode: http.StatusOK,
+		body: `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1/InsertMediaActionInfo",
+  "Parameters": [
+    { "Name": "Image", "Required": true, "DataType": "String" },
+    { "Name": "MediaType", "Required": false, "DataType": "String", "AllowableValues": [` + allowableValues + `] }
+  ]
+}`,
+	}
+}
+
 func TestRedfish_AttachMedia(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -4553,7 +4666,7 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				{
 					method: http.MethodPost,
 					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
-					body:   `{"Image":"http://example.com/install.iso"}`,
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
 				},
 			},
 			assertErr: require.NoError,
@@ -4573,7 +4686,7 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				{
 					method: http.MethodPost,
 					path:   "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
-					body:   `{"Image":"http://example.com/install.iso"}`,
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
 				},
 			},
 			assertErr: require.NoError,
@@ -4638,12 +4751,159 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				{
 					method: http.MethodPost,
 					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
-					body:   `{"Image":"http://example.com/install.iso"}`,
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
 				},
 				{
 					method: http.MethodPost,
 					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
-					body:   `{"Image":"http://example.com/install.iso","TransferProtocolType":"HTTP"}`,
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD","TransferProtocolType":"HTTP"}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - raw image on a slot taking every media type is attached as a USB stick",
+			virtualMediaID: "system:1",
+			mediaURL:       "http://example.com/install.raw",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeAllTypesBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.raw","MediaType":"USBStick"}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - action info narrows the media type down",
+			virtualMediaID: "system:1",
+			mediaURL:       "http://example.com/install.raw",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeAllTypesWithActionInfoBody,
+			extraRoutes: map[string]mockRedfishRoute{
+				"/redfish/v1/Systems/1/VirtualMedia/1/InsertMediaActionInfo": insertMediaActionInfoMediaTypeRoute(`"CD", "DVD", "Floppy"`),
+			},
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.raw","MediaType":"Floppy"}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - action info offering no media type the image fits leaves the choice to the BMC",
+			virtualMediaID: "system:1",
+			mediaURL:       "http://example.com/install.raw",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeAllTypesWithActionInfoBody,
+			extraRoutes: map[string]mockRedfishRoute{
+				"/redfish/v1/Systems/1/VirtualMedia/1/InsertMediaActionInfo": insertMediaActionInfoMediaTypeRoute(`"CD", "DVD"`),
+			},
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.raw"}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - rejected media type is dropped and the request retried",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{
+				statusCodes: []int{http.StatusBadRequest, http.StatusNoContent},
+				bodies:      []string{mediaMediaTypeUnknownBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
+				},
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso"}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - no media type is asked for an image of an unrecognized kind",
+			virtualMediaID: "system:1",
+			mediaURL:       "http://example.com/install",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeAllTypesBody,
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install"}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - patch fallback drops the rejected media type property",
+			virtualMediaID: "system:1",
+			mediaURL:       "http://example.com/install.raw",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeAllTypesWithoutActionsBody,
+
+			virtualMediaPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest, http.StatusNoContent},
+				bodies:      []string{mediaMediaTypeUnknownPropertyBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:   `{"Image":"http://example.com/install.raw","Inserted":true,"MediaType":"USBStick","WriteProtected":true}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:   `{"Image":"http://example.com/install.raw","Inserted":true,"WriteProtected":true}`,
 				},
 			},
 			assertErr: require.NoError,
@@ -4663,7 +4923,7 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				{
 					method: http.MethodPatch,
 					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
-					body:   `{"Image":"http://example.com/install.iso","Inserted":true,"WriteProtected":true}`,
+					body:   `{"Image":"http://example.com/install.iso","Inserted":true,"MediaType":"CD","WriteProtected":true}`,
 				},
 			},
 			assertErr: require.NoError,
@@ -4728,13 +4988,13 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				{
 					method:  http.MethodPatch,
 					path:    "/redfish/v1/Systems/1/VirtualMedia/1",
-					body:    `{"Image":"http://example.com/install.iso","Inserted":true,"WriteProtected":true}`,
+					body:    `{"Image":"http://example.com/install.iso","Inserted":true,"MediaType":"CD","WriteProtected":true}`,
 					ifMatch: `W/"1234567890"`,
 				},
 				{
 					method: http.MethodPatch,
 					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
-					body:   `{"Image":"http://example.com/install.iso","Inserted":true,"WriteProtected":true}`,
+					body:   `{"Image":"http://example.com/install.iso","Inserted":true,"MediaType":"CD","WriteProtected":true}`,
 				},
 			},
 			assertErr: require.NoError,
@@ -4751,7 +5011,7 @@ func TestRedfish_AttachMedia(t *testing.T) {
 
 			virtualMediaPatch: mockResponses{
 				statusCodes: []int{http.StatusBadRequest},
-				bodies:      []string{mediaInsertedUnknownBody, mediaInsertedUnknownBody},
+				bodies:      []string{mediaInsertedUnknownBody, mediaInsertedUnknownBody, mediaInsertedUnknownBody},
 			},
 
 			assertErr: func(t require.TestingT, err error, _ ...any) {
@@ -4762,7 +5022,9 @@ func TestRedfish_AttachMedia(t *testing.T) {
 			},
 		},
 		{
-			name:           "error - patch is not repeated for a rejected payload",
+			// The rejection names Image, which is never dropped, so the only
+			// thing left to give up is the media type hint.
+			name:           "error - patch gives the media type hint up and is then not repeated",
 			virtualMediaID: "system:1",
 
 			systemsBody:        mediaSystemsBody,
@@ -4772,10 +5034,16 @@ func TestRedfish_AttachMedia(t *testing.T) {
 
 			virtualMediaPatch: mockResponses{
 				statusCodes: []int{http.StatusBadRequest},
-				bodies:      []string{mediaImageFormatErrorBody},
+				bodies:      []string{mediaImageFormatErrorBody, mediaImageFormatErrorBody},
 			},
 
 			wantRequests: []mockRequest{
+				{
+					method:  http.MethodPatch,
+					path:    "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:    `{"Image":"http://example.com/install.iso","Inserted":true,"MediaType":"CD","WriteProtected":true}`,
+					ifMatch: `W/"1234567890"`,
+				},
 				{
 					method:  http.MethodPatch,
 					path:    "/redfish/v1/Systems/1/VirtualMedia/1",
@@ -4784,6 +5052,28 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				},
 			},
 			assertErr: require.Error,
+		},
+		{
+			name:           "error - patch failed",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeWithoutActionsBody,
+
+			virtualMediaPatch: mockResponses{statusCodes: []int{http.StatusInternalServerError}},
+
+			// A server error leaves open whether the BMC attached the media, so
+			// the media type hint is kept and the request is not repeated.
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:   `{"Image":"http://example.com/install.iso","Inserted":true,"MediaType":"CD","WriteProtected":true}`,
+				},
+			},
+			assertErr: errassert.Contains("Failed to attach media"),
 		},
 		{
 			name:           "success - patch fallback drops the rejected inserted property",
@@ -4803,12 +5093,12 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				{
 					method: http.MethodPatch,
 					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
-					body:   `{"Image":"http://example.com/install.iso","Inserted":true,"WriteProtected":true}`,
+					body:   `{"Image":"http://example.com/install.iso","Inserted":true,"MediaType":"CD","WriteProtected":true}`,
 				},
 				{
 					method: http.MethodPatch,
 					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
-					body:   `{"Image":"http://example.com/install.iso","WriteProtected":true}`,
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD","WriteProtected":true}`,
 				},
 			},
 			assertErr: require.NoError,
@@ -4856,12 +5146,131 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				{
 					method: http.MethodPost,
 					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
-					body:   `{"Image":"http://example.com/install.iso"}`,
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
 				},
 				{
 					method: http.MethodPatch,
 					path:   "/redfish/v1/Systems/1",
 					body:   `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Cd"}}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - boot device follows the media type the action info narrowed down to",
+			virtualMediaID: "system:1",
+			mediaURL:       "http://example.com/install.raw",
+			setBootDevice:  true,
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootRemovableDeclaredBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeRemovableWithActionInfoBody,
+			extraRoutes: map[string]mockRedfishRoute{
+				"/redfish/v1/Systems/1/VirtualMedia/1/InsertMediaActionInfo": insertMediaActionInfoMediaTypeRoute(`"Floppy"`),
+			},
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.raw","MediaType":"Floppy"}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1",
+					body:   `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Floppy"}}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - media type the server cannot boot from is never asked for",
+			virtualMediaID: "system:1",
+			mediaURL:       "http://example.com/install.raw",
+			setBootDevice:  true,
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootDeclaredBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeRemovableWithActionInfoBody,
+			extraRoutes: map[string]mockRedfishRoute{
+				"/redfish/v1/Systems/1/VirtualMedia/1/InsertMediaActionInfo": insertMediaActionInfoMediaTypeRoute(`"Floppy"`),
+			},
+
+			insertMedia: mockResponses{statusCodes: []int{http.StatusNoContent}},
+			systemPatch: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.raw"}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1",
+					body:   `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Usb"}}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - patch fallback drops the media type rejected by value",
+			virtualMediaID: "system:1",
+			mediaURL:       "http://example.com/install.raw",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeAllTypesWithoutActionsBody,
+
+			virtualMediaPatch: mockResponses{
+				statusCodes: []int{http.StatusBadRequest, http.StatusNoContent},
+				bodies:      []string{mediaMediaTypeValueNotInListBody},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:   `{"Image":"http://example.com/install.raw","Inserted":true,"MediaType":"USBStick","WriteProtected":true}`,
+				},
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1",
+					body:   `{"Image":"http://example.com/install.raw","Inserted":true,"WriteProtected":true}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - media type is dropped for a rejection in no readable form",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			insertMedia: mockResponses{
+				statusCodes: []int{http.StatusBadRequest, http.StatusNoContent},
+				bodies:      []string{"<html><body>Bad Request</body></html>"},
+			},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
+				},
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso"}`,
 				},
 			},
 			assertErr: require.NoError,
@@ -4885,7 +5294,7 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				{
 					method: http.MethodPost,
 					path:   "/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
-					body:   `{"Image":"http://example.com/install.iso"}`,
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
 				},
 				{
 					method: http.MethodPatch,
@@ -4913,7 +5322,7 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				{
 					method: http.MethodPost,
 					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
-					body:   `{"Image":"http://example.com/install.raw"}`,
+					body:   `{"Image":"http://example.com/install.raw","MediaType":"USBStick"}`,
 				},
 				{
 					method: http.MethodPatch,
@@ -4940,7 +5349,7 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				{
 					method: http.MethodPost,
 					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
-					body:   `{"Image":"http://example.com/install.iso"}`,
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
 				},
 				{
 					method: http.MethodPatch,
@@ -4970,7 +5379,7 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				{
 					method: http.MethodPost,
 					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
-					body:   `{"Image":"http://example.com/install.iso"}`,
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
 				},
 				{
 					method: http.MethodPatch,
@@ -5000,7 +5409,7 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				{
 					method: http.MethodPost,
 					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
-					body:   `{"Image":"http://example.com/install.iso"}`,
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
 				},
 			},
 			assertErr: require.NoError,
@@ -5035,7 +5444,7 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				{
 					method: http.MethodPost,
 					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
-					body:   `{"Image":"http://example.com/install.iso"}`,
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
 				},
 				{
 					method: http.MethodPost,
@@ -5066,7 +5475,7 @@ func TestRedfish_AttachMedia(t *testing.T) {
 				{
 					method: http.MethodPost,
 					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
-					body:   `{"Image":"http://example.com/install.iso"}`,
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
 				},
 				{
 					method: http.MethodPatch,
@@ -5153,6 +5562,15 @@ func TestRedfish_AttachMedia(t *testing.T) {
 
 			insertMedia: mockResponses{statusCodes: []int{http.StatusInternalServerError}},
 
+			// A server error leaves open whether the BMC attached the media, so
+			// the media type hint is kept and the action is not repeated.
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPost,
+					path:   "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia",
+					body:   `{"Image":"http://example.com/install.iso","MediaType":"CD"}`,
+				},
+			},
 			assertErr: errassert.Contains("Failed to attach media"),
 		},
 		{

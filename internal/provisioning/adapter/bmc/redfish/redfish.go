@@ -1001,22 +1001,26 @@ func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, vi
 
 	var bootSource schemas.BootSource
 
+	mediaTypes := mediaTypesForImage(virtualMedia, mediaURL)
+
 	if setBootDevice {
 		system, err = getFirstSystem(client)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get BMC system: %w", err)
 		}
 
-		bootSource, err = bootSourceForVirtualMedia(system, virtualMedia, virtualMediaID, mediaURL)
+		mediaTypes, err = bootableMediaTypes(system, mediaTypes, virtualMediaID)
 		if err != nil {
 			return nil, err
 		}
+
+		bootSource = bootSourceForVirtualMediaType[mediaTypes[0]]
 	}
 
 	trace, stopTrace := traceRequests(client)
 	defer stopTrace()
 
-	taskMonitor, err := insertMedia(virtualMedia, mediaURL)
+	mediaType, taskMonitor, err := insertMedia(virtualMedia, mediaURL, mediaTypes)
 	if err != nil {
 		slog.DebugContext(
 			ctx, "Attaching virtual media to BMC failed",
@@ -1029,6 +1033,10 @@ func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, vi
 	}
 
 	if setBootDevice {
+		if mediaType != "" {
+			bootSource = bootSourceForVirtualMediaType[mediaType]
+		}
+
 		err = overrideBootDevice(system, virtualMedia.registry, bootSource)
 		if err != nil {
 			slog.DebugContext(

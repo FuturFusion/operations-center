@@ -50,14 +50,14 @@ func TestBootSourcesForMediaTypes(t *testing.T) {
 	}
 }
 
-func TestBootSourceForVirtualMedia(t *testing.T) {
+func TestBootableMediaTypes(t *testing.T) {
 	tests := []struct {
 		name       string
 		systemBody string
 		mediaTypes []schemas.VirtualMediaType
 		mediaURL   string
 
-		want      schemas.BootSource
+		want      []schemas.VirtualMediaType
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
@@ -66,7 +66,7 @@ func TestBootSourceForVirtualMedia(t *testing.T) {
 			mediaTypes: []schemas.VirtualMediaType{schemas.CDVirtualMediaType, schemas.DVDVirtualMediaType},
 			mediaURL:   "https://example.com/file.iso",
 
-			want:      schemas.CdBootSource,
+			want:      []schemas.VirtualMediaType{schemas.CDVirtualMediaType, schemas.DVDVirtualMediaType},
 			assertErr: require.NoError,
 		},
 		{
@@ -75,7 +75,7 @@ func TestBootSourceForVirtualMedia(t *testing.T) {
 			mediaTypes: []schemas.VirtualMediaType{schemas.FloppyVirtualMediaType, schemas.USBStickVirtualMediaType},
 			mediaURL:   "https://example.com/file.raw",
 
-			want:      schemas.UsbBootSource,
+			want:      []schemas.VirtualMediaType{schemas.USBStickVirtualMediaType, schemas.FloppyVirtualMediaType},
 			assertErr: require.NoError,
 		},
 		{
@@ -84,7 +84,7 @@ func TestBootSourceForVirtualMedia(t *testing.T) {
 			mediaTypes: []schemas.VirtualMediaType{schemas.FloppyVirtualMediaType, schemas.USBStickVirtualMediaType},
 			mediaURL:   "https://example.com/image",
 
-			want:      schemas.FloppyBootSource,
+			want:      []schemas.VirtualMediaType{schemas.FloppyVirtualMediaType, schemas.USBStickVirtualMediaType},
 			assertErr: require.NoError,
 		},
 		{
@@ -93,7 +93,7 @@ func TestBootSourceForVirtualMedia(t *testing.T) {
 			mediaTypes: nil,
 			mediaURL:   "https://example.com/file.iso",
 
-			want:      schemas.CdBootSource,
+			want:      []schemas.VirtualMediaType{schemas.CDVirtualMediaType, schemas.DVDVirtualMediaType},
 			assertErr: require.NoError,
 		},
 		{
@@ -102,7 +102,25 @@ func TestBootSourceForVirtualMedia(t *testing.T) {
 			mediaTypes: []schemas.VirtualMediaType{schemas.FloppyVirtualMediaType, schemas.USBStickVirtualMediaType},
 			mediaURL:   "https://example.com/image",
 
-			want:      schemas.UsbBootSource,
+			want:      []schemas.VirtualMediaType{schemas.USBStickVirtualMediaType},
+			assertErr: require.NoError,
+		},
+		{
+			name:       "allowable targets drop the preferred candidate",
+			systemBody: `{"@odata.id":"/redfish/v1/Systems/1","Boot":{"BootSourceOverrideTarget@Redfish.AllowableValues":["None","Pxe","Floppy"]}}`,
+			mediaTypes: []schemas.VirtualMediaType{schemas.CDVirtualMediaType, schemas.DVDVirtualMediaType, schemas.FloppyVirtualMediaType, schemas.USBStickVirtualMediaType},
+			mediaURL:   "https://example.com/file.raw",
+
+			want:      []schemas.VirtualMediaType{schemas.FloppyVirtualMediaType},
+			assertErr: require.NoError,
+		},
+		{
+			name:       "media type nothing boots from is left out",
+			systemBody: `{"@odata.id":"/redfish/v1/Systems/1","Boot":{}}`,
+			mediaTypes: []schemas.VirtualMediaType{"Tape", schemas.CDVirtualMediaType},
+			mediaURL:   "https://example.com/image",
+
+			want:      []schemas.VirtualMediaType{schemas.CDVirtualMediaType},
 			assertErr: require.NoError,
 		},
 		{
@@ -128,7 +146,7 @@ func TestBootSourceForVirtualMedia(t *testing.T) {
 			system := parseComputerSystem(t, tc.systemBody)
 			virtualMedia := virtualMediaSlot{VirtualMedia: &schemas.VirtualMedia{MediaTypes: tc.mediaTypes}}
 
-			got, err := bootSourceForVirtualMedia(system, virtualMedia, "system:1", tc.mediaURL)
+			got, err := bootableMediaTypes(system, mediaTypesForImage(virtualMedia, tc.mediaURL), "system:1")
 
 			tc.assertErr(t, err)
 			require.Equal(t, tc.want, got)

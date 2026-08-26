@@ -38,48 +38,34 @@ func bootSourcesForMediaTypes(mediaTypes []schemas.VirtualMediaType) []schemas.B
 	return bootSources
 }
 
-// bootMediaTypes returns the media types to derive the boot source from: those
-// of the image about to be attached, narrowed down to what the slot supports.
-// Either side being unknown leaves the other one to decide on its own.
-func bootMediaTypes(virtualMedia virtualMediaSlot, mediaURL string) []schemas.VirtualMediaType {
-	imageMediaTypes := mediaTypesForURL(mediaURL)
-
-	if len(imageMediaTypes) == 0 {
-		return virtualMedia.MediaTypes
-	}
-
-	if len(virtualMedia.MediaTypes) == 0 {
-		return imageMediaTypes
-	}
-
-	mediaTypes := make([]schemas.VirtualMediaType, 0, len(imageMediaTypes))
-
-	for _, mediaType := range imageMediaTypes {
-		if slices.Contains(virtualMedia.MediaTypes, mediaType) {
-			mediaTypes = append(mediaTypes, mediaType)
-		}
-	}
-
-	return mediaTypes
-}
-
-// bootSourceForVirtualMedia returns the boot source to point the server at in
-// order to boot the media attached to the given virtual media slot.
-func bootSourceForVirtualMedia(system *schemas.ComputerSystem, virtualMedia virtualMediaSlot, virtualMediaID string, mediaURL string) (schemas.BootSource, error) {
-	bootSources := bootSourcesForMediaTypes(bootMediaTypes(virtualMedia, mediaURL))
-	if len(bootSources) == 0 {
-		return "", fmt.Errorf("Virtual media %q does not report a media type the server knows how to boot from: %w", virtualMediaID, domain.ErrOperationNotPermitted)
-	}
-
+// bootableMediaTypes narrows mediaTypes down to the ones the server can be told to
+// boot from, keeping their order.
+func bootableMediaTypes(system *schemas.ComputerSystem, mediaTypes []schemas.VirtualMediaType, virtualMediaID string) ([]schemas.VirtualMediaType, error) {
 	allowedTargets := system.Boot.AllowableBootSourceOverrideTargetValues
-	if len(allowedTargets) == 0 {
-		return bootSources[0], nil
+
+	bootable := make([]schemas.VirtualMediaType, 0, len(mediaTypes))
+
+	for _, mediaType := range mediaTypes {
+		bootSource, ok := bootSourceForVirtualMediaType[mediaType]
+		if !ok {
+			continue
+		}
+
+		// A BMC declaring no allowable targets is taken at its word and left to
+		// accept whatever the media needs.
+		if len(allowedTargets) > 0 && !slices.Contains(allowedTargets, bootSource) {
+			continue
+		}
+
+		bootable = append(bootable, mediaType)
 	}
 
-	for _, bootSource := range bootSources {
-		if slices.Contains(allowedTargets, bootSource) {
-			return bootSource, nil
-		}
+	if len(bootable) > 0 {
+		return bootable, nil
+	}
+
+	if len(bootSourcesForMediaTypes(mediaTypes)) == 0 {
+		return nil, fmt.Errorf("Virtual media %q does not report a media type the server knows how to boot from: %w", virtualMediaID, domain.ErrOperationNotPermitted)
 	}
 
 	targets := make([]string, 0, len(allowedTargets))
@@ -87,7 +73,7 @@ func bootSourceForVirtualMedia(system *schemas.ComputerSystem, virtualMedia virt
 		targets = append(targets, string(target))
 	}
 
-	return "", fmt.Errorf("Server cannot be set to boot from virtual media %q, it boots from: %s: %w", virtualMediaID, strings.Join(targets, ", "), domain.ErrOperationNotPermitted)
+	return nil, fmt.Errorf("Server cannot be set to boot from virtual media %q, it boots from: %s: %w", virtualMediaID, strings.Join(targets, ", "), domain.ErrOperationNotPermitted)
 }
 
 // preferredBootSourceOverrideEnabled lists the ways of overriding the boot

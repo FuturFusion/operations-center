@@ -28,7 +28,7 @@ func (e redfishError) Error() string {
 // Unwrap exposes the original error and, for a request the BMC turned down,
 // the status the API answers with.
 func (e redfishError) Unwrap() []error {
-	if e.statusCode >= 400 && e.statusCode < 500 {
+	if isClientError(e.statusCode) {
 		return []error{e.err, api.StatusErrorf(http.StatusBadRequest, "%s", e.message)}
 	}
 
@@ -193,6 +193,17 @@ func isParameterMissing(err error, parameter string) bool {
 		redfishErrorMentions(err, parameter)
 }
 
+func isHintRejected(err error, name string) bool {
+	return redfishErrorHasMessageID(err,
+		"ActionParameterUnknown", "ActionParameterNotSupported", "ActionParameterValueError",
+		"ActionParameterValueFormatError", "ActionParameterValueNotInList", "ActionParameterValueTypeError",
+		"PropertyUnknown", "PropertyNotWritable", "PropertyUnknownOrUnwritable",
+		"PropertyValueNotInList", "PropertyValueNotSupported", "PropertyValueError",
+		"PropertyValueTypeError", "PropertyValueOutOfRange", "PropertyValueConflict",
+		"GeneralError") &&
+		redfishErrorMentions(err, name)
+}
+
 func isPropertyRejected(err error, property string) bool {
 	return redfishErrorHasMessageID(err, "PropertyUnknown", "PropertyNotWritable", "PropertyUnknownOrUnwritable") &&
 		redfishErrorMentions(err, property)
@@ -234,6 +245,24 @@ func isPreconditionRejected(err error) bool {
 		redfishErrorMentions(err, "If-Match")
 }
 
+// isRequestRejected reports whether the BMC turned the request down with a client
+// error, which establishes it did not act on the request. A lost connection, a
+// timeout, a server error or a response which could not even be read all leave
+// open whether the BMC carried the request out.
+func isRequestRejected(err error) bool {
+	var redfishErr *schemas.Error
+	if !errors.As(err, &redfishErr) {
+		return false
+	}
+
+	return isClientError(redfishErr.HTTPReturnedStatusCode)
+}
+
+// isClientError reports whether the status code is in the 4xx range.
+func isClientError(statusCode int) bool {
+	return statusCode >= 400 && statusCode < 500
+}
+
 func redfishErrorHasMessageID(err error, ids ...string) bool {
 	var redfishErr *schemas.Error
 	if !errors.As(err, &redfishErr) {
@@ -263,12 +292,12 @@ func redfishErrorMentions(err error, name string) bool {
 		return false
 	}
 
-	if strings.Contains(redfishErr.Message, name) {
+	if mentionsName(redfishErr.Message, name) {
 		return true
 	}
 
 	for _, extendedInfo := range redfishErr.ExtendedInfos {
-		if slices.Contains(extendedInfo.MessageArgs, name) || strings.Contains(extendedInfo.Message, name) {
+		if slices.Contains(extendedInfo.MessageArgs, name) || mentionsName(extendedInfo.Message, name) {
 			return true
 		}
 
@@ -280,6 +309,44 @@ func redfishErrorMentions(err error, name string) bool {
 	}
 
 	return false
+}
+
+// mentionsName reports whether text names the given property or parameter, rather
+// than merely containing its name as part of a longer one, e.g. "MediaType" in
+// "MediaTypes".
+func mentionsName(text string, name string) bool {
+	if name == "" {
+		return false
+	}
+
+	for offset := 0; offset <= len(text)-len(name); {
+		index := strings.Index(text[offset:], name)
+		if index < 0 {
+			return false
+		}
+
+		index += offset
+
+		if !isNameByte(text, index-1) && !isNameByte(text, index+len(name)) {
+			return true
+		}
+
+		offset = index + 1
+	}
+
+	return false
+}
+
+// isNameByte reports whether the byte at index is one a property or parameter name
+// is made of. Out of bounds counts as a boundary.
+func isNameByte(text string, index int) bool {
+	if index < 0 || index >= len(text) {
+		return false
+	}
+
+	c := text[index]
+
+	return c == '_' || c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
 }
 
 func lastCut(s string, sep string) (before string, after string, found bool) {
