@@ -34,7 +34,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
-	"github.com/FuturFusion/operations-center/internal/util/testing/flaky"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
@@ -400,6 +399,8 @@ func TestServerService_PreRegister(t *testing.T) {
 			// Run test
 			_, err := serverSvc.PreRegister(t.Context(), tc.server)
 
+			serverSvc.WaitBackgroundTasks()
+
 			// Assert
 			tc.assertErr(t, err)
 			tc.assertServer(t, createdServer)
@@ -670,6 +671,8 @@ one
 
 			// Run test
 			_, err := serverSvc.Register(t.Context(), token, tc.server)
+
+			serverSvc.WaitBackgroundTasks()
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1953,6 +1956,8 @@ one
 			// Run test
 			err = serverSvc.Update(t.Context(), tc.server, tc.argForce, true, tc.argBMCConnectionTest)
 
+			serverSvc.WaitBackgroundTasks()
+
 			// Assert
 			tc.assertErr(t, err)
 			tc.assertLog(t, logBuf)
@@ -2853,6 +2858,8 @@ one
 				},
 			)
 
+			serverSvc.WaitBackgroundTasks()
+
 			// Assert
 			tc.assertErr(t, err)
 		})
@@ -3430,6 +3437,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 
 			var gotServerStatus api.ServerStatus
 			var gotServerStatusDetail api.ServerStatusDetail
+			var gotServerUpdated bool
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -3442,8 +3450,15 @@ func TestServerService_SelfUpdate(t *testing.T) {
 					return tc.repoGetByCertificateServer, tc.repoGetByCertificateErr
 				},
 				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
-					gotServerStatus = in.Status
-					gotServerStatusDetail = in.StatusDetail
+					// Only record the update performed by the self update itself. The
+					// background poll triggered by it performs further updates, which
+					// are not subject of this test.
+					if !gotServerUpdated {
+						gotServerUpdated = true
+						gotServerStatus = in.Status
+						gotServerStatusDetail = in.StatusDetail
+					}
+
 					return tc.repoUpdateErr
 				},
 			}
@@ -3500,6 +3515,8 @@ func TestServerService_SelfUpdate(t *testing.T) {
 
 			// Run test
 			err = serverSvc.SelfUpdate(t.Context(), tc.serverSelfUpdate)
+
+			serverSvc.WaitBackgroundTasks()
 
 			// Assert
 			tc.assertErr(t, err)
@@ -7955,7 +7972,6 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 		channelSvcGetByNameErr                          error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
 		registerUnreachableBMCClient                    bool
-		flakyLog                                        bool
 
 		assertErr require.ErrorAssertionFunc
 		assertLog log.MatcherFunc
@@ -8137,7 +8153,6 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				boom.Error,
 			},
 			clientUpdateOSErr: boom.Error,
-			flakyLog:          true,
 
 			assertErr: boom.ErrorIs,
 			assertLog: log.Match("Failed to restore previous server state after failed to update the system server=one err=.*boom!"),
@@ -8180,9 +8195,19 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
-					return &tc.repoGetByName, tc.repoGetByNameErr
+					// Return a copy, since the server is also queried by the background
+					// poll, which would otherwise share the same instance.
+					server := tc.repoGetByName
+					return &server, tc.repoGetByNameErr
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+					// The background poll marks the server as unresponsive, since the
+					// connection test is mocked to fail. Such updates are not subject of
+					// this test and must not consume from the queue.
+					if server.StatusDetail == api.ServerStatusDetailOfflineUnresponsive {
+						return nil
+					}
+
 					return tc.repoUpdateErrs.PopOrNil(t)
 				},
 			}
@@ -8238,17 +8263,14 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				opts...,
 			)
 
-			logT := log.TestifyT(t)
-			if tc.flakyLog {
-				logT = flaky.SkipOnFail(t, "log line for restoring previous server state is occasionally not observed on CI")
-			}
-
 			// Run test
 			err = serverSvc.UpdateSystemByName(t.Context(), "one", tc.argUpdateRequest, tc.argForce)
 
+			serverSvc.WaitBackgroundTasks()
+
 			// Assert
 			tc.assertErr(t, err)
-			tc.assertLog(logT, logBuf)
+			tc.assertLog(t, logBuf)
 
 			require.Empty(t, tc.repoUpdateErrs)
 		})
@@ -9277,6 +9299,8 @@ func TestServerService_BMCServerPowerOnByName(t *testing.T) {
 			// Run test
 			err := serverSvc.BMCServerPowerOnByName(t.Context(), tc.nameArg, false)
 
+			serverSvc.WaitBackgroundTasks()
+
 			// Assert
 			tc.assertErr(t, err)
 
@@ -9451,6 +9475,8 @@ func TestServerService_BMCServerPowerOffByName(t *testing.T) {
 
 			// Run test
 			err := serverSvc.BMCServerPowerOffByName(t.Context(), tc.nameArg, false)
+
+			serverSvc.WaitBackgroundTasks()
 
 			// Assert
 			tc.assertErr(t, err)
@@ -9846,6 +9872,8 @@ func TestServerService_ApplyBIOSAttributesByName(t *testing.T) {
 
 			// Run test
 			err := serverSvc.ApplyBIOSAttributesByName(t.Context(), tc.nameArg, tc.attributesArg)
+
+			serverSvc.WaitBackgroundTasks()
 
 			// Assert
 			tc.assertErr(t, err)
@@ -11065,6 +11093,8 @@ func TestServerService_BMCAttachMediaByName(t *testing.T) {
 			// Run test
 			err := serverSvc.BMCAttachMediaByName(t.Context(), tc.nameArg, tc.mediaArg)
 
+			serverSvc.WaitBackgroundTasks()
+
 			// Assert
 			tc.assertErr(t, err)
 
@@ -11160,6 +11190,8 @@ func TestServerService_BMCVirtualMediaSignal(t *testing.T) {
 		})
 
 		t.Cleanup(lifecycle.BMCVirtualMediaSignal.Reset)
+
+		t.Cleanup(serverSvc.WaitBackgroundTasks)
 
 		return serverSvc, messages, resyncDone, bmcClient
 	}
@@ -11500,6 +11532,8 @@ func TestServerService_BMCDetachMediaByName(t *testing.T) {
 
 			// Run test
 			err := serverSvc.BMCDetachMediaByName(t.Context(), tc.nameArg, tc.virtualMediaIDArg)
+
+			serverSvc.WaitBackgroundTasks()
 
 			// Assert
 			tc.assertErr(t, err)

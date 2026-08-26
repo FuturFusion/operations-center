@@ -64,6 +64,8 @@ type serverService struct {
 	selfUpdateSignal signals.Signal[provisioning.Server]
 
 	rebootStatusUpdateGracePeriod time.Duration
+
+	backgroundTasks sync.WaitGroup
 }
 
 var _ provisioning.ServerService = &serverService{}
@@ -158,6 +160,19 @@ func (s *serverService) SetClusterService(clusterSvc provisioning.ClusterService
 	s.clusterSvc = clusterSvc
 }
 
+// runInBackground runs fn in a detached goroutine. The context passed to fn is
+// detached as well, in order to make sure, no existing DB transaction is
+// inherited.
+func (s *serverService) runInBackground(fn func(ctx context.Context)) {
+	s.backgroundTasks.Add(1)
+
+	go func() {
+		defer s.backgroundTasks.Done()
+
+		fn(context.Background())
+	}()
+}
+
 func (s *serverService) PreRegister(ctx context.Context, newServer provisioning.Server) (provisioning.Server, error) {
 	err := newServer.Validate()
 	if err != nil {
@@ -187,15 +202,12 @@ func (s *serverService) PreRegister(ctx context.Context, newServer provisioning.
 		return provisioning.Server{}, err
 	}
 
-	go func() {
-		// Use a detached context in order to make sure, no existing DB transaction is inherited.
-		ctx := context.Background()
-
-		err = s.resyncBMCData(ctx, newServer)
+	s.runInBackground(func(ctx context.Context) {
+		err := s.resyncBMCData(ctx, newServer)
 		if err != nil {
 			slog.WarnContext(ctx, "Initial resync of BMC data failed (non-critical)", logger.Err(err), slog.String("name", newServer.Name))
 		}
-	}()
+	})
 
 	return newServer, nil
 }
@@ -268,9 +280,8 @@ func (s *serverService) Register(ctx context.Context, token uuid.UUID, newServer
 	// Perform initial connection test to server right after registration.
 	// Since we have the background task to update the server state, we do not
 	// care about graceful shutdown for this "one off" check.
-	go func() {
+	s.runInBackground(func(ctx context.Context) {
 		var err error
-		ctx := context.Background()
 		log := slog.With(slog.String("name", newServer.Name), slog.String("url", newServer.ConnectionURL))
 
 		for i := range 10 {
@@ -287,7 +298,7 @@ func (s *serverService) Register(ctx context.Context, token uuid.UUID, newServer
 		if err != nil {
 			log.WarnContext(ctx, "Initial server connection test failed", logger.Err(err))
 		}
-	}()
+	})
 
 	return newServer, nil
 }
@@ -783,15 +794,12 @@ func (s *serverService) UpdateSystemUpdate(ctx context.Context, name string, upd
 		return fmt.Errorf("Failed to update the update config for %q: %w", server.Name, err)
 	}
 
-	go func() {
-		// Use a detached context in order to make sure, no existing DB transaction is inherited.
-		ctx := context.Background()
-
+	s.runInBackground(func(ctx context.Context) {
 		err := s.PollServer(ctx, *server, true)
 		if err != nil {
 			slog.WarnContext(ctx, "Server poll after changing the update configuration failed (non-critical), fixed by the next successful server poll interval", logger.Err(err), slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 		}
-	}()
+	})
 
 	return nil
 }
@@ -902,9 +910,8 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 	}
 
 	if triggerBackgroundPolling {
-		go func() {
+		s.runInBackground(func(ctx context.Context) {
 			var err error
-			ctx := context.Background()
 			log := slog.With(slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 
 			for i := range 10 {
@@ -924,7 +931,7 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 			}
 
 			s.selfUpdateSignal.Emit(ctx, *server)
-		}()
+		})
 	}
 
 	return nil
@@ -2491,10 +2498,7 @@ func (s *serverService) bmcServerPowerOnByName(ctx context.Context, name string,
 		return taskMonitor, nil
 	}
 
-	go func() {
-		// Use a detached context in order to make sure, no existing DB transaction is inherited.
-		ctx := context.Background()
-
+	s.runInBackground(func(ctx context.Context) {
 		err := client.WaitForTask(ctx, *server, taskMonitor)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after server power on operation", logger.Err(err))
@@ -2504,7 +2508,7 @@ func (s *serverService) bmcServerPowerOnByName(ctx context.Context, name string,
 		if err != nil {
 			slog.WarnContext(ctx, "Resync of BMC data after power on failed", logger.Err(err), slog.String("name", server.Name))
 		}
-	}()
+	})
 
 	return nil, nil
 }
@@ -2531,10 +2535,7 @@ func (s *serverService) bmcServerPowerOffByName(ctx context.Context, name string
 		return taskMonitor, nil
 	}
 
-	go func() {
-		// Use a detached context in order to make sure, no existing DB transaction is inherited.
-		ctx := context.Background()
-
+	s.runInBackground(func(ctx context.Context) {
 		err := client.WaitForTask(ctx, *server, taskMonitor)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after server power off operation", logger.Err(err))
@@ -2544,7 +2545,7 @@ func (s *serverService) bmcServerPowerOffByName(ctx context.Context, name string
 		if err != nil {
 			slog.WarnContext(ctx, "Resync of BMC data after power off failed", logger.Err(err), slog.String("name", server.Name))
 		}
-	}()
+	})
 
 	return nil, nil
 }
@@ -2617,15 +2618,12 @@ func (s *serverService) applyBIOSAttributesByName(ctx context.Context, name stri
 
 	// The BIOS settings are applied on the next reset of the server, so the task
 	// is not awaited synchronously.
-	go func() {
-		// Use a detached context in order to make sure, no existing DB transaction is inherited.
-		ctx := context.Background()
-
+	s.runInBackground(func(ctx context.Context) {
 		err := client.WaitForTask(ctx, *server, taskMonitor)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after BIOS attribute application", logger.Err(err), slog.String("name", server.Name))
 		}
-	}()
+	})
 
 	return nil, nil
 }
@@ -2823,10 +2821,7 @@ func (s *serverService) bmcAttachMediaByName(ctx context.Context, name string, m
 		return taskMonitor, nil
 	}
 
-	go func() {
-		// Use a detached context in order to make sure, no existing DB transaction is inherited.
-		ctx := context.Background()
-
+	s.runInBackground(func(ctx context.Context) {
 		err := client.WaitForTask(ctx, *server, taskMonitor)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after attach media operation", logger.Err(err))
@@ -2836,7 +2831,7 @@ func (s *serverService) bmcAttachMediaByName(ctx context.Context, name string, m
 		if err != nil {
 			slog.WarnContext(ctx, "Resync of BMC data after attach media failed", logger.Err(err), slog.String("name", server.Name))
 		}
-	}()
+	})
 
 	return nil, nil
 }
@@ -2902,10 +2897,7 @@ func (s *serverService) bmcDetachMediaByName(ctx context.Context, name string, v
 		return taskMonitor, nil
 	}
 
-	go func() {
-		// Use a detached context in order to make sure, no existing DB transaction is inherited.
-		ctx := context.Background()
-
+	s.runInBackground(func(ctx context.Context) {
 		err := client.WaitForTask(ctx, *server, taskMonitor)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to wait for task monitor to complete after detach media operation", logger.Err(err))
@@ -2915,7 +2907,7 @@ func (s *serverService) bmcDetachMediaByName(ctx context.Context, name string, v
 		if err != nil {
 			slog.WarnContext(ctx, "Resync of BMC data after detach media failed", logger.Err(err), slog.String("name", server.Name))
 		}
-	}()
+	})
 
 	return nil, nil
 }
