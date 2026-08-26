@@ -12,7 +12,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   return (
     <AuthContext.Provider
       value={{
-        isAuthenticated: (settings && settings.auth !== "untrusted") ?? false,
+        isAuthenticated: !!settings?.auth && settings.auth !== "untrusted",
         authMethod: settings?.auth,
         isAuthLoading: isLoading,
       }}
