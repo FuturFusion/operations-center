@@ -41,6 +41,7 @@ type Server struct {
 	Channel              string                 `json:"channel"                db:"join=channels.name"`
 	Status               api.ServerStatus       `json:"status"`
 	StatusDetail         api.ServerStatusDetail `json:"status_detail"`
+	StatusInternal       ServerStatusInternal   `json:"status_internal"        db:"marshal=json"`
 	Description          string                 `json:"description"`
 	Properties           api.ConfigMap          `json:"properties"`
 	BMCConfig            api.BMCConfig          `json:"bmc_config"             db:"marshal=json"`
@@ -307,5 +308,9 @@ func DetermineManagementRoleURL(osdata api.OSData) (string, error) {
 }
 
 type BMCTaskMonitor struct {
-	URI string
+	URI string `json:"uri"`
 }
+
+// ServerStatusInternal holds status information, which is kept internal to
+// Operations Center and is not part of the REST API surface.
+type ServerStatusInternal struct{}

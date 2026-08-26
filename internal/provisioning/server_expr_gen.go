@@ -424,6 +424,7 @@ type ExprServer struct {
 	Channel              string                   `json:"channel"                db:"join=channels.name" expr:"channel"`
 	Status               api.ServerStatus         `json:"status" expr:"status"`
 	StatusDetail         api.ServerStatusDetail   `json:"status_detail" expr:"status_detail"`
+	StatusInternal       ServerStatusInternal     `json:"status_internal"        db:"marshal=json" expr:"status_internal"`
 	Description          string                   `json:"description" expr:"description"`
 	Properties           api.ConfigMap            `json:"properties" expr:"properties"`
 	BMCConfig            ExprApiBMCConfig         `json:"bmc_config"             db:"marshal=json" expr:"bmc_config"`
@@ -936,6 +937,7 @@ func ToExprServer(s Server) ExprServer {
 		Channel:              s.Channel,
 		Status:               s.Status,
 		StatusDetail:         s.StatusDetail,
+		StatusInternal:       s.StatusInternal,
 		Description:          s.Description,
 		Properties:           s.Properties,
 		BMCConfig:            ToExprApiBMCConfig(s.BMCConfig),

@@ -252,6 +252,8 @@ func TestServerDatabaseActions(t *testing.T) {
 	serverB.LastUpdated = dbServerB.LastUpdated
 	require.Equal(t, serverB, *dbServerB)
 
+	require.Zero(t, dbServerB.StatusInternal)
+
 	dbServerA, err = server.GetBySystemUUID(ctx, *serverA.SystemUUID)
 	require.NoError(t, err)
 	serverA.ID = dbServerA.ID
