@@ -133,6 +133,15 @@ func TestE2E_WithToken_CreateClusterAndRebootCluster(t *testing.T) {
 	)
 }
 
+func TestE2E_WithToken_ServerBMCPowerOffAndOn(t *testing.T) {
+	runE2ETest(
+		t,
+		"token - power a server off and on again via BMC",
+		setupIncusOSWithToken([]string{"IncusOS01"}),
+		serverBMCPowerOffAndOn("IncusOS01"),
+	)
+}
+
 func TestE2E_FromManualUpload_CreateCluster(t *testing.T) {
 	runE2ETest(
 		t,
