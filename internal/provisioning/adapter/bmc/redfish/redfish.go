@@ -264,6 +264,18 @@ func (r redfish) GetData(ctx context.Context, server provisioning.Server) (api.B
 		if system.LocationIndicatorActive != nil {
 			bmcData.ServerLocationIndicatorActive = *system.LocationIndicatorActive
 		}
+
+		bmcData.ServerLastResetTime = parseTimestamp(ctx, log, "LastResetTime", system.LastResetTime)
+
+		bmcData.ServerBootProgress = api.BMCBootProgress{
+			LastState:     string(system.BootProgress.LastState),
+			LastStateTime: parseTimestamp(ctx, log, "BootProgress/LastStateTime", system.BootProgress.LastStateTime),
+			OEMLastState:  system.BootProgress.OEMLastState,
+		}
+
+		if system.BootProgress.LastBootTimeSeconds != nil {
+			bmcData.ServerBootProgress.LastBootTimeSeconds = *system.BootProgress.LastBootTimeSeconds
+		}
 	}
 
 	if manager != nil {
@@ -1263,8 +1275,6 @@ func (r redfish) LogEntriesBySource(ctx context.Context, server provisioning.Ser
 		return nil, fmt.Errorf("Failed to find log type for %q", logSource)
 	}
 
-	timestampFormats := []string{time.RFC3339, time.RFC3339Nano}
-
 	bmcLogEvents := make([]api.BMCLogEvent, 0, len(entries))
 	for _, entry := range entries {
 		bmcLogEvents = append(bmcLogEvents, api.BMCLogEvent{
@@ -1272,7 +1282,7 @@ func (r redfish) LogEntriesBySource(ctx context.Context, server provisioning.Ser
 			EntryType: string(entry.EntryType),
 			Message:   entry.Message,
 			Severity:  string(entry.Severity),
-			Timestamp: parseTimestamp(timestampFormats, entry.Created, entry.EventTimestamp),
+			Timestamp: parseTimestamp(ctx, slog.Default(), "LogEntry/Created,LogEntry/EventTimestamp", entry.Created, entry.EventTimestamp),
 		})
 	}
 
@@ -1290,17 +1300,32 @@ func (r redfish) LogEntriesBySource(ctx context.Context, server provisioning.Ser
 	return bmcLogEvents, nil
 }
 
+// timestampFormats holds the formats, in which BMCs report timestamps.
+var timestampFormats = []string{time.RFC3339, time.RFC3339Nano}
+
 // parseTimestamp returns the first timestamp, which successfully parses for one
-// of the provided formats. If none of the timestamps could be parsed with any
+// of BMC time formats. If none of the timestamps could be parsed with any
 // of the formats, the zero time.Time is returned.
-func parseTimestamp(formats []string, timestamps ...string) time.Time {
+func parseTimestamp(ctx context.Context, log *slog.Logger, property string, timestamps ...string) time.Time {
+	reported := false
+
 	for _, timestamp := range timestamps {
-		for _, format := range formats {
+		if timestamp == "" {
+			continue
+		}
+
+		reported = true
+
+		for _, format := range timestampFormats {
 			t, err := time.Parse(format, timestamp)
 			if err == nil {
 				return t
 			}
 		}
+	}
+
+	if reported {
+		log.WarnContext(ctx, "Failed to parse timestamp reported by BMC", slog.String("properties", property), slog.Any("timestamps", timestamps))
 	}
 
 	return time.Time{}
