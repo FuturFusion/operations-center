@@ -29,6 +29,7 @@ Other environment variables that can be set to control the tests:
 * `OPERATIONS_CENTER_E2E_TEST_DEBUG`: Enable debug output (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP`: Disable cleanup of resources after tests, WARNING: this might cause errors, only use with single test cases (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR`: Disable cleanup of resources after failed tests, WARNING: this might cause errors, only use with single test cases or with `-failfast` flag of `go test` (default: "false")
+* `OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS`: Address of the end 2 end test host, at which the in-process Redfish proxy used by the BMC tests is reachable from the Operations Center VM. If not set, the address is derived from the network the Operations Center VM is attached to (default: "")
 
 ## Setup
 
@@ -187,7 +188,25 @@ Examples:
   case.
 * `t.Cleanup(cleanupTokenSeed(t, token))`, cleans up the token seed created
   during the test case.
+* `t.Cleanup(serverBMCConfigCleanup(t, tmpDir, name))`, resets the BMC config of
+  a server, so that Operations Center stops talking to a BMC, which is about to
+  go away.
 
 For debug purposes, the cleanup can be disabled by setting the environment
 variable `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP` or
 `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR` to a truthy value.
+
+### Fake BMC
+
+The BMC support of Operations Center is tested against
+[incus-redfish-proxy](https://github.com/FuturFusion/incus-redfish-proxy), which
+exposes an Incus instance through a subset of the Redfish API. The proxy is
+served in-process by the test on an ephemeral port of the end 2 end test host
+(see `startRedfishProxy`), so no additional service needs to be installed.
+
+The proxy presents a self signed certificate, which Operations Center pins
+during the connection test performed by `provisioning server edit`.
+
+The Operations Center VM reaches the proxy at the address of the end 2 end test
+host on the network the VM is attached to. If this address can not be derived
+automatically, set `OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS`.

@@ -382,19 +382,34 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 	vm = fmt.Sprintf(vm, args...)
 
 	count := 0
+	lastErr := ""
+
 	for {
-		resp := run(t, `incus exec %s -- bash -c "journalctl -b -u %s"`, vm, unit)
+		resp := runWithContext(ctx, t, `incus exec %s -- bash -c "journalctl -b -u %s"`, vm, unit)
 		if resp.err != nil {
 			return resp.err
 		}
 
-		if isRegex {
-			if regexp.MustCompile(want).MatchString(resp.Output()) {
-				break
+		if resp.Success() {
+			lastErr = ""
+
+			if isRegex {
+				if regexp.MustCompile(want).MatchString(resp.Output()) {
+					break
+				}
+			} else {
+				if strings.Contains(resp.Output(), want) {
+					break
+				}
 			}
-		} else {
-			if strings.Contains(resp.Output(), want) {
-				break
+		} else if ctx.Err() == nil {
+			// Reading the log fails as long as the VM is not (yet) reachable,
+			// e.g. while it is booting, so keep retrying, but remember the
+			// reason in order to report it, if we run out of time.
+			lastErr = resp.Error()
+
+			if count%10 == 0 {
+				t.Logf("Failed to read log of unit %q on %s: %s", unit, vm, lastErr)
 			}
 		}
 
@@ -406,6 +421,10 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 
 		select {
 		case <-ctx.Done():
+			if lastErr != "" {
+				return fmt.Errorf("Timed out after %ds waiting for log %q on %s, last error: %s: %w", count, want, vm, lastErr, ctx.Err())
+			}
+
 			return fmt.Errorf("Timed out after %ds waiting for log %q on %s: %w", count, want, vm, ctx.Err())
 
 		case <-time.After(1 * time.Second):
@@ -455,7 +474,12 @@ func mustWaitUpdatesReady(t *testing.T) {
 func mustWaitIncusOSReady(t *testing.T, names []string) {
 	t.Helper()
 
-	timeout := 5 * time.Minute
+	const (
+		agentTimeout = 5 * time.Minute
+		logTimeout   = 5 * time.Minute
+	)
+
+	timeout := agentTimeout + logTimeout
 	if !concurrentSetup {
 		timeout = time.Duration(int(timeout) * len(names))
 	}
@@ -480,12 +504,19 @@ func mustWaitIncusOSReady(t *testing.T, names []string) {
 			}()
 
 			t.Logf("Waiting for %s to be ready", name)
-			err = waitAgentRunningWithContext(errgrpctx, t, name)
+
+			agentWaitCtx, cancel := context.WithTimeout(errgrpctx, strechedTimeout(agentTimeout))
+			err = waitAgentRunningWithContext(agentWaitCtx, t, name)
+			cancel()
+
 			if err != nil {
 				return err
 			}
 
-			err = waitExpectedLogWithContext(errgrpctx, t, name, "incus-osd", "System is ready", false)
+			logWaitCtx, cancel := context.WithTimeout(errgrpctx, strechedTimeout(logTimeout))
+			err = waitExpectedLogWithContext(logWaitCtx, t, name, "incus-osd", "System is ready", false)
+			cancel()
+
 			if err != nil {
 				return err
 			}
@@ -660,6 +691,82 @@ func mustGetInstanceIPAndNames(t *testing.T, names []string) (instanceIPs []stri
 	}
 
 	return instanceIPs, instanceNames
+}
+
+func setServerBMCConfigWithContext(ctx context.Context, t *testing.T, tmpDir string, name string, apiType string, endpoint string) error {
+	t.Helper()
+
+	serverPutFilename := filepath.Join(tmpDir, fmt.Sprintf("server_put_%s.json", name))
+
+	resp := runWithContext(ctx, t, `../bin/operations-center.linux.%[1]s provisioning server show %[2]s -f json | jq -ce --arg api_type '%[3]s' --arg endpoint '%[4]s' '{ public_connection_url, channel, description, properties, bmc_config: { api_type: $api_type, endpoint: $endpoint, certificate: "", auto_pin_certificate: ($api_type != ""), username: "", password: "" } }' > %[5]s`, cpuArch, name, apiType, endpoint, serverPutFilename)
+
+	err := fmtRunErr(resp)
+	if err != nil {
+		return fmt.Errorf("Failed to assemble the server config for %q: %w", name, err)
+	}
+
+	resp = runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning server edit %s < %s`, cpuArch, name, serverPutFilename)
+
+	return fmtRunErr(resp)
+}
+
+func mustSetServerBMCConfig(t *testing.T, tmpDir string, name string, apiType string, endpoint string) {
+	t.Helper()
+
+	stop := timeTrack(t)
+	defer stop()
+
+	err := setServerBMCConfigWithContext(t.Context(), t, tmpDir, name, apiType, endpoint)
+	require.NoErrorf(t, err, "Failed to set the BMC config of server %q", name)
+}
+
+func serverBMCConfigCleanup(t *testing.T, tmpDir string, name string) func() {
+	t.Helper()
+
+	return func() {
+		if noCleanup || (noCleanupOnError && t.Failed()) {
+			return
+		}
+
+		// In t.Cleanup, t.Context() is already cancelled, so we need a detached context.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
+		defer cancel()
+
+		stop := timeTrack(t, "server BMC config cleanup")
+		defer stop()
+
+		err := setServerBMCConfigWithContext(ctx, t, tmpDir, name, "", "")
+		if err != nil {
+			t.Logf("Failed to reset the BMC config of server %q: %v", name, err)
+		}
+	}
+}
+
+func serverPowerStateCleanup(t *testing.T, name string) func() {
+	t.Helper()
+
+	return func() {
+		if noCleanup || (noCleanupOnError && t.Failed()) {
+			return
+		}
+
+		// In t.Cleanup, t.Context() is already cancelled, so we need a detached context.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(2*time.Minute))
+		defer cancel()
+
+		resp := runWithContext(ctx, t, `incus list -f json | jq -r -e '[ .[] | select(.name == "%s" and .status == "Running") ] | length == 1'`, name)
+		if resp.Success() {
+			return
+		}
+
+		stop := timeTrack(t, "server power state cleanup")
+		defer stop()
+
+		resp = runWithContext(ctx, t, `incus start %s`, name)
+		if !resp.Success() {
+			t.Error(resp.Error())
+		}
+	}
 }
 
 // indent indents the given input line by line by prefix.
