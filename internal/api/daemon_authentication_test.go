@@ -90,6 +90,7 @@ func TestAuthentication(t *testing.T) {
 		body     io.Reader
 
 		wantStatusCode int
+		wantAuth       string // Only used in tests for /1.0 route.
 	}{
 		{
 			name: "plain http GET /",
@@ -141,6 +142,7 @@ func TestAuthentication(t *testing.T) {
 			body:     http.NoBody,
 
 			wantStatusCode: http.StatusOK,
+			wantAuth:       api.AuthenticationUntrusted,
 		},
 		{
 			name: "socket GET /1.0",
@@ -158,6 +160,7 @@ func TestAuthentication(t *testing.T) {
 			body:     http.NoBody,
 
 			wantStatusCode: http.StatusOK,
+			wantAuth:       api.AuthenticationMethodUnix,
 		},
 		{
 			name: "client cert http GET /1.0",
@@ -176,6 +179,7 @@ func TestAuthentication(t *testing.T) {
 			body:     http.NoBody,
 
 			wantStatusCode: http.StatusOK,
+			wantAuth:       api.AuthenticationMethodTLS,
 		},
 		{
 			name: "oidc http GET /1.0 as viewer",
@@ -196,6 +200,7 @@ func TestAuthentication(t *testing.T) {
 			body: http.NoBody,
 
 			wantStatusCode: http.StatusOK,
+			wantAuth:       api.AuthenticationMethodOIDC,
 		},
 		{
 			name: "plain http GET /1.0/provisioning/servers - unauthorized",
@@ -836,7 +841,23 @@ func TestAuthentication(t *testing.T) {
 			require.NoError(t, err)
 			defer resp.Body.Close()
 
-			require.Equal(t, tc.wantStatusCode, resp.StatusCode, readBody(t, resp.Body))
+			body := readBody(t, resp.Body)
+
+			require.Equal(t, tc.wantStatusCode, resp.StatusCode, body)
+
+			if tc.wantAuth == "" {
+				return
+			}
+
+			var apiResponse api.Response
+			err = json.Unmarshal([]byte(body), &apiResponse)
+			require.NoError(t, err)
+
+			var serverInfo api.ServerUntrusted
+			err = apiResponse.MetadataAsStruct(&serverInfo)
+			require.NoError(t, err)
+
+			require.Equal(t, tc.wantAuth, serverInfo.Auth)
 		})
 	}
 }

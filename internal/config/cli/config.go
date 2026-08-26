@@ -15,9 +15,9 @@ import (
 type AuthType string
 
 const (
-	AuthTypeUntrusted = AuthType("untrusted")
-	AuthTypeTLS       = AuthType("tls")
-	AuthTypeOIDC      = AuthType("oidc")
+	AuthTypeUntrusted = AuthType(api.AuthenticationUntrusted)
+	AuthTypeTLS       = AuthType(api.AuthenticationMethodTLS)
+	AuthTypeOIDC      = AuthType(api.AuthenticationMethodOIDC)
 )
 
 var authTypes = map[AuthType]struct{}{

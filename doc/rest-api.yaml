@@ -5232,7 +5232,7 @@ definitions:
                 type: string
                 x-go-name: APIVersion
             auth:
-                description: Whether the client is trusted (one of "trusted" or "untrusted")
+                description: Authentication protocol of a trusted client (one of "tls", "oidc" or "unix"), "untrusted" otherwise
                 example: untrusted
                 readOnly: true
                 type: string

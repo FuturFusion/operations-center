@@ -32,19 +32,19 @@ func api10Get(r *http.Request) response.Response {
 	srv := api.ServerUntrusted{
 		APIStatus:     api.APIStatus,
 		APIVersion:    api.APIVersion,
-		Auth:          "untrusted",
-		AuthMethods:   []string{"oidc", "tls"},
+		Auth:          api.AuthenticationUntrusted,
+		AuthMethods:   []string{api.AuthenticationMethodOIDC, api.AuthenticationMethodTLS},
 		ServerVersion: version.Version,
 	}
 
-	// Return the authentication method, if any, that the client is using.
+	// Return the authentication protocol, if any, the client has been authenticated with.
 	ctx := r.Context()
-	auth := ctx.Value(authn.CtxProtocol)
-	if auth != nil {
-		v, ok := auth.(string)
-		if ok {
-			srv.Auth = v
-		}
+
+	authenticated, authenticatedOK := ctx.Value(authn.CtxAuthenticated).(bool)
+	protocol, protocolOK := ctx.Value(authn.CtxProtocol).(string)
+
+	if authenticatedOK && authenticated && protocolOK && protocol != "" {
+		srv.Auth = protocol
 	}
 
 	return response.SyncResponseETag(true, srv, nil)
