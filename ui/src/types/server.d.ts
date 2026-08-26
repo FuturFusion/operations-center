@@ -60,8 +60,17 @@ export interface BMCData {
   server_power_state: string;
   server_location_indicator_active: boolean;
   server_health_status: string;
+  server_last_reset_time: string;
+  server_boot_progress: BMCBootProgress;
   virtual_media: Record<string, BMCVirtualMedia>;
   last_updated: string;
+}
+
+export interface BMCBootProgress {
+  last_state: string;
+  last_state_time: string;
+  last_boot_time_seconds: number;
+  oem_last_state: string;
 }
 
 export interface BMCVirtualMedia {

@@ -18,6 +18,7 @@ import LoadingButton from "components/LoadingButton";
 import OSAction from "components/OSAction";
 import type { OSActionField, OSActionValues } from "components/OSAction";
 import { useNotification } from "context/notificationContext";
+import { BMCBootProgress } from "types/server";
 import { formatDate } from "util/date";
 
 const powerStateBadge = (state: string | undefined) => {
@@ -62,6 +63,34 @@ const healthStatusBadge = (status: string | undefined) => {
   }
 
   return <Badge bg="danger">{status}</Badge>;
+};
+
+const bootProgress = (progress: BMCBootProgress | undefined) => {
+  if (!progress) {
+    return "";
+  }
+
+  const state =
+    progress.last_state == "OEM" && progress.oem_last_state
+      ? progress.oem_last_state
+      : progress.last_state;
+
+  const details = [];
+
+  const stateTime = formatDate(progress.last_state_time);
+  if (stateTime != "") {
+    details.push(`reached ${stateTime}`);
+  }
+
+  if (progress.last_boot_time_seconds > 0) {
+    details.push(`last boot took ${progress.last_boot_time_seconds} s`);
+  }
+
+  if (details.length == 0) {
+    return state;
+  }
+
+  return `${state} (${details.join(", ")})`;
 };
 
 const insertedBadge = (inserted: boolean | undefined) => {
@@ -268,6 +297,18 @@ const ServerBMC = () => {
         <div className="col-2 detail-table-header">Health status</div>
         <div className="col-10 detail-table-cell">
           {healthStatusBadge(bmcData?.server_health_status)}
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Last reset</div>
+        <div className="col-10 detail-table-cell">
+          {formatDate(bmcData?.server_last_reset_time || "")}
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Boot progress</div>
+        <div className="col-10 detail-table-cell">
+          {bootProgress(bmcData?.server_boot_progress)}
         </div>
       </div>
       <div className="row">
