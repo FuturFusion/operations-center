@@ -20,6 +20,13 @@ type ExprApiApplicationVersionData struct {
 	InMaintenance    api.InMaintenanceState `json:"in_maintenance" yaml:"in_maintenance" expr:"in_maintenance"`
 }
 
+type ExprApiBMCBootProgress struct {
+	LastState           string    `json:"last_state" yaml:"last_state" expr:"last_state"`
+	LastStateTime       time.Time `json:"last_state_time" yaml:"last_state_time" expr:"last_state_time"`
+	LastBootTimeSeconds float64   `json:"last_boot_time_seconds" yaml:"last_boot_time_seconds" expr:"last_boot_time_seconds"`
+	OEMLastState        string    `json:"oem_last_state" yaml:"oem_last_state" expr:"oem_last_state"`
+}
+
 type ExprApiBMCConfig struct {
 	APIType            api.BMCAPIType `json:"api_type" yaml:"api_type" expr:"api_type"`
 	Endpoint           string         `json:"endpoint" yaml:"endpoint" expr:"endpoint"`
@@ -51,6 +58,8 @@ type ExprApiBMCData struct {
 	ServerPowerState              string                            `json:"server_power_state" yaml:"server_power_state" expr:"server_power_state"`
 	ServerLocationIndicatorActive bool                              `json:"server_location_indicator_active" yaml:"server_location_indicator_active" expr:"server_location_indicator_active"`
 	ServerHealthStatus            string                            `json:"server_health_status" yaml:"server_health_status" expr:"server_health_status"`
+	ServerLastResetTime           time.Time                         `json:"server_last_reset_time" yaml:"server_last_reset_time" expr:"server_last_reset_time"`
+	ServerBootProgress            ExprApiBMCBootProgress            `json:"server_boot_progress" yaml:"server_boot_progress" expr:"server_boot_progress"`
 	VirtualMedia                  map[string]ExprApiBMCVirtualMedia `json:"virtual_media" yaml:"virtual_media" expr:"virtual_media"`
 	LastUpdated                   time.Time                         `json:"last_updated" yaml:"last_updated" expr:"last_updated"`
 }
@@ -448,6 +457,15 @@ func ToExprApiApplicationVersionData(a api.ApplicationVersionData) ExprApiApplic
 	}
 }
 
+func ToExprApiBMCBootProgress(b api.BMCBootProgress) ExprApiBMCBootProgress {
+	return ExprApiBMCBootProgress{
+		LastState:           b.LastState,
+		LastStateTime:       b.LastStateTime,
+		LastBootTimeSeconds: b.LastBootTimeSeconds,
+		OEMLastState:        b.OEMLastState,
+	}
+}
+
 func ToExprApiBMCConfig(b api.BMCConfig) ExprApiBMCConfig {
 	return ExprApiBMCConfig{
 		APIType:            b.APIType,
@@ -482,6 +500,8 @@ func ToExprApiBMCData(b api.BMCData) ExprApiBMCData {
 		ServerPowerState:              b.ServerPowerState,
 		ServerLocationIndicatorActive: b.ServerLocationIndicatorActive,
 		ServerHealthStatus:            b.ServerHealthStatus,
+		ServerLastResetTime:           b.ServerLastResetTime,
+		ServerBootProgress:            ToExprApiBMCBootProgress(b.ServerBootProgress),
 		VirtualMedia:                  mapConvert(b.VirtualMedia, ToExprApiBMCVirtualMedia),
 		LastUpdated:                   b.LastUpdated,
 	}
