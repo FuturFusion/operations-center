@@ -21,6 +21,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/system"
 	"github.com/FuturFusion/operations-center/internal/system/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/system/repo/mock"
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
@@ -35,7 +36,7 @@ func TestSystemService_GetCertificate(t *testing.T) {
 	certFingerprint, err := incustls.CertFingerprintStr(string(certPEM))
 	require.NoError(t, err)
 
-	cert, err := api.DecodeCert(certPEM)
+	cert, err := certificate.Decode(certPEM)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -82,7 +83,7 @@ func TestSystemService_GetCertificate(t *testing.T) {
 			systemSvc := system.NewSystemService(env, nil, nil)
 
 			// Execute test
-			certificate, err := systemSvc.GetCertificate(context.Background())
+			gotCertificate, err := systemSvc.GetCertificate(context.Background())
 
 			// Assert results
 			tc.assertErr(t, err)
@@ -90,11 +91,11 @@ func TestSystemService_GetCertificate(t *testing.T) {
 				return
 			}
 
-			require.Equal(t, string(certPEM), certificate.Certificate)
-			require.Equal(t, certFingerprint, certificate.Fingerprint)
-			require.Equal(t, cert.Subject.String(), certificate.Subject)
-			require.Equal(t, cert.Issuer.String(), certificate.Issuer)
-			require.Equal(t, cert.NotAfter, certificate.NotAfter)
+			require.Equal(t, string(certPEM), gotCertificate.Certificate)
+			require.Equal(t, certFingerprint, gotCertificate.Fingerprint)
+			require.Equal(t, cert.Subject.String(), gotCertificate.Subject)
+			require.Equal(t, cert.Issuer.String(), gotCertificate.Issuer)
+			require.Equal(t, cert.NotAfter, gotCertificate.NotAfter)
 		})
 	}
 }

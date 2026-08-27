@@ -16,6 +16,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/acme"
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -81,7 +82,7 @@ func (s *systemService) GetCertificate(_ context.Context) (system.Certificate, e
 // certificateFromPEM returns the leaf certificate of a PEM encoded certificate
 // chain together with its metadata.
 func certificateFromPEM(certificatePEM string) (system.Certificate, error) {
-	cert, err := api.DecodeCert([]byte(certificatePEM))
+	cert, err := certificate.Decode([]byte(certificatePEM))
 	if err != nil {
 		return system.Certificate{}, err
 	}
