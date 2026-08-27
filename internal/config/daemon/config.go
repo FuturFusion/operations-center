@@ -2,7 +2,6 @@ package config
 
 import (
 	"context"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"net"
@@ -20,6 +19,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/security/acme"
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
@@ -427,9 +427,9 @@ func validate(ctx context.Context, cfg config) error {
 		return domain.NewValidationErrf(`Invalid config, "updates.signature_verification_root_ca" can not be empty`)
 	}
 
-	pemBlock, _ := pem.Decode([]byte(cfg.Updates.SignatureVerificationRootCA))
-	if pemBlock == nil {
-		return domain.NewValidationErrf(`Invalid config, pem decode for "updates.signature_verification_root_ca" failed`)
+	_, err = certificate.Decode([]byte(cfg.Updates.SignatureVerificationRootCA))
+	if err != nil {
+		return domain.NewValidationErrf(`Invalid config, pem decode for "updates.signature_verification_root_ca" failed: %v`, err)
 	}
 
 	// Security configuration

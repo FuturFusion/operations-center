@@ -70,11 +70,20 @@ const (
 	// Certificate validity check interval.
 	CertificatesValidityCheckInterval = 24 * time.Hour
 
+	// Threshold before expiration, at which a certificate expiration warning is emitted.
+	CertificateExpiryWarningThreshold = 30 * 24 * time.Hour
+
 	// Filename of the client certificate.
 	ClientCertificateFilename = "client.crt"
 
 	// Filename of the client key.
 	ClientKeyFilename = "client.key"
+
+	// Filename of the server certificate.
+	ServerCertificateFilename = "server.crt"
+
+	// Filename of the server key.
+	ServerKeyFilename = "server.key"
 
 	// Filename of the system config file.
 	ConfigFilename = "config.yml"

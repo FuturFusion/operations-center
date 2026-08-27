@@ -25,6 +25,9 @@ var _ system0.SystemService = &SystemServiceMock{}
 //			CleanCacheFunc: func(ctx context.Context) error {
 //				panic("mock out the CleanCache method")
 //			},
+//			GetCertificateFunc: func(ctx context.Context) (system.Certificate, error) {
+//				panic("mock out the GetCertificate method")
+//			},
 //			GetNetworkConfigFunc: func(ctx context.Context) system.Network {
 //				panic("mock out the GetNetworkConfig method")
 //			},
@@ -65,6 +68,9 @@ type SystemServiceMock struct {
 	// CleanCacheFunc mocks the CleanCache method.
 	CleanCacheFunc func(ctx context.Context) error
 
+	// GetCertificateFunc mocks the GetCertificate method.
+	GetCertificateFunc func(ctx context.Context) (system.Certificate, error)
+
 	// GetNetworkConfigFunc mocks the GetNetworkConfig method.
 	GetNetworkConfigFunc func(ctx context.Context) system.Network
 
@@ -99,6 +105,11 @@ type SystemServiceMock struct {
 	calls struct {
 		// CleanCache holds details about calls to the CleanCache method.
 		CleanCache []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// GetCertificate holds details about calls to the GetCertificate method.
+		GetCertificate []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
@@ -168,6 +179,7 @@ type SystemServiceMock struct {
 		}
 	}
 	lockCleanCache              sync.RWMutex
+	lockGetCertificate          sync.RWMutex
 	lockGetNetworkConfig        sync.RWMutex
 	lockGetSecurityConfig       sync.RWMutex
 	lockGetSettingsConfig       sync.RWMutex
@@ -209,6 +221,38 @@ func (mock *SystemServiceMock) CleanCacheCalls() []struct {
 	mock.lockCleanCache.RLock()
 	calls = mock.calls.CleanCache
 	mock.lockCleanCache.RUnlock()
+	return calls
+}
+
+// GetCertificate calls GetCertificateFunc.
+func (mock *SystemServiceMock) GetCertificate(ctx context.Context) (system.Certificate, error) {
+	if mock.GetCertificateFunc == nil {
+		panic("SystemServiceMock.GetCertificateFunc: method is nil but SystemService.GetCertificate was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetCertificate.Lock()
+	mock.calls.GetCertificate = append(mock.calls.GetCertificate, callInfo)
+	mock.lockGetCertificate.Unlock()
+	return mock.GetCertificateFunc(ctx)
+}
+
+// GetCertificateCalls gets all the calls that were made to GetCertificate.
+// Check the length with:
+//
+//	len(mockedSystemService.GetCertificateCalls())
+func (mock *SystemServiceMock) GetCertificateCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetCertificate.RLock()
+	calls = mock.calls.GetCertificate
+	mock.lockGetCertificate.RUnlock()
 	return calls
 }
 

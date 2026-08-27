@@ -21,12 +21,84 @@ import (
 	"github.com/FuturFusion/operations-center/internal/system"
 	"github.com/FuturFusion/operations-center/internal/system/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/system/repo/mock"
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
 	systemapi "github.com/FuturFusion/operations-center/shared/api/system"
 )
+
+func TestSystemService_GetCertificate(t *testing.T) {
+	certPEM, _, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+
+	certFingerprint, err := incustls.CertFingerprintStr(string(certPEM))
+	require.NoError(t, err)
+
+	cert, err := certificate.Decode(certPEM)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name              string
+		certificateFileIn []byte
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:              "success",
+			certificateFileIn: certPEM,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - certificate file not found",
+
+			assertErr: require.Error,
+		},
+		{
+			name:              "error - invalid certificate",
+			certificateFileIn: []byte("invalid"),
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			tmpDir := t.TempDir()
+
+			if tc.certificateFileIn != nil {
+				err := os.WriteFile(filepath.Join(tmpDir, "server.crt"), tc.certificateFileIn, 0o600)
+				require.NoError(t, err)
+			}
+
+			env := &envMock.EnvironmentMock{
+				VarDirFunc: func() string {
+					return tmpDir
+				},
+			}
+
+			systemSvc := system.NewSystemService(env, nil, nil)
+
+			// Execute test
+			gotCertificate, err := systemSvc.GetCertificate(context.Background())
+
+			// Assert results
+			tc.assertErr(t, err)
+			if err != nil {
+				return
+			}
+
+			require.Equal(t, string(certPEM), gotCertificate.Certificate)
+			require.Equal(t, certFingerprint, gotCertificate.Fingerprint)
+			require.Equal(t, cert.Subject.String(), gotCertificate.Subject)
+			require.Equal(t, cert.Issuer.String(), gotCertificate.Issuer)
+			require.Equal(t, cert.NotAfter, gotCertificate.NotAfter)
+		})
+	}
+}
 
 func TestSystemService_UpdateCertificate(t *testing.T) {
 	currentCertPEM, currentKeyPEM, err := incustls.GenerateMemCert(true, false)

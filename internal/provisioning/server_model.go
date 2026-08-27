@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"net"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -145,9 +145,9 @@ func (s Server) Validate() error {
 		}
 
 		if s.BMCConfig.Certificate != "" {
-			block, _ := pem.Decode([]byte(s.BMCConfig.Certificate))
-			if block == nil {
-				return domain.NewValidationErrf("Invalid certificate PEM for BMC")
+			_, err := certificate.Decode([]byte(s.BMCConfig.Certificate))
+			if err != nil {
+				return domain.NewValidationErrf("Invalid certificate PEM for BMC: %v", err)
 			}
 		}
 	}

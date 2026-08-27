@@ -104,6 +104,21 @@ func (c OperationsCenterClient) UpdateSystemUpdatesConfig(ctx context.Context, c
 	return nil
 }
 
+func (c OperationsCenterClient) GetSystemCertificate(ctx context.Context) (system.Certificate, error) {
+	response, err := c.DoRequest(ctx, http.MethodGet, "/system/certificate", nil, nil)
+	if err != nil {
+		return system.Certificate{}, err
+	}
+
+	cfg := system.Certificate{}
+	err = json.Unmarshal(response.Metadata, &cfg)
+	if err != nil {
+		return system.Certificate{}, err
+	}
+
+	return cfg, nil
+}
+
 func (c OperationsCenterClient) SetSystemCertificate(ctx context.Context, cfg system.CertificatePost) error {
 	_, err := c.DoRequest(ctx, http.MethodPost, "/system/certificate", nil, cfg)
 	if err != nil {

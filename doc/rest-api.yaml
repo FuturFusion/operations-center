@@ -551,6 +551,64 @@ definitions:
                 x-go-name: WriteProtected
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    Certificate:
+        description: The corresponding private key is never part of this representation.
+        properties:
+            certificate:
+                description: The certificate (X509 PEM encoded) of the system (server certificate).
+                example: |-
+                    -----BEGIN CERTIFICATE-----
+                    ...
+                    -----END CERTIFICATE-----
+                type: string
+                x-go-name: Certificate
+            dns_names:
+                description: DNSNames holds the DNS subject alternative names of the certificate.
+                example:
+                    - operations-center.example.com
+                items:
+                    type: string
+                type: array
+                x-go-name: DNSNames
+            fingerprint:
+                description: Fingerprint in SHA256 format of the certificate.
+                example: fd200419b271f1dc2a5591b693cc5774b7f234e1ff8c6b78ad703b6888fe2b69
+                type: string
+                x-go-name: Fingerprint
+            ip_addresses:
+                description: IPAddresses holds the IP subject alternative names of the certificate.
+                example:
+                    - 127.0.0.1
+                    - ::1
+                items:
+                    type: string
+                type: array
+                x-go-name: IPAddresses
+            issuer:
+                description: Issuer is the name of the issuer of the certificate.
+                example: CN=Example CA,O=Example Inc
+                type: string
+                x-go-name: Issuer
+            not_after:
+                description: NotAfter is the end of the validity period of the certificate in RFC3339 format.
+                example: "2025-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: NotAfter
+            not_before:
+                description: NotBefore is the start of the validity period of the certificate in RFC3339 format.
+                example: "2024-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: NotBefore
+            subject:
+                description: Subject is the name of the subject of the certificate.
+                example: CN=operations-center.example.com,O=Example Inc
+                type: string
+                x-go-name: Subject
+        title: Certificate represents the system's certificate (server certificate).
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api/system
     CertificatePost:
         description: |-
             CertificatePost represents the fields available for an update of the
@@ -13261,6 +13319,23 @@ paths:
             tags:
                 - system
     /1.0/system/certificate:
+        get:
+            description: Get the system's certificate. The corresponding private key is never returned.
+            operationId: system_certificate_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/SystemCertificateResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the system's certificate
+            tags:
+                - system
         post:
             consumes:
                 - application/json
@@ -14893,6 +14968,26 @@ responses:
                         $ref: '#/definitions/InventoryStorageVolume'
                     type: array
                     x-go-name: Metadata
+                status:
+                    example: Success
+                    type: string
+                    x-go-name: Status
+                status_code:
+                    example: 200
+                    format: int64
+                    type: integer
+                    x-go-name: StatusCode
+                type:
+                    example: sync
+                    type: string
+                    x-go-name: Type
+            type: object
+    SystemCertificateResponse:
+        description: The certificate of Operations Center
+        schema:
+            properties:
+                metadata:
+                    $ref: '#/definitions/Certificate'
                 status:
                     example: Success
                     type: string

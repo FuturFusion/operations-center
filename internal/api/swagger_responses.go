@@ -443,6 +443,17 @@ type swaggerUpdateChangelogsResponse struct {
 	}
 }
 
+// The certificate of Operations Center
+//
+// swagger:response SystemCertificateResponse
+type swaggerSystemCertificateResponse struct {
+	// in: body
+	Body struct {
+		swaggerSyncResponseBody
+		Metadata apisystem.Certificate `json:"metadata"`
+	}
+}
+
 // The network configuration of Operations Center
 //
 // swagger:response SystemNetworkResponse

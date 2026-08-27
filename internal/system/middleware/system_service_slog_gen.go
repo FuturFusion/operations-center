@@ -73,6 +73,40 @@ func (_d SystemServiceWithSlog) CleanCache(ctx context.Context) (err error) {
 	return _d._base.CleanCache(ctx)
 }
 
+// GetCertificate implements system0.SystemService.
+func (_d SystemServiceWithSlog) GetCertificate(ctx context.Context) (certificate system.Certificate, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetCertificate")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("certificate", certificate),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetCertificate returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetCertificate returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetCertificate finished")
+		}
+	}()
+	return _d._base.GetCertificate(ctx)
+}
+
 // GetNetworkConfig implements system0.SystemService.
 func (_d SystemServiceWithSlog) GetNetworkConfig(ctx context.Context) (network system.Network) {
 	log := slog.With()

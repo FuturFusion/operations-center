@@ -20,6 +20,7 @@ func registerSystemHandler(router Router, authorizer *authz.Authorizer, service 
 		service: service,
 	}
 
+	router.HandleFunc("GET /certificate", response.With(handler.certificateGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("POST /certificate", response.With(handler.certificatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /certificate/:renew", response.With(handler.certificateRenewPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /network", response.With(handler.networkGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -31,6 +32,33 @@ func registerSystemHandler(router Router, authorizer *authz.Authorizer, service 
 	router.HandleFunc("GET /updates", response.With(handler.updatesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /updates", response.With(handler.updatesPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /:clean-cache", response.With(handler.cleanCachePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
+}
+
+// swagger:operation GET /1.0/system/certificate system system_certificate_get
+//
+//	Get the system's certificate
+//
+//	Get the system's certificate. The corresponding private key is never returned.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/SystemCertificateResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *systemHandler) certificateGet(r *http.Request) response.Response {
+	certificate, err := s.service.GetCertificate(r.Context())
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to get system certificate: %w", err))
+	}
+
+	return response.SyncResponse(true, certificate)
 }
 
 // swagger:operation POST /1.0/system/certificate system system_certificate_post

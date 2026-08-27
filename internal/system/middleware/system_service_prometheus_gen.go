@@ -53,6 +53,20 @@ func (_d SystemServiceWithPrometheus) CleanCache(ctx context.Context) (err error
 	return _d.base.CleanCache(ctx)
 }
 
+// GetCertificate implements system0.SystemService.
+func (_d SystemServiceWithPrometheus) GetCertificate(ctx context.Context) (certificate system.Certificate, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetCertificate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetCertificate(ctx)
+}
+
 // GetNetworkConfig implements system0.SystemService.
 func (_d SystemServiceWithPrometheus) GetNetworkConfig(ctx context.Context) (network system.Network) {
 	_since := time.Now()
