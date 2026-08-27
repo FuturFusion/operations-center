@@ -20,7 +20,7 @@ func (c *Certificate) UnmarshalYAML(unmarshal func(v any) error) error {
 
 	parsedCert := Certificate{}
 	if certStr != "" {
-		parsedCert.Certificate, err = decodeCert([]byte(certStr))
+		parsedCert.Certificate, err = DecodeCert([]byte(certStr))
 		if err != nil {
 			return err
 		}
@@ -44,7 +44,7 @@ func (c *Certificate) UnmarshalJSON(b []byte) error {
 
 	parsedCert := Certificate{}
 	if certStr != "" {
-		parsedCert.Certificate, err = decodeCert([]byte(certStr))
+		parsedCert.Certificate, err = DecodeCert([]byte(certStr))
 		if err != nil {
 			return err
 		}
@@ -75,7 +75,8 @@ func CertEncodeToPEM(rawCert []byte) string {
 	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: rawCert}))
 }
 
-func decodeCert(certBytes []byte) (*x509.Certificate, error) {
+// DecodeCert decodes a PEM encoded X509 certificate.
+func DecodeCert(certBytes []byte) (*x509.Certificate, error) {
 	certBlock, _ := pem.Decode(certBytes)
 	if certBlock == nil {
 		return nil, fmt.Errorf("Certificate must be base64 encoded PEM certificate")
