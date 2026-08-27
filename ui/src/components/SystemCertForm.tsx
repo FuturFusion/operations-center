@@ -1,21 +1,21 @@
 import { FC } from "react";
 import { Button, Form } from "react-bootstrap";
 import { useFormik } from "formik";
-import { SystemCertificate } from "types/settings";
+import { SystemCertificatePost } from "types/settings";
 
 interface Props {
-  onSubmit: (values: SystemCertificate) => void;
+  onSubmit: (values: SystemCertificatePost) => void;
 }
 
 const SystemCertForm: FC<Props> = ({ onSubmit }) => {
-  const formikInitialValues: SystemCertificate = {
+  const formikInitialValues: SystemCertificatePost = {
     certificate: "",
     key: "",
   };
 
   const formik = useFormik({
     initialValues: formikInitialValues,
-    onSubmit: (values: SystemCertificate) => {
+    onSubmit: (values: SystemCertificatePost) => {
       onSubmit(values);
     },
   });

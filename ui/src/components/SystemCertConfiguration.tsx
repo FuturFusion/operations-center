@@ -1,16 +1,20 @@
-import { updateSystemCertificate } from "api/settings";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchSystemCertificate, updateSystemCertificate } from "api/settings";
 import SystemCertForm from "components/SystemCertForm";
+import SystemCertOverview from "components/SystemCertOverview";
 import { useNotification } from "context/notificationContext";
-import { SystemCertificate } from "types/settings";
+import { SystemCertificatePost } from "types/settings";
 
 const SystemCertConfiguration = () => {
   const { notify } = useNotification();
+  const queryClient = useQueryClient();
 
-  const onSubmit = (certificate: SystemCertificate) => {
+  const onSubmit = (certificate: SystemCertificatePost) => {
     updateSystemCertificate(JSON.stringify(certificate, null, 2))
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`System certificate updated`);
+          queryClient.invalidateQueries({ queryKey: ["system_certificate"] });
           return;
         }
         notify.error(response.error);
@@ -20,8 +24,26 @@ const SystemCertConfiguration = () => {
       });
   };
 
+  const {
+    data: certificate = undefined,
+    error,
+    isLoading,
+  } = useQuery({
+    queryKey: ["system_certificate"],
+    queryFn: () => fetchSystemCertificate(),
+  });
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>Error while loading system certificate</div>;
+  }
+
   return (
     <>
+      <SystemCertOverview certificate={certificate} />
       <div className="form-container">
         <h6>
           By default Operations Center uses an automatically generated

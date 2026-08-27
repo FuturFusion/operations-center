@@ -48,6 +48,17 @@ export interface SystemSettings {
 
 export interface SystemCertificate {
   certificate: string;
+  fingerprint: string;
+  subject: string;
+  issuer: string;
+  not_before: string;
+  not_after: string;
+  dns_names: string[];
+  ip_addresses: string[];
+}
+
+export interface SystemCertificatePost {
+  certificate: string;
   key: string;
 }
 

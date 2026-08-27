@@ -1,10 +1,20 @@
 import { APIResponse } from "types/response";
 import {
+  SystemCertificate,
   SystemNetwork,
   SystemSecurity,
   SystemSettings,
   SystemUpdates,
 } from "types/settings";
+
+export const fetchSystemCertificate = (): Promise<SystemCertificate> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/system/certificate`)
+      .then((response) => response.json())
+      .then((data) => resolve(data.metadata))
+      .catch(reject);
+  });
+};
 
 export const fetchSystemNetwork = (): Promise<SystemNetwork> => {
   return new Promise((resolve, reject) => {
