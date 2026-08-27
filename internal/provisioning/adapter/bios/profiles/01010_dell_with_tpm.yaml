@@ -1,0 +1,10 @@
+---
+
+- name: dell-with-tpm
+  description: Dell with TPM
+  match:
+    - manufacturer: "Dell Inc\\."
+      has_tpm: true
+  priority: 1010
+  attributes:
+    TpmSecurity: "On"
