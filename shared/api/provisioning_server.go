@@ -670,6 +670,10 @@ type BMCData struct {
 	// ServerBIOSAttributes holds the BIOS settings/attributes as reported by the BMC.
 	ServerBIOSAttributes map[string]any `json:"server_bios_attributes" yaml:"server_bios_attributes"`
 
+	// ServerProcessorManufacturer holds the manufacturer reported for the first CPU.
+	// Example: Intel
+	ServerProcessorManufacturer string `json:"server_processor_manufacturer" yaml:"server_processor_manufacturer"`
+
 	// ServerProcessorArchitecture holds the architecture reported for the first CPU.
 	// Example: x86
 	ServerProcessorArchitecture string `json:"server_processor_architecture" yaml:"server_processor_architecture"`
@@ -677,6 +681,15 @@ type BMCData struct {
 	// ServerProcessorInstructionSet holds the instruction set reported for the first CPU.
 	// Example: x86-64
 	ServerProcessorInstructionSet string `json:"server_processor_instruction_set" yaml:"server_processor_instruction_set"`
+
+	// ServerCPUSockets holds the number of physical CPUs reported for the server.
+	// It is 0, if the BMC does not report the number of CPUs.
+	// Example: 2
+	ServerCPUSockets int `json:"server_cpu_sockets" yaml:"server_cpu_sockets"`
+
+	// ServerHasTPM reports, if a trusted platform module is present in the server.
+	// Example: true
+	ServerHasTPM bool `json:"server_has_tpm" yaml:"server_has_tpm"`
 
 	// ServerPowerState holds the power state reported for the server.
 	// Example: On
