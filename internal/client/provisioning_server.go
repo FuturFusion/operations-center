@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -314,6 +315,25 @@ func (c OperationsCenterClient) BMCServerSetLocationIndicator(ctx context.Contex
 	}
 
 	return nil
+}
+
+func (c OperationsCenterClient) GetServerBIOSProfile(ctx context.Context, name string, validate bool) (api.BIOSProfileResolution, error) {
+	query := url.Values{}
+	query.Add("validate", strconv.FormatBool(validate))
+
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name, "bios-profile"), query, nil)
+	if err != nil {
+		return api.BIOSProfileResolution{}, err
+	}
+
+	resolution := api.BIOSProfileResolution{}
+
+	err = json.Unmarshal(response.Metadata, &resolution)
+	if err != nil {
+		return api.BIOSProfileResolution{}, err
+	}
+
+	return resolution, nil
 }
 
 func (c OperationsCenterClient) ApplyBIOSAttributes(ctx context.Context, name string, attributes map[string]any) error {
