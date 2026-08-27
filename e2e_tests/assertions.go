@@ -285,6 +285,27 @@ func assertOperationsCenterCliSystem(t *testing.T) {
 		fmt.Println(resp.Output())
 	}
 
+	// system certificate show
+	resp = run(t, `../bin/operations-center.linux.%s system certificate show`, cpuArch)
+	require.NoError(t, resp.err, "expect operations-center system certificate show to work")
+	if !resp.Success() {
+		t.Errorf("expect operations-center system certificate show to work")
+		success = false
+		fmt.Println(resp.Output())
+	} else {
+		require.Contains(t, resp.Output(), "-----BEGIN CERTIFICATE-----")
+		require.NotContains(t, resp.Output(), "PRIVATE KEY")
+	}
+
+	// system certificate show -f json
+	resp = run(t, `../bin/operations-center.linux.%s system certificate show -f json | jq -e -r '.fingerprint | length == 64'`, cpuArch)
+	require.NoError(t, resp.err, "expect operations-center system certificate show -f json to work")
+	if !resp.Success() {
+		t.Errorf("expect operations-center system certificate show -f json to work")
+		success = false
+		fmt.Println(resp.Output())
+	}
+
 	require.True(t, success, "operations-center cli system assertions failed")
 }
 
