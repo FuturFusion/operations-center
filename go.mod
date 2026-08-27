@@ -12,7 +12,6 @@ require (
 	github.com/FuturFusion/migration-manager v0.6.15 // indirect
 	github.com/FuturFusion/openfga-sync v0.0.0-20260802043841-c17052a24795 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/Rican7/retry v0.3.1 // indirect
 	github.com/Yiling-J/theine-go v0.6.2 // indirect
@@ -196,6 +195,7 @@ require (
 
 require (
 	github.com/FuturFusion/incus-redfish-proxy v0.0.0-20260825170101-8aca873b0966
+	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/brianvoe/gofakeit/v7 v7.15.0
 	github.com/dsnet/golib/memfile v1.0.0

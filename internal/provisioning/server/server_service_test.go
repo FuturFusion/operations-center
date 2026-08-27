@@ -9986,6 +9986,231 @@ func TestServerService_BMCBIOSAttributesByName(t *testing.T) {
 	}
 }
 
+func TestServerService_BIOSProfileByName(t *testing.T) {
+	resolution := provisioning.BIOSProfileResolution{
+		Profiles: []string{"dell-poweredge"},
+		Attributes: map[string]any{
+			"SecureBoot": "Enabled",
+		},
+	}
+
+	tests := []struct {
+		name                   string
+		nameArg                string
+		repoGetByNameServer    *provisioning.Server
+		repoGetByNameErr       error
+		biosProfileResolve     *provisioning.BIOSProfileResolution
+		biosProfileResolveErr  error
+		withoutBIOSProfilePort bool
+
+		assertErr require.ErrorAssertionFunc
+		want      *provisioning.BIOSProfileResolution
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+			},
+			biosProfileResolve: &resolution,
+
+			assertErr: require.NoError,
+			want:      &resolution,
+		},
+		{
+			name:    "success - no profile matches",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+			},
+
+			assertErr: require.NoError,
+			want:      nil,
+		},
+		{
+			name:    "error - name empty",
+			nameArg: "", // invalid
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			nameArg:          "one",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - no BIOS profile port configured",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+			},
+			withoutBIOSProfilePort: true,
+
+			assertErr: errassert.NotFoundError,
+		},
+		{
+			name:    "error - biosProfile.Resolve",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+			},
+			biosProfileResolveErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+			}
+
+			opts := []provisioningServer.Option{}
+			if !tc.withoutBIOSProfilePort {
+				opts = append(opts, provisioningServer.WithBIOSProfilePort(&adapterMock.BIOSProfilePortMock{
+					ResolveFunc: func(ctx context.Context, server provisioning.Server) (*provisioning.BIOSProfileResolution, error) {
+						return tc.biosProfileResolve, tc.biosProfileResolveErr
+					},
+				}))
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				opts...,
+			)
+
+			// Run test
+			got, err := serverSvc.BIOSProfileByName(t.Context(), tc.nameArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestServerService_ValidateBIOSProfileByName(t *testing.T) {
+	resolution := provisioning.BIOSProfileResolution{
+		Profiles: []string{"dell-poweredge"},
+		Attributes: map[string]any{
+			"SecureBoot": "Enabled",
+		},
+	}
+
+	tests := []struct {
+		name                       string
+		nameArg                    string
+		repoGetByNameServer        *provisioning.Server
+		biosProfileResolve         *provisioning.BIOSProfileResolution
+		bmcClientBIOSAttributes    []api.BIOSAttribute
+		bmcClientBIOSAttributesErr error
+
+		assertErr require.ErrorAssertionFunc
+		want      *provisioning.BIOSProfileResolution
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			biosProfileResolve: &resolution,
+			bmcClientBIOSAttributes: []api.BIOSAttribute{
+				{Name: "SecureBoot", Type: "Enumeration", AcceptableValues: []string{"Enabled", "Disabled"}},
+			},
+
+			assertErr: require.NoError,
+			want:      &resolution,
+		},
+		{
+			name:    "success - no profile matches",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+
+			assertErr: require.NoError,
+			want:      nil,
+		},
+		{
+			name:    "error - attribute not accepted by the BMC",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			biosProfileResolve: &resolution,
+			bmcClientBIOSAttributes: []api.BIOSAttribute{
+				{Name: "SecureBoot", Type: "Enumeration", AcceptableValues: []string{"Disabled"}},
+			},
+
+			assertErr: errassert.ValidationErrorContains(`"SecureBoot"`),
+		},
+		{
+			name:    "error - client.BIOSAttributes",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			biosProfileResolve:         &resolution,
+			bmcClientBIOSAttributesErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, nil
+				},
+			}
+
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				BIOSAttributesFunc: func(ctx context.Context, server provisioning.Server) ([]api.BIOSAttribute, error) {
+					return tc.bmcClientBIOSAttributes, tc.bmcClientBIOSAttributesErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+				provisioningServer.WithBIOSProfilePort(&adapterMock.BIOSProfilePortMock{
+					ResolveFunc: func(ctx context.Context, server provisioning.Server) (*provisioning.BIOSProfileResolution, error) {
+						return tc.biosProfileResolve, nil
+					},
+				}),
+			)
+
+			// Run test
+			got, err := serverSvc.ValidateBIOSProfileByName(t.Context(), tc.nameArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func TestServerService_BMCBIOSAttributeAcceptableValuesByNameAndAttribute(t *testing.T) {
 	values := api.BIOSAttribute{
 		CurrentValue:     "Enabled",

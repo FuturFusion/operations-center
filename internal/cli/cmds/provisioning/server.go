@@ -46,6 +46,13 @@ func (c *CmdServer) Command() *cobra.Command {
 	cmd.Args = cobra.NoArgs
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
+	// BIOS profile
+	serverBIOSProfileCmd := cmdServerBIOSProfile{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(serverBIOSProfileCmd.Command())
+
 	// List
 	serverListCmd := cmdServerList{
 		ocClient: c.OCClient,

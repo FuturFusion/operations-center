@@ -82,6 +82,7 @@ func registerProvisioningServerHandler(
 	router.HandleFunc("POST /{name}/bmc/:server-restart", response.With(handler.serverBMCServerRestartPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/bmc/:server-locate", response.With(handler.serverBMCServerLocatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/bmc/:apply-bios-attributes", response.With(handler.serverBMCApplyBIOSAttributesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{name}/bios-profile", response.With(handler.serverBIOSProfileGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}/bmc/bios-attributes", response.With(handler.serverBMCBIOSAttributesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}/bmc/bios-attributes/{attributeName...}", response.With(handler.serverBMCBIOSAttributeGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("POST /{name}/bmc/:apply-secure-boot-certificates", response.With(handler.serverBMCApplySecureBootCertificatesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
@@ -1121,6 +1122,73 @@ func (s *serverHandler) serverBMCApplyBIOSAttributesPost(r *http.Request) respon
 	}
 
 	return response.EmptySyncResponse
+}
+
+// swagger:operation GET /1.0/provisioning/servers/{name}/bios-profile servers server_bios_profile_get
+//
+//	Get the BIOS profiles resolved for the server
+//
+//	Returns the BIOS attributes and the secure boot configuration, that are
+//	applied to the server before IncusOS is installed on it. They are
+//	accumulated from all the BIOS profiles matching the data reported by the BMC
+//	of the server, processed by priority ascending.
+//
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
+//	  - in: query
+//	    name: validate
+//	    description: |-
+//	      Validate the resolved attributes against the BIOS attribute registry
+//	      published by the BMC of the server.
+//	    type: boolean
+//	    x-example: true
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/BIOSProfileResolutionResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverBIOSProfileGet(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	validate, err := strconv.ParseBool(r.FormValue("validate"))
+	if err != nil {
+		validate = false
+	}
+
+	var resolution *provisioning.BIOSProfileResolution
+
+	if validate {
+		resolution, err = s.service.ValidateBIOSProfileByName(r.Context(), name)
+	} else {
+		resolution, err = s.service.BIOSProfileByName(r.Context(), name)
+	}
+
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	if resolution == nil {
+		return response.NotFound(fmt.Errorf("No BIOS profile matches server %q", name))
+	}
+
+	return response.SyncResponse(true, api.BIOSProfileResolution{
+		Profiles:   resolution.Profiles,
+		Attributes: resolution.Attributes,
+		SecureBoot: resolution.SecureBoot,
+	})
 }
 
 // swagger:operation GET /1.0/provisioning/servers/{name}/bmc/bios-attributes servers_bmc server_bmc_bios_attributes_get

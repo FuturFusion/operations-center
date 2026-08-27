@@ -1,0 +1,11 @@
+---
+
+- name: dell
+  description: Dell
+  match:
+    - manufacturer: "Dell Inc\\."
+  priority: 1000
+  attributes:
+    SecureBoot: "Enabled"
+    SecureBootMode: "UserMode"
+    SecureBootPolicy: "Custom"

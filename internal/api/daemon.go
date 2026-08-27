@@ -45,6 +45,7 @@ import (
 	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/bios"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/bmc/redfish"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/flasher"
 	provisioningIncusAdapter "github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
@@ -315,7 +316,16 @@ func (d *Daemon) Start(ctx context.Context) error {
 		seedprogress.New(),
 	)
 
-	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter)
+	biosProfileCatalogue, err := bios.New()
+	if err != nil {
+		return fmt.Errorf("Failed to load the BIOS profile catalogue: %w", err)
+	}
+
+	biosProfile := provisioningAdapterMiddleware.NewBIOSProfilePortWithSlog(
+		biosProfileCatalogue,
+	)
+
+	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter, biosProfile)
 	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc)
 	if err != nil {
 		return err
@@ -777,6 +787,7 @@ func (d *Daemon) setupServerService(
 	channelSvc provisioning.ChannelService,
 	updateSvc provisioning.UpdateService,
 	warningSvc provisioning.WarningServicePort,
+	biosProfile provisioning.BIOSProfilePort,
 ) provisioning.ServerService {
 	serverSvc := provisioningServer.New(
 		provisioningRepoMiddleware.NewServerRepoWithSlog(
@@ -818,6 +829,7 @@ func (d *Daemon) setupServerService(
 		updateSvc,
 		d.serverCertificate,
 		provisioningServer.WithWarningEmitter(warningSvc),
+		provisioningServer.WithBIOSProfilePort(biosProfile),
 		provisioningServer.AddBMCServerClient(
 			api.BMCAPITypeRedfishV1Generic,
 			provisioningAdapterMiddleware.NewBMCServerClientPortWithSlog(

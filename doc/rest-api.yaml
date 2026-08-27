@@ -217,6 +217,71 @@ definitions:
         title: BIOSAttribute describes a single BIOS attribute known to the BMC.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BIOSProfileResolution:
+        description: |-
+            BIOSProfileResolution is the outcome of the resolution of the BIOS profiles
+            for a server. It holds the BIOS attributes and the secure boot configuration
+            accumulated from all the BIOS profiles matching the server, which are applied
+            to the server before IncusOS is installed on it.
+        properties:
+            attributes:
+                additionalProperties: {}
+                description: |-
+                    Attributes holds the BIOS attribute names and values to apply to the
+                    server via BMC, e.g. {"SecureBoot": "Enabled", "TpmSecurity": "On"}.
+                type: object
+                x-go-name: Attributes
+            profiles:
+                description: |-
+                    Profiles holds the names of the BIOS profiles, that contributed to the
+                    resolution, in the order they have been applied.
+                example:
+                    - dell-poweredge
+                    - dell-poweredge-r7x0
+                items:
+                    type: string
+                type: array
+                x-go-name: Profiles
+            secure_boot:
+                $ref: '#/definitions/BIOSSecureBoot'
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BIOSSecureBoot:
+        properties:
+            db:
+                $ref: '#/definitions/BIOSSecureBootDatabase'
+            dbx:
+                $ref: '#/definitions/BIOSSecureBootDatabase'
+            kek:
+                $ref: '#/definitions/BIOSSecureBootDatabase'
+        title: BIOSSecureBoot holds the secure boot configuration per secure boot database.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BIOSSecureBootDatabase:
+        description: |-
+            BIOSSecureBootDatabase holds the secure boot certificates and signatures of a
+            single secure boot database, that are allowed to stay during the
+            initialization of a server.
+        properties:
+            certificates:
+                additionalProperties:
+                    type: boolean
+                description: |-
+                    Certificates is keyed by the SHA256 fingerprint of the certificate in
+                    lower case hex notation. A value of true keeps the certificate, a value of
+                    false removes it.
+                type: object
+                x-go-name: Certificates
+            signatures:
+                additionalProperties:
+                    type: boolean
+                description: |-
+                    Signatures is keyed by the signature value. A value of true keeps
+                    the signature, a value of false removes it.
+                type: object
+                x-go-name: Signatures
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     BMCAPIType:
         type: string
         x-go-package: github.com/FuturFusion/operations-center/shared/api
@@ -338,6 +403,19 @@ definitions:
                 x-go-name: ServerBIOSVersion
             server_boot_progress:
                 $ref: '#/definitions/BMCBootProgress'
+            server_cpu_sockets:
+                description: |-
+                    ServerCPUSockets holds the number of physical CPUs reported for the server.
+                    It is 0, if the BMC does not report the number of CPUs.
+                example: 2
+                format: int64
+                type: integer
+                x-go-name: ServerCPUSockets
+            server_has_tpm:
+                description: ServerHasTPM reports, if a trusted platform module is present in the server.
+                example: true
+                type: boolean
+                x-go-name: ServerHasTPM
             server_health_status:
                 description: ServerHealthStatus holds the reported overall health status for the server.
                 example: Warning
@@ -385,6 +463,11 @@ definitions:
                 example: x86-64
                 type: string
                 x-go-name: ServerProcessorInstructionSet
+            server_processor_manufacturer:
+                description: ServerProcessorManufacturer holds the manufacturer reported for the first CPU.
+                example: Intel
+                type: string
+                x-go-name: ServerProcessorManufacturer
             server_serial_number:
                 description: ServerSerialNumber holds the serial number of the server.
                 type: string
@@ -11520,6 +11603,43 @@ paths:
             summary: Sync server state
             tags:
                 - servers
+    /1.0/provisioning/servers/{name}/bios-profile:
+        get:
+            description: |-
+                Returns the BIOS attributes and the secure boot configuration, that are
+                applied to the server before IncusOS is installed on it. They are
+                accumulated from all the BIOS profiles matching the data reported by the BMC
+                of the server, processed by priority ascending.
+            operationId: server_bios_profile_get
+            parameters:
+                - description: Name of the server
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+                - description: |-
+                    Validate the resolved attributes against the BIOS attribute registry
+                    published by the BMC of the server.
+                  in: query
+                  name: validate
+                  type: boolean
+                  x-example: true
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/BIOSProfileResolutionResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the BIOS profiles resolved for the server
+            tags:
+                - servers
     /1.0/provisioning/servers/{name}/bmc/:apply-bios-attributes:
         post:
             consumes:
@@ -13682,6 +13802,26 @@ responses:
                         type: string
                     type: array
                     x-go-name: Metadata
+                status:
+                    example: Success
+                    type: string
+                    x-go-name: Status
+                status_code:
+                    example: 200
+                    format: int64
+                    type: integer
+                    x-go-name: StatusCode
+                type:
+                    example: sync
+                    type: string
+                    x-go-name: Type
+            type: object
+    BIOSProfileResolutionResponse:
+        description: The resolved BIOS profiles
+        schema:
+            properties:
+                metadata:
+                    $ref: '#/definitions/BIOSProfileResolution'
                 status:
                     example: Success
                     type: string

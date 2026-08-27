@@ -229,6 +229,10 @@ func TestRedfish_GetData(t *testing.T) {
   "PowerState": "On",
   "LocationIndicatorActive": true,
   "Status": { "Health": "OK" },
+  "ProcessorSummary": { "Count": 2 },
+  "TrustedModules": [
+    { "InterfaceType": "TPM2_0", "Status": { "State": "Enabled" } }
+  ],
   "Processors": { "@odata.id": "/redfish/v1/Systems/1/Processors" },
   "Bios": { "@odata.id": "/redfish/v1/Systems/1/Bios" },
   "VirtualMedia": { "@odata.id": "/redfish/v1/Systems/1/VirtualMedia" }
@@ -259,6 +263,7 @@ func TestRedfish_GetData(t *testing.T) {
 				processorBody: `{
   "@odata.id": "/redfish/v1/Systems/1/Processors/1",
   "Id": "1",
+  "Manufacturer": "Intel",
   "ProcessorArchitecture": "x86",
   "InstructionSet": "x86-64"
 }`,
@@ -325,8 +330,11 @@ func TestRedfish_GetData(t *testing.T) {
 					"BootMode": "Uefi",
 					"NumLock":  true,
 				},
+				ServerProcessorManufacturer:   "Intel",
 				ServerProcessorArchitecture:   "x86",
 				ServerProcessorInstructionSet: "x86-64",
+				ServerCPUSockets:              2,
+				ServerHasTPM:                  true,
 				ServerPowerState:              "On",
 				ServerLocationIndicatorActive: true,
 				ServerHealthStatus:            "OK",
@@ -369,8 +377,28 @@ func TestRedfish_GetData(t *testing.T) {
 				systemBody: `{
   "@odata.id": "/redfish/v1/Systems/1",
   "Id": "1",
+  "TrustedModules": [
+    { "Status": { "State": "Absent" } }
+  ],
+  "Links": {
+    "TrustedComponents": [
+      { "@odata.id": "/redfish/v1/Systems/1/TrustedComponents/1" }
+    ]
+  },
   "Processors": { "@odata.id": "/redfish/v1/Systems/1/Processors" }
 }`,
+				extraRoutes: map[string]mockRedfishRoute{
+					"/redfish/v1/Systems/1/TrustedComponents/1": {
+						statusCode: http.StatusOK,
+						body: `{
+  "@odata.id": "/redfish/v1/Systems/1/TrustedComponents/1",
+  "Id": "1",
+  "TrustedComponentType": "Discrete",
+  "Status": { "State": "Enabled" },
+  "TPM": { "CapabilitiesVendorID": "NTC" }
+}`,
+					},
+				},
 				managersStatusCode: http.StatusOK,
 				managersBody: `{
   "Members@odata.count": 1,
@@ -430,6 +458,9 @@ func TestRedfish_GetData(t *testing.T) {
 				BMCProtocol:        "Redfish",
 				BMCProtocolVersion: "1.16.0",
 				BMCVendor:          "Dell",
+				// The trusted module slot is empty, but the system reports a
+				// trusted component.
+				ServerHasTPM: true,
 				VirtualMedia: map[string]api.BMCVirtualMedia{
 					"manager:1": {
 						ID:           "manager:1",

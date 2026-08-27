@@ -45,6 +45,7 @@ type serverService struct {
 	client           provisioning.ServerClientPort
 	bmcServerClients map[api.BMCAPIType]provisioning.BMCServerClientPort
 	scriptlet        provisioning.ServerScriptletPort
+	biosProfile      provisioning.BIOSProfilePort
 	tokenSvc         provisioning.TokenService
 	clusterSvc       provisioning.ClusterService
 	channelSvc       provisioning.ChannelService
@@ -93,6 +94,12 @@ func WithWarningEmitter(warn provisioning.WarningServicePort) Option {
 func WithRebootStatusUpdateGracePeriod(rebootStatusUpdateGracePeriod time.Duration) Option {
 	return func(s *serverService) {
 		s.rebootStatusUpdateGracePeriod = rebootStatusUpdateGracePeriod
+	}
+}
+
+func WithBIOSProfilePort(biosProfile provisioning.BIOSProfilePort) Option {
+	return func(s *serverService) {
+		s.biosProfile = biosProfile
 	}
 }
 
@@ -2617,6 +2624,65 @@ func (s *serverService) applyBIOSAttributesByName(ctx context.Context, name stri
 	})
 
 	return nil, nil
+}
+
+// BIOSProfileByName returns the BIOS profiles resolved from the BMC data of the
+// server or nil, if no profile matches.
+func (s *serverService) BIOSProfileByName(ctx context.Context, name string) (*provisioning.BIOSProfileResolution, error) {
+	if name == "" {
+		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	server, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	return s.resolveBIOSProfile(ctx, *server)
+}
+
+// ValidateBIOSProfileByName returns the BIOS profiles resolved for the server
+// after checking their attributes against the BIOS attribute registry published
+// by the BMC of the server. Mismatches are reported as domain.ErrValidation.
+func (s *serverService) ValidateBIOSProfileByName(ctx context.Context, name string) (*provisioning.BIOSProfileResolution, error) {
+	server, client, err := s.getServerAndBMCClientByName(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+
+	resolution, err := s.resolveBIOSProfile(ctx, *server)
+	if err != nil {
+		return nil, err
+	}
+
+	if resolution == nil {
+		return nil, nil
+	}
+
+	biosAttributes, err := client.BIOSAttributes(ctx, *server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get BIOS attributes of server %q via BMC: %w", server.Name, err)
+	}
+
+	err = resolution.ValidateAgainstBIOSAttributes(biosAttributes)
+	if err != nil {
+		return nil, fmt.Errorf("Server %q: %w", server.Name, err)
+	}
+
+	return resolution, nil
+}
+
+func (s *serverService) resolveBIOSProfile(ctx context.Context, server provisioning.Server) (*provisioning.BIOSProfileResolution, error) {
+	if s.biosProfile == nil {
+		return nil, fmt.Errorf("No source of BIOS profiles is configured: %w", domain.ErrNotFound)
+	}
+
+	resolution, err := s.biosProfile.Resolve(ctx, server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to resolve BIOS profiles for server %q: %w", server.Name, err)
+	}
+
+	return resolution, nil
 }
 
 func (s *serverService) BMCBIOSAttributesByName(ctx context.Context, name string) ([]api.BIOSAttribute, error) {

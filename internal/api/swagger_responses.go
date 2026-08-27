@@ -275,6 +275,17 @@ type swaggerServerBMCBIOSAttributeValuesResponse struct {
 	}
 }
 
+// The resolved BIOS profiles
+//
+// swagger:response BIOSProfileResolutionResponse
+type swaggerBIOSProfileResolutionResponse struct {
+	// in: body
+	Body struct {
+		swaggerSyncResponseBody
+		Metadata api.BIOSProfileResolution `json:"metadata"`
+	}
+}
+
 // The BMC dump
 //
 // swagger:response ServerBMCDumpResponse

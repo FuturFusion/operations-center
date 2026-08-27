@@ -113,6 +113,41 @@ func (_d ServerServiceWithSlog) ApplyBIOSAttributesByName(ctx context.Context, n
 	return _d._base.ApplyBIOSAttributesByName(ctx, name, attributes)
 }
 
+// BIOSProfileByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) BIOSProfileByName(ctx context.Context, name string) (bIOSProfileResolution *provisioning.BIOSProfileResolution, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling BIOSProfileByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bIOSProfileResolution", bIOSProfileResolution),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method BIOSProfileByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method BIOSProfileByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method BIOSProfileByName finished")
+		}
+	}()
+	return _d._base.BIOSProfileByName(ctx, name)
+}
+
 // BMCApplySecureBootCertificatesByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) BMCApplySecureBootCertificatesByName(ctx context.Context, name string) (err error) {
 	log := slog.With()
@@ -1845,4 +1880,39 @@ func (_d ServerServiceWithSlog) UpdateSystemUpdate(ctx context.Context, name str
 		}
 	}()
 	return _d._base.UpdateSystemUpdate(ctx, name, updateConfig)
+}
+
+// ValidateBIOSProfileByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) ValidateBIOSProfileByName(ctx context.Context, name string) (bIOSProfileResolution *provisioning.BIOSProfileResolution, err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ValidateBIOSProfileByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("bIOSProfileResolution", bIOSProfileResolution),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method ValidateBIOSProfileByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method ValidateBIOSProfileByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method ValidateBIOSProfileByName finished")
+		}
+	}()
+	return _d._base.ValidateBIOSProfileByName(ctx, name)
 }

@@ -1,0 +1,33 @@
+---
+
+- name: "dummy"
+  description: "dummy description"
+  match:
+    - manufacturer: ".*Dummy Inc.*"
+      model: ".*Dummy Model.*"
+      processor_manufacturer: "Intel"
+      processor_architecture: "x86"
+      processor_instruction_set: "x64-64"
+      cpu_sockets: 1
+      has_tpm: true
+      bios_version: "> 0.0.0"
+  priority: 100
+  attributes:
+    AdminName: "root"
+    ServerPrimaryOs: "IncusOS"
+  secure_boot:
+    db:
+      certificates:
+        "sha256-fingerprint": true
+      signatures:
+        "signature-value": true
+    dbx:
+      certificates:
+        "sha256-fingerprint": true
+      signatures:
+        "signature-value": true
+    kek:
+      certificates:
+        "sha256-fingerprint": true
+      signatures:
+        "signature-value": true

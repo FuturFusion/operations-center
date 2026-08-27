@@ -301,9 +301,21 @@ func (r redfish) GetData(ctx context.Context, server provisioning.Server) (api.B
 		}
 
 		if processor != nil {
+			bmcData.ServerProcessorManufacturer = processor.Manufacturer
 			bmcData.ServerProcessorArchitecture = string(processor.ProcessorArchitecture)
 			bmcData.ServerProcessorInstructionSet = string(processor.InstructionSet)
 		}
+
+		if system.ProcessorSummary.Count != nil {
+			bmcData.ServerCPUSockets = int(*system.ProcessorSummary.Count)
+		}
+
+		hasTPM, err := hasTrustedModule(system)
+		if err != nil {
+			log.WarnContext(ctx, "Failed to get trusted modules of BMC system", logger.Err(err))
+		}
+
+		bmcData.ServerHasTPM = hasTPM
 	}
 
 	if system != nil {
@@ -605,6 +617,33 @@ func describeBIOSAttributesError(ctx context.Context, client *gofish.APIClient, 
 	}
 
 	return domain.NewValidationErrf("%s", strings.Join(messages, " "))
+}
+
+// hasTrustedModule reports, whether the BMC system has a trusted platform
+// module installed. Slots without a module are reported by the BMC in the state
+// absent and therefore do not count.
+//
+// Both sources, trusted modules (now deprecated) and trusted components
+// are considered.
+func hasTrustedModule(system *schemas.ComputerSystem) (bool, error) {
+	for _, trustedModule := range system.TrustedModules { // nolint: staticcheck // ignore deprecated property warning.
+		if trustedModule.Status.State != schemas.AbsentState {
+			return true, nil
+		}
+	}
+
+	trustedComponents, err := system.TrustedComponents()
+	if err != nil {
+		return false, fmt.Errorf("Failed to get trusted components of BMC system: %w", err)
+	}
+
+	for _, trustedComponent := range trustedComponents {
+		if trustedComponent.Status.State != schemas.AbsentState {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func getFirstProcessor(system *schemas.ComputerSystem) (*schemas.Processor, error) {

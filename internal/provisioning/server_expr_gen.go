@@ -53,8 +53,11 @@ type ExprApiBMCData struct {
 	ServerSerialNumber            string                            `json:"server_serial_number" yaml:"server_serial_number" expr:"server_serial_number"`
 	ServerBIOSVersion             string                            `json:"server_bios_version" yaml:"server_bios_version" expr:"server_bios_version"`
 	ServerBIOSAttributes          map[string]any                    `json:"server_bios_attributes" yaml:"server_bios_attributes" expr:"server_bios_attributes"`
+	ServerProcessorManufacturer   string                            `json:"server_processor_manufacturer" yaml:"server_processor_manufacturer" expr:"server_processor_manufacturer"`
 	ServerProcessorArchitecture   string                            `json:"server_processor_architecture" yaml:"server_processor_architecture" expr:"server_processor_architecture"`
 	ServerProcessorInstructionSet string                            `json:"server_processor_instruction_set" yaml:"server_processor_instruction_set" expr:"server_processor_instruction_set"`
+	ServerCPUSockets              int                               `json:"server_cpu_sockets" yaml:"server_cpu_sockets" expr:"server_cpu_sockets"`
+	ServerHasTPM                  bool                              `json:"server_has_tpm" yaml:"server_has_tpm" expr:"server_has_tpm"`
 	ServerPowerState              string                            `json:"server_power_state" yaml:"server_power_state" expr:"server_power_state"`
 	ServerLocationIndicatorActive bool                              `json:"server_location_indicator_active" yaml:"server_location_indicator_active" expr:"server_location_indicator_active"`
 	ServerHealthStatus            string                            `json:"server_health_status" yaml:"server_health_status" expr:"server_health_status"`
@@ -502,8 +505,11 @@ func ToExprApiBMCData(b api.BMCData) ExprApiBMCData {
 		ServerSerialNumber:            b.ServerSerialNumber,
 		ServerBIOSVersion:             b.ServerBIOSVersion,
 		ServerBIOSAttributes:          b.ServerBIOSAttributes,
+		ServerProcessorManufacturer:   b.ServerProcessorManufacturer,
 		ServerProcessorArchitecture:   b.ServerProcessorArchitecture,
 		ServerProcessorInstructionSet: b.ServerProcessorInstructionSet,
+		ServerCPUSockets:              b.ServerCPUSockets,
+		ServerHasTPM:                  b.ServerHasTPM,
 		ServerPowerState:              b.ServerPowerState,
 		ServerLocationIndicatorActive: b.ServerLocationIndicatorActive,
 		ServerHealthStatus:            b.ServerHealthStatus,
