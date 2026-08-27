@@ -67,14 +67,50 @@ func NewSystemService(
 	return systemSvc
 }
 
+func (s *systemService) GetCertificate(_ context.Context) (system.Certificate, error) {
+	certificateFile := filepath.Join(s.env.VarDir(), config.ServerCertificateFilename)
+
+	certificatePEM, err := os.ReadFile(certificateFile)
+	if err != nil {
+		return system.Certificate{}, fmt.Errorf("Failed to read %q: %w", certificateFile, err)
+	}
+
+	return certificateFromPEM(string(certificatePEM))
+}
+
+// certificateFromPEM returns the leaf certificate of a PEM encoded certificate
+// chain together with its metadata.
+func certificateFromPEM(certificatePEM string) (system.Certificate, error) {
+	cert, err := api.DecodeCert([]byte(certificatePEM))
+	if err != nil {
+		return system.Certificate{}, err
+	}
+
+	ipAddresses := make([]string, 0, len(cert.IPAddresses))
+	for _, ip := range cert.IPAddresses {
+		ipAddresses = append(ipAddresses, ip.String())
+	}
+
+	return system.Certificate{
+		Certificate: certificatePEM,
+		Fingerprint: incustls.CertFingerprint(cert),
+		Subject:     cert.Subject.String(),
+		Issuer:      cert.Issuer.String(),
+		NotBefore:   cert.NotBefore,
+		NotAfter:    cert.NotAfter,
+		DNSNames:    cert.DNSNames,
+		IPAddresses: ipAddresses,
+	}, nil
+}
+
 func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
 	serverCertificate, err := tls.X509KeyPair([]byte(certificatePEM), []byte(keyPEM))
 	if err != nil {
 		return fmt.Errorf("Failed to validate key pair: %w", err)
 	}
 
-	certificateFile := filepath.Join(s.env.VarDir(), "server.crt")
-	keyFile := filepath.Join(s.env.VarDir(), "server.key")
+	certificateFile := filepath.Join(s.env.VarDir(), config.ServerCertificateFilename)
+	keyFile := filepath.Join(s.env.VarDir(), config.ServerKeyFilename)
 
 	currentServerCertificate, err := os.ReadFile(certificateFile)
 	if err != nil {

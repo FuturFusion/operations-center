@@ -8,6 +8,7 @@ import (
 )
 
 type SystemService interface {
+	GetCertificate(ctx context.Context) (system.Certificate, error)
 	UpdateCertificate(ctx context.Context, certificatePEM string, keyPEM string) error
 	TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, _ error)
 
