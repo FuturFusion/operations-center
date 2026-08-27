@@ -178,13 +178,22 @@ func Test_metadataFromRequestJSON(t *testing.T) {
 		name            string
 		multipartReader *multipart.Reader
 
-		assertErr require.ErrorAssertionFunc
+		assertErr      require.ErrorAssertionFunc
+		wantProperties map[string]string
 	}{
 		{
 			name:            "success",
-			multipartReader: multipartReaderRequestJSON(t, "{}"),
+			multipartReader: multipartReaderRequestJSON(t, `{"os": "ubuntu", "release": "24.04", "arch": "amd64", "variant": "cloud", "version": "20260303"}`),
 
 			assertErr: require.NoError,
+			wantProperties: map[string]string{
+				"os":           "ubuntu",
+				"release":      "24.04",
+				"architecture": "amd64",
+				"variant":      "cloud",
+				"serial":       "20260303",
+				"description":  "ubuntu 24.04 (cloud) (amd64)",
+			},
 		},
 		{
 			name:            "error - invalid JSON",
@@ -205,10 +214,57 @@ func Test_metadataFromRequestJSON(t *testing.T) {
 
 			tc.assertErr(t, err)
 
-			_ = metadata
-			_ = incusTarXZ
+			if tc.wantProperties == nil {
+				return
+			}
+
+			require.Equal(t, tc.wantProperties, metadata.Properties)
+
+			// The generated incus.tar.xz has to be a complete xz archive. The
+			// compressed content is only available after the xz writer has been
+			// closed, so an incomplete flush shows up as an empty or truncated
+			// archive here.
+			require.NotEmpty(t, incusTarXZ)
+			require.Equal(t, []byte{0xfd, '7', 'z', 'X', 'Z', 0x00}, incusTarXZ[:6], "expect the xz magic bytes")
+
+			// The archive has to round trip, which proves it contains a
+			// readable "metadata.yaml".
+			roundTripPart, err := multipartReaderRawIncusTarXZ(t, incusTarXZ).NextPart()
+			require.NoError(t, err)
+
+			roundTripMetadata, roundTripIncusTarXZ, err := metadataFromIncusTarXZ(t.Context(), roundTripPart)
+			require.NoError(t, err)
+			require.Equal(t, metadata.Architecture, roundTripMetadata.Architecture)
+			require.Equal(t, metadata.Properties, roundTripMetadata.Properties)
+			require.Equal(t, incusTarXZ, roundTripIncusTarXZ)
 		})
 	}
+}
+
+// multipartReaderRawIncusTarXZ wraps an already built incus.tar.xz into a
+// multipart body.
+func multipartReaderRawIncusTarXZ(t *testing.T, incusTarXZ []byte) *multipart.Reader {
+	t.Helper()
+
+	var body bytes.Buffer
+
+	writer := multipart.NewWriter(&body)
+
+	header := textproto.MIMEHeader{}
+	header.Set("Content-Disposition",
+		`form-data; name="file"; filename="incus.tar.xz"`)
+	header.Set("Content-Type", "application/octet-stream")
+
+	part, err := writer.CreatePart(header)
+	require.NoError(t, err)
+
+	_, err = part.Write(incusTarXZ)
+	require.NoError(t, err)
+
+	err = writer.Close()
+	require.NoError(t, err)
+
+	return multipart.NewReader(&body, writer.Boundary())
 }
 
 func multipartReaderRequestJSON(t *testing.T, jsonBody string) *multipart.Reader {

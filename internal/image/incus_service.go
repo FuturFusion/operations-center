@@ -268,11 +268,19 @@ func metadataFromRequestJSON(ctx context.Context, part *multipart.Part) (_ incus
 		return incusapi.ImageMetadata{}, nil, fmt.Errorf("Failed to create XZ writer: %w", err)
 	}
 
+	tarWriter := tar.NewWriter(incusTarXZWriter)
+
 	defer func() {
-		err = errors.Join(err, incusTarXZWriter.Close())
+		if err == nil {
+			// On the happy path, both writers are closed explicitly below, so
+			// that the compressed content is flushed into buf before it is
+			// read. Closing them again here would report an error.
+			return
+		}
+
+		err = errors.Join(err, tarWriter.Close(), incusTarXZWriter.Close())
 	}()
 
-	tarWriter := tar.NewWriter(incusTarXZWriter)
 	err = tarWriter.WriteHeader(&tar.Header{
 		Name: "metadata.yaml",
 		Size: int64(len(metadataBody)),
@@ -282,13 +290,22 @@ func metadataFromRequestJSON(ctx context.Context, part *multipart.Part) (_ incus
 		return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to write header for "metadata.yaml" to incus.tar.xz: %w`, err)
 	}
 
-	defer func() {
-		err = errors.Join(err, tarWriter.Close())
-	}()
-
 	_, err = tarWriter.Write(metadataBody)
 	if err != nil {
 		return incusapi.ImageMetadata{}, nil, fmt.Errorf(`Failed to write "metadata.yaml" to incus.tar.xz: %w`, err)
+	}
+
+	// Both writers need to be closed before buf is read. xz.NewWriter runs the
+	// xz binary as a subprocess, which only writes the compressed content to
+	// buf, once its stdin is closed and it has terminated.
+	err = tarWriter.Close()
+	if err != nil {
+		return incusapi.ImageMetadata{}, nil, fmt.Errorf("Failed to close tar writer for incus.tar.xz: %w", err)
+	}
+
+	err = incusTarXZWriter.Close()
+	if err != nil {
+		return incusapi.ImageMetadata{}, nil, fmt.Errorf("Failed to close XZ writer for incus.tar.xz: %w", err)
 	}
 
 	return imageMetadata, buf.Bytes(), nil
