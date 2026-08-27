@@ -3,6 +3,7 @@ package e2e
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -685,6 +686,81 @@ func mustDeleteClusterImages(t *testing.T, clusterName string) {
 		t.Logf("Delete image %s/%s", image[0], image[1])
 		mustRun(t, `incus --project %s image delete %s:%s`, image[0], clusterName, image[1])
 	}
+}
+
+// operationsCenterIPAddress returns the global IPv4 address of the
+// OperationsCenter VM.
+func operationsCenterIPAddress(t *testing.T) string {
+	t.Helper()
+
+	resp := mustRun(t, `incus list -f json | jq -r -e '[ .[] | select(.name == "OperationsCenter") | .state.network | to_entries[] | .value.addresses[]? | select(.family == "inet" and .scope == "global") | .address ] | first'`)
+	address := resp.OutputTrimmed()
+	require.NotNilf(t, net.ParseIP(address), "Failed to determine the address of the OperationsCenter VM, got %q", address)
+
+	return address
+}
+
+// mustDownloadAlpineImageFiles downloads the given files of the most recent
+// alpine edge image for the CPU architecture under test into targetDir and
+// returns the version identifier of the downloaded image.
+//
+// "rootfs.squashfs" is stored as "root.squashfs", which is the file name
+// expected by Operations Center.
+func mustDownloadAlpineImageFiles(t *testing.T, targetDir string, filenames ...string) string {
+	t.Helper()
+
+	stop := timeTrack(t)
+	defer stop()
+
+	err := os.MkdirAll(targetDir, 0o700)
+	require.NoError(t, err)
+
+	resp := mustRunWithTimeout(t, `curl -sf "https://images.linuxcontainers.org/streams/v1/images.json" | jq -r -e '.products."alpine:edge:%s:default".versions | keys | last'`, time.Minute, cpuArch)
+	version := resp.OutputTrimmed()
+	require.NotEmpty(t, version, "Failed to determine the current alpine edge image version")
+
+	for _, filename := range filenames {
+		targetFilename := filename
+		if filename == "rootfs.squashfs" {
+			targetFilename = "root.squashfs"
+		}
+
+		mustRunWithTimeout(t, `curl -sfL "https://images.linuxcontainers.org/images/alpine/edge/%[1]s/default/%[2]s/%[3]s" -o %[4]s`, 5*time.Minute, cpuArch, version, filename, filepath.Join(targetDir, targetFilename))
+	}
+
+	return version
+}
+
+// mustSHA256 returns the hex encoded sha256 checksum of the given file.
+func mustSHA256(t *testing.T, filename string) string {
+	t.Helper()
+
+	body, err := os.ReadFile(filename)
+	require.NoErrorf(t, err, "Failed to read %q", filename)
+
+	return fmt.Sprintf("%x", sha256.Sum256(body))
+}
+
+// mustWriteFileWithContent writes a file of the given size with deterministic
+// content and returns its hex encoded sha256 checksum.
+//
+// The content is only used as payload of an image version, Operations Center
+// does not interpret it.
+func mustWriteFileWithContent(t *testing.T, filename string, size int) string {
+	t.Helper()
+
+	content := make([]byte, 0, size+sha256.Size)
+	for i := 0; len(content) < size; i++ {
+		sum := sha256.Sum256(fmt.Appendf(nil, "%s/%d", filepath.Base(filename), i))
+		content = append(content, sum[:]...)
+	}
+
+	content = content[:size]
+
+	err := os.WriteFile(filename, content, 0o600)
+	require.NoErrorf(t, err, "Failed to write %q", filename)
+
+	return fmt.Sprintf("%x", sha256.Sum256(content))
 }
 
 func mustGetInstanceIPAndNames(t *testing.T, names []string) (instanceIPs []string, instanceNames []string) {
