@@ -570,8 +570,9 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string, na
 			instanceHasBootMedia := mustRun(t, "incus config device list %s", name)
 			if strings.Contains(instanceHasBootMedia.Output(), "boot-media") {
 				t.Logf("Removing boot media from %s VM", name)
-				resp := run(t, `incus stop %s`, name)
-				if resp.err != nil {
+
+				err = fmtRunErr(runWithContext(errgrpctx, t, `incus stop %s`, name))
+				if err != nil {
 					return err
 				}
 
@@ -606,7 +607,11 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string, na
 	}
 
 	err = errgrp.Wait()
-	require.NoError(t, err, "Failed to create IncusOS VMs for e2e test")
+	if err != nil {
+		logVMDebugInfo(t, names...)
+
+		require.NoError(t, err, "Failed to create IncusOS VMs for e2e test")
+	}
 
 	// Wait for instances to self update in Operations Center
 	instanceReadyTimeoutCtx, instanceReadyCancel := context.WithTimeout(t.Context(), strechedTimeout(2*time.Minute))

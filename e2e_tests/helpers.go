@@ -260,6 +260,37 @@ func waitForSuccessWithTimeout(t *testing.T, desc string, command string, timeou
 	return true, nil
 }
 
+// logVMDebugInfo collects debug information for the given VMs and writes it to
+// the test log. It is meant to be used on failure paths, where the error of the
+// failing operation alone does not explain, what went wrong inside of the VM.
+func logVMDebugInfo(t *testing.T, vms ...string) {
+	t.Helper()
+
+	// Use detached contexts, since the context of the failing operation is
+	// likely already cancelled at this stage.
+	logCmd := func(what string, command string, args ...any) {
+		debugCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		resp := runWithContext(debugCtx, t, command, args...)
+		if resp.Success() {
+			t.Logf("%s:\n%s", what, resp.Output())
+
+			return
+		}
+
+		t.Logf("failed to get %s: %s", what, resp.Error())
+	}
+
+	logCmd("incus list", "incus list")
+
+	for _, vm := range vms {
+		logCmd(fmt.Sprintf("incus console log for %q", vm), "incus console %s --show-log", vm)
+		logCmd(fmt.Sprintf("incus-osd log for %q", vm), `incus exec %s -- bash -c "journalctl -b -u incus-osd --no-pager -n 100"`, vm)
+		logCmd(fmt.Sprintf("incus-osd unit state for %q", vm), `incus exec %s -- bash -c "systemctl status --no-pager incus-osd"`, vm)
+	}
+}
+
 // mustWaitAgentRunning waits for the incus agent to be running inside the
 // given VM. The test is failed on error.
 func mustWaitAgentRunning(t *testing.T, vm string, args ...any) {
@@ -320,23 +351,7 @@ func waitAgentRunningWithContext(ctx context.Context, t *testing.T, vm string, a
 	}
 
 	if !resp.Success() {
-		// Use detached context, since ctx may be cancelled at this stage.
-		debugCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-
-		respList := runWithContext(debugCtx, t, "incus list")
-		if respList.Success() {
-			t.Logf("incus list (after incus wait error for %q):\n%s", vm, respList.Output())
-		} else {
-			t.Logf("failed to get incus list (after incus wait error for %q): %s", vm, respList.Error())
-		}
-
-		respConsole := runWithContext(debugCtx, t, "incus console %s --show-log", vm)
-		if respConsole.Success() {
-			t.Logf("incus console log for %q:\n%s", vm, respConsole.Output())
-		} else {
-			t.Logf("failed to get incus console log for %q: %s", vm, respConsole.Error())
-		}
+		logVMDebugInfo(t, vm)
 
 		return fmt.Errorf("Failed to wait for incus agent on %q after %s: %s", vm, time.Since(start).String(), resp.Error())
 	}
@@ -374,6 +389,16 @@ func mustWaitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string
 	require.NoError(t, err)
 }
 
+// tail returns the last n lines of s.
+func tail(s string, n int) string {
+	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
+	if len(lines) > n {
+		lines = lines[len(lines)-n:]
+	}
+
+	return strings.Join(lines, "\n")
+}
+
 // waitExpectedLogWithContext waits for the wanted content to appear in the logs
 // of the unit in the vm.
 func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, unit string, want string, isRegex bool, args ...any) error {
@@ -383,6 +408,7 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 
 	count := 0
 	lastErr := ""
+	lastLog := ""
 
 	for {
 		resp := runWithContext(ctx, t, `incus exec %s -- bash -c "journalctl -b -u %s"`, vm, unit)
@@ -392,6 +418,7 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 
 		if resp.Success() {
 			lastErr = ""
+			lastLog = resp.Output()
 
 			if isRegex {
 				if regexp.MustCompile(want).MatchString(resp.Output()) {
@@ -425,7 +452,10 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 				return fmt.Errorf("Timed out after %ds waiting for log %q on %s, last error: %s: %w", count, want, vm, lastErr, ctx.Err())
 			}
 
-			return fmt.Errorf("Timed out after %ds waiting for log %q on %s: %w", count, want, vm, ctx.Err())
+			// The log of the unit was readable, it just never contained what we
+			// were waiting for, so report its tail, since it is the only hint
+			// about what the unit was busy with instead.
+			return fmt.Errorf("Timed out after %ds waiting for log %q on %s, last log of unit %q:\n%s\n: %w", count, want, vm, unit, tail(lastLog, 50), ctx.Err())
 
 		case <-time.After(1 * time.Second):
 		}
@@ -527,25 +557,7 @@ func mustWaitIncusOSReady(t *testing.T, names []string) {
 
 	err := errgrp.Wait()
 	if err != nil {
-		// Use detached context, since ctx may be cancelled at this stage.
-		debugCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-
-		for _, vm := range names {
-			respList := runWithContext(debugCtx, t, "incus list")
-			if respList.Success() {
-				t.Logf("incus list (after incus wait error for %q):\n%s", vm, respList.Output())
-			} else {
-				t.Logf("failed to get incus list (after incus wait error for %q): %s", vm, respList.Error())
-			}
-
-			respConsole := runWithContext(debugCtx, t, "incus console %s --show-log", vm)
-			if respConsole.Success() {
-				t.Logf("incus console log for %q:\n%s", vm, respConsole.Output())
-			} else {
-				t.Logf("failed to get incus console log for %q: %s", vm, respConsole.Error())
-			}
-		}
+		logVMDebugInfo(t, names...)
 
 		require.NoError(t, err, "Failed to wait for incus agents to become ready")
 	}
