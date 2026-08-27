@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -23,6 +24,7 @@ import (
 	repoMock "github.com/FuturFusion/operations-center/internal/system/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/util/testing/certs"
 	testingnet "github.com/FuturFusion/operations-center/internal/util/testing/net"
 	"github.com/FuturFusion/operations-center/internal/util/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -113,6 +115,15 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 	certFingerprint, err := incustls.CertFingerprintStr(string(certPEM))
 	require.NoError(t, err)
 
+	_, intermediatePEM, leafPEM, leafKeyPEM := certs.GenerateChain(t)
+
+	leafFingerprint, err := incustls.CertFingerprintStr(string(leafPEM))
+	require.NoError(t, err)
+
+	chainPEM := string(leafPEM) + string(intermediatePEM)
+
+	_, _, otherLeafPEM, _ := certs.GenerateChain(t)
+
 	tests := []struct {
 		name                        string
 		skipIfRoot                  bool
@@ -129,6 +140,8 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 
 		assertErr                       require.ErrorAssertionFunc
 		wantServerCertificateUpdateEmit []queue.Item[string]
+		wantProviderCertificate         string
+		wantCertificateFile             string
 	}{
 		{
 			name: "success - no registered servers except for self-registered operations-center",
@@ -246,6 +259,55 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 					Value: certFingerprint,
 				},
 			},
+		},
+		{
+			name: "success - same leaf certificate with added intermediate",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+
+				err := os.WriteFile(filepath.Join(targetDir, "server.crt"), leafPEM, 0o600)
+				require.NoError(t, err)
+
+				err = os.WriteFile(filepath.Join(targetDir, "server.key"), leafKeyPEM, 0o600)
+				require.NoError(t, err)
+			},
+			certPEM: chainPEM,
+			keyPEM:  string(leafKeyPEM),
+			serverGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "operations-center",
+					Type: api.ServerTypeOperationsCenter,
+				},
+			},
+			serverGetAll: provisioning.Servers{
+				{
+					Name: "operations-center",
+					Type: api.ServerTypeOperationsCenter,
+				},
+			},
+
+			assertErr: require.NoError,
+			wantServerCertificateUpdateEmit: []queue.Item[string]{
+				{
+					Value: leafFingerprint,
+				},
+			},
+			wantCertificateFile: chainPEM,
+		},
+		{
+			name: "error - invalid certificate chain",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+			},
+			certPEM: string(leafPEM) + string(otherLeafPEM),
+			keyPEM:  string(leafKeyPEM),
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var validationErr domain.ErrValidation
+				require.ErrorAs(tt, err, &validationErr)
+				require.ErrorContains(tt, err, "Invalid certificate chain")
+			},
+			wantServerCertificateUpdateEmit: []queue.Item[string]{},
 		},
 		{
 			name: "error - invalid certificate",
@@ -700,6 +762,11 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 
 			tc.setupEnv(t, env.VarDir())
 
+			wantProviderCertificate := tc.wantProviderCertificate
+			if wantProviderCertificate == "" {
+				wantProviderCertificate = tc.certPEM
+			}
+
 			listenerID := uuid.New()
 			lifecycle.ServerCertificateUpdateSignal.AddListenerWithErr(func(ctx context.Context, cert tls.Certificate) error {
 				wantCertificateFingerprint, err := queue.Pop(t, &tc.wantServerCertificateUpdateEmit)
@@ -724,7 +791,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 					return queue.Pop(t, &tc.serverGetSystemProvider)
 				},
 				UpdateSystemProviderFunc: func(ctx context.Context, name string, providerConfig provisioning.ServerSystemProvider) error {
-					require.Equal(t, string(certPEM), providerConfig.Config.Config["server_certificate"])
+					require.Equal(t, wantProviderCertificate, providerConfig.Config.Config["server_certificate"])
 					_, err := queue.Pop(t, &tc.serverUpdateSystemProvider)
 					return err
 				},
@@ -744,6 +811,12 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			require.Empty(t, tc.serverGetSystemProvider)
 			require.Empty(t, tc.serverUpdateSystemProvider)
 			require.Empty(t, tc.wantServerCertificateUpdateEmit)
+
+			if tc.wantCertificateFile != "" {
+				certificateFile, err := os.ReadFile(filepath.Join(tmpDir, "server.crt"))
+				require.NoError(t, err)
+				require.Equal(t, tc.wantCertificateFile, string(certificateFile))
+			}
 		})
 	}
 }

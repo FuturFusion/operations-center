@@ -35,6 +35,10 @@ const SystemCertForm: FC<Props> = ({ onSubmit }) => {
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
             />
+            <Form.Text muted>
+              Paste the server certificate first, followed by any intermediate
+              CA certificates.
+            </Form.Text>
           </Form.Group>
           <Form.Group className="mb-3" controlId="key">
             <Form.Label>Key</Form.Label>

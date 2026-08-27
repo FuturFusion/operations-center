@@ -1,18 +1,22 @@
 package system
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/lxc/incus/v7/shared/revert"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/acme"
@@ -107,7 +111,12 @@ func certificateFromPEM(certificatePEM string) (system.Certificate, error) {
 func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
 	serverCertificate, err := tls.X509KeyPair([]byte(certificatePEM), []byte(keyPEM))
 	if err != nil {
-		return fmt.Errorf("Failed to validate key pair: %w", err)
+		return domain.NewValidationErrf("Failed to validate key pair: %v", err)
+	}
+
+	err = validateCertificateChain(serverCertificate)
+	if err != nil {
+		return err
 	}
 
 	certificateFile := filepath.Join(s.env.VarDir(), config.ServerCertificateFilename)
@@ -128,11 +137,8 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 		return fmt.Errorf("Failed to validate current key pair: %w", err)
 	}
 
-	currentServerCertificateFingerprint := incustls.CertFingerprint(currentCertificate.Leaf)
-	certificateFingerprint := incustls.CertFingerprint(serverCertificate.Leaf)
-
-	// Same certificate skip update.
-	if currentServerCertificateFingerprint == certificateFingerprint {
+	// Same certificate chain, skip update.
+	if slices.EqualFunc(currentCertificate.Certificate, serverCertificate.Certificate, bytes.Equal) {
 		return nil
 	}
 
@@ -349,6 +355,29 @@ func (s *systemService) CleanCache(ctx context.Context) error {
 	err := s.cacheRepo.CleanupAll(ctx)
 	if err != nil {
 		return fmt.Errorf("Failed to clean cache: %w", err)
+	}
+
+	return nil
+}
+
+// validateCertificateChain verifies, that the certificates are provided leaf
+// first, followed by the intermediate certificates in order.
+func validateCertificateChain(cert tls.Certificate) error {
+	certs := make([]*x509.Certificate, 0, len(cert.Certificate))
+	for i, der := range cert.Certificate {
+		parsedCert, err := x509.ParseCertificate(der)
+		if err != nil {
+			return domain.NewValidationErrf("Invalid certificate chain, failed to parse certificate at position %d: %v", i, err)
+		}
+
+		certs = append(certs, parsedCert)
+	}
+
+	for i := range len(certs) - 1 {
+		err := certs[i].CheckSignatureFrom(certs[i+1])
+		if err != nil {
+			return domain.NewValidationErrf("Invalid certificate chain, certificate %q is not signed by %q: %v", certs[i].Subject, certs[i+1].Subject, err)
+		}
 	}
 
 	return nil
