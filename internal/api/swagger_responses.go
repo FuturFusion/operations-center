@@ -28,7 +28,7 @@ type swaggerURLsResponse struct {
 	// in: body
 	Body struct {
 		swaggerSyncResponseBody
-		// Example: /1.0/provisioning/servers/server1
+		// Example: ["/1.0/provisioning/servers/server1", "/1.0/provisioning/servers/server2"]
 		Metadata []string `json:"metadata"`
 	}
 }

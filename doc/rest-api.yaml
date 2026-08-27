@@ -14671,7 +14671,9 @@ responses:
         schema:
             properties:
                 metadata:
-                    example: /1.0/provisioning/servers/server1
+                    example:
+                        - /1.0/provisioning/servers/server1
+                        - /1.0/provisioning/servers/server2
                     items:
                         type: string
                     type: array
