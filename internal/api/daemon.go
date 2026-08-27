@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -85,6 +83,7 @@ import (
 	systemServiceMiddleware "github.com/FuturFusion/operations-center/internal/system/middleware"
 	systemLocalfs "github.com/FuturFusion/operations-center/internal/system/repo/localfs"
 	systemRepoMiddleware "github.com/FuturFusion/operations-center/internal/system/repo/middleware"
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/cors"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -1510,7 +1509,7 @@ func (d *Daemon) setupBackgroundTasks(
 				Entity:     cluster.Name,
 			}
 
-			valid, err := certificateValidate(*cluster.Certificate)
+			valid, err := certificate.Validate(*cluster.Certificate, config.CertificateExpiryWarningThreshold)
 			if err != nil {
 				if valid {
 					warnings = append(warnings, warning.NewWarning(api.WarningTypeCertificateExpiration, scope, err.Error()))
@@ -1544,7 +1543,7 @@ func (d *Daemon) setupBackgroundTasks(
 				Entity:     server.Name,
 			}
 
-			valid, err := certificateValidate(server.Certificate)
+			valid, err := certificate.Validate(server.Certificate, config.CertificateExpiryWarningThreshold)
 			if err != nil {
 				if valid {
 					warnings = append(warnings, warning.NewWarning(api.WarningTypeCertificateExpiration, scope, err.Error()))
@@ -1863,30 +1862,4 @@ func (d *Daemon) Stop(ctx context.Context) error {
 	lifecycle.BMCVirtualMediaSignal.Reset()
 
 	return errors.Join(errs...)
-}
-
-func certificateValidate(certPEM string) (valid bool, _ error) {
-	certBlock, _ := pem.Decode([]byte(certPEM))
-	if certBlock == nil {
-		return false, fmt.Errorf("Certificate must be base64 encoded PEM certificate")
-	}
-
-	cert, err := x509.ParseCertificate(certBlock.Bytes)
-	if err != nil {
-		return false, fmt.Errorf("Failed to parse x509 certificate: %w", err)
-	}
-
-	if time.Now().Before(cert.NotBefore) {
-		return false, fmt.Errorf("The provided certificate isn't valid yet")
-	}
-
-	if time.Now().After(cert.NotAfter) {
-		return false, fmt.Errorf("The provided certificate is expired")
-	}
-
-	if time.Now().Add(30 * 24 * time.Hour).After(cert.NotAfter) {
-		return true, fmt.Errorf("The provided cerificate expires within 30 days, expiration date: %s", cert.NotAfter.String())
-	}
-
-	return true, nil
 }

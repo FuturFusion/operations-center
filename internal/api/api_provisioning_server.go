@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
@@ -18,6 +17,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/security/authz"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/response"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -331,10 +331,7 @@ func (s *serverHandler) serversPostWithToken(r *http.Request) response.Response 
 	}
 
 	// Encode client certificate in pem format
-	certificate := pem.EncodeToMemory(&pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: r.TLS.PeerCertificates[0].Raw,
-	})
+	certificatePEM := certificate.EncodeToPEM(r.TLS.PeerCertificates[0].Raw)
 
 	var systemUUID *string
 	if server.SystemUUID != "" {
@@ -350,7 +347,7 @@ func (s *serverHandler) serversPostWithToken(r *http.Request) response.Response 
 		Name:                server.Name,
 		ConnectionURL:       server.ConnectionURL,
 		PublicConnectionURL: server.PublicConnectionURL,
-		Certificate:         string(certificate),
+		Certificate:         certificatePEM,
 		Channel:             server.Channel,
 		SystemUUID:          systemUUID,
 		MachineID:           machineID,
