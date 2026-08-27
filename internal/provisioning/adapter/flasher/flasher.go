@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -20,6 +19,7 @@ import (
 	"go.yaml.in/yaml/v4"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -231,12 +231,7 @@ func (f *Flasher) UpdateCertificate(cert tls.Certificate) {
 		return
 	}
 
-	serverCert := pem.EncodeToMemory(&pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: cert.Certificate[0],
-	})
-
-	f.serverCertificate = string(serverCert)
+	f.serverCertificate = certificate.EncodeToPEM(cert.Certificate[0])
 }
 
 func isSystemCertPoolTrusted(cert tls.Certificate) bool {

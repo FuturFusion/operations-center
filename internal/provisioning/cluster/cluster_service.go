@@ -3,7 +3,6 @@ package cluster
 import (
 	"context"
 	"crypto/tls"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -32,6 +31,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
@@ -560,12 +560,9 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 					return newCluster, fmt.Errorf("Failed to get remote certificate for %q: %w", clusterEndpoint.GetConnectionURL(), err)
 				}
 
-				certificate := string(pem.EncodeToMemory(&pem.Block{
-					Type:  "CERTIFICATE",
-					Bytes: cert.Raw,
-				}))
+				certificatePEM := certificate.EncodeToPEM(cert.Raw)
 
-				err = s.provisioner.SeedCertificate(ctx, newCluster.Name, certificate)
+				err = s.provisioner.SeedCertificate(ctx, newCluster.Name, certificatePEM)
 				if err != nil {
 					return newCluster, fmt.Errorf("Failed to update cluster certificate: %w", err)
 				}

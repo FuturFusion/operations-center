@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"crypto/tls"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -31,6 +30,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
@@ -185,13 +185,13 @@ func (s *serverService) PreRegister(ctx context.Context, newServer provisioning.
 			return provisioning.Server{}, fmt.Errorf("Failed to get BMC server client for type %q", newServer.BMCConfig.APIType)
 		}
 
-		certificate, err := client.ConnectionTest(ctx, newServer)
+		bmcCertificatePEM, err := client.ConnectionTest(ctx, newServer)
 		if err != nil {
 			return provisioning.Server{}, fmt.Errorf("Failed to perform connection test to BMC: %w", err)
 		}
 
 		if newServer.BMCConfig.AutoPinCertificate && newServer.BMCConfig.Certificate == "" {
-			newServer.BMCConfig.Certificate = certificate
+			newServer.BMCConfig.Certificate = bmcCertificatePEM
 		}
 
 		newServer.BMCConfig.AutoPinCertificate = false
@@ -542,13 +542,13 @@ func (s *serverService) Update(ctx context.Context, server provisioning.Server, 
 			return fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
 		}
 
-		certificate, err := client.ConnectionTest(ctx, server)
+		bmcCertificatePEM, err := client.ConnectionTest(ctx, server)
 		if err != nil {
 			return fmt.Errorf("Failed to perform connection test to BMC: %w", err)
 		}
 
 		if server.BMCConfig.AutoPinCertificate && server.BMCConfig.Certificate == "" {
-			server.BMCConfig.Certificate = certificate
+			server.BMCConfig.Certificate = bmcCertificatePEM
 		}
 
 		server.BMCConfig.AutoPinCertificate = false
@@ -821,12 +821,9 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
 
-		authenticationCertificatePEM := pem.EncodeToMemory(&pem.Block{
-			Type:  "CERTIFICATE",
-			Bytes: serverUpdate.AuthenticationCertificate.Raw,
-		})
+		authenticationCertificatePEM := certificate.EncodeToPEM(serverUpdate.AuthenticationCertificate.Raw)
 
-		server, err = s.repo.GetByCertificate(ctx, string(authenticationCertificatePEM))
+		server, err = s.repo.GetByCertificate(ctx, authenticationCertificatePEM)
 		if err != nil {
 			if errors.Is(err, domain.ErrNotFound) {
 				return fmt.Errorf("Failed to find server (%s) with cause %q by certificate (fingerprint: %s): %w", serverUpdate.ConnectionURL, serverUpdate.Cause, incustls.CertFingerprint(serverUpdate.AuthenticationCertificate), domain.ErrNotAuthorized)
@@ -954,10 +951,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 		}
 
 		s.mu.Lock()
-		serverCert := pem.EncodeToMemory(&pem.Block{
-			Type:  "CERTIFICATE",
-			Bytes: s.serverCertificate.Leaf.Raw,
-		})
+		serverCert := certificate.EncodeToPEM(s.serverCertificate.Leaf.Raw)
 		s.mu.Unlock()
 
 		// Ignore the error, since operationsCenterRESTAddress has been validated before.
@@ -980,7 +974,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 				Type:                api.ServerTypeOperationsCenter,
 				ConnectionURL:       connectionURL,
 				PublicConnectionURL: config.GetNetwork().OperationsCenterAddress,
-				Certificate:         string(serverCert),
+				Certificate:         serverCert,
 				Status:              api.ServerStatusReady,
 				StatusDetail:        api.ServerStatusDetailNone,
 				LastStatusUpdated:   s.now(),
@@ -999,7 +993,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 			server = servers[0]
 			server.ConnectionURL = connectionURL
 			server.PublicConnectionURL = config.GetNetwork().OperationsCenterAddress
-			server.Certificate = string(serverCert)
+			server.Certificate = serverCert
 			server.Status = api.ServerStatusReady
 			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastStatusUpdated = s.now()
@@ -2338,10 +2332,7 @@ func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context,
 					break refreshAttempt
 				}
 
-				serverCert := pem.EncodeToMemory(&pem.Block{
-					Type:  "CERTIFICATE",
-					Bytes: resp.TLS.PeerCertificates[0].Raw,
-				})
+				serverCert := certificate.EncodeToPEM(resp.TLS.PeerCertificates[0].Raw)
 
 				retryErr = transaction.Do(ctx, func(ctx context.Context) error {
 					updateServer, err := s.repo.GetByName(ctx, server.Name)
@@ -2349,7 +2340,7 @@ func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context,
 						return err
 					}
 
-					updateServer.Certificate = string(serverCert)
+					updateServer.Certificate = serverCert
 					updateServer.LastSeen = s.now()
 
 					return s.repo.Update(ctx, *updateServer)

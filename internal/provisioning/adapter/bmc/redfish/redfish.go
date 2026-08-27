@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -28,6 +27,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
+	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -69,15 +69,9 @@ func (r redfish) getClient(ctx context.Context, server provisioning.Server) (_ *
 	httpClient := &http.Client{}
 
 	if server.BMCConfig.Certificate != "" {
-		certBlock, _ := pem.Decode([]byte(server.BMCConfig.Certificate))
-		if certBlock == nil {
-			return nil, nil, errors.New("Invalid remote certificate")
-		}
-
-		var err error
-		bmcServerCert, err := x509.ParseCertificate(certBlock.Bytes)
+		bmcServerCert, err := certificate.Decode([]byte(server.BMCConfig.Certificate))
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("Invalid remote certificate: %w", err)
 		}
 
 		tlsConfig := &tls.Config{}
@@ -155,7 +149,7 @@ func (r redfish) getClient(ctx context.Context, server provisioning.Server) (_ *
 	return c, c.Logout, nil
 }
 
-func (r redfish) ConnectionTest(ctx context.Context, server provisioning.Server) (certificate string, _ error) {
+func (r redfish) ConnectionTest(ctx context.Context, server provisioning.Server) (certificatePEM string, _ error) {
 	var certPEM string
 
 	ctx, cancel := context.WithTimeout(ctx, r.connectionTestTimeout)
@@ -167,7 +161,7 @@ func (r redfish) ConnectionTest(ctx context.Context, server provisioning.Server)
 			return certPEM, fmt.Errorf("Failed to get remote certificate from BMC during connection test: %w", err)
 		}
 
-		certPEM = string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}))
+		certPEM = certificate.EncodeToPEM(cert.Raw)
 		server.BMCConfig.Certificate = certPEM
 	}
 

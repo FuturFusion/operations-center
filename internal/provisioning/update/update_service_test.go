@@ -6,7 +6,6 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
-	"encoding/pem"
 	"io"
 	"os"
 	"testing"
@@ -3290,14 +3289,11 @@ func TestUpdateService_Refresh(t *testing.T) {
 			require.NoError(t, err)
 
 			err = config.UpdateUpdates(t.Context(), system.UpdatesPut{
-				SignatureVerificationRootCA: string(pem.EncodeToMemory(&pem.Block{
-					Type:  "CERTIFICATE",
-					Bytes: certPEM,
-				})),
-				FilterExpression:      tc.filterExpression,
-				FileFilterExpression:  tc.fileFilterExpression,
-				UpdatesDefaultChannel: "stable",
-				ServerDefaultChannel:  "stable",
+				SignatureVerificationRootCA: string(certPEM),
+				FilterExpression:            tc.filterExpression,
+				FileFilterExpression:        tc.fileFilterExpression,
+				UpdatesDefaultChannel:       "stable",
+				ServerDefaultChannel:        "stable",
 			})
 			require.NoError(t, err)
 
