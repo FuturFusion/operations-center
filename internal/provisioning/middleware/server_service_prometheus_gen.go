@@ -69,6 +69,20 @@ func (_d ServerServiceWithPrometheus) ApplyBIOSAttributesByName(ctx context.Cont
 	return _d.base.ApplyBIOSAttributesByName(ctx, name, attributes)
 }
 
+// BIOSProfileByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) BIOSProfileByName(ctx context.Context, name string) (bIOSProfileResolution *provisioning.BIOSProfileResolution, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "BIOSProfileByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.BIOSProfileByName(ctx, name)
+}
+
 // BMCApplySecureBootCertificatesByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) BMCApplySecureBootCertificatesByName(ctx context.Context, name string) (err error) {
 	_since := time.Now()
@@ -763,4 +777,18 @@ func (_d ServerServiceWithPrometheus) UpdateSystemUpdate(ctx context.Context, na
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSystemUpdate", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.UpdateSystemUpdate(ctx, name, updateConfig)
+}
+
+// ValidateBIOSProfileByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) ValidateBIOSProfileByName(ctx context.Context, name string) (bIOSProfileResolution *provisioning.BIOSProfileResolution, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ValidateBIOSProfileByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ValidateBIOSProfileByName(ctx, name)
 }

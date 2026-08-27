@@ -31,6 +31,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			ApplyBIOSAttributesByNameFunc: func(ctx context.Context, name string, attributes map[string]any) error {
 //				panic("mock out the ApplyBIOSAttributesByName method")
 //			},
+//			BIOSProfileByNameFunc: func(ctx context.Context, name string) (*provisioning.BIOSProfileResolution, error) {
+//				panic("mock out the BIOSProfileByName method")
+//			},
 //			BMCApplySecureBootCertificatesByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the BMCApplySecureBootCertificatesByName method")
 //			},
@@ -181,6 +184,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			UpdateSystemUpdateFunc: func(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) error {
 //				panic("mock out the UpdateSystemUpdate method")
 //			},
+//			ValidateBIOSProfileByNameFunc: func(ctx context.Context, name string) (*provisioning.BIOSProfileResolution, error) {
+//				panic("mock out the ValidateBIOSProfileByName method")
+//			},
 //		}
 //
 //		// use mockedServerService in code that requires provisioning.ServerService
@@ -193,6 +199,9 @@ type ServerServiceMock struct {
 
 	// ApplyBIOSAttributesByNameFunc mocks the ApplyBIOSAttributesByName method.
 	ApplyBIOSAttributesByNameFunc func(ctx context.Context, name string, attributes map[string]any) error
+
+	// BIOSProfileByNameFunc mocks the BIOSProfileByName method.
+	BIOSProfileByNameFunc func(ctx context.Context, name string) (*provisioning.BIOSProfileResolution, error)
 
 	// BMCApplySecureBootCertificatesByNameFunc mocks the BMCApplySecureBootCertificatesByName method.
 	BMCApplySecureBootCertificatesByNameFunc func(ctx context.Context, name string) error
@@ -344,6 +353,9 @@ type ServerServiceMock struct {
 	// UpdateSystemUpdateFunc mocks the UpdateSystemUpdate method.
 	UpdateSystemUpdateFunc func(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) error
 
+	// ValidateBIOSProfileByNameFunc mocks the ValidateBIOSProfileByName method.
+	ValidateBIOSProfileByNameFunc func(ctx context.Context, name string) (*provisioning.BIOSProfileResolution, error)
+
 	// calls tracks calls to the methods.
 	calls struct {
 		// AddApplication holds details about calls to the AddApplication method.
@@ -363,6 +375,13 @@ type ServerServiceMock struct {
 			Name string
 			// Attributes is the attributes argument value.
 			Attributes map[string]any
+		}
+		// BIOSProfileByName holds details about calls to the BIOSProfileByName method.
+		BIOSProfileByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
 		}
 		// BMCApplySecureBootCertificatesByName holds details about calls to the BMCApplySecureBootCertificatesByName method.
 		BMCApplySecureBootCertificatesByName []struct {
@@ -780,9 +799,17 @@ type ServerServiceMock struct {
 			// UpdateConfig is the updateConfig argument value.
 			UpdateConfig provisioning.ServerSystemUpdate
 		}
+		// ValidateBIOSProfileByName holds details about calls to the ValidateBIOSProfileByName method.
+		ValidateBIOSProfileByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
 	}
 	lockAddApplication                       sync.RWMutex
 	lockApplyBIOSAttributesByName            sync.RWMutex
+	lockBIOSProfileByName                    sync.RWMutex
 	lockBMCApplySecureBootCertificatesByName sync.RWMutex
 	lockBMCAttachMediaByName                 sync.RWMutex
 	lockBMCBIOSAttributeByName               sync.RWMutex
@@ -833,6 +860,7 @@ type ServerServiceMock struct {
 	lockUpdateSystemProvider                 sync.RWMutex
 	lockUpdateSystemStorage                  sync.RWMutex
 	lockUpdateSystemUpdate                   sync.RWMutex
+	lockValidateBIOSProfileByName            sync.RWMutex
 }
 
 // AddApplication calls AddApplicationFunc.
@@ -912,6 +940,42 @@ func (mock *ServerServiceMock) ApplyBIOSAttributesByNameCalls() []struct {
 	mock.lockApplyBIOSAttributesByName.RLock()
 	calls = mock.calls.ApplyBIOSAttributesByName
 	mock.lockApplyBIOSAttributesByName.RUnlock()
+	return calls
+}
+
+// BIOSProfileByName calls BIOSProfileByNameFunc.
+func (mock *ServerServiceMock) BIOSProfileByName(ctx context.Context, name string) (*provisioning.BIOSProfileResolution, error) {
+	if mock.BIOSProfileByNameFunc == nil {
+		panic("ServerServiceMock.BIOSProfileByNameFunc: method is nil but ServerService.BIOSProfileByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockBIOSProfileByName.Lock()
+	mock.calls.BIOSProfileByName = append(mock.calls.BIOSProfileByName, callInfo)
+	mock.lockBIOSProfileByName.Unlock()
+	return mock.BIOSProfileByNameFunc(ctx, name)
+}
+
+// BIOSProfileByNameCalls gets all the calls that were made to BIOSProfileByName.
+// Check the length with:
+//
+//	len(mockedServerService.BIOSProfileByNameCalls())
+func (mock *ServerServiceMock) BIOSProfileByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockBIOSProfileByName.RLock()
+	calls = mock.calls.BIOSProfileByName
+	mock.lockBIOSProfileByName.RUnlock()
 	return calls
 }
 
@@ -2844,5 +2908,41 @@ func (mock *ServerServiceMock) UpdateSystemUpdateCalls() []struct {
 	mock.lockUpdateSystemUpdate.RLock()
 	calls = mock.calls.UpdateSystemUpdate
 	mock.lockUpdateSystemUpdate.RUnlock()
+	return calls
+}
+
+// ValidateBIOSProfileByName calls ValidateBIOSProfileByNameFunc.
+func (mock *ServerServiceMock) ValidateBIOSProfileByName(ctx context.Context, name string) (*provisioning.BIOSProfileResolution, error) {
+	if mock.ValidateBIOSProfileByNameFunc == nil {
+		panic("ServerServiceMock.ValidateBIOSProfileByNameFunc: method is nil but ServerService.ValidateBIOSProfileByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockValidateBIOSProfileByName.Lock()
+	mock.calls.ValidateBIOSProfileByName = append(mock.calls.ValidateBIOSProfileByName, callInfo)
+	mock.lockValidateBIOSProfileByName.Unlock()
+	return mock.ValidateBIOSProfileByNameFunc(ctx, name)
+}
+
+// ValidateBIOSProfileByNameCalls gets all the calls that were made to ValidateBIOSProfileByName.
+// Check the length with:
+//
+//	len(mockedServerService.ValidateBIOSProfileByNameCalls())
+func (mock *ServerServiceMock) ValidateBIOSProfileByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockValidateBIOSProfileByName.RLock()
+	calls = mock.calls.ValidateBIOSProfileByName
+	mock.lockValidateBIOSProfileByName.RUnlock()
 	return calls
 }
