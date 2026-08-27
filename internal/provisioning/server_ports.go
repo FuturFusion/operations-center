@@ -61,6 +61,8 @@ type ServerService interface {
 	BMCLogEntriesByNameAndLogSource(ctx context.Context, name string, logSource string) ([]api.BMCLogEvent, error)
 	BMCDumpByName(ctx context.Context, name string, additionalEndpoints []string, skipPredefined bool, trace bool) (api.BMCDump, error)
 	ApplyBIOSAttributesByName(ctx context.Context, name string, attributes map[string]any) error
+	BIOSProfileByName(ctx context.Context, name string) (*BIOSProfileResolution, error)
+	ValidateBIOSProfileByName(ctx context.Context, name string) (*BIOSProfileResolution, error)
 	BMCBIOSAttributesByName(ctx context.Context, name string) ([]api.BIOSAttribute, error)
 	BMCBIOSAttributeByName(ctx context.Context, name string, attributeName string) (api.BIOSAttribute, error)
 	BMCAttachMediaByName(ctx context.Context, name string, media api.ServerBMCAttachMedia) error
