@@ -16,7 +16,7 @@ fi
 #
 #   * InitPreseed belongs to github.com/lxc/incus/v7/shared/api and documents six
 #     slice fields with a string example.
-#   * IncusImagePost cannot be referenced from an operation. POST /1.0/image/incus
+#   * IncusImagePost cannot be referenced from an operation. POST /1.0/images/incus
 #     is a multipart upload, and a Swagger 2.0 formData parameter cannot carry a
 #     schema, so the json_request parameter names the definition in its
 #     description instead.
