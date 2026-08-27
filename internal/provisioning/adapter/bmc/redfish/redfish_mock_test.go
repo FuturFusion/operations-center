@@ -2,9 +2,11 @@ package redfish_test
 
 import (
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	incustls "github.com/lxc/incus/v7/shared/tls"
@@ -73,6 +75,17 @@ type mockRedfishServer struct {
 
 	gotSystemPatchBody *[]byte
 
+	secureBootStatusCode          int
+	secureBootBody                string
+	secureBootDatabasesStatusCode int
+	secureBootDatabasesBody       string
+	secureBootDatabases           map[string]mockSecureBootDatabase
+	oemSecureBootDatabases        map[string]mockOEMSecureBootDatabase
+
+	gotDeletedCertPaths *[]string
+	gotPostedCerts      *map[string][]string
+	gotUploadedCerts    *map[string][]mockUpload
+
 	// extraRoutes allows tests to serve additional canned responses for paths
 	// not covered by the dedicated fields above, keyed by the exact request
 	// path.
@@ -122,6 +135,51 @@ type mockRequest struct {
 	body    string
 	ifMatch string
 }
+
+type mockSecureBootDatabase struct {
+	statusCode int
+	body       string
+
+	certificatesStatusCode     int
+	certificatesBody           string
+	certificatesPostStatusCode int
+
+	certificates map[string]mockCertificate
+
+	signaturesStatusCode int
+	signaturesBody       string
+
+	signatures map[string]mockCertificate
+}
+
+// mockOEMSecureBootDatabase is a vendor specific key database, which lists its
+// certificates and hashes inline and takes new certificates as a multipart
+// upload instead of as JSON.
+type mockOEMSecureBootDatabase struct {
+	statusCode     int
+	body           string
+	postStatusCode int
+
+	entries map[string]mockCertificate
+}
+
+type mockCertificate struct {
+	statusCode       int
+	body             string
+	deleteStatusCode int
+}
+
+// mockUpload is a multipart file upload as received by the mock BMC.
+type mockUpload struct {
+	filename    string
+	contentType string
+	content     []byte
+}
+
+const (
+	secureBootDatabasesPathPrefix    = "/redfish/v1/Systems/1/SecureBoot/SecureBootDatabases/"
+	oemSecureBootDatabasesPathPrefix = "/redfish/v1/Systems/1/SecureBoot/Certificates/"
+)
 
 const defaultResetActionInfoBody = `{
   "@odata.id": "/redfish/v1/Systems/1/ResetActionInfo",
@@ -311,7 +369,25 @@ func newMockRedfishHandler(cfg mockRedfishServer, gotRequests *[]mockRequest) ht
 		case "/redfish/v1/Systems/1/Bios":
 			handleBios(w, r, cfg)
 
+		case "/redfish/v1/Systems/1/SecureBoot":
+			w.WriteHeader(cfg.secureBootStatusCode)
+			_, _ = w.Write([]byte(cfg.secureBootBody))
+
+		case "/redfish/v1/Systems/1/SecureBoot/SecureBootDatabases":
+			w.WriteHeader(cfg.secureBootDatabasesStatusCode)
+			_, _ = w.Write([]byte(cfg.secureBootDatabasesBody))
+
 		default:
+			if strings.HasPrefix(r.URL.Path, secureBootDatabasesPathPrefix) {
+				handleSecureBootDatabasePath(w, r, cfg)
+				return
+			}
+
+			if strings.HasPrefix(r.URL.Path, oemSecureBootDatabasesPathPrefix) {
+				handleOEMSecureBootDatabasePath(w, r, cfg)
+				return
+			}
+
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		}
 	}
@@ -393,4 +469,176 @@ func handleBios(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer) {
 	default:
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 	}
+}
+
+func handleSecureBootDatabasePath(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer) {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, secureBootDatabasesPathPrefix), "/")
+
+	db, ok := cfg.secureBootDatabases[parts[0]]
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	switch len(parts) {
+	case 1:
+		// A secure boot database itself only ever answers a GET, a new
+		// certificate belongs into its certificate collection.
+		if r.Method != http.MethodGet {
+			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			return
+		}
+
+		w.WriteHeader(db.statusCode)
+		_, _ = w.Write([]byte(db.body))
+
+	case 2:
+		handleSecureBootCollection(w, r, cfg, parts[0], parts[1], db)
+
+	case 3:
+		handleSecureBootEntry(w, r, cfg, parts[1], db, parts[2])
+
+	default:
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+	}
+}
+
+func handleSecureBootCollection(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer, dbID string, collection string, db mockSecureBootDatabase) {
+	switch {
+	case r.Method == http.MethodGet && collection == "Certificates":
+		w.WriteHeader(db.certificatesStatusCode)
+		_, _ = w.Write([]byte(db.certificatesBody))
+
+	case r.Method == http.MethodGet && collection == "Signatures":
+		w.WriteHeader(db.signaturesStatusCode)
+		_, _ = w.Write([]byte(db.signaturesBody))
+
+	case r.Method == http.MethodPost && collection == "Certificates":
+		body, _ := io.ReadAll(r.Body)
+
+		if cfg.gotPostedCerts != nil {
+			(*cfg.gotPostedCerts)[dbID] = append((*cfg.gotPostedCerts)[dbID], string(body))
+		}
+
+		w.WriteHeader(db.certificatesPostStatusCode)
+
+	default:
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	}
+}
+
+func handleSecureBootEntry(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer, collection string, db mockSecureBootDatabase, entryID string) {
+	entries := db.certificates
+	if collection == "Signatures" {
+		entries = db.signatures
+	}
+
+	entry, ok := entries[entryID]
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	serveSecureBootEntry(w, r, cfg, entry)
+}
+
+func serveSecureBootEntry(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer, entry mockCertificate) {
+	switch r.Method {
+	case http.MethodGet:
+		w.WriteHeader(entry.statusCode)
+		_, _ = w.Write([]byte(entry.body))
+
+	case http.MethodDelete:
+		if cfg.gotDeletedCertPaths != nil {
+			*cfg.gotDeletedCertPaths = append(*cfg.gotDeletedCertPaths, r.URL.Path)
+		}
+
+		w.WriteHeader(entry.deleteStatusCode)
+
+	default:
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	}
+}
+
+// handleOEMSecureBootDatabasePath serves the vendor specific key databases,
+// which live directly below the secure boot resource and take a new certificate
+// as a multipart upload.
+func handleOEMSecureBootDatabasePath(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer) {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, oemSecureBootDatabasesPathPrefix), "/")
+
+	db, ok := cfg.oemSecureBootDatabases[parts[0]]
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	switch len(parts) {
+	case 1:
+		handleOEMSecureBootDatabase(w, r, cfg, parts[0], db)
+
+	case 2:
+		entry, ok := db.entries[parts[1]]
+		if !ok {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+
+		serveSecureBootEntry(w, r, cfg, entry)
+
+	default:
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+	}
+}
+
+func handleOEMSecureBootDatabase(w http.ResponseWriter, r *http.Request, cfg mockRedfishServer, dbID string, db mockOEMSecureBootDatabase) {
+	switch r.Method {
+	case http.MethodGet:
+		w.WriteHeader(db.statusCode)
+		_, _ = w.Write([]byte(db.body))
+
+	case http.MethodPost:
+		upload, err := readMultipartUpload(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if cfg.gotUploadedCerts != nil {
+			(*cfg.gotUploadedCerts)[dbID] = append((*cfg.gotUploadedCerts)[dbID], upload)
+		}
+
+		w.WriteHeader(db.postStatusCode)
+
+	default:
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	}
+}
+
+func readMultipartUpload(r *http.Request) (mockUpload, error) {
+	reader, err := r.MultipartReader()
+	if err != nil {
+		return mockUpload{}, err
+	}
+
+	part, err := reader.NextPart()
+	if err != nil {
+		return mockUpload{}, err
+	}
+
+	defer func() { _ = part.Close() }()
+
+	if part.FormName() != "file" {
+		return mockUpload{}, fmt.Errorf("unexpected form field %q", part.FormName())
+	}
+
+	content, err := io.ReadAll(part)
+	if err != nil {
+		return mockUpload{}, err
+	}
+
+	return mockUpload{
+		filename:    part.FileName(),
+		contentType: part.Header.Get("Content-Type"),
+		content:     content,
+	}, nil
 }

@@ -67,6 +67,13 @@ func (c *cmdServerBMC) Command() *cobra.Command {
 
 	cmd.AddCommand(serverBMCBIOSAttributesCmd.Command())
 
+	// Apply secure boot certificates
+	serverBMCApplySecureBootCertificatesCmd := cmdServerBMCApplySecureBootCertificates{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverBMCApplySecureBootCertificatesCmd.Command())
+
 	// Logs
 	serverBMCLogsCmd := cmdServerBMCLogs{
 		ocClient: c.ocClient,
@@ -327,6 +334,58 @@ func (c *cmdServerBMCServerLocate) run(cmd *cobra.Command, args []string) error 
 	name := args[0]
 
 	err := c.ocClient.BMCServerSetLocationIndicator(cmd.Context(), name, args[1] == locationIndicatorStateOn)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Apply the secure boot certificates of a server via BMC.
+type cmdServerBMCApplySecureBootCertificates struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdServerBMCApplySecureBootCertificates) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "apply-secure-boot-certificates <name>"
+	cmd.Short = "Apply the secure boot certificates of a server via BMC"
+	cmd.Long = `Description:
+  Apply the secure boot certificates of a server via BMC
+
+  Wipes the KEK, DB and DBX secure boot databases of the server and
+  reinitializes them with the secure boot certificates provided by IncusOS.
+
+  The server has to be powered off and its BIOS has to allow the secure boot
+  databases to be modified, which on most systems means secure boot being
+  enabled with a custom policy in user mode. Use "bios-attributes apply" to
+  configure the BIOS accordingly and power cycle the server for the settings to
+  take effect before running this command.
+
+  The enrolled certificates only take effect once the server is powered on
+  again and the firmware has picked them up.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerBMCApplySecureBootCertificates) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdServerBMCApplySecureBootCertificates) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.BMCApplySecureBootCertificates(cmd.Context(), name)
 	if err != nil {
 		return err
 	}

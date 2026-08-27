@@ -76,6 +76,40 @@ func (_d BMCServerClientPortWithSlog) ApplyBIOSAttributes(ctx context.Context, s
 	return _d._base.ApplyBIOSAttributes(ctx, server, attributes)
 }
 
+// ApplySecureBootCertificates implements provisioning.BMCServerClientPort.
+func (_d BMCServerClientPortWithSlog) ApplySecureBootCertificates(ctx context.Context, server provisioning.Server) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ApplySecureBootCertificates")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method ApplySecureBootCertificates returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method ApplySecureBootCertificates returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method ApplySecureBootCertificates finished")
+		}
+	}()
+	return _d._base.ApplySecureBootCertificates(ctx, server)
+}
+
 // AttachMedia implements provisioning.BMCServerClientPort.
 func (_d BMCServerClientPortWithSlog) AttachMedia(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (bMCTaskMonitor *provisioning.BMCTaskMonitor, err error) {
 	log := slog.With()

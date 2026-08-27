@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/lxc/incus/v7/shared/util"
 	"github.com/spf13/cobra"
@@ -28,6 +29,7 @@ type env interface {
 	GetUnixSocket() string
 	IsIncusOS() bool
 	GetToken(ctx context.Context) (string, error)
+	GetSecureBootCertificates(ctx context.Context) (incusosapi.InternalSecureBootCertificates, error)
 }
 
 type cmdDaemon struct {

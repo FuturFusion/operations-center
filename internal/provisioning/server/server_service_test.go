@@ -10090,6 +10090,97 @@ func TestServerService_BMCBIOSAttributeAcceptableValuesByNameAndAttribute(t *tes
 	}
 }
 
+func TestServerService_BMCApplySecureBootCertificatesByName(t *testing.T) {
+	tests := []struct {
+		name                                    string
+		nameArg                                 string
+		repoGetByNameServer                     *provisioning.Server
+		repoGetByNameErr                        error
+		bmcClientApplySecureBootCertificatesErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "error - name empty",
+			nameArg: "", // invalid
+
+			assertErr: errassert.OperationNotPermittedError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			nameArg:          "one",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - no BMC server client registered for type",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPIType("unknown"),
+				},
+			},
+
+			assertErr: errassert.Contains(`Failed to get BMC server client for type "unknown"`),
+		},
+		{
+			name:    "error - client.ApplySecureBootCertificates",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType: api.BMCAPITypeRedfishV1Generic,
+				},
+			},
+			bmcClientApplySecureBootCertificatesErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+			}
+
+			bmcClient := &adapterMock.BMCServerClientPortMock{
+				ApplySecureBootCertificatesFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.bmcClientApplySecureBootCertificatesErr
+				},
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, nil, tls.Certificate{},
+				provisioningServer.AddBMCServerClient(api.BMCAPITypeRedfishV1Generic, bmcClient),
+			)
+
+			// Run test
+			err := serverSvc.BMCApplySecureBootCertificatesByName(t.Context(), tc.nameArg)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestServerService_BMCLogSourcesByName(t *testing.T) {
 	logSources := []string{"chassis/Logs", "manager/SEL", "system/Logs"}
 
