@@ -83,6 +83,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/system"
 	systemServiceMiddleware "github.com/FuturFusion/operations-center/internal/system/middleware"
+	systemLocalfs "github.com/FuturFusion/operations-center/internal/system/repo/localfs"
+	systemRepoMiddleware "github.com/FuturFusion/operations-center/internal/system/repo/middleware"
 	"github.com/FuturFusion/operations-center/internal/util/cors"
 	"github.com/FuturFusion/operations-center/internal/util/file"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
@@ -97,6 +99,10 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 	apisystem "github.com/FuturFusion/operations-center/shared/api/system"
 )
+
+// seedImageCacheDir is the namespace below the cache dir holding the generated
+// seed images.
+const seedImageCacheDir = "seed-images"
 
 type environment interface {
 	GetUnixSocket() string
@@ -696,7 +702,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, client provisioning.TokenCl
 	imageFlasher := flasher.New(
 		config.GetNetwork().OperationsCenterAddress,
 		d.serverCertificate,
-		flasher.WithCacheDir(filepath.Join(d.env.CacheDir(), "seed-images")),
+		flasher.WithCacheDir(filepath.Join(d.env.CacheDir(), seedImageCacheDir)),
 	)
 	// Image flasher needs to learn about updates to the server certificate.
 	lifecycle.ServerCertificateUpdateSignal.AddListener(func(_ context.Context, cert tls.Certificate) {
@@ -960,7 +966,12 @@ func (d *Daemon) setupChannelService(db dbdriver.DBTX, updateSvc provisioning.Up
 
 func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) system.SystemService {
 	return systemServiceMiddleware.NewSystemServiceWithSlog(
-		system.NewSystemService(d.env, serverSvc),
+		system.NewSystemService(
+			d.env, serverSvc,
+			systemRepoMiddleware.NewCacheRepoWithSlog(
+				systemLocalfs.New(d.env.CacheDir(), seedImageCacheDir),
+			),
+		),
 		systemServiceMiddleware.SystemServiceWithSlogWithInformativeErrFunc(
 			func(err error) bool {
 				// Treat retryable errors as informational.

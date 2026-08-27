@@ -30,6 +30,7 @@ func registerSystemHandler(router Router, authorizer *authz.Authorizer, service 
 	router.HandleFunc("PUT /settings", response.With(handler.settingsPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /updates", response.With(handler.updatesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /updates", response.With(handler.updatesPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /:clean-cache", response.With(handler.cleanCachePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 }
 
 // swagger:operation POST /1.0/system/certificate system system_certificate_post
@@ -361,6 +362,31 @@ func (s *systemHandler) updatesPut(r *http.Request) response.Response {
 	err = s.service.UpdateUpdatesConfig(r.Context(), updatesConfig)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to update updates configuration: %w", err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/system/:clean-cache system system_clean_cache_post
+//
+//	Clean operations-center's cache
+//
+//	Remove reproducible, cached content.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *systemHandler) cleanCachePost(r *http.Request) response.Response {
+	err := s.service.CleanCache(r.Context())
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to clean operations-center's cache: %w", err))
 	}
 
 	return response.EmptySyncResponse

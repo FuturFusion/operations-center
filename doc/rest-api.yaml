@@ -12845,6 +12845,22 @@ paths:
             summary: Get the updates
             tags:
                 - updates
+    /1.0/system/:clean-cache:
+        post:
+            description: Remove reproducible, cached content.
+            operationId: system_clean_cache_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Clean operations-center's cache
+            tags:
+                - system
     /1.0/system/certificate:
         post:
             consumes:
