@@ -70,6 +70,9 @@ const (
 	// Certificate validity check interval.
 	CertificatesValidityCheckInterval = 24 * time.Hour
 
+	// Threshold before expiration, at which a certificate expiration warning is emitted.
+	CertificateExpiryWarningThreshold = 30 * 24 * time.Hour
+
 	// Filename of the client certificate.
 	ClientCertificateFilename = "client.crt"
 
