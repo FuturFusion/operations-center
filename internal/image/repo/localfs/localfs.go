@@ -140,7 +140,7 @@ func (l localfs) Put(ctx context.Context, img *image.IncusImage, versionIdentifi
 }
 
 func (l localfs) Delete(ctx context.Context, img *image.IncusImage) error {
-	fullFilename := filepath.Join(l.storageDir, img.Path())
+	fullFilename := filepath.Join(l.storageDir, img.FilePath())
 
 	return os.RemoveAll(fullFilename)
 }
