@@ -23,8 +23,8 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
-// Test PUT /1.0/system/certificate.
-func TestSystemCertificatePut(t *testing.T) {
+// Test GET and POST /1.0/system/certificate.
+func TestSystemCertificate(t *testing.T) {
 	// Setup daemon
 	tmpDir := t.TempDir()
 
@@ -135,10 +135,36 @@ func TestSystemCertificatePut(t *testing.T) {
 
 	updatedCertificateSerialNumber := resp3.TLS.PeerCertificates[0].SerialNumber.String()
 
+	// 4. Get certificate through the API
+	req, err = http.NewRequest(http.MethodGet, "http://unix/1.0/system/certificate", nil)
+	require.NoError(t, err)
+
+	resp4, err := socketClient.Do(req)
+	require.NoError(t, err)
+	defer resp4.Body.Close()
+
+	body, err = io.ReadAll(resp4.Body)
+	require.NoError(t, err)
+
+	var certificateResponse struct {
+		Metadata system.Certificate `json:"metadata"`
+	}
+
+	err = json.Unmarshal(body, &certificateResponse)
+	require.NoError(t, err)
+
 	// Assert results
 
 	require.NotEqual(t, initialCertificateSerialNumber, updatedCertificateSerialNumber)
 	require.Equal(t, cert.Leaf.SerialNumber.String(), updatedCertificateSerialNumber)
+
+	require.Equal(t, string(certPEM), certificateResponse.Metadata.Certificate)
+	require.Equal(t, incustls.CertFingerprint(cert.Leaf), certificateResponse.Metadata.Fingerprint)
+	require.Equal(t, cert.Leaf.Subject.String(), certificateResponse.Metadata.Subject)
+	require.Equal(t, cert.Leaf.NotAfter.UTC(), certificateResponse.Metadata.NotAfter.UTC())
+
+	// The private key is never part of the response.
+	require.NotContains(t, string(body), "PRIVATE KEY")
 }
 
 // Test POST /1.0/system/:clean-cache.

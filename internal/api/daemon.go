@@ -475,8 +475,8 @@ func (d *Daemon) initDB(ctx context.Context) (dbdriver.DBTX, error) {
 }
 
 func (d *Daemon) initAndLoadServerCert() error {
-	certFile := filepath.Join(d.env.VarDir(), "server.crt")
-	keyFile := filepath.Join(d.env.VarDir(), "server.key")
+	certFile := filepath.Join(d.env.VarDir(), config.ServerCertificateFilename)
+	keyFile := filepath.Join(d.env.VarDir(), config.ServerKeyFilename)
 
 	// Ensure that the certificate exists, or create a new one if it does not.
 	err := incusTLS.FindOrGenCert(certFile, keyFile, false, true)
