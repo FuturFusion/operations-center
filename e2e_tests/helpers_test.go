@@ -30,6 +30,12 @@ func Test_cmd(t *testing.T) {
 			wantSuccess: false,
 		},
 		{
+			name: "pipefail",
+			cmd:  "false | true",
+
+			wantSuccess: false,
+		},
+		{
 			name: "echo with arguments",
 			cmd:  "echo -n foo bar baz",
 

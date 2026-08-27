@@ -166,6 +166,12 @@ make clean-e2e-test
 
 ## Development
 
+### Shell commands
+
+The test helpers (`run`, `mustRun` and friends) execute their commands with
+`bash -o pipefail`, so a command, which fails anywhere in a pipeline, fails the
+whole command.
+
 ### Idempotent tests
 
 The existing end to end tests are designed to be run individually as well as in

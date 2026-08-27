@@ -184,12 +184,13 @@ func runWithContext(ctx context.Context, t *testing.T, command string, args ...a
 
 	name := "bash"
 	cmdArgs := []string{
+		"-o", "pipefail", // fail the whole pipeline on error
 		"-c",
 		fmt.Sprintf(command, args...),
 	}
 
 	resp := cmdResponse{
-		command: fmt.Sprintf("bash -c %q", fmt.Sprintf(command, args...)),
+		command: fmt.Sprintf("bash -o pipefail -c %q", fmt.Sprintf(command, args...)),
 		output:  &bytes.Buffer{},
 	}
 
