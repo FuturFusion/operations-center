@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -111,6 +112,129 @@ type BMCVirtualMedia struct {
 
 	// WriteProtected reports, if the remote device media prevents writing to that media.
 	WriteProtected bool `json:"write_protected" yaml:"write_protected"`
+}
+
+// BMCBootProgress defines the last boot progress state reported by the BMC.
+//
+// swagger:model
+type BMCBootProgress struct {
+	// LastState holds the last boot progress state, e.g. "OSRunning" or
+	// "SystemHardwareInitializationComplete". Empty if not reported.
+	// Example: OSRunning
+	LastState string `json:"last_state" yaml:"last_state"`
+
+	// LastStateTime holds the time the last boot progress state was reached.
+	// Example: 2024-11-12T16:15:00Z
+	LastStateTime time.Time `json:"last_state_time" yaml:"last_state_time"`
+
+	// LastBootTimeSeconds holds how long the last boot took.
+	// Example: 315.5
+	LastBootTimeSeconds float64 `json:"last_boot_time_seconds" yaml:"last_boot_time_seconds"`
+
+	// OEMLastState holds the vendor specific state, set only when LastState is "OEM".
+	OEMLastState string `json:"oem_last_state" yaml:"oem_last_state"`
+}
+
+// BMCRebootState is the outcome of the attempt to tell, if a server has
+// rebooted, see BMCHasRebootedSince.
+type BMCRebootState string
+
+const (
+	// BMCRebootStateUnknown means the BMC does not report any of the properties
+	// required to tell, if the server has rebooted.
+	BMCRebootStateUnknown BMCRebootState = "unknown"
+
+	// BMCRebootStateNotRebooted means the BMC does report the properties and
+	// they indicate, that the server has not rebooted.
+	BMCRebootStateNotRebooted BMCRebootState = "not-rebooted"
+
+	// BMCRebootStateRebooted means the server has rebooted.
+	BMCRebootStateRebooted BMCRebootState = "rebooted"
+)
+
+func (s BMCRebootState) String() string {
+	return string(s)
+}
+
+// bmcBootProgressOrder holds the boot progress states in the order, in which
+// they are reached during a boot. States not part of this list (e.g. "None" or
+// "OEM") carry no ordering information.
+var bmcBootProgressOrder = []string{
+	"PrimaryProcessorInitializationStarted",
+	"BusInitializationStarted",
+	"MemoryInitializationStarted",
+	"SecondaryProcessorInitializationStarted",
+	"PCIResourceConfigStarted",
+	"SystemHardwareInitializationComplete",
+	"SetupEntered",
+	"OSBootStarted",
+	"OSRunning",
+}
+
+// bmcBootProgressLateState is the first of the boot progress states, which are
+// only reached once the firmware handed over to the operating system.
+const bmcBootProgressLateState = "OSBootStarted"
+
+// BMCHasRebootedSince reports, if the server has rebooted since the given time,
+// by comparing a previous BMC data snapshot with the current one. Since neither
+// of the required properties is supported by every BMC, the outcome is
+// tri-state and callers need to handle BMCRebootStateUnknown by falling back to
+// another signal.
+func BMCHasRebootedSince(previous BMCData, current BMCData, since time.Time) BMCRebootState {
+	state := BMCRebootStateUnknown
+
+	// A last reset time moving backwards indicates a BMC clock reset, which
+	// renders the property useless for the comparison.
+	lastResetTimeIsSane := previous.ServerLastResetTime.IsZero() || !current.ServerLastResetTime.Before(previous.ServerLastResetTime)
+
+	if !current.ServerLastResetTime.IsZero() && lastResetTimeIsSane {
+		// The BMC clock is not necessarily in sync with our own, so a last
+		// reset time after since only proves a reboot, if it also advanced
+		// compared to the previous snapshot. Otherwise both snapshots just
+		// describe the same reset, reported by a BMC clock running ahead.
+		if current.ServerLastResetTime.After(since) && current.ServerLastResetTime.After(previous.ServerLastResetTime) {
+			return BMCRebootStateRebooted
+		}
+
+		state = BMCRebootStateNotRebooted
+	}
+
+	previousProgress := previous.ServerBootProgress
+	currentProgress := current.ServerBootProgress
+
+	if bootProgressHasRegressed(previousProgress.LastState, currentProgress.LastState) {
+		return BMCRebootStateRebooted
+	}
+
+	// Without the time of the last boot progress state, the absence of a
+	// regression does not tell, if the server has rebooted. The same applies
+	// to a last state time moving backwards, which indicates a BMC clock
+	// reset and renders the property useless for the comparison. In both
+	// cases, the state derived from the last reset time is kept.
+	if currentProgress.LastStateTime.IsZero() || currentProgress.LastStateTime.Before(previousProgress.LastStateTime) {
+		return state
+	}
+
+	if !currentProgress.LastStateTime.Before(since) && currentProgress.LastStateTime.After(previousProgress.LastStateTime) {
+		return BMCRebootStateRebooted
+	}
+
+	return BMCRebootStateNotRebooted
+}
+
+// bootProgressHasRegressed reports, if the boot progress fell back from a state
+// only reached at the end of a boot to an earlier one, which is only possible
+// if the server has rebooted in between.
+func bootProgressHasRegressed(previousState string, currentState string) bool {
+	previousIndex := slices.Index(bmcBootProgressOrder, previousState)
+	currentIndex := slices.Index(bmcBootProgressOrder, currentState)
+	lateIndex := slices.Index(bmcBootProgressOrder, bmcBootProgressLateState)
+
+	if previousIndex < lateIndex || currentIndex < 0 {
+		return false
+	}
+
+	return currentIndex < previousIndex
 }
 
 // ServerBMCApplyBIOSAttributesPost represents a request to apply a set of

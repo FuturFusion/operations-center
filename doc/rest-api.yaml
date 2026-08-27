@@ -207,6 +207,34 @@ definitions:
     BMCAPIType:
         type: string
         x-go-package: github.com/FuturFusion/operations-center/shared/api
+    BMCBootProgress:
+        properties:
+            last_boot_time_seconds:
+                description: LastBootTimeSeconds holds how long the last boot took.
+                example: 315.5
+                format: double
+                type: number
+                x-go-name: LastBootTimeSeconds
+            last_state:
+                description: |-
+                    LastState holds the last boot progress state, e.g. "OSRunning" or
+                    "SystemHardwareInitializationComplete". Empty if not reported.
+                example: OSRunning
+                type: string
+                x-go-name: LastState
+            last_state_time:
+                description: LastStateTime holds the time the last boot progress state was reached.
+                example: "2024-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: LastStateTime
+            oem_last_state:
+                description: OEMLastState holds the vendor specific state, set only when LastState is "OEM".
+                type: string
+                x-go-name: OEMLastState
+        title: BMCBootProgress defines the last boot progress state reported by the BMC.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     BMCConfig:
         properties:
             api_type:
@@ -295,6 +323,8 @@ definitions:
                 example: 1.7.5
                 type: string
                 x-go-name: ServerBIOSVersion
+            server_boot_progress:
+                $ref: '#/definitions/BMCBootProgress'
             server_health_status:
                 description: ServerHealthStatus holds the reported overall health status for the server.
                 example: Warning
@@ -304,6 +334,14 @@ definitions:
                 description: ServerHostName hold the host name as reported by the BMC for the server.
                 type: string
                 x-go-name: ServerHostName
+            server_last_reset_time:
+                description: |-
+                    ServerLastResetTime holds the time the system last came out of reset, as
+                    reported by the BMC. Zero if the BMC does not report it.
+                example: "2024-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: ServerLastResetTime
             server_location_indicator_active:
                 description: ServerLocationIndicatorActive reports, if the location indicator LED is active.
                 example: false

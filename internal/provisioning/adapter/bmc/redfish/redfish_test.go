@@ -1097,6 +1097,144 @@ func TestRedfish_GetData(t *testing.T) {
 				BMCVendor:          "Dell",
 			},
 		},
+		{
+			name: "success - boot progress and last reset time reported by the BMC",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				systemsStatusCode:     http.StatusOK,
+				systemsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`,
+				systemStatusCode: http.StatusOK,
+				systemBody: `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "LastResetTime": "2026-08-26T09:00:00Z",
+  "BootProgress": {
+    "LastState": "OSRunning",
+    "LastStateTime": "2026-08-26T09:05:30Z",
+    "LastBootTimeSeconds": 330.5
+  }
+}`,
+				managersStatusCode: http.StatusOK,
+				managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+				managerStatusCode: http.StatusOK,
+				managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1"
+}`,
+			},
+
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:         "Redfish",
+				BMCProtocolVersion:  "1.16.0",
+				BMCVendor:           "Dell",
+				ServerLastResetTime: time.Date(2026, 8, 26, 9, 0, 0, 0, time.UTC),
+				ServerBootProgress: api.BMCBootProgress{
+					LastState:           "OSRunning",
+					LastStateTime:       time.Date(2026, 8, 26, 9, 5, 30, 0, time.UTC),
+					LastBootTimeSeconds: 330.5,
+				},
+			},
+		},
+		{
+			name: "success - BMC reporting neither boot progress nor last reset time",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				systemsStatusCode:     http.StatusOK,
+				systemsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`,
+				systemStatusCode: http.StatusOK,
+				systemBody: `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "Manufacturer": "AMI"
+}`,
+				managersStatusCode: http.StatusOK,
+				managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+				managerStatusCode: http.StatusOK,
+				managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1"
+}`,
+			},
+
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+				ServerManufacturer: "AMI",
+			},
+		},
+		{
+			name: "success - malformed boot progress and last reset timestamps are ignored",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				systemsStatusCode:     http.StatusOK,
+				systemsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`,
+				systemStatusCode: http.StatusOK,
+				systemBody: `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "LastResetTime": "not a timestamp",
+  "BootProgress": {
+    "LastState": "OEM",
+    "LastStateTime": "26.08.2026 09:05:30",
+    "OEMLastState": "VendorSpecificState"
+  }
+}`,
+				managersStatusCode: http.StatusOK,
+				managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+				managerStatusCode: http.StatusOK,
+				managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1"
+}`,
+			},
+
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+				ServerBootProgress: api.BMCBootProgress{
+					LastState:    "OEM",
+					OEMLastState: "VendorSpecificState",
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {

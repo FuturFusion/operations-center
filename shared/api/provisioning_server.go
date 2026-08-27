@@ -690,6 +690,14 @@ type BMCData struct {
 	// Example: Warning
 	ServerHealthStatus string `json:"server_health_status" yaml:"server_health_status"`
 
+	// ServerLastResetTime holds the time the system last came out of reset, as
+	// reported by the BMC. Zero if the BMC does not report it.
+	// Example: 2024-11-12T16:15:00Z
+	ServerLastResetTime time.Time `json:"server_last_reset_time" yaml:"server_last_reset_time"`
+
+	// ServerBootProgress holds the last boot progress state reported by the BMC.
+	ServerBootProgress BMCBootProgress `json:"server_boot_progress" yaml:"server_boot_progress"`
+
 	// VirtualMedia holds all virtual media slots (e.g. CD, DVD, floppy, USB)
 	// reported by the BMC system or manager, keyed by "<service>:<id>" (e.g. "system:1").
 	VirtualMedia map[string]BMCVirtualMedia `json:"virtual_media" yaml:"virtual_media"`
