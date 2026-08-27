@@ -76,6 +76,12 @@ const (
 	// Filename of the client key.
 	ClientKeyFilename = "client.key"
 
+	// Filename of the server certificate.
+	ServerCertificateFilename = "server.crt"
+
+	// Filename of the server key.
+	ServerKeyFilename = "server.key"
+
 	// Filename of the system config file.
 	ConfigFilename = "config.yml"
 )
