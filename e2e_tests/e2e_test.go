@@ -50,6 +50,17 @@ func TestE2E_UpdatesCleanupAndRefresh(t *testing.T) {
 	)
 }
 
+func TestE2E_OIDCAuthentication(t *testing.T) {
+	runE2ETest(
+		t,
+		"authenticate against operations center using OIDC",
+		func(t *testing.T, tmpDir string) {
+			t.Helper()
+		},
+		oidcAuthentication,
+	)
+}
+
 func TestE2E_WithToken_CreateCluster(t *testing.T) {
 	runE2ETest(
 		t,

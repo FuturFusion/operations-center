@@ -192,8 +192,7 @@ func mustAssertRedfishProxyReachable(t *testing.T, endpoint string, instanceName
 	}
 }
 
-// redfishProxyHostAddress returns the address of the e2e host on the network,
-// the OperationsCenter VM is attached to. This is the address, at which the
+// redfishProxyHostAddress returns the address of the e2e host, at which the
 // in-process Redfish proxy is reachable from inside the OperationsCenter VM.
 func redfishProxyHostAddress(t *testing.T) string {
 	t.Helper()
@@ -202,23 +201,5 @@ func redfishProxyHostAddress(t *testing.T) string {
 		return bmcProxyAddress
 	}
 
-	networkResp := mustRun(t, `incus list -f json | jq -r -e '[ .[] | select(.name == "OperationsCenter") | .expanded_devices | to_entries[] | select(.value.type == "nic") | (.value.network // .value.parent // empty) ] | first'`)
-	network := networkResp.OutputTrimmed()
-	require.NotEmpty(t, network, "Failed to determine the network of the OperationsCenter VM")
-
-	// For a managed bridge, the first address of ipv4.address is the address of
-	// the host on that bridge.
-	resp := run(t, `incus network get %s ipv4.address | cut -d / -f 1`, network)
-	address := resp.OutputTrimmed()
-	if resp.Success() && net.ParseIP(address) != nil {
-		return address
-	}
-
-	// Fall back to the address configured on the host interface, which covers
-	// unmanaged bridges and networks with an externally managed address.
-	resp = mustRun(t, `ip -4 -json addr show dev %s | jq -r -e '.[0].addr_info[0].local'`, network)
-	address = resp.OutputTrimmed()
-	require.NotNilf(t, net.ParseIP(address), "Failed to determine the address of the host on network %q", network)
-
-	return address
+	return e2eHostAddress(t)
 }
