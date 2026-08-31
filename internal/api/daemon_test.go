@@ -106,8 +106,9 @@ func TestStartAndStop(t *testing.T) {
 			bindPort:   17443,
 
 			assertStartErr: require.Error,
-			assertStopErr:  require.Error,
-			assertFunc:     func(*testing.T) {},
+			// Start fails before any listener is served, so there is nothing left to fail during stop.
+			assertStopErr: require.NoError,
+			assertFunc:    func(*testing.T) {},
 		},
 		{
 			name:       "error - http port already taken",
