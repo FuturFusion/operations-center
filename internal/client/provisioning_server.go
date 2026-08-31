@@ -463,3 +463,21 @@ func (c OperationsCenterClient) BMCDetachMedia(ctx context.Context, name string,
 
 	return nil
 }
+
+func (c OperationsCenterClient) DeployServer(ctx context.Context, name string, deployment api.ServerDeploymentPost) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, ":deploy"), nil, deployment)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c OperationsCenterClient) CancelServerDeployment(ctx context.Context, name string) error {
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, ":cancel-deploy"), nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
