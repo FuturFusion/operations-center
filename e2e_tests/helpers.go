@@ -763,6 +763,64 @@ func mustWriteFileWithContent(t *testing.T, filename string, size int) string {
 	return fmt.Sprintf("%x", sha256.Sum256(content))
 }
 
+const instanceStatusRunning = "Running"
+
+func instanceStatusWithContext(ctx context.Context, t *testing.T, name string) (string, error) {
+	t.Helper()
+
+	resp := runWithContext(ctx, t, `incus list -f json | jq -r '.[] | select(.name == "%s") | .status'`, name)
+
+	err := fmtRunErr(resp)
+	if err != nil {
+		return "", fmt.Errorf("Failed to get status of instance %q: %w", name, err)
+	}
+
+	return resp.OutputTrimmed(), nil
+}
+
+func mustInstanceStatus(t *testing.T, name string) string {
+	t.Helper()
+
+	status, err := instanceStatusWithContext(t.Context(), t, name)
+	require.NoError(t, err)
+
+	return status
+}
+
+func waitInstanceStatusRunning(t *testing.T, name string, timeout time.Duration) string {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(timeout))
+	defer cancel()
+
+	count := 0
+	lastStatus := ""
+
+	for {
+		status, err := instanceStatusWithContext(ctx, t, name)
+		if err == nil {
+			lastStatus = status
+
+			if status == instanceStatusRunning {
+				return status
+			}
+		}
+
+		if count%10 == 0 {
+			t.Logf("Waiting %ds for instance %q to become running, current status: %q", count, name, lastStatus)
+		}
+
+		count++
+
+		select {
+		case <-ctx.Done():
+			return lastStatus
+
+		case <-time.After(1 * time.Second):
+		}
+	}
+}
+
 func mustGetInstanceIPAndNames(t *testing.T, names []string) (instanceIPs []string, instanceNames []string) {
 	t.Helper()
 

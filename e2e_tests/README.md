@@ -182,6 +182,12 @@ In most cases, the cleanup functions should be registered before the actual
 resource is created, to ensure that they are executed even if the resource
 creation is only partially successful.
 
+The Operations Center VM is the exception, it is deliberately not cleaned up and
+reused across test cases and test runs. `setupOperationsCenter` therefore only
+reuses it, if it is running. A VM found in any other state is removed and
+installed from scratch.
+The same applies to left over `IncusOS0x` instances in `createIncusOSInstances`.
+
 Examples:
 
 * `t.Cleanup(clusterCleanup(t))`, cleans up any cluster created during the test

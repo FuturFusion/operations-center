@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -31,7 +30,7 @@ func setupOperationsCenter(t *testing.T, tmpDir string) {
 
 	importOperationsCenterIncusOSISOStorageVolume(t, tmpDir)
 
-	installOperationsCenterVM(t)
+	installed := installOperationsCenterVM(t)
 
 	removeBootMedia(t)
 
@@ -41,7 +40,7 @@ func setupOperationsCenter(t *testing.T, tmpDir string) {
 
 	replaceOperationsCenterExecutable(t, tmpDir)
 
-	setupLocalOperationsCenterConfig(t)
+	setupLocalOperationsCenterConfig(t, installed)
 
 	assertOperationsCenterSelfRegistration(t)
 
@@ -276,24 +275,39 @@ func importOperationsCenterIncusOSISOStorageVolume(t *testing.T, tmpDir string) 
 	}
 }
 
-func installOperationsCenterVM(t *testing.T) {
+func installOperationsCenterVM(t *testing.T) (installed bool) {
 	t.Helper()
 
-	incusInstanceList := mustRun(t, "incus list -f compact")
-	if !regexp.MustCompile(`OperationsCenter\s+RUNNING`).MatchString(incusInstanceList.Output()) {
-		stop := timeTrack(t)
-		defer stop()
-
-		mustRun(t, `incus init --empty --vm OperationsCenter -c security.secureboot=false -c limits.cpu=%s -c limits.memory=%s -d root,size=%s -d root,io.cache=unsafe`, cpuCount, memorySize, diskSize)
-		mustRun(t, `incus config device add OperationsCenter vtpm tpm`)
-		mustRun(t, `incus config device add OperationsCenter boot-media disk pool=default source=IncusOS_OperationsCenter.iso boot.priority=10`)
-		mustRun(t, `incus config set OperationsCenter systemd.credential.fully-enable-incus-agent=true`)
-		mustRun(t, `incus start OperationsCenter`)
-
-		t.Log("Waiting for Operations Center to complete installation")
-		mustWaitAgentRunningWithTimeout(t, "OperationsCenter", 5*time.Minute)
-		mustWaitExpectedLogWithTimeout(t, "OperationsCenter", "incus-osd", "IncusOS was successfully installed", 5*time.Minute)
+	status := mustInstanceStatus(t, "OperationsCenter")
+	if status != "" && status != instanceStatusRunning {
+		// The VM might just be restarting, so give it a moment to settle before recreating it.
+		t.Logf("Operations Center VM is in status %q, waiting for it to become running", status)
+		status = waitInstanceStatusRunning(t, "OperationsCenter", 2*time.Minute)
 	}
+
+	if status == instanceStatusRunning {
+		return false
+	}
+
+	stop := timeTrack(t)
+	defer stop()
+
+	if status != "" {
+		t.Logf("Operations Center VM is in status %q, removing it in order to install it from scratch", status)
+		mustRun(t, `incus remove --force OperationsCenter`)
+	}
+
+	mustRun(t, `incus init --empty --vm OperationsCenter -c security.secureboot=false -c limits.cpu=%s -c limits.memory=%s -d root,size=%s -d root,io.cache=unsafe`, cpuCount, memorySize, diskSize)
+	mustRun(t, `incus config device add OperationsCenter vtpm tpm`)
+	mustRun(t, `incus config device add OperationsCenter boot-media disk pool=default source=IncusOS_OperationsCenter.iso boot.priority=10`)
+	mustRun(t, `incus config set OperationsCenter systemd.credential.fully-enable-incus-agent=true`)
+	mustRun(t, `incus start OperationsCenter`)
+
+	t.Log("Waiting for Operations Center to complete installation")
+	mustWaitAgentRunningWithTimeout(t, "OperationsCenter", 5*time.Minute)
+	mustWaitExpectedLogWithTimeout(t, "OperationsCenter", "incus-osd", "IncusOS was successfully installed", 5*time.Minute)
+
+	return true
 }
 
 func removeBootMedia(t *testing.T) {
@@ -341,7 +355,7 @@ func replaceOperationsCenterExecutable(t *testing.T, tmpDir string) {
 	mustRun(t, `incus exec OperationsCenter -- bash -c "mount -o bind /root/dev/operations-centerd /usr/local/bin/operations-centerd && systemctl start operations-center"`)
 }
 
-func setupLocalOperationsCenterConfig(t *testing.T) {
+func setupLocalOperationsCenterConfig(t *testing.T, freshInstall bool) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -363,13 +377,21 @@ func setupLocalOperationsCenterConfig(t *testing.T) {
 	cancel()
 	require.NoError(t, err)
 
-	resp := run(t, `../bin/operations-center.linux.%s remote list -f json | jq -r -e '. | has("e2e-test")'`, cpuArch)
-	require.NoError(t, resp.err)
-	if !resp.Success() {
-		mustRun(t, `../bin/operations-center.linux.%s remote add --accept-certificate e2e-test https://%s/`, cpuArch, operationsCenterHostPort)
+	operationsCenterAddress := fmt.Sprintf("https://%s/", operationsCenterHostPort)
+
+	remoteAddrResp := mustRun(t, `../bin/operations-center.linux.%s remote list -f json | jq -r '.["e2e-test"].addr // empty'`, cpuArch)
+	remoteAddr := remoteAddrResp.OutputTrimmed()
+
+	if remoteAddr != "" && (freshInstall || remoteAddr != operationsCenterAddress) {
+		mustRun(t, `../bin/operations-center.linux.%s remote remove e2e-test`, cpuArch)
+		remoteAddr = ""
 	}
 
-	resp = mustRun(t, `../bin/operations-center.linux.%s remote list`, cpuArch)
+	if remoteAddr == "" {
+		mustRun(t, `../bin/operations-center.linux.%s remote add --accept-certificate e2e-test %s`, cpuArch, operationsCenterAddress)
+	}
+
+	resp := mustRun(t, `../bin/operations-center.linux.%s remote list`, cpuArch)
 	fmt.Println(resp.Output())
 
 	mustRun(t, `../bin/operations-center.linux.%s remote switch e2e-test`, cpuArch)
@@ -514,14 +536,24 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string, na
 				}
 			}()
 
-			incusInstanceList := runWithContext(errgrpctx, t, "incus list -f compact")
-			err = fmtRunErr(incusInstanceList)
+			status, err := instanceStatusWithContext(errgrpctx, t, name)
 			if err != nil {
 				return err
 			}
 
-			if !regexp.MustCompile(fmt.Sprintf(`%s\s+RUNNING`, name)).MatchString(incusInstanceList.Output()) {
+			if status != instanceStatusRunning {
 				t.Logf("Setting up %s", name)
+
+				// A left over instance, which is not running, might be in any
+				// state, so remove it and install it from scratch.
+				if status != "" {
+					t.Logf("%s is in status %q, removing it in order to install it from scratch", name, status)
+
+					err = fmtRunErr(runWithContext(errgrpctx, t, `incus remove --force %s`, name))
+					if err != nil {
+						return err
+					}
+				}
 
 				err = fmtRunErr(runWithContext(errgrpctx, t, `incus init --empty --vm %s -c security.secureboot=false -c limits.cpu=%s -c limits.memory=%s -d root,size=%s -d root,io.cache=unsafe`, name, cpuCount, memorySize, diskSize))
 				if err != nil {
