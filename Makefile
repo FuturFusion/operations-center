@@ -246,6 +246,7 @@ clean-e2e-test: clean-e2e-test-soft
 .PHONY: clean-e2e-test-soft
 clean-e2e-test-soft:
 	rm -rf $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/image-downloads
+	rm -rf $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/oidc-cli-config
 	incus remote remove incus-os-cluster || true
 	incus remote remove incus-os-cluster-after-factory-reset || true
 	incus remove --force IncusOS01 || true
@@ -258,9 +259,9 @@ clean-e2e-test-soft:
 		bin/operations-center.linux.amd64 provisioning server remove $$i || true; \
 	done
 	for i in $$(bin/operations-center.linux.amd64 provisioning update list -f json | jq -r '.[] | .uuid'); do \
-		bin/operations-center provisioning update assign-channels $$i --channel stable || true; \
+		bin/operations-center.linux.amd64 provisioning update assign-channels $$i --channel stable || true; \
 	done
-	for i in $$(bin/operations-center.linux.amd64 provisioning token list -f json | jq -r '.[] | select(.description == "CRUD") | .uuid'); do \
+	for i in $$(bin/operations-center.linux.amd64 provisioning token list -f json | jq -r '.[] | select(.description == "CRUD" or .description == "e2e OIDC write access") | .uuid'); do \
 		bin/operations-center.linux.amd64 provisioning token remove $$i || true; \
 	done
 	for i in $$(bin/operations-center.linux.amd64 image incus source list -f json | jq -r '.[].name'); do \
@@ -269,3 +270,11 @@ clean-e2e-test-soft:
 	for i in $$(bin/operations-center.linux.amd64 image incus list -f json | jq -r '.[].name'); do \
 		bin/operations-center.linux.amd64 image incus remove $$i || true; \
 	done
+	# Reset the OIDC part of the security config, so Operations Center stops pointing at the
+	# fake OIDC provider of the tests, which is gone.
+	f=$$(mktemp) ; \
+	{ bin/operations-center.linux.amd64 system security show -f json \
+		| jq -ce '.oidc = { issuer: "", client_id: "", scopes: "", audience: "", claim: "" }' > $$f \
+		&& jq -e '.trusted_tls_client_cert_fingerprints | length > 0' $$f > /dev/null \
+		&& bin/operations-center.linux.amd64 system security edit < $$f ; } || true ; \
+	rm -f $$f
