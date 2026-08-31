@@ -385,7 +385,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 	})
 
 	// API server on unix socket
-	d.setupSocketListener(ctx)
+	err = d.setupSocketListener(ctx)
+	if err != nil {
+		return err
+	}
 
 	// API server on TCP
 	err = d.setupTCPListener(ctx, config.GetNetwork())
@@ -426,7 +429,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	case <-time.After(50 * time.Millisecond):
 		// Grace period we wait for potential immediate errors from serving the http server.
-		// TODO: More clean way would be to check if the listeners are reachable (http, unix socket).
 	}
 
 	return nil
@@ -1619,26 +1621,28 @@ func (d *Daemon) startBackgroundPollingTask(
 	})
 }
 
-func (d *Daemon) setupSocketListener(ctx context.Context) {
-	d.errgroup.Go(func() error {
-		// TODO: if the socket file already exists, make a connection attempt. If
-		// successful, another instance of operations-centerd is already running.
-		// If not successful, it is save to delete the socket file.
-		if file.PathExists(d.env.GetUnixSocket()) {
-			err := os.Remove(d.env.GetUnixSocket())
-			if err != nil {
-				return err
-			}
-		}
-
-		unixListener, err := net.Listen("unix", d.env.GetUnixSocket())
+func (d *Daemon) setupSocketListener(ctx context.Context) error {
+	// TODO: if the socket file already exists, make a connection attempt. If
+	// successful, another instance of operations-centerd is already running.
+	// If not successful, it is save to delete the socket file.
+	if file.PathExists(d.env.GetUnixSocket()) {
+		err := os.Remove(d.env.GetUnixSocket())
 		if err != nil {
 			return err
 		}
+	}
 
-		slog.InfoContext(ctx, "Start unix socket listener", slog.Any("addr", unixListener.Addr()))
+	// The listener is created synchronously, so the socket is guaranteed to accept
+	// connections once this function returns.
+	unixListener, err := net.Listen("unix", d.env.GetUnixSocket())
+	if err != nil {
+		return err
+	}
 
-		err = d.server.Serve(unixListener)
+	slog.InfoContext(ctx, "Start unix socket listener", slog.Any("addr", unixListener.Addr()))
+
+	d.errgroup.Go(func() error {
+		err := d.server.Serve(unixListener)
 		if errors.Is(err, http.ErrServerClosed) {
 			// Ignore error from graceful shutdown.
 			return nil
@@ -1646,6 +1650,8 @@ func (d *Daemon) setupSocketListener(ctx context.Context) {
 
 		return err
 	})
+
+	return nil
 }
 
 func (d *Daemon) setupTCPListener(ctx context.Context, cfg apisystem.Network) error {
