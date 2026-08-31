@@ -356,10 +356,7 @@ func setupLocalOperationsCenterConfig(t *testing.T) {
 	mustRun(t, `cp %[1]s/.config/incus/client.* %[1]s/.config/operations-center/`, homeDir)
 
 	// Adding Operations Center instance as remote
-	operationsCenterIPAddressResp := mustRun(t, `incus list -f json | jq -r '.[] | select(.name == "OperationsCenter") | .state.network | to_entries[] | .value.addresses[]? | select(.family == "inet" and .scope == "global") | .address' | head -n1`)
-
-	operationsCenterIPAddress := strings.TrimSpace(operationsCenterIPAddressResp.Output())
-	operationsCenterHostPort := net.JoinHostPort(operationsCenterIPAddress, "8443")
+	operationsCenterHostPort := net.JoinHostPort(operationsCenterIPAddress(t), "8443")
 
 	ctxWithTimeout, cancel := context.WithTimeout(t.Context(), strechedTimeout(60*time.Second))
 	err = waitForTCPPort(ctxWithTimeout, t, operationsCenterHostPort, 1*time.Second)

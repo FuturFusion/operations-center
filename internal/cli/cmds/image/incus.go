@@ -545,7 +545,7 @@ type cmdIncusImageVersionRemove struct {
 
 func (c *cmdIncusImageVersionRemove) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "remove-version <name>"
+	cmd.Use = "remove-version <name> <version>"
 	cmd.Short = "Remove an Incus image version version"
 	cmd.Long = `Description:
   Remove an Incus image version

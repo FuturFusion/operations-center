@@ -245,6 +245,7 @@ clean-e2e-test: clean-e2e-test-soft
 # Keeps Operations Center but cleans up all the test artifacts, useful if test have been executed with OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP.
 .PHONY: clean-e2e-test-soft
 clean-e2e-test-soft:
+	rm -rf $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)/image-downloads
 	incus remote remove incus-os-cluster || true
 	incus remote remove incus-os-cluster-after-factory-reset || true
 	incus remove --force IncusOS01 || true
@@ -261,6 +262,9 @@ clean-e2e-test-soft:
 	done
 	for i in $$(bin/operations-center.linux.amd64 provisioning token list -f json | jq -r '.[] | select(.description == "CRUD") | .uuid'); do \
 		bin/operations-center.linux.amd64 provisioning token remove $$i || true; \
+	done
+	for i in $$(bin/operations-center.linux.amd64 image incus source list -f json | jq -r '.[].name'); do \
+		bin/operations-center.linux.amd64 image incus source remove $$i || true; \
 	done
 	for i in $$(bin/operations-center.linux.amd64 image incus list -f json | jq -r '.[].name'); do \
 		bin/operations-center.linux.amd64 image incus remove $$i || true; \

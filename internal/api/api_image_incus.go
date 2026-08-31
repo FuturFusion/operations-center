@@ -133,7 +133,7 @@ func (i *imageIncusHandler) simplestreamsPublicImagesGet(r *http.Request) respon
 
 		for version := range product.Versions {
 			for filename, fileDetails := range product.Versions[version].Items {
-				fileDetails.Path = filepath.Join("/1.0/image/incus", strings.Join([]string{incusImage.OperatingSystem, incusImage.Release, incusImage.Architecture, incusImage.Variant}, ":"), version, filename)
+				fileDetails.Path = filepath.Join("/1.0/images/incus", incusImage.Name, version, filename)
 				product.Versions[version].Items[filename] = fileDetails
 			}
 		}
@@ -148,7 +148,7 @@ func (i *imageIncusHandler) simplestreamsPublicImagesGet(r *http.Request) respon
 	})
 }
 
-// swagger:operation GET /1.0/image/incus incus_images incus_images_get
+// swagger:operation GET /1.0/images/incus incus_images incus_images_get
 //
 //	Get the list of incus images
 //
@@ -165,7 +165,7 @@ func (i *imageIncusHandler) simplestreamsPublicImagesGet(r *http.Request) respon
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/image/incus?recursion=1 incus_images incus_images_get_recursion
+// swagger:operation GET /1.0/images/incus?recursion=1 incus_images incus_images_get_recursion
 //
 //	Get the list of incus images
 //
@@ -222,13 +222,13 @@ func (i *imageIncusHandler) incusImagesGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(incusImageNames))
 	for _, name := range incusImageNames {
-		result = append(result, fmt.Sprintf("/%s/image/incus/%s", api.APIVersion, name))
+		result = append(result, fmt.Sprintf("/%s/images/incus/%s", api.APIVersion, name))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/image/incus/{name} incus_images incus_image_get
+// swagger:operation GET /1.0/images/incus/{name} incus_images incus_image_get
 //
 //	Get the incus image
 //
@@ -280,7 +280,7 @@ func (i *imageIncusHandler) incusImageGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation PUT /1.0/image/incus/{name} incus_images incus_image_put
+// swagger:operation PUT /1.0/images/incus/{name} incus_images incus_image_put
 //
 //	Update the incus image
 //
@@ -358,10 +358,10 @@ func (i *imageIncusHandler) incusImagePut(r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/image/incus/"+name)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/images/incus/"+name)
 }
 
-// swagger:operation DELETE /1.0/image/incus/{name} incus_images incus_image_delete
+// swagger:operation DELETE /1.0/images/incus/{name} incus_images incus_image_delete
 //
 //	Delete the incus image
 //
@@ -398,7 +398,7 @@ func (i *imageIncusHandler) incusImageDelete(r *http.Request) response.Response 
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/image/incus incus_images incus_images_post
+// swagger:operation POST /1.0/images/incus incus_images incus_images_post
 //
 //	Add an incus image version
 //
@@ -456,10 +456,10 @@ func (i *imageIncusHandler) incusImageVersionPost(r *http.Request) response.Resp
 		return response.SmartError(err)
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/image/incus/"+name)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/images/incus/"+name)
 }
 
-// swagger:operation DELETE /1.0/image/incus/{name}/{version} incus_images incus_image_version_delete
+// swagger:operation DELETE /1.0/images/incus/{name}/{version} incus_images incus_image_version_delete
 //
 //	Delete the incus image version
 //
@@ -502,7 +502,7 @@ func (i *imageIncusHandler) incusImageVersionDelete(r *http.Request) response.Re
 	return response.EmptySyncResponse
 }
 
-// swagger:operation GET /1.0/image/incus/{name}/{version}/{filename} incus_images incus_image_version_file_get
+// swagger:operation GET /1.0/images/incus/{name}/{version}/{filename} incus_images incus_image_version_file_get
 //
 //	Get a specific file from an incus image version
 //

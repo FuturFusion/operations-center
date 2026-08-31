@@ -7900,7 +7900,7 @@ paths:
             summary: Get the server environment
             tags:
                 - server
-    /1.0/image/incus:
+    /1.0/images/incus:
         get:
             description: Returns a list of incus images (URLs).
             operationId: incus_images_get
@@ -7948,7 +7948,7 @@ paths:
             summary: Add an incus image version
             tags:
                 - incus_images
-    /1.0/image/incus/{name}:
+    /1.0/images/incus/{name}:
         delete:
             description: Removes the incus image.
             operationId: incus_image_delete
@@ -8032,7 +8032,7 @@ paths:
             summary: Update the incus image
             tags:
                 - incus_images
-    /1.0/image/incus/{name}/{version}:
+    /1.0/images/incus/{name}/{version}:
         delete:
             description: Removes the incus image version.
             operationId: incus_image_version_delete
@@ -8063,7 +8063,7 @@ paths:
             summary: Delete the incus image version
             tags:
                 - incus_images
-    /1.0/image/incus/{name}/{version}/{filename}:
+    /1.0/images/incus/{name}/{version}/{filename}:
         get:
             description: Gets a specific file from an incus image version.
             operationId: incus_image_version_file_get
@@ -8099,22 +8099,6 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Get a specific file from an incus image version
-            tags:
-                - incus_images
-    /1.0/image/incus?recursion=1:
-        get:
-            description: Returns a list of incus images (structs).
-            operationId: incus_images_get_recursion
-            produces:
-                - application/json
-            responses:
-                "200":
-                    $ref: '#/responses/IncusImagesResponse'
-                "403":
-                    $ref: '#/responses/Forbidden'
-                "500":
-                    $ref: '#/responses/InternalServerError'
-            summary: Get the list of incus images
             tags:
                 - incus_images
     /1.0/images/incus/sources:
@@ -8288,6 +8272,22 @@ paths:
             summary: Get the list of image sources
             tags:
                 - image_sources
+    /1.0/images/incus?recursion=1:
+        get:
+            description: Returns a list of incus images (structs).
+            operationId: incus_images_get_recursion
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/IncusImagesResponse'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the list of incus images
+            tags:
+                - incus_images
     /1.0/inventory/images:
         get:
             description: Returns a list of images (URLs).

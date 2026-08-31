@@ -191,6 +191,8 @@ Examples:
 * `t.Cleanup(serverBMCConfigCleanup(t, tmpDir, name))`, resets the BMC config of
   a server, so that Operations Center stops talking to a BMC, which is about to
   go away.
+* `t.Cleanup(ocIncusImageSourceCleanup(t, name))`, removes an Incus image
+  source, which also removes all the images provided by that source.
 
 For debug purposes, the cleanup can be disabled by setting the environment
 variable `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP` or
@@ -210,3 +212,22 @@ during the connection test performed by `provisioning server edit`.
 The Operations Center VM reaches the proxy at the address of the end 2 end test
 host on the network the VM is attached to. If this address can not be derived
 automatically, set `OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS`.
+
+### Incus images
+
+`TestE2E_WithToken_OCImagesRemoteLaunchInstance` covers the Incus image and the
+Incus image source handling. It uploads images manually, syncs an image from
+`https://images.linuxcontainers.org` through an image source, asserts the public
+simplestreams endpoints of Operations Center and launches a container from a
+manually uploaded and from a source synced image.
+
+The filter expression of the image source is pinned to a single image and a
+single version of that image, which is discovered from the image server at the
+beginning of the test. This keeps the amount of downloaded data small and makes
+the assertions on the synced images exact, even though the content of the image
+server changes over time.
+
+The Incus CLI caches the simplestreams responses of a remote for an hour, so the
+test populates Operations Center completely before it registers Operations
+Center as image remote on the server. Everything asserted after that point goes
+through the public endpoints directly instead of through the server.

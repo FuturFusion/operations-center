@@ -14,7 +14,7 @@ func (c OperationsCenterClient) GetImageIncusSources(ctx context.Context) ([]api
 	query := url.Values{}
 	query.Add("recursion", "1")
 
-	response, err := c.DoRequest(ctx, http.MethodGet, "/image/incus/sources", query, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, "/images/incus/sources", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +29,7 @@ func (c OperationsCenterClient) GetImageIncusSources(ctx context.Context) ([]api
 }
 
 func (c OperationsCenterClient) CreateImageIncusSource(ctx context.Context, newImageSource api.ImageSourcePost) error {
-	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/image/incus/sources"), nil, newImageSource)
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/images/incus/sources"), nil, newImageSource)
 	if err != nil {
 		return err
 	}
@@ -38,7 +38,7 @@ func (c OperationsCenterClient) CreateImageIncusSource(ctx context.Context, newI
 }
 
 func (c OperationsCenterClient) GetImageIncusSource(ctx context.Context, name string) (api.ImageSource, error) {
-	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/image/incus/sources", name), nil, nil)
+	response, err := c.DoRequest(ctx, http.MethodGet, path.Join("/images/incus/sources", name), nil, nil)
 	if err != nil {
 		return api.ImageSource{}, err
 	}
@@ -53,7 +53,7 @@ func (c OperationsCenterClient) GetImageIncusSource(ctx context.Context, name st
 }
 
 func (c OperationsCenterClient) DeleteImageIncusSource(ctx context.Context, name string) error {
-	_, err := c.DoRequest(ctx, http.MethodDelete, path.Join("/image/incus/sources", name), nil, nil)
+	_, err := c.DoRequest(ctx, http.MethodDelete, path.Join("/images/incus/sources", name), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func (c OperationsCenterClient) DeleteImageIncusSource(ctx context.Context, name
 }
 
 func (c OperationsCenterClient) UpdateImageIncusSource(ctx context.Context, name string, imageSource api.ImageSourcePut) error {
-	_, err := c.DoRequest(ctx, http.MethodPut, path.Join("/image/incus/sources", name), nil, imageSource)
+	_, err := c.DoRequest(ctx, http.MethodPut, path.Join("/images/incus/sources", name), nil, imageSource)
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func (c OperationsCenterClient) UpdateImageIncusSource(ctx context.Context, name
 }
 
 func (c OperationsCenterClient) RefreshImageIncusSource(ctx context.Context, name string) error {
-	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/image/incus/sources", name, ":refresh"), nil, nil)
+	_, err := c.DoRequest(ctx, http.MethodPost, path.Join("/images/incus/sources", name, ":refresh"), nil, nil)
 	if err != nil {
 		return err
 	}

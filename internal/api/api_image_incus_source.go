@@ -102,7 +102,7 @@ func (i *imageSourceHandler) imageSourcesGet(r *http.Request) response.Response 
 
 	result := make([]string, 0, len(imageSourceNames))
 	for _, name := range imageSourceNames {
-		result = append(result, fmt.Sprintf("/%s/image/sources/%s", api.APIVersion, name))
+		result = append(result, fmt.Sprintf("/%s/images/incus/sources/%s", api.APIVersion, name))
 	}
 
 	return response.SyncResponse(true, result)
@@ -153,7 +153,7 @@ func (i *imageSourceHandler) imageSourcesPost(r *http.Request) response.Response
 		return response.SmartError(fmt.Errorf("Failed creating image source: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/image/sources/"+newImageSource.Name)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/images/incus/sources/"+newImageSource.Name)
 }
 
 // swagger:operation GET /1.0/images/incus/sources/{name} image_sources image_source_get
@@ -284,7 +284,7 @@ func (i *imageSourceHandler) imageSourcePut(r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/image/sources/"+name)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/images/incus/sources/"+name)
 }
 
 // swagger:operation DELETE /1.0/images/incus/sources/{name} image_sources image_source_delete
