@@ -77,12 +77,13 @@ func (_d BMCServerClientPortWithSlog) ApplyBIOSAttributes(ctx context.Context, s
 }
 
 // ApplySecureBootCertificates implements provisioning.BMCServerClientPort.
-func (_d BMCServerClientPortWithSlog) ApplySecureBootCertificates(ctx context.Context, server provisioning.Server) (err error) {
+func (_d BMCServerClientPortWithSlog) ApplySecureBootCertificates(ctx context.Context, server provisioning.Server, secureBoot api.BIOSSecureBoot) (b bool, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
+			slog.Any("secureBoot", secureBoot),
 		)
 	}
 	log.DebugContext(ctx, "=> calling ApplySecureBootCertificates")
@@ -90,6 +91,7 @@ func (_d BMCServerClientPortWithSlog) ApplySecureBootCertificates(ctx context.Co
 		log := slog.With()
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
+				slog.Bool("b", b),
 				slog.Any("err", err),
 			)
 		} else {
@@ -107,7 +109,7 @@ func (_d BMCServerClientPortWithSlog) ApplySecureBootCertificates(ctx context.Co
 			log.DebugContext(ctx, "<= method ApplySecureBootCertificates finished")
 		}
 	}()
-	return _d._base.ApplySecureBootCertificates(ctx, server)
+	return _d._base.ApplySecureBootCertificates(ctx, server, secureBoot)
 }
 
 // AttachMedia implements provisioning.BMCServerClientPort.

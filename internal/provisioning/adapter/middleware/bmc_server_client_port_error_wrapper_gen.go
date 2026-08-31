@@ -37,13 +37,13 @@ func (_d BMCServerClientPortWithErrorWrapper) ApplyBIOSAttributes(ctx context.Co
 }
 
 // ApplySecureBootCertificates implements provisioning.BMCServerClientPort.
-func (_d BMCServerClientPortWithErrorWrapper) ApplySecureBootCertificates(ctx context.Context, server provisioning.Server) (err error) {
+func (_d BMCServerClientPortWithErrorWrapper) ApplySecureBootCertificates(ctx context.Context, server provisioning.Server, secureBoot api.BIOSSecureBoot) (b bool, err error) {
 	defer func() {
 		if err != nil {
 			err = _d._wrapErrFunc(err)
 		}
 	}()
-	return _d._base.ApplySecureBootCertificates(ctx, server)
+	return _d._base.ApplySecureBootCertificates(ctx, server, secureBoot)
 }
 
 // AttachMedia implements provisioning.BMCServerClientPort.

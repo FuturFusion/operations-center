@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	osapi "github.com/lxc/incus-os/incus-osd/api"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -18,6 +19,17 @@ type ExprApiApplicationVersionData struct {
 	AvailableVersion *string                `json:"available_version,omitempty" yaml:"available_version,omitempty" expr:"available_version"`
 	NeedsUpdate      *bool                  `json:"needs_update,omitempty" yaml:"needs_update,omitempty" expr:"needs_update"`
 	InMaintenance    api.InMaintenanceState `json:"in_maintenance" yaml:"in_maintenance" expr:"in_maintenance"`
+}
+
+type ExprApiBIOSSecureBoot struct {
+	DB  ExprApiBIOSSecureBootDatabase `json:"db" yaml:"db" expr:"db"`
+	DBX ExprApiBIOSSecureBootDatabase `json:"dbx" yaml:"dbx" expr:"dbx"`
+	KEK ExprApiBIOSSecureBootDatabase `json:"kek" yaml:"kek" expr:"kek"`
+}
+
+type ExprApiBIOSSecureBootDatabase struct {
+	Certificates map[string]bool `json:"certificates,omitempty" yaml:"certificates,omitempty" expr:"certificates"`
+	Signatures   map[string]bool `json:"signatures,omitempty" yaml:"signatures,omitempty" expr:"signatures"`
 }
 
 type ExprApiBMCBootProgress struct {
@@ -93,6 +105,13 @@ type ExprApiOSVersionData struct {
 	AvailableVersion *string `json:"available_version,omitempty" yaml:"available_version,omitempty" expr:"available_version"`
 	NeedsReboot      bool    `json:"needs_reboot" yaml:"needs_reboot" expr:"needs_reboot"`
 	NeedsUpdate      *bool   `json:"needs_update,omitempty" yaml:"needs_update,omitempty" expr:"needs_update"`
+}
+
+type ExprApiServerDeploymentStep struct {
+	State     api.ServerDeploymentState `json:"state" yaml:"state" expr:"state"`
+	EnteredAt time.Time                 `json:"entered_at" yaml:"entered_at" expr:"entered_at"`
+	Retries   int                       `json:"retries" yaml:"retries" expr:"retries"`
+	Error     string                    `json:"error" yaml:"error" expr:"error"`
 }
 
 type ExprApiServerVersionData struct {
@@ -443,7 +462,7 @@ type ExprServer struct {
 	Channel              string                   `json:"channel"                db:"join=channels.name" expr:"channel"`
 	Status               api.ServerStatus         `json:"status" expr:"status"`
 	StatusDetail         api.ServerStatusDetail   `json:"status_detail" expr:"status_detail"`
-	StatusInternal       ServerStatusInternal     `json:"status_internal"        db:"marshal=json" expr:"status_internal"`
+	StatusInternal       ExprServerStatusInternal `json:"status_internal"        db:"marshal=json" expr:"status_internal"`
 	Description          string                   `json:"description" expr:"description"`
 	Properties           api.ConfigMap            `json:"properties" expr:"properties"`
 	BMCConfig            ExprApiBMCConfig         `json:"bmc_config"             db:"marshal=json" expr:"bmc_config"`
@@ -456,6 +475,58 @@ type ExprServer struct {
 	LastStatusUpdated    time.Time                `json:"last_status_updated" expr:"last_status_updated"`
 }
 
+type ExprServerDeployment struct {
+	State                  api.ServerDeploymentState       `json:"state" expr:"state"`
+	Request                ExprServerDeploymentRequest     `json:"request" expr:"request"`
+	ForceReboot            bool                            `json:"force_reboot" expr:"force_reboot"`
+	BIOSProfiles           []string                        `json:"bios_profiles" expr:"bios_profiles"`
+	BIOSAttributes         map[string]any                  `json:"bios_attributes" expr:"bios_attributes"`
+	BIOSDeferredAttributes map[string]any                  `json:"bios_deferred_attributes" expr:"bios_deferred_attributes"`
+	SecureBoot             ExprApiBIOSSecureBoot           `json:"secure_boot" expr:"secure_boot"`
+	BIOSPending            bool                            `json:"bios_pending" expr:"bios_pending"`
+	BIOSDeferredPending    bool                            `json:"bios_deferred_pending" expr:"bios_deferred_pending"`
+	SecureBootPending      bool                            `json:"secure_boot_pending" expr:"secure_boot_pending"`
+	MediaURL               string                          `json:"media_url" expr:"media_url"`
+	ImageCacheID           string                          `json:"image_cache_id" expr:"image_cache_id"`
+	ImageFingerprintID     string                          `json:"image_fingerprint_id" expr:"image_fingerprint_id"`
+	BIOSTaskMonitor        string                          `json:"bios_task_monitor" expr:"bios_task_monitor"`
+	FallbackAttempts       int                             `json:"fallback_attempts" expr:"fallback_attempts"`
+	MediaBytesRead         int64                           `json:"media_bytes_read" expr:"media_bytes_read"`
+	MediaSize              int64                           `json:"media_size" expr:"media_size"`
+	SecureBootSnapshot     ExprServerDeploymentBMCSnapshot `json:"secure_boot_snapshot" expr:"secure_boot_snapshot"`
+	InstallSnapshot        ExprServerDeploymentBMCSnapshot `json:"install_snapshot" expr:"install_snapshot"`
+	Retries                int                             `json:"retries" expr:"retries"`
+	LastError              string                          `json:"last_error" expr:"last_error"`
+	FailedState            api.ServerDeploymentState       `json:"failed_state" expr:"failed_state"`
+	CancelRequested        bool                            `json:"cancel_requested" expr:"cancel_requested"`
+	StartedAt              time.Time                       `json:"started_at" expr:"started_at"`
+	StateEnteredAt         time.Time                       `json:"state_entered_at" expr:"state_entered_at"`
+	LastAttemptAt          time.Time                       `json:"last_attempt_at" expr:"last_attempt_at"`
+	FinishedAt             time.Time                       `json:"finished_at" expr:"finished_at"`
+	History                []ExprApiServerDeploymentStep   `json:"history" expr:"history"`
+}
+
+type ExprServerDeploymentBMCSnapshot struct {
+	Taken         time.Time              `json:"taken" expr:"taken"`
+	LastResetTime time.Time              `json:"last_reset_time" expr:"last_reset_time"`
+	BootProgress  ExprApiBMCBootProgress `json:"boot_progress" expr:"boot_progress"`
+}
+
+type ExprServerDeploymentRequest struct {
+	TokenUUID                  uuid.UUID                     `json:"token_uuid" expr:"token_uuid"`
+	Seed                       string                        `json:"seed" expr:"seed"`
+	ImageType                  api.ImageType                 `json:"image_type" expr:"image_type"`
+	Architecture               images.UpdateFileArchitecture `json:"architecture" expr:"architecture"`
+	Channel                    string                        `json:"channel" expr:"channel"`
+	VirtualMediaID             string                        `json:"virtual_media_id" expr:"virtual_media_id"`
+	Force                      bool                          `json:"force" expr:"force"`
+	SkipSecureBootCertificates bool                          `json:"skip_secure_boot_certificates" expr:"skip_secure_boot_certificates"`
+}
+
+type ExprServerStatusInternal struct {
+	Deployment *ExprServerDeployment `json:"deployment,omitempty" expr:"deployment"`
+}
+
 func ToExprApiApplicationVersionData(a api.ApplicationVersionData) ExprApiApplicationVersionData {
 	return ExprApiApplicationVersionData{
 		Name:             a.Name,
@@ -464,6 +535,21 @@ func ToExprApiApplicationVersionData(a api.ApplicationVersionData) ExprApiApplic
 		AvailableVersion: a.AvailableVersion,
 		NeedsUpdate:      a.NeedsUpdate,
 		InMaintenance:    a.InMaintenance,
+	}
+}
+
+func ToExprApiBIOSSecureBoot(b api.BIOSSecureBoot) ExprApiBIOSSecureBoot {
+	return ExprApiBIOSSecureBoot{
+		DB:  ToExprApiBIOSSecureBootDatabase(b.DB),
+		DBX: ToExprApiBIOSSecureBootDatabase(b.DBX),
+		KEK: ToExprApiBIOSSecureBootDatabase(b.KEK),
+	}
+}
+
+func ToExprApiBIOSSecureBootDatabase(b api.BIOSSecureBootDatabase) ExprApiBIOSSecureBootDatabase {
+	return ExprApiBIOSSecureBootDatabase{
+		Certificates: b.Certificates,
+		Signatures:   b.Signatures,
 	}
 }
 
@@ -551,6 +637,15 @@ func ToExprApiOSVersionData(o api.OSVersionData) ExprApiOSVersionData {
 		AvailableVersion: o.AvailableVersion,
 		NeedsReboot:      o.NeedsReboot,
 		NeedsUpdate:      o.NeedsUpdate,
+	}
+}
+
+func ToExprApiServerDeploymentStep(s api.ServerDeploymentStep) ExprApiServerDeploymentStep {
+	return ExprApiServerDeploymentStep{
+		State:     s.State,
+		EnteredAt: s.EnteredAt,
+		Retries:   s.Retries,
+		Error:     s.Error,
 	}
 }
 
@@ -979,7 +1074,7 @@ func ToExprServer(s Server) ExprServer {
 		Channel:              s.Channel,
 		Status:               s.Status,
 		StatusDetail:         s.StatusDetail,
-		StatusInternal:       s.StatusInternal,
+		StatusInternal:       ToExprServerStatusInternal(s.StatusInternal),
 		Description:          s.Description,
 		Properties:           s.Properties,
 		BMCConfig:            ToExprApiBMCConfig(s.BMCConfig),
@@ -990,5 +1085,65 @@ func ToExprServer(s Server) ExprServer {
 		LastUpdated:          s.LastUpdated,
 		LastSeen:             s.LastSeen,
 		LastStatusUpdated:    s.LastStatusUpdated,
+	}
+}
+
+func ToExprServerDeployment(s ServerDeployment) ExprServerDeployment {
+	return ExprServerDeployment{
+		State:                  s.State,
+		Request:                ToExprServerDeploymentRequest(s.Request),
+		ForceReboot:            s.ForceReboot,
+		BIOSProfiles:           s.BIOSProfiles,
+		BIOSAttributes:         s.BIOSAttributes,
+		BIOSDeferredAttributes: s.BIOSDeferredAttributes,
+		SecureBoot:             ToExprApiBIOSSecureBoot(s.SecureBoot),
+		BIOSPending:            s.BIOSPending,
+		BIOSDeferredPending:    s.BIOSDeferredPending,
+		SecureBootPending:      s.SecureBootPending,
+		MediaURL:               s.MediaURL,
+		ImageCacheID:           s.ImageCacheID,
+		ImageFingerprintID:     s.ImageFingerprintID,
+		BIOSTaskMonitor:        s.BIOSTaskMonitor,
+		FallbackAttempts:       s.FallbackAttempts,
+		MediaBytesRead:         s.MediaBytesRead,
+		MediaSize:              s.MediaSize,
+		SecureBootSnapshot:     ToExprServerDeploymentBMCSnapshot(s.SecureBootSnapshot),
+		InstallSnapshot:        ToExprServerDeploymentBMCSnapshot(s.InstallSnapshot),
+		Retries:                s.Retries,
+		LastError:              s.LastError,
+		FailedState:            s.FailedState,
+		CancelRequested:        s.CancelRequested,
+		StartedAt:              s.StartedAt,
+		StateEnteredAt:         s.StateEnteredAt,
+		LastAttemptAt:          s.LastAttemptAt,
+		FinishedAt:             s.FinishedAt,
+		History:                sliceConvert(s.History, ToExprApiServerDeploymentStep),
+	}
+}
+
+func ToExprServerDeploymentBMCSnapshot(s ServerDeploymentBMCSnapshot) ExprServerDeploymentBMCSnapshot {
+	return ExprServerDeploymentBMCSnapshot{
+		Taken:         s.Taken,
+		LastResetTime: s.LastResetTime,
+		BootProgress:  ToExprApiBMCBootProgress(s.BootProgress),
+	}
+}
+
+func ToExprServerDeploymentRequest(s ServerDeploymentRequest) ExprServerDeploymentRequest {
+	return ExprServerDeploymentRequest{
+		TokenUUID:                  s.TokenUUID,
+		Seed:                       s.Seed,
+		ImageType:                  s.ImageType,
+		Architecture:               s.Architecture,
+		Channel:                    s.Channel,
+		VirtualMediaID:             s.VirtualMediaID,
+		Force:                      s.Force,
+		SkipSecureBootCertificates: s.SkipSecureBootCertificates,
+	}
+}
+
+func ToExprServerStatusInternal(s ServerStatusInternal) ExprServerStatusInternal {
+	return ExprServerStatusInternal{
+		Deployment: toPtr(ToExprServerDeployment(fromPtr(s.Deployment))),
 	}
 }

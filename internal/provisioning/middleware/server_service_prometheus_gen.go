@@ -265,6 +265,20 @@ func (_d ServerServiceWithPrometheus) BMCServerSetLocationIndicatorByName(ctx co
 	return _d.base.BMCServerSetLocationIndicatorByName(ctx, name, active)
 }
 
+// CancelDeploymentByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) CancelDeploymentByName(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "CancelDeploymentByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.CancelDeploymentByName(ctx, name)
+}
+
 // DeleteByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) DeleteByName(ctx context.Context, name string) (err error) {
 	_since := time.Now()
@@ -277,6 +291,34 @@ func (_d ServerServiceWithPrometheus) DeleteByName(ctx context.Context, name str
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByName", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.DeleteByName(ctx, name)
+}
+
+// DeployByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) DeployByName(ctx context.Context, name string, request provisioning.ServerDeploymentRequest) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeployByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeployByName(ctx, name, request)
+}
+
+// DeploymentControlLoop implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) DeploymentControlLoop(ctx context.Context, serverNameFilter *string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeploymentControlLoop", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeploymentControlLoop(ctx, serverNameFilter)
 }
 
 // EvacuateSystemByName implements provisioning.ServerService.

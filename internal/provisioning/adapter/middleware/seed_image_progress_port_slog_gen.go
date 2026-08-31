@@ -65,15 +65,55 @@ func (_d SeedImageProgressPortWithSlog) Get(ctx context.Context, imageID provisi
 	return _d._base.Get(ctx, imageID, source)
 }
 
+// GetByImage implements provisioning.SeedImageProgressPort.
+func (_d SeedImageProgressPortWithSlog) GetByImage(ctx context.Context, imageID provisioning.SeedImageID) (seedImageProgresss []provisioning.SeedImageProgress) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("imageID", imageID),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetByImage")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("seedImageProgresss", seedImageProgresss),
+			)
+		} else {
+		}
+		log.DebugContext(ctx, "<= method GetByImage finished")
+	}()
+	return _d._base.GetByImage(ctx, imageID)
+}
+
+// Reset implements provisioning.SeedImageProgressPort.
+func (_d SeedImageProgressPortWithSlog) Reset(ctx context.Context, imageID provisioning.SeedImageID) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("imageID", imageID),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Reset")
+	defer func() {
+		log := slog.With()
+		log.DebugContext(ctx, "<= method Reset finished")
+	}()
+	_d._base.Reset(ctx, imageID)
+}
+
 // Track implements provisioning.SeedImageProgressPort.
-func (_d SeedImageProgressPortWithSlog) Track(ctx context.Context, imageID provisioning.SeedImageID, source string, size int64, content io.ReadSeekCloser) (readSeekCloser io.ReadSeekCloser) {
+func (_d SeedImageProgressPortWithSlog) Track(ctx context.Context, imageID provisioning.SeedImageID, source string, info provisioning.SeedImageInfo, content io.ReadSeekCloser) (readSeekCloser io.ReadSeekCloser) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("imageID", imageID),
 			slog.String("source", source),
-			slog.Int64("size", size),
+			slog.Any("info", info),
 			slog.Any("content", content),
 		)
 	}
@@ -88,5 +128,5 @@ func (_d SeedImageProgressPortWithSlog) Track(ctx context.Context, imageID provi
 		}
 		log.DebugContext(ctx, "<= method Track finished")
 	}()
-	return _d._base.Track(ctx, imageID, source, size, content)
+	return _d._base.Track(ctx, imageID, source, info, content)
 }
