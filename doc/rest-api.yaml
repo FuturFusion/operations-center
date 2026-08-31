@@ -218,6 +218,14 @@ definitions:
                     server via BMC, e.g. {"SecureBoot": "Enabled", "TpmSecurity": "On"}.
                 type: object
                 x-go-name: Attributes
+            deferred_attributes:
+                additionalProperties: {}
+                description: |-
+                    DeferredAttributes holds the BIOS attribute names and values, that are
+                    applied to the server in a second pass, once the attributes above are in
+                    effect, e.g. {"Tpm2Algorithm": "SHA256"}.
+                type: object
+                x-go-name: DeferredAttributes
             profiles:
                 description: |-
                     Profiles holds the names of the BIOS profiles, that contributed to the
@@ -5129,6 +5137,8 @@ definitions:
                 example: https://incus.local:6443
                 type: string
                 x-go-name: ConnectionURL
+            deployment:
+                $ref: '#/definitions/ServerDeploymentStatus'
             description:
                 description: Description of the server.
                 example: Lab server with limited resources
@@ -5316,6 +5326,218 @@ definitions:
                 example: true
                 type: boolean
                 x-go-name: Active
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ServerDeploymentPost:
+        description: |-
+            ServerDeploymentPost defines the request to deploy IncusOS on a server using
+            the automated deployment control loop.
+        properties:
+            architecture:
+                description: |-
+                    Architecture holds the CPU architecture of the image to generate. Possible
+                    values: x86_64, aarch64. Optional, defaults to x86_64.
+                example: x86_64
+                type: string
+                x-go-name: Architecture
+            channel:
+                description: |-
+                    Channel holds the channel the most recent update should be taken from to
+                    generate the image. Optional, defaults to the configured default channel.
+                example: stable
+                type: string
+                x-go-name: Channel
+            force:
+                description: |-
+                    Force requests, that a token seed, which does not reboot the server upon
+                    completion of the installation ("force_reboot"), is accepted. The
+                    deployment then relies on the read progress of the installation media
+                    alone to tell, when the first stage of the installation is done.
+                example: false
+                type: boolean
+                x-go-name: Force
+            seed:
+                description: |-
+                    Seed holds the name of the token seed used to generate the installation
+                    media. The referenced token seed must be public, since the BMC fetches
+                    the image unauthenticated.
+                example: some-seed-name
+                type: string
+                x-go-name: Seed
+            skip_secure_boot_certificates:
+                description: |-
+                    SkipSecureBootCertificates requests, that the enrollment of the secure
+                    boot certificates of IncusOS is skipped, which is required for a BMC,
+                    whose Redfish API does not support the modification of the UEFI key
+                    databases. The certificates are then expected to have been enrolled by an
+                    operator before the deployment is triggered.
+                example: false
+                type: boolean
+                x-go-name: SkipSecureBootCertificates
+            token_uuid:
+                description: |-
+                    TokenUUID holds the UUID of the provisioning token that owns the seed the
+                    installation media is generated from.
+                example: 8f6c3d1a-2b4e-4c9a-9f7d-1a2b3c4d5e6f
+                type: string
+                x-go-name: TokenUUID
+            type:
+                description: |-
+                    Type holds the type of image to generate. Possible values: iso, raw.
+                    Optional, defaults to iso.
+                example: iso
+                type: string
+                x-go-name: Type
+            virtual_media_id:
+                description: |-
+                    VirtualMediaID identifies the virtual media device the installation media
+                    is attached to, using the "<service>:<bmc-id>" notation (e.g. "system:1").
+                    Optional, the first virtual media device advertising CD or DVD support is
+                    picked automatically, if it is left empty, the ones offered by the system
+                    taking precedence over the ones offered by the manager.
+                example: system:1
+                type: string
+                x-go-name: VirtualMediaID
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ServerDeploymentStatus:
+        description: |-
+            ServerDeploymentStatus reports the progress of the automated deployment of a
+            server. It is read only, deployments are triggered through the deploy and
+            cancel-deploy endpoints.
+        properties:
+            bios_attributes:
+                additionalProperties: {}
+                description: |-
+                    BIOSAttributes holds the BIOS attributes, that have been resolved for the
+                    server when the deployment was requested.
+                type: object
+                x-go-name: BIOSAttributes
+            bios_deferred_attributes:
+                additionalProperties: {}
+                description: |-
+                    BIOSDeferredAttributes holds the BIOS attributes, that have been resolved
+                    for the server when the deployment was requested and that are applied in a
+                    second pass, once the attributes above are in effect.
+                type: object
+                x-go-name: BIOSDeferredAttributes
+            bios_profiles:
+                description: |-
+                    BIOSProfiles holds the names of the BIOS profiles, that have been resolved
+                    for the server when the deployment was requested.
+                example:
+                    - dell-poweredge
+                items:
+                    type: string
+                type: array
+                x-go-name: BIOSProfiles
+            failed_state:
+                description: FailedState holds the state the deployment failed in.
+                type: string
+                x-go-name: FailedState
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.ServerDeploymentState
+            finished_at:
+                description: |-
+                    FinishedAt is the time the deployment reached a terminal state in RFC3339
+                    format. It is zero for a deployment still in progress.
+                example: "2024-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: FinishedAt
+            force_reboot:
+                description: |-
+                    ForceReboot reports, if the token seed used for the deployment reboots the
+                    server on its own upon completion of the first stage of the installation.
+                example: true
+                type: boolean
+                x-go-name: ForceReboot
+            history:
+                description: History holds the states the deployment has gone through.
+                items:
+                    $ref: '#/definitions/ServerDeploymentStep'
+                type: array
+                x-go-name: History
+            last_error:
+                description: LastError holds the error reported by the last failed attempt.
+                type: string
+                x-go-name: LastError
+            media_bytes_read:
+                description: |-
+                    MediaBytesRead holds how much of the installation media the BMC has read so
+                    far. It counts every byte of the image once, no matter how often the BMC
+                    requested it, so a BMC re-requesting ranges it has fetched before does not
+                    inflate it. It is -1, if no read progress is available.
+                example: 966754304
+                format: int64
+                type: integer
+                x-go-name: MediaBytesRead
+            media_size:
+                description: |-
+                    MediaSize holds the size of the installation media the bytes above are
+                    read from. It is 0, if no read progress is available.
+                example: 3433074688
+                format: int64
+                type: integer
+                x-go-name: MediaSize
+            media_url:
+                description: MediaURL holds the URL of the installation media attached to the server.
+                type: string
+                x-go-name: MediaURL
+            request:
+                $ref: '#/definitions/ServerDeploymentPost'
+            retries:
+                description: Retries holds the number of attempts already spent on the current state.
+                example: 0
+                format: int64
+                type: integer
+                x-go-name: Retries
+            secure_boot:
+                $ref: '#/definitions/BIOSSecureBoot'
+            started_at:
+                description: StartedAt is the time the deployment was requested in RFC3339 format.
+                example: "2024-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: StartedAt
+            state:
+                description: State holds the state of the deployment.
+                example: wait-install
+                type: string
+                x-go-name: State
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.ServerDeploymentState
+            state_entered_at:
+                description: StateEnteredAt is the time the current state was entered in RFC3339 format.
+                example: "2024-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: StateEnteredAt
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ServerDeploymentStep:
+        properties:
+            entered_at:
+                description: EnteredAt is the time the state was entered in RFC3339 format.
+                example: "2024-11-12T16:15:00Z"
+                format: date-time
+                type: string
+                x-go-name: EnteredAt
+            error:
+                description: Error holds the error reported by the last failed attempt on the state.
+                type: string
+                x-go-name: Error
+            retries:
+                description: Retries holds the number of attempts, that have been spent on the state.
+                example: 1
+                format: int64
+                type: integer
+                x-go-name: Retries
+            state:
+                description: State holds the state of the deployment.
+                example: attach-media
+                type: string
+                x-go-name: State
+                x-go-type: github.com/FuturFusion/operations-center/shared/api.ServerDeploymentState
+        title: ServerDeploymentStep is a single state an automated deployment has gone through.
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ServerPost:
@@ -11254,6 +11476,84 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Update the server
+            tags:
+                - servers
+    /1.0/provisioning/servers/{name}/:cancel-deploy:
+        post:
+            description: |-
+                Asks the deployment in progress for the server to stop. The installation
+                media is ejected and the server is powered off.
+            operationId: server_cancel_deploy_post
+            parameters:
+                - description: Name of the server
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Cancel the deployment of a server
+            tags:
+                - servers
+    /1.0/provisioning/servers/{name}/:deploy:
+        post:
+            consumes:
+                - application/json
+            description: |-
+                Triggers the automated deployment of IncusOS on a pre-registered server: the
+                BIOS is configured from the BIOS profiles matching the server, the secure
+                boot certificates of IncusOS are enrolled, the installation media generated
+                from the given token seed is attached and booted, and the server is watched
+                until it has registered itself with Operations Center.
+
+                The enrollment of the secure boot certificates is skipped, if the request
+                sets "skip_secure_boot_certificates", which is what a BMC, that does not
+                support the modification of the UEFI key databases through its Redfish API,
+                requires. The certificates are then expected to have been enrolled by an
+                operator before the deployment is triggered.
+
+                The progress of the deployment is reported through the server status and, in
+                more detail, through the "deployment" field of the server.
+            operationId: server_deploy_post
+            parameters:
+                - description: Name of the server
+                  in: path
+                  name: name
+                  required: true
+                  type: string
+                - description: Deployment request
+                  in: body
+                  name: deployment
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ServerDeploymentPost'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Deploy IncusOS on a server
             tags:
                 - servers
     /1.0/provisioning/servers/{name}/:resync:
