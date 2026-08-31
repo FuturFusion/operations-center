@@ -2,11 +2,13 @@ package oidc_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -141,6 +143,8 @@ func setupMiniOIDC(t *testing.T, accessTokenExpiration time.Duration) string {
 			minioidc.WithDeviceAuthorizationPollInterval(1 * time.Second), // smaller than 1 second seems not to work.
 		},
 	)
+	waitForOIDCProviderReady(t, issuer)
+
 	clientID := "device"
 
 	httpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -160,4 +164,34 @@ func setupMiniOIDC(t *testing.T, accessTokenExpiration time.Duration) string {
 	t.Cleanup(httpServer.Close)
 
 	return httpServer.URL
+}
+
+// waitForOIDCProviderReady blocks until the minioidc provider accepts requests.
+func waitForOIDCProviderReady(t *testing.T, issuer string) {
+	t.Helper()
+
+	const timeout = 10 * time.Second
+
+	discoveryURL := strings.TrimSuffix(issuer, "/") + "/.well-known/openid-configuration"
+
+	var lastErr error
+
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		resp, err := http.Get(discoveryURL)
+		if err == nil {
+			_ = resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				return
+			}
+
+			lastErr = fmt.Errorf("unexpected http status: %d", resp.StatusCode)
+		} else {
+			lastErr = err
+		}
+
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	t.Fatalf("minioidc provider not ready after %s: %v", timeout, lastErr)
 }
