@@ -28,21 +28,21 @@ var authTypes = map[AuthType]struct{}{
 
 type Config struct {
 	// Config from global flags
-	Verbose    bool   `yaml:"-"`
-	Debug      bool   `yaml:"-"`
-	ForceLocal bool   `yaml:"-"`
-	ConfigDir  string `yaml:"-"`
+	Verbose    bool   `json:"-" yaml:"-"`
+	Debug      bool   `json:"-" yaml:"-"`
+	ForceLocal bool   `json:"-" yaml:"-"`
+	ConfigDir  string `json:"-" yaml:"-"`
 
-	DefaultRemote string            `yaml:"default_remote"`
-	Remotes       map[string]Remote `yaml:"remotes"`
+	DefaultRemote string            `json:"default_remote" yaml:"default_remote"`
+	Remotes       map[string]Remote `json:"remotes" yaml:"remotes"`
 
-	CertInfo *incusTLS.CertInfo `yaml:"-"`
+	CertInfo *incusTLS.CertInfo `json:"-" yaml:"-"`
 }
 
 type Remote struct {
-	Addr       string          `yaml:"addr"`
-	AuthType   AuthType        `yaml:"auth_type"`
-	ServerCert api.Certificate `yaml:"server_cert"`
+	Addr       string          `json:"addr" yaml:"addr"`
+	AuthType   AuthType        `json:"auth_type" yaml:"auth_type"`
+	ServerCert api.Certificate `json:"server_cert" yaml:"server_cert"`
 }
 
 func (c *Config) LoadConfig(path string) error {
