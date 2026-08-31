@@ -86,13 +86,21 @@ func (c *cmdServerBIOSProfile) run(cmd *cobra.Command, args []string) error {
 	default:
 		fmt.Printf("Profiles: %s\n", strings.Join(resolution.Profiles, ", "))
 
-		fmt.Printf("Attributes:\n")
+		renderBIOSAttributes("Attributes", resolution.Attributes)
 
-		for _, attribute := range slices.Sorted(maps.Keys(resolution.Attributes)) {
-			fmt.Printf("  %s: %v\n", attribute, resolution.Attributes[attribute])
+		if len(resolution.DeferredAttributes) > 0 {
+			renderBIOSAttributes("Deferred attributes", resolution.DeferredAttributes)
 		}
 
 		return renderSecureBoot(resolution.SecureBoot)
+	}
+}
+
+func renderBIOSAttributes(title string, attributes map[string]any) {
+	fmt.Printf("%s:\n", title)
+
+	for _, attribute := range slices.Sorted(maps.Keys(attributes)) {
+		fmt.Printf("  %s: %v\n", attribute, attributes[attribute])
 	}
 }
 

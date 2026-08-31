@@ -355,6 +355,11 @@ func (c *cmdServerBMCApplySecureBootCertificates) Command() *cobra.Command {
 
   Wipes the KEK, DB and DBX secure boot databases of the server and
   reinitializes them with the secure boot certificates provided by IncusOS.
+  A database, that holds those certificates already, is left untouched.
+
+  Which of the entries currently enrolled survive the wipe is defined by the
+  secure boot allow lists of the BIOS profiles matching the server, on top of
+  the ones built into Operations Center.
 
   The server has to be powered off and its BIOS has to allow the secure boot
   databases to be modified, which on most systems means secure boot being
