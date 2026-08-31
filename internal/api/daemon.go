@@ -319,14 +319,14 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	biosProfileCatalogue, err := bios.New()
 	if err != nil {
-		return fmt.Errorf("Failed to load the BIOS profile catalogue: %w", err)
+		return fmt.Errorf("Failed to load the BIOS profile catalog: %w", err)
 	}
 
 	biosProfile := provisioningAdapterMiddleware.NewBIOSProfilePortWithSlog(
 		biosProfileCatalogue,
 	)
 
-	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter, biosProfile)
+	serverSvc := d.setupServerService(dbWithTransaction, client, runner, tokenSvc, nil, channelSvc, updateSvc, warningLogEmitter, biosProfile, seedImageProgress)
 	clusterSvc, err := d.setupClusterService(dbWithTransaction, client, serverSvc, tokenSvc, inventoryInventoryAggregateSvc)
 	if err != nil {
 		return err
@@ -801,6 +801,7 @@ func (d *Daemon) setupServerService(
 	updateSvc provisioning.UpdateService,
 	warningSvc provisioning.WarningServicePort,
 	biosProfile provisioning.BIOSProfilePort,
+	seedImageProgress provisioning.SeedImageProgressPort,
 ) provisioning.ServerService {
 	serverSvc := provisioningServer.New(
 		provisioningRepoMiddleware.NewServerRepoWithSlog(
@@ -843,11 +844,15 @@ func (d *Daemon) setupServerService(
 		d.serverCertificate,
 		provisioningServer.WithWarningEmitter(warningSvc),
 		provisioningServer.WithBIOSProfilePort(biosProfile),
+		provisioningServer.WithSeedImageProgressPort(seedImageProgress),
 		provisioningServer.AddBMCServerClient(
 			api.BMCAPITypeRedfishV1Generic,
 			provisioningAdapterMiddleware.NewBMCServerClientPortWithSlog(
-				redfish.New(
-					redfish.WithSecureBootCertificates(d.env),
+				provisioningAdapterMiddleware.NewBMCServerClientPortWithErrorWrapper(
+					redfish.New(
+						redfish.WithSecureBootCertificates(d.env),
+					),
+					redfish.RetryableWrapper(),
 				),
 			),
 		),
@@ -1290,9 +1295,61 @@ func (d *Daemon) setupBackgroundTasks(
 		return clusterUpdateControlLoopStop(deadlineFrom(ctx, 5*time.Second))
 	})
 
+	// runServerDeploymentControlLoop advances the automated deployments. A name
+	// restricts it to a single server, so an event, that satisfies a wait
+	// condition, resolves within seconds instead of on the next tick.
+	runServerDeploymentControlLoop := func(ctx context.Context, trigger string, name *string) {
+		slog.DebugContext(ctx, "Server deployment control loop triggered", slog.String("trigger", trigger), slog.String("server", ptr.From(name)))
+
+		err := serverSvc.DeploymentControlLoop(ctx, name)
+		if err != nil {
+			logCtx := slog.ErrorContext
+			if domain.IsRetryableError(err) {
+				logCtx = slog.InfoContext
+			}
+
+			logCtx(ctx, "Server deployment control loop failed", logger.Err(err), slog.String("trigger", trigger), slog.String("server", ptr.From(name)))
+
+			return
+		}
+
+		slog.DebugContext(ctx, "Server deployment control loop completed", slog.String("trigger", trigger), slog.String("server", ptr.From(name)))
+	}
+
+	// Start background task for the automated server deployment control loop.
+	serverDeploymentControlLoopStop, _ := task.Start(ctx, func(ctx context.Context) {
+		runServerDeploymentControlLoop(ctx, "tick", nil)
+	}, task.Every(config.ServerDeploymentControlLoopInterval))
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return serverDeploymentControlLoopStop(deadlineFrom(ctx, 5*time.Second))
+	})
+
+	// Trigger the server deployment control loop from the virtual media events,
+	// so attaching and detaching the installation media resolves promptly.
+	lifecycle.BMCVirtualMediaSignal.AddListener(func(ctx context.Context, msg lifecycle.BMCVirtualMediaMessage) {
+		if msg.Operation == lifecycle.BMCVirtualMediaOperationPreAttach {
+			return
+		}
+
+		name := msg.Server
+
+		go func() {
+			time.Sleep(config.ServerDeploymentVirtualMediaTriggerDelay)
+
+			runServerDeploymentControlLoop(context.WithoutCancel(ctx), "virtual media", &name)
+		}()
+	})
+
 	// Trigger ClusterUpdateControlLoop also from server lifecycle events.
 	lifecycle.ServerLifecycleSignal.AddListener(func(ctx context.Context, slm lifecycle.ServerLifecycleMessage) {
 		slog.InfoContext(ctx, "Server lifecycle event triggered", slog.String("server", slm.Server), slog.String("cluster", ptr.From(slm.Cluster)), slog.String("update_state", slm.ServerUpdateState.String()))
+
+		// A server, that just registered itself, ends the installation it was
+		// deployed with, so the deployment is advanced right away. It runs on its
+		// own goroutine, since it blocks on the BMC of the server.
+		name := slm.Server
+
+		go runServerDeploymentControlLoop(context.WithoutCancel(ctx), "server lifecycle", &name)
 
 		err := clusterSvc.ClusterUpdateControlLoop(ctx, slm.Cluster)
 		if err != nil {

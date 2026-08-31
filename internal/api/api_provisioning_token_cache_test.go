@@ -46,7 +46,7 @@ func Test_tokenSeedImageGet_servedFromCache(t *testing.T) {
 
 	// An image, which is large enough for ranges to be interesting, but small
 	// enough to keep the test cheap.
-	imageContent := strings.Repeat("incus-os-0123456789", 5000)
+	imageContent := strings.Repeat("incus-os-0123456789", 2500) + strings.Repeat("\x00", 64*1024) + strings.Repeat("incus-os-0123456789", 2500)
 
 	var compressed bytes.Buffer
 
@@ -165,7 +165,7 @@ func Test_tokenSeedImageGet_preparedImage(t *testing.T) {
 	tokenID := uuid.MustParse(tokenUUID)
 	updateUUID := uuid.MustParse("6c1ea9a2-8f1c-4a4f-9f2d-3e5b7c9d1a20")
 
-	imageContent := strings.Repeat("incus-os-0123456789", 5000)
+	imageContent := strings.Repeat("incus-os-0123456789", 2500) + strings.Repeat("\x00", 64*1024) + strings.Repeat("incus-os-0123456789", 2500)
 
 	var compressed bytes.Buffer
 

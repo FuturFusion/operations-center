@@ -912,7 +912,7 @@ func (t *tokenHandler) tokenSeedImageGet(r *http.Request) response.Response {
 		content := t.trackSeedImageRead(r, provisioning.SeedImageID{
 			CacheID:       provisioning.SeedImageCacheID(UUID, name, imageType, architecture, channel),
 			FingerprintID: fingerprintID,
-		}, image.Size, image.Content)
+		}, image.SeedImageInfo, image.Content)
 
 		return response.ServeContentResponse(r, content, image.Filename, image.ModTime, image.Size, nil)
 	}
@@ -964,8 +964,8 @@ func (t *tokenHandler) tokenSeedImageGet(r *http.Request) response.Response {
 //
 // A request arriving through a trusted HTTPS proxy carries the address of the
 // real peer, since such a proxy speaks the PROXY protocol to the listener.
-func (t *tokenHandler) trackSeedImageRead(r *http.Request, imageID provisioning.SeedImageID, size int64, content io.ReadSeekCloser) io.ReadSeekCloser {
-	return t.seedProgress.Track(r.Context(), imageID, provisioning.SeedImageSource(r.RemoteAddr), size, content)
+func (t *tokenHandler) trackSeedImageRead(r *http.Request, imageID provisioning.SeedImageID, info provisioning.SeedImageInfo, content io.ReadSeekCloser) io.ReadSeekCloser {
+	return t.seedProgress.Track(r.Context(), imageID, provisioning.SeedImageSource(r.RemoteAddr), info, content)
 }
 
 // seedImageFingerprintIDRegexp matches the terminal filename segment naming an
