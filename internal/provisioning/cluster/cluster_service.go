@@ -1222,10 +1222,34 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 	}
 
 	// Compare storage pools.
+	storagePoolsConfigWithoutReadonlyFields := func(storageConfig incusosapi.SystemStorageConfig) map[string]incusosapi.SystemStoragePool {
+		pools := make(map[string]incusosapi.SystemStoragePool, len(storageConfig.Pools))
+		for _, pool := range storageConfig.Pools {
+			pool.Managed = false
+			pool.State = ""
+			pool.LastScrub = nil
+			pool.EncryptionKeyStatus = ""
+			pool.DevicesDegraded = nil
+			pool.CacheDegraded = nil
+			pool.LogDegraded = nil
+			pool.SpecialDegraded = nil
+			pool.RawPoolSizeInBytes = 0
+			pool.UsablePoolSizeInBytes = 0
+			pool.PoolAllocatedSpaceInBytes = 0
+			pool.Volumes = nil
+
+			pools[pool.Name] = pool
+		}
+
+		return pools
+	}
+
 	referenceStorageConfig, err := s.client.GetStorageConfig(ctx, servers[0])
 	if err != nil {
 		return false, "", fmt.Errorf("Failed to get storage configuration for server %q: %w", servers[0].Name, err)
 	}
+
+	referenceStoragePools := storagePoolsConfigWithoutReadonlyFields(referenceStorageConfig.Config)
 
 	for _, server := range servers[1:] {
 		storageConfig, err := s.client.GetStorageConfig(ctx, server)
@@ -1233,8 +1257,14 @@ func (s *clusterService) checkClusteringServerConsistency(ctx context.Context, s
 			return false, "", fmt.Errorf("Failed to get storage configuration for server %q: %w", server.Name, err)
 		}
 
-		if !reflect.DeepEqual(referenceStorageConfig.Config, storageConfig.Config) {
-			return false, fmt.Sprintf("Storage pool configuration mismatch, found %v (%s) and %v (%s)", referenceStorageConfig.Config, servers[0].Name, storageConfig.Config, server.Name), nil
+		if referenceStorageConfig.Config.ScrubSchedule != storageConfig.Config.ScrubSchedule {
+			return false, fmt.Sprintf("Storage scrub schedule mismatch, found %q (%s) and %q (%s)", referenceStorageConfig.Config.ScrubSchedule, servers[0].Name, storageConfig.Config.ScrubSchedule, server.Name), nil
+		}
+
+		storagePools := storagePoolsConfigWithoutReadonlyFields(storageConfig.Config)
+
+		if !reflect.DeepEqual(referenceStoragePools, storagePools) {
+			return false, fmt.Sprintf("Storage pool configuration mismatch, found %v (%s) and %v (%s)", referenceStoragePools, servers[0].Name, storagePools, server.Name), nil
 		}
 	}
 
