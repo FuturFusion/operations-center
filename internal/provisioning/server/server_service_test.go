@@ -32,6 +32,7 @@ import (
 	provisioningServer "github.com/FuturFusion/operations-center/internal/provisioning/server"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/internal/util/ptr"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/log"
@@ -72,7 +73,7 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 				{
 					Name:          "one",
 					ConnectionURL: "http://one/",
-					Certificate:   string(serverCertPEM),
+					Certificate:   new(string(serverCertPEM)),
 					Type:          api.ServerTypeOperationsCenter,
 					Status:        api.ServerStatusReady,
 					Channel:       "stable",
@@ -121,7 +122,7 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 				{
 					Name:          "one",
 					ConnectionURL: "http://one/",
-					Certificate:   string(serverCertPEM),
+					Certificate:   new(string(serverCertPEM)),
 					Type:          api.ServerTypeOperationsCenter,
 					Status:        api.ServerStatusReady,
 					Channel:       "stable",
@@ -431,10 +432,10 @@ func TestServerService_Register(t *testing.T) {
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 			},
 
 			assertErr: require.NoError,
@@ -444,10 +445,10 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-		`,
+		`),
 				SystemUUID: new("1"),
 			},
 			repoGetBySystemUUID: &provisioning.Server{
@@ -463,10 +464,10 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-		`,
+		`),
 				MachineID: new("1"),
 			},
 			repoGetBySystemUUID: &provisioning.Server{
@@ -488,10 +489,10 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-		`,
+		`),
 				SystemUUID: new("1"),
 			},
 			repoGetBySystemUUIDErr: boom.Error,
@@ -503,10 +504,10 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-		`,
+		`),
 				MachineID: new("1"),
 			},
 			repoGetByMachineIDErr: boom.Error,
@@ -518,10 +519,10 @@ one
 			server: provisioning.Server{
 				Name:          "", // invalid
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 			},
 
 			assertErr: errassert.ValidationError,
@@ -531,10 +532,10 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Type: api.ServerTypeOperationsCenter,
 			},
 
@@ -545,10 +546,10 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 			},
 			repoCreateErr: boom.Error,
 
@@ -559,10 +560,10 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-		`,
+		`),
 				SystemUUID: new("1"),
 			},
 			repoGetBySystemUUID: &provisioning.Server{
@@ -579,10 +580,10 @@ one
 			server: provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 			},
 			repoUpdateErr: boom.Error,
 
@@ -1412,10 +1413,10 @@ func TestServerService_Update(t *testing.T) {
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -1451,10 +1452,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 				BMCConfig: api.BMCConfig{
@@ -1504,10 +1505,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 				BMCConfig: api.BMCConfig{
@@ -1558,10 +1559,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 				BMCConfig: api.BMCConfig{
@@ -1613,10 +1614,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 				BMCConfig: api.BMCConfig{
@@ -1640,10 +1641,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 				BMCConfig: api.BMCConfig{
@@ -1670,10 +1671,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 				BMCConfig: api.BMCConfig{
@@ -1725,10 +1726,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -1745,10 +1746,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -1770,10 +1771,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -1798,10 +1799,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -1829,10 +1830,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -1860,10 +1861,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -1995,10 +1996,10 @@ func TestServerService_UpdateSystemNetwork(t *testing.T) {
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -2028,10 +2029,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 		one
 		-----END CERTIFICATE-----
-		`,
+		`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -2059,10 +2060,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -2092,10 +2093,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -2124,10 +2125,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -2226,10 +2227,10 @@ func TestServerService_UpdateSystemStorage(t *testing.T) {
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -2259,10 +2260,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 		one
 		-----END CERTIFICATE-----
-		`,
+		`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -2290,10 +2291,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -2323,10 +2324,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -2355,10 +2356,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -2443,10 +2444,10 @@ func TestServerService_GetSystemProvider(t *testing.T) {
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status: api.ServerStatusReady,
 			},
 			clientGetProviderConfig: provisioning.ServerSystemProvider{
@@ -2481,10 +2482,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status: api.ServerStatusReady,
 			},
 			clientGetProviderConfigErr: boom.Error,
@@ -2543,10 +2544,10 @@ func TestServerService_UpdateSystemProvider(t *testing.T) {
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status: api.ServerStatusReady,
 			},
 
@@ -2565,10 +2566,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 		one
 		-----END CERTIFICATE-----
-		`,
+		`),
 				Status: api.ServerStatusReady,
 			},
 			clientUpdateProviderConfigErr: boom.Error,
@@ -2633,10 +2634,10 @@ func TestServerService_GetSystemUpdate(t *testing.T) {
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status: api.ServerStatusReady,
 			},
 			clientGetUpdateConfig: provisioning.ServerSystemUpdate{
@@ -2679,10 +2680,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status: api.ServerStatusReady,
 			},
 			clientGetUpdateConfigErr: boom.Error,
@@ -2743,10 +2744,10 @@ func TestServerService_UpdateSystemUpdate(t *testing.T) {
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status: api.ServerStatusReady,
 			},
 			clientGetUpdateConfig: incusosapi.SystemUpdate{
@@ -2783,10 +2784,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 		one
 		-----END CERTIFICATE-----
-		`,
+		`),
 				Status: api.ServerStatusReady,
 			},
 			clientGetUpdateConfig: incusosapi.SystemUpdate{
@@ -2890,10 +2891,10 @@ func TestServerService_UpdateSystemNetworkWithSelfUpdateSignal(t *testing.T) {
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -3016,7 +3017,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(serverCertPEM),
+				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 				Channel:       "stable",
@@ -3037,7 +3038,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(serverCertPEM),
+				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 				Channel:       "stable",
@@ -3058,7 +3059,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(serverCertPEM),
+				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusPending,
 				StatusDetail:  api.ServerStatusDetailPendingRegistering,
@@ -3080,7 +3081,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(serverCertPEM),
+				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 				Channel:       "stable",
@@ -3101,7 +3102,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(serverCertPEM),
+				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 				StatusDetail:  api.ServerStatusDetailReadyUpdatingOS,
@@ -3123,7 +3124,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(serverCertPEM),
+				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 				StatusDetail:  api.ServerStatusDetailReadyUpdatingApplication,
@@ -3145,7 +3146,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(serverCertPEM),
+				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 				Channel:       "stable",
@@ -3166,7 +3167,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(serverCertPEM),
+				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 				Channel:       "stable",
@@ -3187,7 +3188,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(serverCertPEM),
+				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 				Channel:       "stable",
@@ -3208,7 +3209,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(serverCertPEM),
+				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 				Channel:       "stable",
@@ -3228,7 +3229,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(serverCertPEM),
+				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusOffline,
 				StatusDetail:  api.ServerStatusDetailOfflineRebooting,
@@ -3249,7 +3250,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				{
 					Name:          "one",
 					ConnectionURL: "http://one/",
-					Certificate:   string(serverCertPEM),
+					Certificate:   new(string(serverCertPEM)),
 					Type:          api.ServerTypeOperationsCenter,
 					Status:        api.ServerStatusReady,
 					Channel:       "stable",
@@ -3271,7 +3272,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(serverCertPEM),
+				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 				Channel:       "stable",
@@ -3292,7 +3293,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(serverCertPEM),
+				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 				Channel:       "stable",
@@ -3313,7 +3314,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				{
 					Name:          "one",
 					ConnectionURL: "http://one/",
-					Certificate:   string(serverCertPEM),
+					Certificate:   new(string(serverCertPEM)),
 					Type:          api.ServerTypeOperationsCenter,
 					Status:        api.ServerStatusReady,
 					Channel:       "stable",
@@ -3357,7 +3358,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(serverCertPEM),
+				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 				Channel:       "stable",
@@ -3375,7 +3376,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(serverCertPEM),
+				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 				Channel:       "stable",
@@ -3393,7 +3394,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(serverCertPEM),
+				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 				Channel:       "stable",
@@ -3414,7 +3415,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(serverCertPEM),
+				Certificate:   new(string(serverCertPEM)),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 				Channel:       "stable",
@@ -3990,9 +3991,9 @@ func TestServerService_PollServer_connectionTestWithCertificateUpdate(t *testing
 					Value: &provisioning.Server{
 						Name:   "one",
 						Status: api.ServerStatusPending,
-						Certificate: `-----BEGIN CERTIFICATE-----
+						Certificate: new(`-----BEGIN CERTIFICATE-----
 foobar
------END CERTIFICATE-----`,
+-----END CERTIFICATE-----`),
 					},
 				},
 			},
@@ -4165,9 +4166,9 @@ foobar
 			serverArg: provisioning.Server{
 				Name:   "one",
 				Status: api.ServerStatusReady,
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 foobar
------END CERTIFICATE-----`,
+-----END CERTIFICATE-----`),
 				Cluster:            new("cluster"),
 				ClusterCertificate: new("certificate"),
 			},
@@ -4175,9 +4176,9 @@ foobar
 				{
 					Value: &provisioning.Server{
 						Name: "one",
-						Certificate: `-----BEGIN CERTIFICATE-----
+						Certificate: new(`-----BEGIN CERTIFICATE-----
 foobar
------END CERTIFICATE-----`,
+-----END CERTIFICATE-----`),
 					},
 				},
 			},
@@ -4302,9 +4303,9 @@ foobar
 			name: "success - standalone server now has publicly valid certificate",
 			serverArg: provisioning.Server{
 				Name: "one",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 foobar
------END CERTIFICATE-----`,
+-----END CERTIFICATE-----`),
 				Status:              api.ServerStatusReady,
 				Type:                api.ServerTypeMigrationManager,
 				ConnectionURL:       "https:/127.0.0.1:7443",
@@ -4321,14 +4322,14 @@ foobar
 					Value: &provisioning.Server{
 						Name:   "one",
 						Status: api.ServerStatusReady,
-						Certificate: string(
+						Certificate: new(string(
 							pem.EncodeToMemory(
 								&pem.Block{
 									Type:  "CERTIFICATE",
 									Bytes: httpsServer.TLS.Certificates[0].Leaf.Raw,
 								},
 							),
-						),
+						)),
 					},
 				},
 			},
@@ -4503,9 +4504,9 @@ foobar
 			name: "error - standalone server - repo.GetByName",
 			serverArg: provisioning.Server{
 				Name: "one",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 foobar
------END CERTIFICATE-----`,
+-----END CERTIFICATE-----`),
 				Status:              api.ServerStatusReady,
 				Type:                api.ServerTypeMigrationManager,
 				ConnectionURL:       "https:/127.0.0.1:7443",
@@ -4545,7 +4546,7 @@ foobar
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
 					require.Equal(t, tc.wantServerStatus, server.Status)
 					require.Equal(t, tc.wantLastSeen, server.LastSeen)
-					require.Equal(t, tc.assertServerCertificate, server.Certificate)
+					require.Equal(t, tc.assertServerCertificate, ptr.From(server.Certificate))
 					_, err := queue.Pop(t, &tc.repoUpdate)
 					return err
 				},
@@ -7173,7 +7174,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
@@ -7189,7 +7190,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 
@@ -7210,7 +7211,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: false,
@@ -7225,7 +7226,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
@@ -7243,7 +7244,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
@@ -7259,7 +7260,7 @@ func TestServerService_PoweroffSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
@@ -7346,7 +7347,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
@@ -7362,7 +7363,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 
@@ -7377,7 +7378,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			initVolatileServerState: func(serverSvc provisioning.ServerService) {
@@ -7401,7 +7402,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: false,
@@ -7416,7 +7417,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
@@ -7434,7 +7435,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
@@ -7450,7 +7451,7 @@ func TestServerService_RebootSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
@@ -7983,7 +7984,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
@@ -8004,7 +8005,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
@@ -8026,7 +8027,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 
@@ -8047,7 +8048,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusPending, // server not ready
 			},
 
@@ -8061,7 +8062,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: false,
@@ -8076,7 +8077,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
@@ -8100,7 +8101,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
@@ -8122,7 +8123,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
@@ -8144,7 +8145,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 			},
 			clusterSvcIsInstanceLifecycleOperationPermitted: true,
@@ -8170,7 +8171,7 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 				Type:          api.ServerTypeOperationsCenter,
 				Channel:       "stable",
 				ConnectionURL: "https://one/",
-				Certificate:   "certificate",
+				Certificate:   new("certificate"),
 				Status:        api.ServerStatusReady,
 				BMCConfig: api.BMCConfig{
 					APIType:            api.BMCAPITypeRedfishV1Generic,

@@ -67,7 +67,7 @@ func TestClusterService_ClusterUpdateControlLoopSingleNodeCluster(t *testing.T) 
 		Cluster:       new("clusterA"),
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
-		Certificate:   string(certPEM),
+		Certificate:   new(string(certPEM)),
 		Fingerprint:   fingerprint,
 		HardwareData:  api.HardwareData{},
 		VersionData: api.ServerVersionData{
@@ -297,7 +297,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 		Cluster:       new("clusterA"),
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://serverA/",
-		Certificate:   string(certPEMA),
+		Certificate:   new(string(certPEMA)),
 		Fingerprint:   fingerprintA,
 		HardwareData:  api.HardwareData{},
 		VersionData: api.ServerVersionData{
@@ -328,7 +328,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 		Cluster:       new("clusterA"),
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://serverB/",
-		Certificate:   string(certPEMB),
+		Certificate:   new(string(certPEMB)),
 		Fingerprint:   fingerprintB,
 		HardwareData:  api.HardwareData{},
 		VersionData: api.ServerVersionData{
@@ -359,7 +359,7 @@ func TestClusterService_ClusterUpdateControlLoopMultiNodeCluster(t *testing.T) {
 		Cluster:       new("clusterA"),
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://serverC/",
-		Certificate:   string(certPEMC),
+		Certificate:   new(string(certPEMC)),
 		Fingerprint:   fingerprintC,
 		HardwareData:  api.HardwareData{},
 		VersionData: api.ServerVersionData{

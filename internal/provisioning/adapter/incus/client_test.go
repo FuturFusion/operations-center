@@ -393,7 +393,7 @@ func TestClient_Endpoint(t *testing.T) {
 
 					target := provisioning.Server{
 						ConnectionURL: server.URL,
-						Certificate:   string(serverCert),
+						Certificate:   new(string(serverCert)),
 					}
 
 					// Run test
@@ -441,7 +441,7 @@ func endpointGetClientErr(t *testing.T, method methodTestSetEndpoint, caPool *x5
 
 	target := provisioning.Server{
 		ConnectionURL: server.URL,
-		Certificate:   string(serverCert),
+		Certificate:   new(string(serverCert)),
 	}
 
 	_, err := method.clientCall(context.Background(), client, target)
@@ -4467,7 +4467,7 @@ func TestClientServer(t *testing.T) {
 					target := provisioning.Server{
 						Name:               "server01",
 						ConnectionURL:      server.URL,
-						Certificate:        string(serverCert),
+						Certificate:        new(string(serverCert)),
 						Cluster:            new("cluster"),
 						ClusterCertificate: new(string(serverCert)),
 						OSData: api.OSData{
@@ -4792,7 +4792,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 
 	target := provisioning.Server{
 		ConnectionURL: server.URL,
-		Certificate:   string(serverCert),
+		Certificate:   new(string(serverCert)),
 	}
 
 	logBuf := &bytes.Buffer{}
@@ -4901,7 +4901,7 @@ func serverGetClientErr(t *testing.T, method methodTestSetServer, caPool *x509.C
 
 	target := provisioning.Server{
 		ConnectionURL: server.URL,
-		Certificate:   string(serverCert),
+		Certificate:   new(string(serverCert)),
 	}
 
 	_, err := method.clientCall(context.Background(), client, target)

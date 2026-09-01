@@ -82,7 +82,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				Name:              serverName,
 				Type:              api.ServerType(faker.RandomString([]string{"unknown", "incus", "migration-manager", "operations-center"})),
 				ConnectionURL:     fmt.Sprintf("https://%s.domain.tdl", serverName),
-				Certificate:       string(certPEM),
+				Certificate:       new(string(certPEM)),
 				HardwareData:      api.HardwareData{},
 				OSData:            api.OSData{},
 				Status:            api.ServerStatusReady,

@@ -147,7 +147,7 @@ func TestClient(t *testing.T) {
 
 					target := provisioning.Server{
 						ConnectionURL: server.URL,
-						Certificate:   string(serverCert),
+						Certificate:   new(string(serverCert)),
 					}
 
 					// Run test
@@ -247,7 +247,7 @@ func TestClient_HasExtension(t *testing.T) {
 
 			target := provisioning.Server{
 				ConnectionURL: server.URL,
-				Certificate:   string(serverCert),
+				Certificate:   new(string(serverCert)),
 			}
 
 			// Run test
@@ -297,7 +297,7 @@ func TestClient_in_transaction(t *testing.T) {
 
 	target := provisioning.Server{
 		ConnectionURL: server.URL,
-		Certificate:   string(serverCert),
+		Certificate:   new(string(serverCert)),
 	}
 
 	// Run test
@@ -333,7 +333,7 @@ func endpointGetClientErr(t *testing.T, method methodTestSet, caPool *x509.CertP
 
 	target := provisioning.Server{
 		ConnectionURL: server.URL,
-		Certificate:   string(serverCert),
+		Certificate:   new(string(serverCert)),
 	}
 
 	_, err := method.clientCall(context.Background(), client, target)

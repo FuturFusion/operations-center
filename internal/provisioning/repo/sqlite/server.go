@@ -54,11 +54,11 @@ func (s server) getAllWithFilter(ctx context.Context, filter *provisioning.Serve
 
 	var errs []error
 	for i := range servers {
-		if servers[i].Certificate == "" {
+		if servers[i].Certificate == nil {
 			continue
 		}
 
-		servers[i].Fingerprint, err = incustls.CertFingerprintStr(servers[i].Certificate)
+		servers[i].Fingerprint, err = incustls.CertFingerprintStr(*servers[i].Certificate)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -81,11 +81,11 @@ func (s server) GetByName(ctx context.Context, name string) (*provisioning.Serve
 		return nil, err
 	}
 
-	if server.Certificate == "" {
+	if server.Certificate == nil {
 		return server, nil
 	}
 
-	server.Fingerprint, err = incustls.CertFingerprintStr(server.Certificate)
+	server.Fingerprint, err = incustls.CertFingerprintStr(*server.Certificate)
 	if err != nil {
 		return nil, err
 	}

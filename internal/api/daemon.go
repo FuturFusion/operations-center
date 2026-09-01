@@ -1554,13 +1554,17 @@ func (d *Daemon) setupBackgroundTasks(
 
 		warnings = warning.Warnings{}
 		for _, server := range servers {
+			if server.Certificate == nil {
+				continue
+			}
+
 			scope := api.WarningScope{
 				Scope:      "certificate_validity_check",
 				EntityType: "server",
 				Entity:     server.Name,
 			}
 
-			valid, err := certificate.Validate(server.Certificate, config.CertificateExpiryWarningThreshold)
+			valid, err := certificate.Validate(*server.Certificate, config.CertificateExpiryWarningThreshold)
 			if err != nil {
 				if valid {
 					warnings = append(warnings, warning.NewWarning(api.WarningTypeCertificateExpiration, scope, err.Error()))

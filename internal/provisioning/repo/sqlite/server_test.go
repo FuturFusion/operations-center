@@ -42,7 +42,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		Name:          "one",
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
-		Certificate:   string(certPEMA),
+		Certificate:   new(string(certPEMA)),
 		Fingerprint:   fingerprintA,
 		HardwareData:  api.HardwareData{},
 		VersionData:   api.ServerVersionData{},
@@ -72,7 +72,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		Name:          "two",
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://two/",
-		Certificate:   string(certPEMB),
+		Certificate:   new(string(certPEMB)),
 		Fingerprint:   fingerprintB,
 		HardwareData:  api.HardwareData{},
 		VersionData: api.ServerVersionData{
@@ -267,7 +267,7 @@ func TestServerDatabaseActions(t *testing.T) {
 	require.Equal(t, serverA, *dbServerA)
 
 	// GetByCertificate
-	dbServerA, err = server.GetByCertificate(ctx, serverA.Certificate)
+	dbServerA, err = server.GetByCertificate(ctx, *serverA.Certificate)
 	require.NoError(t, err)
 	require.Equal(t, serverA, *dbServerA)
 
@@ -337,4 +337,95 @@ func TestServerDatabaseActions(t *testing.T) {
 	// Ensure deletion of cluster fails if a linked server is present.
 	err = clusterSvc.DeleteByName(ctx, "one", false)
 	require.Error(t, err)
+}
+
+func TestServerDatabaseActions_preRegisteredWithoutCertificate(t *testing.T) {
+	ctx := context.Background()
+
+	tmpDir := t.TempDir()
+	db, err := dbdriver.Open(tmpDir)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		err = db.Close()
+		require.NoError(t, err)
+	})
+
+	_, err = dbschema.Ensure(ctx, db, tmpDir)
+	require.NoError(t, err)
+
+	tx := transaction.Enable(db)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	require.NoError(t, err)
+
+	server := sqlite.NewServer(tx)
+
+	serverA := provisioning.Server{
+		Name:    "one",
+		Status:  api.ServerStatusUnregistered,
+		Channel: "stable",
+	}
+
+	serverB := provisioning.Server{
+		Name:    "two",
+		Status:  api.ServerStatusUnregistered,
+		Channel: "stable",
+	}
+
+	// More than one server without certificate can be pre registered.
+	_, err = server.Create(ctx, serverA)
+	require.NoError(t, err)
+	_, err = server.Create(ctx, serverB)
+	require.NoError(t, err)
+
+	dbServerA, err := server.GetByName(ctx, serverA.Name)
+	require.NoError(t, err)
+	require.Nil(t, dbServerA.Certificate)
+	require.Empty(t, dbServerA.Fingerprint)
+
+	servers, err := server.GetAll(ctx)
+	require.NoError(t, err)
+	require.Len(t, servers, 2)
+	for _, srv := range servers {
+		require.Nil(t, srv.Certificate)
+		require.Empty(t, srv.Fingerprint)
+	}
+
+	// An empty certificate does not match any server.
+	_, err = server.GetByCertificate(ctx, ``)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Updating a server without certificate keeps the certificate unset.
+	err = server.Update(ctx, *dbServerA)
+	require.NoError(t, err)
+
+	dbServerA, err = server.GetByName(ctx, serverA.Name)
+	require.NoError(t, err)
+	require.Nil(t, dbServerA.Certificate)
+
+	// Completing the registration by setting a certificate makes the server
+	// discoverable by its certificate.
+	certPEM, _, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+
+	fingerprint, err := incustls.CertFingerprintStr(string(certPEM))
+	require.NoError(t, err)
+
+	dbServerA.Type = api.ServerTypeIncus
+	dbServerA.ConnectionURL = "https://one/"
+	dbServerA.Certificate = new(string(certPEM))
+	dbServerA.Status = api.ServerStatusPending
+
+	err = server.Update(ctx, *dbServerA)
+	require.NoError(t, err)
+
+	dbServerA, err = server.GetByCertificate(ctx, string(certPEM))
+	require.NoError(t, err)
+	require.Equal(t, serverA.Name, dbServerA.Name)
+	require.Equal(t, fingerprint, dbServerA.Fingerprint)
+
+	// The still pre registered server is unaffected.
+	dbServerB, err := server.GetByName(ctx, serverB.Name)
+	require.NoError(t, err)
+	require.Nil(t, dbServerB.Certificate)
 }

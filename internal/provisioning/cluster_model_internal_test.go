@@ -29,7 +29,7 @@ func Test_clusterEndpoint(t *testing.T) {
 				{
 					Name:          "server",
 					ConnectionURL: "http://one/",
-					Certificate:   "cert",
+					Certificate:   new("cert"),
 				},
 			},
 
@@ -46,7 +46,7 @@ func Test_clusterEndpoint(t *testing.T) {
 					Name:               "server",
 					Cluster:            new("cluster"),
 					ConnectionURL:      "http://one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster cert"),
 				},
 			},
@@ -79,11 +79,11 @@ func Test_clusterEndpoint_many(t *testing.T) {
 	endpoint := ClusterEndpoint{
 		{
 			ConnectionURL: "http://one/",
-			Certificate:   "cert",
+			Certificate:   new("cert"),
 		},
 		{
 			ConnectionURL: "http://two/",
-			Certificate:   "cert2",
+			Certificate:   new("cert2"),
 		},
 	}
 

@@ -53,7 +53,7 @@ func clusterMemberServer(t *testing.T, name string) provisioning.Server {
 		Cluster:       new("clusterA"),
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://" + name + "/",
-		Certificate:   string(certPEM),
+		Certificate:   new(string(certPEM)),
 		Fingerprint:   fingerprint,
 		HardwareData:  api.HardwareData{},
 		VersionData: api.ServerVersionData{

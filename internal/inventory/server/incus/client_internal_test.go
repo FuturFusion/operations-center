@@ -101,7 +101,7 @@ func TestClient_ClusterEndpointWithCA(t *testing.T) {
 			serverTarget := provisioning.Server{
 				Name:                 "server01",
 				ConnectionURL:        server.URL,
-				Certificate:          string(serverCert),
+				Certificate:          new(string(serverCert)),
 				Cluster:              new("cluster"),
 				ClusterConnectionURL: tc.clusterConnectionURL,
 			}

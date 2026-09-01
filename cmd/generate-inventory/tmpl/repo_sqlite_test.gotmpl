@@ -51,10 +51,10 @@ cluster B
 		Name:          "one",
 		Cluster:       new("one"),
 		ConnectionURL: "https://server-one/",
-		Certificate:   `-----BEGIN CERTIFICATE-----
+		Certificate: new(`-----BEGIN CERTIFICATE-----
 server-one
 -----END CERTIFICATE-----
-`,
+`),
 		Type:        api.ServerTypeIncus,
 		Status:      api.ServerStatusReady,
 		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
@@ -65,10 +65,10 @@ server-one
 		Name:          "two",
 		Cluster:       new("two"),
 		ConnectionURL: "https://server-two/",
-		Certificate:   `-----BEGIN CERTIFICATE-----
+		Certificate: new(`-----BEGIN CERTIFICATE-----
 server-two
 -----END CERTIFICATE-----
-`,
+`),
 		Type:        api.ServerTypeIncus,
 		Status:      api.ServerStatusReady,
 		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.

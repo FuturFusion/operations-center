@@ -48,7 +48,7 @@ CREATE TABLE servers (
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   connection_url TEXT NOT NULL,
-  certificate TEXT NOT NULL,
+  certificate TEXT,
   status TEXT NOT NULL,
   hardware_data TEXT NOT NULL,
   os_data TEXT NOT NULL,
@@ -461,4 +461,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (40, strftime("%s"));
+INSERT INTO schema (version, updated_at) VALUES (41, strftime("%s"));

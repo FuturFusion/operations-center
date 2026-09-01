@@ -25,10 +25,10 @@ func TestServer_Validate(t *testing.T) {
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -42,10 +42,10 @@ one
 				Type:          api.ServerTypeOperationsCenter,
 				Cluster:       new("one"),
 				ConnectionURL: "",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -59,7 +59,7 @@ one
 				Type:          api.ServerType(""), // not yet defined at this point
 				Cluster:       nil,                // not yet part of a cluster when created with BMC
 				ConnectionURL: "",                 // not yet known when created with BMC
-				Certificate:   ``,                 // not yet known when created with BMC
+				Certificate:   nil,                // not yet known when created with BMC
 				Status:        api.ServerStatusUnregistered,
 				Channel:       "stable",
 				BMCConfig: api.BMCConfig{
@@ -77,10 +77,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -97,10 +97,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -117,10 +117,10 @@ one
 				Type:          "", // empty
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -137,10 +137,10 @@ one
 				Type:          api.ServerType("invalid"), // invalid
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -157,10 +157,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "", // invalid
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -177,10 +177,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: ":|\\", // invalid
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusReady,
 				Channel: "stable",
 			},
@@ -198,10 +198,10 @@ one
 				Cluster:             new("one"),
 				ConnectionURL:       "http://one/",
 				PublicConnectionURL: ":|\\", // invalid
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status: api.ServerStatusReady,
 			},
 
@@ -217,7 +217,7 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate:   ``, // invalid
+				Certificate:   new(``), // invalid
 				Status:        api.ServerStatusReady,
 				Channel:       "stable",
 			},
@@ -234,10 +234,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  "", // empty
 				Channel: "stable",
 			},
@@ -254,10 +254,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatus("invalid"), // invalid
 				Channel: "stable",
 			},
@@ -274,10 +274,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:       api.ServerStatusReady,
 				StatusDetail: api.ServerStatusDetail("invalid"), // invalid
 				Channel:      "stable",
@@ -295,10 +295,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusPending,
 				Channel: "", // empty
 			},
@@ -315,10 +315,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusPending,
 				Channel: "stable",
 				BMCConfig: api.BMCConfig{
@@ -338,10 +338,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusPending,
 				Channel: "stable",
 				BMCConfig: api.BMCConfig{
@@ -362,10 +362,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusPending,
 				Channel: "stable",
 				BMCConfig: api.BMCConfig{
@@ -386,10 +386,10 @@ one
 				Type:          api.ServerTypeIncus,
 				Cluster:       new("one"),
 				ConnectionURL: "http://one/",
-				Certificate: `-----BEGIN CERTIFICATE-----
+				Certificate: new(`-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
-`,
+`),
 				Status:  api.ServerStatusPending,
 				Channel: "stable",
 				BMCConfig: api.BMCConfig{
@@ -483,11 +483,11 @@ func TestServer_Getters(t *testing.T) {
 	server := provisioning.Server{
 		Name:          "server1",
 		ConnectionURL: "http://example.com:443/",
-		Certificate:   "cert",
+		Certificate:   new("cert"),
 	}
 
 	require.Equal(t, server.Name, server.GetName())
-	require.Equal(t, server.Certificate, server.GetCertificate())
+	require.Equal(t, *server.Certificate, server.GetCertificate())
 	require.Equal(t, server.ConnectionURL, server.GetConnectionURL())
 
 	// Cluster with not cluster certificate set.

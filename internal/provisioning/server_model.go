@@ -31,7 +31,7 @@ type Server struct {
 	Type                 api.ServerType         `json:"type"`
 	ConnectionURL        string                 `json:"connection_url"`
 	PublicConnectionURL  string                 `json:"public_connection_url"`
-	Certificate          string                 `json:"certificate"`
+	Certificate          *string                `json:"certificate"`
 	Fingerprint          string                 `json:"fingerprint"            db:"ignore"`
 	ClusterCertificate   *string                `json:"cluster_certificate"    db:"omit=create,update&leftjoin=clusters.certificate"`
 	ClusterConnectionURL *string                `json:"cluster_connection_url" db:"omit=create,update&leftjoin=clusters.connection_url"`
@@ -67,7 +67,7 @@ func (s Server) GetCertificate() string {
 		return ""
 	}
 
-	return s.Certificate
+	return ptr.From(s.Certificate)
 }
 
 func (s Server) GetServerName() (string, error) {
@@ -172,7 +172,7 @@ func (s Server) Validate() error {
 		return domain.NewValidationErrf("Invalid server, connection URL is not valid: %v", err)
 	}
 
-	if s.Certificate == "" {
+	if ptr.From(s.Certificate) == "" {
 		return domain.NewValidationErrf("Invalid server, certificate can not be empty")
 	}
 

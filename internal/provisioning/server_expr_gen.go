@@ -433,7 +433,7 @@ type ExprServer struct {
 	Type                 api.ServerType           `json:"type" expr:"type"`
 	ConnectionURL        string                   `json:"connection_url" expr:"connection_url"`
 	PublicConnectionURL  string                   `json:"public_connection_url" expr:"public_connection_url"`
-	Certificate          string                   `json:"certificate" expr:"certificate"`
+	Certificate          *string                  `json:"certificate" expr:"certificate"`
 	Fingerprint          string                   `json:"fingerprint"            db:"ignore" expr:"fingerprint"`
 	ClusterCertificate   *string                  `json:"cluster_certificate"    db:"omit=create,update&leftjoin=clusters.certificate" expr:"cluster_certificate"`
 	ClusterConnectionURL *string                  `json:"cluster_connection_url" db:"omit=create,update&leftjoin=clusters.connection_url" expr:"cluster_connection_url"`
