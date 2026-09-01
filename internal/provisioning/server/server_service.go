@@ -981,7 +981,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 				Type:                api.ServerTypeOperationsCenter,
 				ConnectionURL:       connectionURL,
 				PublicConnectionURL: config.GetNetwork().OperationsCenterAddress,
-				Certificate:         serverCert,
+				Certificate:         &serverCert,
 				Status:              api.ServerStatusReady,
 				StatusDetail:        api.ServerStatusDetailNone,
 				LastStatusUpdated:   s.now(),
@@ -1000,7 +1000,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 			server = servers[0]
 			server.ConnectionURL = connectionURL
 			server.PublicConnectionURL = config.GetNetwork().OperationsCenterAddress
-			server.Certificate = serverCert
+			server.Certificate = &serverCert
 			server.Status = api.ServerStatusReady
 			server.StatusDetail = api.ServerStatusDetailNone
 			server.LastStatusUpdated = s.now()
@@ -2347,7 +2347,7 @@ func (s *serverService) connectionTestWithCertificateUpdate(ctx context.Context,
 						return err
 					}
 
-					updateServer.Certificate = serverCert
+					updateServer.Certificate = &serverCert
 					updateServer.LastSeen = s.now()
 
 					return s.repo.Update(ctx, *updateServer)
