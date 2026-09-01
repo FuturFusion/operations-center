@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"io"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -8583,6 +8584,297 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 			wantInconsistencyReason: "Storage pool configuration mismatch",
 		},
 		{
+			name: "success - storage config only differs in read-only pool state",
+			servers: []provisioning.Server{
+				{
+					ID:   1,
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					ID:   2,
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				{Value: incusosapi.SystemNetwork{Config: &incusosapi.SystemNetworkConfig{}}},
+				{Value: incusosapi.SystemNetwork{Config: &incusosapi.SystemNetworkConfig{}}},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							ScrubSchedule: "0 4 * * 0",
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name:    "local",
+									Type:    "zfs-raid0",
+									Devices: []string{"/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_incus_root-part11"},
+
+									// Read-only pool state.
+									Managed: true,
+									State:   "ONLINE",
+									LastScrub: &incusosapi.SystemStoragePoolScrubStatus{
+										State:     incusosapi.ScrubFinished,
+										StartTime: time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC),
+										EndTime:   time.Date(2026, 9, 1, 9, 1, 0, 0, time.UTC),
+										Progress:  "100.00%",
+									},
+									EncryptionKeyStatus:       "available",
+									RawPoolSizeInBytes:        17716740096,
+									UsablePoolSizeInBytes:     17716740096,
+									PoolAllocatedSpaceInBytes: 18817024,
+									Volumes: []incusosapi.SystemStoragePoolVolume{
+										{
+											Name:         "incus",
+											UsageInBytes: 16322560,
+											Use:          "incus",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							ScrubSchedule: "0 4 * * 0",
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name:    "local",
+									Type:    "zfs-raid0",
+									Devices: []string{"/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_incus_root-part11"},
+
+									// Read-only pool state, differing from the reference.
+									Managed:                   true,
+									State:                     "ONLINE",
+									EncryptionKeyStatus:       "available",
+									RawPoolSizeInBytes:        17716740096,
+									UsablePoolSizeInBytes:     17716740096,
+									PoolAllocatedSpaceInBytes: 4804608,
+									Volumes: []incusosapi.SystemStoragePoolVolume{
+										{
+											Name:         "incus",
+											UsageInBytes: 2965504,
+											Use:          "incus",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: incusosapi.ServiceLVM{}},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: incusosapi.ServiceMultipath{}},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: incusosapi.ServiceNVME{}},
+			},
+			// No ceph and linstor service configuration is fetched.
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: incusosapi.ServiceOVN{}},
+			},
+
+			assertErr:      require.NoError,
+			wantConsistent: true,
+		},
+		{
+			// IncusOS does not return the storage pools in a stable order.
+			name: "success - storage pools in different order",
+			servers: []provisioning.Server{
+				{
+					ID:   1,
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					ID:   2,
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				{Value: incusosapi.SystemNetwork{Config: &incusosapi.SystemNetworkConfig{}}},
+				{Value: incusosapi.SystemNetwork{Config: &incusosapi.SystemNetworkConfig{}}},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "local",
+									Type: "zfs-raid0",
+								},
+								{
+									Name: "data",
+									Type: "zfs-raid1",
+								},
+							},
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							Pools: []incusosapi.SystemStoragePool{
+								{
+									Name: "data",
+									Type: "zfs-raid1",
+								},
+								{
+									Name: "local",
+									Type: "zfs-raid0",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetOSServiceLVM: []queue.Item[incusosapi.ServiceLVM]{
+				{Value: incusosapi.ServiceLVM{}},
+				{Value: incusosapi.ServiceLVM{}},
+			},
+			clientGetOSServiceISCSI: []queue.Item[incusosapi.ServiceISCSI]{
+				{Value: incusosapi.ServiceISCSI{}},
+				{Value: incusosapi.ServiceISCSI{}},
+			},
+			clientGetOSServiceMultipath: []queue.Item[incusosapi.ServiceMultipath]{
+				{Value: incusosapi.ServiceMultipath{}},
+				{Value: incusosapi.ServiceMultipath{}},
+			},
+			clientGetOSServiceNVME: []queue.Item[incusosapi.ServiceNVME]{
+				{Value: incusosapi.ServiceNVME{}},
+				{Value: incusosapi.ServiceNVME{}},
+			},
+			// No ceph and linstor service configuration is fetched.
+			clientGetOSServiceOVN: []queue.Item[incusosapi.ServiceOVN]{
+				{Value: incusosapi.ServiceOVN{}},
+				{Value: incusosapi.ServiceOVN{}},
+			},
+
+			assertErr:      require.NoError,
+			wantConsistent: true,
+		},
+		{
+			name: "error - storage scrub schedule mismatch",
+			servers: []provisioning.Server{
+				{
+					ID:   1,
+					Name: "one",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+				{
+					ID:   2,
+					Name: "two",
+					VersionData: api.ServerVersionData{
+						OS: api.OSVersionData{
+							Version: "1",
+						},
+						Applications: []api.ApplicationVersionData{
+							{
+								Name:    "incus",
+								Version: "1",
+							},
+						},
+					},
+				},
+			},
+			clientGetNetworkConfig: []queue.Item[provisioning.ServerSystemNetwork]{
+				{Value: incusosapi.SystemNetwork{Config: &incusosapi.SystemNetworkConfig{}}},
+				{Value: incusosapi.SystemNetwork{Config: &incusosapi.SystemNetworkConfig{}}},
+			},
+			clientGetStorageConfig: []queue.Item[provisioning.ServerSystemStorage]{
+				// one (reference)
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							ScrubSchedule: "0 4 * * 0",
+						},
+					},
+				},
+				// two
+				{
+					Value: incusosapi.SystemStorage{
+						Config: incusosapi.SystemStorageConfig{
+							ScrubSchedule: "0 4 * * 1", // mismatch
+						},
+					},
+				},
+			},
+
+			assertErr:               require.NoError,
+			wantInconsistencyReason: "Storage scrub schedule mismatch",
+		},
+		{
 			name: "error - client.GetOSServiceLVM - reference",
 			servers: []provisioning.Server{
 				{
@@ -13478,6 +13770,10 @@ func TestClusterService_checkClusteringServerConsistency(t *testing.T) {
 			require.Empty(t, tc.clientUpdateOSServiceErrs)
 		})
 	}
+}
+
+func TestSystemStoragePool_fieldCount(t *testing.T) {
+	require.Equal(t, 19, reflect.TypeOf(incusosapi.SystemStoragePool{}).NumField(), "number of fields in incusosapi.SystemStoragePool changed, revisit read only fields in checkClusteringServerConsistency")
 }
 
 func TestClusterService_RemoveServer(t *testing.T) {
