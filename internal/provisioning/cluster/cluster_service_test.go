@@ -21350,7 +21350,7 @@ func TestClusterService_UpdateCertificate(t *testing.T) {
 			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
 					ConnectionURL: "http://one/",
-					Certificate:   "cert",
+					Certificate:   new("cert"),
 				},
 			},
 			repoGetByName: &provisioning.Cluster{
