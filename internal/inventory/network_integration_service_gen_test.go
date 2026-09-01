@@ -295,7 +295,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster-cert"),
 				},
 			},
@@ -319,7 +319,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster-cert"),
 				},
 			},
@@ -352,7 +352,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster-cert"),
 				},
 			},
@@ -401,7 +401,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster-cert"),
 				},
 			},
@@ -423,7 +423,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster-cert"),
 				},
 			},
@@ -449,7 +449,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster-cert"),
 				},
 			},
@@ -477,7 +477,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster-cert"),
 				},
 			},
@@ -511,7 +511,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster-cert"),
 				},
 			},
@@ -611,7 +611,7 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
+					Certificate:          new("cert"),
 					Cluster:              new("cluster"),
 					ClusterConnectionURL: new("https://cluster/"),
 					ClusterCertificate:   new("cluster-cert"),
@@ -656,7 +656,7 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
+					Certificate:          new("cert"),
 					Cluster:              new("cluster"),
 					ClusterConnectionURL: new("https://cluster/"),
 					ClusterCertificate:   new("cluster-cert"),
@@ -682,7 +682,7 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
+					Certificate:          new("cert"),
 					Cluster:              new("cluster"),
 					ClusterConnectionURL: new("https://cluster/"),
 					ClusterCertificate:   new("cluster-cert"),
@@ -720,7 +720,7 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
+					Certificate:          new("cert"),
 					Cluster:              new("cluster"),
 					ClusterConnectionURL: new("https://cluster/"),
 					ClusterCertificate:   new("cluster-cert"),
@@ -746,7 +746,7 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
+					Certificate:          new("cert"),
 					Cluster:              new("cluster"),
 					ClusterConnectionURL: new("https://cluster/"),
 					ClusterCertificate:   new("cluster-cert"),
@@ -797,7 +797,7 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
+					Certificate:          new("cert"),
 					Cluster:              new("cluster"),
 					ClusterConnectionURL: new("https://cluster/"),
 					ClusterCertificate:   new("cluster-cert"),
@@ -820,7 +820,7 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
+					Certificate:          new("cert"),
 					Cluster:              new("cluster"),
 					ClusterConnectionURL: new("https://cluster/"),
 					ClusterCertificate:   new("cluster-cert"),
@@ -848,7 +848,7 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
+					Certificate:          new("cert"),
 					Cluster:              new("cluster"),
 					ClusterConnectionURL: new("https://cluster/"),
 					ClusterCertificate:   new("cluster-cert"),
@@ -923,7 +923,7 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
+					Certificate:          new("cert"),
 					Cluster:              new("cluster"),
 					ClusterConnectionURL: new("https://cluster/"),
 					ClusterCertificate:   new("cluster-cert"),
@@ -953,7 +953,7 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:        "https://server01/",
-					Certificate:          "cert",
+					Certificate:          new("cert"),
 					Cluster:              new("cluster"),
 					ClusterConnectionURL: new("https://cluster/"),
 					ClusterCertificate:   new("cluster-cert"),
@@ -1083,7 +1083,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster-cert"),
 				},
 			},
@@ -1113,7 +1113,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster-cert"),
 				},
 			},
@@ -1151,7 +1151,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster-cert"),
 				},
 			},
@@ -1172,7 +1172,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster-cert"),
 				},
 			},
@@ -1220,7 +1220,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster-cert"),
 				},
 			},
@@ -1234,7 +1234,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster-cert"),
 				},
 			},
@@ -1253,7 +1253,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster-cert"),
 				},
 			},
@@ -1272,7 +1272,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster-cert"),
 				},
 			},
@@ -1293,7 +1293,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
 					ConnectionURL:      "https://server-one/",
-					Certificate:        "cert",
+					Certificate:        new("cert"),
 					ClusterCertificate: new("cluster-cert"),
 				},
 			},
