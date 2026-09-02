@@ -34,7 +34,7 @@ func oidcAuthentication(t *testing.T, tmpDir string) {
 	// The fake OIDC provider acts as the identity provider of Operations Center.
 	provider := startOIDCProvider(t)
 
-	operationsCenterAddress := mustRun(t, `../bin/operations-center.linux.%s remote list -f json | jq -r -e '."e2e-test".Addr'`, cpuArch).OutputTrimmed()
+	operationsCenterAddress := mustRun(t, `../bin/operations-center.linux.%s remote list -f json | jq -r -e '."e2e-test".addr'`, cpuArch).OutputTrimmed()
 	require.NotEmpty(t, operationsCenterAddress, "Failed to determine the address of Operations Center")
 
 	t.Cleanup(systemSecurityOIDCCleanup(t, tmpDir))
