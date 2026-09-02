@@ -247,7 +247,7 @@ func (s *tokenService) CreateTokenSeed(ctx context.Context, tokenSeed provisioni
 
 	tokenSeed.ID, err = s.repo.CreateTokenSeed(ctx, tokenSeed)
 	if err != nil {
-		return provisioning.TokenSeed{}, err
+		return provisioning.TokenSeed{}, fmt.Errorf("Failed to create token seed %q for token %q: %w", tokenSeed.Name, tokenSeed.Token, err)
 	}
 
 	return tokenSeed, nil
