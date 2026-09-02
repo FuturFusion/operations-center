@@ -261,6 +261,10 @@ clean-e2e-test-soft:
 	for i in $$(bin/operations-center.linux.amd64 provisioning update list -f json | jq -r '.[] | .uuid'); do \
 		bin/operations-center.linux.amd64 provisioning update assign-channels $$i --channel stable || true; \
 	done
+	for i in $$(bin/operations-center.linux.amd64 provisioning token list -f json | jq -r '.[].uuid'); do \
+		bin/operations-center.linux.amd64 provisioning token seed remove $$i incus-os-cluster || true; \
+		bin/operations-center.linux.amd64 provisioning token seed remove $$i incus-os-cluster-factory-reset || true; \
+	done
 	for i in $$(bin/operations-center.linux.amd64 provisioning token list -f json | jq -r '.[] | select(.description == "CRUD" or .description == "e2e OIDC write access") | .uuid'); do \
 		bin/operations-center.linux.amd64 provisioning token remove $$i || true; \
 	done
