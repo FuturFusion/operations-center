@@ -39,6 +39,11 @@ $ operations-center system security edit
 trusted_tls_client_cert_fingerprints:
     - e385d0e91509d33f0a3ff2d5993bd1fc6e6265140b5f11b7e3d20801480e3fbf
     - a57be4e28ab1f1d315e9d3b174a54221b47dca44f2e5c7c436d9cf558e3f8b7e
+trusted_tls_client_certificates:
+    - |
+      -----BEGIN CERTIFICATE-----
+      ...
+      -----END CERTIFICATE-----
 oidc:
     issuer: ""
     client_id: ""
@@ -75,7 +80,18 @@ generated that must be trusted by the Operations Center service:
 Received authentication mismatch: got "untrusted", expected "tls". Ensure the server trusts the client fingerprint "653f014cbd7a7135c21414884283a50f2dd8e117943e4593638d72824596b268"
 ```
 
-This certificate should be added to the `trusted_tls_client_cert_fingerprints` list with the local CLI tool using `operations-center system security edit` for the remote CLI to properly function.
+This certificate should be added to the `trusted_tls_client_cert_fingerprints`
+list with the local CLI tool using `operations-center system security edit` for
+the remote CLI to properly function.
+
+Alternatively, the full X509 PEM encoded certificate (`~/.config/operations-center/client.crt`)
+can be added to the `trusted_tls_client_certificates` list. Operations Center
+derives the fingerprint from it on load and additionally passes the certificate
+on to the servers and clusters it deploys, so the same client also gets access to
+those. Removing the certificate from the list revokes the access to Operations
+Center. The certificate is not withdrawn from the systems it has already been
+passed on to, this has to be done on the respective system.
+See [system settings](../reference/settings.md#security-settings) for details.
 
 ## From the web
 

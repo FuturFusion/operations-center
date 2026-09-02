@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
+	incusapi "github.com/lxc/incus/v7/shared/api"
 	"github.com/stretchr/testify/require"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -23,8 +24,10 @@ import (
 	provisioningToken "github.com/FuturFusion/operations-center/internal/provisioning/token"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
+	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 	"github.com/FuturFusion/operations-center/internal/util/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 var (
@@ -721,12 +724,15 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 		updateSvcGetFileByFilenameReadCloser           io.ReadCloser
 		updateSvcGetFileByFilenameErr                  error
 		flasherAdapterGenerateCompressedSeededImageErr error
+		trustedClientCertificates                      []string
 
-		assertErr            require.ErrorAssertionFunc
-		wantFilename         string
-		wantApplicationsSeed api.SeedApplications
-		wantIncusSeed        api.SeedIncus
-		wantImageCount       int
+		assertErr                require.ErrorAssertionFunc
+		wantFilename             string
+		wantApplicationsSeed     api.SeedApplications
+		wantIncusSeed            api.SeedIncus
+		wantOperationsCenterSeed api.SeedOperationsCenter
+		wantMigrationManagerSeed api.SeedMigrationManager
+		wantImageCount           int
 	}{
 		{
 			name:         "success - remove expired entry",
@@ -854,6 +860,174 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 				ApplyDefaults: false,
 			},
 			wantImageCount: 1,
+		},
+		{
+			name:         "success - trusted client certificates are added",
+			tokenIDArg:   uuidgen.FromPattern(t, "2"),
+			imageUUIDArg: imageUUID,
+			existingImages: []image{
+				{
+					imageUUID:    imageUUID,
+					tokenID:      uuidgen.FromPattern(t, "2"),
+					imageType:    api.ImageTypeISO,
+					architecture: images.UpdateFileArchitecture64BitX86,
+					channel:      "stable",
+					seedConfig:   provisioning.TokenImageSeedConfigs{},
+					createdAt:    time.Now(),
+				},
+			},
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID: updateUUID,
+				},
+			},
+			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
+				{
+					Filename:     isoGzFilename,
+					Type:         images.UpdateFileTypeImageISO,
+					Architecture: images.UpdateFileArchitecture64BitX86,
+				},
+			},
+			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
+				f, err := os.Open(isoGzFilename)
+				require.NoError(t, err)
+
+				return f
+			}(),
+			trustedClientCertificates: []string{testcert.ClientCertificate},
+
+			assertErr:    require.NoError,
+			wantFilename: "pre-seed-22222222-2222-2222-2222-222222222222.iso",
+			wantApplicationsSeed: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus",
+					},
+				},
+			},
+			wantIncusSeed: api.SeedIncus{
+				Version:       "1",
+				ApplyDefaults: false,
+				Preseed: &incusapi.InitPreseed{
+					InitLocalPreseed: incusapi.InitLocalPreseed{
+						Certificates: []incusapi.CertificatesPost{
+							{
+								CertificatePut: incusapi.CertificatePut{
+									Name:        "oc-trusted-" + testcert.ClientCertificateFingerprint[:12],
+									Description: "Client trusted by Operations Center",
+									Type:        "client",
+									Projects:    []string{},
+									Certificate: testcert.ClientCertificate,
+								},
+							},
+						},
+					},
+				},
+			},
+			wantOperationsCenterSeed: api.SeedOperationsCenter{
+				TrustedClientCertificates: []string{testcert.ClientCertificate},
+			},
+			wantMigrationManagerSeed: api.SeedMigrationManager{
+				TrustedClientCertificates: []string{testcert.ClientCertificate},
+			},
+			wantImageCount: 0,
+		},
+		{
+			name:         "success - user provided operations center and migration manager certificates take precedence over trusted client certificates",
+			tokenIDArg:   uuidgen.FromPattern(t, "2"),
+			imageUUIDArg: imageUUID,
+			existingImages: []image{
+				{
+					imageUUID:    imageUUID,
+					tokenID:      uuidgen.FromPattern(t, "2"),
+					imageType:    api.ImageTypeISO,
+					architecture: images.UpdateFileArchitecture64BitX86,
+					channel:      "stable",
+					seedConfig: provisioning.TokenImageSeedConfigs{
+						Incus: api.SeedIncus{
+							Preseed: &incusapi.InitPreseed{
+								InitLocalPreseed: incusapi.InitLocalPreseed{
+									Certificates: []incusapi.CertificatesPost{
+										{
+											CertificatePut: incusapi.CertificatePut{
+												Name:        "admin",
+												Type:        "client",
+												Certificate: "foobar",
+											},
+										},
+									},
+								},
+							},
+						},
+						OperationsCenter: api.SeedOperationsCenter{
+							TrustedClientCertificates: []string{"operations center certificate"},
+						},
+						MigrationManager: api.SeedMigrationManager{
+							TrustedClientCertificates: []string{"migration manager certificate"},
+						},
+					},
+					createdAt: time.Now(),
+				},
+			},
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID: updateUUID,
+				},
+			},
+			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
+				{
+					Filename:     isoGzFilename,
+					Type:         images.UpdateFileTypeImageISO,
+					Architecture: images.UpdateFileArchitecture64BitX86,
+				},
+			},
+			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
+				f, err := os.Open(isoGzFilename)
+				require.NoError(t, err)
+
+				return f
+			}(),
+			trustedClientCertificates: []string{testcert.ClientCertificate},
+
+			assertErr:    require.NoError,
+			wantFilename: "pre-seed-22222222-2222-2222-2222-222222222222.iso",
+			wantApplicationsSeed: api.SeedApplications{
+				Version: "1",
+				Applications: []api.SeedApplication{
+					{
+						Name: "incus",
+					},
+				},
+			},
+			// The Incus preseed is exclusively managed by Operations Center,
+			// therefore the user provided certificates are replaced.
+			wantIncusSeed: api.SeedIncus{
+				Version:       "1",
+				ApplyDefaults: false,
+				Preseed: &incusapi.InitPreseed{
+					InitLocalPreseed: incusapi.InitLocalPreseed{
+						Certificates: []incusapi.CertificatesPost{
+							{
+								CertificatePut: incusapi.CertificatePut{
+									Name:        "oc-trusted-" + testcert.ClientCertificateFingerprint[:12],
+									Description: "Client trusted by Operations Center",
+									Type:        "client",
+									Projects:    []string{},
+									Certificate: testcert.ClientCertificate,
+								},
+							},
+						},
+					},
+				},
+			},
+			wantOperationsCenterSeed: api.SeedOperationsCenter{
+				TrustedClientCertificates: []string{"operations center certificate"},
+			},
+			wantMigrationManagerSeed: api.SeedMigrationManager{
+				TrustedClientCertificates: []string{"migration manager certificate"},
+			},
+			wantImageCount: 0,
 		},
 
 		{
@@ -1098,6 +1272,17 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			config.InitTest(t, &envMock.EnvironmentMock{
+				IsIncusOSFunc: func() bool { return false },
+			}, nil)
+
+			if tc.trustedClientCertificates != nil {
+				err := config.UpdateSecurity(t.Context(), system.SecurityPut{
+					TrustedTLSClientCertificates: tc.trustedClientCertificates,
+				})
+				require.NoError(t, err)
+			}
+
 			repo := &mock.TokenRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
 					return nil, tc.repoGetByUUIDErr
@@ -1126,6 +1311,8 @@ func TestTokenService_GetPreSeededImage(t *testing.T) {
 				GenerateCompressedSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
 					require.Equal(t, tc.wantApplicationsSeed, seedConfig.Applications)
 					require.Equal(t, tc.wantIncusSeed, seedConfig.Incus)
+					require.Equal(t, tc.wantOperationsCenterSeed, seedConfig.OperationsCenter)
+					require.Equal(t, tc.wantMigrationManagerSeed, seedConfig.MigrationManager)
 					return rc, tc.flasherAdapterGenerateCompressedSeededImageErr
 				},
 			}

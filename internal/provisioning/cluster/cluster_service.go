@@ -30,6 +30,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/expropts"
@@ -488,13 +489,20 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 		return newCluster, err
 	}
 
+	trustedClientCertificates, knownTrustedClientCertificates, err := s.splitKnownClientCertificates(ctx, clusterEndpoint, config.GetSecurity().TrustedTLSClientCertificates)
+	if err != nil {
+		return newCluster, err
+	}
+
 	// Perform post-clustering initialization using provisioner (Terraform).
 	temporaryPath, cleanup, err := s.provisioner.Init(ctx, newCluster.Name, provisioning.ClusterProvisioningConfig{
 		ClusterEndpoint: clusterEndpoint,
 		Servers:         servers,
 		Cluster:         newCluster,
 
-		NodeSpecificConfigKeys: nodeSpecificConfigKeys,
+		NodeSpecificConfigKeys:         nodeSpecificConfigKeys,
+		TrustedClientCertificates:      trustedClientCertificates,
+		KnownTrustedClientCertificates: knownTrustedClientCertificates,
 	})
 	if err != nil {
 		return newCluster, err
@@ -596,6 +604,37 @@ func (s *clusterService) Create(ctx context.Context, newCluster provisioning.Clu
 	})
 
 	return newCluster, nil
+}
+
+// splitKnownClientCertificates splits the given X509 PEM encoded client
+// certificates into the ones, which are not yet part of the trust store of the
+// cluster, and the ones, which the cluster does already trust.
+func (s *clusterService) splitKnownClientCertificates(ctx context.Context, endpoint provisioning.Endpoint, certificatesPEM []string) (unknown []string, known []string, _ error) {
+	if len(certificatesPEM) == 0 {
+		return nil, nil, nil
+	}
+
+	incusClient, err := s.client.IncusClient(ctx, endpoint)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to get incus client instance for cluster %q: %w", endpoint.GetName(), err)
+	}
+
+	trustedFingerprints, err := incusClient.GetCertificateFingerprints()
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to get the certificates trusted by cluster %q: %w", endpoint.GetName(), err)
+	}
+
+	unknown, err = securitytls.FilterCertificatesByFingerprints(certificatesPEM, trustedFingerprints, false)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to process the trusted client certificates for cluster %q: %w", endpoint.GetName(), err)
+	}
+
+	known, err = securitytls.FilterCertificatesByFingerprints(certificatesPEM, trustedFingerprints, true)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to process the trusted client certificates for cluster %q: %w", endpoint.GetName(), err)
+	}
+
+	return unknown, known, nil
 }
 
 func determineManagementRoleAddress(server provisioning.Server) string {
@@ -2101,6 +2140,13 @@ func (s *clusterService) DeleteAndFactoryResetByName(ctx context.Context, name s
 	seed.Incus = api.SeedIncus{
 		Version:       "1",
 		ApplyDefaults: false,
+	}
+
+	// The servers are deployed again by Operations Center, so they trust the same
+	// clients as any other system deployed by Operations Center.
+	err = seed.ApplyTrustedClientCertificates(config.GetSecurity().TrustedTLSClientCertificates)
+	if err != nil {
+		return fmt.Errorf("Pre factory reset failed to apply the trusted client certificates: %w", err)
 	}
 
 	providerConfig, err := s.tokenSvc.GetTokenProviderConfig(ctx, *tokenID)

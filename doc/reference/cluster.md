@@ -102,6 +102,16 @@ certificates:
       -----END CERTIFICATE-----
 ```
 
+If `certificates` is empty, Operations Center adds the certificates from the
+`trusted_tls_client_certificates` [security setting](settings.md#security-settings)
+to the cluster, so whoever has access to Operations Center also has access to
+the cluster. Providing at least one certificate disables this.
+
+Certificates, which the cluster does already trust, e.g. because they have been
+applied with the seed config of the servers, are not added a second time. They
+are only rendered as comments into the generated Terraform configuration, so
+they can be taken under management later on.
+
 ## One Off Clustering
 
 One off clustering takes a service configuration file, an application

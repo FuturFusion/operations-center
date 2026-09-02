@@ -77,6 +77,7 @@ import (
 	authzopenfga "github.com/FuturFusion/operations-center/internal/security/authz/openfga"
 	authztls "github.com/FuturFusion/operations-center/internal/security/authz/tls"
 	"github.com/FuturFusion/operations-center/internal/security/authz/unixsocket"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/sql/dbschema"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sql/sqlite"
 	"github.com/FuturFusion/operations-center/internal/sql/transaction"
@@ -559,6 +560,16 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg apisystem.Securit
 
 	// Setup client cert fingerprint authentication.
 	trustedFingerprints = append(trustedFingerprints, cfg.TrustedTLSClientCertFingerprints...)
+
+	// The trusted client certificates grant access just like a bare fingerprint does.
+	// The fingerprints of the valid certificates are used even if others fail to
+	// parse, so a single invalid certificate does not lock everybody out.
+	certificateFingerprints, err := securitytls.CertificateFingerprints(cfg.TrustedTLSClientCertificates)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("Failed to derive fingerprints from the trusted client certificates: %w", err))
+	}
+
+	trustedFingerprints = append(trustedFingerprints, certificateFingerprints...)
 	authers = append(authers, authntls.New(trustedFingerprints))
 
 	// Create authenticator

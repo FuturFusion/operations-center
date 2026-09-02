@@ -5,6 +5,8 @@ import (
 
 	incusapi "github.com/lxc/incus/v7/shared/api"
 	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/operations-center/internal/util/testing/testcert"
 )
 
 func Test_incusPreseedWithDefaults(t *testing.T) {
@@ -321,10 +323,133 @@ func Test_incusPreseedWithDefaults(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := incusPreseedWithDefaults(tc.config)
+			got, _, err := incusPreseedWithDefaults(tc.config, nil, nil)
 
 			tc.assertErr(t, err)
 			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func Test_incusPreseedWithDefaults_trustedClientCertificates(t *testing.T) {
+	tests := []struct {
+		name                           string
+		config                         map[string]any
+		trustedClientCertificates      []string
+		knownTrustedClientCertificates []string
+
+		assertErr             require.ErrorAssertionFunc
+		wantCertificates      []incusapi.CertificatesPost
+		wantKnownCertificates []incusapi.CertificatesPost
+	}{
+		{
+			name:                      "no trusted client certificates",
+			config:                    nil,
+			trustedClientCertificates: nil,
+
+			assertErr:        require.NoError,
+			wantCertificates: nil,
+		},
+		{
+			name:                      "trusted client certificates are added",
+			config:                    nil,
+			trustedClientCertificates: []string{testcert.ClientCertificate},
+
+			assertErr: require.NoError,
+			wantCertificates: []incusapi.CertificatesPost{
+				{
+					CertificatePut: incusapi.CertificatePut{
+						Name:        "oc-trusted-" + testcert.ClientCertificateFingerprint[:12],
+						Description: "Client trusted by Operations Center",
+						Type:        "client",
+						Projects:    []string{},
+						Certificate: testcert.ClientCertificate,
+					},
+				},
+			},
+		},
+		{
+			name:                           "already trusted client certificates are returned separately",
+			config:                         nil,
+			trustedClientCertificates:      []string{testcert.ClientCertificate},
+			knownTrustedClientCertificates: []string{testcert.SecondClientCertificate},
+
+			assertErr: require.NoError,
+			wantCertificates: []incusapi.CertificatesPost{
+				{
+					CertificatePut: incusapi.CertificatePut{
+						Name:        "oc-trusted-" + testcert.ClientCertificateFingerprint[:12],
+						Description: "Client trusted by Operations Center",
+						Type:        "client",
+						Projects:    []string{},
+						Certificate: testcert.ClientCertificate,
+					},
+				},
+			},
+			wantKnownCertificates: []incusapi.CertificatesPost{
+				{
+					CertificatePut: incusapi.CertificatePut{
+						Name:        "oc-trusted-" + testcert.SecondClientCertificateFingerprint[:12],
+						Description: "Client trusted by Operations Center",
+						Type:        "client",
+						Projects:    []string{},
+						Certificate: testcert.SecondClientCertificate,
+					},
+				},
+			},
+		},
+		{
+			name: "user provided certificates take precedence",
+			config: map[string]any{
+				"certificates": []any{
+					map[string]any{
+						"name":        "cert1",
+						"type":        "metrics",
+						"certificate": testcert.ClientCertificate,
+					},
+				},
+			},
+			trustedClientCertificates:      []string{testcert.ClientCertificate},
+			knownTrustedClientCertificates: []string{testcert.SecondClientCertificate},
+
+			assertErr: require.NoError,
+			wantCertificates: []incusapi.CertificatesPost{
+				{
+					CertificatePut: incusapi.CertificatePut{
+						Name:        "cert1",
+						Type:        "metrics",
+						Certificate: testcert.ClientCertificate,
+					},
+				},
+			},
+			wantKnownCertificates: nil,
+		},
+		{
+			name:                      "error - invalid trusted client certificate",
+			config:                    nil,
+			trustedClientCertificates: []string{"not a certificate"},
+
+			assertErr:        require.Error,
+			wantCertificates: nil,
+		},
+		{
+			name:                           "error - invalid already trusted client certificate",
+			config:                         nil,
+			trustedClientCertificates:      []string{testcert.ClientCertificate},
+			knownTrustedClientCertificates: []string{"not a certificate"},
+
+			assertErr:        require.Error,
+			wantCertificates: nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, gotKnown, err := incusPreseedWithDefaults(tc.config, tc.trustedClientCertificates, tc.knownTrustedClientCertificates)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantCertificates, got.Certificates)
+			require.Equal(t, tc.wantKnownCertificates, gotKnown)
 		})
 	}
 }

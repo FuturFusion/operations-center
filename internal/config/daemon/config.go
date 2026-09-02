@@ -19,6 +19,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/lifecycle"
 	"github.com/FuturFusion/operations-center/internal/security/acme"
+	securitytls "github.com/FuturFusion/operations-center/internal/security/tls"
 	"github.com/FuturFusion/operations-center/internal/util/certificate"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
 	"github.com/FuturFusion/operations-center/shared/api/system"
@@ -234,7 +235,8 @@ func UpdateSecurity(ctx context.Context, cfg system.SecurityPut) error {
 		currentCfg := globalConfigInstance.Security
 
 		isTrustedTLSClientCertFingerprintsChanged := !slices.Equal(currentCfg.TrustedTLSClientCertFingerprints, newCfg.Security.TrustedTLSClientCertFingerprints)
-		isSecurityConfigChanged = isTrustedTLSClientCertFingerprintsChanged || currentCfg.OIDC != newCfg.Security.OIDC || currentCfg.OpenFGA != newCfg.Security.OpenFGA
+		isTrustedTLSClientCertificatesChanged := !slices.Equal(currentCfg.TrustedTLSClientCertificates, newCfg.Security.TrustedTLSClientCertificates)
+		isSecurityConfigChanged = isTrustedTLSClientCertFingerprintsChanged || isTrustedTLSClientCertificatesChanged || currentCfg.OIDC != newCfg.Security.OIDC || currentCfg.OpenFGA != newCfg.Security.OpenFGA
 		isTrustedHTTPSProxiesChanged = !slices.Equal(currentCfg.TrustedHTTPSProxies, newCfg.Security.TrustedHTTPSProxies)
 		isACMEChanged = acme.ACMEConfigChanged(currentCfg.ACME, newCfg.Security.ACME)
 
@@ -448,16 +450,25 @@ func validate(ctx context.Context, cfg config) error {
 		return err
 	}
 
+	_, err = securitytls.CertificateFingerprints(cfg.Security.TrustedTLSClientCertificates)
+	if err != nil {
+		return domain.NewValidationErrf(`Invalid config, "security.trusted_tls_client_certificates" contains an invalid certificate: %v`, err)
+	}
+
 	for _, p := range cfg.Security.TrustedHTTPSProxies {
 		if net.ParseIP(p) == nil {
 			return fmt.Errorf("HTTPS Proxy address %q is not a valid IP", p)
 		}
 	}
 
-	// Updating the configuration requires at least one certificate fingerprint to be present in order to have a fallback authentication method.
-	isTrustedTLSClientCertFingerprintsUpdated := !slices.Equal(globalConfigInstance.Security.TrustedTLSClientCertFingerprints, cfg.Security.TrustedTLSClientCertFingerprints)
-	if env.IsIncusOS() && isTrustedTLSClientCertFingerprintsUpdated && len(cfg.Security.TrustedTLSClientCertFingerprints) == 0 {
-		return domain.NewValidationErrf(`Invalid config, "security.trusted_tls_client_cert_fingerprints" property can not be empty when running on IncusOS`)
+	// Updating the configuration requires at least one certificate fingerprint or
+	// trusted client certificate to be present in order to have a fallback
+	// authentication method.
+	isTrustedTLSClientsUpdated := !slices.Equal(globalConfigInstance.Security.TrustedTLSClientCertFingerprints, cfg.Security.TrustedTLSClientCertFingerprints) ||
+		!slices.Equal(globalConfigInstance.Security.TrustedTLSClientCertificates, cfg.Security.TrustedTLSClientCertificates)
+	hasNoTrustedTLSClients := len(cfg.Security.TrustedTLSClientCertFingerprints) == 0 && len(cfg.Security.TrustedTLSClientCertificates) == 0
+	if env.IsIncusOS() && isTrustedTLSClientsUpdated && hasNoTrustedTLSClients {
+		return domain.NewValidationErrf(`Invalid config, "security.trusted_tls_client_cert_fingerprints" and "security.trusted_tls_client_certificates" properties can not both be empty when running on IncusOS`)
 	}
 
 	// Settings configuration

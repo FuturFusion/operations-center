@@ -188,6 +188,17 @@ type ClusterProvisioningConfig struct {
 	Cluster Cluster
 
 	NodeSpecificConfigKeys map[string]map[string]bool
+
+	// TrustedClientCertificates holds the X509 PEM encoded client certificates
+	// trusted by Operations Center, which the cluster does not yet trust. They
+	// are added to the cluster, if the user did not provide their own set of
+	// certificates in the application seed config of the cluster.
+	TrustedClientCertificates []string
+
+	// KnownTrustedClientCertificates holds the X509 PEM encoded client
+	// certificates trusted by Operations Center, which the cluster does already
+	// trust.
+	KnownTrustedClientCertificates []string
 }
 
 type ClusterArtifact struct {

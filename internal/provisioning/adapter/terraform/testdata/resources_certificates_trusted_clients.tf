@@ -1,13 +1,10 @@
-resource "incus_certificate" "cert1" {
-  name        = "cert1"
-  description = "metrics certificate 1"
-  restricted  = true
-  type        = "metrics"
+resource "incus_certificate" "oc-trusted-b4e08ef4c7fb" {
+  name        = "oc-trusted-b4e08ef4c7fb"
+  description = "Client trusted by Operations Center"
+  restricted  = false
+  type        = "client"
 
-  projects = [
-    "project1",
-    "project2"
-  ]
+  projects = []
 
   certificate = <<EOT
 -----BEGIN CERTIFICATE-----
@@ -30,6 +27,6 @@ EOT
 
 resource "null_resource" "post_certificates" {
   depends_on = [
-    incus_certificate.cert1,
+    incus_certificate.oc-trusted-b4e08ef4c7fb,
   ]
 }

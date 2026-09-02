@@ -577,6 +577,11 @@ func (s *tokenService) resolvePreSeedImage(ctx context.Context, imageType api.Im
 	seeds.Security.Version = "1"
 	seeds.Security.CustomCACerts = securityConfig.Config.CustomCACerts
 
+	err = seeds.ApplyTrustedClientCertificates(config.GetSecurity().TrustedTLSClientCertificates)
+	if err != nil {
+		return uuid.Nil, "", seeds, err
+	}
+
 	_, err = s.channelSvc.GetByName(ctx, channel)
 	if err != nil {
 		return uuid.Nil, "", seeds, fmt.Errorf("Failed to validate update channel %q: %w", channel, err)

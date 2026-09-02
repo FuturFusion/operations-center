@@ -1695,6 +1695,11 @@ func (s *serverService) FactoryResetByName(ctx context.Context, name string, tok
 		ApplyDefaults: false,
 	}
 
+	err = seed.ApplyTrustedClientCertificates(config.GetSecurity().TrustedTLSClientCertificates)
+	if err != nil {
+		return fmt.Errorf("Pre factory reset failed to apply the trusted client certificates: %w", err)
+	}
+
 	providerConfig, err := s.tokenSvc.GetTokenProviderConfig(ctx, *tokenID)
 	if err != nil {
 		return fmt.Errorf("Pre factory reset failed to get provider config: %w", err)
