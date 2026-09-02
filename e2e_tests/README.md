@@ -29,7 +29,8 @@ Other environment variables that can be set to control the tests:
 * `OPERATIONS_CENTER_E2E_TEST_DEBUG`: Enable debug output (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP`: Disable cleanup of resources after tests, WARNING: this might cause errors, only use with single test cases (default: "false")
 * `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP_ON_ERROR`: Disable cleanup of resources after failed tests, WARNING: this might cause errors, only use with single test cases or with `-failfast` flag of `go test` (default: "false")
-* `OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS`: Address of the end 2 end test host, at which the in-process Redfish proxy used by the BMC tests is reachable from the Operations Center VM. If not set, the address is derived from the network the Operations Center VM is attached to (default: "")
+* `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`: Address of the end 2 end test host, at which the services served in-process by the tests (the Redfish proxy and the fake OIDC provider) are reachable from the Operations Center VM. If not set, the address is derived from the network the Operations Center VM is attached to (default: "")
+* `OPERATIONS_CENTER_E2E_TEST_BMC_PROXY_ADDRESS`: Same as `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS`, but only for the in-process Redfish proxy used by the BMC tests. Takes precedence over `OPERATIONS_CENTER_E2E_TEST_HOST_ADDRESS` (default: "")
 
 ## Setup
 
@@ -166,6 +167,12 @@ make clean-e2e-test
 
 ## Development
 
+### Shell commands
+
+The test helpers (`run`, `mustRun` and friends) execute their commands with
+`bash -o pipefail`, so a command, which fails anywhere in a pipeline, fails the
+whole command.
+
 ### Idempotent tests
 
 The existing end to end tests are designed to be run individually as well as in
@@ -193,6 +200,9 @@ Examples:
   go away.
 * `t.Cleanup(ocIncusImageSourceCleanup(t, name))`, removes an Incus image
   source, which also removes all the images provided by that source.
+* `t.Cleanup(systemSecurityOIDCCleanup(t, tmpDir))`, resets the OIDC part of the
+  security config, so that Operations Center stops pointing at an OIDC issuer,
+  which is about to go away.
 
 For debug purposes, the cleanup can be disabled by setting the environment
 variable `OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP` or
@@ -231,3 +241,22 @@ The Incus CLI caches the simplestreams responses of a remote for an hour, so the
 test populates Operations Center completely before it registers Operations
 Center as image remote on the server. Everything asserted after that point goes
 through the public endpoints directly instead of through the server.
+
+### Fake OIDC provider
+
+The OIDC support of Operations Center is tested against a fake OIDC provider,
+which is built on the storage of
+[mini-oidc](https://github.com/lxc/incus/tree/main/test/mini-oidc), the same
+building block the unit tests of the OIDC client use. The provider is served
+in-process by the test on an ephemeral port of the end 2 end test host (see
+`startOIDCProvider`), so no additional service needs to be installed.
+
+Device authorizations are approved automatically, so no browser is involved.
+The provider counts the device authorizations, which allows to verify, that a
+refresh of the access token does not trigger a new interactive login.
+
+The test uses an isolated config directory for the `operations-center` CLI
+(`OPERATIONS_CENTER_CONF`). This way the CLI presents a fresh client
+certificate, which is not trusted by Operations Center, so authentication can
+only succeed through OIDC, and the remotes used by the other tests stay
+untouched.

@@ -184,12 +184,13 @@ func runWithContext(ctx context.Context, t *testing.T, command string, args ...a
 
 	name := "bash"
 	cmdArgs := []string{
+		"-o", "pipefail", // fail the whole pipeline on error
 		"-c",
 		fmt.Sprintf(command, args...),
 	}
 
 	resp := cmdResponse{
-		command: fmt.Sprintf("bash -c %q", fmt.Sprintf(command, args...)),
+		command: fmt.Sprintf("bash -o pipefail -c %q", fmt.Sprintf(command, args...)),
 		output:  &bytes.Buffer{},
 	}
 
@@ -649,6 +650,38 @@ func waitForTCPPort(ctx context.Context, t *testing.T, hostPort string, interval
 	}
 }
 
+// e2eHostAddress returns the address of the e2e host on the network, the
+// OperationsCenter VM is attached to. This is the address, at which services,
+// which are served in-process by the tests, are reachable from inside the
+// OperationsCenter VM.
+func e2eHostAddress(t *testing.T) string {
+	t.Helper()
+
+	if hostAddress != "" {
+		return hostAddress
+	}
+
+	networkResp := mustRun(t, `incus list -f json | jq -r -e '[ .[] | select(.name == "OperationsCenter") | .expanded_devices | to_entries[] | select(.value.type == "nic") | (.value.network // .value.parent // empty) ] | first'`)
+	network := networkResp.OutputTrimmed()
+	require.NotEmpty(t, network, "Failed to determine the network of the OperationsCenter VM")
+
+	// For a managed bridge, the first address of ipv4.address is the address of
+	// the host on that bridge.
+	resp := run(t, `incus network get %s ipv4.address | cut -d / -f 1`, network)
+	address := resp.OutputTrimmed()
+	if resp.Success() && net.ParseIP(address) != nil {
+		return address
+	}
+
+	// Fall back to the address configured on the host interface, which covers
+	// unmanaged bridges and networks with an externally managed address.
+	resp = mustRun(t, `ip -4 -json addr show dev %s | jq -r -e '.[0].addr_info[0].local'`, network)
+	address = resp.OutputTrimmed()
+	require.NotNilf(t, net.ParseIP(address), "Failed to determine the address of the host on network %q", network)
+
+	return address
+}
+
 // fmtRunErr takes the cmdResponse and the error of a run function
 // and formats the error, on none 0 exit code.
 func fmtRunErr(resp cmdResponse) error {
@@ -826,6 +859,65 @@ func serverBMCConfigCleanup(t *testing.T, tmpDir string, name string) func() {
 		err := setServerBMCConfigWithContext(ctx, t, tmpDir, name, "", "")
 		if err != nil {
 			t.Logf("Failed to reset the BMC config of server %q: %v", name, err)
+		}
+	}
+}
+
+func setSystemSecurityOIDCWithContext(ctx context.Context, t *testing.T, tmpDir string, issuer string, clientID string, audience string, claim string) error {
+	t.Helper()
+
+	securityPutFilename := filepath.Join(tmpDir, "system_security_put.json")
+
+	resp := runWithContext(ctx, t, `../bin/operations-center.linux.%[1]s system security show -f json | jq -ce --arg issuer '%[2]s' --arg client_id '%[3]s' --arg audience '%[4]s' --arg claim '%[5]s' '.oidc = { issuer: $issuer, client_id: $client_id, scopes: "", audience: $audience, claim: $claim }' > %[6]s`, cpuArch, issuer, clientID, audience, claim, securityPutFilename)
+
+	err := fmtRunErr(resp)
+	if err != nil {
+		return fmt.Errorf("Failed to assemble the security config: %w", err)
+	}
+
+	// `length > 0 guards against applying a truncated security config, which
+	// would drop the trusted TLS client certificate fingerprints and therefore
+	// lock the remaining tests out of Operations Center.
+	resp = runWithContext(ctx, t, `jq -e '.trusted_tls_client_cert_fingerprints | length > 0' %s > /dev/null`, securityPutFilename)
+
+	err = fmtRunErr(resp)
+	if err != nil {
+		return fmt.Errorf("Refusing to apply a security config without trusted TLS client certificate fingerprints: %w", err)
+	}
+
+	resp = runWithContext(ctx, t, `../bin/operations-center.linux.%s system security edit < %s`, cpuArch, securityPutFilename)
+
+	return fmtRunErr(resp)
+}
+
+func mustSetSystemSecurityOIDC(t *testing.T, tmpDir string, issuer string, clientID string, audience string, claim string) {
+	t.Helper()
+
+	stop := timeTrack(t)
+	defer stop()
+
+	err := setSystemSecurityOIDCWithContext(t.Context(), t, tmpDir, issuer, clientID, audience, claim)
+	require.NoErrorf(t, err, "Failed to set the OIDC security config with issuer %q", issuer)
+}
+
+func systemSecurityOIDCCleanup(t *testing.T, tmpDir string) func() {
+	t.Helper()
+
+	return func() {
+		if noCleanup || (noCleanupOnError && t.Failed()) {
+			return
+		}
+
+		// In t.Cleanup, t.Context() is already cancelled, so we need a detached context.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(60*time.Second))
+		defer cancel()
+
+		stop := timeTrack(t, "system security OIDC config cleanup")
+		defer stop()
+
+		err := setSystemSecurityOIDCWithContext(ctx, t, tmpDir, "", "", "", "")
+		if err != nil {
+			t.Logf("Failed to reset the OIDC security config: %v", err)
 		}
 	}
 }
