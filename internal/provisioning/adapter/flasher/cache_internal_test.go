@@ -26,6 +26,8 @@ import (
 
 const testCacheID = "abcdef012345"
 
+var testContent = "incus-os-image"
+
 // testFlasher returns a flasher with an enabled cache, which reports plenty of
 // free space.
 func testFlasher(t *testing.T) *Flasher {
@@ -83,7 +85,7 @@ func requireNoLeftovers(t *testing.T, flasher *Flasher, public bool) {
 func generate(t *testing.T, flasher *Flasher, fingerprint string, content string) {
 	t.Helper()
 
-	image, _, _, err := flasher.GenerateSeededImage(context.Background(), testCacheID, fingerprint, uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, gzipSource(t, content))
+	image, _, err := flasher.GenerateSeededImage(context.Background(), testCacheID, fingerprint, uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, gzipSource(t, content))
 	require.NoError(t, err)
 	require.NoError(t, image.Close())
 }
@@ -101,7 +103,7 @@ func (c *countingReadCloser) Close() error {
 }
 
 func TestFlasher_GenerateSeededImage(t *testing.T) {
-	const content = "incus-os-image"
+	content := testContent
 
 	ctx := context.Background()
 
@@ -110,7 +112,7 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 
 		source := &countingReadCloser{ReadCloser: gzipSource(t, content)}
 
-		image, size, modTime, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
+		image, info, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
 		require.NoError(t, err)
 
 		body, err := io.ReadAll(image)
@@ -118,8 +120,8 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 		require.NoError(t, image.Close())
 
 		require.Equal(t, content, string(body))
-		require.Equal(t, int64(len(content)), size)
-		require.False(t, modTime.IsZero())
+		require.Equal(t, int64(len(content)), info.Size)
+		require.False(t, info.ModTime.IsZero())
 		require.Equal(t, int64(1), source.closed.Load())
 
 		require.FileExists(t, flasher.cache.imageFilename(true, testCacheID, fingerprintID(t, flasher, "fingerprint")))
@@ -127,7 +129,7 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 		// A second request is served from the file, the source is not consumed.
 		secondSource := &countingReadCloser{ReadCloser: gzipSource(t, "not used")}
 
-		image, size, secondModTime, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, secondSource)
+		image, secondInfo, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, secondSource)
 		require.NoError(t, err)
 
 		body, err = io.ReadAll(image)
@@ -135,16 +137,16 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 		require.NoError(t, image.Close())
 
 		require.Equal(t, content, string(body))
-		require.Equal(t, int64(len(content)), size)
+		require.Equal(t, int64(len(content)), secondInfo.Size)
 		require.Equal(t, int64(1), secondSource.closed.Load())
 
-		require.Equal(t, modTime, secondModTime)
+		require.Equal(t, info.ModTime, secondInfo.ModTime)
 	})
 
 	t.Run("serves arbitrary byte ranges of the cached image", func(t *testing.T) {
 		flasher := testFlasher(t)
 
-		image, size, _, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, gzipSource(t, content))
+		image, info, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, gzipSource(t, content))
 		require.NoError(t, err)
 
 		defer func() { _ = image.Close() }()
@@ -153,7 +155,7 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 		// the requested range, and a reader that jumps back and forth over the image.
 		end, err := image.Seek(0, io.SeekEnd)
 		require.NoError(t, err)
-		require.Equal(t, size, end)
+		require.Equal(t, info.Size, end)
 
 		for _, offset := range []int64{int64(len(content)) - 1, 0, 5, 2} {
 			pos, err := image.Seek(offset, io.SeekStart)
@@ -173,7 +175,7 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 		generate(t, flasher, "new", "regenerated")
 
 		for fingerprint, want := range map[string]string{"old": content, "new": "regenerated"} {
-			image, size, _, err := flasher.OpenSeededImage(ctx, testCacheID, fingerprintID(t, flasher, fingerprint))
+			image, info, err := flasher.OpenSeededImage(ctx, testCacheID, fingerprintID(t, flasher, fingerprint))
 			require.NoError(t, err)
 
 			body, err := io.ReadAll(image)
@@ -181,7 +183,7 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 			require.NoError(t, image.Close())
 
 			require.Equal(t, want, string(body), fingerprint)
-			require.Equal(t, int64(len(want)), size, fingerprint)
+			require.Equal(t, int64(len(want)), info.Size, fingerprint)
 		}
 	})
 
@@ -223,7 +225,7 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 			go func() {
 				defer wg.Done()
 
-				image, _, _, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, sources[i])
+				image, _, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, sources[i])
 				if err != nil {
 					errs[i] = err
 
@@ -259,7 +261,7 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 
 		source := &countingReadCloser{ReadCloser: gzipSource(t, content)}
 
-		_, _, _, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
+		_, _, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
 		require.Error(t, err)
 
 		statusCode, ok := api.StatusErrorMatch(err)
@@ -280,7 +282,7 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 
 		source := &countingReadCloser{ReadCloser: gzipSource(t, content)}
 
-		_, _, _, err := flasher.GenerateSeededImage(cancelledCtx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
+		_, _, err := flasher.GenerateSeededImage(cancelledCtx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
 		require.ErrorIs(t, err, context.Canceled)
 		require.Equal(t, int64(1), source.closed.Load())
 
@@ -292,7 +294,7 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 
 		source := &countingReadCloser{ReadCloser: gzipSource(t, content)}
 
-		_, _, _, err := flasher.GenerateSeededImage(ctx, "../../etc/passwd", "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
+		_, _, err := flasher.GenerateSeededImage(ctx, "../../etc/passwd", "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
 		require.Error(t, err)
 		require.Equal(t, int64(1), source.closed.Load())
 	})
@@ -302,14 +304,14 @@ func TestFlasher_GenerateSeededImage(t *testing.T) {
 
 		source := &countingReadCloser{ReadCloser: gzipSource(t, content)}
 
-		_, _, _, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
+		_, _, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
 		require.Error(t, err)
 		require.Equal(t, int64(1), source.closed.Load())
 	})
 }
 
 func TestFlasher_OpenSeededImage(t *testing.T) {
-	const content = "incus-os-image"
+	content := testContent
 
 	ctx := context.Background()
 
@@ -318,7 +320,7 @@ func TestFlasher_OpenSeededImage(t *testing.T) {
 
 		generate(t, flasher, "fingerprint", content)
 
-		image, size, modTime, err := flasher.OpenSeededImage(ctx, testCacheID, fingerprintID(t, flasher, "fingerprint"))
+		image, info, err := flasher.OpenSeededImage(ctx, testCacheID, fingerprintID(t, flasher, "fingerprint"))
 		require.NoError(t, err)
 
 		body, err := io.ReadAll(image)
@@ -326,25 +328,25 @@ func TestFlasher_OpenSeededImage(t *testing.T) {
 		require.NoError(t, image.Close())
 
 		require.Equal(t, content, string(body))
-		require.Equal(t, int64(len(content)), size)
-		require.False(t, modTime.IsZero())
+		require.Equal(t, int64(len(content)), info.Size)
+		require.False(t, info.ModTime.IsZero())
 	})
 
 	t.Run("does not serve an image generated for a token seed, which is not public", func(t *testing.T) {
 		flasher := testFlasher(t)
 
-		image, _, _, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, false, gzipSource(t, content))
+		image, _, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, false, gzipSource(t, content))
 		require.NoError(t, err)
 		require.NoError(t, image.Close())
 
-		_, _, _, err = flasher.OpenSeededImage(ctx, testCacheID, fingerprintID(t, flasher, "fingerprint"))
+		_, _, err = flasher.OpenSeededImage(ctx, testCacheID, fingerprintID(t, flasher, "fingerprint"))
 		require.ErrorIs(t, err, domain.ErrNotFound)
 	})
 
 	t.Run("reports an image, which has never been generated, as not found", func(t *testing.T) {
 		flasher := testFlasher(t)
 
-		_, _, _, err := flasher.OpenSeededImage(ctx, testCacheID, "0123456789ab")
+		_, _, err := flasher.OpenSeededImage(ctx, testCacheID, "0123456789ab")
 		require.ErrorIs(t, err, domain.ErrNotFound)
 	})
 
@@ -352,7 +354,7 @@ func TestFlasher_OpenSeededImage(t *testing.T) {
 		flasher := testFlasher(t)
 
 		for _, id := range []string{"../../etc/passwd", "", "short", "way-too-long-to-be-an-id"} {
-			_, _, _, err := flasher.OpenSeededImage(ctx, testCacheID, id)
+			_, _, err := flasher.OpenSeededImage(ctx, testCacheID, id)
 			require.ErrorIs(t, err, domain.ErrNotFound, id)
 		}
 	})
@@ -373,7 +375,7 @@ func TestFlasher_OpenSeededImage(t *testing.T) {
 		}
 
 		go func() {
-			image, _, _, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
+			image, _, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, true, source)
 			if err == nil {
 				_ = image.Close()
 			}
@@ -384,7 +386,7 @@ func TestFlasher_OpenSeededImage(t *testing.T) {
 		opened := make(chan string, 1)
 
 		go func() {
-			image, _, _, err := flasher.OpenSeededImage(ctx, testCacheID, id)
+			image, _, err := flasher.OpenSeededImage(ctx, testCacheID, id)
 			if err != nil {
 				opened <- err.Error()
 
@@ -424,13 +426,13 @@ func TestFlasher_OpenSeededImage(t *testing.T) {
 	t.Run("reports the cache as unavailable, if it is not configured", func(t *testing.T) {
 		flasher := &Flasher{serverURL: "https://operations-center.local:7443"}
 
-		_, _, _, err := flasher.OpenSeededImage(ctx, testCacheID, "0123456789ab")
+		_, _, err := flasher.OpenSeededImage(ctx, testCacheID, "0123456789ab")
 		require.Error(t, err)
 	})
 }
 
 func TestFlasher_PruneCache(t *testing.T) {
-	const content = "incus-os-image"
+	content := testContent
 
 	ctx := context.Background()
 
@@ -459,7 +461,7 @@ func TestFlasher_PruneCache(t *testing.T) {
 	t.Run("prunes the images of a token seed, which is not public, as well", func(t *testing.T) {
 		flasher := testFlasher(t)
 
-		image, _, _, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, false, gzipSource(t, content))
+		image, _, err := flasher.GenerateSeededImage(ctx, testCacheID, "fingerprint", uuid.Nil, provisioning.TokenImageSeedConfigs{}, false, gzipSource(t, content))
 		require.NoError(t, err)
 		require.NoError(t, image.Close())
 
@@ -513,7 +515,7 @@ func TestImageCache_open(t *testing.T) {
 	t.Run("reports a cache miss for an image, which is not stored", func(t *testing.T) {
 		cache := newImageCache(t.TempDir())
 
-		_, _, _, err := cache.open(true, testCacheID, "0123456789ab")
+		_, _, err := cache.open(true, testCacheID, "0123456789ab")
 		require.ErrorIs(t, err, errCacheMiss)
 	})
 
@@ -524,12 +526,12 @@ func TestImageCache_open(t *testing.T) {
 
 		require.NoError(t, cache.write(ctx, true, testCacheID, "0123456789ab", bytes.NewReader([]byte("incus-os-image"))))
 
-		image, size, modTime, err := cache.open(true, testCacheID, "0123456789ab")
+		image, info, err := cache.open(true, testCacheID, "0123456789ab")
 		require.NoError(t, err)
 		require.NoError(t, image.Close())
 
-		require.Equal(t, int64(len("incus-os-image")), size)
-		require.True(t, modTime.After(before))
+		require.Equal(t, int64(len("incus-os-image")), info.Size)
+		require.True(t, info.ModTime.After(before))
 	})
 
 	t.Run("keeps the two namespaces apart", func(t *testing.T) {
@@ -537,10 +539,10 @@ func TestImageCache_open(t *testing.T) {
 
 		require.NoError(t, cache.write(ctx, false, testCacheID, "0123456789ab", bytes.NewReader([]byte("private"))))
 
-		_, _, _, err := cache.open(true, testCacheID, "0123456789ab")
+		_, _, err := cache.open(true, testCacheID, "0123456789ab")
 		require.ErrorIs(t, err, errCacheMiss)
 
-		image, _, _, err := cache.open(false, testCacheID, "0123456789ab")
+		image, _, err := cache.open(false, testCacheID, "0123456789ab")
 		require.NoError(t, err)
 		require.NoError(t, image.Close())
 	})
