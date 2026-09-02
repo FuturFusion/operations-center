@@ -199,7 +199,7 @@ Examples:
 
 * `t.Cleanup(clusterCleanup(t))`, cleans up any cluster created during the test
   case.
-* `t.Cleanup(cleanupTokenSeed(t, token))`, cleans up the token seed created
+* `t.Cleanup(cleanupTokenSeed(t, token, name))`, cleans up the token seed created
   during the test case.
 * `t.Cleanup(serverBMCConfigCleanup(t, tmpDir, name))`, resets the BMC config of
   a server, so that Operations Center stops talking to a BMC, which is about to

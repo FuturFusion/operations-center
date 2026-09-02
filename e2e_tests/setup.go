@@ -185,7 +185,7 @@ func cleanupIncusOS(t *testing.T, names []string) func() {
 	}
 }
 
-func cleanupTokenSeed(t *testing.T, token string) func() {
+func cleanupTokenSeed(t *testing.T, token string, name string) func() {
 	t.Helper()
 
 	return func() {
@@ -200,11 +200,22 @@ func cleanupTokenSeed(t *testing.T, token string) func() {
 		stop := timeTrack(t, "cleanup token seed")
 		defer stop()
 
-		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning token seed remove %s incus-os-cluster`, cpuArch, token)
+		resp := runWithContext(ctx, t, `../bin/operations-center.linux.%s provisioning token seed remove %s %s`, cpuArch, token, name)
 		if !resp.Success() {
-			t.Error(resp.Error())
+			t.Logf("failed to cleanup token seed %s %q: %s", token, name, resp.Error())
 		}
 	}
+}
+
+func createTokenSeed(t *testing.T, token string, name string, seedFilename string) {
+	t.Helper()
+
+	resp := run(t, `../bin/operations-center.linux.%s provisioning token seed remove %s %s`, cpuArch, token, name)
+	if resp.Success() {
+		t.Logf("Removed left over token seed %q of token %q", name, token)
+	}
+
+	mustRun(t, `../bin/operations-center.linux.%s provisioning token seed add %s %s %s`, cpuArch, token, name, seedFilename)
 }
 
 func getClientCertificate(t *testing.T) string {
@@ -470,17 +481,22 @@ func createIncusOSPreseededISO(t *testing.T, tmpDir string, token string) string
 func createIncusOSPreseededISOFromTokenSeed(t *testing.T, tmpDir string, token string) string {
 	t.Helper()
 
+	const tokenSeedName = "incus-os-cluster"
+
+	t.Cleanup(cleanupTokenSeed(t, token, tokenSeedName))
+
 	incusOSPreseededISOFilename := fmt.Sprintf("IncusOS-preseeded-from-token-seed-%[1]s.iso", token[:8])
 	if !isFile(filepath.Join(tmpDir, incusOSPreseededISOFilename)) {
 		stop := timeTrack(t)
 		defer stop()
 
-		err := os.WriteFile(filepath.Join(tmpDir, "incusos_seed.yaml"), incusOSSeedFileYAMLTemplate, 0o600)
+		seedFilename := filepath.Join(tmpDir, "incusos_seed.yaml")
+
+		err := os.WriteFile(seedFilename, incusOSSeedFileYAMLTemplate, 0o600)
 		require.NoError(t, err)
 
-		t.Cleanup(cleanupTokenSeed(t, token))
-		mustRun(t, `../bin/operations-center.linux.%s provisioning token seed add %s incus-os-cluster %s/incusos_seed.yaml`, cpuArch, token, tmpDir)
-		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning token seed get-image %s incus-os-cluster %s/%s`, 10*time.Minute, cpuArch, token, tmpDir, incusOSPreseededISOFilename)
+		createTokenSeed(t, token, tokenSeedName, seedFilename)
+		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning token seed get-image %s %s %s/%s`, 10*time.Minute, cpuArch, token, tokenSeedName, tmpDir, incusOSPreseededISOFilename)
 	}
 
 	return incusOSPreseededISOFilename
