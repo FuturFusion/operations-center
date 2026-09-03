@@ -94,6 +94,7 @@ type ServerStatus string
 const (
 	ServerStatusUnknown      ServerStatus = "unknown"
 	ServerStatusUnregistered ServerStatus = "unregistered"
+	ServerStatusDeploying    ServerStatus = "deploying"
 	ServerStatusPending      ServerStatus = "pending"
 	ServerStatusReady        ServerStatus = "ready"
 	ServerStatusOffline      ServerStatus = "offline"
@@ -102,6 +103,7 @@ const (
 var serverStatuses = map[ServerStatus]struct{}{
 	ServerStatusUnknown:      {},
 	ServerStatusUnregistered: {},
+	ServerStatusDeploying:    {},
 	ServerStatusPending:      {},
 	ServerStatusReady:        {},
 	ServerStatusOffline:      {},
@@ -161,6 +163,16 @@ type ServerStatusDetail string
 const (
 	ServerStatusDetailNone ServerStatusDetail = ""
 
+	ServerStatusDetailUnregisteredDeploymentFailed    ServerStatusDetail = "deployment failed"
+	ServerStatusDetailUnregisteredDeploymentCancelled ServerStatusDetail = "deployment cancelled"
+
+	ServerStatusDetailDeployingPreparing       ServerStatusDetail = "preparing"
+	ServerStatusDetailDeployingConfiguringBIOS ServerStatusDetail = "configuring BIOS"
+	ServerStatusDetailDeployingAttachingMedia  ServerStatusDetail = "attaching installation media"
+	ServerStatusDetailDeployingInstalling      ServerStatusDetail = "installing"
+	ServerStatusDetailDeployingFinalizing      ServerStatusDetail = "finalizing"
+	ServerStatusDetailDeployingCancelling      ServerStatusDetail = "cancelling"
+
 	ServerStatusDetailPendingRegistering   ServerStatusDetail = "registering"
 	ServerStatusDetailPendingReconfiguring ServerStatusDetail = "re-configuring"
 
@@ -175,16 +187,24 @@ const (
 )
 
 var serverStatusDetails = map[ServerStatusDetail]struct{}{
-	ServerStatusDetailNone:                     {},
-	ServerStatusDetailPendingRegistering:       {},
-	ServerStatusDetailPendingReconfiguring:     {},
-	ServerStatusDetailReadyUpdatingOS:          {},
-	ServerStatusDetailReadyUpdatingApplication: {},
-	ServerStatusDetailReadyEvacuating:          {},
-	ServerStatusDetailReadyRestoring:           {},
-	ServerStatusDetailOfflineRebooting:         {},
-	ServerStatusDetailOfflineShutdown:          {},
-	ServerStatusDetailOfflineUnresponsive:      {},
+	ServerStatusDetailNone:                            {},
+	ServerStatusDetailUnregisteredDeploymentFailed:    {},
+	ServerStatusDetailUnregisteredDeploymentCancelled: {},
+	ServerStatusDetailDeployingPreparing:              {},
+	ServerStatusDetailDeployingConfiguringBIOS:        {},
+	ServerStatusDetailDeployingAttachingMedia:         {},
+	ServerStatusDetailDeployingInstalling:             {},
+	ServerStatusDetailDeployingFinalizing:             {},
+	ServerStatusDetailDeployingCancelling:             {},
+	ServerStatusDetailPendingRegistering:              {},
+	ServerStatusDetailPendingReconfiguring:            {},
+	ServerStatusDetailReadyUpdatingOS:                 {},
+	ServerStatusDetailReadyUpdatingApplication:        {},
+	ServerStatusDetailReadyEvacuating:                 {},
+	ServerStatusDetailReadyRestoring:                  {},
+	ServerStatusDetailOfflineRebooting:                {},
+	ServerStatusDetailOfflineShutdown:                 {},
+	ServerStatusDetailOfflineUnresponsive:             {},
 }
 
 func (s ServerStatusDetail) String() string {
@@ -822,6 +842,11 @@ type Server struct {
 	// Example: rebooting
 	StatusDetail ServerStatusDetail `json:"server_status_detail" yaml:"server_status_detail"`
 
+	// Deployment reports the progress of the automated deployment of the server.
+	// It is only set, if a deployment has been requested for the server, and is
+	// read only.
+	Deployment *ServerDeploymentStatus `json:"deployment,omitempty" yaml:"deployment,omitempty"`
+
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
 	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
@@ -871,7 +896,7 @@ func (s ServerUpdateState) String() string {
 
 func (s Server) UpdateState() ServerUpdateState {
 	switch s.Status {
-	case ServerStatusUnknown, ServerStatusPending:
+	case ServerStatusUnknown, ServerStatusUnregistered, ServerStatusDeploying, ServerStatusPending:
 		return ServerUpdateStateUndefined
 
 	case ServerStatusOffline:

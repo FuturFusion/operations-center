@@ -128,6 +128,57 @@ func TestBMCHasRebootedSince(t *testing.T) {
 			want: api.BMCRebootStateNotRebooted,
 		},
 		{
+			name: "not rebooted - boot progress advanced past since during the same boot",
+			previous: api.BMCData{
+				ServerBootProgress: api.BMCBootProgress{
+					LastState:     "MemoryInitializationStarted",
+					LastStateTime: since.Add(-time.Minute),
+				},
+			},
+			current: api.BMCData{
+				ServerBootProgress: api.BMCBootProgress{
+					LastState:     "PCIResourceConfigStarted",
+					LastStateTime: since.Add(time.Minute),
+				},
+			},
+
+			want: api.BMCRebootStateNotRebooted,
+		},
+		{
+			name: "rebooted - boot progress fell back past since",
+			previous: api.BMCData{
+				ServerBootProgress: api.BMCBootProgress{
+					LastState:     "PCIResourceConfigStarted",
+					LastStateTime: since.Add(-time.Minute),
+				},
+			},
+			current: api.BMCData{
+				ServerBootProgress: api.BMCBootProgress{
+					LastState:     "MemoryInitializationStarted",
+					LastStateTime: since.Add(time.Minute),
+				},
+			},
+
+			want: api.BMCRebootStateRebooted,
+		},
+		{
+			name: "not rebooted - boot progress state can not be placed in a boot",
+			previous: api.BMCData{
+				ServerBootProgress: api.BMCBootProgress{
+					LastState:     "OEM",
+					LastStateTime: since.Add(-time.Minute),
+				},
+			},
+			current: api.BMCData{
+				ServerBootProgress: api.BMCBootProgress{
+					LastState:     "OEM",
+					LastStateTime: since.Add(time.Minute),
+				},
+			},
+
+			want: api.BMCRebootStateNotRebooted,
+		},
+		{
 			name:     "unknown - last reset time only reported by the previous snapshot",
 			previous: api.BMCData{ServerLastResetTime: since.Add(-time.Hour)},
 			current:  api.BMCData{},

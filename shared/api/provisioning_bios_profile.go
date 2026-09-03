@@ -1,5 +1,9 @@
 package api
 
+import (
+	"maps"
+)
+
 // BIOSSecureBootDatabase holds the secure boot certificates and signatures of a
 // single secure boot database, that are allowed to stay during the
 // initialization of a server.
@@ -16,6 +20,13 @@ type BIOSSecureBootDatabase struct {
 	Signatures map[string]bool `json:"signatures,omitempty" yaml:"signatures,omitempty"`
 }
 
+func (d BIOSSecureBootDatabase) Clone() BIOSSecureBootDatabase {
+	return BIOSSecureBootDatabase{
+		Certificates: maps.Clone(d.Certificates),
+		Signatures:   maps.Clone(d.Signatures),
+	}
+}
+
 // BIOSSecureBoot holds the secure boot configuration per secure boot database.
 //
 // swagger:model
@@ -28,6 +39,14 @@ type BIOSSecureBoot struct {
 
 	// KEK holds the key exchange key database.
 	KEK BIOSSecureBootDatabase `json:"kek" yaml:"kek"`
+}
+
+func (s BIOSSecureBoot) Clone() BIOSSecureBoot {
+	return BIOSSecureBoot{
+		DB:  s.DB.Clone(),
+		DBX: s.DBX.Clone(),
+		KEK: s.KEK.Clone(),
+	}
 }
 
 // BIOSProfileResolution is the outcome of the resolution of the BIOS profiles
@@ -45,6 +64,11 @@ type BIOSProfileResolution struct {
 	// Attributes holds the BIOS attribute names and values to apply to the
 	// server via BMC, e.g. {"SecureBoot": "Enabled", "TpmSecurity": "On"}.
 	Attributes map[string]any `json:"attributes" yaml:"attributes"`
+
+	// DeferredAttributes holds the BIOS attribute names and values, that are
+	// applied to the server in a second pass, once the attributes above are in
+	// effect, e.g. {"Tpm2Algorithm": "SHA256"}.
+	DeferredAttributes map[string]any `json:"deferred_attributes" yaml:"deferred_attributes"`
 
 	// SecureBoot holds the secure boot certificates and signatures, that are
 	// allowed to stay during the initialization of the server.
