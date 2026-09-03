@@ -309,7 +309,7 @@ func assertOperationsCenterCliSystem(t *testing.T) {
 	require.True(t, success, "operations-center cli system assertions failed")
 }
 
-func assertOperationsCenterCliUpdateCleanupAndRefresh(t *testing.T) {
+func assertOperationsCenterCliUpdateCleanupAndRefresh(ctx context.Context, t *testing.T) {
 	t.Helper()
 
 	mustRun(t, `../bin/operations-center.linux.%s provisioning update cleanup`, cpuArch)
@@ -323,7 +323,7 @@ func assertOperationsCenterCliUpdateCleanupAndRefresh(t *testing.T) {
 	mustRun(t, `../bin/operations-center.linux.%s provisioning update refresh`, cpuArch)
 
 	// wait for updates to become ready
-	mustWaitUpdatesReady(t)
+	mustWaitUpdatesReady(ctx, t)
 }
 
 func assertOperationsCenterCliProvisioningTokenSeed(t *testing.T, tmpDir string) {
@@ -584,7 +584,7 @@ func assertTerraformArtifact(t *testing.T, clusterName string) {
 	mustRun(t, `tofu -chdir=%s plan`, tmpDir)
 }
 
-func assertWebsocketEventsInventoryUpdate(t *testing.T, clusterName string) {
+func assertWebsocketEventsInventoryUpdate(ctx context.Context, t *testing.T, clusterName string) {
 	t.Helper()
 
 	var resp cmdResponse
@@ -594,7 +594,7 @@ func assertWebsocketEventsInventoryUpdate(t *testing.T, clusterName string) {
 	mustRun(t, `incus launch images:alpine/edge %s:c1`, clusterName)
 
 	t.Log("Wait for inventory update")
-	ok, err := waitForSuccessWithTimeout(t, "instance list", `../bin/operations-center.linux.%s inventory instance list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == 1'`, 30*time.Second, cpuArch, clusterName)
+	ok, err := waitForSuccessWithTimeout(ctx, t, "instance list", `../bin/operations-center.linux.%s inventory instance list -f json | jq -r -e '[ .[] | select(.cluster == "%s") | .name ] | length == 1'`, 30*time.Second, cpuArch, clusterName)
 	require.NoError(t, err, "expect 1 instance: c1")
 	if !ok {
 		success = false
@@ -618,11 +618,11 @@ func assertClusterMembers(t *testing.T, clusterName string, clusterMembers []str
 	}
 }
 
-func assertRemovedServerToReappear(t *testing.T) {
+func assertRemovedServerToReappear(ctx context.Context, t *testing.T) {
 	t.Helper()
 
 	t.Log("Wait for removed server to reappear in Operations Center after factory reset")
-	ok, err := waitForSuccessWithTimeout(t, "instance list", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.cluster == "" and .server_type == "incus") | .name ] | length == 1'`, strechedTimeout(5*time.Minute), cpuArch)
+	ok, err := waitForSuccessWithTimeout(ctx, t, "instance list", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.cluster == "" and .server_type == "incus") | .name ] | length == 1'`, strechedTimeout(5*time.Minute), cpuArch)
 	require.NoError(t, err, "expect 1 not clustered server")
 	if !ok {
 		fmt.Println("====[ Server List ]====")

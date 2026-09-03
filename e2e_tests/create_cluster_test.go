@@ -13,15 +13,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createCluster(serverNames []string) func(t *testing.T, tmpDir string) {
+func createCluster(serverNames []string) func(ctx context.Context, t *testing.T, tmpDir string) {
 	return createClusterWithChannelName("stable", serverNames)
 }
 
-func createClusterAndAddServerAndRemoveServer() func(t *testing.T, tmpDir string) {
-	return func(t *testing.T, tmpDir string) {
+func createClusterAndAddServerAndRemoveServer() func(ctx context.Context, t *testing.T, tmpDir string) {
+	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
-		createClusterWithChannelName("stable", []string{"IncusOS01", "IncusOS02", "IncusOS03"})(t, tmpDir)
+		createClusterWithChannelName("stable", []string{"IncusOS01", "IncusOS02", "IncusOS03"})(ctx, t, tmpDir)
 
 		printServerList(t)
 
@@ -41,7 +41,7 @@ func createClusterAndAddServerAndRemoveServer() func(t *testing.T, tmpDir string
 		mustRun(t, `../bin/operations-center.linux.%s provisioning server system evacuate IncusOS03`, cpuArch)
 
 		t.Log("Wait for server to be evacuated")
-		ok, err := waitForSuccessWithTimeout(t, "server evacuated", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '.[] | select(.name == "IncusOS03") | .version_data.in_maintenance == 2'`, 2*time.Minute, cpuArch)
+		ok, err := waitForSuccessWithTimeout(ctx, t, "server evacuated", `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '.[] | select(.name == "IncusOS03") | .version_data.in_maintenance == 2'`, 2*time.Minute, cpuArch)
 		require.NoError(t, err, "expect IncusOS03 to be evacuated")
 		if !ok {
 			fmt.Println("====[ Instance List ]====")
@@ -57,12 +57,12 @@ func createClusterAndAddServerAndRemoveServer() func(t *testing.T, tmpDir string
 
 		// Assertions
 		assertClusterMembers(t, "incus-os-cluster", []string{"IncusOS01", "IncusOS02", "IncusOS04"})
-		assertRemovedServerToReappear(t)
+		assertRemovedServerToReappear(ctx, t)
 	}
 }
 
-func createClusterWithChannelName(channelName string, serverNames []string) func(t *testing.T, tmpDir string) {
-	return func(t *testing.T, tmpDir string) {
+func createClusterWithChannelName(channelName string, serverNames []string) func(ctx context.Context, t *testing.T, tmpDir string) {
+	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
 		stop := timeTrack(t, "create cluster with channel name")
@@ -104,7 +104,7 @@ func createClusterWithChannelName(channelName string, serverNames []string) func
 		assertIncusRemote(t, "incus-os-cluster", serverNames)
 		assertInventory(t, "incus-os-cluster", serverNames)
 		assertTerraformArtifact(t, "incus-os-cluster")
-		assertWebsocketEventsInventoryUpdate(t, "incus-os-cluster")
+		assertWebsocketEventsInventoryUpdate(ctx, t, "incus-os-cluster")
 	}
 }
 

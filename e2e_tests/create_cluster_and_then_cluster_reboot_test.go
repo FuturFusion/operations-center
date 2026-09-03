@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createClusterAndThenClusterReboot(t *testing.T, tmpDir string) {
+func createClusterAndThenClusterReboot(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -19,7 +19,7 @@ func createClusterAndThenClusterReboot(t *testing.T, tmpDir string) {
 	clusterName := "incus-os-cluster"
 	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 
-	createCluster(names)(t, tmpDir)
+	createCluster(names)(ctx, t, tmpDir)
 
 	t.Log("Start some small VMs for the cluster to have some minimal workload.")
 	instanceNames := make([]string, 0, len(names))
@@ -28,7 +28,7 @@ func createClusterAndThenClusterReboot(t *testing.T, tmpDir string) {
 		mustRun(t, `incus launch --vm images:alpine/edge %s:%s -c limits.cpu=1 -c limits.memory=256MiB -c security.secureboot=false -c migration.stateful=true`, clusterName, instanceNames[i])
 	}
 
-	assertWorkloadRunning(t, "Reboot cluster - pre reboot workload", clusterName, instanceNames)
+	assertWorkloadRunning(ctx, t, "Reboot cluster - pre reboot workload", clusterName, instanceNames)
 
 	t.Log("Reboot cluster - pre reboot state")
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list`, cpuArch)
@@ -47,7 +47,7 @@ func createClusterAndThenClusterReboot(t *testing.T, tmpDir string) {
 	t.Log("Reboot cluster - trigger rolling reboot")
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster reboot %s`, cpuArch, clusterName)
 
-	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(30*time.Minute))
+	ctx, cancel := context.WithTimeout(ctx, strechedTimeout(30*time.Minute))
 	defer cancel()
 
 	previousStatusDescription := ""
@@ -113,7 +113,7 @@ func createClusterAndThenClusterReboot(t *testing.T, tmpDir string) {
 	resp = mustRun(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r '.[] | select(.name == "%s") | (.update_status.needs_update // []) + (.update_status.needs_reboot // []) + (.update_status.in_maintenance // []) | join(",")'`, cpuArch, clusterName)
 	require.Emptyf(t, resp.OutputTrimmed(), "Reboot cluster: servers still need an update or a reboot or are in maintenance: %s", resp.OutputTrimmed())
 
-	assertWorkloadRunning(t, "Reboot cluster - post reboot workload", clusterName, instanceNames)
+	assertWorkloadRunning(ctx, t, "Reboot cluster - post reboot workload", clusterName, instanceNames)
 
 	t.Log("Reboot cluster - rolling reboot completed")
 }
@@ -124,14 +124,14 @@ func createClusterAndThenClusterReboot(t *testing.T, tmpDir string) {
 // The instances are migrated between the servers of the cluster during a rolling
 // reboot, so the state of the workload is not asserted immediately but the
 // workload is given some time to settle.
-func assertWorkloadRunning(t *testing.T, phase string, clusterName string, instanceNames []string) {
+func assertWorkloadRunning(ctx context.Context, t *testing.T, phase string, clusterName string, instanceNames []string) {
 	t.Helper()
 
 	stop := timeTrack(t, phase)
 	defer stop()
 
 	ok, err := waitForSuccessWithTimeout(
-		t, phase,
+		ctx, t, phase,
 		`incus list %s: -f json | jq -r -e '[ .[] | select(.name as $n | %s | index($n)) | select(.status == "Running") ] | length == %d'`,
 		2*time.Minute, clusterName, asJSON(t, instanceNames), len(instanceNames),
 	)

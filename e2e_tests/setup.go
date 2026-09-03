@@ -20,35 +20,35 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func setupOperationsCenter(t *testing.T, tmpDir string) {
+func setupOperationsCenter(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
-	getOperationsCenterIncusOSISO(t, tmpDir)
+	getOperationsCenterIncusOSISO(ctx, t, tmpDir)
 
 	importOperationsCenterIncusOSISOStorageVolume(t, tmpDir)
 
-	installed := installOperationsCenterVM(t)
+	installed := installOperationsCenterVM(ctx, t)
 
 	removeBootMedia(t)
 
-	mustWaitAgentRunning(t, "OperationsCenter")
+	mustWaitAgentRunning(ctx, t, "OperationsCenter")
 
-	mustWaitExpectedLog(t, "OperationsCenter", "incus-osd", "System is ready")
+	mustWaitExpectedLog(ctx, t, "OperationsCenter", "incus-osd", "System is ready")
 
 	replaceOperationsCenterExecutable(t, tmpDir)
 
-	setupLocalOperationsCenterConfig(t, installed)
+	setupLocalOperationsCenterConfig(ctx, t, installed)
 
 	assertOperationsCenterSelfRegistration(t)
 
-	mustWaitUpdatesReady(t)
+	mustWaitUpdatesReady(ctx, t)
 }
 
-func setupIncusOSWithToken(names []string) func(t *testing.T, tmpDir string) {
-	return func(t *testing.T, tmpDir string) {
+func setupIncusOSWithToken(names []string) func(ctx context.Context, t *testing.T, tmpDir string) {
+	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
 		stop := timeTrack(t)
@@ -65,13 +65,13 @@ func setupIncusOSWithToken(names []string) func(t *testing.T, tmpDir string) {
 
 		importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
 
-		createIncusOSInstances(t, incusOSPreseededISOFilename, names)
+		createIncusOSInstances(ctx, t, incusOSPreseededISOFilename, names)
 
 		printServerList(t)
 	}
 }
 
-func setupIncusOSWithTokenAndUpdateChannel(t *testing.T, tmpDir string) {
+func setupIncusOSWithTokenAndUpdateChannel(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -88,12 +88,12 @@ func setupIncusOSWithTokenAndUpdateChannel(t *testing.T, tmpDir string) {
 
 	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
 
-	createIncusOSInstances(t, incusOSPreseededISOFilename, names)
+	createIncusOSInstances(ctx, t, incusOSPreseededISOFilename, names)
 
 	printServerList(t)
 }
 
-func setupIncusOSFromManualUpload(t *testing.T, tmpDir string) {
+func setupIncusOSFromManualUpload(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -120,12 +120,12 @@ func setupIncusOSFromManualUpload(t *testing.T, tmpDir string) {
 
 	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
 
-	createIncusOSInstances(t, incusOSPreseededISOFilename, names)
+	createIncusOSInstances(ctx, t, incusOSPreseededISOFilename, names)
 
 	printServerList(t)
 }
 
-func setupIncusOSWithTokenSeed(t *testing.T, tmpDir string) {
+func setupIncusOSWithTokenSeed(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -142,7 +142,7 @@ func setupIncusOSWithTokenSeed(t *testing.T, tmpDir string) {
 
 	importIncusOSISOStorageVolume(t, tmpDir, incusOSPreseededISOFilename)
 
-	createIncusOSInstances(t, incusOSPreseededISOFilename, names)
+	createIncusOSInstances(ctx, t, incusOSPreseededISOFilename, names)
 
 	printServerList(t)
 }
@@ -239,7 +239,7 @@ func getClientCertificate(t *testing.T) string {
 	return string(clientCertificate)
 }
 
-func getOperationsCenterIncusOSISO(t *testing.T, tmpDir string) {
+func getOperationsCenterIncusOSISO(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	if !isFile(filepath.Join(tmpDir, "IncusOS_OperationsCenter.iso")) {
@@ -258,7 +258,7 @@ func getOperationsCenterIncusOSISO(t *testing.T, tmpDir string) {
 			},
 		)
 
-		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://incusos-customizer.linuxcontainers.org/1.0/images", bytes.NewBuffer(operationsCenterSeed))
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://incusos-customizer.linuxcontainers.org/1.0/images", bytes.NewBuffer(operationsCenterSeed))
 		require.NoError(t, err)
 
 		resp, err := http.DefaultClient.Do(req)
@@ -286,14 +286,14 @@ func importOperationsCenterIncusOSISOStorageVolume(t *testing.T, tmpDir string) 
 	}
 }
 
-func installOperationsCenterVM(t *testing.T) (installed bool) {
+func installOperationsCenterVM(ctx context.Context, t *testing.T) (installed bool) {
 	t.Helper()
 
-	status := mustInstanceStatus(t, "OperationsCenter")
+	status := mustInstanceStatus(ctx, t, "OperationsCenter")
 	if status != "" && status != instanceStatusRunning {
 		// The VM might just be restarting, so give it a moment to settle before recreating it.
 		t.Logf("Operations Center VM is in status %q, waiting for it to become running", status)
-		status = waitInstanceStatusRunning(t, "OperationsCenter", 2*time.Minute)
+		status = waitInstanceStatusRunning(ctx, t, "OperationsCenter", 2*time.Minute)
 	}
 
 	if status == instanceStatusRunning {
@@ -315,8 +315,8 @@ func installOperationsCenterVM(t *testing.T) (installed bool) {
 	mustRun(t, `incus start OperationsCenter`)
 
 	t.Log("Waiting for Operations Center to complete installation")
-	mustWaitAgentRunningWithTimeout(t, "OperationsCenter", 5*time.Minute)
-	mustWaitExpectedLogWithTimeout(t, "OperationsCenter", "incus-osd", "IncusOS was successfully installed", 5*time.Minute)
+	mustWaitAgentRunningWithTimeout(ctx, t, "OperationsCenter", 5*time.Minute)
+	mustWaitExpectedLogWithTimeout(ctx, t, "OperationsCenter", "incus-osd", "IncusOS was successfully installed", 5*time.Minute)
 
 	return true
 }
@@ -366,7 +366,7 @@ func replaceOperationsCenterExecutable(t *testing.T, tmpDir string) {
 	mustRun(t, `incus exec OperationsCenter -- bash -c "mount -o bind /root/dev/operations-centerd /usr/local/bin/operations-centerd && systemctl start operations-center"`)
 }
 
-func setupLocalOperationsCenterConfig(t *testing.T, freshInstall bool) {
+func setupLocalOperationsCenterConfig(ctx context.Context, t *testing.T, freshInstall bool) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -383,7 +383,7 @@ func setupLocalOperationsCenterConfig(t *testing.T, freshInstall bool) {
 	// Adding Operations Center instance as remote
 	operationsCenterHostPort := net.JoinHostPort(operationsCenterIPAddress(t), "8443")
 
-	ctxWithTimeout, cancel := context.WithTimeout(t.Context(), strechedTimeout(60*time.Second))
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, strechedTimeout(60*time.Second))
 	err = waitForTCPPort(ctxWithTimeout, t, operationsCenterHostPort, 1*time.Second)
 	cancel()
 	require.NoError(t, err)
@@ -514,7 +514,7 @@ func importIncusOSISOStorageVolume(t *testing.T, tmpDir string, incusOSPreseeded
 	}
 }
 
-func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string, names []string) {
+func createIncusOSInstances(ctx context.Context, t *testing.T, incusOSPreseededISOFilename string, names []string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -529,7 +529,7 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string, na
 		timeout = time.Duration(int(timeout) * len(names))
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(t.Context(), strechedTimeout(timeout))
+	timeoutCtx, cancel := context.WithTimeout(ctx, strechedTimeout(timeout))
 	defer cancel()
 
 	errgrp, errgrpctx := errgroup.WithContext(timeoutCtx)
@@ -659,7 +659,7 @@ func createIncusOSInstances(t *testing.T, incusOSPreseededISOFilename string, na
 	}
 
 	// Wait for instances to self update in Operations Center
-	instanceReadyTimeoutCtx, instanceReadyCancel := context.WithTimeout(t.Context(), strechedTimeout(2*time.Minute))
+	instanceReadyTimeoutCtx, instanceReadyCancel := context.WithTimeout(ctx, strechedTimeout(2*time.Minute))
 	defer instanceReadyCancel()
 
 	for {

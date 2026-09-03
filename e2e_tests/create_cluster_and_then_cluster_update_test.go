@@ -16,7 +16,7 @@ import (
 
 // TODO: combine with createCluster to remove redundant code. createCluster needs
 // to accept the channel as argument.
-func createClusterAndThenClusterUpdate(t *testing.T, tmpDir string) {
+func createClusterAndThenClusterUpdate(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -61,7 +61,7 @@ func createClusterAndThenClusterUpdate(t *testing.T, tmpDir string) {
 	assertIncusRemote(t, clusterName, names)
 	assertInventory(t, clusterName, names)
 	assertTerraformArtifact(t, clusterName)
-	assertWebsocketEventsInventoryUpdate(t, clusterName)
+	assertWebsocketEventsInventoryUpdate(ctx, t, clusterName)
 
 	t.Log("Start some small VMs for the cluster to have some minimal workload.")
 	for i := range names {
@@ -91,7 +91,7 @@ func createClusterAndThenClusterUpdate(t *testing.T, tmpDir string) {
 	t.Log("Update cluster - trigger update")
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster update incus-os-cluster --reboot`, cpuArch)
 
-	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(30*time.Minute))
+	ctx, cancel := context.WithTimeout(ctx, strechedTimeout(30*time.Minute))
 	defer cancel()
 
 	previousUpdateStatusDescription := ""

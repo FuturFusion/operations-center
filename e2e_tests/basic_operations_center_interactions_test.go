@@ -1,10 +1,11 @@
 package e2e
 
 import (
+	"context"
 	"testing"
 )
 
-func basicOperationsCenterInteractions(t *testing.T, tmpDir string) {
+func basicOperationsCenterInteractions(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	assertOperationsCenterCliAdmin(t)
@@ -14,13 +15,13 @@ func basicOperationsCenterInteractions(t *testing.T, tmpDir string) {
 	assertOperationsCenterCliProvisioningClusterTemplate(t, tmpDir)
 }
 
-func basicOperationsCenterInteractionsUpdatesCleanupAndRefresh(t *testing.T, tmpDir string) {
+func basicOperationsCenterInteractionsUpdatesCleanupAndRefresh(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
-	assertOperationsCenterCliUpdateCleanupAndRefresh(t)
+	assertOperationsCenterCliUpdateCleanupAndRefresh(ctx, t)
 }
 
-func registerServer(t *testing.T, tmpDir string) {
+func registerServer(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	assertServerRegistrationScriptletEffects(t)
