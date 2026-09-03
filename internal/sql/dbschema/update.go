@@ -69,6 +69,29 @@ var updates = map[int]update{
 	39: updateFromV38,
 	40: updateFromV39,
 	41: updateFromV40,
+	42: updateFromV41,
+}
+
+func updateFromV41(ctx context.Context, tx *sql.Tx) error {
+	// v41..v42 normalize servers.system_uuid and servers.machine_id to lower case.
+	// Clear the identifier on all but the oldest row of a case insensitive
+	// duplicate group, since lower casing would otherwise violate the UNIQUE
+	// constraints. This is a precaution for an extremely unlikely case, since
+	// this would be a UUID clash.
+	stmt := `
+UPDATE servers SET system_uuid = NULL
+  WHERE system_uuid IS NOT NULL
+    AND id NOT IN (SELECT MIN(id) FROM servers WHERE system_uuid IS NOT NULL GROUP BY lower(system_uuid));
+
+UPDATE servers SET machine_id = NULL
+  WHERE machine_id IS NOT NULL
+    AND id NOT IN (SELECT MIN(id) FROM servers WHERE machine_id IS NOT NULL GROUP BY lower(machine_id));
+
+UPDATE servers SET system_uuid = lower(system_uuid) WHERE system_uuid IS NOT NULL;
+UPDATE servers SET machine_id = lower(machine_id) WHERE machine_id IS NOT NULL;
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV40(ctx context.Context, tx *sql.Tx) error {
