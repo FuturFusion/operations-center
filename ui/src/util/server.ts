@@ -20,6 +20,15 @@ export const IncusServerTypeString = {
 
 export type ServerTypeKey = keyof typeof ServerTypeString;
 
+export enum ServerStatus {
+  Unknown = "unknown",
+  Unregistered = "unregistered",
+  Deploying = "deploying",
+  Pending = "pending",
+  Ready = "ready",
+  Offline = "offline",
+}
+
 export enum ServerAction {
   Evacuate = "evacuate",
   PowerOff = "poweroff",

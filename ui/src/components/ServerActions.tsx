@@ -2,6 +2,9 @@ import { FC, useEffect, useState } from "react";
 import { MdOutlineSync } from "react-icons/md";
 import { useQueryClient } from "@tanstack/react-query";
 import { resyncServer } from "api/server";
+import ServerDeployBtn from "components/ServerDeployBtn";
+import ServerDeployCancelBtn from "components/ServerDeployCancelBtn";
+import ServerDeploymentStatusBtn from "components/ServerDeploymentStatusBtn";
 import ServerEvacuateBtn from "components/ServerEvacuateBtn";
 import ServerPoweroffBtn from "components/ServerPoweroffBtn";
 import ServerRebootBtn from "components/ServerRebootBtn";
@@ -9,7 +12,7 @@ import ServerRestoreBtn from "components/ServerRestoreBtn";
 import ServerUpdateBtn from "components/ServerUpdateBtn";
 import { useNotification } from "context/notificationContext";
 import type { Server } from "types/server";
-import { ServerAction, ServerType } from "util/server";
+import { ServerAction, ServerStatus, ServerType } from "util/server";
 
 interface Props {
   server: Server;
@@ -66,6 +69,13 @@ const ServerActions: FC<Props> = ({ server }) => {
       .catch((e) => {
         notify.error(`Error during server sync: ${e}`);
       });
+  };
+
+  const showDeployButton = (): boolean => {
+    return (
+      server.server_status == ServerStatus.Unregistered &&
+      !!server.bmc_config?.api_type
+    );
   };
 
   const showButton = (action: string): boolean => {
@@ -144,6 +154,11 @@ const ServerActions: FC<Props> = ({ server }) => {
       {showButton(ServerAction.PowerOff) && (
         <ServerPoweroffBtn server={server} />
       )}
+      {showDeployButton() && <ServerDeployBtn server={server} />}
+      {server.server_status == ServerStatus.Deploying && (
+        <ServerDeployCancelBtn server={server} />
+      )}
+      <ServerDeploymentStatusBtn server={server} />
     </div>
   );
 };
