@@ -19,24 +19,14 @@ func (i SeedImageID) String() string {
 
 // SeedImageProgress reports how much of a seed image one source has read.
 type SeedImageProgress struct {
-	ImageID       SeedImageID
-	Source        string
-	Size          int64
-	BytesServed   int64
-	HighestOffset int64
-	FirstRead     time.Time
-	LastRead      time.Time
-	RequestCount  int
-}
-
-// PercentComplete returns how much of the image has been read, based on the
-// highest offset reached. It returns 0, if the size of the image is unknown.
-func (p SeedImageProgress) PercentComplete() float64 {
-	if p.Size <= 0 {
-		return 0
-	}
-
-	return min(float64(p.HighestOffset)/float64(p.Size)*100, 100)
+	ImageID      SeedImageID
+	Source       string
+	Size         int64
+	BytesServed  int64
+	BytesCovered int64
+	FirstRead    time.Time
+	LastRead     time.Time
+	RequestCount int
 }
 
 // IdleFor returns for how long nothing has been read anymore. It returns 0, if
