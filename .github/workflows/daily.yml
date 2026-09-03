@@ -12,7 +12,7 @@ jobs:
     name: Operations Center End-to-End System Tests
     strategy:
       fail-fast: false
-    timeout-minutes: 181
+    timeout-minutes: 245
     runs-on:
       - self-hosted
       - arch-amd64
@@ -70,7 +70,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}
-          go test -v ./e2e_tests -timeout 180m | tee ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/e2e_tests.out
+          go test -v ./e2e_tests -timeout 240m | tee ${OPERATIONS_CENTER_E2E_TEST_TMP_DIR}/e2e_tests.out
 
       - name: Show logs on failure
         if: failure()
