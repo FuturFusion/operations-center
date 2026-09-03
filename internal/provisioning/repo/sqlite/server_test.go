@@ -3,6 +3,7 @@ package sqlite_test
 import (
 	"context"
 	"crypto/tls"
+	"strings"
 	"testing"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
@@ -64,8 +65,8 @@ func TestServerDatabaseActions(t *testing.T) {
 		},
 		Status:     api.ServerStatusReady,
 		Channel:    "stable",
-		SystemUUID: new("1"),
-		MachineID:  new("1"),
+		SystemUUID: new("e9de436e-b94e-4aef-8563-883aec84096e"),
+		MachineID:  new("e9de436eb94e4aef8563883aec84096e"),
 	}
 
 	serverB := provisioning.Server{
@@ -265,6 +266,12 @@ func TestServerDatabaseActions(t *testing.T) {
 	serverA.ID = dbServerA.ID
 	serverA.LastUpdated = dbServerA.LastUpdated
 	require.Equal(t, serverA, *dbServerA)
+
+	_, err = server.GetBySystemUUID(ctx, strings.ToUpper(*serverA.SystemUUID))
+	require.ErrorIs(t, err, domain.ErrNotFound, "lookup by system UUID is case sensitive, therefore the value needs to be normalized to lower case before it is stored")
+
+	_, err = server.GetByMachineID(ctx, strings.ToUpper(*serverA.MachineID))
+	require.ErrorIs(t, err, domain.ErrNotFound, "lookup by machine ID is case sensitive, therefore the value needs to be normalized to lower case before it is stored")
 
 	// GetByCertificate
 	dbServerA, err = server.GetByCertificate(ctx, *serverA.Certificate)
