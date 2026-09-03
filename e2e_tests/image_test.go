@@ -50,16 +50,16 @@ const (
 // hours and its first run is delayed by 10 minutes on IncusOS. Since the
 // Operations Center daemon is restarted at the beginning of every end 2 end
 // test, no background refresh can interfere with the assertions below.
-func ocIncusImagesRemoteLaunchInstance(names []string) func(t *testing.T, tmpDir string) {
-	return func(t *testing.T, tmpDir string) {
+func ocIncusImagesRemoteLaunchInstance(names []string) func(ctx context.Context, t *testing.T, tmpDir string) {
+	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
-		createCluster(names)(t, tmpDir)
+		createCluster(names)(ctx, t, tmpDir)
 
 		// Only test on the first server
 		name := names[0]
 
-		ocHostname := prepareServerAsOCImagesClient(t, tmpDir, name)
+		ocHostname := prepareServerAsOCImagesClient(ctx, t, tmpDir, name)
 
 		t.Cleanup(ocIncusImagesCleanup(t))
 
@@ -97,13 +97,11 @@ func ocIncusImagesRemoteLaunchInstance(names []string) func(t *testing.T, tmpDir
 // certificate of Operations Center and resolve its hostname, which is what the
 // server needs in order to use Operations Center as image remote. It returns
 // the hostname of Operations Center.
-func prepareServerAsOCImagesClient(t *testing.T, tmpDir string, name string) string {
+func prepareServerAsOCImagesClient(ctx context.Context, t *testing.T, tmpDir string, name string) string {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
-
-	ctx := t.Context()
 
 	t.Logf("Apply operations-center server certificate to %s", name)
 	resp := mustRun(t, `../bin/operations-center.linux.%s system certificate show -f json | jq -r -e '.certificate'`, cpuArch)

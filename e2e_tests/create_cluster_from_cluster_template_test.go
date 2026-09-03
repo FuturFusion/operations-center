@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createClusterFromTemplate(t *testing.T, tmpDir string) {
+func createClusterFromTemplate(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -65,7 +65,7 @@ func createClusterFromTemplate(t *testing.T, tmpDir string) {
 	assertIncusRemote(t, "incus-os-cluster", names)
 	assertInventory(t, "incus-os-cluster", names)
 	assertTerraformArtifact(t, "incus-os-cluster")
-	assertWebsocketEventsInventoryUpdate(t, "incus-os-cluster")
+	assertWebsocketEventsInventoryUpdate(ctx, t, "incus-os-cluster")
 }
 
 func clusterTemplateCleanup(t *testing.T) func() {

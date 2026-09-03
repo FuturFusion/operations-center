@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -10,8 +11,8 @@ import (
 
 // serverBMCPowerOffAndOn powers the given server off and on again through its
 // BMC, which is provided by an in-process Redfish proxy.
-func serverBMCPowerOffAndOn(serverName string) func(t *testing.T, tmpDir string) {
-	return func(t *testing.T, tmpDir string) {
+func serverBMCPowerOffAndOn(serverName string) func(ctx context.Context, t *testing.T, tmpDir string) {
+	return func(ctx context.Context, t *testing.T, tmpDir string) {
 		t.Helper()
 
 		stop := timeTrack(t)
@@ -26,7 +27,7 @@ func serverBMCPowerOffAndOn(serverName string) func(t *testing.T, tmpDir string)
 
 		// Setup
 		t.Log("Configure the BMC of the server")
-		mustSetServerBMCConfig(t, tmpDir, serverName, "redfish-v1-generic", endpoint)
+		mustSetServerBMCConfig(ctx, t, tmpDir, serverName, "redfish-v1-generic", endpoint)
 
 		assertBMCConfig(t, serverName, endpoint)
 
@@ -42,19 +43,19 @@ func serverBMCPowerOffAndOn(serverName string) func(t *testing.T, tmpDir string)
 		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning server bmc server-power-off %s --force`, 5*time.Minute, cpuArch, serverName)
 
 		// Assertions
-		assertInstanceStatus(t, serverName, "Stopped", 3*time.Minute)
-		assertBMCServerPowerState(t, serverName, "Off", 2*time.Minute)
+		assertInstanceStatus(ctx, t, serverName, "Stopped", 3*time.Minute)
+		assertBMCServerPowerState(ctx, t, serverName, "Off", 2*time.Minute)
 
 		// Run test
 		t.Log("Power on the server via BMC")
 		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning server bmc server-power-on %s`, 5*time.Minute, cpuArch, serverName)
 
 		// Assertions
-		assertInstanceStatus(t, serverName, "Running", 2*time.Minute)
-		assertBMCServerPowerState(t, serverName, "On", 2*time.Minute)
+		assertInstanceStatus(ctx, t, serverName, "Running", 2*time.Minute)
+		assertBMCServerPowerState(ctx, t, serverName, "On", 2*time.Minute)
 
-		mustWaitIncusOSReady(t, []string{serverName})
-		mustWaitInventoryReady(t, []string{serverName})
+		mustWaitIncusOSReady(ctx, t, []string{serverName})
+		mustWaitInventoryReady(ctx, t, []string{serverName})
 	}
 }
 
@@ -87,7 +88,7 @@ func assertBMCConfig(t *testing.T, serverName string, endpoint string) {
 }
 
 // assertInstanceStatus waits for the Incus instance to reach the wanted status.
-func assertInstanceStatus(t *testing.T, name string, status string, timeout time.Duration) {
+func assertInstanceStatus(ctx context.Context, t *testing.T, name string, status string, timeout time.Duration) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -95,7 +96,7 @@ func assertInstanceStatus(t *testing.T, name string, status string, timeout time
 
 	desc := fmt.Sprintf("instance %q to be %q", name, status)
 
-	success, err := waitForSuccessWithTimeout(t, desc, `incus list -f json | jq -r -e '[ .[] | select(.name == "%s" and .status == "%s") ] | length == 1'`, timeout, name, status)
+	success, err := waitForSuccessWithTimeout(ctx, t, desc, `incus list -f json | jq -r -e '[ .[] | select(.name == "%s" and .status == "%s") ] | length == 1'`, timeout, name, status)
 	require.NoErrorf(t, err, "expect %s", desc)
 
 	if !success {
@@ -109,7 +110,7 @@ func assertInstanceStatus(t *testing.T, name string, status string, timeout time
 
 // assertBMCServerPowerState waits for Operations Center to report the wanted
 // power state of the server.
-func assertBMCServerPowerState(t *testing.T, serverName string, powerState string, timeout time.Duration) {
+func assertBMCServerPowerState(ctx context.Context, t *testing.T, serverName string, powerState string, timeout time.Duration) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -117,7 +118,7 @@ func assertBMCServerPowerState(t *testing.T, serverName string, powerState strin
 
 	desc := fmt.Sprintf("BMC power state of server %q to be %q", serverName, powerState)
 
-	success, err := waitForSuccessWithTimeout(t, desc, `../bin/operations-center.linux.%s provisioning server show %s -f json | jq -r -e '.bmc_data.server_power_state == "%s"'`, timeout, cpuArch, serverName, powerState)
+	success, err := waitForSuccessWithTimeout(ctx, t, desc, `../bin/operations-center.linux.%s provisioning server show %s -f json | jq -r -e '.bmc_data.server_power_state == "%s"'`, timeout, cpuArch, serverName, powerState)
 	require.NoErrorf(t, err, "expect %s", desc)
 
 	if !success {

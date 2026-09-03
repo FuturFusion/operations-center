@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"net"
 	"os"
 	"path/filepath"
@@ -11,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func factoryResetClusterWithTokenSeed(t *testing.T, tmpDir string) {
+func factoryResetClusterWithTokenSeed(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -68,9 +69,9 @@ func factoryResetClusterWithTokenSeed(t *testing.T, tmpDir string) {
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster factory-reset incus-os-cluster %s %s`, cpuArch, token, tokenSeedName)
 	time.Sleep(strechedTimeout(10 * time.Second)) // Wait for the factory reset to happen.
 
-	mustWaitIncusOSReady(t, []string{"IncusOS01", "IncusOS02", "IncusOS03"})
+	mustWaitIncusOSReady(ctx, t, []string{"IncusOS01", "IncusOS02", "IncusOS03"})
 
-	mustWaitInventoryReady(t, instanceNames)
+	mustWaitInventoryReady(ctx, t, instanceNames)
 
 	err = os.WriteFile(
 		filepath.Join(tmpDir, "application-post-factory-reset.yaml"),

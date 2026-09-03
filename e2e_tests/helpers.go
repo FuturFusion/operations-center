@@ -226,10 +226,10 @@ func runWithContext(ctx context.Context, t *testing.T, command string, args ...a
 
 // waitForSuccessWithTimout retries a command until it is executed successfully
 // or the timeout is exceeded.
-func waitForSuccessWithTimeout(t *testing.T, desc string, command string, timeout time.Duration, args ...any) (success bool, err error) {
+func waitForSuccessWithTimeout(ctx context.Context, t *testing.T, desc string, command string, timeout time.Duration, args ...any) (success bool, err error) {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(timeout))
+	ctx, cancel := context.WithTimeout(ctx, strechedTimeout(timeout))
 	defer cancel()
 
 	count := 0
@@ -295,33 +295,25 @@ func logVMDebugInfo(t *testing.T, vms ...string) {
 
 // mustWaitAgentRunning waits for the incus agent to be running inside the
 // given VM. The test is failed on error.
-func mustWaitAgentRunning(t *testing.T, vm string, args ...any) {
-	t.Helper()
-
-	mustWaitAgentRunningWithContext(t.Context(), t, vm, args...)
-}
-
-// mustWaitAgentRunningWithTimeout is the same as mustWaitAgentRunning with
-// an additional timeout.
-func mustWaitAgentRunningWithTimeout(t *testing.T, vm string, timeout time.Duration, args ...any) {
-	t.Helper()
-
-	timeoutCtx, cancel := context.WithTimeout(t.Context(), strechedTimeout(timeout))
-	defer cancel()
-
-	mustWaitAgentRunningWithContext(timeoutCtx, t, vm, args...)
-}
-
-// mustWaitAgentRunningWithContext is the same as mustWaitAgentRunning but
-// additionally accepts a context.
-func mustWaitAgentRunningWithContext(ctx context.Context, t *testing.T, vm string, args ...any) {
+func mustWaitAgentRunning(ctx context.Context, t *testing.T, vm string, args ...any) {
 	t.Helper()
 
 	err := waitAgentRunningWithContext(ctx, t, vm, args...)
 	require.NoError(t, err)
 }
 
-// mustWaitAgentRunningContext waits for the incus agent to be running inside
+// mustWaitAgentRunningWithTimeout is the same as mustWaitAgentRunning with
+// an additional timeout.
+func mustWaitAgentRunningWithTimeout(ctx context.Context, t *testing.T, vm string, timeout time.Duration, args ...any) {
+	t.Helper()
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, strechedTimeout(timeout))
+	defer cancel()
+
+	mustWaitAgentRunning(timeoutCtx, t, vm, args...)
+}
+
+// waitAgentRunningWithContext waits for the incus agent to be running inside
 // the given VM.
 func waitAgentRunningWithContext(ctx context.Context, t *testing.T, vm string, args ...any) error {
 	t.Helper()
@@ -365,18 +357,18 @@ func waitAgentRunningWithContext(ctx context.Context, t *testing.T, vm string, a
 
 // mustWaitExpectedLog waits for the wanted content to appear in the logs
 // of the unit in the vm. The test is failed on error.
-func mustWaitExpectedLog(t *testing.T, vm string, unit string, want string, args ...any) {
+func mustWaitExpectedLog(ctx context.Context, t *testing.T, vm string, unit string, want string, args ...any) {
 	t.Helper()
 
-	mustWaitExpectedLogWithContext(t.Context(), t, vm, unit, want, false, args...)
+	mustWaitExpectedLogWithContext(ctx, t, vm, unit, want, false, args...)
 }
 
 // mustWaitExpectedLogWithTimeout is the same as mustWaitExpectedLog but
 // accepts an additional timeout.
-func mustWaitExpectedLogWithTimeout(t *testing.T, vm string, unit string, want string, timeout time.Duration, args ...any) {
+func mustWaitExpectedLogWithTimeout(ctx context.Context, t *testing.T, vm string, unit string, want string, timeout time.Duration, args ...any) {
 	t.Helper()
 
-	timeoutCtx, cancel := context.WithTimeout(t.Context(), strechedTimeout(timeout))
+	timeoutCtx, cancel := context.WithTimeout(ctx, strechedTimeout(timeout))
 	defer cancel()
 
 	mustWaitExpectedLogWithContext(timeoutCtx, t, vm, unit, want, false, args...)
@@ -470,10 +462,10 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 
 // mustWaitUpdatesReady waits for at least 1 update to be ready in Operations
 // Center. The test is failed on error.
-func mustWaitUpdatesReady(t *testing.T) {
+func mustWaitUpdatesReady(ctx context.Context, t *testing.T) {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(15*time.Minute))
+	ctx, cancel := context.WithTimeout(ctx, strechedTimeout(15*time.Minute))
 	defer cancel()
 
 	count := 0
@@ -503,7 +495,7 @@ func mustWaitUpdatesReady(t *testing.T) {
 	printUpdateList(t)
 }
 
-func mustWaitIncusOSReady(t *testing.T, names []string) {
+func mustWaitIncusOSReady(ctx context.Context, t *testing.T, names []string) {
 	t.Helper()
 
 	const (
@@ -516,7 +508,7 @@ func mustWaitIncusOSReady(t *testing.T, names []string) {
 		timeout = time.Duration(int(timeout) * len(names))
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(t.Context(), strechedTimeout(timeout))
+	timeoutCtx, cancel := context.WithTimeout(ctx, strechedTimeout(timeout))
 	defer cancel()
 
 	errgrp, errgrpctx := errgroup.WithContext(timeoutCtx)
@@ -565,7 +557,7 @@ func mustWaitIncusOSReady(t *testing.T, names []string) {
 	}
 }
 
-func mustWaitInventoryReady(t *testing.T, names []string) {
+func mustWaitInventoryReady(ctx context.Context, t *testing.T, names []string) {
 	t.Helper()
 
 	timeout := 3 * time.Minute
@@ -573,7 +565,7 @@ func mustWaitInventoryReady(t *testing.T, names []string) {
 		timeout = time.Duration(int(timeout) * len(names))
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(t.Context(), strechedTimeout(timeout))
+	timeoutCtx, cancel := context.WithTimeout(ctx, strechedTimeout(timeout))
 	defer cancel()
 
 	errgrp, errgrpctx := errgroup.WithContext(timeoutCtx)
@@ -811,19 +803,19 @@ func instanceStatusWithContext(ctx context.Context, t *testing.T, name string) (
 	return resp.OutputTrimmed(), nil
 }
 
-func mustInstanceStatus(t *testing.T, name string) string {
+func mustInstanceStatus(ctx context.Context, t *testing.T, name string) string {
 	t.Helper()
 
-	status, err := instanceStatusWithContext(t.Context(), t, name)
+	status, err := instanceStatusWithContext(ctx, t, name)
 	require.NoError(t, err)
 
 	return status
 }
 
-func waitInstanceStatusRunning(t *testing.T, name string, timeout time.Duration) string {
+func waitInstanceStatusRunning(ctx context.Context, t *testing.T, name string, timeout time.Duration) string {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(timeout))
+	ctx, cancel := context.WithTimeout(ctx, strechedTimeout(timeout))
 	defer cancel()
 
 	count := 0
@@ -889,13 +881,13 @@ func setServerBMCConfigWithContext(ctx context.Context, t *testing.T, tmpDir str
 	return fmtRunErr(resp)
 }
 
-func mustSetServerBMCConfig(t *testing.T, tmpDir string, name string, apiType string, endpoint string) {
+func mustSetServerBMCConfig(ctx context.Context, t *testing.T, tmpDir string, name string, apiType string, endpoint string) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
-	err := setServerBMCConfigWithContext(t.Context(), t, tmpDir, name, apiType, endpoint)
+	err := setServerBMCConfigWithContext(ctx, t, tmpDir, name, apiType, endpoint)
 	require.NoErrorf(t, err, "Failed to set the BMC config of server %q", name)
 }
 
@@ -948,13 +940,13 @@ func setSystemSecurityOIDCWithContext(ctx context.Context, t *testing.T, tmpDir 
 	return fmtRunErr(resp)
 }
 
-func mustSetSystemSecurityOIDC(t *testing.T, tmpDir string, issuer string, clientID string, audience string, claim string) {
+func mustSetSystemSecurityOIDC(ctx context.Context, t *testing.T, tmpDir string, issuer string, clientID string, audience string, claim string) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
-	err := setSystemSecurityOIDCWithContext(t.Context(), t, tmpDir, issuer, clientID, audience, claim)
+	err := setSystemSecurityOIDCWithContext(ctx, t, tmpDir, issuer, clientID, audience, claim)
 	require.NoErrorf(t, err, "Failed to set the OIDC security config with issuer %q", issuer)
 }
 
@@ -1100,6 +1092,9 @@ func onTestFailDebugOutput(t *testing.T, tmpDir string) func() {
 			return
 		}
 
+		// Deliberately derived from t.Context() and not from the context of the
+		// test, since the debug output has to be collected even (and
+		// especially) if the test failed, because it exceeded its timeout.
 		ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(30*time.Second))
 		defer cancel()
 

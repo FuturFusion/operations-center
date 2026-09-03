@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -14,7 +15,7 @@ func TestE2E_WithToken_SetupOnly(t *testing.T) {
 	runE2ETest(
 		t,
 		"token - basic operations center interactions",
-		func(t *testing.T, tmpDir string) {
+		func(ctx context.Context, t *testing.T, tmpDir string) {
 			t.Helper()
 		},
 		basicOperationsCenterInteractions,
@@ -43,7 +44,7 @@ func TestE2E_UpdatesCleanupAndRefresh(t *testing.T) {
 	runE2ETest(
 		t,
 		"updates cleanup and refresh",
-		func(t *testing.T, tmpDir string) {
+		func(ctx context.Context, t *testing.T, tmpDir string) {
 			t.Helper()
 		},
 		basicOperationsCenterInteractionsUpdatesCleanupAndRefresh,
@@ -54,7 +55,7 @@ func TestE2E_OIDCAuthentication(t *testing.T) {
 	runE2ETest(
 		t,
 		"authenticate against operations center using OIDC",
-		func(t *testing.T, tmpDir string) {
+		func(ctx context.Context, t *testing.T, tmpDir string) {
 			t.Helper()
 		},
 		oidcAuthentication,
@@ -165,8 +166,8 @@ func TestE2E_FromManualUpload_CreateCluster(t *testing.T) {
 func runE2ETest(
 	t *testing.T,
 	name string,
-	setup func(t *testing.T, tmpDir string),
-	test func(t *testing.T, tmpDir string),
+	setup func(ctx context.Context, t *testing.T, tmpDir string),
+	test func(ctx context.Context, t *testing.T, tmpDir string),
 ) {
 	t.Helper()
 
@@ -176,7 +177,18 @@ func runE2ETest(
 		t.Skip("OPERATIONS_CENTER_E2E_TEST env var not set, skipping end 2 end tests.")
 	}
 
-	tmpDir := setupE2ETest(t)
+	timeout := strechedTimeout(testTimeout)
+
+	ctx, cancel := context.WithTimeout(t.Context(), timeout)
+	defer cancel()
+
+	defer func() {
+		if ctx.Err() != nil {
+			t.Errorf("Test exceeded its timeout of %v: %v", timeout, ctx.Err())
+		}
+	}()
+
+	tmpDir := setupE2ETest(ctx, t)
 
 	debugOutput = &bytes.Buffer{}
 
@@ -186,12 +198,12 @@ func runE2ETest(
 	stop := timeTrack(t, name)
 	defer stop()
 
-	setup(t, tmpDir)
+	setup(ctx, t, tmpDir)
 
-	test(t, tmpDir)
+	test(ctx, t, tmpDir)
 }
 
-func setupE2ETest(t *testing.T) string {
+func setupE2ETest(ctx context.Context, t *testing.T) string {
 	t.Helper()
 
 	// Precheck
@@ -223,7 +235,7 @@ func setupE2ETest(t *testing.T) string {
 
 	t.Logf("Temporary directory: %s", tmpDir)
 
-	setupOperationsCenter(t, tmpDir)
+	setupOperationsCenter(ctx, t, tmpDir)
 
 	return tmpDir
 }

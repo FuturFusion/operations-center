@@ -25,7 +25,7 @@ const (
 // authorization grant, that the authenticated user is granted read and write
 // access, that an expiring access token is refreshed without a new interactive
 // login and that the TLS based authentication keeps working.
-func oidcAuthentication(t *testing.T, tmpDir string) {
+func oidcAuthentication(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -42,7 +42,7 @@ func oidcAuthentication(t *testing.T, tmpDir string) {
 
 	// Setup
 	t.Log("Configure the OIDC issuer of Operations Center")
-	mustSetSystemSecurityOIDC(t, tmpDir, provider.Issuer, provider.ClientID, provider.ClientID, "")
+	mustSetSystemSecurityOIDC(ctx, t, tmpDir, provider.Issuer, provider.ClientID, provider.ClientID, "")
 
 	assertSystemSecurityOIDCConfig(t, provider.Issuer, provider.ClientID)
 
@@ -96,7 +96,7 @@ func oidcAuthentication(t *testing.T, tmpDir string) {
 	// Run test
 	assertOIDCAccessTokenRefresh(t, confDir, tokensFilename, provider)
 
-	assertOIDCClaimIsHonoured(t, tmpDir, confDir, provider)
+	assertOIDCClaimIsHonoured(ctx, t, tmpDir, confDir, provider)
 
 	assertOIDCBrowserLoginRedirect(t, operationsCenterAddress, provider)
 }
@@ -166,16 +166,16 @@ func assertOIDCAccessTokenRefresh(t *testing.T, confDir string, tokensFilename s
 	require.EqualValues(t, 1, provider.DeviceAuthorizationCount(), "expect the refresh to not trigger a new device authorization")
 }
 
-func assertOIDCClaimIsHonoured(t *testing.T, tmpDir string, confDir string, provider *oidcProvider) {
+func assertOIDCClaimIsHonoured(ctx context.Context, t *testing.T, tmpDir string, confDir string, provider *oidcProvider) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
 	t.Log("Configure a claim, which is not part of the access token")
-	mustSetSystemSecurityOIDC(t, tmpDir, provider.Issuer, provider.ClientID, provider.ClientID, "nonexistent_claim")
+	mustSetSystemSecurityOIDC(ctx, t, tmpDir, provider.Issuer, provider.ClientID, provider.ClientID, "nonexistent_claim")
 
-	defer mustSetSystemSecurityOIDC(t, tmpDir, provider.Issuer, provider.ClientID, provider.ClientID, "")
+	defer mustSetSystemSecurityOIDC(ctx, t, tmpDir, provider.Issuer, provider.ClientID, provider.ClientID, "")
 
 	resp := runWithTimeout(t, `OPERATIONS_CENTER_CONF=%s ../bin/operations-center.linux.%s query /1.0`, 2*time.Minute, confDir, cpuArch)
 	require.NoError(t, resp.err)

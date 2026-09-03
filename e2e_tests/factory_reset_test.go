@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"net"
 	"os"
 	"path/filepath"
@@ -11,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func factoryResetCluster(t *testing.T, tmpDir string) {
+func factoryResetCluster(ctx context.Context, t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
@@ -55,9 +56,9 @@ func factoryResetCluster(t *testing.T, tmpDir string) {
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster factory-reset incus-os-cluster`, cpuArch)
 	time.Sleep(strechedTimeout(10 * time.Second)) // Wait for the factory reset to happen.
 
-	mustWaitIncusOSReady(t, []string{"IncusOS01", "IncusOS02", "IncusOS03"})
+	mustWaitIncusOSReady(ctx, t, []string{"IncusOS01", "IncusOS02", "IncusOS03"})
 
-	mustWaitInventoryReady(t, instanceNames)
+	mustWaitInventoryReady(ctx, t, instanceNames)
 
 	// Post factory reset, the servers register with their machine ID again.
 	servers = strings.Join(instanceNames, " --server-names ")
