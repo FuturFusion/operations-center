@@ -418,6 +418,63 @@ one
 	}
 }
 
+func TestServer_NormalizeIdentifiers(t *testing.T) {
+	tests := []struct {
+		name   string
+		server provisioning.Server
+
+		wantSystemUUID *string
+		wantMachineID  *string
+	}{
+		{
+			name: "upper case",
+			server: provisioning.Server{
+				SystemUUID: new("E9DE436E-B94E-4AEF-8563-883AEC84096E"),
+				MachineID:  new("E9DE436EB94E4AEF8563883AEC84096E"),
+			},
+
+			wantSystemUUID: new("e9de436e-b94e-4aef-8563-883aec84096e"),
+			wantMachineID:  new("e9de436eb94e4aef8563883aec84096e"),
+		},
+		{
+			name: "mixed case",
+			server: provisioning.Server{
+				SystemUUID: new("E9de436e-B94e-4Aef-8563-883aEC84096e"),
+				MachineID:  new("E9de436eB94e4Aef8563883aEC84096e"),
+			},
+
+			wantSystemUUID: new("e9de436e-b94e-4aef-8563-883aec84096e"),
+			wantMachineID:  new("e9de436eb94e4aef8563883aec84096e"),
+		},
+		{
+			name: "already lower case",
+			server: provisioning.Server{
+				SystemUUID: new("e9de436e-b94e-4aef-8563-883aec84096e"),
+				MachineID:  new("e9de436eb94e4aef8563883aec84096e"),
+			},
+
+			wantSystemUUID: new("e9de436e-b94e-4aef-8563-883aec84096e"),
+			wantMachineID:  new("e9de436eb94e4aef8563883aec84096e"),
+		},
+		{
+			name:   "unset",
+			server: provisioning.Server{},
+
+			wantSystemUUID: nil,
+			wantMachineID:  nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.server.NormalizeIdentifiers()
+
+			require.Equal(t, tc.wantSystemUUID, tc.server.SystemUUID, "system UUID should be normalized to lower case")
+			require.Equal(t, tc.wantMachineID, tc.server.MachineID, "machine ID should be normalized to lower case")
+		})
+	}
+}
+
 func TestServer_UpdateState(t *testing.T) {
 	tests := []struct {
 		name   string

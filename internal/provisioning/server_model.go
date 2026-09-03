@@ -97,6 +97,19 @@ func (s Server) Clone() Server {
 	return server
 }
 
+// NormalizeIdentifiers lower cases the system UUID and machine ID.
+func (s *Server) NormalizeIdentifiers() {
+	if s.SystemUUID != nil {
+		systemUUID := strings.ToLower(*s.SystemUUID)
+		s.SystemUUID = &systemUUID
+	}
+
+	if s.MachineID != nil {
+		machineID := strings.ToLower(*s.MachineID)
+		s.MachineID = &machineID
+	}
+}
+
 func (s Server) Validate() error {
 	if s.Name == "" {
 		return domain.NewValidationErrf("Invalid server, name can not be empty")

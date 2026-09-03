@@ -204,6 +204,8 @@ func (s *serverService) runInBackground(fn func(ctx context.Context)) {
 }
 
 func (s *serverService) PreRegister(ctx context.Context, newServer provisioning.Server) (provisioning.Server, error) {
+	newServer.NormalizeIdentifiers()
+
 	err := newServer.Validate()
 	if err != nil {
 		return provisioning.Server{}, err
@@ -244,6 +246,8 @@ func (s *serverService) PreRegister(ctx context.Context, newServer provisioning.
 
 func (s *serverService) Register(ctx context.Context, token uuid.UUID, newServer provisioning.Server) (provisioning.Server, error) {
 	deploymentInProgress := false
+
+	newServer.NormalizeIdentifiers()
 
 	slog.InfoContext(ctx, "Register for new server started", slog.String("system_uuid", ptr.From(newServer.SystemUUID)), slog.String("machine_id", ptr.From(newServer.MachineID)))
 
@@ -2463,6 +2467,7 @@ func (s *serverService) resyncBMCData(ctx context.Context, server provisioning.S
 		details.LastUpdated = s.now()
 		if details.ServerUUID != "" {
 			server.SystemUUID = &details.ServerUUID
+			server.NormalizeIdentifiers()
 		}
 
 		server.BMCData = details
