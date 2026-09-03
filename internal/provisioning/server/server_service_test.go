@@ -10431,8 +10431,8 @@ func TestServerService_BMCApplySecureBootCertificatesByName(t *testing.T) {
 			}
 
 			bmcClient := &adapterMock.BMCServerClientPortMock{
-				ApplySecureBootCertificatesFunc: func(ctx context.Context, server provisioning.Server) error {
-					return tc.bmcClientApplySecureBootCertificatesErr
+				ApplySecureBootCertificatesFunc: func(ctx context.Context, server provisioning.Server, secureBoot api.BIOSSecureBoot) (bool, error) {
+					return tc.bmcClientApplySecureBootCertificatesErr == nil, tc.bmcClientApplySecureBootCertificatesErr
 				},
 			}
 

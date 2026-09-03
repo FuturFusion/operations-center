@@ -152,8 +152,7 @@ func (s Server) Validate() error {
 		}
 	}
 
-	if s.Status == api.ServerStatusUnregistered {
-		// Everything relevant for status unregistered is validated at this point.
+	if s.Status == api.ServerStatusUnregistered || s.Status == api.ServerStatusDeploying {
 		return nil
 	}
 
@@ -191,18 +190,18 @@ func (s Server) UpdateState() api.ServerUpdateState {
 var signalLifecycleEventDelay = 3 * time.Second
 
 func (s Server) SignalLifecycleEvent() {
+	slm := lifecycle.ServerLifecycleMessage{
+		Server:            s.Name,
+		Cluster:           s.Cluster,
+		ServerUpdateState: s.UpdateState(),
+	}
+
 	go func() {
 		// Defer lifecycle signal a bit, let the triggering event complete first.
 		time.Sleep(signalLifecycleEventDelay)
 
 		// Use a detached context in order to make sure, no existing DB transaction is inherited.
 		ctx := context.Background()
-
-		slm := lifecycle.ServerLifecycleMessage{
-			Server:            s.Name,
-			Cluster:           s.Cluster,
-			ServerUpdateState: s.UpdateState(),
-		}
 
 		lifecycle.ServerLifecycleSignal.Emit(ctx, slm)
 	}()
@@ -313,4 +312,7 @@ type BMCTaskMonitor struct {
 
 // ServerStatusInternal holds status information, which is kept internal to
 // Operations Center and is not part of the REST API surface.
-type ServerStatusInternal struct{}
+type ServerStatusInternal struct {
+	// Deployment holds the state of the automated deployment of the server.
+	Deployment *ServerDeployment `json:"deployment,omitempty"`
+}
