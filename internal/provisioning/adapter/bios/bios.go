@@ -1,4 +1,4 @@
-// Package bios provides the catalogue of BIOS profiles, that is shipped with
+// Package bios provides the catalog of BIOS profiles, that is shipped with
 // Operations Center.
 package bios
 
@@ -24,12 +24,12 @@ type Catalogue struct {
 
 var _ provisioning.BIOSProfilePort = Catalogue{}
 
-// New returns the catalogue of BIOS profiles shipped with Operations Center.
+// New returns the catalog of BIOS profiles shipped with Operations Center.
 func New() (Catalogue, error) {
 	return NewFromFS(builtinProfiles, "profiles")
 }
 
-// NewFromFS returns a catalogue of the BIOS profiles read from the YAML
+// NewFromFS returns a catalog of the BIOS profiles read from the YAML
 // documents found in dir of fsys.
 func NewFromFS(fsys fs.FS, dir string) (Catalogue, error) {
 	entries, err := fs.Glob(fsys, dir+"/*.yaml")

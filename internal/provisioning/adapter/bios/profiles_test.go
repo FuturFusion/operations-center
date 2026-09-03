@@ -62,6 +62,9 @@ func TestCatalogue_builtinProfiles(t *testing.T) {
 					"SecureBootPolicy": "Custom",
 					"TpmSecurity":      "On",
 				},
+				DeferredAttributes: map[string]any{
+					"Tpm2Algorithm": "SHA256",
+				},
 			},
 		},
 		{
@@ -77,6 +80,7 @@ func TestCatalogue_builtinProfiles(t *testing.T) {
 					"SecureBootMode":   "UserMode",
 					"SecureBootPolicy": "Custom",
 				},
+				DeferredAttributes: map[string]any{},
 			},
 		},
 		{
@@ -93,6 +97,70 @@ func TestCatalogue_builtinProfiles(t *testing.T) {
 					"SecureBootPolicy": "Custom",
 					"TpmSecurity":      "On",
 				},
+				DeferredAttributes: map[string]any{
+					"Tpm2Algorithm": "SHA256",
+				},
+			},
+		},
+		{
+			name: "Lenovo ThinkSystem SR630 V2",
+			data: api.BMCData{
+				BMCProtocol:                   "Redfish",
+				BMCProtocolVersion:            "1.15.0",
+				BMCVendor:                     "Lenovo",
+				BMCModel:                      "Lenovo XClarity Controller",
+				BMCFirmwareVersion:            "AFBT58B 5.70 2025-08-11",
+				ServerManufacturer:            "Lenovo",
+				ServerModel:                   "ThinkSystem SR630 V2",
+				ServerUUID:                    "8a1f2b3c-4d5e-6f70-8192-a3b4c5d6e7f8",
+				ServerBIOSVersion:             "AFE128F",
+				ServerProcessorManufacturer:   "Intel",
+				ServerProcessorArchitecture:   "x86",
+				ServerProcessorInstructionSet: "x86-64",
+				ServerCPUSockets:              1,
+				ServerHasTPM:                  true,
+				ServerPowerState:              "On",
+				ServerHealthStatus:            "OK",
+			},
+
+			want: &provisioning.BIOSProfileResolution{
+				Profiles: []string{"lenovo"},
+				Attributes: map[string]any{
+					"SecureBootConfiguration_SecureBootStatus": "Enabled",
+					"SecureBootConfiguration_SecureBootMode":   "UserMode",
+					"SecureBootConfiguration_SecureBootPolicy": "CustomPolicy",
+				},
+				DeferredAttributes: map[string]any{},
+			},
+		},
+		{
+			name: "HPE ProLiant DL385 Gen10",
+			data: api.BMCData{
+				BMCProtocol:                   "Redfish",
+				BMCProtocolVersion:            "1.20.0",
+				BMCVendor:                     "HPE",
+				BMCModel:                      "iLO 5",
+				BMCFirmwareVersion:            "iLO 5 v3.20",
+				ServerManufacturer:            "HPE",
+				ServerModel:                   "ProLiant DL385 Gen10",
+				ServerUUID:                    "1b2c3d4e-5f60-7182-93a4-b5c6d7e8f901",
+				ServerBIOSVersion:             "A40 v3.70 (01/09/2026)",
+				ServerProcessorManufacturer:   "Advanced Micro Devices, Inc.",
+				ServerProcessorArchitecture:   "x86",
+				ServerProcessorInstructionSet: "x86-64",
+				ServerCPUSockets:              2,
+				ServerHasTPM:                  true,
+				ServerPowerState:              "On",
+				ServerHealthStatus:            "OK",
+			},
+
+			want: &provisioning.BIOSProfileResolution{
+				Profiles: []string{"hp", "hp-with-amd"},
+				Attributes: map[string]any{
+					"NumaGroupSizeOpt": "Clustered",
+					"SecureBootStatus": "Enabled",
+				},
+				DeferredAttributes: map[string]any{},
 			},
 		},
 		{
@@ -114,12 +182,12 @@ func TestCatalogue_builtinProfiles(t *testing.T) {
 		},
 	}
 
-	catalogue, err := bios.New()
+	catalog, err := bios.New()
 	require.NoError(t, err)
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			resolution, err := catalogue.Resolve(context.Background(), provisioning.Server{
+			resolution, err := catalog.Resolve(context.Background(), provisioning.Server{
 				Name:    "one",
 				BMCData: tc.data,
 			})

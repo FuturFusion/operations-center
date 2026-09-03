@@ -206,6 +206,12 @@ type BIOSProfile struct {
 	// of the BIOS profiles, so the attribute is left untouched.
 	Attributes map[string]any `json:"attributes" yaml:"attributes"`
 
+	// DeferredAttributes holds the BIOS attribute names and values, that are only
+	// applied once the attributes above are in effect, since firmware rejects an
+	// attribute, whose prerequisite has merely been staged. They are accumulated
+	// exactly like Attributes.
+	DeferredAttributes map[string]any `json:"deferred_attributes" yaml:"deferred_attributes"`
+
 	// SecureBoot holds the secure boot certificates and signatures, that are
 	// allowed to stay during the initialization of the server.
 	SecureBoot BIOSSecureBoot `json:"secure_boot" yaml:"secure_boot"`
@@ -224,8 +230,8 @@ func (p BIOSProfile) Validate() error {
 		return domain.NewValidationErrf("Invalid BIOS profile %q, at least one match is required", p.Name)
 	}
 
-	if len(p.Attributes) == 0 && p.SecureBoot.IsEmpty() {
-		return domain.NewValidationErrf("Invalid BIOS profile %q, attributes and secure boot can not both be empty", p.Name)
+	if len(p.Attributes) == 0 && len(p.DeferredAttributes) == 0 && p.SecureBoot.IsEmpty() {
+		return domain.NewValidationErrf("Invalid BIOS profile %q, attributes, deferred attributes and secure boot can not all be empty", p.Name)
 	}
 
 	for _, match := range p.Match {
@@ -259,6 +265,7 @@ func (p BIOSProfile) Clone() BIOSProfile {
 	clone := p
 	clone.Match = slices.Clone(p.Match)
 	clone.Attributes = maps.Clone(p.Attributes)
+	clone.DeferredAttributes = maps.Clone(p.DeferredAttributes)
 	clone.SecureBoot = p.SecureBoot.Clone()
 
 	return clone
@@ -275,6 +282,10 @@ type BIOSProfileResolution struct {
 	// Attributes holds the BIOS attribute names and values to apply.
 	Attributes map[string]any `json:"attributes" yaml:"attributes"`
 
+	// DeferredAttributes holds the BIOS attribute names and values, that are
+	// applied in a second pass, once the attributes above are in effect.
+	DeferredAttributes map[string]any `json:"deferred_attributes" yaml:"deferred_attributes"`
+
 	// SecureBoot holds the secure boot certificates and signatures, that are
 	// allowed to stay during the initialization of the server.
 	SecureBoot api.BIOSSecureBoot `json:"secure_boot" yaml:"secure_boot"`
@@ -289,26 +300,43 @@ func (r BIOSProfileResolution) ValidateAgainstBIOSAttributes(biosAttributes []ap
 		knownAttributes[biosAttribute.Name] = biosAttribute
 	}
 
-	problems := []string{}
+	problems := validateAttributesAgainstRegistry(knownAttributes, r.Attributes, true)
 
-	for _, name := range slices.Sorted(maps.Keys(r.Attributes)) {
-		biosAttribute, ok := knownAttributes[name]
-		if !ok {
-			problems = append(problems, fmt.Sprintf("%q is not known to the BMC", name))
-			continue
-		}
-
-		err := validateBIOSAttributeValue(biosAttribute, r.Attributes[name])
-		if err != nil {
-			problems = append(problems, fmt.Sprintf("%q: %v", name, err))
-		}
-	}
+	// A deferred attribute, that the BMC does not publish, is not a problem: the
+	// registry only exposes it once the attributes, it depends on, are in effect.
+	problems = append(problems, validateAttributesAgainstRegistry(knownAttributes, r.DeferredAttributes, false)...)
 
 	if len(problems) == 0 {
 		return nil
 	}
 
 	return domain.NewValidationErrf("BIOS profiles [%s] are not applicable: %s", strings.Join(r.Profiles, ", "), strings.Join(problems, ", "))
+}
+
+// validateAttributesAgainstRegistry checks a set of attributes against the BIOS
+// attributes published by the BMC of a server and returns the problems found. An
+// attribute, that the BMC does not publish at all, is only reported, if
+// requireKnown is set.
+func validateAttributesAgainstRegistry(knownAttributes map[string]api.BIOSAttribute, attributes map[string]any, requireKnown bool) []string {
+	problems := []string{}
+
+	for _, name := range slices.Sorted(maps.Keys(attributes)) {
+		biosAttribute, ok := knownAttributes[name]
+		if !ok {
+			if requireKnown {
+				problems = append(problems, fmt.Sprintf("%q is not known to the BMC", name))
+			}
+
+			continue
+		}
+
+		err := validateBIOSAttributeValue(biosAttribute, attributes[name])
+		if err != nil {
+			problems = append(problems, fmt.Sprintf("%q: %v", name, err))
+		}
+	}
+
+	return problems
 }
 
 // validateBIOSAttributeValue checks a single value against the type, the
@@ -372,8 +400,9 @@ func (p BIOSProfiles) Resolve(data api.BMCData) (*BIOSProfileResolution, error) 
 	profiles.Sort()
 
 	resolution := BIOSProfileResolution{
-		Profiles:   []string{},
-		Attributes: map[string]any{},
+		Profiles:           []string{},
+		Attributes:         map[string]any{},
+		DeferredAttributes: map[string]any{},
 	}
 
 	for _, profile := range profiles {
@@ -389,6 +418,7 @@ func (p BIOSProfiles) Resolve(data api.BMCData) (*BIOSProfileResolution, error) 
 		resolution.Profiles = append(resolution.Profiles, profile.Name)
 
 		mergeAttributes(resolution.Attributes, profile.Attributes)
+		mergeAttributes(resolution.DeferredAttributes, profile.DeferredAttributes)
 
 		resolution.SecureBoot.DB = mergeSecureBootDatabase(resolution.SecureBoot.DB, profile.SecureBoot.DB)
 		resolution.SecureBoot.DBX = mergeSecureBootDatabase(resolution.SecureBoot.DBX, profile.SecureBoot.DBX)
