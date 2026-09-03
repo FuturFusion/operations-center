@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"slices"
 	"strings"
 
 	"github.com/stmcginnis/gofish/schemas"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -35,6 +37,87 @@ func (e redfishError) Unwrap() []error {
 	return []error{e.err}
 }
 
+// RetryableWrapper returns an error wrapper, which marks the errors worth
+// retrying as retryable: everything domain.RetryableWrapper covers, plus a BMC
+// answering a request with a server side error or asking to slow down.
+func RetryableWrapper() func(error) error {
+	wrapDomainError := domain.RetryableWrapper()
+
+	return func(err error) error {
+		if err == nil {
+			return nil
+		}
+
+		classified := err
+
+		collected := collectionErrorFrom(err, nil)
+		if collected != nil {
+			classified = collected
+		}
+
+		if isRetryableRedfishError(classified) {
+			return domain.NewRetryableErr(err)
+		}
+
+		if domain.IsRetryableError(wrapDomainError(classified)) {
+			return domain.NewRetryableErr(err)
+		}
+
+		return err
+	}
+}
+
+func isRetryableRedfishError(err error) bool {
+	var collectionErr collectionError
+	if errors.As(err, &collectionErr) {
+		return slices.ContainsFunc(collectionErr.failures, isRetryableRedfishError)
+	}
+
+	var redfishErr *schemas.Error
+
+	return errors.As(err, &redfishErr) && isRetryableStatus(redfishErr.HTTPReturnedStatusCode)
+}
+
+func isRetryableStatus(statusCode int) bool {
+	return statusCode == http.StatusTooManyRequests || statusCode >= http.StatusInternalServerError
+}
+
+type collectionError struct {
+	failures []error
+}
+
+func (e collectionError) Error() string {
+	messages := make([]string, 0, len(e.failures))
+
+	for _, failure := range e.failures {
+		messages = append(messages, failure.Error())
+	}
+
+	return strings.Join(messages, "; ")
+}
+
+func (e collectionError) Unwrap() []error {
+	return e.failures
+}
+
+func collectionErrorFrom(err error, registry *messageRegistry) error {
+	var gofishErr *schemas.CollectionError
+	if !errors.As(err, &gofishErr) {
+		return nil
+	}
+
+	links := slices.Sorted(maps.Keys(gofishErr.Failures))
+
+	failures := make([]error, 0, len(links))
+	for _, link := range links {
+		failures = append(failures, fmt.Errorf("%s: %w", link, wrapRedfishErrorWithRegistry(gofishErr.Failures[link], registry)))
+	}
+
+	return collectionError{
+		failures: failures,
+	}
+}
+
 // wrapRedfishError renders the Redfish error response carried by err, if there
 // is one. Errors without a Redfish error response are returned unchanged.
 func wrapRedfishError(err error) error {
@@ -47,6 +130,16 @@ func wrapRedfishErrorWithRegistry(err error, registry *messageRegistry) error {
 	var wrapped redfishError
 	if errors.As(err, &wrapped) {
 		return err
+	}
+
+	var wrappedCollection collectionError
+	if errors.As(err, &wrappedCollection) {
+		return err
+	}
+
+	collected := collectionErrorFrom(err, registry)
+	if collected != nil {
+		return collected
 	}
 
 	var redfishErr *schemas.Error
@@ -79,10 +172,9 @@ func redfishRequestError(err error, registry *messageRegistry, method string, ur
 }
 
 // formatRedfishError renders a Redfish error response, preferring the extended
-// info entries, which carry the details, over the generic top level message.
-//
-// The registry is optional and only consulted for messages the BMC reported by
-// their registry ID alone.
+// info entries, which carry the details, over the generic top level message. The
+// registry is optional and only consulted for messages the BMC reported by their
+// registry ID alone.
 func formatRedfishError(redfishErr *schemas.Error, registry *messageRegistry) string {
 	details := make([]string, 0, len(redfishErr.ExtendedInfos))
 
@@ -160,10 +252,9 @@ func formatRedfishMessage(message schemas.Message, registry *messageRegistry) st
 	return text
 }
 
-// messageSeverity returns how severe the BMC considers the message.
-//
-// Severity was superseded by MessageSeverity in Message v1.1.0, BMCs report
-// either one or both.
+// messageSeverity returns how severe the BMC considers the message. Severity was
+// superseded by MessageSeverity in Message v1.1.0, BMCs report either one or
+// both.
 func messageSeverity(message schemas.Message) string {
 	if message.MessageSeverity != "" {
 		return string(message.MessageSeverity)
@@ -258,7 +349,6 @@ func isRequestRejected(err error) bool {
 	return isClientError(redfishErr.HTTPReturnedStatusCode)
 }
 
-// isClientError reports whether the status code is in the 4xx range.
 func isClientError(statusCode int) bool {
 	return statusCode >= 400 && statusCode < 500
 }

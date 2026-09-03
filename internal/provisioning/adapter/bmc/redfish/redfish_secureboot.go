@@ -5,12 +5,9 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
 	"slices"
 	"strings"
 
@@ -21,6 +18,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/util/logger"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 const (
@@ -38,51 +36,53 @@ var secureBootDatabaseNames = []string{
 	secureBootDatabaseDBX,
 }
 
-func (r redfish) ApplySecureBootCertificates(ctx context.Context, server provisioning.Server) error {
+func (r redfish) ApplySecureBootCertificates(ctx context.Context, server provisioning.Server, secureBoot api.BIOSSecureBoot) (bool, error) {
 	if r.env == nil {
-		return fmt.Errorf("Applying the secure boot certificates is not supported, no source for the certificates is configured: %w", domain.ErrOperationNotPermitted)
+		return false, fmt.Errorf("Applying the secure boot certificates is not supported, no source for the certificates is configured: %w", domain.ErrOperationNotPermitted)
 	}
 
 	incusOSCertificates, err := r.env.GetSecureBootCertificates(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to get secure boot certificates from IncusOS: %w", err)
+		return false, fmt.Errorf("Failed to get secure boot certificates from IncusOS: %w", err)
 	}
 
 	certificates, err := secureBootCertificatesByDatabase(incusOSCertificates)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	client, logout, err := r.getClient(ctx, server)
 	if err != nil {
-		return fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
+		return false, fmt.Errorf("Failed to connect to BMC %q: %w", server.BMCConfig.Endpoint, err)
 	}
 
 	defer logout()
 
 	system, err := getFirstSystem(client)
 	if err != nil {
-		return fmt.Errorf("Failed get BMC system: %w", err)
+		return false, fmt.Errorf("Failed get BMC system: %w", err)
 	}
 
-	secureBoot, err := system.SecureBoot()
+	systemSecureBoot, err := system.SecureBoot()
 	if err != nil {
-		return fmt.Errorf("Failed to get secure boot information: %w", wrapRedfishError(err))
+		return false, fmt.Errorf("Failed to get secure boot information: %w", wrapRedfishError(err))
 	}
 
-	if secureBoot == nil {
-		return fmt.Errorf("Applying the secure boot certificates is not supported, the BMC does not expose secure boot for system %q: %w", system.ODataID, domain.ErrOperationNotPermitted)
+	if systemSecureBoot == nil {
+		return false, fmt.Errorf("Applying the secure boot certificates is not supported, the BMC does not expose secure boot for system %q: %w", system.ODataID, domain.ErrOperationNotPermitted)
 	}
 
-	secureBootDatabases, err := secureBoot.SecureBootDatabases()
+	secureBootDatabases, err := systemSecureBoot.SecureBootDatabases()
 	if err != nil {
-		return fmt.Errorf("Failed to get secure boot databases: %w", wrapRedfishError(err))
+		return false, fmt.Errorf("Failed to get secure boot databases: %w", wrapRedfishError(err))
 	}
 
 	databases := secureBootDatabasesByName(secureBootDatabases)
 	if len(databases) == 0 {
-		return fmt.Errorf("Applying the secure boot certificates is not supported, the BMC provides %s for system %q: %w", describeSecureBootDatabases(secureBootDatabases), system.ODataID, domain.ErrOperationNotPermitted)
+		return false, fmt.Errorf("Applying the secure boot certificates is not supported, the BMC provides %s for system %q: %w", describeSecureBootDatabases(secureBootDatabases), system.ODataID, domain.ErrOperationNotPermitted)
 	}
+
+	enrolled := false
 
 	for _, dbName := range secureBootDatabaseNames {
 		secureBootDB, ok := databases[dbName]
@@ -90,18 +90,32 @@ func (r redfish) ApplySecureBootCertificates(ctx context.Context, server provisi
 			continue
 		}
 
-		err := wipeSecureBootDatabase(ctx, client, secureBootDB)
+		state, err := readSecureBootDatabase(secureBootDB)
 		if err != nil {
-			return err
+			return enrolled, err
 		}
 
-		err = fillSecureBootDatabase(client, secureBootDB, certificates[dbName])
+		allowList := secureBootAllowList(dbName, secureBoot)
+
+		if secureBootDatabaseApplied(state, allowList, certificates[dbName]) {
+			slog.InfoContext(ctx, "Secure boot database holds the certificates of IncusOS already, leaving it untouched", slog.String("database", secureBootDB.ODataID))
+			continue
+		}
+
+		enrolled = true
+
+		err = wipeSecureBootDatabase(ctx, client, state, allowList)
 		if err != nil {
-			return err
+			return enrolled, err
+		}
+
+		err = fillSecureBootDatabase(secureBootDB, certificates[dbName])
+		if err != nil {
+			return enrolled, err
 		}
 	}
 
-	return nil
+	return enrolled, nil
 }
 
 // secureBootCertificatesByDatabase groups the certificates IncusOS provides by
@@ -169,8 +183,6 @@ func secureBootDatabaseName(secureBootDB *schemas.SecureBootDatabase) string {
 	return ""
 }
 
-var secureBootDBSignaturesAllowList = map[string][]string{}
-
 // secureBootDBCertificateFingerprintAllowList contains the lower case hex
 // encoded SHA256 fingerprints of the DER encoding of the certificates, which
 // are kept while wiping a key database. The fingerprint is calculated from the
@@ -183,18 +195,155 @@ var secureBootDBCertificateFingerprintAllowList = map[string][]string{
 	},
 }
 
-// wipeSecureBootDatabase removes everything currently enrolled in a key
-// database except the entries from the allow list.
-func wipeSecureBootDatabase(ctx context.Context, client *gofish.APIClient, secureBootDB *schemas.SecureBootDatabase) error {
-	secureBootDBID := secureBootDatabaseName(secureBootDB)
+// secureBootAllowListEntries names the entries of a single key database, which
+// survive its reinitialization.
+type secureBootAllowListEntries struct {
+	certificates map[string]struct{}
+	signatures   map[string]struct{}
+}
 
-	signatures, err := secureBootDB.Signatures()
-	if err != nil {
-		return fmt.Errorf("Failed to get secure boot database signatures of %q: %w", secureBootDB.ODataID, wrapRedfishError(err))
+func secureBootAllowList(dbName string, secureBoot api.BIOSSecureBoot) secureBootAllowListEntries {
+	database := secureBootProfileDatabase(dbName, secureBoot)
+
+	return secureBootAllowListEntries{
+		certificates: secureBootAllowSet(secureBootDBCertificateFingerprintAllowList[dbName], database.Certificates, strings.ToLower),
+		signatures:   secureBootAllowSet(nil, database.Signatures, nil),
+	}
+}
+
+func secureBootProfileDatabase(dbName string, secureBoot api.BIOSSecureBoot) api.BIOSSecureBootDatabase {
+	switch dbName {
+	case secureBootDatabaseKEK:
+		return secureBoot.KEK
+
+	case secureBootDatabaseDB:
+		return secureBoot.DB
+
+	case secureBootDatabaseDBX:
+		return secureBoot.DBX
 	}
 
-	for _, signature := range signatures {
-		if slices.Contains(secureBootDBSignaturesAllowList[secureBootDBID], signature.SignatureString) {
+	return api.BIOSSecureBootDatabase{}
+}
+
+// secureBootAllowSet folds the overrides of the BIOS profiles into the built in
+// defaults. An override of true adds an entry, one of false drops it, and an
+// entry, no override names at all, keeps whatever the defaults say.
+func secureBootAllowSet(defaults []string, overrides map[string]bool, normalize func(string) string) map[string]struct{} {
+	if normalize == nil {
+		normalize = func(entry string) string { return entry }
+	}
+
+	allowed := make(map[string]struct{}, len(defaults)+len(overrides))
+
+	for _, entry := range defaults {
+		allowed[normalize(entry)] = struct{}{}
+	}
+
+	for entry, keep := range overrides {
+		entry = normalize(strings.TrimSpace(entry))
+
+		if !keep {
+			delete(allowed, entry)
+			continue
+		}
+
+		allowed[entry] = struct{}{}
+	}
+
+	return allowed
+}
+
+// secureBootDatabaseState is, what the BMC reports about a single key database.
+// Both collections are read before anything is deleted, so the applied check and
+// the wipe work off the very same view.
+type secureBootDatabaseState struct {
+	signatures   []*schemas.Signature
+	certificates []*schemas.Certificate
+}
+
+func readSecureBootDatabase(secureBootDB *schemas.SecureBootDatabase) (secureBootDatabaseState, error) {
+	signatures, err := secureBootDB.Signatures()
+	if err != nil {
+		return secureBootDatabaseState{}, fmt.Errorf("Failed to get secure boot database signatures of %q: %w", secureBootDB.ODataID, wrapRedfishError(err))
+	}
+
+	certs, err := secureBootDB.Certificates()
+	if err != nil {
+		return secureBootDatabaseState{}, fmt.Errorf("Failed to get secure boot database certificates of %q: %w", secureBootDB.ODataID, wrapRedfishError(err))
+	}
+
+	return secureBootDatabaseState{
+		signatures:   signatures,
+		certificates: certs,
+	}, nil
+}
+
+// secureBootDatabaseApplied reports, whether reinitializing a key database would
+// change nothing.
+func secureBootDatabaseApplied(state secureBootDatabaseState, allowList secureBootAllowListEntries, pemCertificates []string) bool {
+	for _, signature := range state.signatures {
+		_, allowed := allowList.signatures[signature.SignatureString]
+		if !allowed {
+			return false
+		}
+	}
+
+	desired := make(map[string]struct{}, len(pemCertificates))
+
+	for _, pemCertificate := range pemCertificates {
+		// A certificate, that can not be parsed, can not be looked for either,
+		// so the database has to be reinitialized. The enrollment then posts it
+		// verbatim and lets the BMC reject it.
+		fingerprint, err := pemCertificateFingerprint("of IncusOS", pemCertificate)
+		if err != nil {
+			return false
+		}
+
+		desired[fingerprint] = struct{}{}
+	}
+
+	enrolled := make(map[string]struct{}, len(state.certificates))
+
+	for _, cert := range state.certificates {
+		fingerprint, err := secureBootCertificateFingerprint(cert)
+		if err != nil {
+			return false
+		}
+
+		// A fingerprint, that is enrolled twice, is collapsed into a single
+		// entry by the reinitialization, which is a change.
+		_, duplicate := enrolled[fingerprint]
+		if duplicate {
+			return false
+		}
+
+		enrolled[fingerprint] = struct{}{}
+
+		_, wanted := desired[fingerprint]
+		_, allowed := allowList.certificates[fingerprint]
+
+		if !wanted && !allowed {
+			return false
+		}
+	}
+
+	for fingerprint := range desired {
+		_, ok := enrolled[fingerprint]
+		if !ok {
+			return false
+		}
+	}
+
+	return true
+}
+
+// wipeSecureBootDatabase removes everything currently enrolled in a key
+// database except the entries from the allow list.
+func wipeSecureBootDatabase(ctx context.Context, client *gofish.APIClient, state secureBootDatabaseState, allowList secureBootAllowListEntries) error {
+	for _, signature := range state.signatures {
+		_, allowed := allowList.signatures[signature.SignatureString]
+		if allowed {
 			continue
 		}
 
@@ -204,18 +353,14 @@ func wipeSecureBootDatabase(ctx context.Context, client *gofish.APIClient, secur
 		}
 	}
 
-	certs, err := secureBootDB.Certificates()
-	if err != nil {
-		return fmt.Errorf("Failed to get secure boot database certificates of %q: %w", secureBootDB.ODataID, wrapRedfishError(err))
-	}
-
-	for _, cert := range certs {
+	for _, cert := range state.certificates {
 		fingerprint, err := secureBootCertificateFingerprint(cert)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to calculate fingerprint of secure boot database certificate, removing it", logger.Err(err), slog.String("certificate", cert.ODataID), slog.String("certificate_subject", cert.Subject.CommonName))
 		}
 
-		if fingerprint != "" && slices.Contains(secureBootDBCertificateFingerprintAllowList[secureBootDBID], fingerprint) {
+		_, allowed := allowList.certificates[fingerprint]
+		if fingerprint != "" && allowed {
 			continue
 		}
 
@@ -229,14 +374,18 @@ func wipeSecureBootDatabase(ctx context.Context, client *gofish.APIClient, secur
 }
 
 func secureBootCertificateFingerprint(cert *schemas.Certificate) (string, error) {
-	block, _ := pem.Decode([]byte(cert.CertificateString))
+	return pemCertificateFingerprint(cert.ODataID, cert.CertificateString)
+}
+
+func pemCertificateFingerprint(name string, pemCertificate string) (string, error) {
+	block, _ := pem.Decode([]byte(pemCertificate))
 	if block == nil || block.Type != "CERTIFICATE" {
-		return "", fmt.Errorf("Secure boot database certificate %q does not contain a PEM encoded certificate", cert.ODataID)
+		return "", fmt.Errorf("Secure boot database certificate %q does not contain a PEM encoded certificate", name)
 	}
 
 	x509Certificate, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return "", fmt.Errorf("Failed to parse secure boot database certificate %q: %w", cert.ODataID, err)
+		return "", fmt.Errorf("Failed to parse secure boot database certificate %q: %w", name, err)
 	}
 
 	sum := sha256.Sum256(x509Certificate.Raw)
@@ -255,74 +404,15 @@ func deleteSecureBootEntry(client *gofish.APIClient, odataID string) error {
 	return nil
 }
 
-// fillSecureBootDatabase enrolls the given PEM certificates into a key
-// database.
-func fillSecureBootDatabase(client *gofish.APIClient, secureBootDB *schemas.SecureBootDatabase, pemCertificates []string) error {
-	if len(pemCertificates) == 0 {
-		return nil
-	}
-
-	certificatesURI, err := secureBootDatabaseCertificatesURI(client, secureBootDB.ODataID)
-	if err != nil {
-		return err
-	}
-
+func fillSecureBootDatabase(secureBootDB *schemas.SecureBootDatabase, pemCertificates []string) error {
 	for _, pemCertificate := range pemCertificates {
-		payload := struct {
-			CertificateString string                  `json:"CertificateString"`
-			CertificateType   schemas.CertificateType `json:"CertificateType"`
-		}{
-			CertificateString: pemCertificate,
-			CertificateType:   schemas.PEMCertificateType,
-		}
-
-		resp, err := client.Post(certificatesURI, payload)
+		_, err := secureBootDB.AddCertificate(pemCertificate, schemas.PEMCertificateType, "")
 		if err != nil {
-			return fmt.Errorf("Failed to add certificate to secure boot DB %q: %w", secureBootDB.ODataID, redfishRequestError(err, nil, http.MethodPost, certificatesURI, payload))
+			return fmt.Errorf("Failed to add certificate to secure boot DB %q: %w", secureBootDB.ODataID, wrapRedfishError(err))
 		}
-
-		_ = resp.Body.Close()
 	}
 
 	return nil
-}
-
-// secureBootDatabaseCertificatesURI resolves the certificate collection a new
-// certificate has to be posted to.
-// TODO: replace when https://github.com/stmcginnis/gofish/issues/559 is resolved.
-func secureBootDatabaseCertificatesURI(client *gofish.APIClient, dbODataID string) (string, error) {
-	var raw struct {
-		Certificates schemas.Link `json:"Certificates"`
-	}
-
-	err := getJSON(client, dbODataID, &raw)
-	if err != nil {
-		return "", fmt.Errorf("Failed to get secure boot database %q: %w", dbODataID, wrapRedfishError(err))
-	}
-
-	if raw.Certificates.String() == "" {
-		return "", fmt.Errorf("Secure boot database %q does not provide a certificate collection: %w", dbODataID, domain.ErrOperationNotPermitted)
-	}
-
-	return raw.Certificates.String(), nil
-}
-
-// getJSON fetches uri and decodes the raw response body into target. It exists
-// to reach the parts of a resource gofish does not expose.
-func getJSON(client *gofish.APIClient, uri string, target any) error {
-	resp, err := client.Get(uri)
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	return json.Unmarshal(body, target)
 }
 
 // describeSecureBootDatabases names the secure boot databases the BMC published,

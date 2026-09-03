@@ -3,13 +3,17 @@ package redfish
 import (
 	"errors"
 	"fmt"
+	"io"
+	"maps"
 	"net/http"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/stmcginnis/gofish/schemas"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -55,6 +59,13 @@ func TestWrapRedfishError(t *testing.T) {
 			want: "BMC returned HTTP 500: Base.1.0.InternalError: The request failed due to an internal service error.",
 		},
 		{
+			name:       "service temporarily unavailable",
+			statusCode: 503,
+			body:       `{"error":{"@Message.ExtendedInfo":[{"Message":"iDRAC is currently unable to display any information because data sources are unavailable.","MessageArgs":[],"MessageArgs@odata.count":0,"MessageId":"IDRAC.2.8.SYS518","RelatedProperties":[],"RelatedProperties@odata.count":0,"Resolution":"Wait for the data to be available and retry the operation. If the issue persists, contact your service provider.","Severity":"Informational"},{"Message":"The service is temporarily unavailable.  Retry in 30 seconds.","MessageArgs":["30"],"MessageArgs@odata.count":1,"MessageId":"Base.1.12.ServiceTemporarilyUnavailable","RelatedProperties":[],"RelatedProperties@odata.count":0,"Resolution":"Wait for the indicated retry duration and retry the operation.","Severity":"Critical"}],"code":"Base.1.12.GeneralError","message":"A general error has occurred. See ExtendedInfo for more information"}}`,
+
+			want: "BMC returned HTTP 503: IDRAC.2.8.SYS518: iDRAC is currently unable to display any information because data sources are unavailable. (severity: Informational) Resolution: Wait for the data to be available and retry the operation. If the issue persists, contact your service provider.; Base.1.12.ServiceTemporarilyUnavailable: The service is temporarily unavailable.  Retry in 30 seconds. (severity: Critical) Resolution: Wait for the indicated retry duration and retry the operation.",
+		},
+		{
 			name:       "non redfish body is reported as is",
 			statusCode: 503,
 			body:       "Service Unavailable",
@@ -82,6 +93,140 @@ func TestWrapRedfishError(t *testing.T) {
 
 			require.ErrorAs(t, err, &redfishErr)
 			require.Equal(t, tc.statusCode, redfishErr.HTTPReturnedStatusCode)
+		})
+	}
+}
+
+const serviceUnavailableBody = `{"error":{"@Message.ExtendedInfo":[{"Message":"iDRAC is currently unable to display any information because data sources are unavailable.","MessageArgs":[],"MessageArgs@odata.count":0,"MessageId":"IDRAC.2.8.SYS518","RelatedProperties":[],"RelatedProperties@odata.count":0,"Resolution":"Wait for the data to be available and retry the operation. If the issue persists, contact your service provider.","Severity":"Informational"},{"Message":"The service is temporarily unavailable.  Retry in 30 seconds.","MessageArgs":["30"],"MessageArgs@odata.count":1,"MessageId":"Base.1.12.ServiceTemporarilyUnavailable","RelatedProperties":[],"RelatedProperties@odata.count":0,"Resolution":"Wait for the indicated retry duration and retry the operation.","Severity":"Critical"}],"code":"Base.1.12.GeneralError","message":"A general error has occurred. See ExtendedInfo for more information"}}`
+
+const serviceUnavailableMessage = "BMC returned HTTP 503: IDRAC.2.8.SYS518: iDRAC is currently unable to display any information because data sources are unavailable. (severity: Informational) Resolution: Wait for the data to be available and retry the operation. If the issue persists, contact your service provider.; Base.1.12.ServiceTemporarilyUnavailable: The service is temporarily unavailable.  Retry in 30 seconds. (severity: Critical) Resolution: Wait for the indicated retry duration and retry the operation."
+
+func newCollectionError(failures map[string]error) error {
+	collectionErr := schemas.NewCollectionError()
+	maps.Copy(collectionErr.Failures, failures)
+
+	return collectionErr
+}
+
+func TestWrapRedfishError_collection(t *testing.T) {
+	err := wrapRedfishError(newCollectionError(map[string]error{
+		"/redfish/v1/Systems/System.Embedded.1": schemas.ConstructError(http.StatusServiceUnavailable, []byte(serviceUnavailableBody)),
+	}))
+
+	require.EqualError(t, err, "/redfish/v1/Systems/System.Embedded.1: "+serviceUnavailableMessage, "The Redfish error response of the item the BMC could not serve is rendered instead of the raw response body gofish reports")
+
+	var redfishErr *schemas.Error
+
+	require.ErrorAs(t, err, &redfishErr, "The Redfish error response gofish collects in a map is reachable for the callers")
+	require.Equal(t, http.StatusServiceUnavailable, redfishErr.HTTPReturnedStatusCode)
+
+	require.Equal(t, err, wrapRedfishError(err), "Rendering the collected errors again leaves them unchanged")
+}
+
+func TestWrapRedfishError_collectionOrder(t *testing.T) {
+	failures := map[string]error{
+		"/redfish/v1/Systems/2": schemas.ConstructError(http.StatusNotFound, []byte(`{"error":{"code":"Base.1.0.ResourceMissingAtURI","message":"gone"}}`)),
+		"/redfish/v1/Systems/1": schemas.ConstructError(http.StatusServiceUnavailable, []byte(`{"error":{"code":"Base.1.0.ServiceTemporarilyUnavailable","message":"busy"}}`)),
+	}
+
+	want := "/redfish/v1/Systems/1: BMC returned HTTP 503: Base.1.0.ServiceTemporarilyUnavailable: busy; /redfish/v1/Systems/2: BMC returned HTTP 404: Base.1.0.ResourceMissingAtURI: gone"
+
+	for range 10 {
+		require.EqualError(t, wrapRedfishError(newCollectionError(failures)), want, "The failures gofish collects in a map are rendered ordered by link, independent of the map iteration order")
+	}
+}
+
+func TestWrapRedfishError_collectionWithoutRedfishError(t *testing.T) {
+	err := wrapRedfishError(newCollectionError(map[string]error{
+		"/redfish/v1/Systems/1": io.ErrUnexpectedEOF,
+	}))
+
+	require.EqualError(t, err, "/redfish/v1/Systems/1: unexpected EOF")
+	require.ErrorIs(t, err, io.ErrUnexpectedEOF, "An item error which is not a Redfish error response stays reachable as well")
+}
+
+func TestRetryableWrapper(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+
+		wantRetryable bool
+	}{
+		{
+			name: "nil",
+			err:  nil,
+		},
+		{
+			name: "unrelated error",
+			err:  errors.New("boom"),
+		},
+		{
+			name:          "server error",
+			err:           schemas.ConstructError(http.StatusInternalServerError, []byte(`{"error":{"code":"Base.1.0.InternalError","message":"boom"}}`)),
+			wantRetryable: true,
+		},
+		{
+			name:          "too many requests",
+			err:           schemas.ConstructError(http.StatusTooManyRequests, []byte(`{"error":{"code":"Base.1.0.RateLimitExceeded","message":"slow down"}}`)),
+			wantRetryable: true,
+		},
+		{
+			name: "client error",
+			err:  schemas.ConstructError(http.StatusBadRequest, []byte(`{"error":{"code":"Base.1.0.GeneralError","message":"boom"}}`)),
+		},
+		{
+			name: "service unavailable for a collection item",
+			err: fmt.Errorf("Failed to get BMC systems: %w", wrapRedfishError(newCollectionError(map[string]error{
+				"/redfish/v1/Systems/System.Embedded.1": schemas.ConstructError(http.StatusServiceUnavailable, []byte(serviceUnavailableBody)),
+			}))),
+			wantRetryable: true,
+		},
+		{
+			name: "service unavailable for a collection item, unrendered",
+			err: fmt.Errorf("Failed to get BMC managers: %w", newCollectionError(map[string]error{
+				"/redfish/v1/Managers/iDRAC.Embedded.1": schemas.ConstructError(http.StatusServiceUnavailable, []byte(serviceUnavailableBody)),
+			})),
+			wantRetryable: true,
+		},
+		{
+			name: "client error for a collection item",
+			err: fmt.Errorf("Failed to get BMC systems: %w", newCollectionError(map[string]error{
+				"/redfish/v1/Systems/1": schemas.ConstructError(http.StatusNotFound, []byte(`{"error":{"code":"Base.1.0.ResourceMissingAtURI","message":"gone"}}`)),
+			})),
+		},
+		{
+			name: "one of the collection items is worth retrying",
+			err: fmt.Errorf("Failed to get BMC systems: %w", newCollectionError(map[string]error{
+				"/redfish/v1/Systems/1": schemas.ConstructError(http.StatusNotFound, []byte(`{"error":{"code":"Base.1.0.ResourceMissingAtURI","message":"gone"}}`)),
+				"/redfish/v1/Systems/2": schemas.ConstructError(http.StatusServiceUnavailable, []byte(serviceUnavailableBody)),
+			})),
+			wantRetryable: true,
+		},
+		{
+			name: "connection error for a collection item",
+			err: fmt.Errorf("Failed to get BMC systems: %w", newCollectionError(map[string]error{
+				"/redfish/v1/Systems/1": syscall.ECONNREFUSED,
+			})),
+			wantRetryable: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := RetryableWrapper()(tc.err)
+
+			require.Equal(t, tc.wantRetryable, domain.IsRetryableError(err))
+
+			switch {
+			case tc.err == nil:
+				require.NoError(t, err)
+
+			case tc.wantRetryable:
+				require.EqualError(t, errors.Unwrap(err), tc.err.Error(), "Marking the error as retryable leaves the error reported to the caller untouched")
+
+			default:
+				require.Equal(t, tc.err, err)
+			}
 		})
 	}
 }

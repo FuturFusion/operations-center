@@ -20,6 +20,7 @@ import (
 	incustls "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/bmc/redfish"
 	"github.com/FuturFusion/operations-center/internal/util/testing/boom"
@@ -1271,6 +1272,52 @@ func TestRedfish_GetData(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "success - all zero boot progress and last reset timestamps are ignored",
+
+			responses: mockRedfishServer{
+				serviceRootStatusCode: http.StatusOK,
+				systemsStatusCode:     http.StatusOK,
+				systemsBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Systems/1" }
+  ]
+}`,
+				systemStatusCode: http.StatusOK,
+				systemBody: `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "LastResetTime": "0000-00-00T00:00:00+00:00",
+  "BootProgress": {
+    "LastState": "OSRunning",
+    "LastStateTime": "0000-00-00T00:00:00+00:00"
+  }
+}`,
+				managersStatusCode: http.StatusOK,
+				managersBody: `{
+  "Members@odata.count": 1,
+  "Members": [
+    { "@odata.id": "/redfish/v1/Managers/1" }
+  ]
+}`,
+				managerStatusCode: http.StatusOK,
+				managerBody: `{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "Id": "1"
+}`,
+			},
+
+			assertErr: require.NoError,
+			want: api.BMCData{
+				BMCProtocol:        "Redfish",
+				BMCProtocolVersion: "1.16.0",
+				BMCVendor:          "Dell",
+				ServerBootProgress: api.BMCBootProgress{
+					LastState: "OSRunning",
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -1426,6 +1473,30 @@ const (
   }
 }`
 
+	resetSystemPoweredOnBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "PowerState": "On",
+  "Actions": {
+    "#ComputerSystem.Reset": {
+      "Target": "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset",
+      "@Redfish.ActionInfo": "/redfish/v1/Systems/1/ResetActionInfo"
+    }
+  }
+}`
+
+	resetSystemPoweredOffBody = `{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "Id": "1",
+  "PowerState": "Off",
+  "Actions": {
+    "#ComputerSystem.Reset": {
+      "Target": "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset",
+      "@Redfish.ActionInfo": "/redfish/v1/Systems/1/ResetActionInfo"
+    }
+  }
+}`
+
 	resetSystemInlineBody = `{
   "@odata.id": "/redfish/v1/Systems/1",
   "Id": "1",
@@ -1515,6 +1586,7 @@ func TestRedfish_ServerPowerOn(t *testing.T) {
 		systemsBody               string
 		systemStatusCode          int
 		systemBody                string
+		systemBodies              []string
 		resetActionInfoStatusCode int
 		resetActionInfoBody       string
 		resetStatusCode           int
@@ -1599,6 +1671,62 @@ func TestRedfish_ServerPowerOn(t *testing.T) {
 			assertErr:     require.NoError,
 		},
 		{
+			name:  "success - reset is issued although the server looks powered on already",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemPoweredOnBody,
+			resetStatusCode:       http.StatusNoContent,
+
+			wantResetType: "On",
+			assertErr:     require.NoError,
+		},
+		{
+			name:  "no-op - reset turned down, the server is powered on already",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemPoweredOnBody,
+			resetStatusCode:       http.StatusConflict,
+
+			wantResetType: "On",
+			assertErr:     require.NoError,
+		},
+		{
+			name:  "no-op - reset turned down and the server is powered on",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBodies:          []string{resetSystemBody, resetSystemPoweredOnBody},
+			resetStatusCode:       http.StatusConflict,
+
+			wantResetType: "On",
+			assertErr:     require.NoError,
+		},
+		{
+			name:  "error - reset turned down and the server is not powered on",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBodies:          []string{resetSystemBody, resetSystemPoweredOffBody},
+			resetStatusCode:       http.StatusConflict,
+
+			wantResetType: "On",
+			assertErr:     errassert.Contains("Failed to perform BMC reset operation"),
+		},
+		{
 			name: "error - failed to connect to BMC",
 
 			serviceRootStatusCode: http.StatusInternalServerError,
@@ -1698,6 +1826,7 @@ func TestRedfish_ServerPowerOn(t *testing.T) {
 				systemsBody:               tc.systemsBody,
 				systemStatusCode:          tc.systemStatusCode,
 				systemBody:                tc.systemBody,
+				systemBodies:              tc.systemBodies,
 				resetActionInfoStatusCode: tc.resetActionInfoStatusCode,
 				resetActionInfoBody:       tc.resetActionInfoBody,
 				resetStatusCode:           tc.resetStatusCode,
@@ -1728,6 +1857,7 @@ func TestRedfish_ServerPowerOff(t *testing.T) {
 		systemsBody               string
 		systemStatusCode          int
 		systemBody                string
+		systemBodies              []string
 		resetActionInfoStatusCode int
 		resetActionInfoBody       string
 		resetStatusCode           int
@@ -1812,6 +1942,62 @@ func TestRedfish_ServerPowerOff(t *testing.T) {
 			assertErr:     require.NoError,
 		},
 		{
+			name:  "success - reset is issued although the server looks powered off already",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemPoweredOffBody,
+			resetStatusCode:       http.StatusNoContent,
+
+			wantResetType: "GracefulShutdown",
+			assertErr:     require.NoError,
+		},
+		{
+			name:  "no-op - reset turned down, the server is powered off already",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemPoweredOffBody,
+			resetStatusCode:       http.StatusConflict,
+
+			wantResetType: "GracefulShutdown",
+			assertErr:     require.NoError,
+		},
+		{
+			name:  "no-op - reset turned down and the server is powered off",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBodies:          []string{resetSystemBody, resetSystemPoweredOffBody},
+			resetStatusCode:       http.StatusConflict,
+
+			wantResetType: "GracefulShutdown",
+			assertErr:     require.NoError,
+		},
+		{
+			name:  "error - reset turned down and the server is not powered off",
+			force: false,
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBodies:          []string{resetSystemBody, resetSystemPoweredOnBody},
+			resetStatusCode:       http.StatusConflict,
+
+			wantResetType: "GracefulShutdown",
+			assertErr:     errassert.Contains("Failed to perform BMC reset operation"),
+		},
+		{
 			name: "error - failed to connect to BMC",
 
 			serviceRootStatusCode: http.StatusInternalServerError,
@@ -1911,6 +2097,7 @@ func TestRedfish_ServerPowerOff(t *testing.T) {
 				systemsBody:               tc.systemsBody,
 				systemStatusCode:          tc.systemStatusCode,
 				systemBody:                tc.systemBody,
+				systemBodies:              tc.systemBodies,
 				resetActionInfoStatusCode: tc.resetActionInfoStatusCode,
 				resetActionInfoBody:       tc.resetActionInfoBody,
 				resetStatusCode:           tc.resetStatusCode,
@@ -1941,6 +2128,7 @@ func TestRedfish_ServerRestart(t *testing.T) {
 		systemsBody               string
 		systemStatusCode          int
 		systemBody                string
+		systemBodies              []string
 		resetActionInfoStatusCode int
 		resetActionInfoBody       string
 		resetStatusCode           int
@@ -2025,6 +2213,32 @@ func TestRedfish_ServerRestart(t *testing.T) {
 			assertErr:     require.NoError,
 		},
 		{
+			name: "success - restart is issued although the server is running",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBody:            resetSystemPoweredOnBody,
+			resetStatusCode:       http.StatusNoContent,
+
+			wantResetType: "GracefulRestart",
+			assertErr:     require.NoError,
+		},
+		{
+			name: "error - reset turned down, a restart has no power state to settle into",
+
+			serviceRootStatusCode: http.StatusOK,
+			systemsStatusCode:     http.StatusOK,
+			systemsBody:           resetSystemsBody,
+			systemStatusCode:      http.StatusOK,
+			systemBodies:          []string{resetSystemPoweredOnBody, resetSystemPoweredOnBody},
+			resetStatusCode:       http.StatusConflict,
+
+			wantResetType: "GracefulRestart",
+			assertErr:     errassert.Contains("Failed to perform BMC reset operation"),
+		},
+		{
 			name: "error - failed to connect to BMC",
 
 			serviceRootStatusCode: http.StatusInternalServerError,
@@ -2124,6 +2338,7 @@ func TestRedfish_ServerRestart(t *testing.T) {
 				systemsBody:               tc.systemsBody,
 				systemStatusCode:          tc.systemStatusCode,
 				systemBody:                tc.systemBody,
+				systemBodies:              tc.systemBodies,
 				resetActionInfoStatusCode: tc.resetActionInfoStatusCode,
 				resetActionInfoBody:       tc.resetActionInfoBody,
 				resetStatusCode:           tc.resetStatusCode,
@@ -3714,6 +3929,24 @@ func TestRedfish_BIOSAttributes(t *testing.T) {
 	}
 }
 
+func TestRedfish_BIOSAttributes_systemUnavailable(t *testing.T) {
+	svr := newMockRedfishServer(t, mockRedfishServer{
+		serviceRootStatusCode: http.StatusOK,
+		systemsStatusCode:     http.StatusOK,
+		systemsBody:           resetSystemsBody,
+		systemStatusCode:      http.StatusServiceUnavailable,
+		systemBody:            `{"error":{"@Message.ExtendedInfo":[{"Message":"iDRAC is currently unable to display any information because data sources are unavailable.","MessageId":"IDRAC.2.8.SYS518","Resolution":"Wait for the data to be available and retry the operation.","Severity":"Informational"}],"code":"Base.1.12.GeneralError","message":"A general error has occurred. See ExtendedInfo for more information"}}`,
+	}, nil)
+
+	client := redfish.New()
+
+	_, err := client.BIOSAttributes(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}})
+
+	require.ErrorContains(t, err, "/redfish/v1/Systems/1: BMC returned HTTP 503: IDRAC.2.8.SYS518: iDRAC is currently unable to display any information because data sources are unavailable. (severity: Informational) Resolution: Wait for the data to be available and retry the operation.", "The Redfish error response the BMC reported for the system is rendered")
+
+	require.True(t, domain.IsRetryableError(redfish.RetryableWrapper()(err)), "A BMC which is temporarily unable to serve the system makes the request worth repeating")
+}
+
 func TestRedfish_BIOSAttribute(t *testing.T) {
 	tests := []struct {
 		name string
@@ -4555,6 +4788,18 @@ const (
   "Id": "1",
   "Inserted": true,
   "Image": "http://example.com/existing.iso",
+  "MediaTypes": ["CD", "DVD"],
+  "Actions": {
+    "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
+    "#VirtualMedia.EjectMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia" }
+  }
+}`
+
+	mediaSystemVMSameImageInsertedBody = `{
+  "@odata.id": "/redfish/v1/Systems/1/VirtualMedia/1",
+  "Id": "1",
+  "Inserted": true,
+  "Image": "` + mediaAttachURL + `",
   "MediaTypes": ["CD", "DVD"],
   "Actions": {
     "#VirtualMedia.InsertMedia": { "target": "/redfish/v1/Systems/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia" },
@@ -5715,6 +5960,27 @@ func TestRedfish_AttachMedia(t *testing.T) {
 			assertErr: errassert.Contains("not found"),
 		},
 		{
+			name:           "no-op - the same image is already attached",
+			virtualMediaID: "system:1",
+			setBootDevice:  true,
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootDeclaredBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMSameImageInsertedBody,
+
+			systemPatch: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1",
+					body:   `{"Boot":{"BootSourceOverrideEnabled":"Once","BootSourceOverrideTarget":"Cd"}}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
 			name:           "error - media already attached",
 			virtualMediaID: "system:1",
 
@@ -6075,6 +6341,26 @@ func TestRedfish_DetachMedia(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name:           "success - boot device restored although nothing is attached",
+			virtualMediaID: "system:1",
+
+			systemsBody:        mediaSystemsBody,
+			systemBody:         mediaSystemBootCdOnceBody,
+			systemVMBody:       mediaSystemVMCollectionBody,
+			systemVMMemberBody: mediaSystemVMFreeBody,
+
+			systemPatch: mockResponses{statusCodes: []int{http.StatusNoContent}},
+
+			wantRequests: []mockRequest{
+				{
+					method: http.MethodPatch,
+					path:   "/redfish/v1/Systems/1",
+					body:   `{"Boot":{"BootSourceOverrideEnabled":"Disabled","BootSourceOverrideTarget":"None"}}`,
+				},
+			},
+			assertErr: require.NoError,
+		},
+		{
 			name:           "no-op - nothing attached",
 			virtualMediaID: "system:1",
 
@@ -6212,6 +6498,7 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 		oemSecureBootDatabases        map[string]mockOEMSecureBootDatabase
 		secureBootCertificates        incusosapi.InternalSecureBootCertificates
 		secureBootCertificatesErr     error
+		secureBootAllowList           api.BIOSSecureBoot
 
 		wantDeletedCertPaths []string
 		wantPostedCerts      map[string][]postedCertificate
@@ -6474,6 +6761,96 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name: "success - a key database, that holds the certificates of IncusOS already, is left untouched",
+
+			serviceRootStatusCode:         http.StatusOK,
+			systemsStatusCode:             http.StatusOK,
+			systemsBody:                   resetSystemsBody,
+			systemStatusCode:              http.StatusOK,
+			systemBody:                    secureBootSystemBody,
+			secureBootStatusCode:          http.StatusOK,
+			secureBootBody:                secureBootBody,
+			secureBootDatabasesStatusCode: http.StatusOK,
+			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("db"),
+			secureBootDatabases: map[string]mockSecureBootDatabase{
+				"db": withSecureBootCertificateContents(newSecureBootDatabaseFixture("db", http.StatusOK, http.StatusCreated, "1", "2"), "db", map[string]secureBootCertificateContent{
+					"1": {pemCertificate: testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem")},
+					"2": {pemCertificate: testSecureBootCertificatePEM(t, "microsoft-corporation-uefi-ca-2011.pem")},
+				}),
+			},
+			secureBootCertificates: incusosapi.InternalSecureBootCertificates{
+				DB: []string{testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem")},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - only the key databases, that differ, are reinitialized",
+
+			serviceRootStatusCode:         http.StatusOK,
+			systemsStatusCode:             http.StatusOK,
+			systemsBody:                   resetSystemsBody,
+			systemStatusCode:              http.StatusOK,
+			systemBody:                    secureBootSystemBody,
+			secureBootStatusCode:          http.StatusOK,
+			secureBootBody:                secureBootBody,
+			secureBootDatabasesStatusCode: http.StatusOK,
+			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("KEK", "dbx"),
+			secureBootDatabases: map[string]mockSecureBootDatabase{
+				"KEK": withSecureBootCertificateContents(newSecureBootDatabaseFixture("KEK", http.StatusOK, http.StatusCreated, "1"), "KEK", map[string]secureBootCertificateContent{
+					"1": {pemCertificate: testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem")},
+				}),
+				"dbx": withSecureBootCertificateContents(newSecureBootDatabaseFixture("dbx", http.StatusOK, http.StatusCreated, "1"), "dbx", map[string]secureBootCertificateContent{
+					"1": {pemCertificate: testSecureBootCertificatePEM(t, "microsoft-option-rom-uefi-ca-2023.pem")},
+				}),
+			},
+			secureBootCertificates: incusosapi.InternalSecureBootCertificates{
+				KEK: []string{testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem")},
+				DBX: []string{testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem")},
+			},
+
+			wantDeletedCertPaths: []string{
+				secureBootDatabasesPathPrefix + "dbx/Certificates/1",
+			},
+			wantPostedCerts: map[string][]postedCertificate{
+				"dbx": {{CertificateString: testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem"), CertificateType: "PEM"}},
+			},
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - a BIOS profile keeps a certificate, the built in allow list does not",
+
+			serviceRootStatusCode:         http.StatusOK,
+			systemsStatusCode:             http.StatusOK,
+			systemsBody:                   resetSystemsBody,
+			systemStatusCode:              http.StatusOK,
+			systemBody:                    secureBootSystemBody,
+			secureBootStatusCode:          http.StatusOK,
+			secureBootBody:                secureBootBody,
+			secureBootDatabasesStatusCode: http.StatusOK,
+			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("KEK"),
+			secureBootDatabases: map[string]mockSecureBootDatabase{
+				"KEK": withSecureBootCertificateContents(newSecureBootDatabaseFixture("KEK", http.StatusOK, http.StatusCreated, "1"), "KEK", map[string]secureBootCertificateContent{
+					"1": {pemCertificate: testSecureBootCertificatePEM(t, "microsoft-corporation-uefi-ca-2011.pem")},
+				}),
+			},
+			secureBootCertificates: incusosapi.InternalSecureBootCertificates{
+				KEK: []string{testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem")},
+			},
+			secureBootAllowList: api.BIOSSecureBoot{
+				KEK: api.BIOSSecureBootDatabase{
+					Certificates: map[string]bool{
+						"48e99b991f57fc52f76149599bff0a58c47154229b9f8d603ac40d3500248507": true,
+					},
+				},
+			},
+
+			wantPostedCerts: map[string][]postedCertificate{
+				"KEK": {{CertificateString: testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem"), CertificateType: "PEM"}},
+			},
+			assertErr: require.NoError,
+		},
+		{
 			name: "error - failed to get secure boot certificates from IncusOS",
 
 			secureBootCertificatesErr: boom.Error,
@@ -6620,7 +6997,6 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			},
 			secureBootCertificates: testSecureBootCertificates(),
 
-			// The signatures are wiped first, so nothing is deleted at all.
 			assertErr: require.Error,
 		},
 		{
@@ -6643,31 +7019,6 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			// The wipe stops at the first signature it fails to delete.
 			wantDeletedCertPaths: []string{
 				secureBootDatabasesPathPrefix + "dbx/Signatures/hash1",
-			},
-			assertErr: require.Error,
-		},
-		{
-			name: "error - failed to get the secure boot database to enrol into",
-
-			serviceRootStatusCode:         http.StatusOK,
-			systemsStatusCode:             http.StatusOK,
-			systemsBody:                   resetSystemsBody,
-			systemStatusCode:              http.StatusOK,
-			systemBody:                    secureBootSystemBody,
-			secureBootStatusCode:          http.StatusOK,
-			secureBootBody:                secureBootBody,
-			secureBootDatabasesStatusCode: http.StatusOK,
-			secureBootDatabasesBody:       secureBootDatabasesCollectionBody("KEK"),
-			secureBootDatabases: map[string]mockSecureBootDatabase{
-				// The certificate collection is resolved by fetching the key
-				// database again, which the BMC no longer serves here.
-				"KEK": withSecureBootDatabaseBody(newSecureBootDatabaseFixture("KEK", http.StatusOK, http.StatusCreated, "1"), unfetchableSecureBootDatabaseBody("KEK")),
-			},
-			secureBootCertificates: testSecureBootCertificates(),
-
-			// The wipe succeeds, only enrolling the new certificates fails.
-			wantDeletedCertPaths: []string{
-				secureBootDatabasesPathPrefix + "KEK/Certificates/1",
 			},
 			assertErr: require.Error,
 		},
@@ -6710,7 +7061,7 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			},
 			secureBootCertificates: testSecureBootCertificates(),
 
-			assertErr: errassert.OperationNotPermittedError,
+			assertErr: require.Error,
 		},
 		{
 			name: "error - certificate rejected by the secure boot database",
@@ -6764,9 +7115,14 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 				certificates: tc.secureBootCertificates,
 				err:          tc.secureBootCertificatesErr,
 			}))
-			err := client.ApplySecureBootCertificates(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}})
+			enrolled, err := client.ApplySecureBootCertificates(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, tc.secureBootAllowList)
 
 			tc.assertErr(t, err)
+
+			if err == nil {
+				wrote := len(gotDeletedCertPaths) > 0 || len(gotPostedCerts) > 0 || len(gotUploadedCerts) > 0
+				require.Equal(t, wrote, enrolled, "the enrollment reports, whether it wrote to a key database")
+			}
 
 			// The order matters, a database has its hashes removed before its
 			// certificates and the databases are processed KEK, DB, dbx.
@@ -6812,7 +7168,7 @@ func TestRedfish_ApplySecureBootCertificates_noCertificateSourceConfigured(t *te
 	}, nil)
 
 	client := redfish.New()
-	err := client.ApplySecureBootCertificates(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}})
+	_, err := client.ApplySecureBootCertificates(t.Context(), provisioning.Server{BMCConfig: api.BMCConfig{Endpoint: svr.URL}}, api.BIOSSecureBoot{})
 
 	errassert.OperationNotPermittedError(t, err)
 
@@ -6920,15 +7276,6 @@ func withSecureBootSignaturesStatusCode(db mockSecureBootDatabase, statusCode in
 	db.signaturesBody = ""
 
 	return db
-}
-
-// unfetchableSecureBootDatabaseBody reports an @odata.id the BMC does not
-// serve, so fetching the key database a second time fails.
-func unfetchableSecureBootDatabaseBody(dbID string) string {
-	return fmt.Sprintf(`{"@odata.id": %q, "Id": %q, "Name": %q, "DatabaseId": %q, "Certificates": {"@odata.id": %q}, "Signatures": {"@odata.id": %q}}`,
-		secureBootDatabasesPathPrefix+"unknown", dbID, dbID, dbID,
-		secureBootDatabasesPathPrefix+dbID+"/Certificates",
-		secureBootDatabasesPathPrefix+dbID+"/Signatures")
 }
 
 func withSecureBootSignatures(db mockSecureBootDatabase, dbID string, deleteStatusCode int, signatureIDs ...string) mockSecureBootDatabase {

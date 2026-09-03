@@ -83,11 +83,12 @@ var preferredBootSourceOverrideEnabled = []schemas.BootSourceOverrideEnabled{
 	schemas.ContinuousBootSourceOverrideEnabled,
 }
 
-// overrideBootDevice points the next boot of the server at bootSource.
-func overrideBootDevice(system *schemas.ComputerSystem, registry *messageRegistry, bootSource schemas.BootSource) error {
+// overrideBootDevice points the next boot of the server at bootSource and
+// reports, which way of overriding the boot device the BMC accepted.
+func overrideBootDevice(system *schemas.ComputerSystem, registry *messageRegistry, bootSource schemas.BootSource) (schemas.BootSourceOverrideEnabled, error) {
 	candidates, err := bootSourceOverrideEnabledCandidates(system)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	for _, overrideEnabled := range candidates {
@@ -96,7 +97,7 @@ func overrideBootDevice(system *schemas.ComputerSystem, registry *messageRegistr
 			BootSourceOverrideEnabled: overrideEnabled,
 		})
 		if err == nil {
-			return nil
+			return overrideEnabled, nil
 		}
 
 		// Anything but the BMC turning the override mode down is final.
@@ -105,7 +106,7 @@ func overrideBootDevice(system *schemas.ComputerSystem, registry *messageRegistr
 		}
 	}
 
-	return err
+	return "", err
 }
 
 // bootSourceOverrideEnabledCandidates returns the ways of overriding the boot
