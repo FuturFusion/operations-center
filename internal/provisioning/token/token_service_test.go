@@ -2310,7 +2310,7 @@ func TestTokenService_GetSeekableTokenImageFromTokenSeed(t *testing.T) {
 			)
 
 			flasherAdapter := &adapterMock.FlasherPortMock{
-				GenerateSeededImageFunc: func(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (io.ReadSeekCloser, int64, time.Time, error) {
+				GenerateSeededImageFunc: func(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (io.ReadSeekCloser, provisioning.SeedImageInfo, error) {
 					gotCacheID = cacheID
 					gotFingerprint = fingerprint
 
@@ -2319,10 +2319,10 @@ func TestTokenService_GetSeekableTokenImageFromTokenSeed(t *testing.T) {
 					}
 
 					if tc.flasherErr != nil {
-						return nil, 0, time.Time{}, tc.flasherErr
+						return nil, provisioning.SeedImageInfo{}, tc.flasherErr
 					}
 
-					return &closeTrackingReadSeeker{ReadSeeker: strings.NewReader(strings.Repeat("x", 1024)), closed: new(bool)}, 1024, modTime, nil
+					return &closeTrackingReadSeeker{ReadSeeker: strings.NewReader(strings.Repeat("x", 1024)), closed: new(bool)}, provisioning.SeedImageInfo{Size: 1024, ModTime: modTime}, nil
 				},
 			}
 
