@@ -2679,22 +2679,13 @@ func (s *clusterService) executeRollingUpdate(ctx context.Context, cluster provi
 			return nil
 		}
 
-		applicationUpdate := make([]api.ServerUpdateApplication, 0, len(server.VersionData.Applications))
-		for _, app := range server.VersionData.Applications {
-			if ptr.From(app.NeedsUpdate) {
-				applicationUpdate = append(applicationUpdate, api.ServerUpdateApplication{
-					Name:          app.Name,
-					TriggerUpdate: true,
-				})
-			}
-		}
-
+		// An update of the OS covers the applications as well, so the whole server
+		// is brought up to date with a single trigger.
 		err := s.serverSvc.UpdateSystemByName(ctx, server.Name, api.ServerUpdatePost{
 			OS: api.ServerUpdateApplication{
 				Name:          "os",
 				TriggerUpdate: true,
 			},
-			Applications: applicationUpdate,
 		}, true)
 		if err != nil {
 			return fmt.Errorf("Failed to trigger server update on %q (%s): %w", server.Name, server.ConnectionURL, err)

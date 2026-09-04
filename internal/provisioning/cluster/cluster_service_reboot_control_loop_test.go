@@ -62,6 +62,9 @@ func rebootOnlyServerClient(world *serverWorld) *adapterMock.ServerClientPortMoc
 		UpdateOSFunc: func(ctx context.Context, server provisioning.Server) error {
 			return errors.New("no update must be triggered during an on demand rolling reboot")
 		},
+		UpdateApplicationFunc: func(ctx context.Context, server provisioning.Server, application string) error {
+			return errors.New("no application update must be triggered during an on demand rolling reboot")
+		},
 		EvacuateFunc: func(ctx context.Context, server provisioning.Server, callback func(ctx context.Context, err error)) error {
 			world.set(server.Name, versionDataRebootOnlyEvacuating, false)
 			world.deferTransition(serverWorldTransition{

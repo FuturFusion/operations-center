@@ -8049,12 +8049,15 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 		repoGetByNameErr                                error
 		repoUpdateErrs                                  queue.Errs
 		clientUpdateOSErr                               error
+		clientUpdateApplicationErr                      error
 		channelSvcGetByNameErr                          error
 		clusterSvcIsInstanceLifecycleOperationPermitted bool
 		registerUnreachableBMCClient                    bool
 
-		assertErr require.ErrorAssertionFunc
-		assertLog log.MatcherFunc
+		assertErr               require.ErrorAssertionFunc
+		assertLog               log.MatcherFunc
+		wantUpdatedApplications []string
+		wantStatusDetail        *api.ServerStatusDetail
 	}{
 		{
 			name: "success - no update triggered",
@@ -8264,6 +8267,133 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			assertErr: require.NoError,
 			assertLog: log.Noop,
 		},
+		{
+			name: "success - trigger application update only",
+			argUpdateRequest: api.ServerUpdatePost{
+				Applications: []api.ServerUpdateApplication{
+					{
+						Name:          "incus",
+						TriggerUpdate: true,
+					},
+					{
+						Name:          "openfga",
+						TriggerUpdate: false,
+					},
+				},
+			},
+			repoGetByName: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   new("certificate"),
+				Status:        api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{Name: "incus"},
+						{Name: "openfga"},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr:               require.NoError,
+			assertLog:               log.Noop,
+			wantUpdatedApplications: []string{"incus"},
+			wantStatusDetail:        new(api.ServerStatusDetailReadyUpdatingApplication),
+		},
+		{
+			name: "error - OS update combined with application update",
+			argUpdateRequest: api.ServerUpdatePost{
+				OS: api.ServerUpdateApplication{
+					Name:          "os",
+					TriggerUpdate: true,
+				},
+				Applications: []api.ServerUpdateApplication{
+					{
+						Name:          "incus",
+						TriggerUpdate: true,
+					},
+				},
+			},
+			repoGetByName: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   new("certificate"),
+				Status:        api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{Name: "incus"},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr:               errassert.ValidationErrorContains(`An update of the OS covers the applications as well`),
+			assertLog:               log.Noop,
+			wantUpdatedApplications: nil,
+		},
+		{
+			name: "error - application not installed on server",
+			argUpdateRequest: api.ServerUpdatePost{
+				Applications: []api.ServerUpdateApplication{
+					{
+						Name:          "not-installed",
+						TriggerUpdate: true,
+					},
+				},
+			},
+			repoGetByName: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   new("certificate"),
+				Status:        api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{Name: "incus"},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+
+			assertErr:               errassert.ValidationErrorContains(`Application "not-installed" is not installed on server "one"`),
+			assertLog:               log.Noop,
+			wantUpdatedApplications: nil,
+		},
+		{
+			name: "error - client.UpdateApplication",
+			argUpdateRequest: api.ServerUpdatePost{
+				Applications: []api.ServerUpdateApplication{
+					{
+						Name:          "incus",
+						TriggerUpdate: true,
+					},
+				},
+			},
+			repoGetByName: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Channel:       "stable",
+				ConnectionURL: "https://one/",
+				Certificate:   new("certificate"),
+				Status:        api.ServerStatusReady,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{Name: "incus"},
+					},
+				},
+			},
+			clusterSvcIsInstanceLifecycleOperationPermitted: true,
+			clientUpdateApplicationErr:                      boom.Error,
+
+			assertErr:               boom.ErrorIs,
+			assertLog:               log.Noop,
+			wantUpdatedApplications: []string{"incus"},
+		},
 	}
 
 	for _, tc := range tests {
@@ -8272,6 +8402,8 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			logBuf := &bytes.Buffer{}
 			err := logger.InitLogger(logBuf, "", false, true, true)
 			require.NoError(t, err)
+
+			var gotStatusDetail *api.ServerStatusDetail
 
 			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -8288,6 +8420,12 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 						return nil
 					}
 
+					// Record the status detail the update has been started with. Later
+					// updates are the reverter restoring the previous state.
+					if gotStatusDetail == nil {
+						gotStatusDetail = &server.StatusDetail
+					}
+
 					return tc.repoUpdateErrs.PopOrNil(t)
 				},
 			}
@@ -8295,6 +8433,9 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			client := &adapterMock.ServerClientPortMock{
 				UpdateOSFunc: func(ctx context.Context, server provisioning.Server) error {
 					return tc.clientUpdateOSErr
+				},
+				UpdateApplicationFunc: func(ctx context.Context, server provisioning.Server, application string) error {
+					return tc.clientUpdateApplicationErr
 				},
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					return errors.New("") // short circuit pollServer, since we don't care about this part in this test.
@@ -8353,6 +8494,17 @@ func TestServerService_UpdateSystemByName(t *testing.T) {
 			tc.assertLog(t, logBuf)
 
 			require.Empty(t, tc.repoUpdateErrs)
+
+			var updatedApplications []string
+			for _, call := range client.UpdateApplicationCalls() {
+				updatedApplications = append(updatedApplications, call.Application)
+			}
+
+			require.Equal(t, tc.wantUpdatedApplications, updatedApplications)
+
+			if tc.wantStatusDetail != nil {
+				require.Equal(t, *tc.wantStatusDetail, ptr.From(gotStatusDetail))
+			}
 		})
 	}
 }

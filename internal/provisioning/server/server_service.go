@@ -1605,6 +1605,17 @@ func (s *serverService) PostRestoreSystemDoneByName(ctx context.Context, name st
 func (s *serverService) UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error {
 	slog.InfoContext(ctx, "System update initiated", slog.String("server", name), slog.Bool("force", force))
 
+	applications := make([]string, 0, len(updateRequest.Applications))
+	for _, application := range updateRequest.Applications {
+		if application.TriggerUpdate {
+			applications = append(applications, application.Name)
+		}
+	}
+
+	if updateRequest.OS.TriggerUpdate && len(applications) > 0 {
+		return domain.NewValidationErrf("An update of the OS covers the applications as well and can not be combined with an update of individual applications")
+	}
+
 	reverter := revert.New()
 	defer reverter.Fail()
 
@@ -1627,9 +1638,29 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 			return fmt.Errorf("Lifecycle operation for server %q currently not permitted: %w", name, domain.ErrOperationNotPermitted)
 		}
 
+		// Reject applications, which are not installed on the serer.
+		for _, application := range applications {
+			isInstalled := slices.ContainsFunc(server.VersionData.Applications, func(installed api.ApplicationVersionData) bool {
+				return installed.Name == application
+			})
+
+			if !isInstalled {
+				return domain.NewValidationErrf("Application %q is not installed on server %q", application, name)
+			}
+		}
+
 		previousServer = server.Clone()
 
-		server.StatusDetail = api.ServerStatusDetailReadyUpdatingOS
+		// An application update is applied right away, while an OS update is only
+		// staged and applied on the next reboot.
+		switch {
+		case updateRequest.OS.TriggerUpdate:
+			server.StatusDetail = api.ServerStatusDetailReadyUpdatingOS
+
+		case len(applications) > 0:
+			server.StatusDetail = api.ServerStatusDetailReadyUpdatingApplication
+		}
+
 		server.LastStatusUpdated = s.now()
 
 		err = s.Update(ctx, *server, false, false, false)
@@ -1669,9 +1700,12 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 		}
 	}
 
-	// FIXME: iterate over the applications and trigger the update for the applications
-	// as well, if the TriggerUpdate flag is set to true for the particular application.
-	// https://github.com/FuturFusion/operations-center/issues/616
+	for _, application := range applications {
+		err = s.client.UpdateApplication(ctx, *server, application)
+		if err != nil {
+			return fmt.Errorf("Failed to update application %q of server %q by name: %w", application, name, err)
+		}
+	}
 
 	reverter.Success()
 

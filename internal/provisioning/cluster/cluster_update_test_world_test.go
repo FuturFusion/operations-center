@@ -294,6 +294,12 @@ func rollingUpdateServerClient(world *serverWorld) *adapterMock.ServerClientPort
 
 			return nil
 		},
+		UpdateApplicationFunc: func(ctx context.Context, server provisioning.Server, application string) error {
+			// A rolling update triggers the OS and the applications together, and
+			// the applications are updated as part of the OS update, so the world
+			// transition is driven by UpdateOS alone.
+			return nil
+		},
 		EvacuateFunc: func(ctx context.Context, server provisioning.Server, callback func(ctx context.Context, err error)) error {
 			world.set(server.Name, versionDataEvacuating, false)
 			world.deferTransition(serverWorldTransition{
