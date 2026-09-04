@@ -229,7 +229,7 @@ func TestServerVersionData_UpdateState(t *testing.T) {
 			inMaintenance: api.NotInMaintenance,
 			isTypeIncus:   false,
 
-			wantServerUpdateState: api.ServerUpdateStateUndefined,
+			wantServerUpdateState: api.ServerUpdateStateUpdating,
 		},
 		{
 			status:        api.ServerStatusReady,

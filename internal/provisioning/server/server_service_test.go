@@ -3207,7 +3207,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			assertErr:              require.NoError,
 			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
 			wantServerStatus:       api.ServerStatusReady,
-			wantServerStatusDetail: api.ServerStatusDetailNone,
+			wantServerStatusDetail: api.ServerStatusDetailReadyUpdatingApplication,
 		},
 		{
 			name: "success - cause network interface state changed",
@@ -4810,6 +4810,58 @@ func TestServerService_PollServer(t *testing.T) {
 				Name:         "one",
 				Status:       api.ServerStatusReady,
 				StatusDetail: api.ServerStatusDetailReadyUpdatingOS,
+				Channel:      "stable",
+				VersionData:  pollServerVersionData("1"),
+			},
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					State: incusosapi.SystemNetworkState{
+						Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+							"eth0": {
+								Addresses: []string{
+									"192.168.0.100",
+								},
+								Roles: []string{
+									"management",
+								},
+							},
+						},
+					},
+				},
+			},
+			clientGetVersionData: pollServerVersionData("2"),
+			updateSvcGetAllWithFilter: provisioning.Updates{
+				{
+					ID:      2,
+					UUID:    uuidgen.FromPattern(t, "2"),
+					Version: "2",
+					Files: provisioning.UpdateFiles{
+						{
+							Filename: "x86_64/IncusOS_20260610.img.gz",
+						},
+						{
+							Filename: "x86_64/incus.raw.gz",
+						},
+					},
+				},
+			},
+
+			assertErr:              require.NoError,
+			assertLog:              log.EmptyWithIgnorePattern(log.IgnorePatternDebugLines),
+			wantServerStatusDetail: new(api.ServerStatusDetailNone),
+		},
+		{
+			name: "success - updating application, update has been applied",
+			serverArg: provisioning.Server{
+				Name:    "one",
+				Status:  api.ServerStatusReady,
+				Channel: "stable",
+			},
+			updateServerConfigArg: true,
+			repoGetByName: &provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailReadyUpdatingApplication,
 				Channel:      "stable",
 				VersionData:  pollServerVersionData("1"),
 			},

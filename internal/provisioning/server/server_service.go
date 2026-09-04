@@ -902,13 +902,7 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 			triggerBackgroundPolling = true
 
 		case api.ServerSelfUpdateCauseApplicationUpdateApplied:
-			// Only update the server status detail, if an application update is
-			// processed,since applications also get updated as part of the OS update.
-			if server.StatusDetail == api.ServerStatusDetailReadyUpdatingApplication {
-				server.StatusDetail = api.ServerStatusDetailNone
-				server.LastStatusUpdated = s.now()
-				triggerBackgroundPolling = true
-			}
+			triggerBackgroundPolling = true
 
 		case api.ServerSelfUpdateCauseNetworkInterfaceStateChanged:
 			triggerBackgroundPolling = true
@@ -2270,7 +2264,8 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 
 		// If an update has been triggered, check if an update is still needed.
 		// If not, updating is done.
-		if server.StatusDetail == api.ServerStatusDetailReadyUpdatingOS {
+		if server.StatusDetail == api.ServerStatusDetailReadyUpdatingOS ||
+			server.StatusDetail == api.ServerStatusDetailReadyUpdatingApplication {
 			needsUpdate := ptr.From(server.VersionData.NeedsUpdate)
 
 			if updateServerConfiguration {

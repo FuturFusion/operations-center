@@ -299,9 +299,9 @@ func TestClusterService_LaunchClusterRebootRejectsUnsuitableServers(t *testing.T
 		wantErrIs string
 	}{
 		{
-			name: "server is applying an application update",
+			name: "server is evacuating",
 			mutate: func(server *provisioning.Server) {
-				server.StatusDetail = api.ServerStatusDetailReadyUpdatingApplication
+				server.StatusDetail = api.ServerStatusDetailReadyEvacuating
 			},
 			wantErrIs: "is busy",
 		},
