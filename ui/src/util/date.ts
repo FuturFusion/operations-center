@@ -7,3 +7,11 @@ export const formatDate = (input: string | undefined): string => {
 
   return format(parseISO(input), "yyyy-MM-dd HH:mm");
 };
+
+export const formatDateTime = (input: string | undefined): string => {
+  if (!input || input === "0001-01-01T00:00:00Z") {
+    return "";
+  }
+
+  return format(parseISO(input), "yyyy-MM-dd HH:mm:ss");
+};

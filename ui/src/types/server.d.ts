@@ -95,6 +95,43 @@ export interface BMCLogEvent {
   entry_type: string;
 }
 
+export interface ServerDeploymentPost {
+  token_uuid: string;
+  seed: string;
+  type: string;
+  architecture: string;
+  channel: string;
+  virtual_media_id: string;
+  force: boolean;
+  skip_secure_boot_certificates: boolean;
+}
+
+export interface ServerDeploymentStep {
+  state: string;
+  entered_at: string;
+  retries: number;
+  error: string;
+}
+
+export interface ServerDeploymentStatus {
+  state: string;
+  request: ServerDeploymentPost;
+  force_reboot: boolean;
+  bios_profiles: string[];
+  bios_attributes: Record<string, unknown>;
+  bios_deferred_attributes: Record<string, unknown>;
+  media_url: string;
+  media_bytes_read: number;
+  media_size: number;
+  retries: number;
+  last_error: string;
+  failed_state: string;
+  started_at: string;
+  state_entered_at: string;
+  finished_at: string;
+  history: ServerDeploymentStep[];
+}
+
 export interface Server {
   name: string;
   cluster: string;
@@ -116,6 +153,7 @@ export interface Server {
   version_data: ServerVersionData;
   bmc_config: BMCConfig;
   bmc_data: BMCData;
+  deployment?: ServerDeploymentStatus;
 }
 
 export interface ServerFormValues {
@@ -126,6 +164,19 @@ export interface ServerFormValues {
   properties: ServerProperty;
   network_configuration: string;
   storage_configuration: string;
+  bmc_endpoint: string;
+  bmc_certificate: string;
+  bmc_auto_pin_certificate: boolean;
+  bmc_username: string;
+  bmc_password: string;
+}
+
+export interface ServerPreRegisterFormValues {
+  name: string;
+  description: string;
+  properties: ServerProperty;
+  public_connection_url: string;
+  channel: string;
   bmc_endpoint: string;
   bmc_certificate: string;
   bmc_auto_pin_certificate: boolean;

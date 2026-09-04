@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Badge, Container } from "react-bootstrap";
-import { Link, useSearchParams } from "react-router";
+import { Badge, Button, Container } from "react-bootstrap";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { fetchServers } from "api/server";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
@@ -13,6 +13,7 @@ import { BsLink45Deg } from "react-icons/bs";
 
 const Server = () => {
   const refetchInterval = 10000; // 10 seconds
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
 
@@ -115,6 +116,21 @@ const Server = () => {
         <InventorySearchBox />
       </Container>
       <div className="d-flex flex-column">
+        <div className="mx-2 mx-md-4">
+          <div className="row">
+            <div className="col-12">
+              <Button
+                variant="success"
+                className="float-end"
+                onClick={() =>
+                  navigate("/ui/provisioning/servers/pre-register")
+                }
+              >
+                Pre register
+              </Button>
+            </div>
+          </div>
+        </div>
         <div className="flex-grow-1">
           <ExtendedDataTable
             headers={headers}

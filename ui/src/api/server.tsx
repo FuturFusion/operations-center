@@ -44,6 +44,41 @@ export const fetchServerChangelog = (name: string): Promise<Changelog> => {
   });
 };
 
+export const preRegisterServer = (body: string): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/servers`, {
+      method: "POST",
+      body: body,
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
+export const deployServer = (name: string, body: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/servers/${name}/:deploy`, {
+      method: "POST",
+      body: body,
+    })
+      .then(processResponse)
+      .then(() => resolve())
+      .catch(reject);
+  });
+};
+
+export const cancelServerDeployment = (name: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/servers/${name}/:cancel-deploy`, {
+      method: "POST",
+    })
+      .then(processResponse)
+      .then(() => resolve())
+      .catch(reject);
+  });
+};
+
 export const deleteServer = (name: string): Promise<APIResponse<object>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}`, { method: "DELETE" })

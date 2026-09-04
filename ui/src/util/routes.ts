@@ -27,6 +27,7 @@ import IncusImageDetail from "pages/IncusImageDetail";
 import IncusOS from "pages/IncusOS";
 import Server from "pages/Server";
 import ServerDetail from "pages/ServerDetail";
+import ServerPreRegister from "pages/ServerPreRegister";
 import TokenCreate from "pages/TokenCreate";
 import TokenDetail from "pages/TokenDetail";
 import TokenSeedCreate from "pages/TokenSeedCreate";
@@ -94,6 +95,11 @@ export const routes = [
 
   { path: "/ui/provisioning/servers-view", component: Server },
   { path: "/ui/provisioning/servers-view/:activeTab", component: Server },
+
+  {
+    path: "/ui/provisioning/servers/pre-register",
+    component: ServerPreRegister,
+  },
 
   { path: "/ui/provisioning/servers/:name", component: ServerDetail },
   {
