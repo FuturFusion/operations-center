@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -137,8 +135,6 @@ func Test_mediaURLWarnings(t *testing.T) {
 func TestServerService_bmcTaskMonitorHandover(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
-	const tokenUUID = "e9de436e-b94e-4aef-8563-883aec84096e"
-
 	taskMonitor := &provisioning.BMCTaskMonitor{
 		URI: "https://bmc.local/task/1",
 	}
@@ -169,14 +165,7 @@ func TestServerService_bmcTaskMonitorHandover(t *testing.T) {
 			},
 		}
 
-		tokenSvc := &svcMock.TokenServiceMock{
-			GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
-				return &provisioning.TokenSeed{Name: name, Public: true}, nil
-			},
-			ResolveTokenSeedImageIDFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture, channel string) (string, error) {
-				return "a1B2c3D4e5F6", nil
-			},
-		}
+		tokenSvc := &svcMock.TokenServiceMock{}
 
 		bmcClient := &adapterMock.BMCServerClientPortMock{
 			ServerPowerOnFunc: func(ctx context.Context, server provisioning.Server, force bool) (*provisioning.BMCTaskMonitor, error) {
@@ -189,9 +178,6 @@ func TestServerService_bmcTaskMonitorHandover(t *testing.T) {
 				return taskMonitor, nil
 			},
 			ApplyBIOSAttributesFunc: func(ctx context.Context, server provisioning.Server, attributes map[string]any) (*provisioning.BMCTaskMonitor, error) {
-				return taskMonitor, nil
-			},
-			AttachMediaFunc: func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
 				return taskMonitor, nil
 			},
 			DetachMediaFunc: func(ctx context.Context, server provisioning.Server, virtualMediaID string) (*provisioning.BMCTaskMonitor, error) {
@@ -236,19 +222,6 @@ func TestServerService_bmcTaskMonitorHandover(t *testing.T) {
 			call: func(t *testing.T, serverSvc *serverService) (*provisioning.BMCTaskMonitor, error) {
 				t.Helper()
 				return serverSvc.applyBIOSAttributesByName(t.Context(), "one", map[string]any{"NumaNodesPerSocket": 4}, false)
-			},
-		},
-		{
-			name: "bmcAttachMediaByName",
-			call: func(t *testing.T, serverSvc *serverService) (*provisioning.BMCTaskMonitor, error) {
-				t.Helper()
-				return serverSvc.bmcAttachMediaByName(t.Context(), "one", api.ServerBMCAttachMedia{
-					TokenUUID:      tokenUUID,
-					Seed:           "default",
-					Type:           "iso",
-					Architecture:   "x86_64",
-					VirtualMediaID: "system:1",
-				}, false)
 			},
 		},
 		{

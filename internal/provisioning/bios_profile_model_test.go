@@ -463,6 +463,18 @@ func TestBIOSProfile_Validate(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name: "valid - deferred attributes only",
+			profile: provisioning.BIOSProfile{
+				Name:  "dell-poweredge-tpm-algorithm",
+				Match: []provisioning.BIOSProfileMatch{{Manufacturer: `Dell Inc\.`}},
+				DeferredAttributes: map[string]any{
+					"Tpm2Algorithm": "SHA256",
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name: "valid - secure boot only",
 			profile: provisioning.BIOSProfile{
 				Name:  "dell-poweredge-secure-boot",
@@ -513,11 +525,12 @@ func TestBIOSProfile_Validate(t *testing.T) {
 			assertErr: errassert.ValidationErrorContains("at least one match is required"),
 		},
 		{
-			name: "error - attributes and secure boot empty",
+			name: "error - attributes, deferred attributes and secure boot empty",
 			profile: provisioning.BIOSProfile{
-				Name:       "dell-poweredge",
-				Match:      []provisioning.BIOSProfileMatch{{}},
-				Attributes: nil, // invalid
+				Name:               "dell-poweredge",
+				Match:              []provisioning.BIOSProfileMatch{{}},
+				Attributes:         nil, // invalid
+				DeferredAttributes: nil, // invalid
 			},
 
 			assertErr: errassert.ValidationError,
@@ -592,6 +605,10 @@ func TestBIOSProfiles_Resolve(t *testing.T) {
 				"SecureBootMode":     "UserMode",
 				"NumaNodesPerSocket": "1",
 			},
+			DeferredAttributes: map[string]any{
+				"Tpm2Algorithm": "SHA1",
+				"Tpm2Hierarchy": "Enabled",
+			},
 			SecureBoot: provisioning.BIOSSecureBoot{
 				DB: provisioning.BIOSSecureBootDatabase{
 					Certificates: map[string]*bool{"aaaa": new(true), "bbbb": new(true)},
@@ -622,6 +639,11 @@ func TestBIOSProfiles_Resolve(t *testing.T) {
 				"NumaNodesPerSocket": nil,
 				// Extends the set of attributes.
 				"TpmSecurity": "On",
+			},
+			DeferredAttributes: map[string]any{
+				// Overwrites and removes, just like the attributes above.
+				"Tpm2Algorithm": "SHA256",
+				"Tpm2Hierarchy": nil,
 			},
 			SecureBoot: provisioning.BIOSSecureBoot{
 				DB: provisioning.BIOSSecureBootDatabase{
@@ -682,6 +704,7 @@ func TestBIOSProfiles_Resolve(t *testing.T) {
 				Attributes: map[string]any{
 					"SecureBoot": "Disabled",
 				},
+				DeferredAttributes: map[string]any{},
 			},
 		},
 		{
@@ -700,6 +723,9 @@ func TestBIOSProfiles_Resolve(t *testing.T) {
 					"SecureBootMode":   "UserMode",
 					"SecureBootPolicy": "Custom",
 					"TpmSecurity":      "On",
+				},
+				DeferredAttributes: map[string]any{
+					"Tpm2Algorithm": "SHA256",
 				},
 				SecureBoot: api.BIOSSecureBoot{
 					DB: api.BIOSSecureBootDatabase{
@@ -771,9 +797,10 @@ func TestBIOSProfiles_ResolveDoesNotMutateTheProfiles(t *testing.T) {
 
 func TestBIOSProfileResolution_ValidateAgainstBIOSAttributes(t *testing.T) {
 	tests := []struct {
-		name           string
-		attributes     map[string]any
-		biosAttributes []api.BIOSAttribute
+		name               string
+		attributes         map[string]any
+		deferredAttributes map[string]any
+		biosAttributes     []api.BIOSAttribute
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -805,6 +832,37 @@ func TestBIOSProfileResolution_ValidateAgainstBIOSAttributes(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+		},
+		{
+			// The attribute registry only publishes a deferred attribute once the
+			// attributes, it depends on, are in effect, which is the very reason it
+			// is applied in a second pass.
+			name: "valid - deferred attribute unknown to the BMC",
+			deferredAttributes: map[string]any{
+				"Tpm2Algorithm": "SHA256",
+			},
+			biosAttributes: []api.BIOSAttribute{
+				{
+					Name: "TpmSecurity",
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - deferred attribute value not acceptable",
+			deferredAttributes: map[string]any{
+				"Tpm2Algorithm": "SHA42",
+			},
+			biosAttributes: []api.BIOSAttribute{
+				{
+					Name:             "Tpm2Algorithm",
+					Type:             "Enumeration",
+					AcceptableValues: []string{"SHA1", "SHA256"},
+				},
+			},
+
+			assertErr: errassert.ValidationErrorContains("SHA1, SHA256"),
 		},
 		{
 			name: "error - attribute unknown to the BMC",
@@ -892,8 +950,9 @@ func TestBIOSProfileResolution_ValidateAgainstBIOSAttributes(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			resolution := provisioning.BIOSProfileResolution{
-				Profiles:   []string{"dell-poweredge"},
-				Attributes: tc.attributes,
+				Profiles:           []string{"dell-poweredge"},
+				Attributes:         tc.attributes,
+				DeferredAttributes: tc.deferredAttributes,
 			}
 
 			err := resolution.ValidateAgainstBIOSAttributes(tc.biosAttributes)

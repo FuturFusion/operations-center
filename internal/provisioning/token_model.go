@@ -153,11 +153,17 @@ func (t TokenSeed) Validate() error {
 
 type TokenSeeds []TokenSeed
 
+// SeedImageInfo describes a generated seed image, as far as serving it and
+// following the progress of a reader require.
+type SeedImageInfo struct {
+	Size    int64
+	ModTime time.Time
+}
+
 type TokenImage struct {
 	// Content is the image itself. It is the caller's responsibility to close it.
+	SeedImageInfo
 	Content  io.ReadSeekCloser
-	Size     int64
-	ModTime  time.Time
 	Filename string
 }
 

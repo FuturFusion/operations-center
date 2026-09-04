@@ -8,3 +8,5 @@
   priority: 1010
   attributes:
     TpmSecurity: "On"
+  deferred_attributes:
+    Tpm2Algorithm: "SHA256"

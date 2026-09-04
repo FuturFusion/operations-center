@@ -7,7 +7,6 @@ import (
 	"context"
 	"io"
 	"log/slog"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -82,7 +81,7 @@ func (_d FlasherPortWithSlog) GenerateCompressedSeededImage(ctx context.Context,
 }
 
 // GenerateSeededImage implements provisioning.FlasherPort.
-func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (readSeekCloser io.ReadSeekCloser, size int64, modTime time.Time, err error) {
+func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (readSeekCloser io.ReadSeekCloser, seedImageInfo provisioning.SeedImageInfo, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -101,8 +100,7 @@ func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, cacheID s
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
 				slog.Any("readSeekCloser", readSeekCloser),
-				slog.Int64("size", size),
-				slog.Time("modTime", modTime),
+				slog.Any("seedImageInfo", seedImageInfo),
 				slog.Any("err", err),
 			)
 		} else {
@@ -159,7 +157,7 @@ func (_d FlasherPortWithSlog) GetProviderConfig(ctx context.Context, tokenID uui
 }
 
 // OpenSeededImage implements provisioning.FlasherPort.
-func (_d FlasherPortWithSlog) OpenSeededImage(ctx context.Context, cacheID string, fingerprintID string) (readSeekCloser io.ReadSeekCloser, size int64, modTime time.Time, err error) {
+func (_d FlasherPortWithSlog) OpenSeededImage(ctx context.Context, cacheID string, fingerprintID string) (readSeekCloser io.ReadSeekCloser, seedImageInfo provisioning.SeedImageInfo, err error) {
 	log := slog.With()
 	if slog.Default().Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -174,8 +172,7 @@ func (_d FlasherPortWithSlog) OpenSeededImage(ctx context.Context, cacheID strin
 		if slog.Default().Enabled(ctx, logger.LevelTrace) {
 			log = slog.With(
 				slog.Any("readSeekCloser", readSeekCloser),
-				slog.Int64("size", size),
-				slog.Time("modTime", modTime),
+				slog.Any("seedImageInfo", seedImageInfo),
 				slog.Any("err", err),
 			)
 		} else {

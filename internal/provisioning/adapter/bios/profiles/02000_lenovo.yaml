@@ -1,0 +1,11 @@
+---
+
+- name: lenovo
+  description: Lenovo
+  match:
+    - manufacturer: "Lenovo"
+  priority: 2000
+  attributes:
+    SecureBootConfiguration_SecureBootStatus: "Enabled"
+    SecureBootConfiguration_SecureBootMode: "UserMode"
+    SecureBootConfiguration_SecureBootPolicy: "CustomPolicy"

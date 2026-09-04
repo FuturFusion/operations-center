@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -426,7 +427,9 @@ func TestServerService_Register(t *testing.T) {
 		repoGetByMachineIDErr  error
 		repoUpdateErr          error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr      require.ErrorAssertionFunc
+		wantSystemUUID *string
+		wantMachineID  *string
 	}{
 		{
 			name: "success - new registration",
@@ -471,13 +474,63 @@ one
 		`),
 				MachineID: new("1"),
 			},
-			repoGetBySystemUUID: &provisioning.Server{
+			repoGetByMachineID: &provisioning.Server{
 				ID:        1,
 				Name:      "one",
 				MachineID: new("1"),
 			},
 
 			assertErr: require.NoError,
+		},
+		{
+			name: "success - upper case system UUID is normalized to lower case",
+			server: provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate: new(`-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+		`),
+				SystemUUID: new("E9DE436E-B94E-4AEF-8563-883AEC84096E"),
+			},
+			repoGetBySystemUUID: &provisioning.Server{
+				ID:         1,
+				Name:       "one",
+				SystemUUID: new("e9de436e-b94e-4aef-8563-883aec84096e"),
+			},
+
+			assertErr:      require.NoError,
+			wantSystemUUID: new("e9de436e-b94e-4aef-8563-883aec84096e"),
+		},
+		{
+			name: "success - upper case system UUID is stored in lower case",
+			server: provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate: new(`-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+		`),
+				SystemUUID: new("E9DE436E-B94E-4AEF-8563-883AEC84096E"),
+			},
+
+			assertErr:      require.NoError,
+			wantSystemUUID: new("e9de436e-b94e-4aef-8563-883aec84096e"),
+		},
+		{
+			name: "success - upper case machine ID is normalized to lower case",
+			server: provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate: new(`-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+		`),
+				MachineID: new("E9DE436EB94E4AEF8563883AEC84096E"),
+			},
+
+			assertErr:     require.NoError,
+			wantMachineID: new("e9de436eb94e4aef8563883aec84096e"),
 		},
 		{
 			name:               "error - token consume",
@@ -595,18 +648,37 @@ one
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			assertIdentifiers := func(server provisioning.Server) {
+				if tc.wantSystemUUID != nil {
+					require.Equal(t, tc.wantSystemUUID, server.SystemUUID, "system UUID should be persisted in lower case")
+				}
+
+				if tc.wantMachineID != nil {
+					require.Equal(t, tc.wantMachineID, server.MachineID, "machine ID should be persisted in lower case")
+				}
+			}
+
 			repo := &repoMock.ServerRepoMock{
 				CreateFunc: func(ctx context.Context, in provisioning.Server) (int64, error) {
 					require.Equal(t, fixedDate, in.LastSeen)
+					assertIdentifiers(in)
 					return 1, tc.repoCreateErr
 				},
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return &provisioning.Server{}, nil
 				},
 				GetBySystemUUIDFunc: func(ctx context.Context, systemUUID string) (*provisioning.Server, error) {
+					if tc.wantSystemUUID != nil {
+						require.Equal(t, *tc.wantSystemUUID, systemUUID, "lookup by system UUID should use the lower case value")
+					}
+
 					return tc.repoGetBySystemUUID, tc.repoGetBySystemUUIDErr
 				},
 				GetByMachineIDFunc: func(ctx context.Context, machineID string) (*provisioning.Server, error) {
+					if tc.wantMachineID != nil {
+						require.Equal(t, *tc.wantMachineID, machineID, "lookup by machine ID should use the lower case value")
+					}
+
 					return tc.repoGetByMachineID, tc.repoGetByMachineIDErr
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
@@ -9117,6 +9189,26 @@ func TestServerService_ResyncBMCData(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "success - upper case server UUID reported by BMC",
+			repoGetAllServers: provisioning.Servers{
+				{
+					Name: "one",
+					BMCConfig: api.BMCConfig{
+						APIType:  api.BMCAPITypeRedfishV1Generic,
+						Endpoint: "https://bmc.local",
+					},
+				},
+			},
+			bmcClientGetData: api.BMCData{
+				ServerUUID: "E9DE436E-B94E-4AEF-8563-883AEC84096E",
+			},
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name: "error - repo.Update",
 			repoGetAllServers: provisioning.Servers{
 				{
@@ -9152,8 +9244,8 @@ func TestServerService_ResyncBMCData(t *testing.T) {
 				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
 					wantDetails := tc.bmcClientGetData
 					wantDetails.LastUpdated = fixedDate
-					require.Equal(t, wantDetails, in.BMCData)
-					require.Equal(t, &wantDetails.ServerUUID, in.SystemUUID)
+					require.Equal(t, wantDetails, in.BMCData, "BMC data should be stored verbatim as reported by the BMC")
+					require.Equal(t, new(strings.ToLower(wantDetails.ServerUUID)), in.SystemUUID, "system UUID should be stored in lower case")
 
 					return tc.repoUpdateErr
 				},
@@ -10431,8 +10523,8 @@ func TestServerService_BMCApplySecureBootCertificatesByName(t *testing.T) {
 			}
 
 			bmcClient := &adapterMock.BMCServerClientPortMock{
-				ApplySecureBootCertificatesFunc: func(ctx context.Context, server provisioning.Server) error {
-					return tc.bmcClientApplySecureBootCertificatesErr
+				ApplySecureBootCertificatesFunc: func(ctx context.Context, server provisioning.Server, secureBoot api.BIOSSecureBoot) (bool, error) {
+					return tc.bmcClientApplySecureBootCertificatesErr == nil, tc.bmcClientApplySecureBootCertificatesErr
 				},
 			}
 
@@ -10833,6 +10925,22 @@ func TestServerService_BMCRefreshByName(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name:    "success - upper case server UUID reported by BMC",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Name: "one",
+				BMCConfig: api.BMCConfig{
+					APIType:  api.BMCAPITypeRedfishV1Generic,
+					Endpoint: "https://bmc.local",
+				},
+			},
+			bmcClientGetData: api.BMCData{
+				ServerUUID: "E9DE436E-B94E-4AEF-8563-883AEC84096E",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name:    "error - name empty",
 			nameArg: "", // invalid
 
@@ -10901,8 +11009,8 @@ func TestServerService_BMCRefreshByName(t *testing.T) {
 				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
 					wantDetails := tc.bmcClientGetData
 					wantDetails.LastUpdated = fixedDate
-					require.Equal(t, wantDetails, in.BMCData)
-					require.Equal(t, &wantDetails.ServerUUID, in.SystemUUID)
+					require.Equal(t, wantDetails, in.BMCData, "BMC data should be stored verbatim as reported by the BMC")
+					require.Equal(t, new(strings.ToLower(wantDetails.ServerUUID)), in.SystemUUID, "system UUID should be stored in lower case")
 
 					return tc.repoUpdateErr
 				},

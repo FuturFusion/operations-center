@@ -542,9 +542,11 @@ func Test_tokenHandler_tokenSeedImageGet_wireFormat(t *testing.T) {
 
 func testTokenImage(content string) *provisioning.TokenImage {
 	return &provisioning.TokenImage{
-		Content:  nopReadSeekCloser{strings.NewReader(content)},
-		Size:     int64(len(content)),
-		ModTime:  testTokenImageModTime,
+		Content: nopReadSeekCloser{strings.NewReader(content)},
+		SeedImageInfo: provisioning.SeedImageInfo{
+			Size:    int64(len(content)),
+			ModTime: testTokenImageModTime,
+		},
 		Filename: "pre-seed-test.iso",
 	}
 }
@@ -740,22 +742,19 @@ func Test_tokenHandler_tokenSeedImageGet_readProgress(t *testing.T) {
 	firstProgress, ok := tracker.Get(context.Background(), imageID, "127.0.0.1")
 	require.True(t, ok)
 	require.Equal(t, int64(len(content)), firstProgress.Size)
+
 	require.Equal(t, int64(len(content)+5), firstProgress.BytesServed)
+	require.Equal(t, int64(len(content)), firstProgress.BytesCovered, "the range re-read after the full download is only covered once")
 	require.Equal(t, 2, firstProgress.RequestCount)
 
-	// The second request read a range already read before, which does not make
-	// the highest offset reached regress.
-	require.Equal(t, int64(len(content)), firstProgress.HighestOffset)
-	require.InDelta(t, 100.0, firstProgress.PercentComplete(), 0.001)
 	require.False(t, firstProgress.FirstRead.IsZero())
 	require.Equal(t, time.Minute, firstProgress.IdleFor(firstProgress.LastRead.Add(time.Minute)))
 
 	secondProgress, ok := tracker.Get(context.Background(), imageID, "127.0.0.2")
 	require.True(t, ok)
 	require.Equal(t, int64(5), secondProgress.BytesServed)
-	require.Equal(t, int64(15), secondProgress.HighestOffset)
+	require.Equal(t, int64(5), secondProgress.BytesCovered, "a range request is attributed to the part of the image it names")
 	require.Equal(t, 1, secondProgress.RequestCount)
-	require.InDelta(t, 75.0, secondProgress.PercentComplete(), 0.001)
 
 	// A download naming the token seed instead of a prepared image is served to
 	// a CLI or to the UI and is not tracked at all.

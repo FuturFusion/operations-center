@@ -106,7 +106,7 @@ func seedImageFingerprintID(fingerprint string, tarball []byte) string {
 //
 // The call blocks until the image is stored. Concurrent calls for the same
 // image generate it only once. source is closed in all cases.
-func (f *Flasher) GenerateSeededImage(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (_ io.ReadSeekCloser, size int64, modTime time.Time, err error) {
+func (f *Flasher) GenerateSeededImage(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (_ io.ReadSeekCloser, _ provisioning.SeedImageInfo, err error) {
 	// source is only consumed, if the image has to be generated.
 	defer func() {
 		if source != nil {
@@ -115,11 +115,11 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, cacheID string, finge
 	}()
 
 	if f.cache == nil {
-		return nil, 0, time.Time{}, errors.New("Seed image cache is not configured")
+		return nil, provisioning.SeedImageInfo{}, errors.New("Seed image cache is not configured")
 	}
 
 	if !cacheIDRegexp.MatchString(cacheID) {
-		return nil, 0, time.Time{}, fmt.Errorf("Invalid seed image cache ID %q", cacheID)
+		return nil, provisioning.SeedImageInfo{}, fmt.Errorf("Invalid seed image cache ID %q", cacheID)
 	}
 
 	// The seed tarball is deterministic for a given configuration and cheap to
@@ -127,19 +127,19 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, cacheID string, finge
 	// whether it has to be generated at all.
 	offset, tarball, err := f.seedTarball(ctx, id, seedConfig)
 	if err != nil {
-		return nil, 0, time.Time{}, err
+		return nil, provisioning.SeedImageInfo{}, err
 	}
 
 	fingerprintID := seedImageFingerprintID(fingerprint, tarball)
 
 	for {
-		image, size, modTime, err := f.cache.open(public, cacheID, fingerprintID)
+		image, info, err := f.cache.open(public, cacheID, fingerprintID)
 		if err == nil {
-			return image, size, modTime, nil
+			return image, info, nil
 		}
 
 		if !errors.Is(err, errCacheMiss) {
-			return nil, 0, time.Time{}, err
+			return nil, provisioning.SeedImageInfo{}, err
 		}
 
 		wait, release := f.cache.acquire(public, cacheID, fingerprintID)
@@ -148,7 +148,7 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, cacheID string, finge
 			// instead of generating it a second time.
 			select {
 			case <-ctx.Done():
-				return nil, 0, time.Time{}, ctx.Err()
+				return nil, provisioning.SeedImageInfo{}, ctx.Err()
 
 			case <-wait:
 			}
@@ -167,15 +167,15 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, cacheID string, finge
 			return f.generate(ctx, public, cacheID, fingerprintID, offset, tarball, generateSource)
 		}()
 		if err != nil {
-			return nil, 0, time.Time{}, err
+			return nil, provisioning.SeedImageInfo{}, err
 		}
 
-		image, size, modTime, err = f.cache.open(public, cacheID, fingerprintID)
+		image, info, err = f.cache.open(public, cacheID, fingerprintID)
 		if err != nil {
-			return nil, 0, time.Time{}, fmt.Errorf("Failed to open the just generated cached seed image: %w", err)
+			return nil, provisioning.SeedImageInfo{}, fmt.Errorf("Failed to open the just generated cached seed image: %w", err)
 		}
 
-		return image, size, modTime, nil
+		return image, info, nil
 	}
 }
 
@@ -184,33 +184,33 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, cacheID string, finge
 //
 // It only ever hands out an image generated for a public token seed.
 // An image being generated right now is waited for.
-func (f *Flasher) OpenSeededImage(ctx context.Context, cacheID string, fingerprintID string) (_ io.ReadSeekCloser, size int64, modTime time.Time, _ error) {
+func (f *Flasher) OpenSeededImage(ctx context.Context, cacheID string, fingerprintID string) (_ io.ReadSeekCloser, _ provisioning.SeedImageInfo, _ error) {
 	if f.cache == nil {
-		return nil, 0, time.Time{}, errors.New("Seed image cache is not configured")
+		return nil, provisioning.SeedImageInfo{}, errors.New("Seed image cache is not configured")
 	}
 
 	if !cacheIDRegexp.MatchString(cacheID) || !cacheIDRegexp.MatchString(fingerprintID) {
-		return nil, 0, time.Time{}, fmt.Errorf("No seed image %q is available: %w", fingerprintID, domain.ErrNotFound)
+		return nil, provisioning.SeedImageInfo{}, fmt.Errorf("No seed image %q is available: %w", fingerprintID, domain.ErrNotFound)
 	}
 
 	for {
-		image, size, modTime, err := f.cache.open(true, cacheID, fingerprintID)
+		image, info, err := f.cache.open(true, cacheID, fingerprintID)
 		if err == nil {
-			return image, size, modTime, nil
+			return image, info, nil
 		}
 
 		if !errors.Is(err, errCacheMiss) {
-			return nil, 0, time.Time{}, err
+			return nil, provisioning.SeedImageInfo{}, err
 		}
 
 		wait := f.cache.generating(true, cacheID, fingerprintID)
 		if wait == nil {
-			return nil, 0, time.Time{}, fmt.Errorf("No seed image %q is available: %w", fingerprintID, domain.ErrNotFound)
+			return nil, provisioning.SeedImageInfo{}, fmt.Errorf("No seed image %q is available: %w", fingerprintID, domain.ErrNotFound)
 		}
 
 		select {
 		case <-ctx.Done():
-			return nil, 0, time.Time{}, ctx.Err()
+			return nil, provisioning.SeedImageInfo{}, ctx.Err()
 
 		case <-wait:
 		}
@@ -294,24 +294,27 @@ func (c *imageCache) generating(public bool, cacheID string, fingerprintID strin
 }
 
 // open returns the cached image, or reports errCacheMiss, if it is not stored.
-func (c *imageCache) open(public bool, cacheID string, fingerprintID string) (_ io.ReadSeekCloser, size int64, modTime time.Time, _ error) {
+func (c *imageCache) open(public bool, cacheID string, fingerprintID string) (_ io.ReadSeekCloser, _ provisioning.SeedImageInfo, _ error) {
 	imageFile, err := os.Open(c.imageFilename(public, cacheID, fingerprintID))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return nil, 0, time.Time{}, errCacheMiss
+			return nil, provisioning.SeedImageInfo{}, errCacheMiss
 		}
 
-		return nil, 0, time.Time{}, fmt.Errorf("Failed to open cached seed image %q: %w", fingerprintID, err)
+		return nil, provisioning.SeedImageInfo{}, fmt.Errorf("Failed to open cached seed image %q: %w", fingerprintID, err)
 	}
 
 	fileInfo, err := imageFile.Stat()
 	if err != nil {
-		return nil, 0, time.Time{}, errors.Join(fmt.Errorf("Failed to stat cached seed image %q: %w", fingerprintID, err), imageFile.Close())
+		return nil, provisioning.SeedImageInfo{}, errors.Join(fmt.Errorf("Failed to stat cached seed image %q: %w", fingerprintID, err), imageFile.Close())
 	}
 
 	c.touch(cacheKey(public, cacheID, fingerprintID))
 
-	return imageFile, fileInfo.Size(), fileInfo.ModTime(), nil
+	return imageFile, provisioning.SeedImageInfo{
+		Size:    fileInfo.Size(),
+		ModTime: fileInfo.ModTime(),
+	}, nil
 }
 
 // write stores the image under the name it is addressed by.

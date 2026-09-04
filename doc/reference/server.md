@@ -20,6 +20,54 @@ Operations Center on the other hand is periodically testing the connectivity
 Once one or many servers are clustered together to form a [cluster](cluster.md),
 Operations Center will keep track of their [inventory](inventory.md).
 
+## Automated Deployment
+
+A pre-registered server with a BMC can be installed unattended:
+
+```shell
+operations-center provisioning server deploy <name> <token-uuid> <seed>
+```
+
+Operations Center then configures the BIOS of the server from the BIOS profiles
+matching it, enrolls the secure boot certificates of IncusOS, attaches the
+installation media generated from the token seed and boots it, and watches the
+server until it has registered itself. The progress is followed with
+`operations-center provisioning server deploy-status <name>` and a running
+deployment is stopped with
+`operations-center provisioning server deploy-cancel <name>`.
+
+A BIOS attribute and a key database, that are correct already, are left alone,
+so a server, that is deployed a second time, is neither power cycled nor has its
+UEFI keys rewritten for nothing.
+
+Not every BMC allows the UEFI key databases to be modified through its Redfish
+API. Add `--skip-secure-boot-certificates` for such a server, in which case the
+secure boot certificates of IncusOS have to be enrolled manually before the
+deployment is triggered, everything else being unchanged.
+
+While a deployment is running, the server is in status `deploying` with one of
+the following status details:
+
+| Server Status  | Server Status Detail           | Meaning                                                           |
+| ---            | ---                            | ---                                                               |
+| `deploying`    | `preparing`                    | Collecting BMC data, checking BIOS and powering the server off    |
+| `deploying`    | `configuring BIOS`             | Applying and verifying the BIOS attributes, enrolling secure boot |
+| `deploying`    | `attaching installation media` | Ejecting stale media and attaching the installation media         |
+| `deploying`    | `installing`                   | The server is running the first stage of the installation         |
+| `deploying`    | `finalizing`                   | Ejecting the media and waiting for the registration               |
+| `deploying`    | `canceling`                    | Ejecting the media and powering the server off after a cancel     |
+| `unregistered` | `deployment failed`            | The deployment failed, nothing has been cleaned up                |
+| `unregistered` | `deployment canceled`          | The deployment has been canceled and cleaned up                   |
+
+A successful deployment ends with the server registering itself, so it continues
+its life in status `pending` and eventually graduating to `ready`. A failed
+deployment is deliberately not cleaned up: the installation media stays attached
+and the power state is left as it is, so the server can be inspected through the
+BMC console.
+
+More detailed information about the deployment can be found in
+[/development/server-deployment].
+
 ## Network Configuration
 
 Operations Center allows to update the network configuration of registered

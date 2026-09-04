@@ -1,0 +1,9 @@
+---
+
+- name: hp
+  description: HP
+  match:
+    - manufacturer: "HPE"
+  priority: 3000
+  attributes:
+    SecureBootStatus: "Enabled"

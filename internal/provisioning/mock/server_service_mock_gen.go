@@ -73,8 +73,17 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			BMCServerSetLocationIndicatorByNameFunc: func(ctx context.Context, name string, active bool) error {
 //				panic("mock out the BMCServerSetLocationIndicatorByName method")
 //			},
+//			CancelDeploymentByNameFunc: func(ctx context.Context, name string) error {
+//				panic("mock out the CancelDeploymentByName method")
+//			},
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the DeleteByName method")
+//			},
+//			DeployByNameFunc: func(ctx context.Context, name string, request provisioning.ServerDeploymentRequest) error {
+//				panic("mock out the DeployByName method")
+//			},
+//			DeploymentControlLoopFunc: func(ctx context.Context, serverNameFilter *string) error {
+//				panic("mock out the DeploymentControlLoop method")
 //			},
 //			EvacuateSystemByNameFunc: func(ctx context.Context, name string, clusterUpdate bool, force bool) error {
 //				panic("mock out the EvacuateSystemByName method")
@@ -242,8 +251,17 @@ type ServerServiceMock struct {
 	// BMCServerSetLocationIndicatorByNameFunc mocks the BMCServerSetLocationIndicatorByName method.
 	BMCServerSetLocationIndicatorByNameFunc func(ctx context.Context, name string, active bool) error
 
+	// CancelDeploymentByNameFunc mocks the CancelDeploymentByName method.
+	CancelDeploymentByNameFunc func(ctx context.Context, name string) error
+
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
+
+	// DeployByNameFunc mocks the DeployByName method.
+	DeployByNameFunc func(ctx context.Context, name string, request provisioning.ServerDeploymentRequest) error
+
+	// DeploymentControlLoopFunc mocks the DeploymentControlLoop method.
+	DeploymentControlLoopFunc func(ctx context.Context, serverNameFilter *string) error
 
 	// EvacuateSystemByNameFunc mocks the EvacuateSystemByName method.
 	EvacuateSystemByNameFunc func(ctx context.Context, name string, clusterUpdate bool, force bool) error
@@ -496,12 +514,35 @@ type ServerServiceMock struct {
 			// Active is the active argument value.
 			Active bool
 		}
+		// CancelDeploymentByName holds details about calls to the CancelDeploymentByName method.
+		CancelDeploymentByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
 		// DeleteByName holds details about calls to the DeleteByName method.
 		DeleteByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+		}
+		// DeployByName holds details about calls to the DeployByName method.
+		DeployByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// Request is the request argument value.
+			Request provisioning.ServerDeploymentRequest
+		}
+		// DeploymentControlLoop holds details about calls to the DeploymentControlLoop method.
+		DeploymentControlLoop []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ServerNameFilter is the serverNameFilter argument value.
+			ServerNameFilter *string
 		}
 		// EvacuateSystemByName holds details about calls to the EvacuateSystemByName method.
 		EvacuateSystemByName []struct {
@@ -823,7 +864,10 @@ type ServerServiceMock struct {
 	lockBMCServerPowerOnByName               sync.RWMutex
 	lockBMCServerRestartByName               sync.RWMutex
 	lockBMCServerSetLocationIndicatorByName  sync.RWMutex
+	lockCancelDeploymentByName               sync.RWMutex
 	lockDeleteByName                         sync.RWMutex
+	lockDeployByName                         sync.RWMutex
+	lockDeploymentControlLoop                sync.RWMutex
 	lockEvacuateSystemByName                 sync.RWMutex
 	lockFactoryResetByName                   sync.RWMutex
 	lockGetAll                               sync.RWMutex
@@ -1491,6 +1535,42 @@ func (mock *ServerServiceMock) BMCServerSetLocationIndicatorByNameCalls() []stru
 	return calls
 }
 
+// CancelDeploymentByName calls CancelDeploymentByNameFunc.
+func (mock *ServerServiceMock) CancelDeploymentByName(ctx context.Context, name string) error {
+	if mock.CancelDeploymentByNameFunc == nil {
+		panic("ServerServiceMock.CancelDeploymentByNameFunc: method is nil but ServerService.CancelDeploymentByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockCancelDeploymentByName.Lock()
+	mock.calls.CancelDeploymentByName = append(mock.calls.CancelDeploymentByName, callInfo)
+	mock.lockCancelDeploymentByName.Unlock()
+	return mock.CancelDeploymentByNameFunc(ctx, name)
+}
+
+// CancelDeploymentByNameCalls gets all the calls that were made to CancelDeploymentByName.
+// Check the length with:
+//
+//	len(mockedServerService.CancelDeploymentByNameCalls())
+func (mock *ServerServiceMock) CancelDeploymentByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockCancelDeploymentByName.RLock()
+	calls = mock.calls.CancelDeploymentByName
+	mock.lockCancelDeploymentByName.RUnlock()
+	return calls
+}
+
 // DeleteByName calls DeleteByNameFunc.
 func (mock *ServerServiceMock) DeleteByName(ctx context.Context, name string) error {
 	if mock.DeleteByNameFunc == nil {
@@ -1524,6 +1604,82 @@ func (mock *ServerServiceMock) DeleteByNameCalls() []struct {
 	mock.lockDeleteByName.RLock()
 	calls = mock.calls.DeleteByName
 	mock.lockDeleteByName.RUnlock()
+	return calls
+}
+
+// DeployByName calls DeployByNameFunc.
+func (mock *ServerServiceMock) DeployByName(ctx context.Context, name string, request provisioning.ServerDeploymentRequest) error {
+	if mock.DeployByNameFunc == nil {
+		panic("ServerServiceMock.DeployByNameFunc: method is nil but ServerService.DeployByName was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Name    string
+		Request provisioning.ServerDeploymentRequest
+	}{
+		Ctx:     ctx,
+		Name:    name,
+		Request: request,
+	}
+	mock.lockDeployByName.Lock()
+	mock.calls.DeployByName = append(mock.calls.DeployByName, callInfo)
+	mock.lockDeployByName.Unlock()
+	return mock.DeployByNameFunc(ctx, name, request)
+}
+
+// DeployByNameCalls gets all the calls that were made to DeployByName.
+// Check the length with:
+//
+//	len(mockedServerService.DeployByNameCalls())
+func (mock *ServerServiceMock) DeployByNameCalls() []struct {
+	Ctx     context.Context
+	Name    string
+	Request provisioning.ServerDeploymentRequest
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Name    string
+		Request provisioning.ServerDeploymentRequest
+	}
+	mock.lockDeployByName.RLock()
+	calls = mock.calls.DeployByName
+	mock.lockDeployByName.RUnlock()
+	return calls
+}
+
+// DeploymentControlLoop calls DeploymentControlLoopFunc.
+func (mock *ServerServiceMock) DeploymentControlLoop(ctx context.Context, serverNameFilter *string) error {
+	if mock.DeploymentControlLoopFunc == nil {
+		panic("ServerServiceMock.DeploymentControlLoopFunc: method is nil but ServerService.DeploymentControlLoop was just called")
+	}
+	callInfo := struct {
+		Ctx              context.Context
+		ServerNameFilter *string
+	}{
+		Ctx:              ctx,
+		ServerNameFilter: serverNameFilter,
+	}
+	mock.lockDeploymentControlLoop.Lock()
+	mock.calls.DeploymentControlLoop = append(mock.calls.DeploymentControlLoop, callInfo)
+	mock.lockDeploymentControlLoop.Unlock()
+	return mock.DeploymentControlLoopFunc(ctx, serverNameFilter)
+}
+
+// DeploymentControlLoopCalls gets all the calls that were made to DeploymentControlLoop.
+// Check the length with:
+//
+//	len(mockedServerService.DeploymentControlLoopCalls())
+func (mock *ServerServiceMock) DeploymentControlLoopCalls() []struct {
+	Ctx              context.Context
+	ServerNameFilter *string
+} {
+	var calls []struct {
+		Ctx              context.Context
+		ServerNameFilter *string
+	}
+	mock.lockDeploymentControlLoop.RLock()
+	calls = mock.calls.DeploymentControlLoop
+	mock.lockDeploymentControlLoop.RUnlock()
 	return calls
 }
 

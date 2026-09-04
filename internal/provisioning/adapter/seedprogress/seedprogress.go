@@ -3,10 +3,12 @@
 package seedprogress
 
 import (
+	"cmp"
 	"context"
 	"io"
 	"log/slog"
 	"maps"
+	"slices"
 	"sync"
 	"time"
 
@@ -41,12 +43,13 @@ type entryKey struct {
 }
 
 type entry struct {
-	size          int64
-	bytesServed   int64
-	highestOffset int64
-	firstRead     time.Time
-	lastRead      time.Time
-	requestCount  int
+	size int64
+
+	bytesServed  int64
+	coverage     coverage
+	firstRead    time.Time
+	lastRead     time.Time
+	requestCount int
 
 	// lastActivity is the last time the entry has been touched at all, which
 	// includes a request not having read anything.
@@ -62,6 +65,13 @@ type Option func(*Tracker)
 func WithIdleEvictionPeriod(period time.Duration) Option {
 	return func(t *Tracker) {
 		t.idleEvictionPeriod = period
+	}
+}
+
+// WithNow sets the clock the tracker stamps the reads it records with.
+func WithNow(now func() time.Time) Option {
+	return func(t *Tracker) {
+		t.now = now
 	}
 }
 
@@ -81,7 +91,7 @@ func New(opts ...Option) *Tracker {
 
 // Track wraps content, so that the reads served from it are recorded as
 // progress of source reading the image identified by imageID.
-func (t *Tracker) Track(ctx context.Context, imageID provisioning.SeedImageID, source string, size int64, content io.ReadSeekCloser) io.ReadSeekCloser {
+func (t *Tracker) Track(ctx context.Context, imageID provisioning.SeedImageID, source string, info provisioning.SeedImageInfo, content io.ReadSeekCloser) io.ReadSeekCloser {
 	key := entryKey{
 		imageID: imageID,
 		source:  source,
@@ -93,7 +103,7 @@ func (t *Tracker) Track(ctx context.Context, imageID provisioning.SeedImageID, s
 	t.evict()
 
 	e := t.entry(key)
-	e.size = size
+	e.size = info.Size
 	e.lastActivity = t.now()
 
 	return &trackedContent{
@@ -112,15 +122,53 @@ func (t *Tracker) Get(_ context.Context, imageID provisioning.SeedImageID, sourc
 
 	t.evict()
 
-	e, ok := t.entries[entryKey{imageID: imageID, source: source}]
+	key := entryKey{imageID: imageID, source: source}
+
+	e, ok := t.entries[key]
 	if !ok {
 		return provisioning.SeedImageProgress{}, false
 	}
 
-	return e.progress(entryKey{imageID: imageID, source: source}), true
+	return e.progress(key), true
 }
 
-// record accounts for n bytes having been read at offset.
+// GetByImage returns the progress recorded for imageID by every source, that
+// has read it, ordered by source.
+func (t *Tracker) GetByImage(_ context.Context, imageID provisioning.SeedImageID) []provisioning.SeedImageProgress {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.evict()
+
+	var progress []provisioning.SeedImageProgress
+
+	for key, e := range t.entries {
+		if key.imageID != imageID {
+			continue
+		}
+
+		progress = append(progress, e.progress(key))
+	}
+
+	slices.SortFunc(progress, func(a provisioning.SeedImageProgress, b provisioning.SeedImageProgress) int {
+		return cmp.Compare(a.Source, b.Source)
+	})
+
+	return progress
+}
+
+// Reset drops what has been recorded for imageID, no matter which source read
+// it.
+func (t *Tracker) Reset(_ context.Context, imageID provisioning.SeedImageID) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	maps.DeleteFunc(t.entries, func(key entryKey, _ *entry) bool {
+		return key.imageID == imageID
+	})
+}
+
+// record accounts for the n bytes at offset having been read.
 func (t *Tracker) record(ctx context.Context, key entryKey, offset int64, n int, isRequestStart bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -129,10 +177,7 @@ func (t *Tracker) record(ctx context.Context, key entryKey, offset int64, n int,
 
 	e := t.entry(key)
 	e.bytesServed += int64(n)
-
-	// A range request can read anywhere in the image, so the highest offset
-	// reached never regresses.
-	e.highestOffset = max(e.highestOffset, offset+int64(n))
+	e.coverage.add(offset, int64(n))
 
 	if e.firstRead.IsZero() {
 		e.firstRead = now
@@ -151,21 +196,15 @@ func (t *Tracker) record(ctx context.Context, key entryKey, offset int64, n int,
 
 	e.lastLog = now
 
-	percentCompleted := 0.0
-
-	if e.size > 0 {
-		percentCompleted = min(float64(e.highestOffset)/float64(e.size)*100, 100)
-	}
-
 	slog.DebugContext(
 		ctx, "Seed image read progress",
 		slog.String("image_id", key.imageID.String()),
 		slog.String("source", key.source),
-		slog.Float64("percent_complete", percentCompleted),
+		slog.Int64("bytes_covered", e.coverage.bytes()),
 		slog.Int64("bytes_served", e.bytesServed),
-		slog.Int64("highest_offset", e.highestOffset),
 		slog.Int64("size", e.size),
 		slog.Int("request_count", e.requestCount),
+		slog.Int("coverage_spans", len(e.coverage.spans)),
 	)
 }
 
@@ -173,14 +212,14 @@ func (t *Tracker) record(ctx context.Context, key entryKey, offset int64, n int,
 // lock.
 func (e *entry) progress(key entryKey) provisioning.SeedImageProgress {
 	return provisioning.SeedImageProgress{
-		ImageID:       key.imageID,
-		Source:        key.source,
-		Size:          e.size,
-		BytesServed:   e.bytesServed,
-		HighestOffset: e.highestOffset,
-		FirstRead:     e.firstRead,
-		LastRead:      e.lastRead,
-		RequestCount:  e.requestCount,
+		ImageID:      key.imageID,
+		Source:       key.source,
+		Size:         e.size,
+		BytesServed:  e.bytesServed,
+		BytesCovered: e.coverage.bytes(),
+		FirstRead:    e.firstRead,
+		LastRead:     e.lastRead,
+		RequestCount: e.requestCount,
 	}
 }
 
@@ -215,8 +254,8 @@ type trackedContent struct {
 	tracker *Tracker
 	key     entryKey
 	content io.ReadSeekCloser
-
 	pos     int64
+
 	hasRead bool
 }
 
@@ -224,8 +263,8 @@ func (c *trackedContent) Read(p []byte) (int, error) {
 	n, err := c.content.Read(p)
 	if n > 0 {
 		c.tracker.record(c.ctx, c.key, c.pos, n, !c.hasRead)
-		c.hasRead = true
 		c.pos += int64(n)
+		c.hasRead = true
 	}
 
 	return n, err
@@ -233,11 +272,13 @@ func (c *trackedContent) Read(p []byte) (int, error) {
 
 func (c *trackedContent) Seek(offset int64, whence int) (int64, error) {
 	pos, err := c.content.Seek(offset, whence)
-	if err == nil {
-		c.pos = pos
+	if err != nil {
+		return pos, err
 	}
 
-	return pos, err
+	c.pos = pos
+
+	return pos, nil
 }
 
 func (c *trackedContent) Close() error {

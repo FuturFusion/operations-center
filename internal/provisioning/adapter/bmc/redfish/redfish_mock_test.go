@@ -19,6 +19,8 @@ type mockRedfishServer struct {
 	systemsBody               string
 	systemStatusCode          int
 	systemBody                string
+	systemBodies              []string
+	systemBodyReads           int
 	systemPatch               mockResponses
 	managersStatusCode        int
 	managersBody              string
@@ -420,8 +422,15 @@ func newTLSServerWithoutSAN(t *testing.T, responses mockRedfishServer) (svr *htt
 func handleSystem(w http.ResponseWriter, r *http.Request, cfg *mockRedfishServer) {
 	switch r.Method {
 	case http.MethodGet:
+		body := cfg.systemBody
+
+		if len(cfg.systemBodies) > 0 {
+			body = cfg.systemBodies[min(cfg.systemBodyReads, len(cfg.systemBodies)-1)]
+			cfg.systemBodyReads++
+		}
+
 		w.WriteHeader(cfg.systemStatusCode)
-		_, _ = w.Write([]byte(cfg.systemBody))
+		_, _ = w.Write([]byte(body))
 
 	case http.MethodPatch:
 		body, _ := io.ReadAll(r.Body)

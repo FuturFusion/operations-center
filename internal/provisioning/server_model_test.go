@@ -2,8 +2,11 @@ package provisioning_test
 
 import (
 	"testing"
+	"time"
 
+	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -415,6 +418,63 @@ one
 	}
 }
 
+func TestServer_NormalizeIdentifiers(t *testing.T) {
+	tests := []struct {
+		name   string
+		server provisioning.Server
+
+		wantSystemUUID *string
+		wantMachineID  *string
+	}{
+		{
+			name: "upper case",
+			server: provisioning.Server{
+				SystemUUID: new("E9DE436E-B94E-4AEF-8563-883AEC84096E"),
+				MachineID:  new("E9DE436EB94E4AEF8563883AEC84096E"),
+			},
+
+			wantSystemUUID: new("e9de436e-b94e-4aef-8563-883aec84096e"),
+			wantMachineID:  new("e9de436eb94e4aef8563883aec84096e"),
+		},
+		{
+			name: "mixed case",
+			server: provisioning.Server{
+				SystemUUID: new("E9de436e-B94e-4Aef-8563-883aEC84096e"),
+				MachineID:  new("E9de436eB94e4Aef8563883aEC84096e"),
+			},
+
+			wantSystemUUID: new("e9de436e-b94e-4aef-8563-883aec84096e"),
+			wantMachineID:  new("e9de436eb94e4aef8563883aec84096e"),
+		},
+		{
+			name: "already lower case",
+			server: provisioning.Server{
+				SystemUUID: new("e9de436e-b94e-4aef-8563-883aec84096e"),
+				MachineID:  new("e9de436eb94e4aef8563883aec84096e"),
+			},
+
+			wantSystemUUID: new("e9de436e-b94e-4aef-8563-883aec84096e"),
+			wantMachineID:  new("e9de436eb94e4aef8563883aec84096e"),
+		},
+		{
+			name:   "unset",
+			server: provisioning.Server{},
+
+			wantSystemUUID: nil,
+			wantMachineID:  nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.server.NormalizeIdentifiers()
+
+			require.Equal(t, tc.wantSystemUUID, tc.server.SystemUUID, "system UUID should be normalized to lower case")
+			require.Equal(t, tc.wantMachineID, tc.server.MachineID, "machine ID should be normalized to lower case")
+		})
+	}
+}
+
 func TestServer_UpdateState(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -529,6 +589,48 @@ func TestServer_Clone(t *testing.T) {
 	require.NotEqual(t, server.Name, cloned.Name)
 	require.NotEqual(t, server.VersionData.Applications[0].Name, cloned.VersionData.Applications[0].Name)
 	require.NotEqual(t, len(server.VersionData.Applications), len(cloned.VersionData.Applications))
+}
+
+func TestServer_Clone_statusInternal(t *testing.T) {
+	startedAt := time.Date(2026, 8, 31, 10, 0, 0, 0, time.UTC)
+
+	server := provisioning.Server{
+		Name:    "name",
+		Type:    api.ServerTypeIncus,
+		Status:  api.ServerStatusDeploying,
+		Channel: "stable",
+		StatusInternal: provisioning.ServerStatusInternal{
+			Deployment: &provisioning.ServerDeployment{
+				State: api.ServerDeploymentStateWaitInstall,
+				Request: provisioning.ServerDeploymentRequest{
+					TokenUUID:      uuid.MustParse("e9de436e-b94e-4aef-8563-883aec84096e"),
+					Seed:           "default",
+					ImageType:      api.ImageTypeISO,
+					Architecture:   images.UpdateFileArchitecture64BitX86,
+					VirtualMediaID: "system:1",
+				},
+				ForceReboot:    true,
+				BIOSProfiles:   []string{"profile"},
+				BIOSAttributes: map[string]any{"BootMode": "Uefi"},
+				MediaURL:       "https://oc.local/image.iso",
+				MediaBytesRead: 42,
+				StartedAt:      startedAt,
+				StateEnteredAt: startedAt,
+				History: []api.ServerDeploymentStep{
+					{State: api.ServerDeploymentStateAttachMedia, EnteredAt: startedAt},
+				},
+			},
+		},
+	}
+
+	cloned := server.Clone()
+
+	require.Equal(t, server.StatusInternal, cloned.StatusInternal)
+
+	// The clone is deep, so mutating the source does not reach it.
+	server.StatusInternal.Deployment.State = api.ServerDeploymentStateFailed
+
+	require.Equal(t, api.ServerDeploymentStateWaitInstall, cloned.StatusInternal.Deployment.State)
 }
 
 func TestServer_GetServerName(t *testing.T) {

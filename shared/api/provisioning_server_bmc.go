@@ -215,11 +215,31 @@ func BMCHasRebootedSince(previous BMCData, current BMCData, since time.Time) BMC
 		return state
 	}
 
-	if !currentProgress.LastStateTime.Before(since) && currentProgress.LastStateTime.After(previousProgress.LastStateTime) {
+	// A boot progress state, that has been entered after the snapshot, only
+	// proves a reboot, if the server did not simply move on within the boot it
+	// was already in.
+	if !currentProgress.LastStateTime.Before(since) &&
+		currentProgress.LastStateTime.After(previousProgress.LastStateTime) &&
+		bootProgressProvesReboot(previousProgress.LastState, currentProgress.LastState) {
 		return BMCRebootStateRebooted
 	}
 
 	return BMCRebootStateNotRebooted
+}
+
+// bootProgressProvesReboot reports, if entering currentState after previousState
+// can only be explained by the server having started over. A step forward is
+// what the same boot progressing looks like, and a state, that can not be placed
+// in the order of a boot, proves nothing either.
+func bootProgressProvesReboot(previousState string, currentState string) bool {
+	previousIndex := slices.Index(bmcBootProgressOrder, previousState)
+	currentIndex := slices.Index(bmcBootProgressOrder, currentState)
+
+	if previousIndex < 0 || currentIndex < 0 {
+		return false
+	}
+
+	return currentIndex <= previousIndex
 }
 
 // bootProgressHasRegressed reports, if the boot progress fell back from a state

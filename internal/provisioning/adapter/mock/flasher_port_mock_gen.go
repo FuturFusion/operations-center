@@ -8,7 +8,6 @@ import (
 	"context"
 	"io"
 	"sync"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -29,13 +28,13 @@ var _ provisioning.FlasherPort = &FlasherPortMock{}
 //			GenerateCompressedSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
 //				panic("mock out the GenerateCompressedSeededImage method")
 //			},
-//			GenerateSeededImageFunc: func(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (io.ReadSeekCloser, int64, time.Time, error) {
+//			GenerateSeededImageFunc: func(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (io.ReadSeekCloser, provisioning.SeedImageInfo, error) {
 //				panic("mock out the GenerateSeededImage method")
 //			},
 //			GetProviderConfigFunc: func(ctx context.Context, tokenID uuid.UUID) (*api.TokenProviderConfig, error) {
 //				panic("mock out the GetProviderConfig method")
 //			},
-//			OpenSeededImageFunc: func(ctx context.Context, cacheID string, fingerprintID string) (io.ReadSeekCloser, int64, time.Time, error) {
+//			OpenSeededImageFunc: func(ctx context.Context, cacheID string, fingerprintID string) (io.ReadSeekCloser, provisioning.SeedImageInfo, error) {
 //				panic("mock out the OpenSeededImage method")
 //			},
 //			SeedImageFingerprintIDFunc: func(ctx context.Context, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs) (string, error) {
@@ -52,13 +51,13 @@ type FlasherPortMock struct {
 	GenerateCompressedSeededImageFunc func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error)
 
 	// GenerateSeededImageFunc mocks the GenerateSeededImage method.
-	GenerateSeededImageFunc func(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (io.ReadSeekCloser, int64, time.Time, error)
+	GenerateSeededImageFunc func(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (io.ReadSeekCloser, provisioning.SeedImageInfo, error)
 
 	// GetProviderConfigFunc mocks the GetProviderConfig method.
 	GetProviderConfigFunc func(ctx context.Context, tokenID uuid.UUID) (*api.TokenProviderConfig, error)
 
 	// OpenSeededImageFunc mocks the OpenSeededImage method.
-	OpenSeededImageFunc func(ctx context.Context, cacheID string, fingerprintID string) (io.ReadSeekCloser, int64, time.Time, error)
+	OpenSeededImageFunc func(ctx context.Context, cacheID string, fingerprintID string) (io.ReadSeekCloser, provisioning.SeedImageInfo, error)
 
 	// SeedImageFingerprintIDFunc mocks the SeedImageFingerprintID method.
 	SeedImageFingerprintIDFunc func(ctx context.Context, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs) (string, error)
@@ -173,7 +172,7 @@ func (mock *FlasherPortMock) GenerateCompressedSeededImageCalls() []struct {
 }
 
 // GenerateSeededImage calls GenerateSeededImageFunc.
-func (mock *FlasherPortMock) GenerateSeededImage(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (io.ReadSeekCloser, int64, time.Time, error) {
+func (mock *FlasherPortMock) GenerateSeededImage(ctx context.Context, cacheID string, fingerprint string, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, public bool, source io.ReadCloser) (io.ReadSeekCloser, provisioning.SeedImageInfo, error) {
 	if mock.GenerateSeededImageFunc == nil {
 		panic("FlasherPortMock.GenerateSeededImageFunc: method is nil but FlasherPort.GenerateSeededImage was just called")
 	}
@@ -265,7 +264,7 @@ func (mock *FlasherPortMock) GetProviderConfigCalls() []struct {
 }
 
 // OpenSeededImage calls OpenSeededImageFunc.
-func (mock *FlasherPortMock) OpenSeededImage(ctx context.Context, cacheID string, fingerprintID string) (io.ReadSeekCloser, int64, time.Time, error) {
+func (mock *FlasherPortMock) OpenSeededImage(ctx context.Context, cacheID string, fingerprintID string) (io.ReadSeekCloser, provisioning.SeedImageInfo, error) {
 	if mock.OpenSeededImageFunc == nil {
 		panic("FlasherPortMock.OpenSeededImageFunc: method is nil but FlasherPort.OpenSeededImage was just called")
 	}

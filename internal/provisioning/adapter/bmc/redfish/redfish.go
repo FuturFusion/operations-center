@@ -36,6 +36,13 @@ import (
 
 const defaultConnectionTestTimeout = 5 * time.Second
 
+const (
+	// connectionTimeout bounds establishing a connection to a BMC.
+	connectionTimeout = 5 * time.Second
+
+	responseHeaderTimeout = 1 * time.Minute
+)
+
 // environment provides access to the internal API of IncusOS.
 type environment interface {
 	GetSecureBootCertificates(ctx context.Context) (incusosapi.InternalSecureBootCertificates, error)
@@ -82,12 +89,65 @@ func (r redfish) getClient(ctx context.Context, server provisioning.Server) (_ *
 		slog.WarnContext(ctx, "Redfish API call inside of a transaction", logger.AddStacktrace())
 	}
 
-	httpClient := &http.Client{}
+	httpClient, err := newBMCHTTPClient(server)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	endpoint := server.BMCConfig.Endpoint
+
+	parsedEndpoint, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if parsedEndpoint.Port() == "443" {
+		parsedEndpoint.Host = net.JoinHostPort(parsedEndpoint.Hostname(), "")
+		endpoint = parsedEndpoint.String()
+	}
+
+	c, err := gofish.ConnectContext(ctx, gofish.ClientConfig{
+		Endpoint:   endpoint,
+		Username:   server.BMCConfig.Username,
+		Password:   server.BMCConfig.Password,
+		HTTPClient: httpClient,
+		BasicAuth:  true,
+		// DumpWriter: os.Stdout,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return c, c.Logout, nil
+}
+
+// newBMCHTTPClient returns the HTTP client the Redfish requests of a server are
+// issued with.
+func newBMCHTTPClient(server provisioning.Server) (*http.Client, error) {
+	transport := &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout:   connectionTimeout,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+
+		ExpectContinueTimeout: 30 * time.Second,
+		ResponseHeaderTimeout: responseHeaderTimeout,
+		TLSHandshakeTimeout:   connectionTimeout,
+		IdleConnTimeout:       30 * time.Second,
+
+		// Without this, Go disables HTTP/2 negotiation as soon as TLSClientConfig
+		// is set.
+		ForceAttemptHTTP2: true,
+	}
+
+	httpClient := &http.Client{
+		Transport: transport,
+	}
 
 	if server.BMCConfig.Certificate != "" {
 		bmcServerCert, err := certificate.Decode([]byte(server.BMCConfig.Certificate))
 		if err != nil {
-			return nil, nil, fmt.Errorf("Invalid remote certificate: %w", err)
+			return nil, fmt.Errorf("Invalid remote certificate: %w", err)
 		}
 
 		tlsConfig := &tls.Config{}
@@ -130,39 +190,10 @@ func (r redfish) getClient(ctx context.Context, server provisioning.Server) (_ *
 			tlsConfig.ServerName = serverName
 		}
 
-		httpClient.Transport = &http.Transport{
-			TLSClientConfig: tlsConfig,
-
-			ExpectContinueTimeout: 30 * time.Second,
-			ResponseHeaderTimeout: 3600 * time.Second,
-			TLSHandshakeTimeout:   5 * time.Second,
-		}
+		transport.TLSClientConfig = tlsConfig
 	}
 
-	endpoint := server.BMCConfig.Endpoint
-	parsedEndpoint, err := url.Parse(endpoint)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if parsedEndpoint.Port() == "443" {
-		parsedEndpoint.Host = net.JoinHostPort(parsedEndpoint.Hostname(), "")
-		endpoint = parsedEndpoint.String()
-	}
-
-	c, err := gofish.ConnectContext(ctx, gofish.ClientConfig{
-		Endpoint:   endpoint,
-		Username:   server.BMCConfig.Username,
-		Password:   server.BMCConfig.Password,
-		HTTPClient: httpClient,
-		BasicAuth:  true,
-		// DumpWriter: os.Stdout,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return c, c.Logout, nil
+	return httpClient, nil
 }
 
 func (r redfish) ConnectionTest(ctx context.Context, server provisioning.Server) (certificatePEM string, _ error) {
@@ -342,7 +373,7 @@ func (r redfish) GetData(ctx context.Context, server provisioning.Server) (api.B
 func getFirstChassis(client *gofish.APIClient) (*schemas.Chassis, error) {
 	chassis, err := client.Service.Chassis()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get BMC chassis: %w", err)
+		return nil, fmt.Errorf("Failed to get BMC chassis: %w", wrapRedfishError(err))
 	}
 
 	if len(chassis) == 0 {
@@ -357,7 +388,7 @@ func getFirstChassis(client *gofish.APIClient) (*schemas.Chassis, error) {
 func getFirstManager(client *gofish.APIClient) (*schemas.Manager, error) {
 	managers, err := client.Service.Managers()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get BMC managers: %w", err)
+		return nil, fmt.Errorf("Failed to get BMC managers: %w", wrapRedfishError(err))
 	}
 
 	if len(managers) == 0 {
@@ -372,7 +403,7 @@ func getFirstManager(client *gofish.APIClient) (*schemas.Manager, error) {
 func getFirstSystem(client *gofish.APIClient) (*schemas.ComputerSystem, error) {
 	systems, err := client.Service.Systems()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get BMC systems: %w", err)
+		return nil, fmt.Errorf("Failed to get BMC systems: %w", wrapRedfishError(err))
 	}
 
 	if len(systems) == 0 {
@@ -852,7 +883,7 @@ func (r redfish) ApplyBIOSAttributes(ctx context.Context, server provisioning.Se
 
 	bios, err := system.Bios()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get bios information: %w", err)
+		return nil, fmt.Errorf("Failed to get bios information: %w", wrapRedfishError(err))
 	}
 
 	supportedApplyTimes, err := getBIOSSettingsApplyTimes(client, bios.ODataID)
@@ -898,7 +929,7 @@ func (r redfish) BIOSAttributes(ctx context.Context, server provisioning.Server)
 
 	bios, err := system.Bios()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get bios information: %w", err)
+		return nil, fmt.Errorf("Failed to get bios information: %w", wrapRedfishError(err))
 	}
 
 	registry, err := getBIOSAttributeRegistry(client, bios.AttributeRegistry)
@@ -933,7 +964,7 @@ func (r redfish) BIOSAttribute(ctx context.Context, server provisioning.Server, 
 
 	bios, err := system.Bios()
 	if err != nil {
-		return api.BIOSAttribute{}, fmt.Errorf("Failed to get bios information: %w", err)
+		return api.BIOSAttribute{}, fmt.Errorf("Failed to get bios information: %w", wrapRedfishError(err))
 	}
 
 	value, ok := bios.Attributes[attributeName]
@@ -971,8 +1002,23 @@ func (r redfish) performReset(ctx context.Context, server provisioning.Server, r
 		return nil, fmt.Errorf("Reset type %q is not supported by the BMC, supported types are: %v", resetType, allowedResetTypes)
 	}
 
+	// The reset is always issued, never skipped because the server looks like it
+	// is in the requested power state already.
 	taskMonitor, err := system.Reset(resetType)
 	if err != nil {
+		powerState := powerStateAfterReset(resetType)
+		if powerState != "" && isRequestRejected(err) && hasPowerState(client, powerState) {
+			slog.DebugContext(
+				ctx, "BMC turned the reset down, but the server is in the power state it would bring it into",
+				slog.String("endpoint", server.BMCConfig.Endpoint),
+				slog.String("reset_type", string(resetType)),
+				slog.String("power_state", string(powerState)),
+				logger.Err(err),
+			)
+
+			return nil, nil
+		}
+
 		return nil, fmt.Errorf("Failed to perform BMC reset operation: %w", wrapRedfishError(err))
 	}
 
@@ -984,6 +1030,31 @@ func (r redfish) performReset(ctx context.Context, server provisioning.Server, r
 	return &provisioning.BMCTaskMonitor{
 		URI: taskMonitor.TaskMonitor,
 	}, nil
+}
+
+// powerStateAfterReset returns the power state a reset type leaves the server
+// in, or an empty power state for a reset type, that ends where it started.
+func powerStateAfterReset(resetType schemas.ResetType) schemas.PowerState {
+	switch resetType {
+	case schemas.OnResetType, schemas.ForceOnResetType:
+		return schemas.OnPowerState
+
+	case schemas.GracefulShutdownResetType, schemas.ForceOffResetType:
+		return schemas.OffPowerState
+	}
+
+	return ""
+}
+
+// hasPowerState reports, whether the server currently is in the given power
+// state. A BMC, that does not answer, counts as not being in it.
+func hasPowerState(client *gofish.APIClient, powerState schemas.PowerState) bool {
+	system, err := getFirstSystem(client)
+	if err != nil {
+		return false
+	}
+
+	return system.PowerState == powerState
 }
 
 // virtualMediaSlot is a virtual media resource of a BMC, together with the
@@ -1049,7 +1120,8 @@ func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, vi
 		return nil, err
 	}
 
-	if virtualMediaHasMedia(virtualMedia) {
+	alreadyAttached := virtualMediaHasMedia(virtualMedia)
+	if alreadyAttached && virtualMedia.Image != mediaURL {
 		return nil, fmt.Errorf("Virtual media %q already has media attached, detach the media first: %w", virtualMediaID, domain.ErrOperationNotPermitted)
 	}
 
@@ -1081,16 +1153,30 @@ func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, vi
 	trace, stopTrace := traceRequests(client)
 	defer stopTrace()
 
-	mediaType, taskMonitor, err := insertMedia(virtualMedia, mediaURL, mediaTypes)
-	if err != nil {
+	var (
+		mediaType   schemas.VirtualMediaType
+		taskMonitor *schemas.TaskMonitorInfo
+	)
+
+	if alreadyAttached {
 		slog.DebugContext(
-			ctx, "Attaching virtual media to BMC failed",
+			ctx, "Virtual media already holds the image to attach, skipping the insert",
 			slog.String("endpoint", server.BMCConfig.Endpoint),
 			slog.String("virtual_media_id", virtualMediaID),
-			slog.String("trace", trace.String()),
+			slog.String("media_url", mediaURL),
 		)
+	} else {
+		mediaType, taskMonitor, err = insertMedia(virtualMedia, mediaURL, mediaTypes)
+		if err != nil {
+			slog.DebugContext(
+				ctx, "Attaching virtual media to BMC failed",
+				slog.String("endpoint", server.BMCConfig.Endpoint),
+				slog.String("virtual_media_id", virtualMediaID),
+				slog.String("trace", trace.String()),
+			)
 
-		return nil, fmt.Errorf("Failed to attach media to BMC: %w", wrapRedfishError(err))
+			return nil, fmt.Errorf("Failed to attach media to BMC: %w", wrapRedfishError(err))
+		}
 	}
 
 	if setBootDevice {
@@ -1098,7 +1184,7 @@ func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, vi
 			bootSource = bootSourceForVirtualMediaType[mediaType]
 		}
 
-		err = overrideBootDevice(system, virtualMedia.registry, bootSource)
+		overrideEnabled, err := overrideBootDevice(system, virtualMedia.registry, bootSource)
 		if err != nil {
 			slog.DebugContext(
 				ctx, "Setting the boot device of the BMC to the attached virtual media failed",
@@ -1119,6 +1205,19 @@ func (r redfish) AttachMedia(ctx context.Context, server provisioning.Server, vi
 
 			return nil, fmt.Errorf("Failed to set boot device on BMC: %w", wrapRedfishError(err))
 		}
+
+		logBootDeviceOverride := slog.InfoContext
+		if overrideEnabled != schemas.OnceBootSourceOverrideEnabled {
+			logBootDeviceOverride = slog.WarnContext
+		}
+
+		logBootDeviceOverride(
+			ctx, "Boot device of the server points at the attached virtual media",
+			slog.String("endpoint", server.BMCConfig.Endpoint),
+			slog.String("virtual_media_id", virtualMediaID),
+			slog.String("boot_source", string(bootSource)),
+			slog.String("boot_source_override_enabled", string(overrideEnabled)),
+		)
 	}
 
 	// If taskMonitor is nil, the BMC completed synchronously.
@@ -1144,11 +1243,6 @@ func (r redfish) DetachMedia(ctx context.Context, server provisioning.Server, vi
 		return nil, err
 	}
 
-	// No media attached, nothing to detach.
-	if !virtualMediaHasMedia(virtualMedia) {
-		return nil, nil
-	}
-
 	system, err := getFirstSystem(client)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get BMC system: %w", err)
@@ -1157,16 +1251,19 @@ func (r redfish) DetachMedia(ctx context.Context, server provisioning.Server, vi
 	trace, stopTrace := traceRequests(client)
 	defer stopTrace()
 
-	taskMonitor, err := ejectMedia(virtualMedia)
-	if err != nil {
-		slog.DebugContext(
-			ctx, "Detaching virtual media from BMC failed",
-			slog.String("endpoint", server.BMCConfig.Endpoint),
-			slog.String("virtual_media_id", virtualMediaID),
-			slog.String("trace", trace.String()),
-		)
+	var taskMonitor *schemas.TaskMonitorInfo
+	if virtualMediaHasMedia(virtualMedia) {
+		taskMonitor, err = ejectMedia(virtualMedia)
+		if err != nil {
+			slog.DebugContext(
+				ctx, "Detaching virtual media from BMC failed",
+				slog.String("endpoint", server.BMCConfig.Endpoint),
+				slog.String("virtual_media_id", virtualMediaID),
+				slog.String("trace", trace.String()),
+			)
 
-		return nil, fmt.Errorf("Failed to detach media from BMC: %w", wrapRedfishError(err))
+			return nil, fmt.Errorf("Failed to detach media from BMC: %w", wrapRedfishError(err))
+		}
 	}
 
 	restored, err := restoreDefaultBootDevice(system, virtualMedia.registry, bootSourcesForMediaTypes(virtualMedia.MediaTypes))
@@ -1353,13 +1450,15 @@ func (r redfish) LogEntriesBySource(ctx context.Context, server provisioning.Ser
 var timestampFormats = []string{time.RFC3339, time.RFC3339Nano}
 
 // parseTimestamp returns the first timestamp, which successfully parses for one
-// of BMC time formats. If none of the timestamps could be parsed with any
-// of the formats, the zero time.Time is returned.
+// of BMC time formats. Timestamps, which are empty or all zero, are treated as
+// not reported by the BMC. If none of the reported timestamps could be parsed
+// with any of the formats, the zero time.Time is returned and a warning is
+// logged.
 func parseTimestamp(ctx context.Context, log *slog.Logger, property string, timestamps ...string) time.Time {
 	reported := false
 
 	for _, timestamp := range timestamps {
-		if timestamp == "" {
+		if timestamp == "" || strings.HasPrefix(timestamp, "0000-00-00") { // zero date is the zero time stamp used to signal if no timestamp value exists.
 			continue
 		}
 

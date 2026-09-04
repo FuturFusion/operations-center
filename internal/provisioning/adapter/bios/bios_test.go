@@ -127,14 +127,14 @@ func TestNewFromFS(t *testing.T) {
 				fsys[name] = &fstest.MapFile{Data: []byte(content)}
 			}
 
-			catalogue, err := bios.NewFromFS(fsys, "profiles")
+			catalog, err := bios.NewFromFS(fsys, "profiles")
 
 			tc.assertErr(t, err)
 			if err != nil {
 				return
 			}
 
-			profiles, err := catalogue.GetAll(context.Background())
+			profiles, err := catalog.GetAll(context.Background())
 			require.NoError(t, err)
 
 			names := make([]string, 0, len(profiles))
@@ -189,6 +189,8 @@ func TestCatalogue_Resolve(t *testing.T) {
   attributes:
     SecureBootPolicy: Standard
     TpmSecurity: "On"
+  deferred_attributes:
+    Tpm2Algorithm: SHA256
 `
 
 	tests := []struct {
@@ -212,6 +214,9 @@ func TestCatalogue_Resolve(t *testing.T) {
 					"SecureBootPolicy": "Standard",
 					"TpmSecurity":      "On",
 				},
+				DeferredAttributes: map[string]any{
+					"Tpm2Algorithm": "SHA256",
+				},
 				SecureBoot: api.BIOSSecureBoot{
 					DB: api.BIOSSecureBootDatabase{
 						Certificates: map[string]bool{"aaaa": true, "cccc": false},
@@ -233,6 +238,7 @@ func TestCatalogue_Resolve(t *testing.T) {
 					"SecureBoot":       "Enabled",
 					"SecureBootPolicy": "Custom",
 				},
+				DeferredAttributes: map[string]any{},
 				SecureBoot: api.BIOSSecureBoot{
 					DB: api.BIOSSecureBootDatabase{
 						Certificates: map[string]bool{"aaaa": true, "cccc": false},
@@ -254,6 +260,7 @@ func TestCatalogue_Resolve(t *testing.T) {
 					"SecureBoot":       "Enabled",
 					"SecureBootPolicy": "Custom",
 				},
+				DeferredAttributes: map[string]any{},
 				SecureBoot: api.BIOSSecureBoot{
 					DB: api.BIOSSecureBootDatabase{
 						Certificates: map[string]bool{"aaaa": true, "cccc": false},
@@ -274,6 +281,7 @@ func TestCatalogue_Resolve(t *testing.T) {
 					"SecureBoot":         "Enabled",
 					"NumaNodesPerSocket": "1",
 				},
+				DeferredAttributes: map[string]any{},
 				SecureBoot: api.BIOSSecureBoot{
 					DB: api.BIOSSecureBootDatabase{
 						Certificates: map[string]bool{"aaaa": true, "bbbb": true},
@@ -292,14 +300,14 @@ func TestCatalogue_Resolve(t *testing.T) {
 		},
 	}
 
-	catalogue, err := bios.NewFromFS(fstest.MapFS{
+	catalog, err := bios.NewFromFS(fstest.MapFS{
 		"profiles/test.yaml": &fstest.MapFile{Data: []byte(profilesYAML)},
 	}, "profiles")
 	require.NoError(t, err)
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			resolution, err := catalogue.Resolve(context.Background(), provisioning.Server{
+			resolution, err := catalog.Resolve(context.Background(), provisioning.Server{
 				Name:    "one",
 				BMCData: tc.data,
 			})

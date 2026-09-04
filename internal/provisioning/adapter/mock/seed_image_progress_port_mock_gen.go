@@ -25,7 +25,13 @@ var _ provisioning.SeedImageProgressPort = &SeedImageProgressPortMock{}
 //			GetFunc: func(ctx context.Context, imageID provisioning.SeedImageID, source string) (provisioning.SeedImageProgress, bool) {
 //				panic("mock out the Get method")
 //			},
-//			TrackFunc: func(ctx context.Context, imageID provisioning.SeedImageID, source string, size int64, content io.ReadSeekCloser) io.ReadSeekCloser {
+//			GetByImageFunc: func(ctx context.Context, imageID provisioning.SeedImageID) []provisioning.SeedImageProgress {
+//				panic("mock out the GetByImage method")
+//			},
+//			ResetFunc: func(ctx context.Context, imageID provisioning.SeedImageID)  {
+//				panic("mock out the Reset method")
+//			},
+//			TrackFunc: func(ctx context.Context, imageID provisioning.SeedImageID, source string, info provisioning.SeedImageInfo, content io.ReadSeekCloser) io.ReadSeekCloser {
 //				panic("mock out the Track method")
 //			},
 //		}
@@ -38,8 +44,14 @@ type SeedImageProgressPortMock struct {
 	// GetFunc mocks the Get method.
 	GetFunc func(ctx context.Context, imageID provisioning.SeedImageID, source string) (provisioning.SeedImageProgress, bool)
 
+	// GetByImageFunc mocks the GetByImage method.
+	GetByImageFunc func(ctx context.Context, imageID provisioning.SeedImageID) []provisioning.SeedImageProgress
+
+	// ResetFunc mocks the Reset method.
+	ResetFunc func(ctx context.Context, imageID provisioning.SeedImageID)
+
 	// TrackFunc mocks the Track method.
-	TrackFunc func(ctx context.Context, imageID provisioning.SeedImageID, source string, size int64, content io.ReadSeekCloser) io.ReadSeekCloser
+	TrackFunc func(ctx context.Context, imageID provisioning.SeedImageID, source string, info provisioning.SeedImageInfo, content io.ReadSeekCloser) io.ReadSeekCloser
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -52,6 +64,20 @@ type SeedImageProgressPortMock struct {
 			// Source is the source argument value.
 			Source string
 		}
+		// GetByImage holds details about calls to the GetByImage method.
+		GetByImage []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ImageID is the imageID argument value.
+			ImageID provisioning.SeedImageID
+		}
+		// Reset holds details about calls to the Reset method.
+		Reset []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ImageID is the imageID argument value.
+			ImageID provisioning.SeedImageID
+		}
 		// Track holds details about calls to the Track method.
 		Track []struct {
 			// Ctx is the ctx argument value.
@@ -60,14 +86,16 @@ type SeedImageProgressPortMock struct {
 			ImageID provisioning.SeedImageID
 			// Source is the source argument value.
 			Source string
-			// Size is the size argument value.
-			Size int64
+			// Info is the info argument value.
+			Info provisioning.SeedImageInfo
 			// Content is the content argument value.
 			Content io.ReadSeekCloser
 		}
 	}
-	lockGet   sync.RWMutex
-	lockTrack sync.RWMutex
+	lockGet        sync.RWMutex
+	lockGetByImage sync.RWMutex
+	lockReset      sync.RWMutex
+	lockTrack      sync.RWMutex
 }
 
 // Get calls GetFunc.
@@ -110,8 +138,80 @@ func (mock *SeedImageProgressPortMock) GetCalls() []struct {
 	return calls
 }
 
+// GetByImage calls GetByImageFunc.
+func (mock *SeedImageProgressPortMock) GetByImage(ctx context.Context, imageID provisioning.SeedImageID) []provisioning.SeedImageProgress {
+	if mock.GetByImageFunc == nil {
+		panic("SeedImageProgressPortMock.GetByImageFunc: method is nil but SeedImageProgressPort.GetByImage was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		ImageID provisioning.SeedImageID
+	}{
+		Ctx:     ctx,
+		ImageID: imageID,
+	}
+	mock.lockGetByImage.Lock()
+	mock.calls.GetByImage = append(mock.calls.GetByImage, callInfo)
+	mock.lockGetByImage.Unlock()
+	return mock.GetByImageFunc(ctx, imageID)
+}
+
+// GetByImageCalls gets all the calls that were made to GetByImage.
+// Check the length with:
+//
+//	len(mockedSeedImageProgressPort.GetByImageCalls())
+func (mock *SeedImageProgressPortMock) GetByImageCalls() []struct {
+	Ctx     context.Context
+	ImageID provisioning.SeedImageID
+} {
+	var calls []struct {
+		Ctx     context.Context
+		ImageID provisioning.SeedImageID
+	}
+	mock.lockGetByImage.RLock()
+	calls = mock.calls.GetByImage
+	mock.lockGetByImage.RUnlock()
+	return calls
+}
+
+// Reset calls ResetFunc.
+func (mock *SeedImageProgressPortMock) Reset(ctx context.Context, imageID provisioning.SeedImageID) {
+	if mock.ResetFunc == nil {
+		panic("SeedImageProgressPortMock.ResetFunc: method is nil but SeedImageProgressPort.Reset was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		ImageID provisioning.SeedImageID
+	}{
+		Ctx:     ctx,
+		ImageID: imageID,
+	}
+	mock.lockReset.Lock()
+	mock.calls.Reset = append(mock.calls.Reset, callInfo)
+	mock.lockReset.Unlock()
+	mock.ResetFunc(ctx, imageID)
+}
+
+// ResetCalls gets all the calls that were made to Reset.
+// Check the length with:
+//
+//	len(mockedSeedImageProgressPort.ResetCalls())
+func (mock *SeedImageProgressPortMock) ResetCalls() []struct {
+	Ctx     context.Context
+	ImageID provisioning.SeedImageID
+} {
+	var calls []struct {
+		Ctx     context.Context
+		ImageID provisioning.SeedImageID
+	}
+	mock.lockReset.RLock()
+	calls = mock.calls.Reset
+	mock.lockReset.RUnlock()
+	return calls
+}
+
 // Track calls TrackFunc.
-func (mock *SeedImageProgressPortMock) Track(ctx context.Context, imageID provisioning.SeedImageID, source string, size int64, content io.ReadSeekCloser) io.ReadSeekCloser {
+func (mock *SeedImageProgressPortMock) Track(ctx context.Context, imageID provisioning.SeedImageID, source string, info provisioning.SeedImageInfo, content io.ReadSeekCloser) io.ReadSeekCloser {
 	if mock.TrackFunc == nil {
 		panic("SeedImageProgressPortMock.TrackFunc: method is nil but SeedImageProgressPort.Track was just called")
 	}
@@ -119,19 +219,19 @@ func (mock *SeedImageProgressPortMock) Track(ctx context.Context, imageID provis
 		Ctx     context.Context
 		ImageID provisioning.SeedImageID
 		Source  string
-		Size    int64
+		Info    provisioning.SeedImageInfo
 		Content io.ReadSeekCloser
 	}{
 		Ctx:     ctx,
 		ImageID: imageID,
 		Source:  source,
-		Size:    size,
+		Info:    info,
 		Content: content,
 	}
 	mock.lockTrack.Lock()
 	mock.calls.Track = append(mock.calls.Track, callInfo)
 	mock.lockTrack.Unlock()
-	return mock.TrackFunc(ctx, imageID, source, size, content)
+	return mock.TrackFunc(ctx, imageID, source, info, content)
 }
 
 // TrackCalls gets all the calls that were made to Track.
@@ -142,14 +242,14 @@ func (mock *SeedImageProgressPortMock) TrackCalls() []struct {
 	Ctx     context.Context
 	ImageID provisioning.SeedImageID
 	Source  string
-	Size    int64
+	Info    provisioning.SeedImageInfo
 	Content io.ReadSeekCloser
 } {
 	var calls []struct {
 		Ctx     context.Context
 		ImageID provisioning.SeedImageID
 		Source  string
-		Size    int64
+		Info    provisioning.SeedImageInfo
 		Content io.ReadSeekCloser
 	}
 	mock.lockTrack.RLock()

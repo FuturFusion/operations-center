@@ -130,6 +130,27 @@ func (c *CmdServer) Command() *cobra.Command {
 
 	cmd.AddCommand(serverBMCCmd.Command())
 
+	// Deploy
+	serverDeployCmd := cmdServerDeploy{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(serverDeployCmd.Command())
+
+	// Deploy status
+	serverDeployStatusCmd := cmdServerDeployStatus{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(serverDeployStatusCmd.Command())
+
+	// Deploy cancel
+	serverDeployCancelCmd := cmdServerDeployCancel{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(serverDeployCancelCmd.Command())
+
 	return cmd
 }
 

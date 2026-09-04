@@ -25,7 +25,7 @@ var _ provisioning.BMCServerClientPort = &BMCServerClientPortMock{}
 //			ApplyBIOSAttributesFunc: func(ctx context.Context, server provisioning.Server, attributes map[string]any) (*provisioning.BMCTaskMonitor, error) {
 //				panic("mock out the ApplyBIOSAttributes method")
 //			},
-//			ApplySecureBootCertificatesFunc: func(ctx context.Context, server provisioning.Server) error {
+//			ApplySecureBootCertificatesFunc: func(ctx context.Context, server provisioning.Server, secureBoot api.BIOSSecureBoot) (bool, error) {
 //				panic("mock out the ApplySecureBootCertificates method")
 //			},
 //			AttachMediaFunc: func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error) {
@@ -84,7 +84,7 @@ type BMCServerClientPortMock struct {
 	ApplyBIOSAttributesFunc func(ctx context.Context, server provisioning.Server, attributes map[string]any) (*provisioning.BMCTaskMonitor, error)
 
 	// ApplySecureBootCertificatesFunc mocks the ApplySecureBootCertificates method.
-	ApplySecureBootCertificatesFunc func(ctx context.Context, server provisioning.Server) error
+	ApplySecureBootCertificatesFunc func(ctx context.Context, server provisioning.Server, secureBoot api.BIOSSecureBoot) (bool, error)
 
 	// AttachMediaFunc mocks the AttachMedia method.
 	AttachMediaFunc func(ctx context.Context, server provisioning.Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*provisioning.BMCTaskMonitor, error)
@@ -148,6 +148,8 @@ type BMCServerClientPortMock struct {
 			Ctx context.Context
 			// Server is the server argument value.
 			Server provisioning.Server
+			// SecureBoot is the secureBoot argument value.
+			SecureBoot api.BIOSSecureBoot
 		}
 		// AttachMedia holds details about calls to the AttachMedia method.
 		AttachMedia []struct {
@@ -345,21 +347,23 @@ func (mock *BMCServerClientPortMock) ApplyBIOSAttributesCalls() []struct {
 }
 
 // ApplySecureBootCertificates calls ApplySecureBootCertificatesFunc.
-func (mock *BMCServerClientPortMock) ApplySecureBootCertificates(ctx context.Context, server provisioning.Server) error {
+func (mock *BMCServerClientPortMock) ApplySecureBootCertificates(ctx context.Context, server provisioning.Server, secureBoot api.BIOSSecureBoot) (bool, error) {
 	if mock.ApplySecureBootCertificatesFunc == nil {
 		panic("BMCServerClientPortMock.ApplySecureBootCertificatesFunc: method is nil but BMCServerClientPort.ApplySecureBootCertificates was just called")
 	}
 	callInfo := struct {
-		Ctx    context.Context
-		Server provisioning.Server
+		Ctx        context.Context
+		Server     provisioning.Server
+		SecureBoot api.BIOSSecureBoot
 	}{
-		Ctx:    ctx,
-		Server: server,
+		Ctx:        ctx,
+		Server:     server,
+		SecureBoot: secureBoot,
 	}
 	mock.lockApplySecureBootCertificates.Lock()
 	mock.calls.ApplySecureBootCertificates = append(mock.calls.ApplySecureBootCertificates, callInfo)
 	mock.lockApplySecureBootCertificates.Unlock()
-	return mock.ApplySecureBootCertificatesFunc(ctx, server)
+	return mock.ApplySecureBootCertificatesFunc(ctx, server, secureBoot)
 }
 
 // ApplySecureBootCertificatesCalls gets all the calls that were made to ApplySecureBootCertificates.
@@ -367,12 +371,14 @@ func (mock *BMCServerClientPortMock) ApplySecureBootCertificates(ctx context.Con
 //
 //	len(mockedBMCServerClientPort.ApplySecureBootCertificatesCalls())
 func (mock *BMCServerClientPortMock) ApplySecureBootCertificatesCalls() []struct {
-	Ctx    context.Context
-	Server provisioning.Server
+	Ctx        context.Context
+	Server     provisioning.Server
+	SecureBoot api.BIOSSecureBoot
 } {
 	var calls []struct {
-		Ctx    context.Context
-		Server provisioning.Server
+		Ctx        context.Context
+		Server     provisioning.Server
+		SecureBoot api.BIOSSecureBoot
 	}
 	mock.lockApplySecureBootCertificates.RLock()
 	calls = mock.calls.ApplySecureBootCertificates

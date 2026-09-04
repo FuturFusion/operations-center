@@ -3,8 +3,10 @@ package redfish
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
@@ -12,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/util/testing/errassert"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 var testdataCertificates = map[string]string{
@@ -300,4 +303,230 @@ func keys[V any](m map[string]V) []string {
 	}
 
 	return names
+}
+
+func TestSecureBootAllowList(t *testing.T) {
+	const microsoft2011 = "48e99b991f57fc52f76149599bff0a58c47154229b9f8d603ac40d3500248507"
+
+	tests := []struct {
+		name       string
+		dbName     string
+		secureBoot api.BIOSSecureBoot
+
+		wantCertificates []string
+		wantSignatures   []string
+	}{
+		{
+			name:   "the built in defaults apply without a BIOS profile",
+			dbName: secureBootDatabaseDB,
+
+			wantCertificates: secureBootDBCertificateFingerprintAllowList[secureBootDatabaseDB],
+		},
+		{
+			name:   "a database without built in defaults allows nothing",
+			dbName: secureBootDatabaseDBX,
+		},
+		{
+			name:   "a BIOS profile adds a certificate to the defaults",
+			dbName: secureBootDatabaseKEK,
+			secureBoot: api.BIOSSecureBoot{
+				KEK: api.BIOSSecureBootDatabase{
+					Certificates: map[string]bool{"aa": true},
+				},
+			},
+
+			wantCertificates: []string{"aa"},
+		},
+		{
+			name:   "a BIOS profile drops one of the defaults again",
+			dbName: secureBootDatabaseDB,
+			secureBoot: api.BIOSSecureBoot{
+				DB: api.BIOSSecureBootDatabase{
+					Certificates: map[string]bool{microsoft2011: false},
+				},
+			},
+
+			wantCertificates: []string{
+				"f6124e34125bee3fe6d79a574eaa7b91c0e7bd9d929c1a321178efd611dad901",
+				"e5be3e64c6e66a281457ecdece0d6d0787577aad2a3a0144262c10c14ba8d8f1",
+			},
+		},
+		{
+			name:   "a fingerprint is matched case insensitively",
+			dbName: secureBootDatabaseDB,
+			secureBoot: api.BIOSSecureBoot{
+				DB: api.BIOSSecureBootDatabase{
+					Certificates: map[string]bool{strings.ToUpper(microsoft2011): false},
+				},
+			},
+
+			wantCertificates: []string{
+				"f6124e34125bee3fe6d79a574eaa7b91c0e7bd9d929c1a321178efd611dad901",
+				"e5be3e64c6e66a281457ecdece0d6d0787577aad2a3a0144262c10c14ba8d8f1",
+			},
+		},
+		{
+			name:   "a BIOS profile keeps a signature, which is otherwise wiped",
+			dbName: secureBootDatabaseDBX,
+			secureBoot: api.BIOSSecureBoot{
+				DBX: api.BIOSSecureBootDatabase{
+					Signatures: map[string]bool{"80B4D9": true, "AC7D2F": false},
+				},
+			},
+
+			wantSignatures: []string{"80B4D9"},
+		},
+		{
+			name:   "the allow list of another database is not applied",
+			dbName: secureBootDatabaseKEK,
+			secureBoot: api.BIOSSecureBoot{
+				DB: api.BIOSSecureBootDatabase{
+					Certificates: map[string]bool{"aa": true},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			allowList := secureBootAllowList(tc.dbName, tc.secureBoot)
+
+			require.ElementsMatch(t, tc.wantCertificates, keys(allowList.certificates))
+			require.ElementsMatch(t, tc.wantSignatures, keys(allowList.signatures))
+		})
+	}
+}
+
+func TestSecureBootDatabaseApplied(t *testing.T) {
+	microsoft2011 := readTestdataCertificate(t, "microsoft-corporation-uefi-ca-2011.pem")
+	incusOS := readTestdataCertificate(t, "microsoft-uefi-ca-2023.pem")
+	optionROM := readTestdataCertificate(t, "microsoft-option-rom-uefi-ca-2023.pem")
+
+	tests := []struct {
+		name            string
+		enrolled        []string
+		signatures      []string
+		allowList       secureBootAllowListEntries
+		pemCertificates []string
+
+		want bool
+	}{
+		{
+			name:            "applied - the enrolled certificates are exactly the ones of IncusOS",
+			enrolled:        []string{incusOS},
+			pemCertificates: []string{incusOS},
+
+			want: true,
+		},
+		{
+			name:            "applied - an allow listed certificate is kept alongside",
+			enrolled:        []string{microsoft2011, incusOS},
+			allowList:       testSecureBootAllowList(t, []string{microsoft2011}, nil),
+			pemCertificates: []string{incusOS},
+
+			want: true,
+		},
+		{
+			name:            "applied - an allow listed certificate does not have to be enrolled",
+			enrolled:        []string{incusOS},
+			allowList:       testSecureBootAllowList(t, []string{microsoft2011}, nil),
+			pemCertificates: []string{incusOS},
+
+			want: true,
+		},
+		{
+			name:            "applied - an allow listed signature is kept",
+			enrolled:        []string{incusOS},
+			signatures:      []string{"80B4D9"},
+			allowList:       testSecureBootAllowList(t, nil, []string{"80B4D9"}),
+			pemCertificates: []string{incusOS},
+
+			want: true,
+		},
+		{
+			name: "applied - an empty database, IncusOS provides nothing for",
+
+			want: true,
+		},
+		{
+			name:            "applied - a chain is identified by its leaf certificate",
+			enrolled:        []string{incusOS},
+			pemCertificates: []string{incusOS + optionROM},
+
+			want: true,
+		},
+		{
+			name:            "not applied - a certificate of IncusOS is missing",
+			enrolled:        []string{},
+			pemCertificates: []string{incusOS},
+		},
+		{
+			name:            "not applied - a certificate, that is neither wanted nor allow listed, is enrolled",
+			enrolled:        []string{optionROM, incusOS},
+			pemCertificates: []string{incusOS},
+		},
+		{
+			name:       "not applied - a signature is enrolled, that is not allow listed",
+			enrolled:   []string{incusOS},
+			signatures: []string{"80B4D9"},
+
+			pemCertificates: []string{incusOS},
+		},
+		{
+			name:            "not applied - the same certificate is enrolled twice",
+			enrolled:        []string{incusOS, incusOS},
+			pemCertificates: []string{incusOS},
+		},
+		{
+			name:            "not applied - the BMC does not report the certificate itself",
+			enrolled:        []string{""},
+			pemCertificates: []string{},
+		},
+		{
+			name:            "not applied - a certificate of IncusOS can not be parsed",
+			enrolled:        []string{incusOS},
+			pemCertificates: []string{incusOS, "not a PEM encoded certificate"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			state := secureBootDatabaseState{}
+
+			for i, pemCertificate := range tc.enrolled {
+				cert := &schemas.Certificate{CertificateString: pemCertificate}
+				cert.ODataID = fmt.Sprintf("/redfish/v1/Systems/1/SecureBoot/SecureBootDatabases/db/Certificates/%d", i)
+
+				state.certificates = append(state.certificates, cert)
+			}
+
+			for _, signature := range tc.signatures {
+				state.signatures = append(state.signatures, &schemas.Signature{SignatureString: signature})
+			}
+
+			require.Equal(t, tc.want, secureBootDatabaseApplied(state, tc.allowList, tc.pemCertificates))
+		})
+	}
+}
+
+func testSecureBootAllowList(t *testing.T, pemCertificates []string, signatures []string) secureBootAllowListEntries {
+	t.Helper()
+
+	allowList := secureBootAllowListEntries{
+		certificates: map[string]struct{}{},
+		signatures:   map[string]struct{}{},
+	}
+
+	for _, pemCertificate := range pemCertificates {
+		fingerprint, err := pemCertificateFingerprint("allow list", pemCertificate)
+		require.NoError(t, err)
+
+		allowList.certificates[fingerprint] = struct{}{}
+	}
+
+	for _, signature := range signatures {
+		allowList.signatures[signature] = struct{}{}
+	}
+
+	return allowList
 }

@@ -68,6 +68,10 @@ type ServerService interface {
 	BMCAttachMediaByName(ctx context.Context, name string, media api.ServerBMCAttachMedia) error
 	BMCDetachMediaByName(ctx context.Context, name string, virtualMediaID string) error
 	BMCApplySecureBootCertificatesByName(ctx context.Context, name string) error
+
+	DeployByName(ctx context.Context, name string, request ServerDeploymentRequest) error
+	CancelDeploymentByName(ctx context.Context, name string) error
+	DeploymentControlLoop(ctx context.Context, serverNameFilter *string) error
 }
 
 type ServerRepo interface {
@@ -135,5 +139,5 @@ type BMCServerClientPort interface {
 	BIOSAttribute(ctx context.Context, server Server, attributeName string) (api.BIOSAttribute, error)
 	AttachMedia(ctx context.Context, server Server, virtualMediaID string, mediaURL string, setBootDevice bool) (*BMCTaskMonitor, error)
 	DetachMedia(ctx context.Context, server Server, virtualMediaID string) (*BMCTaskMonitor, error)
-	ApplySecureBootCertificates(ctx context.Context, server Server) error
+	ApplySecureBootCertificates(ctx context.Context, server Server, secureBoot api.BIOSSecureBoot) (bool, error)
 }

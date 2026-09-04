@@ -606,6 +606,40 @@ func (_d ServerServiceWithSlog) BMCServerSetLocationIndicatorByName(ctx context.
 	return _d._base.BMCServerSetLocationIndicatorByName(ctx, name, active)
 }
 
+// CancelDeploymentByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) CancelDeploymentByName(ctx context.Context, name string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling CancelDeploymentByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method CancelDeploymentByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method CancelDeploymentByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method CancelDeploymentByName finished")
+		}
+	}()
+	return _d._base.CancelDeploymentByName(ctx, name)
+}
+
 // DeleteByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
 	log := slog.With()
@@ -638,6 +672,75 @@ func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (
 		}
 	}()
 	return _d._base.DeleteByName(ctx, name)
+}
+
+// DeployByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) DeployByName(ctx context.Context, name string, request provisioning.ServerDeploymentRequest) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Any("request", request),
+		)
+	}
+	log.DebugContext(ctx, "=> calling DeployByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method DeployByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method DeployByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method DeployByName finished")
+		}
+	}()
+	return _d._base.DeployByName(ctx, name, request)
+}
+
+// DeploymentControlLoop implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) DeploymentControlLoop(ctx context.Context, serverNameFilter *string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("serverNameFilter", serverNameFilter),
+		)
+	}
+	log.DebugContext(ctx, "=> calling DeploymentControlLoop")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method DeploymentControlLoop returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method DeploymentControlLoop returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method DeploymentControlLoop finished")
+		}
+	}()
+	return _d._base.DeploymentControlLoop(ctx, serverNameFilter)
 }
 
 // EvacuateSystemByName implements provisioning.ServerService.

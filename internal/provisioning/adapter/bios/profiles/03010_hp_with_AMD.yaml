@@ -1,0 +1,10 @@
+---
+
+- name: hp-with-amd
+  description: HP
+  match:
+    - manufacturer: "HPE"
+      processor_manufacturer: "Advanced Micro Devices, Inc."
+  priority: 3000
+  attributes:
+    NumaGroupSizeOpt: "Clustered"

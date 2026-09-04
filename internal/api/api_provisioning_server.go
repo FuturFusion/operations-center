@@ -88,6 +88,8 @@ func registerProvisioningServerHandler(
 	router.HandleFunc("POST /{name}/bmc/:apply-secure-boot-certificates", response.With(handler.serverBMCApplySecureBootCertificatesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}/bmc/logs", response.With(handler.serverBMCLogSourcesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}/bmc/logs/{logSource...}", response.With(handler.serverBMCLogEntriesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{name}/:deploy", response.With(handler.serverDeployPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/:cancel-deploy", response.With(handler.serverCancelDeployPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/bmc/:attach-media", response.With(handler.serverBMCAttachMediaPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/bmc/:detach-media", response.With(handler.serverBMCDetachMediaPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}/changelog", response.With(handler.serverChangelogGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -230,6 +232,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 				VersionData:          server.VersionData,
 				Status:               server.Status,
 				StatusDetail:         server.StatusDetail,
+				Deployment:           serverDeploymentStatus(server),
 				BMCData:              server.BMCData,
 				LastUpdated:          server.LastUpdated,
 				LastSeen:             server.LastSeen,
@@ -452,6 +455,7 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 			VersionData:          server.VersionData,
 			Status:               server.Status,
 			StatusDetail:         server.StatusDetail,
+			Deployment:           serverDeploymentStatus(*server),
 			BMCData:              server.BMCData,
 			LastUpdated:          server.LastUpdated,
 			LastSeen:             server.LastSeen,
@@ -1185,9 +1189,10 @@ func (s *serverHandler) serverBIOSProfileGet(r *http.Request) response.Response 
 	}
 
 	return response.SyncResponse(true, api.BIOSProfileResolution{
-		Profiles:   resolution.Profiles,
-		Attributes: resolution.Attributes,
-		SecureBoot: resolution.SecureBoot,
+		Profiles:           resolution.Profiles,
+		Attributes:         resolution.Attributes,
+		DeferredAttributes: resolution.DeferredAttributes,
+		SecureBoot:         resolution.SecureBoot,
 	})
 }
 
@@ -1476,6 +1481,124 @@ func (s *serverHandler) serverBMCDumpPost(r *http.Request) response.Response {
 	}
 
 	return response.SyncResponse(true, dump)
+}
+
+func serverDeploymentStatus(server provisioning.Server) *api.ServerDeploymentStatus {
+	if server.StatusInternal.Deployment == nil {
+		return nil
+	}
+
+	return server.StatusInternal.Deployment.ToAPI()
+}
+
+// swagger:operation POST /1.0/provisioning/servers/{name}/:deploy servers server_deploy_post
+//
+//	Deploy IncusOS on a server
+//
+//	Triggers the automated deployment of IncusOS on a pre-registered server: the
+//	BIOS is configured from the BIOS profiles matching the server, the secure
+//	boot certificates of IncusOS are enrolled, the installation media generated
+//	from the given token seed is attached and booted, and the server is watched
+//	until it has registered itself with Operations Center.
+//
+//	The enrollment of the secure boot certificates is skipped, if the request
+//	sets "skip_secure_boot_certificates", which is what a BMC, that does not
+//	support the modification of the UEFI key databases through its Redfish API,
+//	requires. The certificates are then expected to have been enrolled by an
+//	operator before the deployment is triggered.
+//
+//	The progress of the deployment is reported through the server status and, in
+//	more detail, through the "deployment" field of the server.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
+//	  - in: body
+//	    name: deployment
+//	    description: Deployment request
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/ServerDeploymentPost"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverDeployPost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	var deployment api.ServerDeploymentPost
+
+	err := json.NewDecoder(r.Body).Decode(&deployment)
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Request decoding: %v", err))
+	}
+
+	request, err := provisioning.NewServerDeploymentRequest(deployment)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	err = s.service.DeployByName(r.Context(), name, request)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to deploy server %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/servers/{name}/:cancel-deploy servers server_cancel_deploy_post
+//
+//	Cancel the deployment of a server
+//
+//	Asks the deployment in progress for the server to stop. The installation
+//	media is ejected and the server is powered off.
+//
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Name of the server
+//	    type: string
+//	    required: true
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "404":
+//	    $ref: "#/responses/NotFound"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverCancelDeployPost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	err := s.service.CancelDeploymentByName(r.Context(), name)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to cancel the deployment of server %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
 }
 
 // swagger:operation POST /1.0/provisioning/servers/{name}/bmc/:attach-media servers_bmc server_bmc_attach_media_post
