@@ -113,6 +113,7 @@ type ServerClientPort interface {
 	SystemFactoryReset(ctx context.Context, endpoint Endpoint, allowTPMResetFailure bool, seeds TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error
 	AddApplication(ctx context.Context, server Server, application string) error
 	RestartApplication(ctx context.Context, server Server, application string) error
+	UpdateApplication(ctx context.Context, server Server, application string) error
 	GetSystemKernel(ctx context.Context, server Server) (ServerSystemKernel, error)
 	UpdateSystemKernel(ctx context.Context, server Server, config ServerSystemKernel) error
 	GetSystemLogging(ctx context.Context, server Server) (ServerSystemLogging, error)

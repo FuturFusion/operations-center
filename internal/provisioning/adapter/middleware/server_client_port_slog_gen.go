@@ -704,6 +704,41 @@ func (_d ServerClientPortWithSlog) SystemFactoryReset(ctx context.Context, endpo
 	return _d._base.SystemFactoryReset(ctx, endpoint, allowTPMResetFailure, seeds, providerConfig)
 }
 
+// UpdateApplication implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) UpdateApplication(ctx context.Context, server provisioning.Server, application string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.String("application", application),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateApplication")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateApplication returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateApplication returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateApplication finished")
+		}
+	}()
+	return _d._base.UpdateApplication(ctx, server, application)
+}
+
 // UpdateNetworkConfig implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) (err error) {
 	log := slog.With()

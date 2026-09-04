@@ -1467,6 +1467,62 @@ func TestClientServer(t *testing.T) {
 		},
 
 		{
+			name: "UpdateApplication",
+			clientCall: func(ctx context.Context, client incus.Client, target provisioning.Server) (any, error) {
+				return nil, client.UpdateApplication(ctx, target, "openfga")
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// POST /os/1.0/applications/openfga/:check-update
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"POST /os/1.0/applications/openfga/:check-update"},
+				},
+				{
+					// IncusOS answers 404 for an application it does not have
+					// installed.
+					name: "error - application not installed",
+					response: []queue.Item[response]{
+						// POST /os/1.0/applications/openfga/:check-update
+						{
+							Value: response{
+								statusCode: http.StatusNotFound,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"POST /os/1.0/applications/openfga/:check-update"},
+					assertResult: noResult,
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// POST /os/1.0/applications/openfga/:check-update
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"POST /os/1.0/applications/openfga/:check-update"},
+					assertResult: noResult,
+				},
+			},
+		},
+
+		{
 			name: "GetSystem",
 			clientCall: func(ctx context.Context, client incus.Client, target provisioning.Server) (any, error) {
 				return client.GetSystem(ctx, target, "kernel")
