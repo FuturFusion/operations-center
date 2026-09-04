@@ -216,7 +216,7 @@ func (c *cmdServerSystemStorageShow) validateArgsAndFlags(cmd *cobra.Command, ar
 func (c *cmdServerSystemStorageShow) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	networkConfig, err := c.ocClient.GetServerSystemNetwork(cmd.Context(), name)
+	storageConfig, err := c.ocClient.GetServerSystemStorage(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
@@ -225,12 +225,12 @@ func (c *cmdServerSystemStorageShow) run(cmd *cobra.Command, args []string) erro
 	case "json":
 		enc := json.NewEncoder(c.Command().OutOrStdout())
 		enc.SetIndent("", "  ")
-		err = enc.Encode(networkConfig)
+		err = enc.Encode(storageConfig)
 
 	default:
 		enc := yaml.NewEncoder(c.Command().OutOrStdout())
 		enc.SetIndent(2)
-		err = enc.Encode(networkConfig)
+		err = enc.Encode(storageConfig)
 	}
 
 	return err
