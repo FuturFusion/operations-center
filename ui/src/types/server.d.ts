@@ -9,12 +9,17 @@ export interface Settings {
 export interface ApplicationVersionData {
   name: string;
   version: string;
+  friendly_version?: string;
+  available_version?: string;
+  needs_update?: boolean;
 }
 
 export interface OSVersionData {
   name: string;
   version: string;
   version_next: string;
+  available_version?: string;
+  needs_update?: boolean;
 }
 
 export interface ServerVersionData {

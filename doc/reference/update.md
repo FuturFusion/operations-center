@@ -16,6 +16,29 @@ them to the local cache.
 It is also possible to operate Operations Center in air gapped environments,
 where the updates are provided manually by the administrators.
 
+## Trigger an update
+
+An update can be triggered either for the operating system or for individual
+applications:
+
+```shell
+operations-center provisioning server system update <server> --os
+operations-center provisioning server system update <server> --application incus
+```
+
+Triggering an update of the operating system makes IncusOS update every
+installed application as well. `--os` therefore covers the whole server and can
+not be combined with `--application`.
+
+An update of the operating system is staged and applied with the next reboot of
+the server, while an application is updated right away, which restarts that
+application.
+
+Since the update is performed by the server itself, a successful invocation only
+means the update has been triggered. Operations Center reports the server as
+`updating` until the server no longer reports any component in need of an
+update.
+
 ## Filtering
 
 The updates, which should be downloaded and be made available for the managed

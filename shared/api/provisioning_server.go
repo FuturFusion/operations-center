@@ -1109,12 +1109,13 @@ type ServerSystemLogging = incusosapi.SystemLogging
 // ServerSystemSecurity is a type alias to hold the system security configuration from IncusOS.
 type ServerSystemSecurity = incusosapi.SystemSecurity
 
-// ServerUpdatePost defines the update trigger information for an update
-// request for a server including the OS and/or its applications.
+// ServerUpdatePost defines the update trigger information for an update request
+// for a server, either for the OS or for individual applications.
 //
 // swagger:model
 type ServerUpdatePost struct {
-	// Applications holds the update trigger information for the installed applications.
+	// Applications holds the update trigger information for the installed
+	// applications.
 	Applications []ServerUpdateApplication `json:"applications" yaml:"applications"`
 
 	// OS holds the update trigger information for the operating system.

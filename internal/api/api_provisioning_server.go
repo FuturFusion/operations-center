@@ -2070,7 +2070,9 @@ func (s *serverHandler) serverSystemRestorePost(r *http.Request) response.Respon
 //
 //	Update server
 //
-//	Triggers an update operation on the server.
+//	Triggers an update operation on the server, either for the operating system,
+//	which covers the installed applications as well, or for the given
+//	applications.
 //
 //	---
 //	consumes:

@@ -87,6 +87,7 @@ server.
 | Ready         | -                    | false        | false        | -              | Not In Maintenance        | up to date                      | -                  |
 | Ready         | -                    | true         | -            | -              | -                         | update pending                  | update             |
 | Ready         | Updating             | -            | -            | -              | -                         | updating                        | -                  |
+| Ready         | Updating Application | -            | -            | -              | -                         | updating                        | -                  |
 | Ready         | -                    | false        | true         | true           | Not In Maintenance        | evacuation pending              | evacuate           |
 | Ready         | -                    | false        | -            | true           | In Maintenance Evacuating | evacuating                      | -                  |
 | Ready         | -                    | false        | true         | true           | In Maintenance Evacuated  | in maintenance, reboot pending  | reboot             |

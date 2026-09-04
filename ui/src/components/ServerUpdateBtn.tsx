@@ -1,4 +1,5 @@
 import { FC, useState } from "react";
+import Form from "react-bootstrap/Form";
 import { useQuery } from "@tanstack/react-query";
 import { MdSystemUpdateAlt } from "react-icons/md";
 import { fetchServerChangelog, updateSystemServer } from "api/server";
@@ -14,6 +15,8 @@ interface Props {
   recommended?: boolean;
 }
 
+type UpdateMode = "os" | "applications";
+
 const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
   const [showModal, setShowModal] = useState(false);
   const [opInProgress, setOpInProgress] = useState(false);
@@ -23,6 +26,29 @@ const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
     cursor: "pointer",
     color: recommended ? "red" : "grey",
   };
+
+  const osNeedsUpdate = server.version_data.os?.needs_update ?? false;
+  const applicationsNeedingUpdate = (
+    server.version_data.applications ?? []
+  ).filter((application) => application.needs_update);
+
+  const [updateMode, setUpdateMode] = useState<UpdateMode>(
+    osNeedsUpdate ? "os" : "applications",
+  );
+  const [selectedApplications, setSelectedApplications] = useState<string[]>(
+    applicationsNeedingUpdate.map((application) => application.name),
+  );
+
+  const toggleApplication = (name: string) => {
+    setSelectedApplications((selected) =>
+      selected.includes(name)
+        ? selected.filter((entry) => entry !== name)
+        : [...selected, name],
+    );
+  };
+
+  const nothingSelected =
+    updateMode === "os" ? !osNeedsUpdate : selectedApplications.length === 0;
 
   const {
     data: changelog = null,
@@ -43,7 +69,11 @@ const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
 
   const onUpdateServer = () => {
     setOpInProgress(true);
-    updateSystemServer(server.name)
+    updateSystemServer(
+      server.name,
+      updateMode === "os",
+      updateMode === "os" ? [] : selectedApplications,
+    )
       .then((response) => {
         setOpInProgress(false);
         setShowModal(false);
@@ -68,6 +98,12 @@ const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
         title="Update server"
         style={actionStyle}
         onClick={() => {
+          // Reset the selection to what needs an update right now, the server
+          // data may have been refreshed since the component was mounted.
+          setUpdateMode(osNeedsUpdate ? "os" : "applications");
+          setSelectedApplications(
+            applicationsNeedingUpdate.map((application) => application.name),
+          );
           setShowModal(true);
         }}
       />
@@ -81,6 +117,7 @@ const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
             <LoadingButton
               isLoading={opInProgress}
               variant="danger"
+              disabled={nothingSelected}
               onClick={onUpdateServer}
             >
               Update
@@ -94,6 +131,47 @@ const ServerUpdateBtn: FC<Props> = ({ server, recommended }) => {
           {changelog?.prior_version}
           {" -> "}
           {changelog?.current_version}
+        </p>
+        <h3>What to update</h3>
+        <Form.Check
+          type="radio"
+          id={`update-${server.name}-os`}
+          name={`update-${server.name}-mode`}
+          label={`Operating system (${server.version_data.os?.name})`}
+          checked={updateMode === "os"}
+          disabled={!osNeedsUpdate}
+          onChange={() => setUpdateMode("os")}
+        />
+        <Form.Check
+          type="radio"
+          id={`update-${server.name}-applications`}
+          name={`update-${server.name}-mode`}
+          label="Individual applications"
+          checked={updateMode === "applications"}
+          disabled={applicationsNeedingUpdate.length === 0}
+          onChange={() => setUpdateMode("applications")}
+        />
+        {updateMode === "applications" && (
+          <div className="ms-4">
+            {applicationsNeedingUpdate.map((application) => (
+              <Form.Check
+                key={application.name}
+                type="checkbox"
+                id={`update-${server.name}-${application.name}`}
+                label={application.name}
+                checked={selectedApplications.includes(application.name)}
+                onChange={() => toggleApplication(application.name)}
+              />
+            ))}
+          </div>
+        )}
+        {!osNeedsUpdate && applicationsNeedingUpdate.length === 0 && (
+          <p>No component of this server needs an update.</p>
+        )}
+        <p>
+          An update of the operating system also updates every installed
+          application. It is applied with the next reboot of the server, while
+          an application is updated right away.
         </p>
         <p>
           <h3>Changes</h3>
