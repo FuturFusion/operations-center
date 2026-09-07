@@ -731,6 +731,12 @@ type BMCData struct {
 	// ServerBootProgress holds the last boot progress state reported by the BMC.
 	ServerBootProgress BMCBootProgress `json:"server_boot_progress" yaml:"server_boot_progress"`
 
+	// ServerSecureBootMode holds the UEFI secure boot mode reported by the BMC.
+	// It is empty, if the BMC does not report it. Possible values: SetupMode,
+	// UserMode, AuditMode, DeployedMode.
+	// Example: UserMode
+	ServerSecureBootMode string `json:"server_secure_boot_mode" yaml:"server_secure_boot_mode"`
+
 	// VirtualMedia holds all virtual media slots (e.g. CD, DVD, floppy, USB)
 	// reported by the BMC system or manager, keyed by "<service>:<id>" (e.g. "system:1").
 	VirtualMedia map[string]BMCVirtualMedia `json:"virtual_media" yaml:"virtual_media"`
