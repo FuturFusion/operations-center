@@ -74,6 +74,13 @@ func (c *cmdServerBMC) Command() *cobra.Command {
 
 	cmd.AddCommand(serverBMCApplySecureBootCertificatesCmd.Command())
 
+	// Reset secure boot keys
+	serverBMCResetSecureBootKeysCmd := cmdServerBMCResetSecureBootKeys{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverBMCResetSecureBootKeysCmd.Command())
+
 	// Logs
 	serverBMCLogsCmd := cmdServerBMCLogs{
 		ocClient: c.ocClient,
@@ -391,6 +398,54 @@ func (c *cmdServerBMCApplySecureBootCertificates) run(cmd *cobra.Command, args [
 	name := args[0]
 
 	err := c.ocClient.BMCApplySecureBootCertificates(cmd.Context(), name)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Reset the secure boot keys of a server via BMC.
+type cmdServerBMCResetSecureBootKeys struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdServerBMCResetSecureBootKeys) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "reset-secure-boot-keys <name>"
+	cmd.Short = "Reset the secure boot keys of a server via BMC"
+	cmd.Long = `Description:
+  Reset the secure boot keys of a server via BMC
+
+  Clears the UEFI secure boot key databases of the server, which puts it into
+  the secure boot setup mode, where the key databases can be written without the
+  firmware checking the updates.
+
+  The server has to be powered off. A server, that is in setup mode already, is
+  left untouched. The cleared key databases only take effect once the server is
+  powered on again and the firmware has picked them up.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerBMCResetSecureBootKeys) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdServerBMCResetSecureBootKeys) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.BMCResetSecureBootKeys(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
