@@ -7,9 +7,10 @@ type Arch = (typeof archValues)[number];
 interface Props {
   value: Arch;
   onChange: (value: Arch) => void;
+  emptyLabel?: string;
 }
 
-const ArchSelect: FC<Props> = ({ value, onChange }) => {
+const ArchSelect: FC<Props> = ({ value, onChange, emptyLabel = "" }) => {
   return (
     <Form.Group>
       <Form.Label>Architecture</Form.Label>
@@ -19,7 +20,7 @@ const ArchSelect: FC<Props> = ({ value, onChange }) => {
       >
         {archValues.map((arch) => (
           <option key={arch} value={arch}>
-            {arch}
+            {arch === "" ? emptyLabel : arch}
           </option>
         ))}
       </Form.Select>
