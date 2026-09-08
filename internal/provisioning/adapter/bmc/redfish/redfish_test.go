@@ -6812,6 +6812,14 @@ const secureBootBody = `{
 }`
 
 func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
+	// The fingerprints of the testdata certificates, as a BIOS profile names
+	// them to keep them across the wipe of a key database.
+	const (
+		microsoftCorporationUEFICA2011 = "48e99b991f57fc52f76149599bff0a58c47154229b9f8d603ac40d3500248507"
+		microsoftUEFICA2023            = "f6124e34125bee3fe6d79a574eaa7b91c0e7bd9d929c1a321178efd611dad901"
+		microsoftOptionROMUEFICA2023   = "e5be3e64c6e66a281457ecdece0d6d0787577aad2a3a0144262c10c14ba8d8f1"
+	)
+
 	// A valid certificate, which is not part of any allow list.
 	notAllowListedCertPEM, _, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
@@ -6976,9 +6984,17 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 				}),
 			},
 			secureBootCertificates: testSecureBootCertificates(),
+			secureBootAllowList: api.BIOSSecureBoot{
+				DB: api.BIOSSecureBootDatabase{
+					Certificates: map[string]bool{
+						microsoftCorporationUEFICA2011: true,
+						microsoftOptionROMUEFICA2023:   true,
+					},
+				},
+			},
 
-			// The two Microsoft CAs are kept, the option ROMs of the hardware
-			// stop being trusted otherwise.
+			// The two Microsoft CAs the BIOS profile keeps survive, the option
+			// ROMs of the hardware stop being trusted otherwise.
 			wantDeletedCertPaths: []string{
 				secureBootDatabasesPathPrefix + "db/Certificates/2",
 			},
@@ -7011,9 +7027,17 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 				}),
 			},
 			secureBootCertificates: testSecureBootCertificates(),
+			secureBootAllowList: api.BIOSSecureBoot{
+				DB: api.BIOSSecureBootDatabase{
+					Certificates: map[string]bool{
+						microsoftCorporationUEFICA2011: true,
+						microsoftOptionROMUEFICA2023:   true,
+					},
+				},
+			},
 
-			// Only the "db" database has an allow list, the very same
-			// certificate is wiped from any other key database.
+			// The allow list names the "db" database only, so the very same
+			// certificates are wiped from every other key database.
 			wantDeletedCertPaths: []string{
 				secureBootDatabasesPathPrefix + "KEK/Certificates/1",
 				secureBootDatabasesPathPrefix + "dbx/Certificates/1",
@@ -7082,6 +7106,11 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 				}),
 			},
 			secureBootCertificates: testSecureBootCertificates(),
+			secureBootAllowList: api.BIOSSecureBoot{
+				DB: api.BIOSSecureBootDatabase{
+					Certificates: map[string]bool{microsoftUEFICA2023: true},
+				},
+			},
 
 			wantDeletedCertPaths: []string{
 				secureBootDatabasesPathPrefix + "db/Certificates/1",
@@ -7114,6 +7143,13 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			},
 			secureBootCertificates: incusosapi.InternalSecureBootCertificates{
 				DB: []string{testSecureBootCertificatePEM(t, "microsoft-uefi-ca-2023.pem")},
+			},
+			// The database holds the certificate of IncusOS plus one, that the
+			// BIOS profile keeps, so there is nothing left to do for it.
+			secureBootAllowList: api.BIOSSecureBoot{
+				DB: api.BIOSSecureBootDatabase{
+					Certificates: map[string]bool{microsoftCorporationUEFICA2011: true},
+				},
 			},
 
 			assertErr: require.NoError,
@@ -7152,7 +7188,7 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "success - a BIOS profile keeps a certificate, the built in allow list does not",
+			name: "success - a BIOS profile keeps a certificate in a database it is not enrolled in",
 
 			serviceRootStatusCode:         http.StatusOK,
 			systemsStatusCode:             http.StatusOK,
@@ -7173,9 +7209,7 @@ func TestRedfish_ApplySecureBootCertificates(t *testing.T) {
 			},
 			secureBootAllowList: api.BIOSSecureBoot{
 				KEK: api.BIOSSecureBootDatabase{
-					Certificates: map[string]bool{
-						"48e99b991f57fc52f76149599bff0a58c47154229b9f8d603ac40d3500248507": true,
-					},
+					Certificates: map[string]bool{microsoftCorporationUEFICA2011: true},
 				},
 			},
 
