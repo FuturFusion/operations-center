@@ -109,6 +109,7 @@ export interface ServerDeploymentPost {
   virtual_media_id: string;
   force: boolean;
   skip_secure_boot_certificates: boolean;
+  secure_boot_enrollment_media: boolean;
 }
 
 export interface ServerDeploymentStep {
@@ -126,6 +127,7 @@ export interface ServerDeploymentStatus {
   bios_attributes: Record<string, unknown>;
   bios_deferred_attributes: Record<string, unknown>;
   media_url: string;
+  secure_boot_media_url: string;
   media_bytes_read: number;
   media_size: number;
   retries: number;

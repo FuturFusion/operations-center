@@ -27,6 +27,8 @@ const ServerDeployBtn: FC<Props> = ({ server }) => {
   const [channel, setChannel] = useState("");
   const [skipSecureBootCertificates, setSkipSecureBootCertificates] =
     useState(false);
+  const [secureBootEnrollmentMedia, setSecureBootEnrollmentMedia] =
+    useState(false);
   const [force, setForce] = useState(false);
   const { notify } = useNotification();
   const queryClient = useQueryClient();
@@ -58,6 +60,7 @@ const ServerDeployBtn: FC<Props> = ({ server }) => {
     setArchitecture("");
     setChannel("");
     setSkipSecureBootCertificates(false);
+    setSecureBootEnrollmentMedia(false);
     setForce(false);
   };
 
@@ -80,6 +83,7 @@ const ServerDeployBtn: FC<Props> = ({ server }) => {
           virtual_media_id: virtualMediaID,
           force: force,
           skip_secure_boot_certificates: skipSecureBootCertificates,
+          secure_boot_enrollment_media: secureBootEnrollmentMedia,
         },
         null,
         2,
@@ -189,13 +193,33 @@ const ServerDeployBtn: FC<Props> = ({ server }) => {
             </Form.Select>
           </Form.Group>
           <ImageTypeSelect value={imageType} onChange={setImageType} />
-          <ArchSelect value={architecture} onChange={setArchitecture} />
+          <ArchSelect
+            value={architecture}
+            onChange={setArchitecture}
+            emptyLabel="Detect from BMC"
+          />
           <ChannelSelect
             value={channel}
             onChange={setChannel}
             disabled={opInProgress}
             formClasses="mb-3 mt-3"
           />
+          <Form.Group className="mb-3" controlId="secure_boot_enrollment_media">
+            <Form.Check
+              type="checkbox"
+              label="Enroll the secure boot certificates from an enrollment media"
+              checked={secureBootEnrollmentMedia}
+              onChange={(e) => setSecureBootEnrollmentMedia(e.target.checked)}
+              disabled={opInProgress || skipSecureBootCertificates}
+            />
+            <Form.Text>
+              Required for a BMC, whose Redfish API does not support the
+              modification of the UEFI key databases. Operations Center then
+              clears the key databases of the server, which puts it into the
+              secure boot setup mode, and boots a generated enrollment media,
+              that enrolls the certificates of IncusOS.
+            </Form.Text>
+          </Form.Group>
           <Form.Group
             className="mb-3"
             controlId="skip_secure_boot_certificates"
@@ -205,12 +229,12 @@ const ServerDeployBtn: FC<Props> = ({ server }) => {
               label="Skip the enrollment of the secure boot certificates"
               checked={skipSecureBootCertificates}
               onChange={(e) => setSkipSecureBootCertificates(e.target.checked)}
-              disabled={opInProgress}
+              disabled={opInProgress || secureBootEnrollmentMedia}
             />
             <Form.Text>
-              Required for a BMC, whose Redfish API does not support the
-              modification of the UEFI key databases. The certificates then have
-              to be enrolled manually before the deployment.
+              Required for a BMC, that does not expose secure boot at all. The
+              certificates then have to be enrolled manually before the
+              deployment.
             </Form.Text>
           </Form.Group>
           <Form.Group className="mb-3" controlId="force">

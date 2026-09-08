@@ -119,8 +119,17 @@ const ServerDeploymentStatusBtn: FC<Props> = ({ server }) => {
             "Skip secure boot certificates",
             String(deployment.request.skip_secure_boot_certificates),
           )}
+          {detailRow(
+            "Secure boot enrollment media",
+            String(deployment.request.secure_boot_enrollment_media),
+          )}
           {deployment.media_url != "" &&
             detailRow("Media URL", deployment.media_url)}
+          {deployment.secure_boot_media_url != "" &&
+            detailRow(
+              "Secure boot media URL",
+              deployment.secure_boot_media_url,
+            )}
           {deployment.media_bytes_read >= 0 &&
             detailRow("Media read", mediaRead(deployment))}
           {detailRow(
