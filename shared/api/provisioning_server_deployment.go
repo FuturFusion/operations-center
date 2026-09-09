@@ -27,8 +27,11 @@ type ServerDeploymentPost struct {
 	// Example: iso
 	Type string `json:"type" yaml:"type"`
 
-	// Architecture holds the CPU architecture of the image to generate. Possible
-	// values: x86_64, aarch64. Optional, defaults to x86_64.
+	// Architecture holds the CPU architecture of the images to generate, both
+	// the installation media and, where it is used, the secure boot enrollment
+	// media. Possible values: x86_64, aarch64. Optional, it is taken from what
+	// the BMC reports about the server, when it is not provided, and is only
+	// accepted where the BMC does not contradict it.
 	// Example: x86_64
 	Architecture string `json:"architecture" yaml:"architecture"`
 
