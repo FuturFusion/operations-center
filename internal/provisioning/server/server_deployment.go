@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stmcginnis/gofish/schemas"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -44,6 +45,12 @@ type deploymentStateDefinition struct {
 	// fallback is the trigger state a wait state returns to, when it times out.
 	// An empty fallback fails the deployment instead.
 	fallback api.ServerDeploymentState
+
+	// branches names the states, that deploymentNextState routes to instead of
+	// next, depending on what the deployment was asked for. It is not consulted
+	// by the dispatcher, it makes the routing, that only lives in
+	// deploymentNextState, part of the state machine description.
+	branches []api.ServerDeploymentState
 
 	// timeout bounds a wait state.
 	timeout time.Duration
@@ -168,10 +175,84 @@ var deploymentStates = map[api.ServerDeploymentState]deploymentStateDefinition{
 		kind:        deploymentStateKindAction,
 		detail:      api.ServerStatusDetailDeployingConfiguringBIOS,
 		next:        api.ServerDeploymentStateClearMedia,
+		branches:    []api.ServerDeploymentState{api.ServerDeploymentStateResetSecureBootKeys},
 		callTimeout: config.ServerDeploymentSecureBootCallTimeout,
 		prepare: func(deployment *provisioning.ServerDeployment) {
 			deployment.SecureBootAttempted = true
 		},
+	},
+	api.ServerDeploymentStateResetSecureBootKeys: {
+		kind:        deploymentStateKindAction,
+		detail:      api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:        api.ServerDeploymentStateWaitSecureBootReset,
+		callTimeout: config.ServerDeploymentSecureBootCallTimeout,
+	},
+	api.ServerDeploymentStateWaitSecureBootReset: {
+		kind:    deploymentStateKindWait,
+		detail:  api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:    api.ServerDeploymentStatePowerOnSecureBootReset,
+		timeout: config.ServerDeploymentStepWaitBIOSAppliedTimeout,
+	},
+	api.ServerDeploymentStatePowerOnSecureBootReset: {
+		kind:   deploymentStateKindAction,
+		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:   api.ServerDeploymentStateWaitSecureBootSetupMode,
+	},
+	api.ServerDeploymentStateWaitSecureBootSetupMode: {
+		kind:     deploymentStateKindWait,
+		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:     api.ServerDeploymentStatePowerOffSecureBootReset,
+		fallback: api.ServerDeploymentStatePowerOnSecureBootReset,
+		timeout:  config.ServerDeploymentStepWaitBIOSAppliedTimeout,
+	},
+	api.ServerDeploymentStatePowerOffSecureBootReset: {
+		kind:   deploymentStateKindAction,
+		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:   api.ServerDeploymentStateWaitPowerOffSecureBootReset,
+	},
+	api.ServerDeploymentStateWaitPowerOffSecureBootReset: {
+		kind:     deploymentStateKindWait,
+		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:     api.ServerDeploymentStateAttachSecureBootMedia,
+		fallback: api.ServerDeploymentStatePowerOffSecureBootReset,
+		timeout:  config.ServerDeploymentStepTimeout,
+	},
+	api.ServerDeploymentStateAttachSecureBootMedia: {
+		kind:        deploymentStateKindAction,
+		detail:      api.ServerStatusDetailDeployingAttachingMedia,
+		next:        api.ServerDeploymentStateWaitSecureBootMediaAttached,
+		callTimeout: config.ServerDeploymentAttachMediaCallTimeout,
+	},
+	api.ServerDeploymentStateWaitSecureBootMediaAttached: {
+		kind:     deploymentStateKindWait,
+		detail:   api.ServerStatusDetailDeployingAttachingMedia,
+		next:     api.ServerDeploymentStatePowerOnSecureBootMedia,
+		fallback: api.ServerDeploymentStateAttachSecureBootMedia,
+		timeout:  config.ServerDeploymentStepTimeout,
+	},
+	api.ServerDeploymentStatePowerOnSecureBootMedia: {
+		kind:   deploymentStateKindAction,
+		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:   api.ServerDeploymentStateWaitSecureBootEnrolled,
+	},
+	api.ServerDeploymentStateWaitSecureBootEnrolled: {
+		kind:     deploymentStateKindWait,
+		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:     api.ServerDeploymentStatePowerOffSecureBootMedia,
+		fallback: api.ServerDeploymentStatePowerOnSecureBootMedia,
+		timeout:  config.ServerDeploymentSecureBootEnrollTimeout,
+	},
+	api.ServerDeploymentStatePowerOffSecureBootMedia: {
+		kind:   deploymentStateKindAction,
+		detail: api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:   api.ServerDeploymentStateWaitPowerOffSecureBootMedia,
+	},
+	api.ServerDeploymentStateWaitPowerOffSecureBootMedia: {
+		kind:     deploymentStateKindWait,
+		detail:   api.ServerStatusDetailDeployingConfiguringBIOS,
+		next:     api.ServerDeploymentStateClearMedia,
+		fallback: api.ServerDeploymentStatePowerOffSecureBootMedia,
+		timeout:  config.ServerDeploymentStepTimeout,
 	},
 	api.ServerDeploymentStateClearMedia: {
 		kind:   deploymentStateKindAction,
@@ -311,7 +392,8 @@ func (e deploymentFatalError) Unwrap() error {
 
 // deploymentNextState returns the state, the deployment enters after the step it
 // just completed, passing by a BIOS pass with nothing left to apply and the
-// secure boot enrollment, if it was requested to be skipped. The skips chain,
+// secure boot enrollment, if it was requested to be skipped, and routing the
+// enrollment onto the enrollment media, if that was requested. The skips chain,
 // but every one of them moves forward, so the loop settles.
 func deploymentNextState(deployment *provisioning.ServerDeployment, next api.ServerDeploymentState) api.ServerDeploymentState {
 	for {
@@ -331,11 +413,29 @@ func deploymentNextState(deployment *provisioning.ServerDeployment, next api.Ser
 			next = deploymentStates[api.ServerDeploymentStateVerifyBIOSDeferred].next
 
 		case api.ServerDeploymentStateSecureBoot:
+			if deployment.Request.SecureBootEnrollmentMedia {
+				return api.ServerDeploymentStateResetSecureBootKeys
+			}
+
 			if !deployment.Request.SkipSecureBootCertificates {
 				return next
 			}
 
 			next = deploymentStates[api.ServerDeploymentStateSecureBoot].next
+
+		case api.ServerDeploymentStateWaitSecureBootReset:
+			if deployment.SecureBootResetTaskMonitor != "" {
+				return next
+			}
+
+			next = deploymentStates[api.ServerDeploymentStateWaitSecureBootReset].next
+
+		case api.ServerDeploymentStatePowerOnSecureBootReset:
+			if deployment.SecureBootResetPending {
+				return next
+			}
+
+			next = deploymentStates[api.ServerDeploymentStateWaitPowerOffSecureBootReset].next
 
 		case api.ServerDeploymentStatePowerOnSecureBoot:
 			if deployment.SecureBootPending {
@@ -664,6 +764,18 @@ func (s *serverService) DeployByName(ctx context.Context, name string, request p
 			return deploymentUploadedMediaError(name, request.VirtualMediaID)
 		}
 
+		request.Architecture, err = resolveDeploymentArchitecture(ctx, *server, request.Architecture)
+		if err != nil {
+			return err
+		}
+
+		if request.SecureBootEnrollmentMedia {
+			err = s.checkSecureBootEnrollmentMediaSupported(ctx, *server, request.ImageType, request.Architecture)
+			if err != nil {
+				return err
+			}
+		}
+
 		resolution, err := s.resolveBIOSProfile(ctx, *server)
 		if err != nil {
 			return err
@@ -718,6 +830,56 @@ func (s *serverService) DeployByName(ctx context.Context, name string, request p
 	deployedServer.SignalLifecycleEvent()
 
 	return nil
+}
+
+// resolveDeploymentArchitecture settles the architecture a deployment installs
+// and boots, so that everything it generates from here on is built for the same
+// one.
+//
+// The BMC is the source: it is the only one available before the server has been
+// installed, since the hardware data is collected from Incus once the server has
+// registered itself. A requested architecture is therefore an override, which is
+// only accepted where the BMC does not contradict it.
+func resolveDeploymentArchitecture(ctx context.Context, server provisioning.Server, requested images.UpdateFileArchitecture) (images.UpdateFileArchitecture, error) {
+	reported, err := server.BMCData.ServerArchitecture()
+	if err != nil {
+		if requested == images.UpdateFileArchitectureUndefined {
+			return "", fmt.Errorf("Failed to determine the architecture of server %q, pass it explicitly to deploy the server anyway: %w", server.Name, err)
+		}
+
+		slog.WarnContext(ctx, "BMC does not report an architecture, the requested one can not be confirmed", logger.Err(err), slog.String("name", server.Name), slog.String("architecture", requested.String()))
+
+		return requested, nil
+	}
+
+	if requested == images.UpdateFileArchitectureUndefined {
+		return reported, nil
+	}
+
+	if requested != reported {
+		return "", domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Server %q was requested to be deployed for the architecture %q, but its BMC reports %q", server.Name, requested, reported).
+			WithDetail("server", server.Name).
+			WithDetail("requested_architecture", string(requested)).
+			WithDetail("reported_architecture", string(reported))
+	}
+
+	return requested, nil
+}
+
+// checkSecureBootEnrollmentMediaSupported reports, whether a deployment can
+// enroll the secure boot certificates from an enrollment media at all.
+func (s *serverService) checkSecureBootEnrollmentMediaSupported(ctx context.Context, server provisioning.Server, imageType api.ImageType, architecture images.UpdateFileArchitecture) error {
+	if s.secureBootMedia == nil {
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "Enrolling the secure boot certificates from an enrollment media is not supported by this Operations Center installation")
+	}
+
+	if server.BMCData.ServerSecureBootMode == "" {
+		return domain.NewErrorf(domain.ErrOperationNotPermitted, "", "The BMC of server %q does not report the secure boot mode, so Operations Center can neither put the server into the secure boot setup mode nor tell, whether the enrollment succeeded", server.Name).
+			WithHintf("Put the server into setup mode by clearing its platform key and deploy it with the secure boot certificates skipped instead.").
+			WithDetail("server", server.Name)
+	}
+
+	return s.secureBootMedia.CheckSupported(ctx, imageType, architecture)
 }
 
 // CancelDeploymentByName asks a running deployment to stop. In contrast to a
@@ -1076,7 +1238,8 @@ func (s *serverService) runDeploymentAction(ctx context.Context, log *slog.Logge
 		return s.checkDeploymentBIOSAttributes(ctx, log, server)
 
 	case api.ServerDeploymentStatePowerOffBIOS, api.ServerDeploymentStatePowerOffBIOSDeferred,
-		api.ServerDeploymentStatePowerOffSecureBoot, api.ServerDeploymentStatePowerOffSecureBootSettled:
+		api.ServerDeploymentStatePowerOffSecureBoot, api.ServerDeploymentStatePowerOffSecureBootSettled,
+		api.ServerDeploymentStatePowerOffSecureBootReset, api.ServerDeploymentStatePowerOffSecureBootMedia:
 		_, err := s.bmcServerPowerOffByName(ctx, server.Name, deploymentForcePowerOff, false)
 
 		return nil, err
@@ -1095,7 +1258,8 @@ func (s *serverService) runDeploymentAction(ctx context.Context, log *slog.Logge
 		}, nil
 
 	case api.ServerDeploymentStatePowerOnBIOS, api.ServerDeploymentStatePowerOnBIOSDeferred,
-		api.ServerDeploymentStatePowerOnSecureBoot, api.ServerDeploymentStatePowerOnInstall:
+		api.ServerDeploymentStatePowerOnSecureBoot, api.ServerDeploymentStatePowerOnInstall,
+		api.ServerDeploymentStatePowerOnSecureBootReset, api.ServerDeploymentStatePowerOnSecureBootMedia:
 		_, err := s.bmcServerPowerOnByName(ctx, server.Name, false, false)
 
 		return nil, err
@@ -1114,6 +1278,24 @@ func (s *serverService) runDeploymentAction(ctx context.Context, log *slog.Logge
 		return func(deployment *provisioning.ServerDeployment) {
 			deployment.SecureBootPending = enrolled || attempted
 		}, nil
+
+	case api.ServerDeploymentStateResetSecureBootKeys:
+		reset, taskMonitor, err := s.resetSecureBootKeysByName(ctx, server.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		return func(deployment *provisioning.ServerDeployment) {
+			deployment.SecureBootResetPending = reset
+			deployment.SecureBootResetTaskMonitor = ""
+
+			if taskMonitor != nil {
+				deployment.SecureBootResetTaskMonitor = taskMonitor.URI
+			}
+		}, nil
+
+	case api.ServerDeploymentStateAttachSecureBootMedia:
+		return s.attachDeploymentSecureBootMedia(ctx, log, server)
 
 	case api.ServerDeploymentStateClearMedia:
 		return nil, s.detachAllDeploymentMedia(ctx, server)
@@ -1177,6 +1359,23 @@ func (s *serverService) attachDeploymentMedia(ctx context.Context, server provis
 		deployment.ImageDeploymentID = deploymentID
 		deployment.MediaBytesRead = -1
 		deployment.MediaSize = 0
+	}, nil
+}
+
+// attachDeploymentSecureBootMedia generates the secure boot enrollment media,
+// attaches it and registers it as the boot device for the next boot.
+func (s *serverService) attachDeploymentSecureBootMedia(ctx context.Context, log *slog.Logger, server provisioning.Server) (func(*provisioning.ServerDeployment), error) {
+	deployment := server.StatusInternal.Deployment
+
+	attached, err := s.bmcAttachSecureBootMediaByName(ctx, log, server, deployment.Request.ImageType, deployment.Request.Architecture, deployment.SecureBoot, deployment.Request.VirtualMediaID)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(deployment *provisioning.ServerDeployment) {
+		deployment.SecureBootMediaURL = attached.imageURL
+		deployment.SecureBootMediaID = attached.fingerprintID
+		deployment.SecureBootEnrollSnapshot = provisioning.ServerDeploymentBMCSnapshot{}
 	}, nil
 }
 
@@ -1376,6 +1575,10 @@ var bmcWaitConditions = map[api.ServerDeploymentState]deploymentBMCCondition{
 	api.ServerDeploymentStateWaitPowerOffSecureBoot:        deploymentPowerIsOff,
 	api.ServerDeploymentStateWaitPowerOffSecureBootSettled: deploymentPowerIsOff,
 	api.ServerDeploymentStateWaitCancel:                    deploymentCancelSettled,
+	api.ServerDeploymentStateWaitPowerOffSecureBootReset:   deploymentPowerIsOff,
+	api.ServerDeploymentStateWaitPowerOffSecureBootMedia:   deploymentPowerIsOff,
+	api.ServerDeploymentStateWaitSecureBootSetupMode:       isDeploymentInSecureBootSetupMode,
+	api.ServerDeploymentStateWaitSecureBootMediaAttached:   isDeploymentSecureBootMediaHoldingImage,
 	api.ServerDeploymentStateWaitMediaCleared:              deploymentNoMediaInserted,
 	api.ServerDeploymentStateWaitMediaDetached:             deploymentMediaEjected,
 }
@@ -1431,6 +1634,22 @@ var deploymentMediaEjected = deploymentBMCCondition{
 	},
 }
 
+var isDeploymentSecureBootMediaHoldingImage = deploymentBMCCondition{
+	requires: []api.BMCDataPart{api.BMCDataPartVirtualMedia},
+	met: func(deployment *provisioning.ServerDeployment, data api.BMCData) bool {
+		media, ok := data.VirtualMedia[deployment.Request.VirtualMediaID]
+
+		return ok && media.Inserted && media.Image == deployment.SecureBootMediaURL
+	},
+}
+
+var isDeploymentInSecureBootSetupMode = deploymentBMCCondition{
+	requires: []api.BMCDataPart{api.BMCDataPartSystem},
+	met: func(_ *provisioning.ServerDeployment, data api.BMCData) bool {
+		return data.ServerSecureBootMode == string(schemas.SetupModeSecureBootModeType)
+	},
+}
+
 // checkDeploymentWait evaluates the condition of a wait state. Every condition
 // is derived from the BMC data or the server record, never from a task monitor
 // alone, since a BMC forgets about a task monitor once it has been consumed.
@@ -1454,8 +1673,14 @@ func (s *serverService) checkDeploymentWait(ctx context.Context, log *slog.Logge
 	case api.ServerDeploymentStateWaitSecureBootSettled:
 		return s.checkDeploymentSecureBootSettled(ctx, log, server)
 
+	case api.ServerDeploymentStateWaitSecureBootEnrolled:
+		return s.checkDeploymentSecureBootEnrolled(ctx, log, server)
+
 	case api.ServerDeploymentStateWaitBIOSApplied, api.ServerDeploymentStateWaitBIOSAppliedDeferred:
 		return s.checkDeploymentBIOSApplied(ctx, log, server)
+
+	case api.ServerDeploymentStateWaitSecureBootReset:
+		return s.checkDeploymentSecureBootReset(ctx, log, server)
 
 	case api.ServerDeploymentStateWaitInstall:
 		return s.checkDeploymentInstalled(ctx, log, server)
@@ -1563,6 +1788,43 @@ func (s *serverService) checkDeploymentBIOSApplied(ctx context.Context, log *slo
 	return true, nil, nil
 }
 
+// checkDeploymentSecureBootReset tells, whether the BMC is done clearing the key
+// databases, so the server is only powered on once the reset has taken effect.
+func (s *serverService) checkDeploymentSecureBootReset(ctx context.Context, log *slog.Logger, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
+	deployment := server.StatusInternal.Deployment
+
+	client, ok := s.bmcServerClients[server.BMCConfig.APIType]
+	if !ok {
+		//domain-errors:internal Programmer error, the BMC API type is not handled.
+		return false, nil, fmt.Errorf("Failed to get BMC server client for type %q", server.BMCConfig.APIType)
+	}
+
+	taskState, err := client.TaskState(ctx, server, &provisioning.BMCTaskMonitor{URI: deployment.SecureBootResetTaskMonitor})
+	if err != nil {
+		return false, nil, err
+	}
+
+	switch taskState {
+	case api.BMCTaskStateCompleted:
+		return true, nil, nil
+
+	case api.BMCTaskStateRunning:
+		return false, nil, nil
+	}
+
+	// The BMC does not know the task monitor anymore, which happens once it has
+	// been consumed or after a BMC reset. Unlike the BIOS pass there is no
+	// observable condition to fall back to, since the server stays powered off
+	// until the next step, so give the BMC the time to settle and move on.
+	if s.now().Sub(deployment.StateEnteredAt) < config.ServerDeploymentSettleDelay {
+		return false, nil, nil
+	}
+
+	log.InfoContext(ctx, "BMC does not know the secure boot reset task monitor anymore, treating the reset as done")
+
+	return true, nil, nil
+}
+
 // deploymentSettleSnapshot records the reboot relevant BMC properties, once the
 // server is up and has reached a stable boot progress, so the power on, that
 // starts a step, is not mistaken for the reboot, that ends it. It returns nil,
@@ -1608,6 +1870,44 @@ func (s *serverService) checkDeploymentSecureBootSettled(ctx context.Context, lo
 	}
 
 	log.InfoContext(ctx, "Firmware did not reboot after the secure boot certificates were enrolled, continuing with the installation")
+
+	return true, nil, nil
+}
+
+// checkDeploymentSecureBootEnrolled tells, whether the secure boot enrollment
+// media has enrolled the certificates, which the server signals by leaving the
+// secure boot setup mode.
+func (s *serverService) checkDeploymentSecureBootEnrolled(ctx context.Context, log *slog.Logger, server provisioning.Server) (bool, func(*provisioning.ServerDeployment), error) {
+	deployment := server.StatusInternal.Deployment
+
+	current, err := s.deploymentBMCData(ctx, server, []api.BMCDataPart{api.BMCDataPartSystem})
+	if err != nil {
+		return false, nil, err
+	}
+
+	if current.BMCData.ServerSecureBootMode != "" {
+		if current.BMCData.ServerSecureBootMode == string(schemas.SetupModeSecureBootModeType) {
+			return false, nil, nil
+		}
+
+		log.InfoContext(ctx, "Secure boot certificates enrolled, the server has left the setup mode", slog.String("secure_boot_mode", current.BMCData.ServerSecureBootMode))
+
+		return true, nil, nil
+	}
+
+	now := s.now()
+
+	if deployment.SecureBootEnrollSnapshot.Taken.IsZero() {
+		return false, deploymentSettleSnapshot(now, deployment, current.BMCData, func(deployment *provisioning.ServerDeployment, snapshot provisioning.ServerDeploymentBMCSnapshot) {
+			deployment.SecureBootEnrollSnapshot = snapshot
+		}), nil
+	}
+
+	if deployment.SecureBootEnrollSnapshot.HasRebootedSince(current.BMCData) != api.BMCRebootStateRebooted {
+		return false, nil, nil
+	}
+
+	log.WarnContext(ctx, "BMC does not report the secure boot mode, assuming the enrollment media has enrolled the certificates, since the BMC reports a reboot of the server")
 
 	return true, nil, nil
 }

@@ -26,6 +26,7 @@ type ServerDeploymentRequest struct {
 	VirtualMediaID             string                        `json:"virtual_media_id"`
 	Force                      bool                          `json:"force"`
 	SkipSecureBootCertificates bool                          `json:"skip_secure_boot_certificates"`
+	SecureBootEnrollmentMedia  bool                          `json:"secure_boot_enrollment_media"`
 }
 
 func (r ServerDeploymentRequest) Validate() error {
@@ -42,8 +43,12 @@ func (r ServerDeploymentRequest) Validate() error {
 	}
 
 	_, ok := images.UpdateFileArchitectures[r.Architecture]
-	if !ok || r.Architecture == images.UpdateFileArchitectureUndefined {
+	if !ok {
 		return domain.NewValidationErrf("Invalid deployment request, architecture %q is not valid", r.Architecture)
+	}
+
+	if r.SkipSecureBootCertificates && r.SecureBootEnrollmentMedia {
+		return domain.NewValidationErrf("Invalid deployment request, the secure boot certificates can not be enrolled from an enrollment media and be skipped at the same time")
 	}
 
 	return nil
@@ -63,9 +68,6 @@ func NewServerDeploymentRequest(request api.ServerDeploymentPost) (ServerDeploym
 	}
 
 	architecture := images.UpdateFileArchitecture(request.Architecture)
-	if request.Architecture == "" {
-		architecture = images.UpdateFileArchitecture64BitX86
-	}
 
 	return ServerDeploymentRequest{
 		TokenUUID:                  tokenUUID,
@@ -76,6 +78,7 @@ func NewServerDeploymentRequest(request api.ServerDeploymentPost) (ServerDeploym
 		VirtualMediaID:             request.VirtualMediaID,
 		Force:                      request.Force,
 		SkipSecureBootCertificates: request.SkipSecureBootCertificates,
+		SecureBootEnrollmentMedia:  request.SecureBootEnrollmentMedia,
 	}, nil
 }
 
@@ -89,6 +92,7 @@ func (r ServerDeploymentRequest) ToAPI() api.ServerDeploymentPost {
 		VirtualMediaID:             r.VirtualMediaID,
 		Force:                      r.Force,
 		SkipSecureBootCertificates: r.SkipSecureBootCertificates,
+		SecureBootEnrollmentMedia:  r.SecureBootEnrollmentMedia,
 	}
 }
 
@@ -164,6 +168,23 @@ type ServerDeployment struct {
 	// that wrote them, apart from a server, that held them all along.
 	SecureBootAttempted bool `json:"secure_boot_attempted"`
 
+	// SecureBootResetPending reports, whether the reset of the UEFI key
+	// databases has cleared anything, in which case the firmware has to be given
+	// a boot to pick it up, before the enrollment media is booted. A server,
+	// that is in the secure boot setup mode already, spares the deployment that
+	// boot.
+	SecureBootResetPending bool `json:"secure_boot_reset_pending"`
+
+	// SecureBootMediaURL is the secure boot enrollment media, as it is handed to
+	// the BMC, while SecureBootMediaID addresses the generated media.
+	SecureBootMediaURL string `json:"secure_boot_media_url"`
+	SecureBootMediaID  string `json:"secure_boot_media_id"`
+
+	// SecureBootResetTaskMonitor holds the URI of the BMC task monitor of the
+	// reset of the UEFI key databases. It is kept, so the deployment waits for
+	// the reset to be done before it powers the server on again.
+	SecureBootResetTaskMonitor string `json:"secure_boot_reset_task_monitor"`
+
 	// MediaURL is the installation media, as it is handed to the BMC, while
 	// ImageDeploymentID names this deployment reading the generated media.
 	MediaURL          string `json:"media_url"`
@@ -196,6 +217,11 @@ type ServerDeployment struct {
 	// the enrolled certificates up, respectively on entering the install wait.
 	SecureBootSnapshot ServerDeploymentBMCSnapshot `json:"secure_boot_snapshot"`
 	InstallSnapshot    ServerDeploymentBMCSnapshot `json:"install_snapshot"`
+
+	// SecureBootEnrollSnapshot holds the same properties as they were observed
+	// on the boot of the secure boot enrollment media. It is only consulted for
+	// a BMC, that does not report the secure boot mode at all.
+	SecureBootEnrollSnapshot ServerDeploymentBMCSnapshot `json:"secure_boot_enroll_snapshot"`
 
 	// Retries counts the attempts already spent on the current state.
 	Retries           int                       `json:"retries"`
@@ -263,6 +289,7 @@ func (d ServerDeployment) ToAPI() *api.ServerDeploymentStatus {
 		BIOSDeferredAttributes: d.BIOSDeferredAttributes,
 		SecureBoot:             d.SecureBoot,
 		MediaURL:               d.MediaURL,
+		SecureBootMediaURL:     d.SecureBootMediaURL,
 		MediaBytesRead:         d.MediaBytesRead,
 		MediaSize:              d.MediaSize,
 		Retries:                d.Retries,
