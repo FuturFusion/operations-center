@@ -139,6 +139,13 @@ const (
 	// not know anymore, is accepted as the applied BIOS attributes.
 	ServerDeploymentSettleDelay = 1 * time.Minute
 
+	// Time, the BMC has to have been reporting the server powered off, before
+	// the power off is taken to have settled. Firmware, that resets the server
+	// on its own to pick up what has been staged for it, has the BMC report the
+	// power state off in the trough of that reset, which a single observation
+	// can not be told apart from a server, that stays off.
+	ServerDeploymentPowerOffSettleDelay = 1 * time.Minute
+
 	// Maximum number of state transitions performed for a single server within
 	// one tick of the automated server deployment control loop.
 	ServerDeploymentMaxTransitionsPerTick = 10
@@ -160,6 +167,20 @@ const (
 	// Time granted to enroll the secure boot certificates, which removes every
 	// entry of the key databases with a request of its own.
 	ServerDeploymentSecureBootCallTimeout = 15 * time.Minute
+
+	// Time granted to the secure boot enrollment media to enroll the
+	// certificates, which covers the boot of the enrollment media plus the
+	// reboot the firmware performs after having picked the certificates up.
+	ServerDeploymentSecureBootEnrollTimeout = 15 * time.Minute
+
+	// Time after the last access, after which a generated secure boot enrollment
+	// media is removed. A media, that the deployment of a server still names, is
+	// kept beyond it, since a BMC reads an attached media only when the server
+	// boots.
+	SecureBootMediaCacheTTL = 2 * time.Hour
+
+	// Interval in which the generated secure boot enrollment media is pruned.
+	SecureBootMediaPruneInterval = 10 * time.Minute
 
 	// Time the deployment control loop is held back after a virtual media event,
 	// so the BMC has reported the change by the time the loop looks.
