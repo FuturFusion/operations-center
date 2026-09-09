@@ -38,12 +38,29 @@ func dellPowerEdgeR740(mutators ...func(data *api.BMCData)) api.BMCData {
 	return data
 }
 
-// TestCatalogue_builtinProfiles resolves the BIOS profiles shipped with
+// vendorSecureBoot is the secure boot allow list every built-in vendor profile
+// resolves to. Windows and the option ROMs of the hardware stop being trusted,
+// when the certificates they are signed with do not survive the wipe of the
+// signature database.
+func vendorSecureBoot() api.BIOSSecureBoot {
+	return api.BIOSSecureBoot{
+		DB: api.BIOSSecureBootDatabase{
+			Certificates: map[string]bool{
+				// Microsoft Corporation UEFI CA 2011
+				"48e99b991f57fc52f76149599bff0a58c47154229b9f8d603ac40d3500248507": true,
+				// Microsoft Option ROM UEFI CA 2023
+				"e5be3e64c6e66a281457ecdece0d6d0787577aad2a3a0144262c10c14ba8d8f1": true,
+			},
+		},
+	}
+}
+
+// TestCatalog_builtinProfiles resolves the BIOS profiles shipped with
 // Operations Center against the BMC data of the hardware they have been written
 // for. Every case states the complete resolution, so a reorganization of the
 // profiles, that changes the profiles applied to a server or the values they
 // assign, is caught here.
-func TestCatalogue_builtinProfiles(t *testing.T) {
+func TestCatalog_builtinProfiles(t *testing.T) {
 	tests := []struct {
 		name string
 		data api.BMCData
@@ -65,6 +82,7 @@ func TestCatalogue_builtinProfiles(t *testing.T) {
 				DeferredAttributes: map[string]any{
 					"Tpm2Algorithm": "SHA256",
 				},
+				SecureBoot: vendorSecureBoot(),
 			},
 		},
 		{
@@ -81,6 +99,7 @@ func TestCatalogue_builtinProfiles(t *testing.T) {
 					"SecureBootPolicy": "Custom",
 				},
 				DeferredAttributes: map[string]any{},
+				SecureBoot:         vendorSecureBoot(),
 			},
 		},
 		{
@@ -100,6 +119,7 @@ func TestCatalogue_builtinProfiles(t *testing.T) {
 				DeferredAttributes: map[string]any{
 					"Tpm2Algorithm": "SHA256",
 				},
+				SecureBoot: vendorSecureBoot(),
 			},
 		},
 		{
@@ -131,6 +151,7 @@ func TestCatalogue_builtinProfiles(t *testing.T) {
 					"SecureBootConfiguration_SecureBootPolicy": "CustomPolicy",
 				},
 				DeferredAttributes: map[string]any{},
+				SecureBoot:         vendorSecureBoot(),
 			},
 		},
 		{
@@ -161,6 +182,7 @@ func TestCatalogue_builtinProfiles(t *testing.T) {
 					"SecureBootStatus": "Enabled",
 				},
 				DeferredAttributes: map[string]any{},
+				SecureBoot:         vendorSecureBoot(),
 			},
 		},
 		{
