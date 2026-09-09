@@ -38,12 +38,40 @@ func dellPowerEdgeR740(mutators ...func(data *api.BMCData)) api.BMCData {
 	return data
 }
 
-// TestCatalogue_builtinProfiles resolves the BIOS profiles shipped with
+// vendorSecureBoot is the secure boot allow list every built-in vendor profile
+// resolves to.
+func vendorSecureBoot() api.BIOSSecureBoot {
+	return api.BIOSSecureBoot{
+		DB: api.BIOSSecureBootDatabase{
+			Certificates: map[string]bool{
+				// Microsoft Corporation UEFI CA 2011
+				"48e99b991f57fc52f76149599bff0a58c47154229b9f8d603ac40d3500248507": true,
+				// Microsoft Option ROM UEFI CA 2023
+				"e5be3e64c6e66a281457ecdece0d6d0787577aad2a3a0144262c10c14ba8d8f1": true,
+			},
+		},
+	}
+}
+
+// lenovoSecureBoot is the allow list of the Lenovo profile, which keeps the CAs
+// of Lenovo on top of the ones every vendor profile keeps.
+func lenovoSecureBoot() api.BIOSSecureBoot {
+	secureBoot := vendorSecureBoot()
+
+	// Lenovo Supplier Executable CA 2017
+	secureBoot.DB.Certificates["89942cabd60392f5817bbde1ab7be34483ecb3ef2d282737dd266b6b30dfcce1"] = true
+	// Lenovo UEFI DB
+	secureBoot.DB.Certificates["c3bf425c676ffab6158aad94607bb0c678cf9bb927c617c2e1312e9f58eb690f"] = true
+
+	return secureBoot
+}
+
+// TestCatalog_builtinProfiles resolves the BIOS profiles shipped with
 // Operations Center against the BMC data of the hardware they have been written
 // for. Every case states the complete resolution, so a reorganization of the
 // profiles, that changes the profiles applied to a server or the values they
 // assign, is caught here.
-func TestCatalogue_builtinProfiles(t *testing.T) {
+func TestCatalog_builtinProfiles(t *testing.T) {
 	tests := []struct {
 		name string
 		data api.BMCData
@@ -65,6 +93,7 @@ func TestCatalogue_builtinProfiles(t *testing.T) {
 				DeferredAttributes: map[string]any{
 					"Tpm2Algorithm": "SHA256",
 				},
+				SecureBoot: vendorSecureBoot(),
 			},
 		},
 		{
@@ -81,6 +110,7 @@ func TestCatalogue_builtinProfiles(t *testing.T) {
 					"SecureBootPolicy": "Custom",
 				},
 				DeferredAttributes: map[string]any{},
+				SecureBoot:         vendorSecureBoot(),
 			},
 		},
 		{
@@ -100,6 +130,7 @@ func TestCatalogue_builtinProfiles(t *testing.T) {
 				DeferredAttributes: map[string]any{
 					"Tpm2Algorithm": "SHA256",
 				},
+				SecureBoot: vendorSecureBoot(),
 			},
 		},
 		{
@@ -131,6 +162,7 @@ func TestCatalogue_builtinProfiles(t *testing.T) {
 					"SecureBootConfiguration_SecureBootPolicy": "CustomPolicy",
 				},
 				DeferredAttributes: map[string]any{},
+				SecureBoot:         lenovoSecureBoot(),
 			},
 		},
 		{
@@ -161,6 +193,7 @@ func TestCatalogue_builtinProfiles(t *testing.T) {
 					"SecureBootStatus": "Enabled",
 				},
 				DeferredAttributes: map[string]any{},
+				SecureBoot:         vendorSecureBoot(),
 			},
 		},
 		{

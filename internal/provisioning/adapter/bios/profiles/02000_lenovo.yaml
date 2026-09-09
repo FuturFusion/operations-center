@@ -9,3 +9,14 @@
     SecureBootConfiguration_SecureBootStatus: "Enabled"
     SecureBootConfiguration_SecureBootMode: "UserMode"
     SecureBootConfiguration_SecureBootPolicy: "CustomPolicy"
+  secure_boot:
+    db:
+      certificates:
+        # Microsoft Corporation UEFI CA 2011
+        "48e99b991f57fc52f76149599bff0a58c47154229b9f8d603ac40d3500248507": true
+        # Microsoft Option ROM UEFI CA 2023
+        "e5be3e64c6e66a281457ecdece0d6d0787577aad2a3a0144262c10c14ba8d8f1": true
+        # Lenovo Supplier Executable CA 2017
+        "89942cabd60392f5817bbde1ab7be34483ecb3ef2d282737dd266b6b30dfcce1": true
+        # Lenovo UEFI DB
+        "c3bf425c676ffab6158aad94607bb0c678cf9bb927c617c2e1312e9f58eb690f": true
