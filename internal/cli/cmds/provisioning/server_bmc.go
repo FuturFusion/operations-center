@@ -358,8 +358,8 @@ func (c *cmdServerBMCApplySecureBootCertificates) Command() *cobra.Command {
   A database, that holds those certificates already, is left untouched.
 
   Which of the entries currently enrolled survive the wipe is defined by the
-  secure boot allow lists of the BIOS profiles matching the server, on top of
-  the ones built into Operations Center.
+  secure boot allow lists of the BIOS profiles matching the server and by
+  nothing else.
 
   The server has to be powered off and its BIOS has to allow the secure boot
   databases to be modified, which on most systems means secure boot being
