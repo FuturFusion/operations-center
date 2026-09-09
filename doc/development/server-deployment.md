@@ -6,13 +6,13 @@ Deploying IncusOS onto a new machine is a sequence of BMC operations, which
 takes 30 to 60 minutes and has to survive a restart of Operations Center. It is
 driven by the automated deployment control loop, which is triggered with
 
-```
+```none
 POST /1.0/provisioning/servers/{name}/:deploy
 ```
 
 and stopped with
 
-```
+```none
 POST /1.0/provisioning/servers/{name}/:cancel-deploy
 ```
 
@@ -21,7 +21,8 @@ out a BMC, that is not answering anymore.
 
 The deployment request carries the token and the token seed the installation
 media is generated from, and optionally the virtual media device, the image
-type, the architecture and the channel. It deliberately carries **no BIOS
+type, the architecture, which is taken from the BMC when it is not given, and
+the channel. It deliberately carries **no BIOS
 attributes**: those are resolved from the BIOS profiles matching the server.
 
 The progress is reported through the server status and status detail, and in
@@ -47,10 +48,38 @@ requested, so an impossible deployment is rejected right away:
    first device advertising CD or DVD support is picked, the devices offered by
    the system taking precedence over the ones offered by the manager. Only a BMC
    reporting no virtual media device at all rejects the request.
+1. The architecture is settled, see below. Everything the deployment generates
+   is built for it, so it is resolved before anything else is.
+1. A deployment, that asks for the secure boot enrollment media, is rejected
+   where the BMC reports no secure boot mode: Operations Center could then
+   neither put the server into the setup mode the media needs nor tell, whether
+   the enrollment worked.
+1. A deployment, that asks for the secure boot enrollment media, is rejected
+   where the architecture of the server is not `x86_64`, which is the only
+   architecture the media can be built for, see below.
 1. The BIOS profiles matching the server resolve to something. The resolved
    profile names, attributes, deferred attributes and secure boot allow lists
    are snapshotted onto the deployment, so a later change of the catalog does
    not alter what a running deployment applies.
+
+### Architecture
+
+The architecture is taken from the BMC as primary source.
+`BMCData.ServerArchitecture` reads it from what the BMC reports
+about the first processor, preferring the instruction set, which is the only one
+of the two properties, that carries the bitness — Redfish has no 64 bit x86
+architecture, a 64 bit x86 processor reports the architecture `x86`.
+
+The architecture of the request is therefore an **override**, not the source:
+
+* It is filled in from the BMC, when the request does not name one, and the
+  resolved value is what the deployment is persisted with, so everything built
+  later — the installation media and the secure boot enrollment media — is built
+  for the same architecture.
+* A requested architecture, that contradicts the BMC, is rejected.
+* A request naming none for a server, whose BMC reports nothing to go by, is
+  rejected. Naming one explicitly is the escape hatch for such a BMC, and is
+  accepted with a warning, since it can not be confirmed.
 
 ## State machine
 
@@ -90,6 +119,18 @@ stateDiagram-v2
     state "power off" as PowerOffSecureBoot
     state "wait for power off" as WaitPowerOffSecureBoot
     state "secure boot certificates" as SecureBoot
+    state "reset secure boot keys" as ResetSecureBootKeys
+    state "wait for key databases cleared" as WaitSecureBootReset
+    state "power on" as PowerOnSecureBootReset
+    state "wait for setup mode" as WaitSecureBootSetupMode
+    state "power off" as PowerOffSecureBootReset
+    state "wait for power off" as WaitPowerOffSecureBootReset
+    state "attach enrollment media" as AttachSecureBootMedia
+    state "wait for media attached" as WaitSecureBootMediaAttached
+    state "power on" as PowerOnSecureBootMedia
+    state "wait for certificates enrolled" as WaitSecureBootEnrolled
+    state "power off" as PowerOffSecureBootMedia
+    state "wait for power off" as WaitPowerOffSecureBootMedia
     state "clear stale media" as ClearMedia
     state "wait for media cleared" as WaitMediaCleared
     state "power on" as PowerOnSecureBoot
@@ -139,7 +180,27 @@ stateDiagram-v2
     WaitPowerOffSecureBoot --> PowerOffSecureBoot: timeout
     WaitPowerOffSecureBoot --> SecureBoot: power state off
     WaitPowerOffSecureBoot --> ClearMedia: power state off, secure boot certificates skipped
+    WaitPowerOffSecureBoot --> ResetSecureBootKeys: power state off, enrollment media requested
     SecureBoot --> ClearMedia
+    ResetSecureBootKeys --> WaitSecureBootReset: key databases cleared, BMC runs a task
+    ResetSecureBootKeys --> PowerOnSecureBootReset: key databases cleared
+    ResetSecureBootKeys --> AttachSecureBootMedia: already in setup mode
+    WaitSecureBootReset --> PowerOnSecureBootReset: BMC task done
+    PowerOnSecureBootReset --> WaitSecureBootSetupMode
+    WaitSecureBootSetupMode --> PowerOnSecureBootReset: timeout
+    WaitSecureBootSetupMode --> PowerOffSecureBootReset: secure boot mode is setup mode
+    PowerOffSecureBootReset --> WaitPowerOffSecureBootReset
+    WaitPowerOffSecureBootReset --> PowerOffSecureBootReset: timeout
+    WaitPowerOffSecureBootReset --> AttachSecureBootMedia: power state off
+    AttachSecureBootMedia --> WaitSecureBootMediaAttached
+    WaitSecureBootMediaAttached --> AttachSecureBootMedia: timeout
+    WaitSecureBootMediaAttached --> PowerOnSecureBootMedia: enrollment media inserted in selected device
+    PowerOnSecureBootMedia --> WaitSecureBootEnrolled
+    WaitSecureBootEnrolled --> PowerOnSecureBootMedia: timeout
+    WaitSecureBootEnrolled --> PowerOffSecureBootMedia: secure boot mode left setup mode, or reboot detected
+    PowerOffSecureBootMedia --> WaitPowerOffSecureBootMedia
+    WaitPowerOffSecureBootMedia --> PowerOffSecureBootMedia: timeout
+    WaitPowerOffSecureBootMedia --> ClearMedia: power state off
     ClearMedia --> WaitMediaCleared
     WaitMediaCleared --> ClearMedia: timeout
     WaitMediaCleared --> PowerOnSecureBoot: no media inserted
@@ -212,9 +273,7 @@ database is read before it is written and passed by, when it holds the
 certificates of IncusOS plus the allow listed entries and nothing else. Anything,
 that can not be told apart, has it reinitialized. The databases are judged one by
 one, so a correct KEK is left alone even when the dbx has to be rewritten. What
-survives the wipe is named by the `secure_boot` section of the BIOS profiles,
-layered over the allow lists built into Operations Center, which keep the
-Microsoft CAs the option ROMs of most hardware are signed with.
+survives the wipe is named by the `secure_boot` section of the BIOS profiles.
 
 **The firmware is given a boot of its own to pick the certificates up.** It
 applies them during the POST that follows the enrollment and then reboots the
@@ -227,10 +286,101 @@ media is attached. Not every firmware reboots, so the wait settles itself after
 the enrollment wrote to no key database at all.
 
 **Not every BMC lets the UEFI key databases be modified through its Redfish
-API.** A deployment for such a server sets `skip_secure_boot_certificates`, which
-passes the `secure boot certificates` state by; the certificates then have to be
-enrolled by an operator beforehand. The power off keeps its place either way,
-since the server has to be off for the installation media to be attached.
+API.** A deployment for such a server either sets `secure_boot_enrollment_media`,
+which enrolls the certificates by booting a generated image instead, see below,
+or `skip_secure_boot_certificates`, which passes the `secure boot certificates`
+state by and leaves the enrollment to an operator beforehand. The power off keeps
+its place in every case, since the server has to be off for the media to be
+attached.
+
+### Enrolling from the secure boot enrollment media
+
+A BMC, that refuses to write the individual key databases, usually does let them
+be **cleared**: `SecureBoot.ResetKeys` is far more widely implemented than the
+modification of the databases. Clearing them puts the server into the secure boot
+**setup mode**, where the firmware accepts a key database update without checking
+its signature, which is what the enrollment media relies on.
+
+`secure_boot_enrollment_media` therefore replaces the single
+`secure boot certificates` state with two passes, entered from the same power
+off, and rejoining the common path at `clear stale media`:
+
+1. **The reset pass** — `reset secure boot keys` clears the key databases through
+   the BMC, then the server is booted once and powered off again. A BMC, that
+   answers the reset with a task of its own, has it awaited by
+   `wait for key databases cleared` first, so the server is not powered on while
+   the databases are still being cleared. The reset is a no-op for a server, that
+   reports the setup mode already, and the boot is passed by entirely in that
+   case.
+1. **The enrollment pass** — `attach enrollment media` generates the image and
+   attaches it as the boot device, the server boots it once, `systemd-boot`
+   enrolls the key databases, and the server is powered off again.
+
+**Each pass gets a boot of its own**, for the same reason the Redfish enrollment
+gets its settle boot: the firmware picks a cleared key database up during the
+POST that follows, so the reset has to be in effect before the enrollment media
+is booted.
+
+**Both waits around the boots are satisfied from the secure boot mode the BMC
+reports.** The `wait for setup mode` ends when the mode is `SetupMode`, and the
+`wait for certificates enrolled` when it is anything else again. A BMC, that
+reports no mode at all, is rejected when the deployment is requested rather than
+here — it could neither establish the setup mode nor tell whether the enrollment
+worked — so the fallback to the reboot, that `systemd-boot` performs after
+enrolling, only ever applies to a BMC, that stopped reporting the mode midway.
+The `wait for key databases cleared` is the exception: there is no observable
+condition while the server stays powered off, so it follows the BMC task and
+gives up on it once the BMC has forgotten it.
+
+**The enrollment media is attached to the virtual media device of the
+deployment**, the same one the installation media uses later, and is ejected by
+`clear stale media` before the installation media is attached. Nothing else
+distinguishes it from the installation media as far as the BMC is concerned.
+
+**Only certificate material is enrolled again.** The allow list of the BIOS
+profiles is resolved to the certificates of the catalog, while an allow listed
+signature is reported as a warning and lost: the media enrolls signature lists
+built from certificates, so there is nothing to rebuild a bare signature from.
+
+Since the enrollment media enrolls the certificates itself, the deployment never
+sets `SecureBootPending`, so the settle boot of the Redfish path is passed by and
+the deployment continues straight to `attach media`.
+
+### Building the secure boot enrollment media
+
+Where the key databases can not be written through the Redfish API, the
+certificates are enrolled by booting a generated image instead.
+The image holds nothing but an **unsigned** copy of `systemd-boot` and the `PK`,
+`KEK`, `db` and `dbx` updates in `loader/keys/auto/`, with
+`secure-boot-enroll force` in its `loader.conf`. Being unsigned, it only ever
+boots on a server whose secure boot is in setup mode, where it enrolls the
+certificates, or disabled, where it does nothing at all.
+
+**The media is only built for `x86_64` servers.** The image holds the boot loader
+of the architecture it boots, `systemd-bootx64.efi`, and `systemd-boot-efi` only
+ships the boot loader of the architecture it is installed for, which is the
+`x86_64` Operations Center is deployed on. A deployment of a server of any other
+architecture is therefore rejected when it is requested, rather than failing once
+the media is built.
+
+**The generation shells out** to `cert-to-efi-sig-list` and `sign-efi-sig-list`
+(`efitools`), `mkfs.vfat` (`dosfstools`), `mcopy` (`mtools`) and
+`systemd-repart`, and takes the boot loader from `systemd-boot-efi`. All of them
+are checked when the deployment is requested. The key database updates are
+signed with a throw away key generated per image: the signature is never
+checked, since the enrollment only happens in setup mode, and the certificate
+ending up enrolled is the one inside the signature list, never the one signing
+it.
+
+**The partition table is laid out for 2048 byte logical blocks.** A BMC presents
+the media as a CD, which is read in blocks of that size, so a table laid out for
+the 512 byte blocks of a disk is not found by the firmware at all. That block
+size is why `systemd-repart --sector-size=2048` writes the table: `sgdisk` takes
+the sector size from the device it is pointed at and would need the image to be
+attached as a loop device to write anything but a 512 byte one. `systemd-repart`
+writes it to a regular file, so the generation needs no privileges, and every
+identifier of the table is derived from `--seed=`, which keeps the very same
+certificates producing the very same image.
 
 ### Power and failure handling
 
@@ -403,11 +553,12 @@ every state, its timeout, the trigger a wait falls back to and the successor.
   deadline of its own, so a BMC, that accepts the connection and then stops
   answering, ends the attempt instead of parking the control loop. Running out
   of it is retryable, so a trigger is issued again and a wait is simply
-  evaluated again. Two actions get a budget of their own, since their legitimate
-  duration is minutes rather than seconds: **attach media**, which a BMC, that
-  uploads the installation media instead of streaming it, only answers once it
-  has read the whole image, and **secure boot**, which removes every entry of
-  the key databases with a request of its own.
+  evaluated again. Four actions get a budget of their own, since their legitimate
+  duration is minutes rather than seconds: **attach media** and
+  **attach enrollment media**, which a BMC, that uploads the media instead of
+  streaming it, only answers once it has read the whole image, and
+  **secure boot** and **reset secure boot keys**, which touch every entry of the
+  key databases with a request of its own.
 * **BIOS re-application**: a verification, that finds an attribute at the wrong
   value, and a BIOS wait, that times out, both route the deployment back to the
   **power off** of their pass rather than to the application itself, since the
