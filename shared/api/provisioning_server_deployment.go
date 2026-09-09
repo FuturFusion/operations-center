@@ -65,6 +65,21 @@ type ServerDeploymentPost struct {
 	// operator before the deployment is triggered.
 	// Example: false
 	SkipSecureBootCertificates bool `json:"skip_secure_boot_certificates" yaml:"skip_secure_boot_certificates"`
+
+	// SecureBootEnrollmentMedia requests, that the secure boot certificates of
+	// IncusOS are enrolled by booting a generated enrollment media instead of
+	// through the Redfish API, which is what a BMC, that can not modify the UEFI
+	// key databases itself, needs. Operations Center resets the key databases of
+	// the server first, which puts it into the secure boot setup mode the
+	// enrollment media needs.
+	// Example: false
+	SecureBootEnrollmentMedia bool `json:"secure_boot_enrollment_media" yaml:"secure_boot_enrollment_media"`
+}
+
+// SecureBootMediaPathSegments returns the path segments addressing one generated
+// secure boot enrollment media, e.g. "1.0/provisioning/secure-boot-media/a1B2c3D4e5F6.iso".
+func SecureBootMediaPathSegments(mediaID string) []string {
+	return []string{"1.0", "provisioning", "secure-boot-media", mediaID + ".iso"}
 }
 
 // ServerDeploymentState is the state, the automated deployment of a server is in.
@@ -137,6 +152,54 @@ const (
 	// ServerDeploymentStateSecureBoot initializes the secure boot databases of
 	// the server with the certificates of IncusOS.
 	ServerDeploymentStateSecureBoot ServerDeploymentState = "secure-boot-certificates"
+
+	// ServerDeploymentStateResetSecureBootKeys clears the UEFI key databases of
+	// the server, which puts it into the secure boot setup mode the enrollment
+	// media needs.
+	ServerDeploymentStateResetSecureBootKeys ServerDeploymentState = "reset-secure-boot-keys"
+
+	// ServerDeploymentStateWaitSecureBootReset waits for the BMC to be done
+	// clearing the key databases, before the server is powered on again.
+	ServerDeploymentStateWaitSecureBootReset ServerDeploymentState = "wait-secure-boot-reset"
+
+	// ServerDeploymentStatePowerOnSecureBootReset powers the server on, so the
+	// firmware picks the cleared key databases up.
+	ServerDeploymentStatePowerOnSecureBootReset ServerDeploymentState = "power-on-secure-boot-reset"
+
+	// ServerDeploymentStateWaitSecureBootSetupMode waits for the server to report
+	// the secure boot setup mode.
+	ServerDeploymentStateWaitSecureBootSetupMode ServerDeploymentState = "wait-secure-boot-setup-mode"
+
+	// ServerDeploymentStatePowerOffSecureBootReset powers the server off again,
+	// so the secure boot enrollment media can be attached.
+	ServerDeploymentStatePowerOffSecureBootReset ServerDeploymentState = "power-off-secure-boot-reset"
+
+	// ServerDeploymentStateWaitPowerOffSecureBootReset waits for the server to be powered off.
+	ServerDeploymentStateWaitPowerOffSecureBootReset ServerDeploymentState = "wait-power-off-secure-boot-reset"
+
+	// ServerDeploymentStateAttachSecureBootMedia attaches the secure boot
+	// enrollment media and registers it as the boot device for the next boot.
+	ServerDeploymentStateAttachSecureBootMedia ServerDeploymentState = "attach-secure-boot-media"
+
+	// ServerDeploymentStateWaitSecureBootMediaAttached waits for the secure boot
+	// enrollment media to be reported as inserted.
+	ServerDeploymentStateWaitSecureBootMediaAttached ServerDeploymentState = "wait-secure-boot-media-attached"
+
+	// ServerDeploymentStatePowerOnSecureBootMedia powers the server on, so it
+	// boots the secure boot enrollment media.
+	ServerDeploymentStatePowerOnSecureBootMedia ServerDeploymentState = "power-on-secure-boot-media"
+
+	// ServerDeploymentStateWaitSecureBootEnrolled waits for the enrollment media
+	// to have enrolled the certificates, which the server signals by leaving the
+	// secure boot setup mode.
+	ServerDeploymentStateWaitSecureBootEnrolled ServerDeploymentState = "wait-secure-boot-enrolled"
+
+	// ServerDeploymentStatePowerOffSecureBootMedia powers the server off again,
+	// so the enrollment media can be ejected and the installation media attached.
+	ServerDeploymentStatePowerOffSecureBootMedia ServerDeploymentState = "power-off-secure-boot-media"
+
+	// ServerDeploymentStateWaitPowerOffSecureBootMedia waits for the server to be powered off.
+	ServerDeploymentStateWaitPowerOffSecureBootMedia ServerDeploymentState = "wait-power-off-secure-boot-media"
 
 	// ServerDeploymentStateClearMedia ejects the media left in the virtual media
 	// devices of the server.
@@ -233,6 +296,18 @@ var serverDeploymentStates = map[ServerDeploymentState]struct{}{
 	ServerDeploymentStatePowerOffSecureBoot:            {},
 	ServerDeploymentStateWaitPowerOffSecureBoot:        {},
 	ServerDeploymentStateSecureBoot:                    {},
+	ServerDeploymentStateResetSecureBootKeys:           {},
+	ServerDeploymentStateWaitSecureBootReset:           {},
+	ServerDeploymentStatePowerOnSecureBootReset:        {},
+	ServerDeploymentStateWaitSecureBootSetupMode:       {},
+	ServerDeploymentStatePowerOffSecureBootReset:       {},
+	ServerDeploymentStateWaitPowerOffSecureBootReset:   {},
+	ServerDeploymentStateAttachSecureBootMedia:         {},
+	ServerDeploymentStateWaitSecureBootMediaAttached:   {},
+	ServerDeploymentStatePowerOnSecureBootMedia:        {},
+	ServerDeploymentStateWaitSecureBootEnrolled:        {},
+	ServerDeploymentStatePowerOffSecureBootMedia:       {},
+	ServerDeploymentStateWaitPowerOffSecureBootMedia:   {},
 	ServerDeploymentStateClearMedia:                    {},
 	ServerDeploymentStateWaitMediaCleared:              {},
 	ServerDeploymentStatePowerOnSecureBoot:             {},
@@ -340,6 +415,11 @@ type ServerDeploymentStatus struct {
 
 	// MediaURL holds the URL of the installation media attached to the server.
 	MediaURL string `json:"media_url" yaml:"media_url"`
+
+	// SecureBootMediaURL holds the URL of the secure boot enrollment media
+	// attached to the server. It is empty for a deployment, that does not enroll
+	// the secure boot certificates from an enrollment media.
+	SecureBootMediaURL string `json:"secure_boot_media_url" yaml:"secure_boot_media_url"`
 
 	// MediaBytesRead holds how much of the installation media the BMC has read so
 	// far. It counts every byte of the image once, no matter how often the BMC
