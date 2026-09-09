@@ -1067,6 +1067,11 @@ func Test_deploymentStates(t *testing.T) {
 			require.NotEqual(t, state, definition.next, "state %q leads to itself", state)
 			require.Contains(t, deploymentStates, definition.next, "state %q leads to the unknown state %q", state, definition.next)
 
+			for _, branch := range definition.branches {
+				require.NotEqual(t, state, branch, "state %q branches to itself", state)
+				require.Contains(t, deploymentStates, branch, "state %q branches to the unknown state %q", state, branch)
+			}
+
 			if definition.kind == deploymentStateKindAction {
 				require.Empty(t, definition.fallback, "action state %q has a fallback", state)
 				require.Zero(t, definition.timeout, "action state %q has a timeout", state)
@@ -1121,6 +1126,10 @@ func Test_deploymentStatesAreAllReachable(t *testing.T) {
 
 		if definition.fallback != "" {
 			walk(definition.fallback)
+		}
+
+		for _, branch := range definition.branches {
+			walk(branch)
 		}
 	}
 

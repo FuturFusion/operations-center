@@ -6,6 +6,7 @@ import (
 	"time"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 )
 
 // SecureBootCertificateSourcePort provides the secure boot certificates of
@@ -30,9 +31,15 @@ type SecureBootCertificateCatalogPort interface {
 // which enrolls the certificates of IncusOS on a server, whose BMC can not
 // modify the UEFI key databases itself.
 type SecureBootMediaPort interface {
-	// Generate builds the enrollment media for the certificates and returns the
-	// ID addressing it.
-	Generate(ctx context.Context, certificates SecureBootCertificates) (string, error)
+	// CheckSupported reports, whether the enrollment media can be generated for
+	// architecture at all, so a deployment, which would fail to generate it, is
+	// rejected before it touches the server.
+	CheckSupported(ctx context.Context, architecture images.UpdateFileArchitecture) error
+
+	// Generate builds the enrollment media, that boots on architecture and
+	// enrolls the certificates, and returns the ID addressing it. Generating the
+	// very same media twice returns the same ID and does the work only once.
+	Generate(ctx context.Context, architecture images.UpdateFileArchitecture, certificates SecureBootCertificates) (string, error)
 
 	// Open returns the already generated enrollment media addressed by id.
 	Open(ctx context.Context, id string) (*SecureBootMediaImage, error)

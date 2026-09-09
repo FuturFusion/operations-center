@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"math"
 	"net"
 	"net/http"
@@ -3035,6 +3036,14 @@ func (s *serverService) keptSecureBootCertificates(ctx context.Context, log *slo
 		log.WarnContext(ctx, "Secure boot certificate is kept by a BIOS profile, but is not part of the certificate catalog, so the enrollment media can not enroll it", slog.String("database", database), slog.String("fingerprint", fingerprint))
 	}
 
+	for _, signature := range slices.Sorted(maps.Keys(allowList.Signatures)) {
+		if !allowList.Signatures[signature] {
+			continue
+		}
+
+		log.WarnContext(ctx, "Secure boot signature is kept by a BIOS profile, but the enrollment media can only enroll certificates, so it is lost", slog.String("database", database), slog.String("signature", signature))
+	}
+
 	return certificates
 }
 
@@ -3055,13 +3064,13 @@ func nonEmptyStrings(values []string) []string {
 // bmcAttachSecureBootMediaByName generates the secure boot enrollment media for
 // the certificates, attaches it and registers it as the boot device for the next
 // boot.
-func (s *serverService) bmcAttachSecureBootMediaByName(ctx context.Context, log *slog.Logger, server provisioning.Server, secureBoot api.BIOSSecureBoot, virtualMediaID string) (bmcAttachedMedia, error) {
+func (s *serverService) bmcAttachSecureBootMediaByName(ctx context.Context, log *slog.Logger, server provisioning.Server, architecture images.UpdateFileArchitecture, secureBoot api.BIOSSecureBoot, virtualMediaID string) (bmcAttachedMedia, error) {
 	certificates, err := s.secureBootEnrollmentCertificates(ctx, log, secureBoot)
 	if err != nil {
 		return bmcAttachedMedia{}, err
 	}
 
-	mediaID, err := s.secureBootMedia.Generate(ctx, certificates)
+	mediaID, err := s.secureBootMedia.Generate(ctx, architecture, certificates)
 	if err != nil {
 		return bmcAttachedMedia{}, err
 	}
