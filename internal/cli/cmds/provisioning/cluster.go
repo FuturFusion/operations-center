@@ -549,6 +549,11 @@ func (c *cmdClusterEdit) helpTemplate() string {
 ### channel: stable
 ### description: ""
 ### properties: {}
+### config:
+###   rolling_restart:
+###     post_restore_delay: 15m
+###     restore_mode: ""
+###     step_timeout: 45m
 `
 }
 
@@ -764,6 +769,16 @@ func (c *cmdClusterShow) run(cmd *cobra.Command, args []string) error {
 			inMaintenance = "-"
 		}
 
+		restoreMode := cluster.Config.RollingRestart.RestoreMode
+		if restoreMode == "" {
+			restoreMode = "default"
+		}
+
+		postRestoreDelay := cluster.Config.RollingRestart.PostRestoreDelay
+		if postRestoreDelay == "" {
+			postRestoreDelay = "-"
+		}
+
 		fmt.Printf("Name: %s\n", cluster.Name)
 		fmt.Printf("Connection URL: %s\n", cluster.ConnectionURL)
 		fmt.Printf("Description: %s\n", cluster.Description)
@@ -775,6 +790,10 @@ func (c *cmdClusterShow) run(cmd *cobra.Command, args []string) error {
 		fmt.Printf("  Need Update: %s\n", needUpdate)
 		fmt.Printf("  Need Reboot: %s\n", needReboot)
 		fmt.Printf("  In Maintenance: %s\n", inMaintenance)
+		fmt.Printf("Rolling Restart:\n")
+		fmt.Printf("  Restore Mode: %s\n", restoreMode)
+		fmt.Printf("  Post Restore Delay: %s\n", postRestoreDelay)
+		fmt.Printf("  Step Timeout: %s\n", cluster.Config.RollingRestart.GetStepTimeout())
 		fmt.Printf("Last Updated: %s\n", cluster.LastUpdated.Truncate(time.Second).String())
 
 		if c.flagShowProperties {
