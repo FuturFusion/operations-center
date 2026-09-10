@@ -145,6 +145,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
+//			ResetMaintenanceStateByNameFunc: func(ctx context.Context, name string) error {
+//				panic("mock out the ResetMaintenanceStateByName method")
+//			},
 //			RestartApplicationFunc: func(ctx context.Context, name string, applicationName string) error {
 //				panic("mock out the RestartApplication method")
 //			},
@@ -322,6 +325,9 @@ type ServerServiceMock struct {
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
+
+	// ResetMaintenanceStateByNameFunc mocks the ResetMaintenanceStateByName method.
+	ResetMaintenanceStateByNameFunc func(ctx context.Context, name string) error
 
 	// RestartApplicationFunc mocks the RestartApplication method.
 	RestartApplicationFunc func(ctx context.Context, name string, applicationName string) error
@@ -702,6 +708,13 @@ type ServerServiceMock struct {
 			// NewName is the newName argument value.
 			NewName string
 		}
+		// ResetMaintenanceStateByName holds details about calls to the ResetMaintenanceStateByName method.
+		ResetMaintenanceStateByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
 		// RestartApplication holds details about calls to the RestartApplication method.
 		RestartApplication []struct {
 			// Ctx is the ctx argument value.
@@ -888,6 +901,7 @@ type ServerServiceMock struct {
 	lockRebootSystemByName                   sync.RWMutex
 	lockRegister                             sync.RWMutex
 	lockRename                               sync.RWMutex
+	lockResetMaintenanceStateByName          sync.RWMutex
 	lockRestartApplication                   sync.RWMutex
 	lockRestoreSystemByName                  sync.RWMutex
 	lockResyncBMCData                        sync.RWMutex
@@ -2436,6 +2450,42 @@ func (mock *ServerServiceMock) RenameCalls() []struct {
 	mock.lockRename.RLock()
 	calls = mock.calls.Rename
 	mock.lockRename.RUnlock()
+	return calls
+}
+
+// ResetMaintenanceStateByName calls ResetMaintenanceStateByNameFunc.
+func (mock *ServerServiceMock) ResetMaintenanceStateByName(ctx context.Context, name string) error {
+	if mock.ResetMaintenanceStateByNameFunc == nil {
+		panic("ServerServiceMock.ResetMaintenanceStateByNameFunc: method is nil but ServerService.ResetMaintenanceStateByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockResetMaintenanceStateByName.Lock()
+	mock.calls.ResetMaintenanceStateByName = append(mock.calls.ResetMaintenanceStateByName, callInfo)
+	mock.lockResetMaintenanceStateByName.Unlock()
+	return mock.ResetMaintenanceStateByNameFunc(ctx, name)
+}
+
+// ResetMaintenanceStateByNameCalls gets all the calls that were made to ResetMaintenanceStateByName.
+// Check the length with:
+//
+//	len(mockedServerService.ResetMaintenanceStateByNameCalls())
+func (mock *ServerServiceMock) ResetMaintenanceStateByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockResetMaintenanceStateByName.RLock()
+	calls = mock.calls.ResetMaintenanceStateByName
+	mock.lockResetMaintenanceStateByName.RUnlock()
 	return calls
 }
 

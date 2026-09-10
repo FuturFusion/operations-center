@@ -15,6 +15,7 @@ type ExprApiClusterConfig struct {
 type ExprApiClusterConfigRollingRestart struct {
 	PostRestoreDelay string `json:"post_restore_delay" yaml:"post_restore_delay" expr:"post_restore_delay"`
 	RestoreMode      string `json:"restore_mode" yaml:"restore_mode" expr:"restore_mode"`
+	StepTimeout      string `json:"step_timeout" yaml:"step_timeout" expr:"step_timeout"`
 }
 
 type ExprApiClusterUpdateInProgressStatus struct {
@@ -62,6 +63,7 @@ func ToExprApiClusterConfigRollingRestart(c api.ClusterConfigRollingRestart) Exp
 	return ExprApiClusterConfigRollingRestart{
 		PostRestoreDelay: c.PostRestoreDelay,
 		RestoreMode:      c.RestoreMode,
+		StepTimeout:      c.StepTimeout,
 	}
 }
 

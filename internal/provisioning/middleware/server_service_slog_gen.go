@@ -1444,6 +1444,40 @@ func (_d ServerServiceWithSlog) Rename(ctx context.Context, oldName string, newN
 	return _d._base.Rename(ctx, oldName, newName)
 }
 
+// ResetMaintenanceStateByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) ResetMaintenanceStateByName(ctx context.Context, name string) (err error) {
+	log := slog.With()
+	if slog.Default().Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ResetMaintenanceStateByName")
+	defer func() {
+		log := slog.With()
+		if slog.Default().Enabled(ctx, logger.LevelTrace) {
+			log = slog.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = slog.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method ResetMaintenanceStateByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method ResetMaintenanceStateByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method ResetMaintenanceStateByName finished")
+		}
+	}()
+	return _d._base.ResetMaintenanceStateByName(ctx, name)
+}
+
 // RestartApplication implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) RestartApplication(ctx context.Context, name string, applicationName string) (err error) {
 	log := slog.With()

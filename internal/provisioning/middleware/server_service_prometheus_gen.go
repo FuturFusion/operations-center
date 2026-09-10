@@ -601,6 +601,20 @@ func (_d ServerServiceWithPrometheus) Rename(ctx context.Context, oldName string
 	return _d.base.Rename(ctx, oldName, newName)
 }
 
+// ResetMaintenanceStateByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) ResetMaintenanceStateByName(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResetMaintenanceStateByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ResetMaintenanceStateByName(ctx, name)
+}
+
 // RestartApplication implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) RestartApplication(ctx context.Context, name string, applicationName string) (err error) {
 	_since := time.Now()
