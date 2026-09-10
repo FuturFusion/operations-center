@@ -75,6 +75,44 @@ flowchart TD
     Abort -----------> CleanupDB
 ```
 
+### Stalled steps
+
+While the rolling update waits for an evacuation, a reboot or a restore, it has
+triggered, to complete, the control loop does nothing but keep the run alive.
+
+A step, that completes, does not need a watchdog. Polling reads the maintenance
+state of the member back from Incus on every tick, so a completed evacuation or
+restore is picked up from the next poll at the latest, whether or not the Incus
+lifecycle event and the goroutine waiting on the Incus operation have delivered
+it.
+
+A restore, that fails or never starts, is what wedges the run, because then there
+is nothing for polling to observe. Incus correctly keeps reporting the member as
+evacuated, while the `restoring` status detail, which Operations Center sets when
+it triggers the step, is a marker of its own, which polling deliberately never
+clears, since the post restore phase relies on it. Together the two are reported
+as `restoring`, and the only thing left, that clears the marker, is the failure
+callback of the Incus operation, which lives in memory. If it does not fire, e.g.
+because Operations Center was restarted or because the connection to the
+operation was lost, the marker stays behind for good, and the run waits for it
+forever. Relaunching the update does not help either: a server, which reports
+itself as `restoring`, is not covered by the handling of the servers, which have
+been evacuated before the run, so the new run lands on the same idle step.
+
+`ClusterConfigRollingRestart.StepTimeout` therefore bounds every one of these
+steps. It defaults to `DefaultRollingRestartStepTimeout` and has to be generous
+enough to cover the evacuation of the busiest server of the cluster. Once a step
+exceeds it, the rolling update reacts in one of two ways:
+
+* A restore, for which Incus does not report a matching maintenance state, is
+  such a leftover marker. The step is rewound, so the control loop triggers the
+  restore again. Since a rewound step still counts as an attempt, a step, which
+  keeps stalling, runs out of attempts and ends the run.
+* Everything else, in particular a state Incus itself still reports as ongoing,
+  is stuck outside of Operations Center, which it can not resolve on its own. The
+  run is parked in the error state, naming the server and the state it is stuck
+  in.
+
 ## On-demand Rolling Reboot
 
 A rolling reboot reboots every server of a cluster, one at a time, independently
