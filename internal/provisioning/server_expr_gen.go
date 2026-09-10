@@ -526,6 +526,17 @@ type ExprServerDeploymentRequest struct {
 
 type ExprServerStatusInternal struct {
 	Deployment *ExprServerDeployment `json:"deployment,omitempty" expr:"deployment"`
+	Update     *ExprServerUpdate     `json:"update,omitempty" expr:"update"`
+}
+
+type ExprServerTriggeredUpdate struct {
+	OS           string            `json:"os,omitempty" expr:"os"`
+	Applications map[string]string `json:"applications,omitempty" expr:"applications"`
+	TriggeredAt  time.Time         `json:"triggered_at" expr:"triggered_at"`
+}
+
+type ExprServerUpdate struct {
+	Triggered *ExprServerTriggeredUpdate `json:"triggered,omitempty" expr:"triggered"`
 }
 
 func ToExprApiApplicationVersionData(a api.ApplicationVersionData) ExprApiApplicationVersionData {
@@ -1147,5 +1158,20 @@ func ToExprServerDeploymentRequest(s ServerDeploymentRequest) ExprServerDeployme
 func ToExprServerStatusInternal(s ServerStatusInternal) ExprServerStatusInternal {
 	return ExprServerStatusInternal{
 		Deployment: toPtr(ToExprServerDeployment(fromPtr(s.Deployment))),
+		Update:     toPtr(ToExprServerUpdate(fromPtr(s.Update))),
+	}
+}
+
+func ToExprServerTriggeredUpdate(s ServerTriggeredUpdate) ExprServerTriggeredUpdate {
+	return ExprServerTriggeredUpdate{
+		OS:           s.OS,
+		Applications: s.Applications,
+		TriggeredAt:  s.TriggeredAt,
+	}
+}
+
+func ToExprServerUpdate(s ServerUpdate) ExprServerUpdate {
+	return ExprServerUpdate{
+		Triggered: toPtr(ToExprServerTriggeredUpdate(fromPtr(s.Triggered))),
 	}
 }

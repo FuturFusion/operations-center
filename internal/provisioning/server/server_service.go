@@ -890,6 +890,7 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate provisionin
 			server.Status = api.ServerStatusReady
 			s.volatileServerStates.resetAll(ctx, server.Name)
 			server.StatusDetail = api.ServerStatusDetailNone
+			server.StatusInternal.Update = nil
 			server.LastStatusUpdated = s.now()
 			server.VersionData.OS.NeedsReboot = false
 
@@ -1655,6 +1656,40 @@ func (s *serverService) UpdateSystemByName(ctx context.Context, name string, upd
 			server.StatusDetail = api.ServerStatusDetailReadyUpdatingApplication
 		}
 
+		// Remember, which components the update covers, so that polling can tell
+		// when it is done. Components, for which no version is available, have no
+		// expectation to reach and are left out.
+		if updateRequest.OS.TriggerUpdate || len(applications) > 0 {
+			triggeredUpdate := provisioning.ServerTriggeredUpdate{
+				TriggeredAt: s.now(),
+			}
+
+			if updateRequest.OS.TriggerUpdate {
+				triggeredUpdate.OS = ptr.From(server.VersionData.OS.AvailableVersion)
+			}
+
+			for _, application := range server.VersionData.Applications {
+				// An OS update makes IncusOS update every application as well, so all
+				// of those in need of an update are covered by it.
+				isCovered := slices.Contains(applications, application.Name) ||
+					(updateRequest.OS.TriggerUpdate && ptr.From(application.NeedsUpdate))
+
+				if !isCovered || application.AvailableVersion == nil {
+					continue
+				}
+
+				if triggeredUpdate.Applications == nil {
+					triggeredUpdate.Applications = make(map[string]string, len(server.VersionData.Applications))
+				}
+
+				triggeredUpdate.Applications[application.Name] = *application.AvailableVersion
+			}
+
+			server.StatusInternal.Update = &provisioning.ServerUpdate{
+				Triggered: &triggeredUpdate,
+			}
+		}
+
 		server.LastStatusUpdated = s.now()
 
 		err = s.Update(ctx, *server, false, false, false)
@@ -2213,6 +2248,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 			s.volatileServerStates.resetAll(ctx, server.Name)
 			server.Status = api.ServerStatusReady
 			server.StatusDetail = api.ServerStatusDetailNone
+			server.StatusInternal.Update = nil
 			server.LastStatusUpdated = s.now()
 			signalLifecycle = true
 		}
@@ -2266,7 +2302,7 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 		// If not, updating is done.
 		if server.StatusDetail == api.ServerStatusDetailReadyUpdatingOS ||
 			server.StatusDetail == api.ServerStatusDetailReadyUpdatingApplication {
-			needsUpdate := ptr.From(server.VersionData.NeedsUpdate)
+			currentVersionData := server.VersionData
 
 			if updateServerConfiguration {
 				freshServer := *server
@@ -2278,11 +2314,22 @@ func (s *serverService) PollServer(ctx context.Context, server provisioning.Serv
 					return fmt.Errorf("Failed to enrich version data of server %q: %w", server.Name, err)
 				}
 
-				needsUpdate = ptr.From(freshServer.VersionData.NeedsUpdate)
+				currentVersionData = freshServer.VersionData
 			}
 
-			if !needsUpdate {
+			// Only the components, the update has been triggered for, decide whether
+			// it is done. Updates, which have been triggered before the covered
+			// components were recorded, fall back to the aggregate over all of them.
+			updatePending := ptr.From(currentVersionData.NeedsUpdate)
+
+			update := server.StatusInternal.Update
+			if update != nil && update.Triggered != nil {
+				updatePending = update.Triggered.IsPending(currentVersionData)
+			}
+
+			if !updatePending {
 				server.StatusDetail = api.ServerStatusDetailNone
+				server.StatusInternal.Update = nil
 				server.LastStatusUpdated = s.now()
 			}
 		}
