@@ -81,6 +81,12 @@ const ClusterOverview = () => {
         </div>
       </div>
       <div className="row">
+        <div className="col-2 detail-table-header">Step timeout</div>
+        <div className="col-10 detail-table-cell">
+          {cluster?.config.rolling_restart.step_timeout}
+        </div>
+      </div>
+      <div className="row">
         <div className="col-2 detail-table-header">Certificate</div>
         <div className="col-10 detail-table-cell">
           <pre>{cluster?.certificate}</pre>

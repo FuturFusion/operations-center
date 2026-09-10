@@ -19,6 +19,7 @@ export interface ClusterProperty {
 export interface ClusterConfigRollingRestart {
   post_restore_delay: string;
   restore_mode: string;
+  step_timeout: string;
 }
 
 export interface ClusterConfig {
@@ -62,6 +63,7 @@ export interface ClusterFormValues {
   properties: ClusterProperty;
   restore_mode: string;
   post_restore_delay: string;
+  step_timeout: string;
 }
 
 export interface ClusterCertFormValues {

@@ -61,6 +61,7 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
       rolling_restart: {
         post_restore_delay: "",
         restore_mode: "",
+        step_timeout: "",
       },
     },
   };
@@ -109,6 +110,7 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
           rolling_restart: {
             post_restore_delay: "",
             restore_mode: "",
+            step_timeout: "",
           },
         },
       });

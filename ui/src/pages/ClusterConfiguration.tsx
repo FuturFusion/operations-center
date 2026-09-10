@@ -23,6 +23,7 @@ const ClusterConfiguration = () => {
             rolling_restart: {
               post_restore_delay: values.post_restore_delay,
               restore_mode: values.restore_mode,
+              step_timeout: values.step_timeout,
             },
           },
         },

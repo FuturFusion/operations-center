@@ -22,6 +22,7 @@ const ClusterForm: FC<Props> = ({ cluster, onRename, onSubmit }) => {
     post_restore_delay:
       cluster?.config.rolling_restart.post_restore_delay || "",
     restore_mode: cluster?.config.rolling_restart.restore_mode || "",
+    step_timeout: cluster?.config.rolling_restart.step_timeout || "",
   };
 
   const formik = useFormik({
@@ -102,6 +103,16 @@ const ClusterForm: FC<Props> = ({ cluster, onRename, onSubmit }) => {
               type="text"
               name="post_restore_delay"
               value={formik.values.post_restore_delay}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="step_timeout">
+            <Form.Label>Step timeout</Form.Label>
+            <Form.Control
+              type="text"
+              name="step_timeout"
+              value={formik.values.step_timeout}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
             />
