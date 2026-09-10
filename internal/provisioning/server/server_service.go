@@ -1559,6 +1559,52 @@ func (s *serverService) RestoreSystemByName(ctx context.Context, name string, cl
 	return nil
 }
 
+// errStalledMaintenanceStep is recorded as the outcome of an evacuation or a
+// restore, whose Incus operation is gone without Operations Center having
+// observed how it ended.
+var errStalledMaintenanceStep = errors.New("Maintenance step stalled")
+
+// ResetMaintenanceStateByName clears the marker, which Operations Center sets on
+// a server while it waits for an evacuation or a restore to complete, and
+// records the step as failed.
+func (s *serverService) ResetMaintenanceStateByName(ctx context.Context, name string) error {
+	var server *provisioning.Server
+
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+
+		server, err = s.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+		}
+
+		if server.StatusDetail != api.ServerStatusDetailReadyEvacuating &&
+			server.StatusDetail != api.ServerStatusDetailReadyRestoring {
+			// Nothing to rewind, the step has been completed in the meantime.
+			return nil
+		}
+
+		slog.WarnContext(ctx, "Resetting stalled maintenance state", slog.String("server", name), slog.String("status_detail", server.StatusDetail.String()))
+
+		server.StatusDetail = api.ServerStatusDetailNone
+		server.LastStatusUpdated = s.now()
+
+		return s.repo.Update(ctx, *server)
+	})
+	if err != nil {
+		return err
+	}
+
+	// Mark the operation as no longer in flight, but keep the retry count, so a
+	// step, which keeps stalling, still runs out of attempts.
+	s.volatileServerStates.done(ctx, name, operationEvacuation, errStalledMaintenanceStep)
+	s.volatileServerStates.done(ctx, name, operationRestore, errStalledMaintenanceStep)
+
+	server.SignalLifecycleEvent()
+
+	return nil
+}
+
 func (s *serverService) PostRestoreSystemDoneByName(ctx context.Context, name string) error {
 	var server *provisioning.Server
 

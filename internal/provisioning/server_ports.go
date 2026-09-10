@@ -42,6 +42,7 @@ type ServerService interface {
 	RebootSystemByName(ctx context.Context, name string, force bool) error
 	RestoreSystemByName(ctx context.Context, name string, clusterUpdate bool, force bool, restoreModeSkip bool) error
 	PostRestoreSystemDoneByName(ctx context.Context, name string) error
+	ResetMaintenanceStateByName(ctx context.Context, name string) error
 	UpdateSystemByName(ctx context.Context, name string, updateRequest api.ServerUpdatePost, force bool) error
 	FactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string, force bool) error
 

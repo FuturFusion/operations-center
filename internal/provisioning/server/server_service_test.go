@@ -8040,6 +8040,183 @@ func TestServerService_PostRestoreSystemDoneByName(t *testing.T) {
 	}
 }
 
+func TestServerService_ResetMaintenanceStateByName(t *testing.T) {
+	tests := []struct {
+		name             string
+		repoGetByName    provisioning.Server
+		repoGetByNameErr error
+		repoUpdateErr    error
+
+		assertErr           require.ErrorAssertionFunc
+		assertUpdatedServer func(t *testing.T, server *provisioning.Server)
+	}{
+		{
+			name: "success - stalled restore is rewound",
+			repoGetByName: provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailReadyRestoring,
+				Type:         api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name:          "incus",
+							InMaintenance: api.InMaintenanceEvacuated,
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertUpdatedServer: func(t *testing.T, server *provisioning.Server) {
+				t.Helper()
+
+				require.NotNil(t, server, "the stalled restore has not been rewound")
+				require.Equal(t, api.ServerStatusDetailNone, server.StatusDetail)
+				require.Equal(t, api.InMaintenanceEvacuated, server.VersionData.Applications[0].InMaintenance)
+			},
+		},
+		{
+			name: "success - stalled evacuation is rewound",
+			repoGetByName: provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailReadyEvacuating,
+				Type:         api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name:          "incus",
+							InMaintenance: api.InMaintenanceEvacuating,
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertUpdatedServer: func(t *testing.T, server *provisioning.Server) {
+				t.Helper()
+
+				require.NotNil(t, server, "the stalled evacuation has not been rewound")
+				require.Equal(t, api.ServerStatusDetailNone, server.StatusDetail)
+			},
+		},
+		{
+			name: "success - no marker to rewind",
+			repoGetByName: provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailNone,
+				Type:         api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name:          "incus",
+							InMaintenance: api.NotInMaintenance,
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertUpdatedServer: func(t *testing.T, server *provisioning.Server) {
+				t.Helper()
+
+				require.Nil(t, server)
+			},
+		},
+		{
+			name: "success - unrelated status detail is kept",
+			repoGetByName: provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailReadyUpdatingOS,
+				Type:         api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name:          "incus",
+							InMaintenance: api.NotInMaintenance,
+						},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertUpdatedServer: func(t *testing.T, server *provisioning.Server) {
+				t.Helper()
+
+				require.Nil(t, server, "a status detail, which is not a maintenance marker, must not be rewound")
+			},
+		},
+		{
+			name:             "error - repo.GetByName",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.Update",
+			repoGetByName: provisioning.Server{
+				Name:         "one",
+				Status:       api.ServerStatusReady,
+				StatusDetail: api.ServerStatusDetailReadyRestoring,
+				Type:         api.ServerTypeIncus,
+				VersionData: api.ServerVersionData{
+					Applications: []api.ApplicationVersionData{
+						{
+							Name:          "incus",
+							InMaintenance: api.InMaintenanceEvacuated,
+						},
+					},
+				},
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			var updatedServer *provisioning.Server
+
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &tc.repoGetByName, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+					updatedServer = &server
+
+					return tc.repoUpdateErr
+				},
+			}
+
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return provisioning.Updates{}, nil
+				},
+			}
+
+			serverSvc := provisioningServer.New(
+				repo, nil, nil, nil, nil, nil, updateSvc, tls.Certificate{},
+				provisioningServer.WithWarningEmitter(provisioning.NoopWarningService{}),
+			)
+
+			// Run test
+			err := serverSvc.ResetMaintenanceStateByName(t.Context(), "one")
+
+			// Assert
+			tc.assertErr(t, err)
+
+			if tc.assertUpdatedServer != nil {
+				tc.assertUpdatedServer(t, updatedServer)
+			}
+		})
+	}
+}
+
 func TestServerService_UpdateSystemByName(t *testing.T) {
 	tests := []struct {
 		name                                            string
